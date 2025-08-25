@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.app.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": false,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "target": "es2020",
+    "lib": ["es2020", "dom", "dom.iterable"],
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": ["../src/**/*", "../.storybook/**/*"],
+  "exclude": ["../node_modules"]
+}
