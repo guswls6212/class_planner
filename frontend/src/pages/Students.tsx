@@ -77,20 +77,36 @@ export default function StudentsPage() {
                 addStudent();
               }
             }}
-            className="form-input"
             style={{
-              background: 'var(--color-white)',
-              color: 'var(--color-gray-900)',
-              border: '1px solid var(--color-gray-300)',
+              padding: '8px 12px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '4px',
+              background: 'var(--color-bg-secondary)',
+              color: 'var(--color-text-primary)',
+              fontSize: '14px',
+              width: '200px',
             }}
           />
-          <button onClick={addStudent} className="btn btn-primary">
+          <button 
+            onClick={addStudent} 
+            style={{
+              padding: '8px 16px',
+              background: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+            }}
+          >
             추가
           </button>
         </div>
         <ul
-          className="student-list"
           style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
             maxHeight: '400px',
             overflow: 'auto',
           }}
@@ -98,25 +114,36 @@ export default function StudentsPage() {
           {students.map(s => (
             <li
               key={s.id}
-              className="flex justify-between"
-              style={{ padding: '6px 0' }}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '6px 0',
+              }}
             >
               <button
                 onClick={() => setSelectedStudentId(s.id)}
-                className={`btn ${selectedStudentId === s.id ? 'font-semibold' : ''}`}
                 style={{
+                  fontWeight: selectedStudentId === s.id ? 600 : 400,
                   background: 'transparent',
                   border: 'none',
                   padding: 0,
-                  color: 'var(--color-gray-900)',
+                  color: 'var(--color-text-primary)',
+                  cursor: 'pointer',
                 }}
               >
                 {s.name}
               </button>
               <button
                 onClick={() => setStudents(students.filter(x => x.id !== s.id))}
-                className="btn btn-danger"
-                style={{ padding: '4px 8px' }}
+                style={{
+                  padding: '4px 8px',
+                  background: 'var(--color-danger)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
               >
                 삭제
               </button>
@@ -125,7 +152,7 @@ export default function StudentsPage() {
           {students.length === 0 && (
             <li
               style={{
-                color: 'var(--color-gray-400)',
+                color: 'var(--color-text-muted)',
                 padding: '8px 0',
                 textAlign: 'center',
               }}
@@ -137,11 +164,11 @@ export default function StudentsPage() {
         {students.length > 10 && (
           <div
             style={{
-              color: 'var(--color-gray-500)',
+              color: 'var(--color-text-muted)',
               padding: '8px 0',
               fontSize: '12px',
               textAlign: 'center',
-              borderTop: '1px solid var(--color-gray-200)',
+              borderTop: '1px solid var(--color-border-light)',
               marginTop: '8px',
             }}
           >
