@@ -34,27 +34,21 @@ export default function Label({
     success && styles.success,
     warning && styles.warning,
     disabled && styles.disabled,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const wrapperClasses = [
-    variant === 'group' && styles.labelGroup,
-  ].filter(Boolean).join(' ');
+  const wrapperClasses = [variant === 'group' && styles.labelGroup]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className={wrapperClasses}>
       <label htmlFor={htmlFor} className={labelClasses}>
         {children}
-        {required && (
-          <span className={styles.required}>
-            *
-          </span>
-        )}
+        {required && <span className={styles.required}>*</span>}
       </label>
-      {helpText && (
-        <div className={styles.helpText}>
-          {helpText}
-        </div>
-      )}
+      {helpText && <div className={styles.helpText}>{helpText}</div>}
     </div>
   );
 }

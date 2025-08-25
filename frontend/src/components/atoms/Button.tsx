@@ -27,25 +27,23 @@ export default function Button({
     styles[size],
     styles[variant],
     loading && styles.loading,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <button 
-      className={buttonClasses} 
-      onClick={onClick} 
+    <button
+      className={buttonClasses}
+      onClick={onClick}
       disabled={disabled || loading}
       type="button"
     >
       {icon && iconPosition === 'left' && (
-        <span className={`${styles.icon} ${styles.left}`}>
-          {icon}
-        </span>
+        <span className={`${styles.icon} ${styles.left}`}>{icon}</span>
       )}
       {children}
       {icon && iconPosition === 'right' && (
-        <span className={`${styles.icon} ${styles.right}`}>
-          {icon}
-        </span>
+        <span className={`${styles.icon} ${styles.right}`}>{icon}</span>
       )}
     </button>
   );

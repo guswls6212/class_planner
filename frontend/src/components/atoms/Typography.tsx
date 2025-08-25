@@ -2,7 +2,16 @@ import React from 'react';
 import styles from './Typography.module.css';
 
 interface TypographyProps {
-  variant: 'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'bodyLarge' | 'bodySmall' | 'caption' | 'label';
+  variant:
+    | 'h1'
+    | 'h2'
+    | 'h3'
+    | 'h4'
+    | 'body'
+    | 'bodyLarge'
+    | 'bodySmall'
+    | 'caption'
+    | 'label';
   children: React.ReactNode;
   color?:
     | 'primary'
@@ -40,11 +49,17 @@ export default function Typography({
     transform !== 'none' && styles[transform],
     decoration !== 'none' && styles[decoration],
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const Component = variant.startsWith('h')
     ? (variant as 'h1' | 'h2' | 'h3' | 'h4')
     : 'span';
 
-  return <Component className={typographyClasses} style={style}>{children}</Component>;
+  return (
+    <Component className={typographyClasses} style={style}>
+      {children}
+    </Component>
+  );
 }

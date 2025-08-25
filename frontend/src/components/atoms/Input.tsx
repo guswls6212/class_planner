@@ -30,20 +30,17 @@ export default function Input({
     error && styles.error,
     type === 'search' && styles.search,
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const wrapperClasses = [
-    styles.inputWrapper,
-    icon && styles.inputWithIcon,
-  ].filter(Boolean).join(' ');
+  const wrapperClasses = [styles.inputWrapper, icon && styles.inputWithIcon]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className={wrapperClasses}>
-      {icon && (
-        <span className={styles.icon}>
-          {icon}
-        </span>
-      )}
+      {icon && <span className={styles.icon}>{icon}</span>}
       <input
         type={type}
         placeholder={placeholder}
@@ -52,11 +49,7 @@ export default function Input({
         disabled={disabled}
         className={inputClasses}
       />
-      {error && (
-        <div className={styles.errorMessage}>
-          {error}
-        </div>
-      )}
+      {error && <div className={styles.errorMessage}>{error}</div>}
     </div>
   );
 }
