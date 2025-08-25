@@ -515,31 +515,21 @@ export default function SchedulePage() {
           title="수업 추가"
           variant="elevated"
           padding="large"
+          className="modal-overlay position-fixed z-1000"
           style={{
-            position: 'fixed',
             left: modalPos.x,
             top: modalPos.y,
-            zIndex: 1000,
             minWidth: 280,
-            background: 'rgba(0,0,0,0.9)',
-            border: '1px solid rgba(255,255,255,0.2)',
           }}
         >
-          <div style={{ display: 'grid', gap: 16, marginBottom: 16 }}>
-            <div>
+          <div className="modal-form">
+            <div className="form-group">
               <Label htmlFor="modal-subject" required>
                 과목
               </Label>
               <select
                 id="modal-subject"
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
+                className="form-select"
               >
                 {subjects.map(sub => (
                   <option key={sub.id} value={sub.id}>
@@ -548,21 +538,14 @@ export default function SchedulePage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="form-group">
               <Label htmlFor="modal-weekday" required>
                 요일
               </Label>
               <select
                 id="modal-weekday"
+                className="form-select"
                 defaultValue={modalData.weekday}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               >
                 {weekdays.map((w, idx) => (
                   <option key={idx} value={idx}>
@@ -571,44 +554,30 @@ export default function SchedulePage() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="form-group">
               <Label htmlFor="modal-start-time" required>
                 시작 시간
               </Label>
               <input
                 id="modal-start-time"
                 type="time"
+                className="form-input"
                 defaultValue={modalData.startTime}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               />
             </div>
-            <div>
+            <div className="form-group">
               <Label htmlFor="modal-end-time" required>
                 종료 시간
               </Label>
               <input
                 id="modal-end-time"
                 type="time"
+                className="form-input"
                 defaultValue={modalData.endTime}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div className="modal-actions">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               취소
             </Button>
@@ -622,89 +591,42 @@ export default function SchedulePage() {
       {/* 편집 모달 */}
       {showEditModal && editModalData && (
         <div
+          className="modal-overlay position-fixed z-1000"
           style={{
-            position: 'fixed',
             left: '50%',
             top: '50%',
             transform: 'translate(-50%, -50%)',
-            background: 'rgba(0,0,0,0.9)',
-            border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: 8,
             padding: 16,
-            zIndex: 1000,
             minWidth: 320,
           }}
         >
-          <h4 style={{ margin: '0 0 12px 0', color: '#fff' }}>수업 편집</h4>
-          <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#ccc',
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
+          <h4 className="modal-header">수업 편집</h4>
+          <div className="modal-form">
+            <div className="form-group">
+              <label className="form-label">
                 학생
               </label>
-              <div
-                style={{
-                  padding: '8px 12px',
-                  background: '#333',
-                  color: '#fff',
-                  borderRadius: 4,
-                  border: '1px solid #555',
-                }}
-              >
+              <div className="form-input" style={{ background: 'var(--color-gray-700)' }}>
                 {students.find(s => s.id === editModalData.studentId)?.name}
               </div>
             </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#ccc',
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
+            <div className="form-group">
+              <label className="form-label">
                 과목
               </label>
-              <div
-                style={{
-                  padding: '8px 12px',
-                  background: '#333',
-                  color: '#fff',
-                  borderRadius: 4,
-                  border: '1px solid #555',
-                }}
-              >
+              <div className="form-input" style={{ background: 'var(--color-gray-700)' }}>
                 {subjects.find(s => s.id === editModalData.subjectId)?.name}
               </div>
             </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#ccc',
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
+            <div className="form-group">
+              <label className="form-label">
                 요일
               </label>
               <select
                 id="edit-modal-weekday"
+                className="form-select"
                 defaultValue={editModalData.weekday}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               >
                 {weekdays.map((w, idx) => (
                   <option key={idx} value={idx}>
@@ -713,60 +635,30 @@ export default function SchedulePage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#ccc',
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
+            <div className="form-group">
+              <label className="form-label">
                 시작 시간
               </label>
               <input
                 id="edit-modal-start-time"
                 type="time"
+                className="form-input"
                 defaultValue={editModalData.startTime}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               />
             </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#ccc',
-                  fontSize: 12,
-                  marginBottom: 4,
-                }}
-              >
+            <div className="form-group">
+              <label className="form-label">
                 종료 시간
               </label>
               <input
                 id="edit-modal-end-time"
                 type="time"
+                className="form-input"
                 defaultValue={editModalData.endTime}
-                style={{
-                  width: '100%',
-                  padding: '6px',
-                  borderRadius: 4,
-                  background: '#333',
-                  color: '#fff',
-                  border: '1px solid #555',
-                }}
               />
             </div>
           </div>
-          <div
-            style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}
-          >
+          <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
             <Button
               onClick={() => {
                 if (confirm('정말 삭제하시겠습니까?')) {
