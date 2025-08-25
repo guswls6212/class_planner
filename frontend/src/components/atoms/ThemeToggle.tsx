@@ -6,9 +6,9 @@ interface ThemeToggleProps {
   variant?: 'icon' | 'text' | 'both';
 }
 
-export default function ThemeToggle({ 
-  size = 'medium', 
-  variant = 'both' 
+export default function ThemeToggle({
+  size = 'medium',
+  variant = 'both',
 }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
 
@@ -43,14 +43,10 @@ export default function ThemeToggle({
       title={`현재 테마: ${theme === 'dark' ? '다크' : '라이트'}`}
     >
       {variant !== 'text' && (
-        <span style={iconStyles[size]}>
-          {theme === 'dark' ? '🌙' : '☀️'}
-        </span>
+        <span style={iconStyles[size]}>{theme === 'dark' ? '🌙' : '☀️'}</span>
       )}
       {variant !== 'icon' && (
-        <span>
-          {theme === 'dark' ? '라이트' : '다크'}
-        </span>
+        <span>{theme === 'dark' ? '라이트' : '다크'}</span>
       )}
     </button>
   );

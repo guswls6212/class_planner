@@ -29,7 +29,7 @@ function Layout() {
         <div style={{ display: 'flex', gap: 12 }}>
           <NavLink
             to="/students"
-            style={({ isActive }) => ({ 
+            style={({ isActive }) => ({
               fontWeight: isActive ? 600 : 400,
               textDecoration: 'none',
               padding: '4px 8px',
@@ -42,7 +42,7 @@ function Layout() {
           </NavLink>
           <NavLink
             to="/schedule"
-            style={({ isActive }) => ({ 
+            style={({ isActive }) => ({
               fontWeight: isActive ? 600 : 400,
               textDecoration: 'none',
               padding: '4px 8px',

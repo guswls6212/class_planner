@@ -87,8 +87,8 @@ export default function StudentsPage() {
               width: '200px',
             }}
           />
-          <button 
-            onClick={addStudent} 
+          <button
+            onClick={addStudent}
             style={{
               padding: '8px 16px',
               background: 'var(--color-primary)',
