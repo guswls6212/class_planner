@@ -332,16 +332,16 @@ export default function SchedulePage() {
   const hourCols = (DAY_END_MIN - DAY_START_MIN) / 60;
 
   return (
-    <div style={{ padding: 16, overflowX: 'auto', position: 'relative' }}>
+    <div className="timetable-container" style={{ padding: 16 }}>
       <h2>주간 시간표</h2>
       {selectedStudentId ? (
-        <p style={{ color: '#666' }}>
+        <p style={{ color: 'var(--color-gray-500)' }}>
           {students.find(s => s.id === selectedStudentId)?.name} 학생의
           시간표입니다. 다른 학생을 선택하거나 선택 해제하여 전체 시간표를 볼 수
           있습니다.
         </p>
       ) : (
-        <p style={{ color: '#666' }}>
+        <p style={{ color: 'var(--color-gray-500)' }}>
           전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당
           학생의 시간표만 볼 수 있습니다.
         </p>
@@ -349,13 +349,9 @@ export default function SchedulePage() {
 
       {/* 가로 스크롤 가능한 래퍼: 시간축 X, 요일 Y */}
       <div
+        className="grid grid-rows-header grid-cols-auto gap-grid"
         style={{
-          display: 'grid',
-          gridTemplateRows: '40px repeat(7, 1fr)',
-          gridAutoColumns: '80px',
           gridTemplateColumns: `80px repeat(${hourCols}, 120px)`,
-          gap: 4,
-          minWidth: 1000,
         }}
       >
         {/* 좌상단 빈칸 */}
@@ -365,7 +361,7 @@ export default function SchedulePage() {
           min => (
             <div
               key={`h-${min}`}
-              style={{ textAlign: 'center', fontWeight: 600 }}
+              className="time-header"
             >
               {minutesToTime(min)}
             </div>
