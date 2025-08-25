@@ -359,10 +359,7 @@ export default function SchedulePage() {
         {/* 시간 헤더 (9:00~24:00) */}
         {Array.from({ length: hourCols }, (_, i) => DAY_START_MIN + i * 60).map(
           min => (
-            <div
-              key={`h-${min}`}
-              className="time-header"
-            >
+            <div key={`h-${min}`} className="time-header">
               {minutesToTime(min)}
             </div>
           )
@@ -375,25 +372,15 @@ export default function SchedulePage() {
             <>
               <div
                 key={`yl-${dayIdx}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingRight: 8,
-                  fontWeight: 600,
-                }}
+                className="weekday-label"
               >
                 {w}
               </div>
               <div
                 key={`row-${dayIdx}`}
+                className="weekday-row"
                 style={{
-                  position: 'relative',
                   height: getWeekdayHeight(dayIdx),
-                  gridColumn: `2 / -1`,
-                  backgroundSize: `120px 100%`,
-                  backgroundImage:
-                    'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px)',
                 }}
               >
                 {blocks.map((b, blockIndex) => {
@@ -418,23 +405,13 @@ export default function SchedulePage() {
                   return (
                     <div
                       key={`${b.id}-${dayIdx}-${blockIndex}-${yOffset}`}
+                      className="session-block"
                       style={{
-                        position: 'absolute',
                         left,
                         top: 6 + yOffset,
-                        height: 28,
                         width,
                         background: subj?.color ?? '#888',
-                        color: '#fff',
-                        borderRadius: 4,
-                        padding: '0 6px',
-                        fontSize: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        overflow: 'hidden',
                         zIndex: yOffset + 1, // 겹치는 세션이 위에 보이도록
-                        border: '1px solid rgba(255,255,255,0.2)', // 테두리 추가로 구분
-                        cursor: 'pointer', // 클릭 가능함을 표시
                       }}
                       onClick={() => openEditModal(b)} // 클릭 시 편집 모달 열기
                     >
@@ -447,14 +424,12 @@ export default function SchedulePage() {
                 {Array.from({ length: hourCols }, (_, hourIdx) => (
                   <div
                     key={`drop-${dayIdx}-${hourIdx}`}
+                    className="drop-zone position-absolute"
                     style={{
-                      position: 'absolute',
                       left: hourIdx * 120,
                       top: 0,
                       width: 120,
                       height: getWeekdayHeight(dayIdx), // 동적 높이 적용
-                      border: '1px dashed transparent',
-                      transition: 'border-color 0.2s',
                     }}
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => {
@@ -463,11 +438,10 @@ export default function SchedulePage() {
                       e.currentTarget.style.borderColor = 'transparent';
                     }}
                     onDragEnter={e => {
-                      e.currentTarget.style.borderColor =
-                        'rgba(59,130,246,0.5)';
+                      e.currentTarget.classList.add('drag-over');
                     }}
                     onDragLeave={e => {
-                      e.currentTarget.style.borderColor = 'transparent';
+                      e.currentTarget.classList.remove('drag-over');
                     }}
                   />
                 ))}
