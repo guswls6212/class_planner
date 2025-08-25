@@ -527,10 +527,7 @@ export default function SchedulePage() {
               <Label htmlFor="modal-subject" required>
                 과목
               </Label>
-              <select
-                id="modal-subject"
-                className="form-select"
-              >
+              <select id="modal-subject" className="form-select">
                 {subjects.map(sub => (
                   <option key={sub.id} value={sub.id}>
                     {sub.name}
@@ -604,25 +601,25 @@ export default function SchedulePage() {
           <h4 className="modal-header">수업 편집</h4>
           <div className="modal-form">
             <div className="form-group">
-              <label className="form-label">
-                학생
-              </label>
-              <div className="form-input" style={{ background: 'var(--color-gray-700)' }}>
+              <label className="form-label">학생</label>
+              <div
+                className="form-input"
+                style={{ background: 'var(--color-gray-700)' }}
+              >
                 {students.find(s => s.id === editModalData.studentId)?.name}
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">
-                과목
-              </label>
-              <div className="form-input" style={{ background: 'var(--color-gray-700)' }}>
+              <label className="form-label">과목</label>
+              <div
+                className="form-input"
+                style={{ background: 'var(--color-gray-700)' }}
+              >
                 {subjects.find(s => s.id === editModalData.subjectId)?.name}
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label">
-                요일
-              </label>
+              <label className="form-label">요일</label>
               <select
                 id="edit-modal-weekday"
                 className="form-select"
@@ -636,9 +633,7 @@ export default function SchedulePage() {
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">
-                시작 시간
-              </label>
+              <label className="form-label">시작 시간</label>
               <input
                 id="edit-modal-start-time"
                 type="time"
@@ -647,9 +642,7 @@ export default function SchedulePage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">
-                종료 시간
-              </label>
+              <label className="form-label">종료 시간</label>
               <input
                 id="edit-modal-end-time"
                 type="time"
@@ -658,7 +651,10 @@ export default function SchedulePage() {
               />
             </div>
           </div>
-          <div className="modal-actions" style={{ justifyContent: 'space-between' }}>
+          <div
+            className="modal-actions"
+            style={{ justifyContent: 'space-between' }}
+          >
             <Button
               onClick={() => {
                 if (confirm('정말 삭제하시겠습니까?')) {
