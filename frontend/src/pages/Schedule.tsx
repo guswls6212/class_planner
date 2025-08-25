@@ -370,10 +370,7 @@ export default function SchedulePage() {
           const blocks = displaySessions.get(dayIdx) ?? [];
           return (
             <>
-              <div
-                key={`yl-${dayIdx}`}
-                className="weekday-label"
-              >
+              <div key={`yl-${dayIdx}`} className="weekday-label">
                 {w}
               </div>
               <div
@@ -453,29 +450,18 @@ export default function SchedulePage() {
 
       {/* 플로팅 학생 리스트 패널 */}
       <div
+        className="floating-panel position-fixed z-1000 overflow-auto"
         style={{
-          position: 'fixed',
           left: panelPos.x,
           top: panelPos.y,
           width: 280,
           maxHeight: '400px',
-          overflow: 'auto',
-          background: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(6px)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 8,
           padding: 16,
-          zIndex: 1000,
         }}
       >
         {/* 드래그 가능한 헤더 */}
         <div
-          style={{
-            fontWeight: 700,
-            marginBottom: 8,
-            cursor: isDragging ? 'grabbing' : 'grab',
-            padding: '4px 0',
-          }}
+          className={`panel-header ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           onMouseDown={e => {
             if (e.target === e.currentTarget) {
               setIsDragging(true);
@@ -488,37 +474,15 @@ export default function SchedulePage() {
         >
           수강생 리스트
         </div>
-        <ul
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            display: 'grid',
-            gap: 8,
-          }}
-        >
+        <ul className="student-list">
           {students.map(s => (
             <li key={s.id}>
               <div
                 draggable
+                className={`student-item ${selectedStudentId === s.id ? 'selected' : ''}`}
                 onDragStart={e => {
                   e.dataTransfer.setData('text/plain', s.id);
                   e.dataTransfer.effectAllowed = 'copy';
-                }}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  background:
-                    selectedStudentId === s.id
-                      ? 'rgba(59,130,246,0.5)'
-                      : 'rgba(255,255,255,0.05)',
-                  color: '#fff',
-                  cursor: 'grab',
-                  userSelect: 'none',
-                  boxSizing: 'border-box',
                 }}
                 onMouseDown={() => {
                   // 드래그 중이 아닐 때만 클릭 이벤트 처리
@@ -538,7 +502,7 @@ export default function SchedulePage() {
             </li>
           ))}
           {students.length === 0 && (
-            <li style={{ color: '#bbb', padding: '8px 12px' }}>
+            <li style={{ color: 'var(--color-gray-400)', padding: '8px 12px' }}>
               학생 페이지에서 학생을 추가하세요
             </li>
           )}
