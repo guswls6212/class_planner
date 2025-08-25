@@ -9,6 +9,8 @@ import {
 } from 'react-router-dom';
 import StudentsPage from './pages/Students';
 import SchedulePage from './pages/Schedule';
+import { ThemeProvider } from './contexts/ThemeContext';
+import ThemeToggle from './components/atoms/ThemeToggle';
 
 // eslint-disable-next-line react-refresh/only-export-components
 function Layout() {
@@ -17,23 +19,42 @@ function Layout() {
       <nav
         style={{
           display: 'flex',
-          gap: 12,
+          justifyContent: 'space-between',
+          alignItems: 'center',
           padding: 12,
-          borderBottom: '1px solid #eee',
+          borderBottom: '1px solid var(--color-border)',
+          background: 'var(--color-bg-secondary)',
         }}
       >
-        <NavLink
-          to="/students"
-          style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
-        >
-          학생
-        </NavLink>
-        <NavLink
-          to="/schedule"
-          style={({ isActive }) => ({ fontWeight: isActive ? 600 : 400 })}
-        >
-          시간표
-        </NavLink>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <NavLink
+            to="/students"
+            style={({ isActive }) => ({ 
+              fontWeight: isActive ? 600 : 400,
+              textDecoration: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background: isActive ? 'var(--color-primary)' : 'transparent',
+              color: isActive ? 'white' : 'var(--color-text-primary)',
+            })}
+          >
+            학생
+          </NavLink>
+          <NavLink
+            to="/schedule"
+            style={({ isActive }) => ({ 
+              fontWeight: isActive ? 600 : 400,
+              textDecoration: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background: isActive ? 'var(--color-primary)' : 'transparent',
+              color: isActive ? 'white' : 'var(--color-text-primary)',
+            })}
+          >
+            시간표
+          </NavLink>
+        </div>
+        <ThemeToggle size="small" variant="both" />
       </nav>
       <Outlet />
     </div>
@@ -54,6 +75,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>
   </StrictMode>
 );
