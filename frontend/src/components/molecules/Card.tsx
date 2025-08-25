@@ -8,6 +8,7 @@ interface CardProps {
   padding?: 'small' | 'medium' | 'large';
   onClick?: () => void;
   style?: React.CSSProperties; // 커스텀 스타일을 위한 style prop
+  className?: string; // CSS 클래스를 위한 className prop
 }
 
 export default function Card({
@@ -17,6 +18,7 @@ export default function Card({
   padding = 'medium',
   onClick,
   style,
+  className,
 }: CardProps) {
   const variantStyles: Record<string, React.CSSProperties> = {
     default: {
@@ -62,6 +64,7 @@ export default function Card({
 
   return (
     <div
+      className={className}
       style={styles}
       onClick={onClick}
       onMouseEnter={e => {

@@ -12,6 +12,7 @@ interface TypographyProps {
     | 'default';
   align?: 'left' | 'center' | 'right';
   weight?: 'normal' | 'medium' | 'semibold' | 'bold';
+  style?: React.CSSProperties;
 }
 
 export default function Typography({
@@ -20,6 +21,7 @@ export default function Typography({
   color = 'default',
   align = 'left',
   weight = 'normal',
+  style,
 }: TypographyProps) {
   const variantStyles: Record<string, React.CSSProperties> = {
     h1: {
@@ -81,6 +83,7 @@ export default function Typography({
     ...variantStyles[variant],
     ...colorStyles[color],
     ...weightStyles[weight],
+    ...style, // 인라인 스타일을 마지막에 적용하여 우선순위 부여
   };
 
   const Component = variant.startsWith('h')
