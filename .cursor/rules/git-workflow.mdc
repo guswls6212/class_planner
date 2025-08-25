@@ -203,11 +203,13 @@ git checkout HEAD~1 -- frontend/src/pages/Schedule.tsx
 ## 🎨 **Prettier 자동 포맷팅 관리**
 
 ### **1. 커밋 전 포맷팅 적용 원칙**
+
 - **포맷팅을 먼저 적용**: 코드 작성 후 커밋 전에 Prettier/ESLint 적용
 - **포맷팅과 기능 변경 통합**: 포맷팅된 상태에서 실제 변경사항만 커밋
 - **불필요한 커밋 방지**: 포맷팅만 변경된 별도 커밋 생성 방지
 
 ### **2. 커밋 전 포맷팅 적용 순서**
+
 ```bash
 # 1. 코드 작성 완료
 # ... 코드 작성 ...
@@ -227,6 +229,7 @@ git commit -m "✨ [기능명] - 실제 변경 내용"
 ```
 
 ### **3. 포맷팅 적용 후 커밋 방법**
+
 ```bash
 # 방법 1: 포맷팅 후 변경사항 확인
 git diff --name-only  # 변경된 파일명만 확인
@@ -245,6 +248,7 @@ git commit -m "✨ [기능명] - 선택적 커밋"
 ### **4. 실제 사용 예시 (커밋 전 포맷팅 적용)**
 
 #### **예시 1: 테마 기능 개발**
+
 ```bash
 # 1. 브랜치 생성
 git checkout -b feature/theme-system
@@ -270,6 +274,7 @@ git commit -m "🎨 전역 CSS 변수 추가 - 테마별 색상 정의"
 ```
 
 #### **예시 2: 스타일 개선**
+
 ```bash
 # 1. 브랜치 생성
 git checkout -b feature/style-improvement
