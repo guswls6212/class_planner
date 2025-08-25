@@ -57,8 +57,8 @@ export default function StudentsPage() {
 
   return (
     <div
+      className="grid"
       style={{
-        display: 'grid',
         gridTemplateColumns: '340px 1fr',
         gap: 16,
         padding: 16,
@@ -66,7 +66,7 @@ export default function StudentsPage() {
     >
       <section>
         <h2>학생 목록</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex gap-sm">
           <input
             placeholder="학생 이름"
             value={newStudentName}
@@ -77,14 +77,14 @@ export default function StudentsPage() {
                 addStudent();
               }
             }}
+            className="form-input"
+            style={{ background: 'var(--color-white)', color: 'var(--color-gray-900)', border: '1px solid var(--color-gray-300)' }}
           />
-          <button onClick={addStudent}>추가</button>
+          <button onClick={addStudent} className="btn btn-primary">추가</button>
         </div>
         <ul
+          className="student-list"
           style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
             maxHeight: '400px',
             overflow: 'auto',
           }}
@@ -92,20 +92,20 @@ export default function StudentsPage() {
           {students.map(s => (
             <li
               key={s.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '6px 0',
-              }}
+              className="flex justify-between"
+              style={{ padding: '6px 0' }}
             >
               <button
                 onClick={() => setSelectedStudentId(s.id)}
-                style={{ fontWeight: selectedStudentId === s.id ? 600 : 400 }}
+                className={`btn ${selectedStudentId === s.id ? 'font-semibold' : ''}`}
+                style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--color-gray-900)' }}
               >
                 {s.name}
               </button>
               <button
                 onClick={() => setStudents(students.filter(x => x.id !== s.id))}
+                className="btn btn-danger"
+                style={{ padding: '4px 8px' }}
               >
                 삭제
               </button>
@@ -113,7 +113,7 @@ export default function StudentsPage() {
           ))}
           {students.length === 0 && (
             <li
-              style={{ color: '#bbb', padding: '8px 0', textAlign: 'center' }}
+              style={{ color: 'var(--color-gray-400)', padding: '8px 0', textAlign: 'center' }}
             >
               학생을 추가해주세요
             </li>
@@ -122,11 +122,11 @@ export default function StudentsPage() {
         {students.length > 10 && (
           <div
             style={{
-              color: '#666',
+              color: 'var(--color-gray-500)',
               padding: '8px 0',
               fontSize: '12px',
               textAlign: 'center',
-              borderTop: '1px solid rgba(255,255,255,0.1)',
+              borderTop: '1px solid var(--color-gray-200)',
               marginTop: '8px',
             }}
           >
