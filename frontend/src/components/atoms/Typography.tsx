@@ -1,7 +1,8 @@
 import React from 'react';
+import styles from './Typography.module.css';
 
 interface TypographyProps {
-  variant: 'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'caption' | 'label';
+  variant: 'h1' | 'h2' | 'h3' | 'h4' | 'body' | 'bodyLarge' | 'bodySmall' | 'caption' | 'label';
   children: React.ReactNode;
   color?:
     | 'primary'
@@ -9,9 +10,13 @@ interface TypographyProps {
     | 'success'
     | 'warning'
     | 'danger'
-    | 'default';
-  align?: 'left' | 'center' | 'right';
+    | 'default'
+    | 'muted';
+  align?: 'left' | 'center' | 'right' | 'justify';
   weight?: 'normal' | 'medium' | 'semibold' | 'bold';
+  transform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
+  decoration?: 'underline' | 'lineThrough' | 'none';
+  className?: string;
   style?: React.CSSProperties;
 }
 
@@ -21,74 +26,25 @@ export default function Typography({
   color = 'default',
   align = 'left',
   weight = 'normal',
+  transform = 'none',
+  decoration = 'none',
+  className,
   style,
 }: TypographyProps) {
-  const variantStyles: Record<string, React.CSSProperties> = {
-    h1: {
-      fontSize: '32px',
-      lineHeight: '40px',
-      fontWeight: 700,
-    },
-    h2: {
-      fontSize: '24px',
-      lineHeight: '32px',
-      fontWeight: 600,
-    },
-    h3: {
-      fontSize: '20px',
-      lineHeight: '28px',
-      fontWeight: 600,
-    },
-    h4: {
-      fontSize: '18px',
-      lineHeight: '24px',
-      fontWeight: 500,
-    },
-    body: {
-      fontSize: '16px',
-      lineHeight: '24px',
-      fontWeight: 400,
-    },
-    caption: {
-      fontSize: '14px',
-      lineHeight: '20px',
-      fontWeight: 400,
-    },
-    label: {
-      fontSize: '14px',
-      lineHeight: '20px',
-      fontWeight: 500,
-    },
-  };
-
-  const colorStyles: Record<string, React.CSSProperties> = {
-    primary: { color: '#3b82f6' },
-    secondary: { color: '#6b7280' },
-    success: { color: '#10b981' },
-    warning: { color: '#f59e0b' },
-    danger: { color: '#dc2626' },
-    default: { color: '#111827' },
-  };
-
-  const weightStyles: Record<string, React.CSSProperties> = {
-    normal: { fontWeight: 400 },
-    medium: { fontWeight: 500 },
-    semibold: { fontWeight: 600 },
-    bold: { fontWeight: 700 },
-  };
-
-  const styles: React.CSSProperties = {
-    margin: 0,
-    textAlign: align,
-    ...variantStyles[variant],
-    ...colorStyles[color],
-    ...weightStyles[weight],
-    ...style, // 인라인 스타일을 마지막에 적용하여 우선순위 부여
-  };
+  const typographyClasses = [
+    styles.typography,
+    styles[variant],
+    styles[`color${color.charAt(0).toUpperCase() + color.slice(1)}`],
+    styles[`text${align.charAt(0).toUpperCase() + align.slice(1)}`],
+    styles[`font${weight.charAt(0).toUpperCase() + weight.slice(1)}`],
+    transform !== 'none' && styles[transform],
+    decoration !== 'none' && styles[decoration],
+    className,
+  ].filter(Boolean).join(' ');
 
   const Component = variant.startsWith('h')
     ? (variant as 'h1' | 'h2' | 'h3' | 'h4')
     : 'span';
 
-  return <Component style={styles}>{children}</Component>;
+  return <Component className={typographyClasses} style={style}>{children}</Component>;
 }

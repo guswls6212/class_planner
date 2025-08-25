@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './Label.module.css';
 
 interface LabelProps {
   children: React.ReactNode;
@@ -6,6 +7,11 @@ interface LabelProps {
   required?: boolean;
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
+  variant?: 'default' | 'checkbox' | 'inline' | 'group';
+  helpText?: string;
+  error?: boolean;
+  success?: boolean;
+  warning?: boolean;
 }
 
 export default function Label({
@@ -14,29 +20,41 @@ export default function Label({
   required = false,
   size = 'medium',
   disabled = false,
+  variant = 'default',
+  helpText,
+  error = false,
+  success = false,
+  warning = false,
 }: LabelProps) {
-  const styles: React.CSSProperties = {
-    display: 'block',
-    fontSize: size === 'small' ? '12px' : size === 'large' ? '16px' : '14px',
-    fontWeight: 500,
-    color: disabled ? '#6b7280' : '#374151',
-    marginBottom: size === 'small' ? '4px' : size === 'large' ? '8px' : '6px',
-    cursor: disabled ? 'default' : 'pointer',
-  };
+  const labelClasses = [
+    styles.label,
+    styles[size],
+    styles[variant],
+    error && styles.error,
+    success && styles.success,
+    warning && styles.warning,
+    disabled && styles.disabled,
+  ].filter(Boolean).join(' ');
+
+  const wrapperClasses = [
+    variant === 'group' && styles.labelGroup,
+  ].filter(Boolean).join(' ');
 
   return (
-    <label htmlFor={htmlFor} style={styles}>
-      {children}
-      {required && (
-        <span
-          style={{
-            color: '#dc2626',
-            marginLeft: '4px',
-          }}
-        >
-          *
-        </span>
+    <div className={wrapperClasses}>
+      <label htmlFor={htmlFor} className={labelClasses}>
+        {children}
+        {required && (
+          <span className={styles.required}>
+            *
+          </span>
+        )}
+      </label>
+      {helpText && (
+        <div className={styles.helpText}>
+          {helpText}
+        </div>
       )}
-    </label>
+    </div>
   );
 }
