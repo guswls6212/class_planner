@@ -45,7 +45,11 @@ export default function Input({
         type={type}
         placeholder={placeholder}
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => {
+          if (!disabled) {
+            onChange(e.target.value);
+          }
+        }}
         disabled={disabled}
         className={inputClasses}
       />
