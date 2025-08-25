@@ -34,7 +34,9 @@ export default function FormField({
       <Label htmlFor={name} required={required} size={size} disabled={disabled}>
         {label}
       </Label>
-      {children || (
+      {children ? (
+        children
+      ) : (
         <Input
           type={type}
           placeholder={placeholder}
