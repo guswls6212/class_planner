@@ -1,0 +1,107 @@
+/* Input 컴포넌트 CSS 모듈 */
+
+.inputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input:disabled {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.input.error {
+  border-color: var(--color-danger);
+}
+
+.input.error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+/* 크기별 스타일 */
+.input.small {
+  padding: 6px 8px;
+  font-size: 12px;
+  min-height: 32px;
+}
+
+.input.medium {
+  padding: 8px 12px;
+  font-size: 14px;
+  min-height: 36px;
+}
+
+.input.large {
+  padding: 12px 16px;
+  font-size: 16px;
+  min-height: 44px;
+}
+
+/* 플레이스홀더 스타일 */
+.input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* 에러 메시지 */
+.errorMessage {
+  color: var(--color-danger);
+  font-size: 12px;
+  margin-top: 4px;
+  margin-left: 4px;
+}
+
+/* 아이콘 스타일 */
+.inputWithIcon {
+  position: relative;
+}
+
+.inputWithIcon .input {
+  padding-left: 40px;
+}
+
+.inputWithIcon .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+/* 검색 입력 필드 */
+.input.search {
+  padding-left: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+  background-size: 16px;
+}
+
+/* 숫자 입력 화살표 숨기기 */
+.input[type="number"]::-webkit-outer-spin-button,
+.input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input[type="number"] {
+  -moz-appearance: textfield;
+}

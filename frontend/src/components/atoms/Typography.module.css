@@ -1,0 +1,226 @@
+/* Typography 컴포넌트 CSS 모듈 */
+
+/* 기본 타이포그래피 스타일 */
+.typography {
+  margin: 0;
+  line-height: 1.5;
+  font-family: inherit;
+}
+
+/* 제목 스타일 */
+.h1 {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.h2 {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.h3 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.h4 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+/* 본문 텍스트 */
+.body {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.bodyLarge {
+  font-size: 18px;
+  line-height: 28px;
+  font-weight: 400;
+}
+
+.bodySmall {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+/* 캡션 및 라벨 */
+.caption {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+/* 텍스트 정렬 */
+.textLeft {
+  text-align: left;
+}
+
+.textCenter {
+  text-align: center;
+}
+
+.textRight {
+  text-align: right;
+}
+
+.textJustify {
+  text-align: justify;
+}
+
+/* 폰트 굵기 */
+.fontNormal {
+  font-weight: 400;
+}
+
+.fontMedium {
+  font-weight: 500;
+}
+
+.fontSemibold {
+  font-weight: 600;
+}
+
+.fontBold {
+  font-weight: 700;
+}
+
+/* 색상 변형 */
+.colorPrimary {
+  color: var(--color-primary);
+}
+
+.colorSecondary {
+  color: var(--color-text-secondary);
+}
+
+.colorSuccess {
+  color: var(--color-success);
+}
+
+.colorWarning {
+  color: var(--color-warning);
+}
+
+.colorDanger {
+  color: var(--color-danger);
+}
+
+.colorDefault {
+  color: var(--color-text-primary);
+}
+
+.colorMuted {
+  color: var(--color-text-muted);
+}
+
+/* 링크 스타일 */
+.link {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* 코드 스타일 */
+.code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* 인용구 스타일 */
+.quote {
+  border-left: 4px solid var(--color-primary);
+  padding-left: 16px;
+  margin: 16px 0;
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* 구분선 */
+.divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 16px 0;
+  border: none;
+}
+
+/* 텍스트 변환 */
+.uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lowercase {
+  text-transform: lowercase;
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+/* 텍스트 장식 */
+.noUnderline {
+  text-decoration: none;
+}
+
+.underline {
+  text-decoration: underline;
+}
+
+.lineThrough {
+  text-decoration: line-through;
+}
+
+/* 선택 텍스트 */
+.typography::selection {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* 반응형 타이포그래피 */
+@media (max-width: 768px) {
+  .h1 {
+    font-size: 28px;
+    line-height: 36px;
+  }
+  
+  .h2 {
+    font-size: 22px;
+    line-height: 30px;
+  }
+  
+  .h3 {
+    font-size: 18px;
+    line-height: 26px;
+  }
+  
+  .body {
+    font-size: 15px;
+    line-height: 22px;
+  }
+}

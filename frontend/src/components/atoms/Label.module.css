@@ -1,0 +1,96 @@
+/* Label 컴포넌트 CSS 모듈 */
+
+.label {
+  display: block;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.label:hover {
+  color: var(--color-primary);
+}
+
+.label:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* 크기별 스타일 */
+.label.small {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.label.medium {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.label.large {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+/* 필수 표시 */
+.required {
+  color: var(--color-danger);
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+/* 인라인 레이블 */
+.label.inline {
+  display: inline-block;
+  margin-right: 12px;
+  margin-bottom: 0;
+}
+
+/* 체크박스/라디오 버튼용 레이블 */
+.label.checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.label.checkbox input[type="checkbox"],
+.label.checkbox input[type="radio"] {
+  margin-right: 8px;
+}
+
+/* 그룹 레이블 */
+.labelGroup {
+  margin-bottom: 16px;
+}
+
+.labelGroup .label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* 도움말 텍스트 */
+.helpText {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+/* 에러 상태 */
+.label.error {
+  color: var(--color-danger);
+}
+
+/* 성공 상태 */
+.label.success {
+  color: var(--color-success);
+}
+
+/* 경고 상태 */
+.label.warning {
+  color: var(--color-warning);
+}
