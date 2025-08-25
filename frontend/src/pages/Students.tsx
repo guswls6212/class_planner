@@ -78,9 +78,15 @@ export default function StudentsPage() {
               }
             }}
             className="form-input"
-            style={{ background: 'var(--color-white)', color: 'var(--color-gray-900)', border: '1px solid var(--color-gray-300)' }}
+            style={{
+              background: 'var(--color-white)',
+              color: 'var(--color-gray-900)',
+              border: '1px solid var(--color-gray-300)',
+            }}
           />
-          <button onClick={addStudent} className="btn btn-primary">추가</button>
+          <button onClick={addStudent} className="btn btn-primary">
+            추가
+          </button>
         </div>
         <ul
           className="student-list"
@@ -98,7 +104,12 @@ export default function StudentsPage() {
               <button
                 onClick={() => setSelectedStudentId(s.id)}
                 className={`btn ${selectedStudentId === s.id ? 'font-semibold' : ''}`}
-                style={{ background: 'transparent', border: 'none', padding: 0, color: 'var(--color-gray-900)' }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                  color: 'var(--color-gray-900)',
+                }}
               >
                 {s.name}
               </button>
@@ -113,7 +124,11 @@ export default function StudentsPage() {
           ))}
           {students.length === 0 && (
             <li
-              style={{ color: 'var(--color-gray-400)', padding: '8px 0', textAlign: 'center' }}
+              style={{
+                color: 'var(--color-gray-400)',
+                padding: '8px 0',
+                textAlign: 'center',
+              }}
             >
               학생을 추가해주세요
             </li>
