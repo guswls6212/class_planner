@@ -143,3 +143,53 @@ Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
   }),
   writable: true,
 });
+
+// Mock React DOM's event system more comprehensively
+Object.defineProperty(globalThis, 'getEventTarget', {
+  value: vi.fn(() => document),
+  writable: true,
+});
+
+// Mock React DOM's event handling
+Object.defineProperty(globalThis, 'getEventTarget', {
+  value: vi.fn(() => document),
+  writable: true,
+});
+
+// Mock React DOM's animation detection more thoroughly
+Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
+  value: vi.fn(eventName => {
+    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
+    if (eventName === 'WebkitAnimation') return '';
+    if (eventName === 'MozAnimation') return '';
+    if (eventName === 'msAnimation') return '';
+    if (eventName === 'OAnimation') return '';
+    return eventName;
+  }),
+  writable: true,
+});
+
+// Mock React DOM's event system
+Object.defineProperty(globalThis, 'getEventTarget', {
+  value: vi.fn(() => document),
+  writable: true,
+});
+
+// Mock React DOM's event handling
+Object.defineProperty(globalThis, 'getEventTarget', {
+  value: vi.fn(() => document),
+  writable: true,
+});
+
+// Mock React DOM's animation detection
+Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
+  value: vi.fn(eventName => {
+    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
+    if (eventName === 'WebkitAnimation') return '';
+    if (eventName === 'MozAnimation') return '';
+    if (eventName === 'msAnimation') return '';
+    if (eventName === 'OAnimation') return '';
+    return eventName;
+  }),
+  writable: true,
+});
