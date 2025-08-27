@@ -200,44 +200,48 @@ git checkout -b feature/style-improvement
 git checkout HEAD~1 -- frontend/src/pages/Schedule.tsx
 ```
 
-## 🎨 **Prettier 자동 포맷팅 관리**
+## 🎨 **자동 코드 정리 및 커밋 관리**
 
-### **1. 커밋 전 포맷팅 적용 원칙**
+### **1. 작업 완료 후 자동 정리 원칙**
 
-- **포맷팅을 먼저 적용**: 코드 작성 후 커밋 전에 Prettier/ESLint 적용
-- **포맷팅과 기능 변경 통합**: 포맷팅된 상태에서 실제 변경사항만 커밋
-- **불필요한 커밋 방지**: 포맷팅만 변경된 별도 커밋 생성 방지
+- **작업 완료 후 자동 정리**: 모든 작업이 정상적으로 완료된 후 자동으로 포맷팅, ESLint 오류 해결, import 정리 수행
+- **사용자 확인 후 커밋**: 자동 정리 완료 후 사용자가 변경사항을 확인하고 승인한 후에만 Git 커밋
+- **깔끔한 커밋 히스토리**: 포맷팅과 기능 변경이 분리되지 않고 통합된 상태로 커밋
 
-### **2. 커밋 전 포맷팅 적용 순서**
+### **2. 작업 완료 후 자동 정리 순서**
 
 ```bash
-# 1. 코드 작성 완료
-# ... 코드 작성 ...
+# 1. 작업 완료 확인
+# ✅ 모든 기능이 정상적으로 동작하는지 확인
+# ✅ 테스트가 통과하는지 확인
 
-# 2. Prettier 자동 포맷팅 적용
-npm run format  # 또는 npx prettier --write .
+# 2. 자동 코드 정리 실행
+npm run clean  # ESLint 자동 수정 + Prettier 포맷팅 + import 정리
 
-# 3. ESLint 자동 수정 적용 (선택사항)
-npm run lint:fix  # 또는 npx eslint --fix src/
+# 3. 정리 후 변경사항 확인
+git status     # 변경된 파일 목록 확인
+git diff       # 구체적인 변경 내용 확인
 
-# 4. 포맷팅 후 변경사항 확인
-git diff
+# 4. 사용자 확인 및 승인
+# 👀 변경사항을 검토하고 승인
 
-# 5. 포맷팅된 상태에서 실제 기능 변경사항만 커밋
+# 5. 승인 후 Git 커밋
 git add .
 git commit -m "✨ [기능명] - 실제 변경 내용"
 ```
 
-### **3. 포맷팅 적용 후 커밋 방법**
+### **3. 자동 정리 후 커밋 방법**
 
 ```bash
-# 방법 1: 포맷팅 후 변경사항 확인
+# 방법 1: 전체 변경사항 커밋 (권장)
+git add .             # 정리된 모든 변경사항 스테이징
+git diff --cached     # 스테이징된 변경사항 확인
+git commit -m "✨ [기능명] - 실제 변경 내용"
+
+# 방법 2: 변경사항 통계 확인 후 커밋
 git diff --name-only  # 변경된 파일명만 확인
 git diff --stat       # 변경 통계 확인
-
-# 방법 2: 포맷팅된 상태에서 커밋
-git add .             # 포맷팅된 상태의 모든 변경사항 스테이징
-git diff --cached     # 스테이징된 변경사항 확인
+git add .
 git commit -m "✨ [기능명] - 실제 변경 내용"
 
 # 방법 3: 특정 파일만 선택적 커밋
@@ -245,7 +249,7 @@ git add 파일명1 파일명2  # 실제 변경된 파일만 선택
 git commit -m "✨ [기능명] - 선택적 커밋"
 ```
 
-### **4. 실제 사용 예시 (커밋 전 포맷팅 적용)**
+### **4. 실제 사용 예시 (작업 완료 후 자동 정리)**
 
 #### **예시 1: 테마 기능 개발**
 
@@ -256,79 +260,124 @@ git checkout -b feature/theme-system
 # 2. 코드 작성 완료
 # ... 코드 작성 ...
 
-# 3. 커밋 전 포맷팅 적용
-npm run format
-npm run lint:fix  # ESLint 자동 수정도 적용
+# 3. 작업 완료 확인
+# ✅ 테마 전환 기능이 정상 동작하는지 확인
+# ✅ 테스트가 통과하는지 확인
 
-# 4. 포맷팅된 상태에서 변경사항 확인
-git diff
+# 4. 자동 코드 정리 실행
+npm run clean  # ESLint 자동 수정 + Prettier 포맷팅 + import 정리
 
-# 5. 포맷팅된 상태에서 실제 기능 변경사항만 커밋
-git add frontend/src/contexts/ThemeContext.tsx
-git add frontend/src/components/atoms/ThemeToggle.tsx
+# 5. 정리 후 변경사항 확인
+git status     # 변경된 파일 목록 확인
+git diff       # 구체적인 변경 내용 확인
+
+# 6. 사용자 확인 및 승인
+# 👀 변경사항을 검토하고 승인
+
+# 7. 승인 후 Git 커밋
+git add .
 git commit -m "🌙 테마 시스템 기반 구축 - ThemeContext, ThemeToggle 컴포넌트 추가"
-
-# 6. CSS 변수 추가
-git add frontend/src/styles/global.css
-git commit -m "🎨 전역 CSS 변수 추가 - 테마별 색상 정의"
 ```
 
-#### **예시 2: 스타일 개선**
+#### **예시 2: 테스트 코드 작성**
 
 ```bash
 # 1. 브랜치 생성
-git checkout -b feature/style-improvement
+git checkout -b feature/test-implementation
 
-# 2. 코드 작성 완료
-# ... 코드 작성 ...
+# 2. 테스트 코드 작성 완료
+# ... 테스트 코드 작성 ...
 
-# 3. 커밋 전 포맷팅 적용
-npm run format
-npm run lint:fix  # ESLint 자동 수정도 적용
+# 3. 작업 완료 확인
+# ✅ 모든 테스트가 통과하는지 확인
+# ✅ 테스트 커버리지가 만족스러운지 확인
 
-# 4. 포맷팅된 상태에서 변경사항 확인
-git diff
+# 4. 자동 코드 정리 실행
+npm run clean  # ESLint 자동 수정 + Prettier 포맷팅 + import 정리
 
-# 5. 포맷팅된 상태에서 실제 스타일 변경사항만 커밋
-git add frontend/src/pages/Schedule.tsx
-git commit -m "🎨 Schedule.tsx - 인라인 스타일을 CSS 클래스로 교체"
+# 5. 정리 후 변경사항 확인
+git status     # 변경된 파일 목록 확인
+git diff       # 구체적인 변경 내용 확인
 
-# 6. 추가 스타일 변경
-git add frontend/src/pages/Students.tsx
-git commit -m "🎨 Students.tsx - 테마 변수 적용 및 스타일 복원"
+# 6. 사용자 확인 및 승인
+# 👀 변경사항을 검토하고 승인
+
+# 7. 승인 후 Git 커밋
+git add .
+git commit -m "🧪 organisms 컴포넌트 테스트 코드 추가 - StudentPanel, SessionModal"
 ```
 
-### **5. 커밋 전 포맷팅 자동화 스크립트 (선택사항)**
+### **5. 작업 완료 후 자동 정리 워크플로우**
+
+#### **AI 어시스턴트가 따라야 할 순서**
+
+1. **작업 완료 확인**
+
+   - ✅ 모든 기능이 정상적으로 동작하는지 확인
+   - ✅ 테스트가 통과하는지 확인
+   - ✅ 사용자 요구사항이 충족되었는지 확인
+
+2. **자동 코드 정리 실행**
+
+   ```bash
+   npm run clean  # ESLint 자동 수정 + Prettier 포맷팅 + import 정리
+   ```
+
+3. **정리 후 변경사항 확인**
+
+   ```bash
+   git status     # 변경된 파일 목록 확인
+   git diff       # 구체적인 변경 내용 확인
+   ```
+
+4. **사용자에게 확인 요청**
+
+   - 📋 변경된 파일 목록 제시
+   - 🔍 주요 변경사항 요약
+   - 👀 사용자 승인 대기
+
+5. **사용자 승인 후 Git 커밋**
+   ```bash
+   git add .
+   git commit -m "✨ [기능명] - 실제 변경 내용"
+   ```
+
+#### **자동화 스크립트 (선택사항)**
 
 ```bash
 #!/bin/bash
-# pre-commit.sh - 커밋 전 포맷팅 자동 적용
+# auto-cleanup.sh - 작업 완료 후 자동 정리
 
-echo "🔍 Prettier 자동 포맷팅 적용 중..."
-npm run format
+echo "🧹 작업 완료 후 자동 코드 정리 시작..."
 
 echo "🔧 ESLint 자동 수정 적용 중..."
 npm run lint:fix
 
-echo "📊 포맷팅 후 변경사항 확인 중..."
+echo "🎨 Prettier 포맷팅 적용 중..."
+npm run format
+
+echo "📊 정리 후 변경사항 확인 중..."
 if git diff --quiet; then
-    echo "✅ 포맷팅 후 변경사항이 없습니다. 커밋을 진행합니다."
+    echo "✅ 정리 후 변경사항이 없습니다."
     exit 0
 else
-    echo "📝 포맷팅이 적용되었습니다. 변경사항을 확인해주세요."
+    echo "📝 코드 정리가 완료되었습니다."
     echo "📋 변경된 파일:"
     git diff --name-only
     echo ""
     echo "🔍 전체 변경사항을 확인하려면: git diff"
-    echo "✅ 포맷팅된 상태에서 커밋하려면: git add . && git commit"
-    echo "🚫 커밋을 중단하려면: git reset"
-    exit 0  # 포맷팅은 성공으로 처리
+    echo "👀 변경사항을 검토한 후 승인해주세요."
+    echo "✅ 승인 후 커밋하려면: git add . && git commit"
+    exit 0
 fi
 ```
 
 이 규칙을 따르면 Git을 활용해서 안전하고 체계적으로 작업을 진행할 수 있습니다!
-description:
-globs:
-alwaysApply: false
+
+---
+
+description: Git을 활용한 체계적인 작업 관리 및 자동 코드 정리 워크플로우
+globs: ["**/*"]
+alwaysApply: true
 
 ---

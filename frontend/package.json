@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
+    "clean": "eslint . --fix && prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
+    "auto-cleanup": "./scripts/auto-cleanup.sh",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test": "vitest",

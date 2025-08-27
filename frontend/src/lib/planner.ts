@@ -2,12 +2,12 @@ export type Student = { id: string; name: string; gender?: string };
 export type Subject = { id: string; name: string; color?: string };
 export type Enrollment = { id: string; studentId: string; subjectId: string };
 export type Session = {
-  id: string;
-  enrollmentId: string;
-  weekday: number;
-  startsAt: string;
-  endsAt: string;
-  room?: string;
+  id: string; // 세션 고유 식별자
+  enrollmentId: string; // 수강신청 ID (어떤 학생이 어떤 과목을 수강하는지)
+  weekday: number; // 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
+  startsAt: string; // 시작 시간 (HH:MM 형식)
+  endsAt: string; // 종료 시간 (HH:MM 형식)
+  room?: string; // 강의실 (선택적)
 };
 
 export function uid() {

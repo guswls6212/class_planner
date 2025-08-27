@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import Typography from '../Typography';
 
@@ -198,7 +197,23 @@ describe('Typography', () => {
 
     variants.forEach(variant => {
       const { unmount } = render(
-        <Typography variant={variant as any}>테스트 {variant}</Typography>
+        <Typography
+          variant={
+            variant as
+              | 'h1'
+              | 'h2'
+              | 'h3'
+              | 'h4'
+              | 'h5'
+              | 'h6'
+              | 'body1'
+              | 'body2'
+              | 'caption'
+              | 'label'
+          }
+        >
+          테스트 {variant}
+        </Typography>
       );
       expect(screen.getByText(`테스트 ${variant}`)).toBeInTheDocument();
       unmount();

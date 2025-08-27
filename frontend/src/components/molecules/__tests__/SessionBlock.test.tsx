@@ -1,14 +1,15 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import SessionBlock from '../SessionBlock';
 
 // Mock data
 const mockSession = {
   id: '1',
+  enrollmentId: 'enrollment-1',
+  weekday: 0, // 월요일
   startsAt: '09:00',
   endsAt: '10:30',
-  subjectId: 'math-101',
+  room: 'A101',
 };
 
 const mockSubject = {
@@ -146,12 +147,22 @@ describe('SessionBlock', () => {
   });
 
   it('subject가 null일 때도 렌더링된다', () => {
-    render(<SessionBlock {...defaultProps} subject={null as any} />);
+    render(
+      <SessionBlock
+        {...defaultProps}
+        subject={null as unknown as { id: string; name: string; color: string }}
+      />
+    );
     expect(screen.getByText('09:00-10:30')).toBeInTheDocument();
   });
 
   it('subject가 null일 때 기본 색상을 사용한다', () => {
-    render(<SessionBlock {...defaultProps} subject={null as any} />);
+    render(
+      <SessionBlock
+        {...defaultProps}
+        subject={null as unknown as { id: string; name: string; color: string }}
+      />
+    );
     const block = screen.getByText('09:00-10:30').closest('div');
     expect(block).toHaveStyle({ background: '#888' });
   });
