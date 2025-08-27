@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 interface DropZoneProps {
   hourIdx: number;
   height: number;
@@ -71,15 +73,42 @@ export default function DropZone({
   onDragLeave,
   onDragOver,
 }: DropZoneProps) {
-  const styles = getDropZoneStyles(hourIdx, height);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const styles = {
+    ...getDropZoneStyles(hourIdx, height),
+    border: isDragOver
+      ? '2px dashed var(--color-primary)'
+      : '1px dashed transparent',
+    backgroundColor: isDragOver
+      ? 'rgba(var(--color-primary-rgb), 0.1)'
+      : 'transparent',
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+    onDragEnter(e);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    onDragLeave(e);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    setIsDragOver(false);
+    onDrop(e);
+  };
 
   return (
     <div
       style={styles}
       onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
+      onDrop={handleDrop}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
     />
   );
 }

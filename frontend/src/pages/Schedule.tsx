@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Enrollment, Session, Subject, Student } from '../lib/planner';
-import {
-  weekdays,
-  DAY_END_MIN,
-  DAY_START_MIN,
-  timeToMinutes,
-  minutesToTime,
-} from '../lib/planner';
 import Button from '../components/atoms/Button';
 import Label from '../components/atoms/Label';
 import Card from '../components/molecules/Card';
+import TimeTableGrid from '../components/organisms/TimeTableGrid';
+import type { Enrollment, Session, Student, Subject } from '../lib/planner';
+import { weekdays } from '../lib/planner';
 
 function useLocal<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -76,55 +71,6 @@ export default function SchedulePage() {
     }
   }, [sessions, selectedStudentEnrolls, selectedStudentId]);
 
-  // 시간별로 겹치는 세션을 y축으로 배치하는 함수
-  function getSessionPosition(session: Session, weekday: number) {
-    const daySessions = displaySessions.get(weekday) || [];
-
-    // 같은 요일에서 시간이 겹치는 세션들을 찾기
-    const overlappingSessions = daySessions.filter(s => {
-      if (s.id === session.id) return false;
-
-      // 시간이 겹치는지 확인
-      const sStart = timeToMinutes(s.startsAt);
-      const sEnd = timeToMinutes(s.endsAt);
-      const sessionStart = timeToMinutes(session.startsAt);
-      const sessionEnd = timeToMinutes(session.endsAt);
-
-      return sStart < sessionEnd && sessionStart < sEnd;
-    });
-
-    // 겹치는 세션이 없으면 0번째 위치
-    if (overlappingSessions.length === 0) return 0;
-
-    // ✅ 수정된 부분: 겹치는 세션 그룹의 순서로 Y축 위치 결정
-    // 현재 세션을 포함한 모든 겹치는 세션들을 시간순으로 정렬
-    const allOverlapping = [...overlappingSessions, session].sort(
-      (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
-    );
-
-    // 현재 세션이 정렬된 순서에서 몇 번째인지 찾기
-    const sessionIndex = allOverlapping.findIndex(s => s.id === session.id);
-
-    // 순서대로 Y축 위치 할당 (0, 1, 2...)
-    return sessionIndex;
-  }
-
-  // 요일별 최대 y축 높이 계산
-  function getWeekdayHeight(weekday: number) {
-    const daySessions = displaySessions.get(weekday) || [];
-    if (daySessions.length === 0) return 40; // 기본 높이
-
-    let maxY = 0;
-    daySessions.forEach(session => {
-      const yOffset = getSessionPosition(session, weekday);
-      maxY = Math.max(maxY, yOffset);
-    });
-
-    // 겹치는 세션이 없으면 기본 높이, 있으면 확장
-    // maxY가 0이면 겹치는 세션이 없음, 1 이상이면 겹치는 세션이 있음
-    return maxY === 0 ? 40 : 40 + (maxY + 1) * 32;
-  }
-
   // 학생 패널 위치 (드래그로 이동 가능)
   const [panelPos, setPanelPos] = useLocal<{ x: number; y: number }>(
     'ui:studentsPanelPos',
@@ -138,7 +84,6 @@ export default function SchedulePage() {
 
   // 모달 상태
   const [showModal, setShowModal] = useState(false);
-  const [modalPos, setModalPos] = useState({ x: 0, y: 0 });
   const [modalData, setModalData] = useState({
     studentId: '',
     weekday: 0,
@@ -234,11 +179,35 @@ export default function SchedulePage() {
 
   // 편집 모달 표시 함수
   function openEditModal(session: Session) {
-    const enrollment = enrollments.find(e => e.id === session.enrollmentId);
-    const student = students.find(s => s.id === enrollment?.studentId);
-    const subject = subjects.find(sub => sub.id === enrollment?.subjectId);
+    console.log('🔍 openEditModal called with session:', session);
 
-    if (!enrollment || !student || !subject) return;
+    const enrollment = enrollments.find(e => e.id === session.enrollmentId);
+    console.log('🔍 Found enrollment:', enrollment);
+
+    const student = students.find(s => s.id === enrollment?.studentId);
+    console.log('🔍 Found student:', student);
+
+    const subject = subjects.find(sub => sub.id === enrollment?.subjectId);
+    console.log('🔍 Found subject:', subject);
+
+    if (!enrollment || !student || !subject) {
+      console.log('❌ Modal not opened - missing data:', {
+        hasEnrollment: !!enrollment,
+        hasStudent: !!student,
+        hasSubject: !!subject,
+      });
+      return;
+    }
+
+    console.log('✅ Opening modal with data:', {
+      sessionId: session.id,
+      enrollmentId: session.enrollmentId,
+      studentId: student.id,
+      subjectId: subject.id,
+      weekday: session.weekday,
+      startTime: session.startsAt,
+      endTime: session.endsAt,
+    });
 
     setEditModalData({
       sessionId: session.id,
@@ -250,25 +219,6 @@ export default function SchedulePage() {
       endTime: session.endsAt,
     });
     setShowEditModal(true);
-  }
-
-  // 시간표 드롭 처리
-  function handleTimeTableDrop(
-    e: React.DragEvent,
-    weekday: number,
-    timeSlot: number
-  ) {
-    e.preventDefault();
-    const studentId = e.dataTransfer.getData('text/plain');
-    if (!studentId) return;
-
-    const hour = Math.floor(DAY_START_MIN / 60) + timeSlot;
-    const startTime = `${String(hour).padStart(2, '0')}:00`;
-    const endTime = `${String(hour + 1).padStart(2, '0')}:00`;
-
-    setModalData({ studentId, weekday, startTime, endTime });
-    setModalPos({ x: e.clientX, y: e.clientY + 20 });
-    setShowModal(true);
   }
 
   // 모달에서 과목 선택 및 시간 설정 완료
@@ -329,8 +279,6 @@ export default function SchedulePage() {
     };
   }, [isDragging, dragOffset, setPanelPos]);
 
-  const hourCols = (DAY_END_MIN - DAY_START_MIN) / 60;
-
   return (
     <div className="timetable-container" style={{ padding: 16 }}>
       <h2>주간 시간표</h2>
@@ -347,106 +295,31 @@ export default function SchedulePage() {
         </p>
       )}
 
-      {/* 가로 스크롤 가능한 래퍼: 시간축 X, 요일 Y */}
-      <div
-        className="grid grid-rows-header grid-cols-auto gap-grid"
-        style={{
-          gridTemplateColumns: `80px repeat(${hourCols}, 120px)`,
+      {/* TimeTableGrid 컴포넌트 사용 */}
+      <TimeTableGrid
+        sessions={displaySessions}
+        subjects={subjects}
+        enrollments={enrollments}
+        onSessionClick={openEditModal}
+        onDrop={(weekday, time, enrollmentId) => {
+          // 드롭된 학생 ID를 enrollmentId로 사용
+          const studentId = enrollmentId;
+
+          // 모달 데이터 설정
+          const [hours, minutes] = time.split(':').map(Number);
+          const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+          const endTime = `${(hours + 1).toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+          // 모달 표시
+          setModalData({
+            studentId,
+            weekday,
+            startTime,
+            endTime,
+          });
+          setShowModal(true);
         }}
-      >
-        {/* 좌상단 빈칸 */}
-        <div />
-        {/* 시간 헤더 (9:00~24:00) */}
-        {Array.from({ length: hourCols }, (_, i) => DAY_START_MIN + i * 60).map(
-          min => (
-            <div key={`h-${min}`} className="time-header">
-              {minutesToTime(min)}
-            </div>
-          )
-        )}
-
-        {/* 요일 라벨 + 각 요일의 타임라인 */}
-        {weekdays.map((w, dayIdx) => {
-          const blocks = displaySessions.get(dayIdx) ?? [];
-          return (
-            <>
-              <div key={`yl-${dayIdx}`} className="weekday-label">
-                {w}
-              </div>
-              <div
-                key={`row-${dayIdx}`}
-                className="weekday-row"
-                style={{
-                  height: getWeekdayHeight(dayIdx),
-                }}
-              >
-                {blocks.map((b, blockIndex) => {
-                  const subj = subjects.find(
-                    s =>
-                      s.id ===
-                      enrollments.find(e => e.id === b.enrollmentId)?.subjectId
-                  );
-                  const left =
-                    ((timeToMinutes(b.startsAt) - DAY_START_MIN) / 60) * 120;
-                  const width =
-                    ((timeToMinutes(b.endsAt) - timeToMinutes(b.startsAt)) /
-                      60) *
-                    120;
-                  const yOffset = getSessionPosition(b, dayIdx) * 32; // 겹치는 세션을 y축으로 배치
-
-                  // 디버깅용 로그
-                  console.log(
-                    `Session ${b.id} on day ${dayIdx}: yOffset = ${yOffset}, position = ${yOffset / 32}`
-                  );
-
-                  return (
-                    <div
-                      key={`${b.id}-${dayIdx}-${blockIndex}-${yOffset}`}
-                      className="session-block"
-                      style={{
-                        left,
-                        top: 6 + yOffset,
-                        width,
-                        background: subj?.color ?? '#888',
-                        zIndex: yOffset + 1, // 겹치는 세션이 위에 보이도록
-                      }}
-                      onClick={() => openEditModal(b)} // 클릭 시 편집 모달 열기
-                    >
-                      {subj?.name} {b.startsAt}-{b.endsAt}
-                    </div>
-                  );
-                })}
-
-                {/* 드롭 영역 */}
-                {Array.from({ length: hourCols }, (_, hourIdx) => (
-                  <div
-                    key={`drop-${dayIdx}-${hourIdx}`}
-                    className="drop-zone position-absolute"
-                    style={{
-                      left: hourIdx * 120,
-                      top: 0,
-                      width: 120,
-                      height: getWeekdayHeight(dayIdx), // 동적 높이 적용
-                    }}
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => {
-                      handleTimeTableDrop(e, dayIdx, hourIdx);
-                      // 드롭 후 점선 테두리 제거
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }}
-                    onDragEnter={e => {
-                      e.currentTarget.classList.add('drag-over');
-                    }}
-                    onDragLeave={e => {
-                      e.currentTarget.classList.remove('drag-over');
-                    }}
-                  />
-                ))}
-              </div>
-            </>
-          );
-        })}
-      </div>
+      />
 
       {/* 플로팅 학생 리스트 패널 */}
       <div
@@ -517,8 +390,9 @@ export default function SchedulePage() {
           padding="large"
           className="modal-overlay position-fixed z-1000"
           style={{
-            left: modalPos.x,
-            top: modalPos.y,
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
             minWidth: 280,
           }}
         >
@@ -575,7 +449,7 @@ export default function SchedulePage() {
             </div>
           </div>
           <div className="modal-actions">
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
+            <Button variant="transparent" onClick={() => setShowModal(false)}>
               취소
             </Button>
             <Button variant="primary" onClick={handleModalSubmit}>
@@ -596,6 +470,8 @@ export default function SchedulePage() {
             borderRadius: 8,
             padding: 16,
             minWidth: 320,
+            zIndex: 9999,
+            position: 'fixed',
           }}
         >
           <h4 className="modal-header">수업 편집</h4>

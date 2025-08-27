@@ -31,7 +31,7 @@ export const getSessionBlockStyles = (
     display: 'flex',
     alignItems: 'center',
     overflow: 'hidden',
-    zIndex: yOffset + 1,
+    zIndex: 1000 + yOffset,
     border: '1px solid rgba(255,255,255,0.2)',
     cursor: 'pointer',
   };
@@ -90,8 +90,23 @@ export default function SessionBlock({
     session.endsAt
   );
 
+  const handleClick = (e: React.MouseEvent) => {
+    console.log('🖱️ SessionBlock clicked!', {
+      sessionId: session.id,
+      subjectName: subject?.name,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+      left,
+      width,
+      yOffset,
+      zIndex: styles.zIndex,
+    });
+    e.stopPropagation(); // 이벤트 버블링 방지
+    onClick();
+  };
+
   return (
-    <div style={styles} onClick={onClick}>
+    <div style={styles} onClick={handleClick}>
       {blockText}
     </div>
   );
