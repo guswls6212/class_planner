@@ -80,3 +80,66 @@ Object.defineProperty(document, 'documentElement', {
 globalThis.getComputedStyle = vi.fn(() => ({
   getPropertyValue: vi.fn(() => ''),
 }));
+
+// Mock CSSStyleDeclaration for React DOM
+const mockCSSStyleDeclaration = {
+  WebkitAnimation: '',
+  MozAnimation: '',
+  msAnimation: '',
+  OAnimation: '',
+  animation: '',
+  getPropertyValue: vi.fn(() => ''),
+  setProperty: vi.fn(),
+  removeProperty: vi.fn(),
+  item: vi.fn(() => ''),
+  length: 0,
+  parentRule: null,
+  cssText: '',
+};
+
+// Mock document.documentElement.style with proper CSSStyleDeclaration
+Object.defineProperty(document.documentElement, 'style', {
+  value: mockCSSStyleDeclaration,
+  writable: true,
+});
+
+// Mock document.body.style
+Object.defineProperty(document.body, 'style', {
+  value: mockCSSStyleDeclaration,
+  writable: true,
+});
+
+// Mock HTMLElement.prototype.style
+Object.defineProperty(HTMLElement.prototype, 'style', {
+  value: mockCSSStyleDeclaration,
+  writable: true,
+});
+
+// Mock React DOM's getVendorPrefixedEventName function
+const originalGetVendorPrefixedEventName =
+  globalThis.getVendorPrefixedEventName;
+if (originalGetVendorPrefixedEventName) {
+  globalThis.getVendorPrefixedEventName = vi.fn(() => '');
+}
+
+// Mock React DOM's event system
+Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
+  value: vi.fn(() => ''),
+  writable: true,
+});
+
+// Mock React DOM's event handling
+Object.defineProperty(globalThis, 'getEventTarget', {
+  value: vi.fn(() => document),
+  writable: true,
+});
+
+// Mock React DOM's animation detection
+Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
+  value: vi.fn(eventName => {
+    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
+    if (eventName === 'WebkitAnimation') return '';
+    return eventName;
+  }),
+  writable: true,
+});

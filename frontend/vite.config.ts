@@ -44,5 +44,11 @@ export default defineConfig({
       'src/**/__tests__/**/*.{ts,tsx}',
     ],
     exclude: ['src/stories/**/*', '.storybook/**/*'],
+    environmentOptions: {
+      jsdom: {
+        resources: 'usable',
+        runScripts: 'dangerously',
+      },
+    },
   },
 });
