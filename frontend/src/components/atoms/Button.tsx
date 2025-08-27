@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './Button.module.css';
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -12,6 +11,39 @@ interface ButtonProps {
   iconPosition?: 'left' | 'right';
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getButtonClasses = (
+  size: string,
+  variant: string,
+  loading: boolean
+): string => {
+  return ['button', size, variant, loading && 'loading']
+    .filter(Boolean)
+    .join(' ');
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const isButtonDisabled = (
+  disabled: boolean,
+  loading: boolean
+): boolean => {
+  return disabled || loading;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowIcon = (
+  icon: React.ReactNode,
+  position: string
+): boolean => {
+  return Boolean(icon && position);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getIconClasses = (position: string): string => {
+  return `icon ${position}`;
+};
+
 export default function Button({
   children,
   onClick,
@@ -22,28 +54,22 @@ export default function Button({
   icon,
   iconPosition = 'left',
 }: ButtonProps) {
-  const buttonClasses = [
-    styles.button,
-    styles[size],
-    styles[variant],
-    loading && styles.loading,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const buttonClasses = getButtonClasses(size, variant, loading);
+  const isDisabled = isButtonDisabled(disabled, loading);
 
   return (
     <button
       className={buttonClasses}
       onClick={onClick}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       type="button"
     >
-      {icon && iconPosition === 'left' && (
-        <span className={`${styles.icon} ${styles.left}`}>{icon}</span>
+      {shouldShowIcon(icon, iconPosition) && iconPosition === 'left' && (
+        <span className={getIconClasses('left')}>{icon}</span>
       )}
       {children}
-      {icon && iconPosition === 'right' && (
-        <span className={`${styles.icon} ${styles.right}`}>{icon}</span>
+      {shouldShowIcon(icon, iconPosition) && iconPosition === 'right' && (
+        <span className={getIconClasses('right')}>{icon}</span>
       )}
     </button>
   );

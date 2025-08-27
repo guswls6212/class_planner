@@ -11,7 +11,7 @@ const meta: Meta<typeof Input> = {
   argTypes: {
     type: {
       control: { type: 'select' },
-      options: ['text', 'email', 'password', 'number'],
+      options: ['text', 'email', 'password', 'number', 'search'],
     },
     size: {
       control: { type: 'select' },
@@ -29,72 +29,188 @@ const meta: Meta<typeof Input> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// 기본 입력
 export const Default: Story = {
   args: {
-    placeholder: '텍스트를 입력하세요',
     value: '',
     onChange: (value: string) => console.log('Input value:', value),
+    placeholder: 'Enter text...',
   },
 };
 
-export const WithValue: Story = {
-  args: {
-    placeholder: '텍스트를 입력하세요',
-    value: '입력된 텍스트',
-    onChange: (value: string) => console.log('Input value:', value),
-  },
+// 다양한 타입
+export const Types: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '300px',
+      }}
+    >
+      <Input
+        type="text"
+        value=""
+        onChange={value => console.log('Text:', value)}
+        placeholder="Text input"
+      />
+      <Input
+        type="email"
+        value=""
+        onChange={value => console.log('Email:', value)}
+        placeholder="Email input"
+      />
+      <Input
+        type="password"
+        value=""
+        onChange={value => console.log('Password:', value)}
+        placeholder="Password input"
+      />
+      <Input
+        type="number"
+        value=""
+        onChange={value => console.log('Number:', value)}
+        placeholder="Number input"
+      />
+      <Input
+        type="search"
+        value=""
+        onChange={value => console.log('Search:', value)}
+        placeholder="Search input"
+      />
+    </div>
+  ),
 };
 
-export const Small: Story = {
-  args: {
-    placeholder: '작은 입력 필드',
-    value: '',
-    size: 'small',
-    onChange: (value: string) => console.log('Input value:', value),
-  },
+// 다양한 크기
+export const Sizes: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '300px',
+      }}
+    >
+      <Input
+        size="small"
+        value=""
+        onChange={value => console.log('Small:', value)}
+        placeholder="Small input"
+      />
+      <Input
+        size="medium"
+        value=""
+        onChange={value => console.log('Medium:', value)}
+        placeholder="Medium input"
+      />
+      <Input
+        size="large"
+        value=""
+        onChange={value => console.log('Large:', value)}
+        placeholder="Large input"
+      />
+    </div>
+  ),
 };
 
-export const Large: Story = {
-  args: {
-    placeholder: '큰 입력 필드',
-    value: '',
-    size: 'large',
-    onChange: (value: string) => console.log('Input value:', value),
-  },
+// 상태별 입력
+export const States: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '300px',
+      }}
+    >
+      <Input
+        value="Normal input"
+        onChange={value => console.log('Normal:', value)}
+        placeholder="Normal state"
+      />
+      <Input
+        value="Disabled input"
+        onChange={value => console.log('Disabled:', value)}
+        placeholder="Disabled state"
+        disabled
+      />
+      <Input
+        value="Error input"
+        onChange={value => console.log('Error:', value)}
+        placeholder="Error state"
+        error="This field is required"
+      />
+    </div>
+  ),
 };
 
-export const WithError: Story = {
-  args: {
-    placeholder: '에러가 있는 입력 필드',
-    value: '잘못된 입력',
-    error: '올바른 형식으로 입력해주세요',
-    onChange: (value: string) => console.log('Input value:', value),
-  },
+// 아이콘이 있는 입력
+export const WithIcons: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '300px',
+      }}
+    >
+      <Input
+        value=""
+        onChange={value => console.log('With icon:', value)}
+        placeholder="Input with icon"
+        icon="🔍"
+      />
+      <Input
+        value=""
+        onChange={value => console.log('With icon:', value)}
+        placeholder="Input with icon"
+        icon="📧"
+      />
+    </div>
+  ),
 };
 
-export const Disabled: Story = {
-  args: {
-    placeholder: '비활성화된 입력 필드',
-    value: '수정할 수 없음',
-    disabled: true,
-    onChange: (value: string) => console.log('Input value:', value),
-  },
-};
-
-export const Email: Story = {
-  args: {
-    type: 'email',
-    placeholder: '이메일을 입력하세요',
-    value: '',
-    onChange: (value: string) => console.log('Email:', value),
-  },
-};
-
-export const Password: Story = {
-  args: {
-    type: 'password',
-    placeholder: '비밀번호를 입력하세요',
-    value: '',
-    onChange: (value: string) => console.log('Password:', value),
-  },
+// 복합 시나리오
+export const Complex: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '300px',
+      }}
+    >
+      <Input
+        type="search"
+        size="large"
+        value=""
+        onChange={value => console.log('Search:', value)}
+        placeholder="Search for anything..."
+        icon="🔍"
+      />
+      <Input
+        type="email"
+        size="medium"
+        value="user@example.com"
+        onChange={value => console.log('Email:', value)}
+        placeholder="Enter your email"
+        icon="📧"
+        error="Please enter a valid email"
+      />
+      <Input
+        type="password"
+        size="small"
+        value=""
+        onChange={value => console.log('Password:', value)}
+        placeholder="Enter password"
+        disabled
+      />
+    </div>
+  ),
 };

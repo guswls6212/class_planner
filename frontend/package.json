@@ -18,6 +18,9 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
+    "test:coverage:html": "vitest --coverage --reporter=html",
+    "test:coverage:lcov": "vitest --coverage --reporter=lcov",
+    "test:coverage:ci": "vitest run --coverage --reporter=text",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
   },

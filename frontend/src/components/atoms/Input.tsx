@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './Input.module.css';
 
 interface InputProps {
   type?: 'text' | 'email' | 'password' | 'number' | 'search';
@@ -13,6 +12,57 @@ interface InputProps {
   className?: string;
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getInputClasses = (
+  size: string,
+  error: string | undefined,
+  type: string,
+  className?: string
+): string => {
+  return [
+    'input',
+    size,
+    error && 'error',
+    type === 'search' && 'search',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getWrapperClasses = (icon: React.ReactNode): string => {
+  return ['inputWrapper', icon && 'inputWithIcon'].filter(Boolean).join(' ');
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowIcon = (icon: React.ReactNode): boolean => {
+  return Boolean(icon);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowError = (error: string | undefined): boolean => {
+  return Boolean(error);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const handleInputChange = (
+  value: string,
+  disabled: boolean,
+  onChange: (value: string) => void
+): void => {
+  if (!disabled) {
+    onChange(value);
+  }
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateInputType = (type: string): boolean => {
+  const validTypes = ['text', 'email', 'password', 'number', 'search'];
+  return validTypes.includes(type);
+};
+
 export default function Input({
   type = 'text',
   placeholder,
@@ -24,36 +74,21 @@ export default function Input({
   icon,
   className,
 }: InputProps) {
-  const inputClasses = [
-    styles.input,
-    styles[size],
-    error && styles.error,
-    type === 'search' && styles.search,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const wrapperClasses = [styles.inputWrapper, icon && styles.inputWithIcon]
-    .filter(Boolean)
-    .join(' ');
+  const inputClasses = getInputClasses(size, error, type, className);
+  const wrapperClasses = getWrapperClasses(icon);
 
   return (
     <div className={wrapperClasses}>
-      {icon && <span className={styles.icon}>{icon}</span>}
+      {shouldShowIcon(icon) && <span className="icon">{icon}</span>}
       <input
         type={type}
         placeholder={placeholder}
         value={value}
-        onChange={e => {
-          if (!disabled) {
-            onChange(e.target.value);
-          }
-        }}
+        onChange={e => handleInputChange(e.target.value, disabled, onChange)}
         disabled={disabled}
         className={inputClasses}
       />
-      {error && <div className={styles.errorMessage}>{error}</div>}
+      {shouldShowError(error) && <div className="errorMessage">{error}</div>}
     </div>
   );
 }

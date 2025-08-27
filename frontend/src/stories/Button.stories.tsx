@@ -11,7 +11,7 @@ const meta: Meta<typeof Button> = {
   argTypes: {
     variant: {
       control: { type: 'select' },
-      options: ['primary', 'secondary', 'danger'],
+      options: ['primary', 'secondary', 'danger', 'outline'],
     },
     size: {
       control: { type: 'select' },
@@ -20,57 +20,87 @@ const meta: Meta<typeof Button> = {
     disabled: {
       control: { type: 'boolean' },
     },
+    loading: {
+      control: { type: 'boolean' },
+    },
+    iconPosition: {
+      control: { type: 'select' },
+      options: ['left', 'right'],
+    },
   },
 };
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Primary: Story = {
+// 기본 버튼
+export const Default: Story = {
   args: {
-    children: 'Primary Button',
-    variant: 'primary',
-    size: 'medium',
+    children: 'Button',
   },
 };
 
-export const Secondary: Story = {
-  args: {
-    children: 'Secondary Button',
-    variant: 'secondary',
-    size: 'medium',
-  },
+// 다양한 variant
+export const Variants: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <Button variant="primary">Primary</Button>
+      <Button variant="secondary">Secondary</Button>
+      <Button variant="danger">Danger</Button>
+      <Button variant="outline">Outline</Button>
+    </div>
+  ),
 };
 
-export const Danger: Story = {
-  args: {
-    children: 'Danger Button',
-    variant: 'danger',
-    size: 'medium',
-  },
+// 다양한 size
+export const Sizes: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+      <Button size="small">Small</Button>
+      <Button size="medium">Medium</Button>
+      <Button size="large">Large</Button>
+    </div>
+  ),
 };
 
-export const Small: Story = {
-  args: {
-    children: 'Small Button',
-    variant: 'primary',
-    size: 'small',
-  },
+// 상태별 버튼
+export const States: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <Button>Normal</Button>
+      <Button disabled>Disabled</Button>
+      <Button loading>Loading</Button>
+    </div>
+  ),
 };
 
-export const Large: Story = {
-  args: {
-    children: 'Large Button',
-    variant: 'primary',
-    size: 'large',
-  },
+// 아이콘이 있는 버튼
+export const WithIcons: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <Button icon="←" iconPosition="left">
+        Left Icon
+      </Button>
+      <Button icon="→" iconPosition="right">
+        Right Icon
+      </Button>
+    </div>
+  ),
 };
 
-export const Disabled: Story = {
-  args: {
-    children: 'Disabled Button',
-    variant: 'primary',
-    size: 'medium',
-    disabled: true,
-  },
+// 복합 시나리오
+export const Complex: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <Button variant="primary" size="large" icon="🚀" iconPosition="left">
+        Launch App
+      </Button>
+      <Button variant="danger" size="small" loading>
+        Delete
+      </Button>
+      <Button variant="outline" size="medium" disabled>
+        Unavailable
+      </Button>
+    </div>
+  ),
 };

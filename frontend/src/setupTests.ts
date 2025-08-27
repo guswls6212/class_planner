@@ -60,7 +60,7 @@ globalThis.document.createElement = vi.fn(() => ({
   removeChild: vi.fn(),
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
-}));
+})) as unknown as typeof document.createElement;
 
 // Mock document.documentElement.style for React DOM
 Object.defineProperty(document, 'documentElement', {
@@ -79,7 +79,7 @@ Object.defineProperty(document, 'documentElement', {
 // Mock window.getComputedStyle
 globalThis.getComputedStyle = vi.fn(() => ({
   getPropertyValue: vi.fn(() => ''),
-}));
+})) as unknown as typeof getComputedStyle;
 
 // Mock CSSStyleDeclaration for React DOM
 const mockCSSStyleDeclaration = {
@@ -115,81 +115,38 @@ Object.defineProperty(HTMLElement.prototype, 'style', {
   writable: true,
 });
 
-// Mock React DOM's getVendorPrefixedEventName function
-const originalGetVendorPrefixedEventName =
-  globalThis.getVendorPrefixedEventName;
-if (originalGetVendorPrefixedEventName) {
-  globalThis.getVendorPrefixedEventName = vi.fn(() => '');
-}
-
-// Mock React DOM's event system
+// 강력한 React DOM 모킹 - WebkitAnimation 문제 해결
 Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
-  value: vi.fn(() => ''),
-  writable: true,
-});
-
-// Mock React DOM's event handling
-Object.defineProperty(globalThis, 'getEventTarget', {
-  value: vi.fn(() => document),
-  writable: true,
-});
-
-// Mock React DOM's animation detection
-Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
-  value: vi.fn(eventName => {
-    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
-    if (eventName === 'WebkitAnimation') return '';
+  value: vi.fn((eventName: string) => {
+    // 모든 vendor prefix 이벤트에 대해 빈 문자열 반환
+    if (eventName.includes('Webkit')) return '';
+    if (eventName.includes('Moz')) return '';
+    if (eventName.includes('ms')) return '';
+    if (eventName.includes('O')) return '';
     return eventName;
   }),
   writable: true,
 });
 
-// Mock React DOM's event system more comprehensively
+// React DOM의 이벤트 시스템 완전 모킹
 Object.defineProperty(globalThis, 'getEventTarget', {
   value: vi.fn(() => document),
   writable: true,
 });
 
-// Mock React DOM's event handling
+// React DOM의 내부 함수들을 모킹
 Object.defineProperty(globalThis, 'getEventTarget', {
   value: vi.fn(() => document),
   writable: true,
 });
 
-// Mock React DOM's animation detection more thoroughly
-Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
-  value: vi.fn(eventName => {
-    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
-    if (eventName === 'WebkitAnimation') return '';
-    if (eventName === 'MozAnimation') return '';
-    if (eventName === 'msAnimation') return '';
-    if (eventName === 'OAnimation') return '';
-    return eventName;
-  }),
+// Mock crypto.randomUUID
+Object.defineProperty(globalThis, 'crypto', {
+  value: {
+    randomUUID: vi.fn(() => 'test-uuid-123'),
+  },
   writable: true,
 });
 
-// Mock React DOM's event system
-Object.defineProperty(globalThis, 'getEventTarget', {
-  value: vi.fn(() => document),
-  writable: true,
-});
-
-// Mock React DOM's event handling
-Object.defineProperty(globalThis, 'getEventTarget', {
-  value: vi.fn(() => document),
-  writable: true,
-});
-
-// Mock React DOM's animation detection
-Object.defineProperty(globalThis, 'getVendorPrefixedEventName', {
-  value: vi.fn(eventName => {
-    // React DOM이 WebkitAnimation을 찾을 때 빈 문자열 반환
-    if (eventName === 'WebkitAnimation') return '';
-    if (eventName === 'MozAnimation') return '';
-    if (eventName === 'msAnimation') return '';
-    if (eventName === 'OAnimation') return '';
-    return eventName;
-  }),
-  writable: true,
-});
+// Mock alert
+globalThis.alert = vi.fn();

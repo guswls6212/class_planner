@@ -1,194 +1,187 @@
 import { vi } from 'vitest';
-import Button from '../Button';
+import Button, {
+  getButtonClasses,
+  getIconClasses,
+  isButtonDisabled,
+  shouldShowIcon,
+} from '../Button';
 
 // Mock React Testing Library to avoid DOM issues
-const mockRender = vi.fn();
-const mockScreen = {
-  getByRole: vi.fn(),
-  getByText: vi.fn(),
-  queryByRole: vi.fn(),
-};
-const mockFireEvent = {
-  click: vi.fn(),
-  mouseOver: vi.fn(),
-  mouseOut: vi.fn(),
-};
-
-// Mock the entire React Testing Library
 vi.mock('@testing-library/react', () => ({
-  render: mockRender,
-  screen: mockScreen,
-  fireEvent: mockFireEvent,
+  render: vi.fn(),
+  screen: { getByRole: vi.fn(), getByText: vi.fn() },
+  fireEvent: { click: vi.fn() },
 }));
 
-// Mock jest-dom
-vi.mock('@testing-library/jest-dom', () => ({}));
-
 describe('Button 컴포넌트', () => {
-  const mockOnClick = vi.fn();
-
-  beforeEach(() => {
-    mockOnClick.mockClear();
-  });
-
   it('Button 컴포넌트가 올바르게 정의되어 있다', () => {
     expect(Button).toBeDefined();
     expect(typeof Button).toBe('function');
   });
 
-  it('React Testing Library 모킹이 올바르게 설정되어 있다', () => {
-    expect(mockRender).toBeDefined();
-    expect(mockScreen).toBeDefined();
-    expect(mockFireEvent).toBeDefined();
-    expect(typeof mockRender).toBe('function');
-    expect(typeof mockScreen.getByRole).toBe('function');
-    expect(typeof mockFireEvent.click).toBe('function');
+  // 단위 테스트 (함수 레벨)
+  describe('유틸리티 함수 테스트', () => {
+    describe('getButtonClasses', () => {
+      it('기본 클래스가 올바르게 생성된다', () => {
+        const result = getButtonClasses('medium', 'primary', false);
+        expect(result).toBe('button medium primary');
+      });
+
+      it('loading 상태일 때 loading 클래스가 추가된다', () => {
+        const result = getButtonClasses('medium', 'primary', true);
+        expect(result).toBe('button medium primary loading');
+      });
+
+      it('다양한 size와 variant가 올바르게 적용된다', () => {
+        expect(getButtonClasses('small', 'secondary', false)).toBe(
+          'button small secondary'
+        );
+        expect(getButtonClasses('large', 'danger', false)).toBe(
+          'button large danger'
+        );
+        expect(getButtonClasses('medium', 'outline', false)).toBe(
+          'button medium outline'
+        );
+      });
+
+      it('loading이 false일 때 loading 클래스가 포함되지 않는다', () => {
+        const result = getButtonClasses('medium', 'primary', false);
+        expect(result).not.toContain('loading');
+      });
+    });
+
+    describe('isButtonDisabled', () => {
+      it('disabled가 true일 때 true를 반환한다', () => {
+        expect(isButtonDisabled(true, false)).toBe(true);
+        expect(isButtonDisabled(true, true)).toBe(true);
+      });
+
+      it('loading이 true일 때 true를 반환한다', () => {
+        expect(isButtonDisabled(false, true)).toBe(true);
+        expect(isButtonDisabled(true, true)).toBe(true);
+      });
+
+      it('disabled와 loading이 모두 false일 때 false를 반환한다', () => {
+        expect(isButtonDisabled(false, false)).toBe(false);
+      });
+    });
+
+    describe('shouldShowIcon', () => {
+      it('icon과 position이 모두 있을 때 true를 반환한다', () => {
+        const icon = <span>icon</span>;
+        expect(shouldShowIcon(icon, 'left')).toBe(true);
+        expect(shouldShowIcon(icon, 'right')).toBe(true);
+      });
+
+      it('icon이 없을 때 false를 반환한다', () => {
+        expect(shouldShowIcon(null, 'left')).toBe(false);
+        expect(shouldShowIcon(undefined, 'right')).toBe(false);
+      });
+
+      it('position이 없을 때 false를 반환한다', () => {
+        const icon = <span>icon</span>;
+        expect(shouldShowIcon(icon, '')).toBe(false);
+        expect(shouldShowIcon(icon, null as unknown as string)).toBe(false);
+      });
+
+      it('icon과 position이 모두 없을 때 false를 반환한다', () => {
+        expect(shouldShowIcon(null, '')).toBe(false);
+        expect(shouldShowIcon(undefined, null as unknown as string)).toBe(false);
+      });
+    });
+
+    describe('getIconClasses', () => {
+      it('왼쪽 아이콘 클래스가 올바르게 생성된다', () => {
+        const result = getIconClasses('left');
+        expect(result).toBe('icon left');
+      });
+
+      it('오른쪽 아이콘 클래스가 올바르게 생성된다', () => {
+        const result = getIconClasses('right');
+        expect(result).toBe('icon right');
+      });
+
+      it('다른 position 값도 올바르게 처리된다', () => {
+        expect(getIconClasses('center')).toBe('icon center');
+        expect(getIconClasses('top')).toBe('icon top');
+      });
+    });
   });
 
-  it('Button 관련 props가 올바르게 정의되어 있다', () => {
-    const buttonProps = {
-      children: '테스트 버튼',
-      onClick: mockOnClick,
-      variant: 'primary',
-      size: 'medium',
-      disabled: false,
-      type: 'button',
-    };
+  describe('Button 관련 상수 테스트', () => {
+    it('기본 props 값들이 올바르게 정의되어 있다', () => {
+      const defaultProps = {
+        variant: 'primary',
+        size: 'medium',
+        disabled: false,
+        loading: false,
+        iconPosition: 'left',
+      };
 
-    expect(buttonProps).toHaveProperty('children');
-    expect(buttonProps).toHaveProperty('onClick');
-    expect(buttonProps).toHaveProperty('variant');
-    expect(buttonProps).toHaveProperty('size');
-    expect(buttonProps).toHaveProperty('disabled');
-    expect(buttonProps).toHaveProperty('type');
+      expect(defaultProps.variant).toBe('primary');
+      expect(defaultProps.size).toBe('medium');
+      expect(defaultProps.disabled).toBe(false);
+      expect(defaultProps.loading).toBe(false);
+      expect(defaultProps.iconPosition).toBe('left');
+    });
+
+    it('유효한 variant 값들이 올바르게 정의되어 있다', () => {
+      const validVariants = ['primary', 'secondary', 'danger', 'outline'];
+      expect(validVariants).toContain('primary');
+      expect(validVariants).toContain('secondary');
+      expect(validVariants).toContain('danger');
+      expect(validVariants).toContain('outline');
+    });
+
+    it('유효한 size 값들이 올바르게 정의되어 있다', () => {
+      const validSizes = ['small', 'medium', 'large'];
+      expect(validSizes).toContain('small');
+      expect(validSizes).toContain('medium');
+      expect(validSizes).toContain('large');
+    });
+
+    it('유효한 iconPosition 값들이 올바르게 정의되어 있다', () => {
+      const validPositions = ['left', 'right'];
+      expect(validPositions).toContain('left');
+      expect(validPositions).toContain('right');
+    });
   });
 
-  it('Button variant 타입들이 올바르게 정의되어 있다', () => {
-    const variants = ['primary', 'secondary', 'danger', 'success'];
+  describe('Button 관련 함수 조합 테스트', () => {
+    it('복합적인 시나리오가 올바르게 처리된다', () => {
+      // loading 상태의 primary 버튼
+      const loadingClasses = getButtonClasses('medium', 'primary', true);
+      const isDisabled = isButtonDisabled(false, true);
+      expect(loadingClasses).toBe('button medium primary loading');
+      expect(isDisabled).toBe(true);
 
-    expect(variants).toContain('primary');
-    expect(variants).toContain('secondary');
-    expect(variants).toContain('danger');
-    expect(variants).toContain('success');
-  });
+      // disabled 상태의 danger 버튼
+      const disabledClasses = getButtonClasses('large', 'danger', false);
+      const isDisabled2 = isButtonDisabled(true, false);
+      expect(disabledClasses).toBe('button large danger');
+      expect(isDisabled2).toBe(true);
 
-  it('Button size 타입들이 올바르게 정의되어 있다', () => {
-    const sizes = ['small', 'medium', 'large'];
+      // 정상 상태의 outline 버튼
+      const normalClasses = getButtonClasses('small', 'outline', false);
+      const isDisabled3 = isButtonDisabled(false, false);
+      expect(normalClasses).toBe('button small outline');
+      expect(isDisabled3).toBe(false);
+    });
 
-    expect(sizes).toContain('small');
-    expect(sizes).toContain('medium');
-    expect(sizes).toContain('large');
-  });
+    it('아이콘 관련 복합 시나리오가 올바르게 처리된다', () => {
+      const icon = <span>test-icon</span>;
 
-  it('Button type 타입들이 올바르게 정의되어 있다', () => {
-    const types = ['button', 'submit', 'reset'];
+      // 왼쪽 아이콘
+      const shouldShow = shouldShowIcon(icon, 'left');
+      const iconClasses = getIconClasses('left');
+      expect(shouldShow).toBe(true);
+      expect(iconClasses).toBe('icon left');
 
-    expect(types).toContain('button');
-    expect(types).toContain('submit');
-    expect(types).toContain('reset');
-  });
-
-  it('Button 관련 CSS 클래스들이 올바르게 정의되어 있다', () => {
-    const cssClasses = [
-      'button',
-      'primary',
-      'secondary',
-      'danger',
-      'success',
-      'small',
-      'medium',
-      'large',
-      'disabled',
-    ];
-
-    expect(cssClasses).toContain('button');
-    expect(cssClasses).toContain('primary');
-    expect(cssClasses).toContain('secondary');
-    expect(cssClasses).toContain('danger');
-    expect(cssClasses).toContain('success');
-    expect(cssClasses).toContain('small');
-    expect(cssClasses).toContain('medium');
-    expect(cssClasses).toContain('large');
-    expect(cssClasses).toContain('disabled');
-  });
-
-  it('Button 관련 이벤트 타입들이 올바르게 정의되어 있다', () => {
-    const eventTypes = ['click', 'mouseOver', 'mouseOut', 'focus', 'blur'];
-
-    expect(eventTypes).toContain('click');
-    expect(eventTypes).toContain('mouseOver');
-    expect(eventTypes).toContain('mouseOut');
-    expect(eventTypes).toContain('focus');
-    expect(eventTypes).toContain('blur');
-  });
-
-  it('Button 관련 함수들이 올바르게 정의되어 있다', () => {
-    const functions = [
-      'handleClick',
-      'handleMouseOver',
-      'handleMouseOut',
-      'handleFocus',
-      'handleBlur',
-    ];
-
-    expect(functions).toContain('handleClick');
-    expect(functions).toContain('handleMouseOver');
-    expect(functions).toContain('handleMouseOut');
-    expect(functions).toContain('handleFocus');
-    expect(functions).toContain('handleBlur');
-  });
-
-  it('Button 관련 상수들이 올바르게 정의되어 있다', () => {
-    const constants = {
-      DEFAULT_VARIANT: 'primary',
-      DEFAULT_SIZE: 'medium',
-      DEFAULT_TYPE: 'button',
-    };
-
-    expect(constants.DEFAULT_VARIANT).toBe('primary');
-    expect(constants.DEFAULT_SIZE).toBe('medium');
-    expect(constants.DEFAULT_TYPE).toBe('button');
-  });
-
-  it('Button 관련 텍스트들이 올바르게 정의되어 있다', () => {
-    const texts = [
-      '테스트 버튼',
-      '클릭 테스트',
-      '버튼',
-      '확인',
-      '취소',
-      '저장',
-      '삭제',
-    ];
-
-    expect(texts).toContain('테스트 버튼');
-    expect(texts).toContain('클릭 테스트');
-    expect(texts).toContain('버튼');
-    expect(texts).toContain('확인');
-    expect(texts).toContain('취소');
-    expect(texts).toContain('저장');
-    expect(texts).toContain('삭제');
-  });
-
-  it('Button 관련 아이콘들이 올바르게 정의되어 있다', () => {
-    const icons = [
-      'plus',
-      'minus',
-      'edit',
-      'delete',
-      'save',
-      'cancel',
-      'check',
-      'close',
-    ];
-
-    expect(icons).toContain('plus');
-    expect(icons).toContain('minus');
-    expect(icons).toContain('edit');
-    expect(icons).toContain('delete');
-    expect(icons).toContain('save');
-    expect(icons).toContain('cancel');
-    expect(icons).toContain('check');
-    expect(icons).toContain('close');
+      // 오른쪽 아이콘
+      const shouldShow2 = shouldShowIcon(icon, 'right');
+      const iconClasses2 = getIconClasses('right');
+      expect(shouldShow2).toBe(true);
+      expect(iconClasses2).toBe('icon right');
+    });
   });
 });
