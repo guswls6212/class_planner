@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import StudentManagementSection from '../components/organisms/StudentManagementSection';
 import type { Student, Subject } from '../lib/planner';
 import { uid } from '../lib/planner';
 
@@ -64,127 +65,17 @@ export default function StudentsPage() {
         padding: 16,
       }}
     >
-      <section>
-        <h2>학생 목록</h2>
-        <div className="flex gap-sm">
-          <input
-            placeholder="학생 이름"
-            value={newStudentName}
-            onChange={e => setNewStudentName(e.target.value)}
-            onKeyPress={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addStudent();
-              }
-            }}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid var(--color-border)',
-              borderRadius: '4px',
-              background: 'var(--color-bg-secondary)',
-              color: 'var(--color-text-primary)',
-              fontSize: '14px',
-              width: '200px',
-            }}
-          />
-          <button
-            onClick={addStudent}
-            style={{
-              padding: '8px 16px',
-              background: 'var(--color-primary)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
-            추가
-          </button>
-        </div>
-        <ul
-          style={{
-            listStyle: 'none',
-            margin: 0,
-            padding: 0,
-            maxHeight: '400px',
-            overflow: 'auto',
-          }}
-        >
-          {students.map(s => (
-            <li
-              key={s.id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '6px 0',
-              }}
-            >
-              <button
-                onClick={() => setSelectedStudentId(s.id)}
-                style={{
-                  fontWeight: selectedStudentId === s.id ? 600 : 400,
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  color: 'var(--color-text-primary)',
-                  cursor: 'pointer',
-                }}
-              >
-                {s.name}
-              </button>
-              <button
-                onClick={() => setStudents(students.filter(x => x.id !== s.id))}
-                style={{
-                  padding: '4px 8px',
-                  background: 'var(--color-danger)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                }}
-              >
-                삭제
-              </button>
-            </li>
-          ))}
-          {students.length === 0 && (
-            <li
-              style={{
-                color: 'var(--color-text-muted)',
-                padding: '8px 0',
-                textAlign: 'center',
-              }}
-            >
-              학생을 추가해주세요
-            </li>
-          )}
-        </ul>
-        {students.length > 10 && (
-          <div
-            style={{
-              color: 'var(--color-text-muted)',
-              padding: '8px 0',
-              fontSize: '12px',
-              textAlign: 'center',
-              borderTop: '1px solid var(--color-border-light)',
-              marginTop: '8px',
-            }}
-          >
-            스크롤하여 확인
-          </div>
-        )}
-
-        {selectedStudentId && (
-          <div style={{ marginTop: 16 }}>
-            <h3>
-              선택된 학생:{' '}
-              {students.find(s => s.id === selectedStudentId)?.name}
-            </h3>
-          </div>
-        )}
-      </section>
+      <StudentManagementSection
+        students={students}
+        newStudentName={newStudentName}
+        selectedStudentId={selectedStudentId}
+        onNewStudentNameChange={setNewStudentName}
+        onAddStudent={addStudent}
+        onSelectStudent={setSelectedStudentId}
+        onDeleteStudent={studentId =>
+          setStudents(students.filter(x => x.id !== studentId))
+        }
+      />
     </div>
   );
 }

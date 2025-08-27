@@ -2,75 +2,68 @@ import React from 'react';
 
 interface ButtonProps {
   children: React.ReactNode;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger' | 'outline';
-  size?: 'small' | 'medium' | 'large';
-  disabled?: boolean;
-  loading?: boolean;
-  icon?: React.ReactNode;
-  iconPosition?: 'left' | 'right';
+  onClick: () => void;
+  variant?: 'primary' | 'danger' | 'transparent';
+  size?: 'small' | 'medium';
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-// 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
-export const getButtonClasses = (
-  size: string,
-  variant: string,
-  loading: boolean
-): string => {
-  return ['button', size, variant, loading && 'loading']
-    .filter(Boolean)
-    .join(' ');
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const isButtonDisabled = (
-  disabled: boolean,
-  loading: boolean
-): boolean => {
-  return disabled || loading;
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const shouldShowIcon = (
-  icon: React.ReactNode,
-  position: string
-): boolean => {
-  return Boolean(icon && position);
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getIconClasses = (position: string): string => {
-  return `icon ${position}`;
-};
-
-export default function Button({
+export const Button: React.FC<ButtonProps> = ({
   children,
   onClick,
   variant = 'primary',
   size = 'medium',
-  disabled = false,
-  loading = false,
-  icon,
-  iconPosition = 'left',
-}: ButtonProps) {
-  const buttonClasses = getButtonClasses(size, variant, loading);
-  const isDisabled = isButtonDisabled(disabled, loading);
+  className = '',
+  style = {},
+}) => {
+  const getButtonStyles = () => {
+    const baseStyles = {
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer',
+      fontSize: size === 'small' ? '12px' : '14px',
+    };
+
+    switch (variant) {
+      case 'primary':
+        return {
+          ...baseStyles,
+          padding: size === 'small' ? '4px 8px' : '8px 16px',
+          background: 'var(--color-primary)',
+          color: 'white',
+        };
+      case 'danger':
+        return {
+          ...baseStyles,
+          padding: size === 'small' ? '4px 8px' : '8px 16px',
+          background: 'var(--color-danger)',
+          color: 'white',
+        };
+      case 'transparent':
+        return {
+          ...baseStyles,
+          padding: '0',
+          background: 'transparent',
+          color: 'var(--color-text-primary)',
+        };
+      default:
+        return baseStyles;
+    }
+  };
 
   return (
     <button
-      className={buttonClasses}
       onClick={onClick}
-      disabled={isDisabled}
-      type="button"
+      className={className}
+      style={{
+        ...getButtonStyles(),
+        ...style,
+      }}
     >
-      {shouldShowIcon(icon, iconPosition) && iconPosition === 'left' && (
-        <span className={getIconClasses('left')}>{icon}</span>
-      )}
       {children}
-      {shouldShowIcon(icon, iconPosition) && iconPosition === 'right' && (
-        <span className={getIconClasses('right')}>{icon}</span>
-      )}
     </button>
   );
-}
+};
+
+export default Button;
