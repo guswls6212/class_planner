@@ -29,3 +29,7 @@ logs
 # Cache directories
 .cache/
 .eslintcache
+
+# Test coverage
+coverage/
+*.lcov

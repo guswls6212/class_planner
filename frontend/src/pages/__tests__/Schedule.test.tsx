@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import SchedulePage from '../Schedule';
 
@@ -234,5 +234,264 @@ describe('SchedulePage', () => {
     render(<SchedulePage />);
     expect(screen.getByText('박민수')).toBeInTheDocument();
     expect(screen.getByText(/학생의 시간표입니다/)).toBeInTheDocument();
+  });
+
+  it('드롭 이벤트로 모달이 열린다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    const dropZone = document.querySelector('.drop-zone');
+    const mockDataTransfer = {
+      getData: vi.fn(() => '1'),
+    };
+
+    fireEvent.drop(dropZone!, { dataTransfer: mockDataTransfer });
+
+    expect(screen.getByText('수업 추가')).toBeInTheDocument();
+    expect(screen.getByText('과목')).toBeInTheDocument();
+    expect(screen.getByText('요일')).toBeInTheDocument();
+  });
+
+  it('모달에서 과목을 선택하고 세션을 추가할 수 있다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    // 드롭으로 모달 열기
+    const dropZone = document.querySelector('.drop-zone');
+    const mockDataTransfer = {
+      getData: vi.fn(() => '1'),
+    };
+    fireEvent.drop(dropZone!, { dataTransfer: mockDataTransfer });
+
+    // 모달이 열렸는지 확인
+    expect(screen.getByText('수업 추가')).toBeInTheDocument();
+
+    // 추가 버튼 클릭
+    const addButton = screen.getByText('추가');
+    fireEvent.click(addButton);
+
+    // localStorage에 세션이 추가되었는지 확인
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      'sessions',
+      expect.any(String)
+    );
+  });
+
+  it('모달 취소 버튼으로 모달이 닫힌다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce(JSON.stringify([]))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    // 드롭으로 모달 열기
+    const dropZone = document.querySelector('.drop-zone');
+    const mockDataTransfer = {
+      getData: vi.fn(() => '1'),
+    };
+    fireEvent.drop(dropZone!, { dataTransfer: mockDataTransfer });
+
+    // 모달이 열렸는지 확인
+    expect(screen.getByText('수업 추가')).toBeInTheDocument();
+
+    // 취소 버튼 클릭
+    const cancelButton = screen.getByText('취소');
+    fireEvent.click(cancelButton);
+
+    // 모달이 닫혔는지 확인
+    expect(screen.queryByText('수업 추가')).not.toBeInTheDocument();
+  });
+
+  it('세션 블록을 클릭하면 편집 모달이 열린다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+    const mockEnrollments = [{ id: '1', studentId: '1', subjectId: '1' }];
+    const mockSessions = [
+      {
+        id: '1',
+        enrollmentId: '1',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '10:00',
+      },
+    ];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify(mockEnrollments))
+      .mockReturnValueOnce(JSON.stringify(mockSessions))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    // 세션 블록이 렌더링되었는지 확인
+    const sessionBlock = document.querySelector('.session-block');
+    expect(sessionBlock).toBeInTheDocument();
+
+    // 세션 블록 클릭
+    fireEvent.click(sessionBlock!);
+
+    // 편집 모달이 열렸는지 확인
+    expect(screen.getByText('수업 편집')).toBeInTheDocument();
+  });
+
+  it('편집 모달에서 세션을 삭제할 수 있다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+    const mockEnrollments = [{ id: '1', studentId: '1', subjectId: '1' }];
+    const mockSessions = [
+      {
+        id: '1',
+        enrollmentId: '1',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '10:00',
+      },
+    ];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify(mockEnrollments))
+      .mockReturnValueOnce(JSON.stringify(mockSessions))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    // confirm 모킹
+    global.confirm = vi.fn(() => true);
+
+    render(<SchedulePage />);
+
+    // 세션 블록 클릭하여 편집 모달 열기
+    const sessionBlock = document.querySelector('.session-block');
+    fireEvent.click(sessionBlock!);
+
+    // 삭제 버튼 클릭
+    const deleteButton = screen.getByText('삭제');
+    fireEvent.click(deleteButton);
+
+    // confirm이 호출되었는지 확인
+    expect(global.confirm).toHaveBeenCalledWith('정말 삭제하시겠습니까?');
+
+    // localStorage에서 세션이 삭제되었는지 확인
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      'sessions',
+      JSON.stringify([])
+    );
+  });
+
+  it('편집 모달에서 세션을 수정할 수 있다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+    const mockEnrollments = [{ id: '1', studentId: '1', subjectId: '1' }];
+    const mockSessions = [
+      {
+        id: '1',
+        enrollmentId: '1',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '10:00',
+      },
+    ];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify(mockEnrollments))
+      .mockReturnValueOnce(JSON.stringify(mockSessions))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    // 세션 블록 클릭하여 편집 모달 열기
+    const sessionBlock = document.querySelector('.session-block');
+    fireEvent.click(sessionBlock!);
+
+    // 시간 입력 필드 수정
+    const startTimeInput = document.getElementById(
+      'edit-modal-start-time'
+    ) as HTMLInputElement;
+    const endTimeInput = document.getElementById(
+      'edit-modal-end-time'
+    ) as HTMLInputElement;
+
+    fireEvent.change(startTimeInput, { target: { value: '10:00' } });
+    fireEvent.change(endTimeInput, { target: { value: '11:00' } });
+
+    // 저장 버튼 클릭
+    const saveButton = screen.getByText('저장');
+    fireEvent.click(saveButton);
+
+    // localStorage에 수정된 세션이 저장되었는지 확인
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
+      'sessions',
+      expect.stringContaining('10:00')
+    );
+  });
+
+  it('편집 모달 취소 버튼으로 모달이 닫힌다', () => {
+    const mockStudents = [{ id: '1', name: '김철수' }];
+    const mockSubjects = [{ id: '1', name: '수학', color: '#ff0000' }];
+    const mockEnrollments = [{ id: '1', studentId: '1', subjectId: '1' }];
+    const mockSessions = [
+      {
+        id: '1',
+        enrollmentId: '1',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '10:00',
+      },
+    ];
+
+    mockLocalStorage.getItem
+      .mockReturnValueOnce(JSON.stringify(mockSubjects))
+      .mockReturnValueOnce(JSON.stringify(mockEnrollments))
+      .mockReturnValueOnce(JSON.stringify(mockSessions))
+      .mockReturnValueOnce('')
+      .mockReturnValueOnce(JSON.stringify(mockStudents))
+      .mockReturnValueOnce(JSON.stringify({ x: 600, y: 90 }));
+
+    render(<SchedulePage />);
+
+    // 세션 블록 클릭하여 편집 모달 열기
+    const sessionBlock = document.querySelector('.session-block');
+    fireEvent.click(sessionBlock!);
+
+    // 취소 버튼 클릭
+    const cancelButton = screen.getByText('취소');
+    fireEvent.click(cancelButton);
+
+    // 모달이 닫혔는지 확인
+    expect(screen.queryByText('수업 편집')).not.toBeInTheDocument();
   });
 });

@@ -39,8 +39,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     // 테마 변경 시 localStorage에 저장
     localStorage.setItem('theme', theme);
 
-    // body에 테마 클래스 적용
-    document.body.setAttribute('data-theme', theme);
+    // body에 테마 클래스 적용 (브라우저 환경에서만)
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.setAttribute('data-theme', theme);
+    }
   }, [theme]);
 
   const toggleTheme = () => {

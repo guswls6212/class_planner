@@ -40,3 +40,43 @@ globalThis.IntersectionObserver = vi.fn().mockImplementation(() => ({
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }));
+
+// Mock document.body for DOM manipulation
+Object.defineProperty(document, 'body', {
+  value: {
+    setAttribute: vi.fn(),
+    removeAttribute: vi.fn(),
+    appendChild: vi.fn(),
+    removeChild: vi.fn(),
+  },
+  writable: true,
+});
+
+// Mock document.createElement
+globalThis.document.createElement = vi.fn(() => ({
+  setAttribute: vi.fn(),
+  removeAttribute: vi.fn(),
+  appendChild: vi.fn(),
+  removeChild: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+}));
+
+// Mock document.documentElement.style for React DOM
+Object.defineProperty(document, 'documentElement', {
+  value: {
+    style: new Proxy(
+      {},
+      {
+        has: () => true, // 'in' 연산자가 항상 true를 반환
+        get: () => '', // 모든 속성이 빈 문자열을 반환
+      }
+    ),
+  },
+  writable: true,
+});
+
+// Mock window.getComputedStyle
+globalThis.getComputedStyle = vi.fn(() => ({
+  getPropertyValue: vi.fn(() => ''),
+}));
