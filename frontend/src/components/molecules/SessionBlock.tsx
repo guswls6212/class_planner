@@ -9,6 +9,72 @@ interface SessionBlockProps {
   onClick: () => void;
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getSessionBlockStyles = (
+  left: number,
+  width: number,
+  yOffset: number,
+  subjectColor?: string
+): React.CSSProperties => {
+  return {
+    position: 'absolute',
+    left,
+    top: 6 + yOffset,
+    height: 28,
+    width,
+    background: subjectColor ?? '#888',
+    color: '#fff',
+    borderRadius: 4,
+    padding: '0 6px',
+    fontSize: 12,
+    display: 'flex',
+    alignItems: 'center',
+    overflow: 'hidden',
+    zIndex: yOffset + 1,
+    border: '1px solid rgba(255,255,255,0.2)',
+    cursor: 'pointer',
+  };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getSessionBlockText = (
+  subjectName?: string,
+  startsAt?: string,
+  endsAt?: string
+): string => {
+  return `${subjectName ?? 'Unknown'} ${startsAt ?? ''}-${endsAt ?? ''}`;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const calculateTopPosition = (yOffset: number): number => {
+  return 6 + yOffset;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const calculateZIndex = (yOffset: number): number => {
+  return yOffset + 1;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getSubjectColor = (subjectColor?: string): string => {
+  return subjectColor && subjectColor.trim() !== '' ? subjectColor : '#888';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateSessionBlockProps = (
+  left: number,
+  width: number,
+  yOffset: number
+): boolean => {
+  return left >= 0 && width > 0 && yOffset >= 0;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowSubjectName = (subjectName?: string): boolean => {
+  return Boolean(subjectName);
+};
+
 export default function SessionBlock({
   session,
   subject,
@@ -17,29 +83,16 @@ export default function SessionBlock({
   yOffset,
   onClick,
 }: SessionBlockProps) {
+  const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
+  const blockText = getSessionBlockText(
+    subject?.name,
+    session.startsAt,
+    session.endsAt
+  );
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left,
-        top: 6 + yOffset,
-        height: 28,
-        width,
-        background: subject?.color ?? '#888',
-        color: '#fff',
-        borderRadius: 4,
-        padding: '0 6px',
-        fontSize: 12,
-        display: 'flex',
-        alignItems: 'center',
-        overflow: 'hidden',
-        zIndex: yOffset + 1,
-        border: '1px solid rgba(255,255,255,0.2)',
-        cursor: 'pointer',
-      }}
-      onClick={onClick}
-    >
-      {subject?.name} {session.startsAt}-{session.endsAt}
+    <div style={styles} onClick={onClick}>
+      {blockText}
     </div>
   );
 }
