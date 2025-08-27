@@ -23,139 +23,312 @@ const meta: Meta<typeof FormField> = {
     disabled: {
       control: { type: 'boolean' },
     },
+    error: {
+      control: { type: 'text' },
+    },
   },
 };
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// 기본 폼 필드
 export const Default: Story = {
   args: {
-    label: '이름',
-    name: 'name',
+    label: 'Username',
+    name: 'username',
     value: '',
-    onChange: (value: string) => console.log('Name:', value),
-    placeholder: '이름을 입력하세요',
+    onChange: (value: string) => console.log('Username changed:', value),
+    placeholder: 'Enter your username',
   },
 };
 
+// 필수 입력 필드
 export const Required: Story = {
   args: {
-    label: '이메일',
+    label: 'Email Address',
     name: 'email',
     value: '',
-    onChange: (value: string) => console.log('Email:', value),
-    placeholder: '이메일을 입력하세요',
+    onChange: (value: string) => console.log('Email changed:', value),
+    placeholder: 'Enter your email',
     type: 'email',
     required: true,
   },
 };
 
-export const WithValue: Story = {
-  args: {
-    label: '전화번호',
-    name: 'phone',
-    value: '010-1234-5678',
-    onChange: (value: string) => console.log('Phone:', value),
-    placeholder: '전화번호를 입력하세요',
-    type: 'text',
-  },
-};
-
+// 에러가 있는 필드
 export const WithError: Story = {
   args: {
-    label: '비밀번호',
+    label: 'Password',
     name: 'password',
-    value: '123',
-    onChange: (value: string) => console.log('Password:', value),
-    placeholder: '비밀번호를 입력하세요',
+    value: '',
+    onChange: (value: string) => console.log('Password changed:', value),
+    placeholder: 'Enter your password',
     type: 'password',
     required: true,
-    error: '비밀번호는 8자 이상이어야 합니다',
+    error: 'Password must be at least 8 characters long',
   },
 };
 
-export const Small: Story = {
-  args: {
-    label: '작은 입력 필드',
-    name: 'small',
-    value: '',
-    onChange: (value: string) => console.log('Small:', value),
-    placeholder: '작은 크기',
-    size: 'small',
-  },
-};
-
-export const Large: Story = {
-  args: {
-    label: '큰 입력 필드',
-    name: 'large',
-    value: '',
-    onChange: (value: string) => console.log('Large:', value),
-    placeholder: '큰 크기',
-    size: 'large',
-  },
-};
-
+// 비활성화된 필드
 export const Disabled: Story = {
   args: {
-    label: '비활성화된 필드',
-    name: 'disabled',
-    value: '수정할 수 없음',
-    onChange: (value: string) => console.log('Disabled:', value),
-    placeholder: '비활성화됨',
+    label: 'Account ID',
+    name: 'accountId',
+    value: 'ACC-12345',
+    onChange: (value: string) => console.log('Account ID changed:', value),
     disabled: true,
   },
 };
 
-export const Number: Story = {
-  args: {
-    label: '나이',
-    name: 'age',
-    value: '',
-    onChange: (value: string) => console.log('Age:', value),
-    placeholder: '나이를 입력하세요',
-    type: 'number',
-  },
-};
-
-export const MultipleFields: Story = {
+// 다양한 크기
+export const Sizes: Story = {
   render: () => (
     <div
       style={{
-        width: '400px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
+        gap: '20px',
+        alignItems: 'stretch',
+        width: '300px',
+      }}
+    >
+      <div>
+        <div
+          style={{
+            marginBottom: '8px',
+            fontSize: '14px',
+            color: 'var(--color-gray-600)',
+          }}
+        >
+          Small
+        </div>
+        <FormField
+          label="Small Field"
+          name="small"
+          value=""
+          onChange={(value: string) => console.log('Small changed:', value)}
+          size="small"
+        />
+      </div>
+      <div>
+        <div
+          style={{
+            marginBottom: '8px',
+            fontSize: '14px',
+            color: 'var(--color-gray-600)',
+          }}
+        >
+          Medium
+        </div>
+        <FormField
+          label="Medium Field"
+          name="medium"
+          value=""
+          onChange={(value: string) => console.log('Medium changed:', value)}
+          size="medium"
+        />
+      </div>
+      <div>
+        <div
+          style={{
+            marginBottom: '8px',
+            fontSize: '14px',
+            color: 'var(--color-gray-600)',
+          }}
+        >
+          Large
+        </div>
+        <FormField
+          label="Large Field"
+          name="large"
+          value=""
+          onChange={(value: string) => console.log('Large changed:', value)}
+          size="large"
+        />
+      </div>
+    </div>
+  ),
+};
+
+// 다양한 타입
+export const Types: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        alignItems: 'stretch',
+        width: '300px',
       }}
     >
       <FormField
-        label="이름"
-        name="name"
+        label="Text Input"
+        name="text"
         value=""
-        onChange={(value: string) => console.log('Name:', value)}
-        placeholder="이름을 입력하세요"
-        required
+        onChange={(value: string) => console.log('Text changed:', value)}
+        type="text"
+        placeholder="Enter text"
       />
       <FormField
-        label="이메일"
+        label="Email Input"
         name="email"
         value=""
-        onChange={(value: string) => console.log('Email:', value)}
-        placeholder="이메일을 입력하세요"
+        onChange={(value: string) => console.log('Email changed:', value)}
         type="email"
-        required
+        placeholder="Enter email"
       />
       <FormField
-        label="비밀번호"
+        label="Password Input"
         name="password"
         value=""
-        onChange={(value: string) => console.log('Password:', value)}
-        placeholder="비밀번호를 입력하세요"
+        onChange={(value: string) => console.log('Password changed:', value)}
         type="password"
-        required
-        error="비밀번호는 8자 이상이어야 합니다"
+        placeholder="Enter password"
       />
+      <FormField
+        label="Number Input"
+        name="number"
+        value=""
+        onChange={(value: string) => console.log('Number changed:', value)}
+        type="number"
+        placeholder="Enter number"
+      />
+    </div>
+  ),
+};
+
+// 커스텀 입력 요소
+export const CustomInput: Story = {
+  args: {
+    label: 'Custom Input',
+    name: 'custom',
+    value: '',
+    onChange: (value: string) => console.log('Custom changed:', value),
+    children: (
+      <textarea
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          border: '1px solid var(--color-gray-300)',
+          borderRadius: '4px',
+          fontSize: '14px',
+          resize: 'vertical',
+          minHeight: '80px',
+        }}
+        placeholder="Enter your message here..."
+      />
+    ),
+  },
+};
+
+// 복합 시나리오
+export const Complex: Story = {
+  render: () => (
+    <div
+      style={{
+        padding: '20px',
+        background: 'var(--color-gray-50)',
+        borderRadius: '8px',
+      }}
+    >
+      <div
+        style={{
+          marginBottom: '20px',
+          fontSize: '18px',
+          fontWeight: 'bold',
+          color: 'var(--color-gray-800)',
+        }}
+      >
+        사용자 등록 폼
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          maxWidth: '400px',
+        }}
+      >
+        <FormField
+          label="Full Name"
+          name="fullName"
+          value=""
+          onChange={(value: string) => console.log('Full name changed:', value)}
+          placeholder="Enter your full name"
+          required={true}
+          size="large"
+        />
+
+        <FormField
+          label="Email Address"
+          name="email"
+          value=""
+          onChange={(value: string) => console.log('Email changed:', value)}
+          placeholder="Enter your email address"
+          type="email"
+          required={true}
+          error="Please enter a valid email address"
+        />
+
+        <FormField
+          label="Phone Number"
+          name="phone"
+          value=""
+          onChange={(value: string) => console.log('Phone changed:', value)}
+          placeholder="Enter your phone number"
+          type="number"
+          size="medium"
+        />
+
+        <FormField
+          label="Bio"
+          name="bio"
+          value=""
+          onChange={(value: string) => console.log('Bio changed:', value)}
+          children={
+            <textarea
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid var(--color-gray-300)',
+                borderRadius: '4px',
+                fontSize: '14px',
+                resize: 'vertical',
+                minHeight: '100px',
+              }}
+              placeholder="Tell us about yourself..."
+            />
+          }
+        />
+
+        <FormField
+          label="Account Type"
+          name="accountType"
+          value=""
+          onChange={(value: string) =>
+            console.log('Account type changed:', value)
+          }
+          children={
+            <select
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid var(--color-gray-300)',
+                borderRadius: '4px',
+                fontSize: '14px',
+              }}
+            >
+              <option value="">Select account type</option>
+              <option value="personal">Personal</option>
+              <option value="business">Business</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          }
+        />
+      </div>
     </div>
   ),
 };

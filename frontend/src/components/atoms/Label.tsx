@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './Label.module.css';
 
 interface LabelProps {
   children: React.ReactNode;
@@ -14,6 +13,56 @@ interface LabelProps {
   warning?: boolean;
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getLabelClasses = (
+  size: string,
+  variant: string,
+  error: boolean,
+  success: boolean,
+  warning: boolean,
+  disabled: boolean
+): string => {
+  return [
+    'label',
+    size,
+    variant,
+    error && 'error',
+    success && 'success',
+    warning && 'warning',
+    disabled && 'disabled',
+  ]
+    .filter(Boolean)
+    .join(' ');
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getWrapperClasses = (variant: string): string => {
+  return [variant === 'group' && 'labelGroup'].filter(Boolean).join(' ');
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowRequired = (required: boolean): boolean => {
+  return Boolean(required);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowHelpText = (helpText: string | undefined): boolean => {
+  return Boolean(helpText);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateLabelSize = (size: string): boolean => {
+  const validSizes = ['small', 'medium', 'large'];
+  return validSizes.includes(size);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateLabelVariant = (variant: string): boolean => {
+  const validVariants = ['default', 'checkbox', 'inline', 'group'];
+  return validVariants.includes(variant);
+};
+
 export default function Label({
   children,
   htmlFor,
@@ -26,29 +75,25 @@ export default function Label({
   success = false,
   warning = false,
 }: LabelProps) {
-  const labelClasses = [
-    styles.label,
-    styles[size],
-    styles[variant],
-    error && styles.error,
-    success && styles.success,
-    warning && styles.warning,
-    disabled && styles.disabled,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  const wrapperClasses = [variant === 'group' && styles.labelGroup]
-    .filter(Boolean)
-    .join(' ');
+  const labelClasses = getLabelClasses(
+    size,
+    variant,
+    error,
+    success,
+    warning,
+    disabled
+  );
+  const wrapperClasses = getWrapperClasses(variant);
 
   return (
     <div className={wrapperClasses}>
       <label htmlFor={htmlFor} className={labelClasses}>
         {children}
-        {required && <span className={styles.required}>*</span>}
+        {shouldShowRequired(required) && <span className="required">*</span>}
       </label>
-      {helpText && <div className={styles.helpText}>{helpText}</div>}
+      {shouldShowHelpText(helpText) && (
+        <div className="helpText">{helpText}</div>
+      )}
     </div>
   );
 }

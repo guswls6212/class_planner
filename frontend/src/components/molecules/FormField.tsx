@@ -1,6 +1,6 @@
 import React from 'react';
-import Label from '../atoms/Label';
 import Input from '../atoms/Input';
+import Label from '../atoms/Label';
 
 interface FormFieldProps {
   label: string;
@@ -16,6 +16,75 @@ interface FormFieldProps {
   children?: React.ReactNode; // 커스텀 입력 요소를 위한 children prop
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getFormFieldStyles = (): React.CSSProperties => {
+  return { marginBottom: '16px' };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldUseCustomInput = (children?: React.ReactNode): boolean => {
+  return Boolean(children);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getLabelProps = (
+  name: string,
+  required: boolean,
+  size: 'small' | 'medium' | 'large',
+  disabled: boolean
+) => {
+  return {
+    htmlFor: name,
+    required,
+    size,
+    disabled,
+  };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getInputProps = (
+  type: 'text' | 'email' | 'password' | 'number',
+  placeholder: string | undefined,
+  value: string,
+  onChange: (value: string) => void,
+  disabled: boolean,
+  size: 'small' | 'medium' | 'large',
+  error: string | undefined
+) => {
+  return {
+    type,
+    placeholder,
+    value,
+    onChange,
+    disabled,
+    size,
+    error,
+  };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateFormFieldType = (type: string): boolean => {
+  const validTypes = ['text', 'email', 'password', 'number'];
+  return validTypes.includes(type);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateFormFieldSize = (size: string): boolean => {
+  const validSizes = ['small', 'medium', 'large'];
+  return validSizes.includes(size);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const hasError = (error?: string): boolean => {
+  return Boolean(error);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const isFormFieldDisabled = (disabled: boolean): boolean => {
+  return Boolean(disabled);
+};
+
 export default function FormField({
   label,
   name,
@@ -29,24 +98,23 @@ export default function FormField({
   size = 'medium',
   children,
 }: FormFieldProps) {
+  const formFieldStyles = getFormFieldStyles();
+  const useCustomInput = shouldUseCustomInput(children);
+  const labelProps = getLabelProps(name, required, size, disabled);
+  const inputProps = getInputProps(
+    type,
+    placeholder,
+    value,
+    onChange,
+    disabled,
+    size,
+    error
+  );
+
   return (
-    <div style={{ marginBottom: '16px' }}>
-      <Label htmlFor={name} required={required} size={size} disabled={disabled}>
-        {label}
-      </Label>
-      {children ? (
-        children
-      ) : (
-        <Input
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          size={size}
-          error={error}
-        />
-      )}
+    <div style={formFieldStyles}>
+      <Label {...labelProps}>{label}</Label>
+      {useCustomInput ? children : <Input {...inputProps} />}
     </div>
   );
 }

@@ -11,7 +11,17 @@ const meta: Meta<typeof Typography> = {
   argTypes: {
     variant: {
       control: { type: 'select' },
-      options: ['h1', 'h2', 'h3', 'h4', 'body', 'caption', 'label'],
+      options: [
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'body',
+        'bodyLarge',
+        'bodySmall',
+        'caption',
+        'label',
+      ],
     },
     color: {
       control: { type: 'select' },
@@ -22,15 +32,24 @@ const meta: Meta<typeof Typography> = {
         'warning',
         'danger',
         'default',
+        'muted',
       ],
     },
     align: {
       control: { type: 'select' },
-      options: ['left', 'center', 'right'],
+      options: ['left', 'center', 'right', 'justify'],
     },
     weight: {
       control: { type: 'select' },
       options: ['normal', 'medium', 'semibold', 'bold'],
+    },
+    transform: {
+      control: { type: 'select' },
+      options: ['uppercase', 'lowercase', 'capitalize', 'none'],
+    },
+    decoration: {
+      control: { type: 'select' },
+      options: ['underline', 'lineThrough', 'none'],
     },
   },
 };
@@ -38,113 +57,257 @@ const meta: Meta<typeof Typography> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const H1: Story = {
-  args: {
-    variant: 'h1',
-    children: '제목 1',
-  },
-};
-
-export const H2: Story = {
-  args: {
-    variant: 'h2',
-    children: '제목 2',
-  },
-};
-
-export const H3: Story = {
-  args: {
-    variant: 'h3',
-    children: '제목 3',
-  },
-};
-
-export const H4: Story = {
-  args: {
-    variant: 'h4',
-    children: '제목 4',
-  },
-};
-
-export const Body: Story = {
+// 기본 타이포그래피
+export const Default: Story = {
   args: {
     variant: 'body',
-    children: '본문 텍스트입니다. 일반적인 내용을 표시할 때 사용합니다.',
+    children: 'This is default typography text',
   },
 };
 
-export const Caption: Story = {
-  args: {
-    variant: 'caption',
-    children:
-      '캡션 텍스트입니다. 작은 설명이나 부가 정보를 표시할 때 사용합니다.',
-  },
-};
-
-export const Label: Story = {
-  args: {
-    variant: 'label',
-    children: '라벨 텍스트입니다. 폼 요소나 버튼에 사용됩니다.',
-  },
-};
-
-export const PrimaryColor: Story = {
-  args: {
-    variant: 'h2',
-    color: 'primary',
-    children: 'Primary 색상 제목',
-  },
-};
-
-export const SuccessColor: Story = {
-  args: {
-    variant: 'h3',
-    color: 'success',
-    children: 'Success 색상 제목',
-  },
-};
-
-export const DangerColor: Story = {
-  args: {
-    variant: 'h3',
-    color: 'danger',
-    children: 'Danger 색상 제목',
-  },
-};
-
-export const CenterAligned: Story = {
-  args: {
-    variant: 'h2',
-    align: 'center',
-    children: '가운데 정렬된 제목',
-  },
-};
-
-export const BoldWeight: Story = {
-  args: {
-    variant: 'body',
-    weight: 'bold',
-    children: '굵은 본문 텍스트입니다.',
-  },
-};
-
-export const AllVariants: Story = {
+// 제목 계층
+export const Headings: Story = {
   render: () => (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '16px',
-        textAlign: 'left',
+        gap: '10px',
+        alignItems: 'flex-start',
       }}
     >
-      <Typography variant="h1">제목 1</Typography>
-      <Typography variant="h2">제목 2</Typography>
-      <Typography variant="h3">제목 3</Typography>
-      <Typography variant="h4">제목 4</Typography>
-      <Typography variant="body">본문 텍스트</Typography>
-      <Typography variant="caption">캡션 텍스트</Typography>
-      <Typography variant="label">라벨 텍스트</Typography>
+      <Typography variant="h1">Heading 1 - Main Title</Typography>
+      <Typography variant="h2">Heading 2 - Section Title</Typography>
+      <Typography variant="h3">Heading 3 - Subsection Title</Typography>
+      <Typography variant="h4">Heading 4 - Minor Title</Typography>
+    </div>
+  ),
+};
+
+// 본문 텍스트
+export const BodyText: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography variant="bodyLarge">
+        Body Large - Important content
+      </Typography>
+      <Typography variant="body">Body - Regular content</Typography>
+      <Typography variant="bodySmall">
+        Body Small - Secondary content
+      </Typography>
+      <Typography variant="caption">
+        Caption - Small explanatory text
+      </Typography>
+      <Typography variant="label">Label - Form field labels</Typography>
+    </div>
+  ),
+};
+
+// 색상 변형
+export const Colors: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography variant="body" color="primary">
+        Primary Color Text
+      </Typography>
+      <Typography variant="body" color="secondary">
+        Secondary Color Text
+      </Typography>
+      <Typography variant="body" color="success">
+        Success Color Text
+      </Typography>
+      <Typography variant="body" color="warning">
+        Warning Color Text
+      </Typography>
+      <Typography variant="body" color="danger">
+        Danger Color Text
+      </Typography>
+      <Typography variant="body" color="default">
+        Default Color Text
+      </Typography>
+      <Typography variant="body" color="muted">
+        Muted Color Text
+      </Typography>
+    </div>
+  ),
+};
+
+// 정렬
+export const Alignment: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        width: '100%',
+      }}
+    >
+      <Typography variant="body" align="left">
+        Left Aligned Text
+      </Typography>
+      <Typography variant="body" align="center">
+        Center Aligned Text
+      </Typography>
+      <Typography variant="body" align="right">
+        Right Aligned Text
+      </Typography>
+      <Typography variant="body" align="justify">
+        Justified Text - This text is justified to fill the entire width of the
+        container, creating even left and right margins.
+      </Typography>
+    </div>
+  ),
+};
+
+// 폰트 굵기
+export const FontWeights: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography variant="body" weight="normal">
+        Normal Weight Text
+      </Typography>
+      <Typography variant="body" weight="medium">
+        Medium Weight Text
+      </Typography>
+      <Typography variant="body" weight="semibold">
+        Semibold Weight Text
+      </Typography>
+      <Typography variant="body" weight="bold">
+        Bold Weight Text
+      </Typography>
+    </div>
+  ),
+};
+
+// 텍스트 변환
+export const TextTransforms: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography variant="body" transform="none">
+        No Transform Text
+      </Typography>
+      <Typography variant="body" transform="uppercase">
+        Uppercase Text
+      </Typography>
+      <Typography variant="body" transform="lowercase">
+        Lowercase Text
+      </Typography>
+      <Typography variant="body" transform="capitalize">
+        Capitalize Text
+      </Typography>
+    </div>
+  ),
+};
+
+// 텍스트 장식
+export const TextDecorations: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography variant="body" decoration="none">
+        No Decoration Text
+      </Typography>
+      <Typography variant="body" decoration="underline">
+        Underlined Text
+      </Typography>
+      <Typography variant="body" decoration="lineThrough">
+        Line Through Text
+      </Typography>
+    </div>
+  ),
+};
+
+// 복합 시나리오
+export const Complex: Story = {
+  render: () => (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '15px',
+        alignItems: 'flex-start',
+      }}
+    >
+      <Typography
+        variant="h1"
+        color="primary"
+        align="center"
+        weight="bold"
+        transform="uppercase"
+        decoration="underline"
+      >
+        Main Page Title
+      </Typography>
+
+      <Typography variant="h2" color="secondary" align="left" weight="semibold">
+        Section Header
+      </Typography>
+
+      <Typography
+        variant="bodyLarge"
+        color="success"
+        align="justify"
+        weight="medium"
+      >
+        This is a success message with larger body text that demonstrates how
+        the typography component handles longer content with justified alignment
+        and medium font weight.
+      </Typography>
+
+      <Typography
+        variant="caption"
+        color="warning"
+        align="center"
+        weight="normal"
+        transform="capitalize"
+      >
+        important notice
+      </Typography>
+
+      <Typography
+        variant="label"
+        color="danger"
+        align="left"
+        weight="bold"
+        decoration="lineThrough"
+      >
+        Deprecated Field
+      </Typography>
     </div>
   ),
 };

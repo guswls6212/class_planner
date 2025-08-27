@@ -86,7 +86,9 @@ describe('Button 컴포넌트', () => {
 
       it('icon과 position이 모두 없을 때 false를 반환한다', () => {
         expect(shouldShowIcon(null, '')).toBe(false);
-        expect(shouldShowIcon(undefined, null as unknown as string)).toBe(false);
+        expect(shouldShowIcon(undefined, null as unknown as string)).toBe(
+          false
+        );
       });
     });
 

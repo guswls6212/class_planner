@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface ThemeToggleProps {
@@ -6,30 +5,79 @@ interface ThemeToggleProps {
   variant?: 'icon' | 'text' | 'both';
 }
 
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getSizeStyles = (size: string) => {
+  const sizeStyles = {
+    small: { padding: '6px 8px', fontSize: '12px' },
+    medium: { padding: '8px 12px', fontSize: '14px' },
+    large: { padding: '12px 16px', fontSize: '16px' },
+  };
+  return sizeStyles[size as keyof typeof sizeStyles] || sizeStyles.medium;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getIconStyles = (size: string) => {
+  const iconStyles = {
+    small: { fontSize: '14px' },
+    medium: { fontSize: '16px' },
+    large: { fontSize: '20px' },
+  };
+  return iconStyles[size as keyof typeof iconStyles] || iconStyles.medium;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowIcon = (variant: string): boolean => {
+  return variant !== 'text';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowText = (variant: string): boolean => {
+  return variant !== 'icon';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getThemeIcon = (theme: string): string => {
+  return theme === 'dark' ? '🌙' : '☀️';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getThemeText = (theme: string): string => {
+  return theme === 'dark' ? '라이트' : '다크';
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getThemeTitle = (theme: string): string => {
+  return `현재 테마: ${theme === 'dark' ? '다크' : '라이트'}`;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateThemeToggleSize = (size: string): boolean => {
+  const validSizes = ['small', 'medium', 'large'];
+  return validSizes.includes(size);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateThemeToggleVariant = (variant: string): boolean => {
+  const validVariants = ['icon', 'text', 'both'];
+  return validVariants.includes(variant);
+};
+
 export default function ThemeToggle({
   size = 'medium',
   variant = 'both',
 }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
 
-  const sizeStyles = {
-    small: { padding: '6px 8px', fontSize: '12px' },
-    medium: { padding: '8px 12px', fontSize: '14px' },
-    large: { padding: '12px 16px', fontSize: '16px' },
-  };
-
-  const iconStyles = {
-    small: { fontSize: '14px' },
-    medium: { fontSize: '16px' },
-    large: { fontSize: '20px' },
-  };
+  const sizeStyles = getSizeStyles(size);
+  const iconStyles = getIconStyles(size);
 
   return (
     <button
       onClick={toggleTheme}
       className="theme-toggle"
       style={{
-        ...sizeStyles[size],
+        ...sizeStyles,
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
@@ -40,14 +88,12 @@ export default function ThemeToggle({
         background: 'var(--color-gray-200)',
         color: 'var(--color-gray-800)',
       }}
-      title={`현재 테마: ${theme === 'dark' ? '다크' : '라이트'}`}
+      title={getThemeTitle(theme)}
     >
-      {variant !== 'text' && (
-        <span style={iconStyles[size]}>{theme === 'dark' ? '🌙' : '☀️'}</span>
+      {shouldShowIcon(variant) && (
+        <span style={iconStyles}>{getThemeIcon(theme)}</span>
       )}
-      {variant !== 'icon' && (
-        <span>{theme === 'dark' ? '라이트' : '다크'}</span>
-      )}
+      {shouldShowText(variant) && <span>{getThemeText(theme)}</span>}
     </button>
   );
 }

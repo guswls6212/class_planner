@@ -11,15 +11,9 @@ interface CardProps {
   className?: string; // CSS 클래스를 위한 className prop
 }
 
-export default function Card({
-  title,
-  children,
-  variant = 'default',
-  padding = 'medium',
-  onClick,
-  style,
-  className,
-}: CardProps) {
+// 유틸리티 함수들 (테스트 가능)
+// eslint-disable-next-line react-refresh/only-export-components
+export const getVariantStyles = (variant: string): React.CSSProperties => {
   const variantStyles: Record<string, React.CSSProperties> = {
     default: {
       backgroundColor: '#ffffff',
@@ -36,31 +30,86 @@ export default function Card({
       border: '2px solid #e5e7eb',
     },
   };
+  return variantStyles[variant] || variantStyles.default;
+};
 
+// eslint-disable-next-line react-refresh/only-export-components
+export const getPaddingStyles = (padding: string): React.CSSProperties => {
   const paddingStyles: Record<string, React.CSSProperties> = {
     small: { padding: '12px' },
     medium: { padding: '16px' },
     large: { padding: '24px' },
   };
+  return paddingStyles[padding] || paddingStyles.medium;
+};
 
-  const styles: React.CSSProperties = {
+// eslint-disable-next-line react-refresh/only-export-components
+export const getBaseStyles = (onClick?: () => void): React.CSSProperties => {
+  return {
     borderRadius: '8px',
     cursor: onClick ? 'pointer' : 'default',
     transition: 'all 0.2s ease',
-    ...variantStyles[variant],
-    ...paddingStyles[padding],
+  };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const getHoverStyles = (
+  onClick?: () => void,
+  variant?: string
+): React.CSSProperties => {
+  if (!onClick) return {};
+
+  return {
+    transform: 'translateY(-2px)',
+    boxShadow:
+      variant === 'elevated'
+        ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+        : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+  };
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const shouldShowTitle = (title?: string): boolean => {
+  return Boolean(title);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const isClickable = (onClick?: () => void): boolean => {
+  return Boolean(onClick);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateCardVariant = (variant: string): boolean => {
+  const validVariants = ['default', 'elevated', 'outlined'];
+  return validVariants.includes(variant);
+};
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const validateCardPadding = (padding: string): boolean => {
+  const validPaddings = ['small', 'medium', 'large'];
+  return validPaddings.includes(padding);
+};
+
+export default function Card({
+  title,
+  children,
+  variant = 'default',
+  padding = 'medium',
+  onClick,
+  style,
+  className,
+}: CardProps) {
+  const variantStyles = getVariantStyles(variant);
+  const paddingStyles = getPaddingStyles(padding);
+  const baseStyles = getBaseStyles(onClick);
+  const hoverStyles = getHoverStyles(onClick, variant);
+
+  const styles: React.CSSProperties = {
+    ...baseStyles,
+    ...variantStyles,
+    ...paddingStyles,
     ...style, // 커스텀 스타일을 마지막에 적용하여 우선순위 부여
   };
-
-  const hoverStyles: React.CSSProperties = onClick
-    ? {
-        transform: 'translateY(-2px)',
-        boxShadow:
-          variant === 'elevated'
-            ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-            : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      }
-    : {};
 
   return (
     <div
@@ -68,19 +117,18 @@ export default function Card({
       style={styles}
       onClick={onClick}
       onMouseEnter={e => {
-        if (onClick) {
+        if (isClickable(onClick)) {
           Object.assign(e.currentTarget.style, hoverStyles);
         }
       }}
       onMouseLeave={e => {
-        if (onClick) {
+        if (isClickable(onClick)) {
           e.currentTarget.style.transform = '';
-          e.currentTarget.style.boxShadow =
-            variantStyles[variant].boxShadow || '';
+          e.currentTarget.style.boxShadow = variantStyles.boxShadow || '';
         }
       }}
     >
-      {title && (
+      {shouldShowTitle(title) && (
         <div style={{ marginBottom: '12px' }}>
           <Typography variant="h4" weight="semibold">
             {title}
