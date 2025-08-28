@@ -1,0 +1,177 @@
+/* Schedule.module.css */
+.timetableContainer {
+  min-width: 1000px;
+  overflow-x: auto;
+}
+
+.modalOverlay {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-md);
+  min-width: 320px;
+  z-index: 9999;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.3),
+    0 10px 10px -5px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.modalHeader {
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modalForm {
+  margin-bottom: var(--spacing-md);
+}
+
+.formGroup {
+  margin-bottom: var(--spacing-sm);
+}
+
+.formLabel {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 500;
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.formInput:hover,
+.formSelect:hover {
+  border-color: var(--color-border-light);
+  background: var(--color-bg-tertiary);
+}
+
+.formInput:focus,
+.formSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: var(--color-bg-primary);
+}
+
+.formSelect {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 32px;
+}
+
+.formSelect option {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  padding: var(--spacing-sm);
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
+}
+
+/* 시간 입력 필드의 화살표 색상 */
+.formInput[type='time']::-webkit-calendar-picker-indicator {
+  filter: var(--theme-filter);
+}
+
+/* 다크모드에서 화살표를 밝게 */
+[data-theme='dark'] .formInput[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* 라이트모드에서 화살표를 어둡게 */
+[data-theme='light']
+  .formInput[type='time']::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .timetableContainer {
+    min-width: 800px;
+  }
+}
+
+/* 수강생 리스트 스타일 */
+.studentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.studentItem {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: grab;
+  user-select: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.studentItem:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.studentItem.selected {
+  background: rgba(59, 130, 246, 0.5);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.studentItem:active {
+  cursor: grabbing;
+}
+
+/* 플로팅 패널 스타일 */
+.floatingPanel {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.8),
+    0 10px 10px -5px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+}
+
+.panelHeader {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}

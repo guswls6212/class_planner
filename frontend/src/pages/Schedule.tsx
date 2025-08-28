@@ -5,6 +5,7 @@ import Card from '../components/molecules/Card';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
 import { weekdays } from '../lib/planner';
+import styles from './Schedule.module.css';
 
 function useLocal<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -323,7 +324,7 @@ export default function SchedulePage() {
 
       {/* 플로팅 학생 리스트 패널 */}
       <div
-        className="floating-panel position-fixed z-1000 overflow-auto"
+        className={`${styles.floatingPanel} position-fixed overflow-auto`}
         style={{
           left: panelPos.x,
           top: panelPos.y,
@@ -334,7 +335,7 @@ export default function SchedulePage() {
       >
         {/* 드래그 가능한 헤더 */}
         <div
-          className={`panel-header ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`${styles.panelHeader} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           onMouseDown={e => {
             if (e.target === e.currentTarget) {
               setIsDragging(true);
@@ -347,12 +348,12 @@ export default function SchedulePage() {
         >
           수강생 리스트
         </div>
-        <ul className="student-list">
+        <div className={styles.studentList} role="list">
           {students.map(s => (
-            <li key={s.id}>
+            <div key={s.id} role="listitem">
               <div
                 draggable
-                className={`student-item ${selectedStudentId === s.id ? 'selected' : ''}`}
+                className={`${styles.studentItem} ${selectedStudentId === s.id ? styles.selected : ''}`}
                 onDragStart={e => {
                   e.dataTransfer.setData('text/plain', s.id);
                   e.dataTransfer.effectAllowed = 'copy';
@@ -372,14 +373,17 @@ export default function SchedulePage() {
               >
                 {s.name}
               </div>
-            </li>
+            </div>
           ))}
           {students.length === 0 && (
-            <li style={{ color: 'var(--color-gray-400)', padding: '8px 12px' }}>
+            <div
+              style={{ color: 'var(--color-gray-400)', padding: '8px 12px' }}
+              role="listitem"
+            >
               학생 페이지에서 학생을 추가하세요
-            </li>
+            </div>
           )}
-        </ul>
+        </div>
       </div>
 
       {/* 과목 선택 및 시간 설정 모달 */}
@@ -461,26 +465,26 @@ export default function SchedulePage() {
 
       {/* 편집 모달 */}
       {showEditModal && editModalData && (
-        <div className="modal-overlay">
-          <h4 className="modal-header">수업 편집</h4>
-          <div className="modal-form">
-            <div className="form-group">
-              <label className="form-label">학생</label>
-              <div className="form-input">
+        <div className={styles.modalOverlay}>
+          <h4 className={styles.modalHeader}>수업 편집</h4>
+          <div className={styles.modalForm}>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>학생</label>
+              <div className={styles.formInput}>
                 {students.find(s => s.id === editModalData.studentId)?.name}
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">과목</label>
-              <div className="form-input">
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>과목</label>
+              <div className={styles.formInput}>
                 {subjects.find(s => s.id === editModalData.subjectId)?.name}
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">요일</label>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>요일</label>
               <select
                 id="edit-modal-weekday"
-                className="form-select"
+                className={styles.formSelect}
                 defaultValue={editModalData.weekday}
               >
                 {weekdays.map((w, idx) => (
@@ -490,26 +494,26 @@ export default function SchedulePage() {
                 ))}
               </select>
             </div>
-            <div className="form-group">
-              <label className="form-label">시작 시간</label>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>시작 시간</label>
               <input
                 id="edit-modal-start-time"
                 type="time"
-                className="form-input"
+                className={styles.formInput}
                 defaultValue={editModalData.startTime}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">종료 시간</label>
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>종료 시간</label>
               <input
                 id="edit-modal-end-time"
                 type="time"
-                className="form-input"
+                className={styles.formInput}
                 defaultValue={editModalData.endTime}
               />
             </div>
           </div>
-          <div className="modal-actions">
+          <div className={styles.modalActions}>
             <Button
               variant="danger"
               onClick={() => {

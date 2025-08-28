@@ -1,0 +1,14 @@
+/* StudentInputSection.module.css */
+.container {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.input {
+  flex: 1;
+}
+
+.button {
+  flex-shrink: 0;
+}

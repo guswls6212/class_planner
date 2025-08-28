@@ -106,7 +106,12 @@ export default function SessionBlock({
   };
 
   return (
-    <div style={styles} onClick={handleClick}>
+    <div
+      style={styles}
+      onClick={handleClick}
+      data-testid={`session-block-${session.id}`}
+      data-session-id={session.id}
+    >
       {blockText}
     </div>
   );

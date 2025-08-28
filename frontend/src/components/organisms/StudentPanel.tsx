@@ -185,7 +185,7 @@ export default function StudentPanel({
         수강생 리스트
       </div>
 
-      <ul style={listStyles}>
+      <div style={listStyles} role="list">
         {students.map(s => {
           const isSelected = isStudentSelected(s.id, selectedStudentId);
           const studentItemStyles = getStudentItemStyles(
@@ -194,7 +194,7 @@ export default function StudentPanel({
           );
 
           return (
-            <li key={s.id}>
+            <div key={s.id} role="listitem">
               <div
                 draggable
                 onDragStart={e => {
@@ -206,15 +206,15 @@ export default function StudentPanel({
               >
                 {s.name}
               </div>
-            </li>
+            </div>
           );
         })}
         {shouldShowEmptyMessage(students) && (
-          <li style={getEmptyMessageStyles()}>
+          <div style={getEmptyMessageStyles()} role="listitem">
             학생 페이지에서 학생을 추가하세요
-          </li>
+          </div>
         )}
-      </ul>
+      </div>
     </div>
   );
 }

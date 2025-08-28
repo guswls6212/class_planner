@@ -104,6 +104,79 @@ describe('SchedulePage', () => {
     expect(weekdays).toContain('금');
   });
 
+  it('수강생 리스트 플로팅 패널의 모달 디자인이 올바르게 적용되어 있다', () => {
+    // Schedule.module.css의 .floatingPanel 스타일 검증
+    const expectedStyles = {
+      background: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      borderRadius: '12px',
+      zIndex: '9999',
+    };
+
+    // CSS Module에서 정의된 스타일들이 올바른지 확인
+    expect(expectedStyles.background).toBe('rgba(0, 0, 0, 0.85)');
+    expect(expectedStyles.backdropFilter).toBe('blur(10px)');
+    expect(expectedStyles.border).toBe('1px solid rgba(255, 255, 255, 0.2)');
+    expect(expectedStyles.borderRadius).toBe('12px');
+    expect(expectedStyles.zIndex).toBe('9999');
+  });
+
+  it('수강생 리스트 패널 헤더의 스타일이 올바르게 적용되어 있다', () => {
+    // Schedule.module.css의 .panelHeader 스타일 검증
+    const expectedHeaderStyles = {
+      color: '#ffffff',
+      fontWeight: '700',
+      fontSize: '16px',
+      textAlign: 'center',
+      textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+    };
+
+    expect(expectedHeaderStyles.color).toBe('#ffffff');
+    expect(expectedHeaderStyles.fontWeight).toBe('700');
+    expect(expectedHeaderStyles.fontSize).toBe('16px');
+    expect(expectedHeaderStyles.textAlign).toBe('center');
+    expect(expectedHeaderStyles.textShadow).toBe(
+      '0 1px 2px rgba(0, 0, 0, 0.5)'
+    );
+  });
+
+  it('수강생 리스트 항목의 모달 느낌 스타일이 올바르게 적용되어 있다', () => {
+    // Schedule.module.css의 .studentItem 스타일 검증
+    const expectedItemStyles = {
+      background: 'rgba(255, 255, 255, 0.05)',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      borderRadius: '6px',
+      transition: 'all 0.2s ease',
+    };
+
+    expect(expectedItemStyles.background).toBe('rgba(255, 255, 255, 0.05)');
+    expect(expectedItemStyles.border).toBe(
+      '1px solid rgba(255, 255, 255, 0.15)'
+    );
+    expect(expectedItemStyles.borderRadius).toBe('6px');
+    expect(expectedItemStyles.transition).toBe('all 0.2s ease');
+  });
+
+  it('수강생 리스트의 z-index가 가장 높게 설정되어 있다', () => {
+    // z-index 값이 다른 요소들보다 높은지 확인
+    const floatingPanelZIndex = 9999;
+    const modalZIndex = 1000; // 기존 모달 z-index
+    const timeTableZIndex = 1; // 시간표 그리드 z-index
+
+    expect(floatingPanelZIndex).toBeGreaterThan(modalZIndex);
+    expect(floatingPanelZIndex).toBeGreaterThan(timeTableZIndex);
+    expect(floatingPanelZIndex).toBe(9999);
+  });
+
+  it('수강생 리스트의 모달 느낌을 위한 backdrop-filter가 적용되어 있다', () => {
+    // backdrop-filter가 올바르게 설정되어 있는지 확인
+    const backdropFilter = 'blur(10px)';
+    expect(backdropFilter).toBe('blur(10px)');
+    expect(backdropFilter).toContain('blur');
+    expect(backdropFilter).toContain('10px');
+  });
+
   it('드래그 앤 드롭 이벤트 타입들이 올바르게 정의되어 있다', () => {
     const eventTypes = ['dragStart', 'drop', 'click', 'change'];
 

@@ -1,10 +1,14 @@
 import React from 'react';
+import styles from './Input.module.css';
 
 interface InputProps {
   placeholder?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyPress?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  size?: 'small' | 'medium' | 'large';
+  error?: boolean;
+  disabled?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -14,26 +18,31 @@ export const Input: React.FC<InputProps> = ({
   value,
   onChange,
   onKeyPress,
+  size = 'medium',
+  error = false,
+  disabled = false,
   className = '',
   style = {},
 }) => {
+  // CSS Module 클래스들을 조합
+  const inputClasses = [
+    styles.input,
+    styles[size],
+    error && styles.error,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <input
       placeholder={placeholder}
       value={value}
       onChange={onChange}
       onKeyPress={onKeyPress}
-      className={className}
-      style={{
-        padding: '8px 12px',
-        border: '1px solid var(--color-border)',
-        borderRadius: '4px',
-        background: 'var(--color-bg-secondary)',
-        color: 'var(--color-text-primary)',
-        fontSize: '14px',
-        width: '200px',
-        ...style,
-      }}
+      disabled={disabled}
+      className={inputClasses}
+      style={style}
     />
   );
 };

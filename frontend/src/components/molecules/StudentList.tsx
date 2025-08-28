@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Student } from '../../lib/planner';
 import StudentListItem from '../atoms/StudentListItem';
+import styles from './StudentList.module.css';
 
 interface StudentListProps {
   students: Student[];
@@ -20,16 +21,10 @@ export const StudentList: React.FC<StudentListProps> = ({
   style = {},
 }) => {
   return (
-    <ul
-      className={`student-list ${className}`}
-      style={{
-        listStyle: 'none',
-        margin: 0,
-        padding: 0,
-        maxHeight: '400px',
-        overflow: 'auto',
-        ...style,
-      }}
+    <div
+      className={`${styles.container} ${className}`}
+      style={style}
+      role="list"
     >
       {students.map(student => (
         <StudentListItem
@@ -41,31 +36,12 @@ export const StudentList: React.FC<StudentListProps> = ({
         />
       ))}
       {students.length === 0 && (
-        <li
-          style={{
-            color: 'var(--color-text-muted)',
-            padding: '8px 0',
-            textAlign: 'center',
-          }}
-        >
-          학생을 추가해주세요
-        </li>
+        <div className={styles.emptyMessage}>학생을 추가해주세요</div>
       )}
       {students.length > 10 && (
-        <li
-          style={{
-            color: 'var(--color-text-muted)',
-            padding: '8px 0',
-            fontSize: '12px',
-            textAlign: 'center',
-            borderTop: '1px solid var(--color-border-light)',
-            marginTop: '8px',
-          }}
-        >
-          스크롤하여 확인
-        </li>
+        <div className={styles.scrollIndicator}>스크롤하여 확인</div>
       )}
-    </ul>
+    </div>
   );
 };
 

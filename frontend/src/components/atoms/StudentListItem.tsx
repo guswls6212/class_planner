@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Student } from '../../lib/planner';
 import Button from './Button';
+import styles from './StudentListItem.module.css';
 
 interface StudentListItemProps {
   student: Student;
@@ -19,34 +20,49 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
   className = '',
   style = {},
 }) => {
+  const containerClasses = [
+    styles.container,
+    isSelected ? styles.selected : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const studentNameClasses = [
+    styles.studentName,
+    isSelected ? styles.selected : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <li
-      className={className}
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '6px 0',
-        ...style,
+    <div
+      className={containerClasses}
+      onClick={() => onSelect(student.id)}
+      style={style}
+      role="listitem"
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(student.id);
+        }
       }}
     >
-      <Button
-        variant="transparent"
-        onClick={() => onSelect(student.id)}
-        style={{
-          fontWeight: isSelected ? 600 : 400,
-        }}
-        data-testid={`student-name-${student.id}`}
-      >
-        {student.name}
-      </Button>
-      <Button
-        variant="danger"
-        size="small"
-        onClick={() => onDelete(student.id)}
-      >
-        삭제
-      </Button>
-    </li>
+      <span className={studentNameClasses}>{student.name}</span>
+      <div className={styles.deleteButton}>
+        <Button
+          variant="danger"
+          size="small"
+          onClick={e => {
+            e?.stopPropagation();
+            onDelete(student.id);
+          }}
+        >
+          삭제
+        </Button>
+      </div>
+    </div>
   );
 };
 
