@@ -32,30 +32,40 @@ vi.mock('../SessionBlock', () => ({
 
 vi.mock('../DropZone', () => ({
   default: ({
-    weekday,
-    time,
+    hourIdx,
+    height,
     onDrop,
   }: {
-    weekday: number;
-    time: string;
-    onDrop: (weekday: number, time: string, enrollmentId: string) => void;
-  }) => (
-    <div
-      data-testid={`drop-zone-${weekday}-${time}`}
-      onClick={() => onDrop(weekday, time, 'test-enrollment')}
-      style={{
-        position: 'absolute',
-        border: '1px dashed transparent',
-        transition: 'border-color 0.2s',
-        zIndex: 5,
-        backgroundColor: 'transparent',
-        width: '120px',
-        height: '60px',
-      }}
-    >
-      드롭존 {time}
-    </div>
-  ),
+    hourIdx: number;
+    height: number;
+    onDrop: (e: React.DragEvent) => void;
+  }) => {
+    const timeString = `${(hourIdx + 9).toString().padStart(2, '0')}:00`;
+    return (
+      <div
+        data-testid={`drop-zone-0-${timeString}`}
+        onClick={() => {
+          const mockEvent = {
+            dataTransfer: {
+              getData: () => 'test-enrollment',
+            },
+          } as React.DragEvent;
+          onDrop(mockEvent);
+        }}
+        style={{
+          position: 'absolute',
+          border: '1px dashed transparent',
+          transition: 'border-color 0.2s',
+          zIndex: 5,
+          backgroundColor: 'transparent',
+          width: '120px',
+          height: `${height}px`,
+        }}
+      >
+        드롭존 {timeString}
+      </div>
+    );
+  },
 }));
 
 // Mock 데이터

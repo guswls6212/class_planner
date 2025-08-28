@@ -104,6 +104,7 @@ export default function DropZone({
 
   return (
     <div
+      data-testid="drop-zone"
       style={styles}
       onDragOver={onDragOver}
       onDrop={handleDrop}

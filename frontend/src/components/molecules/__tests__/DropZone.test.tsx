@@ -4,8 +4,6 @@ import DropZone from '../DropZone';
 
 describe('DropZone', () => {
   const defaultProps = {
-    hourIdx: 0,
-    height: 100,
     onDrop: vi.fn(),
     onDragEnter: vi.fn(),
     onDragLeave: vi.fn(),
@@ -13,14 +11,14 @@ describe('DropZone', () => {
   };
 
   it('기본 props로 렌더링된다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
     expect(dropZone).toBeInTheDocument();
   });
 
   it('드래그 오버 상태를 올바르게 관리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     // 드래그 엔터
     fireEvent.dragEnter(dropZone);
@@ -38,32 +36,32 @@ describe('DropZone', () => {
   });
 
   it('드롭 이벤트를 올바르게 처리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.drop(dropZone);
     expect(defaultProps.onDrop).toHaveBeenCalledTimes(1);
   });
 
   it('드래그 오버 이벤트를 올바르게 처리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.dragOver(dropZone);
     expect(defaultProps.onDragOver).toHaveBeenCalledTimes(1);
   });
 
   it('드래그 엔터 이벤트를 올바르게 처리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.dragEnter(dropZone);
     expect(defaultProps.onDragEnter).toHaveBeenCalledTimes(1);
   });
 
   it('드래그 리브 이벤트를 올바르게 처리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.dragLeave(dropZone);
     expect(defaultProps.onDragLeave).toHaveBeenCalledTimes(1);
@@ -71,7 +69,7 @@ describe('DropZone', () => {
 
   it('위치와 크기를 올바르게 계산한다', () => {
     render(<DropZone hourIdx={2} height={150} {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    const dropZone = screen.getByTestId('drop-zone');
 
     expect(dropZone).toHaveStyle({
       position: 'absolute',
@@ -83,8 +81,8 @@ describe('DropZone', () => {
   });
 
   it('기본 스타일 속성들을 올바르게 적용한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     expect(dropZone).toHaveStyle({
       border: '1px dashed transparent',
@@ -94,8 +92,8 @@ describe('DropZone', () => {
   });
 
   it('드래그 오버 시 시각적 피드백을 제공한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     // 초기 상태
     expect(dropZone).toHaveStyle({
@@ -112,8 +110,8 @@ describe('DropZone', () => {
   });
 
   it('여러 드래그 이벤트를 연속으로 처리한다', () => {
-    render(<DropZone {...defaultProps} />);
-    const dropZone = screen.getByRole('generic');
+    render(<DropZone hourIdx={0} height={100} {...defaultProps} />);
+    const dropZone = screen.getByTestId('drop-zone');
 
     // 드래그 엔터 → 드래그 오버 → 드롭
     fireEvent.dragEnter(dropZone);
@@ -138,7 +136,7 @@ describe('DropZone', () => {
         <DropZone hourIdx={hourIdx} height={100} {...defaultProps} />
       );
 
-      const dropZone = screen.getByRole('generic');
+      const dropZone = screen.getByTestId('drop-zone');
       expect(dropZone).toHaveStyle({ left: expectedLeft });
 
       unmount();
@@ -153,7 +151,7 @@ describe('DropZone', () => {
         <DropZone hourIdx={0} height={height} {...defaultProps} />
       );
 
-      const dropZone = screen.getByRole('generic');
+      const dropZone = screen.getByTestId('drop-zone');
       expect(dropZone).toHaveStyle({ height: `${height}px` });
 
       unmount();

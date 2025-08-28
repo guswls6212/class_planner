@@ -22,7 +22,8 @@
     "test:coverage:lcov": "vitest --coverage --reporter=lcov",
     "test:coverage:ci": "vitest run --coverage --reporter=text",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "prepare-commit": "npm run test:run && npm run lint && npm run format"
   },
   "dependencies": {
     "react": "^19.1.1",
