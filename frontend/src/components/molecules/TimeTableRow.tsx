@@ -65,7 +65,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           position: 'relative',
           backgroundColor: 'var(--color-background)',
           minHeight: `${height}px`,
-          border: '1px solid var(--color-border)',
+          border: '1px solid var(--color-border-grid)',
           gridColumn: '2 / -1', // 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >

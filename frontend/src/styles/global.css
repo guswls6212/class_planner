@@ -9,7 +9,7 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-danger: #dc2626;
-  
+
   /* 테마별 색상 - 다크모드 기본값 */
   --color-bg-primary: #1f2937;
   --color-bg-secondary: #374151;
@@ -19,7 +19,7 @@
   --color-text-muted: #9ca3af;
   --color-border: #4b5563;
   --color-border-light: #6b7280;
-  
+
   /* 투명도 색상 */
   --color-overlay: rgba(0, 0, 0, 0.5);
   --color-overlay-light: rgba(255, 255, 255, 0.05);
@@ -38,6 +38,11 @@
   --border-radius-md: 6px;
   --border-radius-lg: 8px;
 
+  /* 경계선 색상 - 시간표 그리드용 */
+  --color-border-grid: #6b7280;
+  --color-border-grid-light: #9ca3af;
+  --color-border-grid-lighter: #d1d5db;
+
   /* 그림자 */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -50,7 +55,7 @@
 }
 
 /* 라이트모드 테마 */
-[data-theme="light"] {
+[data-theme='light'] {
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f9fafb;
   --color-bg-tertiary: #f3f4f6;
@@ -62,7 +67,7 @@
 }
 
 /* 다크모드 테마 */
-[data-theme="dark"] {
+[data-theme='dark'] {
   --color-bg-primary: #1f2937;
   --color-bg-secondary: #374151;
   --color-bg-tertiary: #4b5563;
@@ -80,11 +85,14 @@
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.5;
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal);
 }
 
 /* 공통 유틸리티 클래스 */
@@ -236,7 +244,11 @@ body {
   position: relative;
   grid-column: 2 / -1;
   background-size: 120px 100%;
-  background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px);
+  background-image: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.05) 1px,
+    transparent 1px
+  );
 }
 
 /* 세션 블록 */
@@ -250,7 +262,7 @@ body {
   display: flex;
   align-items: center;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   cursor: pointer;
   transition: all var(--transition-normal);
 }
