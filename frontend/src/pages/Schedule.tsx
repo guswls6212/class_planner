@@ -493,13 +493,13 @@ export default function SchedulePage() {
               <div className="modal-form">
                 <div className="form-group">
                   <label className="form-label">학생</label>
-                  <div className="form-input">
+                  <div className="form-input form-input-disabled">
                     {students.find(s => s.id === editModalData.studentId)?.name}
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">과목</label>
-                  <div className="form-input">
+                  <div className="form-input form-input-disabled">
                     {subjects.find(s => s.id === editModalData.subjectId)?.name}
                   </div>
                 </div>
