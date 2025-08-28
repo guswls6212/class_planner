@@ -13,6 +13,7 @@ interface TimeTableRowProps {
   getSessionPosition: (session: Session, weekday: number) => number;
   onSessionClick: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -26,6 +27,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   getSessionPosition,
   onSessionClick,
   onDrop,
+  onEmptySpaceClick,
   className = '',
   style = {},
 }) => {
@@ -133,6 +135,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               onDragEnter={() => {}}
               onDragLeave={() => {}}
               onDragOver={e => e.preventDefault()}
+              onClick={() => {
+                const timeString = `${hourValue.toString().padStart(2, '0')}:00`;
+                onEmptySpaceClick(weekday, timeString);
+              }}
             />
           );
         })}

@@ -9,6 +9,7 @@ interface TimeTableGridProps {
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
   onSessionClick: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -19,6 +20,7 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
   enrollments,
   onSessionClick,
   onDrop,
+  onEmptySpaceClick,
   className = '',
   style = {},
 }) => {
@@ -201,6 +203,7 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
           getSessionPosition={getSessionPosition}
           onSessionClick={onSessionClick}
           onDrop={onDrop}
+          onEmptySpaceClick={onEmptySpaceClick}
         />
       ))}
     </div>

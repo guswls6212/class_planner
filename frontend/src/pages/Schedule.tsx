@@ -98,8 +98,18 @@ export default function SchedulePage() {
   const [modalData, setModalData] = useState({
     studentId: '',
     weekday: 0,
-    startTime: '16:00',
-    endTime: '17:00',
+    startTime: '',
+    endTime: '',
+  });
+
+  // 빈 공간 클릭 모달 상태
+  const [showEmptySpaceModal, setShowEmptySpaceModal] = useState(false);
+  const [emptySpaceModalData, setEmptySpaceModalData] = useState({
+    weekday: 0,
+    startTime: '',
+    endTime: '',
+    studentId: '',
+    subjectId: '',
   });
 
   // 편집 모달 상태
@@ -186,6 +196,25 @@ export default function SchedulePage() {
   // 세션 삭제 함수
   function deleteSession(sessionId: string) {
     setSessions(prev => prev.filter(s => s.id !== sessionId));
+  }
+
+  // 빈 공간 클릭 핸들러
+  function handleEmptySpaceClick(weekday: number, time: string) {
+    setEmptySpaceModalData({
+      weekday,
+      startTime: time,
+      endTime: getNextHour(time),
+      studentId: '',
+      subjectId: '',
+    });
+    setShowEmptySpaceModal(true);
+  }
+
+  // 다음 시간 계산 함수
+  function getNextHour(time: string): string {
+    const [hours, minutes] = time.split(':').map(Number);
+    const nextHour = hours + 1;
+    return `${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
 
   // 편집 모달 표시 함수
@@ -330,6 +359,7 @@ export default function SchedulePage() {
           });
           setShowModal(true);
         }}
+        onEmptySpaceClick={handleEmptySpaceClick}
       />
 
       {/* 플로팅 학생 리스트 패널 */}
@@ -591,6 +621,147 @@ export default function SchedulePage() {
                     저장
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 빈 공간 클릭 모달 */}
+      {showEmptySpaceModal && (
+        <div className="modal-backdrop">
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h4 className="modal-title">수업 추가</h4>
+              <div className="modal-form">
+                <div className="form-group">
+                  <label className="form-label">
+                    학생 <span className="required">*</span>
+                  </label>
+                  <select
+                    id="empty-space-student"
+                    className="form-select"
+                    value={emptySpaceModalData.studentId}
+                    onChange={e =>
+                      setEmptySpaceModalData(prev => ({
+                        ...prev,
+                        studentId: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">학생을 선택하세요</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    과목 <span className="required">*</span>
+                  </label>
+                  <select
+                    id="empty-space-subject"
+                    className="form-select"
+                    value={emptySpaceModalData.subjectId}
+                    onChange={e =>
+                      setEmptySpaceModalData(prev => ({
+                        ...prev,
+                        subjectId: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">과목을 선택하세요</option>
+                    {subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">시작 시간</label>
+                  <input
+                    id="empty-space-start-time"
+                    type="time"
+                    className="form-input"
+                    value={emptySpaceModalData.startTime}
+                    onChange={e =>
+                      setEmptySpaceModalData(prev => ({
+                        ...prev,
+                        startTime: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    종료 시간 <span className="required">*</span>
+                  </label>
+                  <input
+                    id="empty-space-end-time"
+                    type="time"
+                    className="form-input"
+                    value={emptySpaceModalData.endTime}
+                    onChange={e =>
+                      setEmptySpaceModalData(prev => ({
+                        ...prev,
+                        endTime: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="modal-actions">
+                <Button
+                  variant="transparent"
+                  onClick={() => setShowEmptySpaceModal(false)}
+                >
+                  취소
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (
+                      !emptySpaceModalData.studentId ||
+                      !emptySpaceModalData.subjectId ||
+                      !emptySpaceModalData.endTime
+                    ) {
+                      alert('필수 항목을 모두 입력해주세요.');
+                      return;
+                    }
+
+                    // 기존 수강 신청이 있는지 확인
+                    let enrollment = enrollments.find(
+                      e =>
+                        e.studentId === emptySpaceModalData.studentId &&
+                        e.subjectId === emptySpaceModalData.subjectId
+                    );
+
+                    // 없으면 새로 생성
+                    if (!enrollment) {
+                      enrollment = {
+                        id: crypto.randomUUID(),
+                        studentId: emptySpaceModalData.studentId,
+                        subjectId: emptySpaceModalData.subjectId,
+                      };
+                      setEnrollments(prev => [...prev, enrollment!]);
+                    }
+
+                    // 세션 추가
+                    addSession(
+                      enrollment.id,
+                      emptySpaceModalData.weekday,
+                      emptySpaceModalData.startTime,
+                      emptySpaceModalData.endTime
+                    );
+
+                    setShowEmptySpaceModal(false);
+                  }}
+                >
+                  추가
+                </Button>
               </div>
             </div>
           </div>

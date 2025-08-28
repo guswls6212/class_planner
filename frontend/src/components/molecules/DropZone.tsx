@@ -7,6 +7,7 @@ interface DropZoneProps {
   onDragEnter: (e: React.DragEvent) => void;
   onDragLeave: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
+  onClick?: () => void;
 }
 
 // 유틸리티 함수들 (테스트 가능)
@@ -72,6 +73,7 @@ export default function DropZone({
   onDragEnter,
   onDragLeave,
   onDragOver,
+  onClick,
 }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -110,6 +112,7 @@ export default function DropZone({
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
+      onClick={onClick}
     />
   );
 }
