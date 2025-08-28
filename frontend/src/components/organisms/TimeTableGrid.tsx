@@ -32,7 +32,7 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
     [hourCols]
   );
 
-  // 🚀 Phase 2: O(n log n) Y축 위치 할당 알고리즘
+  // 🚀 Phase 1: O(n log n) 세션 Y축 위치 계산 알고리즘
   const getSessionYPositions = useCallback(
     (weekday: number): Map<string, number> => {
       console.log(`\n=== Calculating Y positions for weekday ${weekday} ===`);
@@ -48,41 +48,46 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
         return new Map();
       }
 
+      // 겹침 판단 함수: 일부라도 겹치면 겹치는 것으로 판단
+      const sessionsOverlap = (a: Session, b: Session): boolean => {
+        return (
+          timeToMinutes(a.startsAt) < timeToMinutes(b.endsAt) &&
+          timeToMinutes(b.startsAt) < timeToMinutes(a.endsAt)
+        );
+      };
+
       // 각 세션의 Y축 위치를 계산
       const sessionYPositions = new Map<string, number>();
-      const activeTracks: number[] = []; // 현재 활성 트랙들의 종료 시간
 
-      for (const session of sortedSessions) {
-        const sessionStart = timeToMinutes(session.startsAt);
-        const sessionEnd = timeToMinutes(session.endsAt);
+      for (let i = 0; i < sortedSessions.length; i++) {
+        const currentSession = sortedSessions[i];
 
-        // 현재 시간에 종료된 트랙들을 제거
-        while (activeTracks.length > 0 && activeTracks[0] <= sessionStart) {
-          activeTracks.shift();
-        }
+        // 현재 세션과 겹치는 이전 세션들의 최대 yPosition 찾기
+        let maxOverlappingY = -1;
 
-        // 사용 가능한 트랙 찾기
-        let trackIndex = 0;
-        for (; trackIndex < activeTracks.length; trackIndex++) {
-          if (sessionStart >= activeTracks[trackIndex]) {
-            // 이 트랙에 배치 가능
-            activeTracks[trackIndex] = sessionEnd;
-            break;
+        for (let j = 0; j < i; j++) {
+          const previousSession = sortedSessions[j];
+          if (sessionsOverlap(currentSession, previousSession)) {
+            const previousY = sessionYPositions.get(previousSession.id) || 0;
+            maxOverlappingY = Math.max(maxOverlappingY, previousY);
           }
         }
 
-        // 사용 가능한 트랙이 없으면 새로운 트랙 생성
-        if (trackIndex === activeTracks.length) {
-          activeTracks.push(sessionEnd);
-        }
+        // 겹치는 세션이 있으면 그 다음 줄에 배치, 없으면 첫 번째 줄
+        const yPosition = maxOverlappingY >= 0 ? maxOverlappingY + 32 : 0;
+        sessionYPositions.set(currentSession.id, yPosition);
 
-        // Y축 위치 할당 (트랙 인덱스 * 32)
-        const yPosition = trackIndex;
-        sessionYPositions.set(session.id, yPosition);
-
+        // 디버깅을 위한 상세 로그
         console.log(
-          `  Session ${session.id} (${session.startsAt}-${session.endsAt}): assigned to track ${trackIndex}, Y position ${yPosition}`
+          `  Session ${currentSession.id} (${currentSession.startsAt}-${currentSession.endsAt}): Y position ${yPosition}`
         );
+        if (maxOverlappingY >= 0) {
+          console.log(
+            `    Overlaps with previous sessions, placed at yPosition: ${yPosition}`
+          );
+        } else {
+          console.log('    No overlap, placed at yPosition: 0');
+        }
       }
 
       return sessionYPositions;
@@ -96,41 +101,25 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
       const daySessions = sessions.get(weekday) || [];
       if (daySessions.length === 0) return 60; // 기본 높이
 
-      // 세션들을 시작 시간 기준으로 정렬 (O(n log n))
-      const sortedSessions = [...daySessions].sort(
-        (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
-      );
+      // 실제 세션의 Y축 위치를 계산하여 최대 yPosition 찾기
+      const sessionYPositions = getSessionYPositions(weekday);
+      let maxYPosition = 0;
 
-      // 겹치는 세션 그룹을 효율적으로 계산 (O(n log n))
-      let maxOverlap = 1;
-      const activeSessions: number[] = []; // 현재 활성 세션들의 종료 시간
-
-      for (const session of sortedSessions) {
-        const sessionStart = timeToMinutes(session.startsAt);
-        const sessionEnd = timeToMinutes(session.endsAt);
-
-        // 현재 시간에 종료된 세션들을 제거
-        while (activeSessions.length > 0 && activeSessions[0] <= sessionStart) {
-          activeSessions.shift();
-        }
-
-        // 현재 세션 추가
-        activeSessions.push(sessionEnd);
-
-        // activeSessions 배열을 종료 시간 기준으로 정렬 유지 (삽입 정렬)
-        activeSessions.sort((a, b) => a - b);
-
-        // 현재 겹침 수 업데이트
-        maxOverlap = Math.max(maxOverlap, activeSessions.length);
+      for (const yPosition of sessionYPositions.values()) {
+        maxYPosition = Math.max(maxYPosition, yPosition);
       }
 
+      // 최대 yPosition + 세션 높이(32px) + 여백(28px) = 실제 필요한 높이
+      const requiredHeight = maxYPosition + 32 + 28;
+      const finalHeight = Math.max(60, requiredHeight);
+
       console.log(
-        `Weekday ${weekday}: ${daySessions.length} sessions, max overlap: ${maxOverlap}, height: ${Math.max(60, 60 + (maxOverlap - 1) * 32)}`
+        `Weekday ${weekday}: ${daySessions.length} sessions, max yPosition: ${maxYPosition}, required height: ${requiredHeight}, final height: ${finalHeight}`
       );
 
-      return Math.max(60, 60 + (maxOverlap - 1) * 32);
+      return finalHeight;
     },
-    [sessions]
+    [sessions, getSessionYPositions]
   );
 
   // 요일별 높이를 useMemo로 최적화

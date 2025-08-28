@@ -49,7 +49,7 @@ const mockSessions = new Map<number, Session[]>([
   ],
 ]);
 
-// 겹치는 세션이 있는 테스트 데이터
+// 겹치는 세션이 있는 테스트 데이터 (새로운 로직 반영)
 const mockOverlappingSessions = new Map<number, Session[]>([
   [
     0,
@@ -65,15 +65,22 @@ const mockOverlappingSessions = new Map<number, Session[]>([
         id: 'session-overlap-2',
         enrollmentId: 'enrollment-2',
         weekday: 0,
-        startsAt: '09:00',
-        endsAt: '11:00',
+        startsAt: '09:15',
+        endsAt: '10:15',
       },
       {
         id: 'session-overlap-3',
         enrollmentId: 'enrollment-1',
         weekday: 0,
-        startsAt: '10:00',
-        endsAt: '11:00',
+        startsAt: '09:30',
+        endsAt: '10:30',
+      },
+      {
+        id: 'session-overlap-4',
+        enrollmentId: 'enrollment-2',
+        weekday: 0,
+        startsAt: '09:45',
+        endsAt: '10:45',
       },
     ],
   ],
@@ -161,6 +168,59 @@ describe('TimeTableGrid', () => {
     expect(grid).toHaveStyle({
       backgroundColor: expect.stringMatching(/red|rgb\(255,\s*0,\s*0\)/),
     });
+  });
+
+  it('겹치는 세션이 있는 경우 순차적으로 Y축으로 분리되어 렌더링된다', () => {
+    render(
+      <TimeTableGrid {...defaultProps} sessions={mockOverlappingSessions} />
+    );
+
+    // 겹치는 세션들이 순차적으로 Y축으로 분리되어야 함
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('영어 09:15-10:15')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 09:30-10:30')).toBeInTheDocument();
+    expect(screen.getByText('영어 09:45-10:45')).toBeInTheDocument();
+  });
+
+  it('부분적으로 겹치는 세션들도 겹치는 것으로 판단하여 Y축으로 분리한다', () => {
+    const partialOverlapSessions = new Map<number, Session[]>([
+      [
+        0,
+        [
+          {
+            id: 'partial-1',
+            enrollmentId: 'enrollment-1',
+            weekday: 0,
+            startsAt: '09:00',
+            endsAt: '10:00',
+          },
+          {
+            id: 'partial-2',
+            enrollmentId: 'enrollment-2',
+            weekday: 0,
+            startsAt: '09:30',
+            endsAt: '10:30',
+          },
+          {
+            id: 'partial-3',
+            enrollmentId: 'enrollment-1',
+            weekday: 0,
+            startsAt: '10:00',
+            endsAt: '11:00',
+          },
+        ],
+      ],
+    ]);
+
+    render(
+      <TimeTableGrid {...defaultProps} sessions={partialOverlapSessions} />
+    );
+
+    // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
+    // 10:00-11:00은 09:30-10:30과 겹침 → yPosition: 32
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('영어 09:30-10:30')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 10:00-11:00')).toBeInTheDocument();
   });
 
   it('좌상단 빈칸을 렌더링한다', () => {

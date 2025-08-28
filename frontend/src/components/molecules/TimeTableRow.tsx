@@ -168,7 +168,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
             // yOffset 계산: sessionYPositions에서 미리 계산된 Y축 위치 사용
             const yPosition = sessionYPositions.get(session.id) || 0;
-            const yOffset = yPosition * 32;
+            const yOffset = yPosition; // 이미 32를 곱한 값이므로 그대로 사용
 
             console.log(
               `Rendering session: ${session.id} (${session.startsAt}-${session.endsAt}) on weekday ${weekday}, yPosition: ${yPosition}, left: ${left}, width: ${width}, yOffset: ${yOffset}`
