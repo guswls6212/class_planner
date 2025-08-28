@@ -1,16 +1,16 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import './styles/global.css';
 import {
   createBrowserRouter,
-  RouterProvider,
-  Outlet,
   NavLink,
+  Outlet,
+  RouterProvider,
 } from 'react-router-dom';
-import StudentsPage from './pages/Students';
-import SchedulePage from './pages/Schedule';
-import { ThemeProvider } from './contexts/ThemeContext';
 import ThemeToggle from './components/atoms/ThemeToggle';
+import { ThemeProvider } from './contexts/ThemeContext';
+import SchedulePage from './pages/Schedule';
+import StudentsPage from './pages/Students';
+import './styles/global.css';
 
 // eslint-disable-next-line react-refresh/only-export-components
 function Layout() {

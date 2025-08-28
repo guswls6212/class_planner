@@ -13,7 +13,15 @@ vi.mock('../../components/organisms/StudentManagementSection', () => ({
     onAddStudent,
     onSelectStudent,
     onDeleteStudent,
-  }: any) => (
+  }: {
+    students: Student[];
+    newStudentName: string;
+    selectedStudentId: string | null;
+    onNewStudentNameChange: (name: string) => void;
+    onAddStudent: () => void;
+    onSelectStudent: (id: string) => void;
+    onDeleteStudent: (id: string) => void;
+  }) => (
     <div data-testid="student-management-section">
       <input
         data-testid="student-name-input"

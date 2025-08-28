@@ -5,7 +5,15 @@ import SchedulePage from '../../pages/Schedule';
 
 // Mock 컴포넌트들
 vi.mock('../../components/organisms/TimeTableGrid', () => ({
-  default: ({ sessions, onSessionClick, onDrop }: any) => (
+  default: ({
+    sessions,
+    onSessionClick,
+    onDrop,
+  }: {
+    sessions: Map<number, Session[]>;
+    onSessionClick: (session: Session) => void;
+    onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  }) => (
     <div data-testid="time-table-grid">
       <div data-testid="sessions-count">
         총 세션 수: {Array.from(sessions.values()).flat().length}
@@ -21,7 +29,13 @@ vi.mock('../../components/organisms/TimeTableGrid', () => ({
 }));
 
 vi.mock('../../components/molecules/Card', () => ({
-  default: ({ children, ...props }: any) => (
+  default: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <div data-testid="card" {...props}>
       {children}
     </div>
@@ -29,7 +43,31 @@ vi.mock('../../components/molecules/Card', () => ({
 }));
 
 vi.mock('../../components/atoms/Button', () => ({
-  default: ({ children, onClick, ...props }: any) => (
+  default: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    [key: string]: unknown;
+  }) => (
+    <button data-testid="button" onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
+}));
+
+vi.mock('../../components/atoms/Button', () => ({
+  default: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick: () => void;
+    [key: string]: unknown;
+  }) => (
     <button data-testid="button" onClick={onClick} {...props}>
       {children}
     </button>
@@ -37,7 +75,13 @@ vi.mock('../../components/atoms/Button', () => ({
 }));
 
 vi.mock('../../components/atoms/Label', () => ({
-  default: ({ children, ...props }: any) => (
+  default: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <label data-testid="label" {...props}>
       {children}
     </label>

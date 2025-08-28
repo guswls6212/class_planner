@@ -9,11 +9,15 @@ vi.mock('../molecules/TimeTableRow', () => ({
     weekday,
     height,
     sessions,
-    subjects,
-    enrollments,
     onSessionClick,
     onDrop,
-  }: any) => (
+  }: {
+    weekday: number;
+    height: number;
+    sessions: Map<number, Session[]>;
+    onSessionClick: (session: Session) => void;
+    onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  }) => (
     <div data-testid={`time-table-row-${weekday}`}>
       <div>요일: {weekday}</div>
       <div>높이: {height}</div>

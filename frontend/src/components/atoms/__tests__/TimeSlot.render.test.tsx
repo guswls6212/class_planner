@@ -18,7 +18,7 @@ describe('TimeSlot 렌더링 테스트', () => {
     const customStyle = { backgroundColor: 'red' };
     render(<TimeSlot time="11:00" style={customStyle} />);
     const timeSlot = screen.getByText('11:00');
-    expect(timeSlot).toHaveStyle('background-color: red');
+    expect(timeSlot).toHaveStyle('background-color: rgb(255, 0, 0)');
   });
 
   it('기본 스타일 속성들을 올바르게 적용한다', () => {
