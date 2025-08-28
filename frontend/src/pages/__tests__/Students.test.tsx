@@ -1,196 +1,218 @@
-import { vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Student } from '../../lib/planner';
 import StudentsPage from '../Students';
 
-// Mock React Testing Library to avoid DOM issues
-const mockRender = vi.fn();
-const mockScreen = {
-  getByText: vi.fn(),
-  getByPlaceholderText: vi.fn(),
-  getByRole: vi.fn(),
-  queryByText: vi.fn(),
-  queryByRole: vi.fn(),
-};
-const mockFireEvent = {
-  click: vi.fn(),
-  change: vi.fn(),
-  input: vi.fn(),
-};
-const mockWaitFor = vi.fn();
-
-// Mock the entire React Testing Library
-vi.mock('@testing-library/react', () => ({
-  render: mockRender,
-  screen: mockScreen,
-  fireEvent: mockFireEvent,
-  waitFor: mockWaitFor,
+// Mock StudentManagementSection 컴포넌트
+vi.mock('../../components/organisms/StudentManagementSection', () => ({
+  default: ({
+    students,
+    newStudentName,
+    selectedStudentId,
+    onNewStudentNameChange,
+    onAddStudent,
+    onSelectStudent,
+    onDeleteStudent,
+  }: any) => (
+    <div data-testid="student-management-section">
+      <input
+        data-testid="student-name-input"
+        value={newStudentName}
+        onChange={e => onNewStudentNameChange(e.target.value)}
+        placeholder="학생 이름 입력"
+      />
+      <button data-testid="add-student-btn" onClick={onAddStudent}>
+        학생 추가
+      </button>
+      <div data-testid="students-list">
+        {students.map((student: Student) => (
+          <div key={student.id} data-testid={`student-${student.id}`}>
+            <span
+              data-testid={`student-name-${student.id}`}
+              onClick={() => onSelectStudent(student.id)}
+              style={{
+                fontWeight:
+                  selectedStudentId === student.id ? 'bold' : 'normal',
+              }}
+            >
+              {student.name}
+            </span>
+            <button
+              data-testid={`delete-student-${student.id}`}
+              onClick={() => onDeleteStudent(student.id)}
+            >
+              삭제
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  ),
 }));
 
 // Mock localStorage
-const mockLocalStorage = {
+const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
-  removeItem: vi.fn(),
   clear: vi.fn(),
 };
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
-Object.defineProperty(window, 'localStorage', {
-  value: mockLocalStorage,
+// Mock uid 함수
+vi.mock('../../lib/planner', async () => {
+  const actual = await vi.importActual('../../lib/planner');
+  return {
+    ...actual,
+    uid: () => 'test-uid-' + Math.random().toString(36).substr(2, 9),
+  };
 });
-
-// Mock uid function
-vi.mock('../lib/planner', () => ({
-  uid: vi.fn(() => 'mock-uuid-123'),
-}));
-
-// Mock alert
-global.alert = vi.fn();
 
 describe('StudentsPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockLocalStorage.getItem.mockReturnValue(null);
+    localStorageMock.getItem.mockReturnValue(null);
+    localStorageMock.setItem.mockClear();
+    localStorageMock.getItem.mockClear();
   });
 
-  it('StudentsPage 컴포넌트가 올바르게 정의되어 있다', () => {
-    expect(StudentsPage).toBeDefined();
-    expect(typeof StudentsPage).toBe('function');
+  it('기본 레이아웃을 렌더링한다', () => {
+    render(<StudentsPage />);
+
+    const grid = screen.getByTestId('students-page');
+    expect(grid).toHaveStyle({
+      display: 'grid',
+      gridTemplateColumns: '340px 1fr',
+      gap: '16px',
+      padding: '16px',
+    });
   });
 
-  it('localStorage 모킹이 올바르게 설정되어 있다', () => {
-    expect(mockLocalStorage.getItem).toBeDefined();
-    expect(mockLocalStorage.setItem).toBeDefined();
-    expect(typeof mockLocalStorage.getItem).toBe('function');
-    expect(typeof mockLocalStorage.setItem).toBe('function');
+  it('StudentManagementSection을 렌더링한다', () => {
+    render(<StudentsPage />);
+
+    expect(
+      screen.getByTestId('student-management-section')
+    ).toBeInTheDocument();
   });
 
-  it('uid 함수 모킹이 올바르게 설정되어 있다', () => {
-    // uid 함수 모킹이 올바르게 설정되었는지 확인
-    const mockUid = vi.fn(() => 'mock-uuid-123');
-    expect(mockUid).toBeDefined();
-    expect(typeof mockUid).toBe('function');
-    expect(mockUid()).toBe('mock-uuid-123');
+  it('기본 과목을 자동으로 생성한다', async () => {
+    render(<StudentsPage />);
+
+    await waitFor(() => {
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'subjects',
+        expect.stringContaining('수학')
+      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'subjects',
+        expect.stringContaining('영어')
+      );
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'subjects',
+        expect.stringContaining('국어')
+      );
+    });
   });
 
-  it('alert 모킹이 올바르게 설정되어 있다', () => {
-    expect(global.alert).toBeDefined();
-    expect(typeof global.alert).toBe('function');
+  it('기본 과목 색상을 올바르게 설정한다', async () => {
+    render(<StudentsPage />);
+
+    await waitFor(() => {
+      const setItemCalls = localStorageMock.setItem.mock.calls;
+      const subjectsCall = setItemCalls.find(([key]) => key === 'subjects');
+
+      if (subjectsCall) {
+        const subjects = JSON.parse(subjectsCall[1]);
+        expect(subjects).toEqual([
+          { id: expect.any(String), name: '수학', color: '#f59e0b' },
+          { id: expect.any(String), name: '영어', color: '#3b82f6' },
+          { id: expect.any(String), name: '국어', color: '#10b981' },
+        ]);
+      }
+    });
   });
 
-  it('React Testing Library 모킹이 올바르게 설정되어 있다', () => {
-    expect(mockRender).toBeDefined();
-    expect(mockScreen).toBeDefined();
-    expect(mockFireEvent).toBeDefined();
-    expect(mockWaitFor).toBeDefined();
-    expect(typeof mockRender).toBe('function');
-    expect(typeof mockScreen.getByText).toBe('function');
-    expect(typeof mockFireEvent.click).toBe('function');
-    expect(typeof mockWaitFor).toBe('function');
-  });
-
-  it('학생 관련 텍스트들이 올바르게 정의되어 있다', () => {
-    const texts = [
-      '학생 목록',
-      '학생 이름',
-      '추가',
-      '학생을 추가해주세요',
-      '선택된 학생:',
-      '삭제',
+  it('localStorage에서 기존 데이터를 불러온다', () => {
+    const existingStudents = [
+      { id: 'existing-1', name: '기존학생1' },
+      { id: 'existing-2', name: '기존학생2' },
     ];
 
-    expect(texts).toContain('학생 목록');
-    expect(texts).toContain('학생 이름');
-    expect(texts).toContain('추가');
-    expect(texts).toContain('학생을 추가해주세요');
-    expect(texts).toContain('선택된 학생:');
-    expect(texts).toContain('삭제');
+    localStorageMock.getItem.mockImplementation(key => {
+      if (key === 'students') return JSON.stringify(existingStudents);
+      if (key === 'subjects') return JSON.stringify([]);
+      if (key === 'ui:selectedStudent') return 'existing-1';
+      return null;
+    });
+
+    render(<StudentsPage />);
+
+    expect(screen.getByText('기존학생1')).toBeInTheDocument();
+    expect(screen.getByText('기존학생2')).toBeInTheDocument();
   });
 
-  it('학생 데이터 구조가 올바르게 정의되어 있다', () => {
-    const mockStudent = {
-      id: '1',
-      name: '김철수',
-    };
+  it('학생 추가 기능을 제공한다', () => {
+    render(<StudentsPage />);
 
-    expect(mockStudent).toHaveProperty('id');
-    expect(mockStudent).toHaveProperty('name');
-    expect(typeof mockStudent.id).toBe('string');
-    expect(typeof mockStudent.name).toBe('string');
+    const input = screen.getByTestId('student-name-input');
+    const addButton = screen.getByTestId('add-student-btn');
+
+    expect(input).toBeInTheDocument();
+    expect(addButton).toBeInTheDocument();
   });
 
-  it('학생 관련 함수들이 올바르게 정의되어 있다', () => {
-    const functions = [
-      'addStudent',
-      'deleteStudent',
-      'selectStudent',
-      'handleInputChange',
-      'handleSubmit',
+  it('학생 삭제 기능을 제공한다', () => {
+    const existingStudents = [{ id: 'existing-1', name: '기존학생1' }];
+
+    localStorageMock.getItem.mockImplementation(key => {
+      if (key === 'students') return JSON.stringify(existingStudents);
+      if (key === 'subjects') return JSON.stringify([]);
+      return null;
+    });
+
+    render(<StudentsPage />);
+
+    const deleteButton = screen.getByTestId('delete-student-existing-1');
+    expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('학생 선택 기능을 제공한다', () => {
+    const existingStudents = [
+      { id: 'existing-1', name: '기존학생1' },
+      { id: 'existing-2', name: '기존학생2' },
     ];
 
-    expect(functions).toContain('addStudent');
-    expect(functions).toContain('deleteStudent');
-    expect(functions).toContain('selectStudent');
-    expect(functions).toContain('handleInputChange');
-    expect(functions).toContain('handleSubmit');
+    localStorageMock.getItem.mockImplementation(key => {
+      if (key === 'students') return JSON.stringify(existingStudents);
+      if (key === 'subjects') return JSON.stringify([]);
+      if (key === 'ui:selectedStudent') return 'existing-1';
+      return null;
+    });
+
+    render(<StudentsPage />);
+
+    const selectedStudent = screen.getByTestId('student-name-existing-1');
+    const unselectedStudent = screen.getByTestId('student-name-existing-2');
+
+    expect(selectedStudent).toHaveStyle({ fontWeight: 'bold' });
+    expect(unselectedStudent).toHaveStyle({ fontWeight: 'normal' });
   });
 
-  it('학생 관련 이벤트 타입들이 올바르게 정의되어 있다', () => {
-    const eventTypes = ['click', 'change', 'input', 'submit'];
+  it('좌측 너비가 340px로 고정되어 있다', () => {
+    render(<StudentsPage />);
 
-    expect(eventTypes).toContain('click');
-    expect(eventTypes).toContain('change');
-    expect(eventTypes).toContain('input');
-    expect(eventTypes).toContain('submit');
+    const grid = screen.getByTestId('students-page');
+    expect(grid).toHaveStyle({
+      gridTemplateColumns: '340px 1fr',
+    });
   });
 
-  it('학생 관련 CSS 클래스들이 올바르게 정의되어 있다', () => {
-    const cssClasses = [
-      'students-container',
-      'student-form',
-      'student-list',
-      'student-item',
-      'selected-student',
-    ];
+  it('간격과 패딩이 올바르게 설정되어 있다', () => {
+    render(<StudentsPage />);
 
-    expect(cssClasses).toContain('students-container');
-    expect(cssClasses).toContain('student-form');
-    expect(cssClasses).toContain('student-list');
-    expect(cssClasses).toContain('student-item');
-    expect(cssClasses).toContain('selected-student');
-  });
-
-  it('학생 관련 폼 요소들이 올바르게 정의되어 있다', () => {
-    const formElements = ['input', 'button', 'form', 'ul', 'li'];
-
-    expect(formElements).toContain('input');
-    expect(formElements).toContain('button');
-    expect(formElements).toContain('form');
-    expect(formElements).toContain('ul');
-    expect(formElements).toContain('li');
-  });
-
-  it('학생 관련 상수들이 올바르게 정의되어 있다', () => {
-    const constants = {
-      STORAGE_KEY: 'students',
-      SELECTED_STUDENT_KEY: 'selectedStudent',
-      PLACEHOLDER_TEXT: '학생 이름',
-    };
-
-    expect(constants.STORAGE_KEY).toBe('students');
-    expect(constants.SELECTED_STUDENT_KEY).toBe('selectedStudent');
-    expect(constants.PLACEHOLDER_TEXT).toBe('학생 이름');
-  });
-
-  it('학생 관련 메시지들이 올바르게 정의되어 있다', () => {
-    const messages = [
-      '학생을 추가해주세요',
-      '선택된 학생:',
-      '정말 삭제하시겠습니까?',
-      '학생 이름을 입력해주세요',
-    ];
-
-    expect(messages).toContain('학생을 추가해주세요');
-    expect(messages).toContain('선택된 학생:');
-    expect(messages).toContain('정말 삭제하시겠습니까?');
-    expect(messages).toContain('학생 이름을 입력해주세요');
+    const grid = screen.getByTestId('students-page');
+    expect(grid).toHaveStyle({
+      gap: '16px',
+      padding: '16px',
+    });
   });
 });
