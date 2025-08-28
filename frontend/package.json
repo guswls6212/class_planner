@@ -23,7 +23,7 @@
     "test:coverage:ci": "vitest run --coverage --reporter=text",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "prepare-commit": "npm run test:run && npm run lint && npm run format"
+    "prepare-commit": "npm run test:run && npm run lint && npm run format && npx tsc --noEmit"
   },
   "dependencies": {
     "react": "^19.1.1",

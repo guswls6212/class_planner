@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Session, Subject } from '../../lib/planner';
+import type { Session, Subject } from '../../../lib/planner';
 import TimeTableRow from '../TimeTableRow';
 
 // Mock 컴포넌트들
@@ -49,7 +49,7 @@ vi.mock('../DropZone', () => ({
             dataTransfer: {
               getData: () => 'test-enrollment',
             },
-          } as React.DragEvent;
+          } as unknown as React.DragEvent;
           onDrop(mockEvent);
         }}
         style={{

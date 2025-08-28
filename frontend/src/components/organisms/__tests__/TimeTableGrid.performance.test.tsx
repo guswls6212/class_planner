@@ -47,6 +47,7 @@ describe('TimeTableGrid 성능 테스트', () => {
     const { sessions, subjects, enrollments } = generateLargeTestData(10);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
+    const mockOnEmptySpaceClick = vi.fn();
 
     const startTime = performance.now();
 
@@ -57,6 +58,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
 
@@ -72,6 +74,7 @@ describe('TimeTableGrid 성능 테스트', () => {
     const { sessions, subjects, enrollments } = generateLargeTestData(50);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
+    const mockOnEmptySpaceClick = vi.fn();
 
     const startTime = performance.now();
 
@@ -82,6 +85,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
 
@@ -97,6 +101,7 @@ describe('TimeTableGrid 성능 테스트', () => {
     const { sessions, subjects, enrollments } = generateLargeTestData(100);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
+    const mockOnEmptySpaceClick = vi.fn();
 
     const startTime = performance.now();
 
@@ -107,6 +112,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
 
@@ -122,6 +128,7 @@ describe('TimeTableGrid 성능 테스트', () => {
     const { sessions, subjects, enrollments } = generateLargeTestData(20);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
+    const mockOnEmptySpaceClick = vi.fn();
 
     // 첫 번째 렌더링
     const { rerender } = render(
@@ -131,6 +138,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
 
@@ -143,6 +151,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
     const endTime = performance.now();
@@ -160,6 +169,7 @@ describe('TimeTableGrid 성능 테스트', () => {
 
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
+    const mockOnEmptySpaceClick = vi.fn();
 
     // 소규모 데이터 렌더링 시간
     const smallStart = performance.now();
@@ -170,6 +180,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={smallData.enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
     const smallTime = performance.now() - smallStart;
@@ -183,6 +194,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={mediumData.enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
     const mediumTime = performance.now() - mediumStart;
@@ -196,11 +208,12 @@ describe('TimeTableGrid 성능 테스트', () => {
         enrollments={largeData.enrollments}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
+        onEmptySpaceClick={mockOnEmptySpaceClick}
       />
     );
     const largeTime = performance.now() - largeStart;
 
-    console.log(`성능 테스트 결과:`);
+    console.log('성능 테스트 결과:');
     console.log(`  10개 세션: ${smallTime.toFixed(2)}ms`);
     console.log(`  50개 세션: ${mediumTime.toFixed(2)}ms`);
     console.log(`  100개 세션: ${largeTime.toFixed(2)}ms`);
@@ -212,7 +225,7 @@ describe('TimeTableGrid 성능 테스트', () => {
     expect(smallToMediumRatio).toBeLessThan(10); // 5배 증가 시 10배 이하
     expect(mediumToLargeRatio).toBeLessThan(10); // 2배 증가 시 10배 이하
 
-    console.log(`복잡도 검증:`);
+    console.log('복잡도 검증:');
     console.log(`  10→50 세션 비율: ${smallToMediumRatio.toFixed(2)}`);
     console.log(`  50→100 세션 비율: ${mediumToLargeRatio.toFixed(2)}`);
   });
