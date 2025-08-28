@@ -230,8 +230,8 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
     it('요일 드롭다운이 커스텀 화살표를 사용한다', () => {
       const weekdaySelect = screen.getByDisplayValue('월');
 
-      // CSS Modules 스타일을 사용하여 클래스 확인
-      expect(weekdaySelect).toHaveClass(styles.formSelect);
+      // Global CSS 클래스를 사용하여 클래스 확인
+      expect(weekdaySelect).toHaveClass('form-select');
     });
 
     it('요일 드롭다운에 올바른 옵션들이 포함된다', () => {
@@ -264,51 +264,47 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
     });
 
     it('모달이 올바른 CSS 클래스를 가진다', () => {
-      const modal = screen
-        .getByText('수업 편집')
-        .closest(`.${styles.modalOverlay}`);
+      const modal = screen.getByText('수업 편집').closest('.modal-content');
       expect(modal).toBeInTheDocument();
-      expect(modal).toHaveClass(styles.modalOverlay);
+      expect(modal).toHaveClass('modal-content');
     });
 
     it('모달 헤더가 올바른 CSS 클래스를 가진다', () => {
       const header = screen.getByText('수업 편집');
-      expect(header).toHaveClass(styles.modalHeader);
+      expect(header).toHaveClass('modal-title');
     });
 
     it('모달 폼이 올바른 CSS 클래스를 가진다', () => {
-      const form = screen.getByText('학생').closest(`.${styles.modalForm}`);
+      const form = screen.getByText('학생').closest('.modal-form');
       expect(form).toBeInTheDocument();
-      expect(form).toHaveClass(styles.modalForm);
+      expect(form).toHaveClass('modal-form');
     });
 
     it('모달 액션 버튼들이 올바른 CSS 클래스를 가진다', () => {
-      const actions = screen
-        .getByText('삭제')
-        .closest(`.${styles.modalActions}`);
+      const actions = screen.getByText('삭제').closest('.modal-actions');
       expect(actions).toBeInTheDocument();
-      expect(actions).toHaveClass(styles.modalActions);
+      expect(actions).toHaveClass('modal-actions');
     });
 
     it('폼 그룹들이 올바른 CSS 클래스를 가진다', () => {
-      const formGroups = document.querySelectorAll(`.${styles.formGroup}`);
+      const formGroups = document.querySelectorAll('.form-group');
       expect(formGroups).toHaveLength(5); // 학생, 과목, 요일, 시작시간, 종료시간
     });
 
     it('폼 라벨들이 올바른 CSS 클래스를 가진다', () => {
-      const labels = document.querySelectorAll(`.${styles.formLabel}`);
+      const labels = document.querySelectorAll('.form-label');
       expect(labels).toHaveLength(5);
       labels.forEach(label => {
-        expect(label).toHaveClass(styles.formLabel);
+        expect(label).toHaveClass('form-label');
       });
     });
 
     it('폼 입력 필드들이 올바른 CSS 클래스를 가진다', () => {
-      const inputs = document.querySelectorAll(`.${styles.formInput}`);
+      const inputs = document.querySelectorAll('.form-input');
       // 학생, 과목, 시작시간, 종료시간 (학생과 과목은 div, 시작시간과 종료시간은 input)
       expect(inputs.length).toBeGreaterThanOrEqual(3);
 
-      const selects = document.querySelectorAll(`.${styles.formSelect}`);
+      const selects = document.querySelectorAll('.form-select');
       expect(selects).toHaveLength(1); // 요일 선택만
     });
   });

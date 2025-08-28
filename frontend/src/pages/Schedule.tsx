@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../components/atoms/Button';
 import Label from '../components/atoms/Label';
-import Card from '../components/molecules/Card';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
 import { weekdays } from '../lib/planner';
@@ -413,185 +412,186 @@ export default function SchedulePage() {
 
       {/* 과목 선택 및 시간 설정 모달 */}
       {showModal && (
-        <Card
-          title="수업 추가"
-          variant="elevated"
-          padding="large"
-          className="modal-overlay position-fixed z-1000"
-          style={{
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            minWidth: 280,
-          }}
-        >
-          <div className="modal-form">
-            <div className="form-group">
-              <Label htmlFor="modal-subject" required>
-                과목
-              </Label>
-              <select id="modal-subject" className="form-select">
-                {subjects.map(sub => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <Label htmlFor="modal-weekday" required>
-                요일
-              </Label>
-              <select
-                id="modal-weekday"
-                className="form-select"
-                defaultValue={modalData.weekday}
-              >
-                {weekdays.map((w, idx) => (
-                  <option key={idx} value={idx}>
-                    {w}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <Label htmlFor="modal-start-time" required>
-                시작 시간
-              </Label>
-              <input
-                id="modal-start-time"
-                type="time"
-                className="form-input"
-                defaultValue={modalData.startTime}
-              />
-            </div>
-            <div className="form-group">
-              <Label htmlFor="modal-end-time" required>
-                종료 시간
-              </Label>
-              <input
-                id="modal-end-time"
-                type="time"
-                className="form-input"
-                defaultValue={modalData.endTime}
-              />
+        <div className="modal-backdrop">
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h4 className="modal-title">수업 추가</h4>
+              <div className="modal-form">
+                <div className="form-group">
+                  <Label htmlFor="modal-subject" required>
+                    과목
+                  </Label>
+                  <select id="modal-subject" className="form-select">
+                    {subjects.map(sub => (
+                      <option key={sub.id} value={sub.id}>
+                        {sub.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="modal-weekday" required>
+                    요일
+                  </Label>
+                  <select
+                    id="modal-weekday"
+                    className="form-select"
+                    defaultValue={modalData.weekday}
+                  >
+                    {weekdays.map((w, idx) => (
+                      <option key={idx} value={idx}>
+                        {w}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="modal-start-time" required>
+                    시작 시간
+                  </Label>
+                  <input
+                    id="modal-start-time"
+                    type="time"
+                    className="form-input"
+                    defaultValue={modalData.startTime}
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="modal-end-time" required>
+                    종료 시간
+                  </Label>
+                  <input
+                    id="modal-end-time"
+                    type="time"
+                    className="form-input"
+                    defaultValue={modalData.endTime}
+                  />
+                </div>
+              </div>
+              <div className="modal-actions">
+                <Button
+                  variant="transparent"
+                  onClick={() => setShowModal(false)}
+                >
+                  취소
+                </Button>
+                <Button variant="primary" onClick={handleModalSubmit}>
+                  추가
+                </Button>
+              </div>
             </div>
           </div>
-          <div className="modal-actions">
-            <Button variant="transparent" onClick={() => setShowModal(false)}>
-              취소
-            </Button>
-            <Button variant="primary" onClick={handleModalSubmit}>
-              추가
-            </Button>
-          </div>
-        </Card>
+        </div>
       )}
 
       {/* 편집 모달 */}
       {showEditModal && editModalData && (
-        <div className={styles.modalOverlay}>
-          <h4 className={styles.modalHeader}>수업 편집</h4>
-          <div className={styles.modalForm}>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>학생</label>
-              <div className={styles.formInput}>
-                {students.find(s => s.id === editModalData.studentId)?.name}
+        <div className="modal-backdrop">
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h4 className="modal-title">수업 편집</h4>
+              <div className="modal-form">
+                <div className="form-group">
+                  <label className="form-label">학생</label>
+                  <div className="form-input">
+                    {students.find(s => s.id === editModalData.studentId)?.name}
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">과목</label>
+                  <div className="form-input">
+                    {subjects.find(s => s.id === editModalData.subjectId)?.name}
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">요일</label>
+                  <select
+                    id="edit-modal-weekday"
+                    className="form-select"
+                    defaultValue={editModalData.weekday}
+                  >
+                    {weekdays.map((w, idx) => (
+                      <option key={idx} value={idx}>
+                        {w}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">시작 시간</label>
+                  <input
+                    id="edit-modal-start-time"
+                    type="time"
+                    className="form-input"
+                    defaultValue={editModalData.startTime}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">종료 시간</label>
+                  <input
+                    id="edit-modal-end-time"
+                    type="time"
+                    className="form-input"
+                    defaultValue={editModalData.endTime}
+                  />
+                </div>
               </div>
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>과목</label>
-              <div className={styles.formInput}>
-                {subjects.find(s => s.id === editModalData.subjectId)?.name}
+              <div className="modal-actions">
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    if (confirm('정말 삭제하시겠습니까?')) {
+                      deleteSession(editModalData.sessionId);
+                      setShowEditModal(false);
+                    }
+                  }}
+                >
+                  삭제
+                </Button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button
+                    variant="transparent"
+                    onClick={() => setShowEditModal(false)}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      const weekday = Number(
+                        (
+                          document.getElementById(
+                            'edit-modal-weekday'
+                          ) as HTMLSelectElement
+                        )?.value
+                      );
+                      const startTime = (
+                        document.getElementById(
+                          'edit-modal-start-time'
+                        ) as HTMLInputElement
+                      )?.value;
+                      const endTime = (
+                        document.getElementById(
+                          'edit-modal-end-time'
+                        ) as HTMLInputElement
+                      )?.value;
+
+                      if (!startTime || !endTime) return;
+
+                      editSession(
+                        editModalData.sessionId,
+                        editModalData.enrollmentId,
+                        weekday,
+                        startTime,
+                        endTime
+                      );
+                      setShowEditModal(false);
+                    }}
+                  >
+                    저장
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>요일</label>
-              <select
-                id="edit-modal-weekday"
-                className={styles.formSelect}
-                defaultValue={editModalData.weekday}
-              >
-                {weekdays.map((w, idx) => (
-                  <option key={idx} value={idx}>
-                    {w}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>시작 시간</label>
-              <input
-                id="edit-modal-start-time"
-                type="time"
-                className={styles.formInput}
-                defaultValue={editModalData.startTime}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>종료 시간</label>
-              <input
-                id="edit-modal-end-time"
-                type="time"
-                className={styles.formInput}
-                defaultValue={editModalData.endTime}
-              />
-            </div>
-          </div>
-          <div className={styles.modalActions}>
-            <Button
-              variant="danger"
-              onClick={() => {
-                if (confirm('정말 삭제하시겠습니까?')) {
-                  deleteSession(editModalData.sessionId);
-                  setShowEditModal(false);
-                }
-              }}
-            >
-              삭제
-            </Button>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                variant="transparent"
-                onClick={() => setShowEditModal(false)}
-              >
-                취소
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  const weekday = Number(
-                    (
-                      document.getElementById(
-                        'edit-modal-weekday'
-                      ) as HTMLSelectElement
-                    )?.value
-                  );
-                  const startTime = (
-                    document.getElementById(
-                      'edit-modal-start-time'
-                    ) as HTMLInputElement
-                  )?.value;
-                  const endTime = (
-                    document.getElementById(
-                      'edit-modal-end-time'
-                    ) as HTMLInputElement
-                  )?.value;
-
-                  if (!startTime || !endTime) return;
-
-                  editSession(
-                    editModalData.sessionId,
-                    editModalData.enrollmentId,
-                    weekday,
-                    startTime,
-                    endTime
-                  );
-                  setShowEditModal(false);
-                }}
-              >
-                저장
-              </Button>
             </div>
           </div>
         </div>
