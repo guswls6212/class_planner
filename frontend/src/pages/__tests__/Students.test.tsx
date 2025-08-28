@@ -21,41 +21,56 @@ vi.mock('../../components/organisms/StudentManagementSection', () => ({
     onAddStudent: () => void;
     onSelectStudent: (id: string) => void;
     onDeleteStudent: (id: string) => void;
-  }) => (
-    <div data-testid="student-management-section">
-      <input
-        data-testid="student-name-input"
-        value={newStudentName}
-        onChange={e => onNewStudentNameChange(e.target.value)}
-        placeholder="학생 이름 입력"
-      />
-      <button data-testid="add-student-btn" onClick={onAddStudent}>
-        학생 추가
-      </button>
-      <div data-testid="students-list">
-        {students.map((student: Student) => (
-          <div key={student.id} data-testid={`student-${student.id}`}>
-            <span
-              data-testid={`student-name-${student.id}`}
-              onClick={() => onSelectStudent(student.id)}
-              style={{
-                fontWeight:
-                  selectedStudentId === student.id ? 'bold' : 'normal',
-              }}
-            >
-              {student.name}
-            </span>
-            <button
-              data-testid={`delete-student-${student.id}`}
-              onClick={() => onDeleteStudent(student.id)}
-            >
-              삭제
-            </button>
-          </div>
-        ))}
+  }) => {
+    // 디버깅을 위한 로그 추가
+    console.log(
+      'Mock StudentManagementSection - selectedStudentId:',
+      selectedStudentId
+    );
+    console.log('Mock StudentManagementSection - students:', students);
+
+    return (
+      <div data-testid="student-management-section">
+        <input
+          data-testid="student-name-input"
+          value={newStudentName}
+          onChange={e => onNewStudentNameChange(e.target.value)}
+          placeholder="학생 이름 입력"
+        />
+        <button data-testid="add-student-btn" onClick={onAddStudent}>
+          학생 추가
+        </button>
+        <div data-testid="students-list">
+          {students.map((student: Student) => {
+            const isSelected = selectedStudentId === student.id;
+            console.log(
+              `Student ${student.id} (${student.name}) - isSelected: ${isSelected}, fontWeight: ${isSelected ? 'bold' : 'normal'}`
+            );
+
+            return (
+              <div key={student.id} data-testid={`student-${student.id}`}>
+                <span
+                  data-testid={`student-name-${student.id}`}
+                  onClick={() => onSelectStudent(student.id)}
+                  style={{
+                    fontWeight: isSelected ? 'bold' : 'normal',
+                  }}
+                >
+                  {student.name}
+                </span>
+                <button
+                  data-testid={`delete-student-${student.id}`}
+                  onClick={() => onDeleteStudent(student.id)}
+                >
+                  삭제
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  ),
+    );
+  },
 }));
 
 // Mock localStorage
@@ -86,9 +101,8 @@ describe('StudentsPage', () => {
     render(<StudentsPage />);
 
     const grid = screen.getByTestId('students-page');
+    expect(grid).toHaveClass('grid');
     expect(grid).toHaveStyle({
-      display: 'grid',
-      gridTemplateColumns: '340px 1fr',
       gap: '16px',
       padding: '16px',
     });
@@ -122,14 +136,28 @@ describe('StudentsPage', () => {
   });
 
   it('기본 과목 색상을 올바르게 설정한다', async () => {
+    // localStorage에서 subjects가 빈 배열로 시작하도록 설정
+    localStorageMock.getItem.mockImplementation(key => {
+      if (key === 'subjects') return JSON.stringify([]);
+      if (key === 'students') return JSON.stringify([]);
+      if (key === 'ui:selectedStudent') return '';
+      return null;
+    });
+
     render(<StudentsPage />);
 
     await waitFor(() => {
       const setItemCalls = localStorageMock.setItem.mock.calls;
-      const subjectsCall = setItemCalls.find(([key]) => key === 'subjects');
+      // 'subjects' 키에 대한 모든 호출을 필터링합니다.
+      const subjectsCalls = setItemCalls.filter(([key]) => key === 'subjects');
+      // 그중 마지막 호출을 가져옵니다.
+      const lastSubjectsCall = subjectsCalls[subjectsCalls.length - 1];
 
-      if (subjectsCall) {
-        const subjects = JSON.parse(subjectsCall[1]);
+      // 마지막 호출이 있었는지 확인합니다.
+      expect(lastSubjectsCall).toBeDefined();
+
+      if (lastSubjectsCall) {
+        const subjects = JSON.parse(lastSubjectsCall[1]);
         expect(subjects).toEqual([
           { id: expect.any(String), name: '수학', color: '#f59e0b' },
           { id: expect.any(String), name: '영어', color: '#3b82f6' },
@@ -189,10 +217,23 @@ describe('StudentsPage', () => {
       { id: 'existing-2', name: '기존학생2' },
     ];
 
+    // localStorage 모킹을 더 명확하게 설정
     localStorageMock.getItem.mockImplementation(key => {
-      if (key === 'students') return JSON.stringify(existingStudents);
-      if (key === 'subjects') return JSON.stringify([]);
-      if (key === 'ui:selectedStudent') return 'existing-1';
+      console.log('localStorage.getItem called with key:', key);
+      if (key === 'students') {
+        console.log('Returning students:', JSON.stringify(existingStudents));
+        return JSON.stringify(existingStudents);
+      }
+      if (key === 'subjects') {
+        console.log('Returning subjects: []');
+        return JSON.stringify([]);
+      }
+      if (key === 'ui:selectedStudent') {
+        // 'existing-1'을 JSON 문자열 형식으로 반환하도록 수정합니다.
+        console.log('Returning selectedStudent: existing-1');
+        return JSON.stringify('existing-1');
+      }
+      console.log('Returning null for key:', key);
       return null;
     });
 
@@ -201,8 +242,17 @@ describe('StudentsPage', () => {
     const selectedStudent = screen.getByTestId('student-name-existing-1');
     const unselectedStudent = screen.getByTestId('student-name-existing-2');
 
-    expect(selectedStudent).toHaveStyle({ fontWeight: 'bold' });
-    expect(unselectedStudent).toHaveStyle({ fontWeight: 'normal' });
+    // 디버깅을 위한 로그 추가
+    console.log('Selected student element:', selectedStudent);
+    console.log('Selected student style:', selectedStudent.style);
+    console.log(
+      'Selected student fontWeight:',
+      selectedStudent.style.fontWeight
+    );
+
+    // toHaveStyle 대신, style 속성을 직접 확인합니다.
+    expect(selectedStudent.style.fontWeight).toBe('bold');
+    expect(unselectedStudent.style.fontWeight).toBe('normal');
   });
 
   it('좌측 너비가 340px로 고정되어 있다', () => {

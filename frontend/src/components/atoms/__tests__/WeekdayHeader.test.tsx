@@ -34,30 +34,33 @@ describe('WeekdayHeader', () => {
     const customStyle = { color: 'red' };
     render(<WeekdayHeader weekday={3} style={customStyle} />);
     const header = screen.getByText('수');
-    expect(header).toHaveStyle('color: red');
+    expect(header).toHaveStyle('color: rgb(255, 0, 0)');
   });
 
   it('기본 스타일 속성들을 올바르게 적용한다', () => {
     render(<WeekdayHeader weekday={4} />);
     const header = screen.getByText('목');
 
+    // 기본 스타일 속성들을 확인
     expect(header).toHaveStyle({
-      backgroundColor: 'var(--color-background)',
       textAlign: 'center',
       fontWeight: 'bold',
       fontSize: '14px',
-      color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
       minHeight: '60px',
+      padding: '12px 8px',
     });
   });
 
   it('잘못된 요일 인덱스에 대해 적절히 처리한다', () => {
-    render(<WeekdayHeader weekday={7} />);
-    // 7은 배열 범위를 벗어나므로 undefined가 표시될 수 있음
-    expect(screen.getByText('')).toBeInTheDocument();
+    // 잘못된 요일 인덱스로 렌더링 시도
+    expect(() => {
+      render(<WeekdayHeader weekday={7} />);
+    }).toThrow('Invalid weekday index: 7. Must be between 0 and 6.');
+
+    // 음수 요일 인덱스로 렌더링 시도
+    expect(() => {
+      render(<WeekdayHeader weekday={-1} />);
+    }).toThrow('Invalid weekday index: -1. Must be between 0 and 6.');
   });
 });

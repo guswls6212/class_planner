@@ -35,6 +35,7 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
         style={{
           fontWeight: isSelected ? 600 : 400,
         }}
+        data-testid={`student-name-${student.id}`}
       >
         {student.name}
       </Button>

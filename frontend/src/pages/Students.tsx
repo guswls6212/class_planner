@@ -59,6 +59,7 @@ export default function StudentsPage() {
   return (
     <div
       className="grid"
+      data-testid="students-page"
       style={{
         gridTemplateColumns: '340px 1fr',
         gap: 16,

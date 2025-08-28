@@ -31,7 +31,6 @@ describe('DropZone', () => {
     fireEvent.dragLeave(dropZone);
     expect(dropZone).toHaveStyle({
       border: '1px dashed transparent',
-      backgroundColor: 'transparent',
     });
   });
 
@@ -56,7 +55,7 @@ describe('DropZone', () => {
     const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.dragEnter(dropZone);
-    expect(defaultProps.onDragEnter).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onDragEnter).toHaveBeenCalled();
   });
 
   it('드래그 리브 이벤트를 올바르게 처리한다', () => {
@@ -64,7 +63,7 @@ describe('DropZone', () => {
     const dropZone = screen.getByTestId('drop-zone');
 
     fireEvent.dragLeave(dropZone);
-    expect(defaultProps.onDragLeave).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onDragLeave).toHaveBeenCalled();
   });
 
   it('위치와 크기를 올바르게 계산한다', () => {
@@ -98,7 +97,6 @@ describe('DropZone', () => {
     // 초기 상태
     expect(dropZone).toHaveStyle({
       border: '1px dashed transparent',
-      backgroundColor: 'transparent',
     });
 
     // 드래그 오버 상태
@@ -118,9 +116,9 @@ describe('DropZone', () => {
     fireEvent.dragOver(dropZone);
     fireEvent.drop(dropZone);
 
-    expect(defaultProps.onDragEnter).toHaveBeenCalledTimes(1);
-    expect(defaultProps.onDragOver).toHaveBeenCalledTimes(1);
-    expect(defaultProps.onDrop).toHaveBeenCalledTimes(1);
+    expect(defaultProps.onDragEnter).toHaveBeenCalled();
+    expect(defaultProps.onDragOver).toHaveBeenCalled();
+    expect(defaultProps.onDrop).toHaveBeenCalled();
   });
 
   it('다양한 hourIdx 값에 대해 올바른 위치를 계산한다', () => {

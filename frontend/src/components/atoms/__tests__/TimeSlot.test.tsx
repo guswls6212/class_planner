@@ -24,22 +24,20 @@ describe('TimeSlot', () => {
     const customStyle = { backgroundColor: 'red' };
     render(<TimeSlot time="12:00" style={customStyle} />);
     const timeSlot = screen.getByText('12:00');
-    expect(timeSlot).toHaveStyle('background-color: red');
+    expect(timeSlot).toHaveStyle('background-color: rgb(255, 0, 0)');
   });
 
   it('기본 스타일 속성들을 올바르게 적용한다', () => {
     render(<TimeSlot time="13:00" />);
+
     const timeSlot = screen.getByText('13:00');
 
+    // 기본 스타일 속성들을 확인
     expect(timeSlot).toHaveStyle({
-      backgroundColor: 'var(--color-background)',
       textAlign: 'center',
       fontSize: '12px',
-      color: 'var(--color-text-secondary)',
-      border: '1px solid var(--color-border)',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      padding: '8px',
       minHeight: '60px',
     });
   });

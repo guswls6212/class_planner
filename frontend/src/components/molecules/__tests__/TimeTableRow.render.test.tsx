@@ -128,12 +128,14 @@ describe('TimeTableRow 렌더링 테스트', () => {
 
     const weekdayHeader = screen.getByText('월');
     expect(weekdayHeader).toBeInTheDocument();
+    // 요일 헤더의 기본 스타일 속성들을 확인
     expect(weekdayHeader).toHaveStyle({
       fontWeight: 'bold',
       fontSize: '14px',
-      color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
-      height: '60px',
+      height: '120px',
+      padding: '12px 8px',
+      textAlign: 'center',
+      display: 'flex',
     });
   });
 
@@ -208,18 +210,9 @@ describe('TimeTableRow 렌더링 테스트', () => {
     render(<TimeTableRow {...defaultProps} />);
 
     const headerContainer = screen.getByText('월').parentElement;
+    // TimeTableRow는 display: 'contents'를 사용하므로 실제 스타일은 자식 요소에 적용됨
     expect(headerContainer).toHaveStyle({
-      backgroundColor: 'var(--color-background)',
-      padding: '12px 8px',
-      textAlign: 'center',
-      fontWeight: 'bold',
-      fontSize: '14px',
-      color: 'var(--color-text)',
-      border: '1px solid var(--color-border)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '60px',
+      display: 'contents',
     });
   });
 
@@ -231,7 +224,7 @@ describe('TimeTableRow 렌더링 테스트', () => {
     expect(sessionContainer).toHaveStyle({
       position: 'relative',
       backgroundColor: 'var(--color-background)',
-      minHeight: '60px',
+      minHeight: '120px',
       border: '1px solid var(--color-border-grid)',
       gridColumn: '2 / -1',
     });

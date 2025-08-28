@@ -7,6 +7,7 @@ interface ButtonProps {
   size?: 'small' | 'medium';
   className?: string;
   style?: React.CSSProperties;
+  'data-testid'?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,6 +17,7 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'medium',
   className = '',
   style = {},
+  'data-testid': dataTestId,
 }) => {
   const getButtonStyles = () => {
     const baseStyles = {
@@ -23,6 +25,7 @@ export const Button: React.FC<ButtonProps> = ({
       borderRadius: '4px',
       cursor: 'pointer',
       fontSize: size === 'small' ? '12px' : '14px',
+      fontWeight: '400',
     };
 
     switch (variant) {
@@ -60,6 +63,7 @@ export const Button: React.FC<ButtonProps> = ({
         ...getButtonStyles(),
         ...style,
       }}
+      data-testid={dataTestId}
     >
       {children}
     </button>
