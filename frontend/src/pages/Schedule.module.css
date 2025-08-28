@@ -116,6 +116,55 @@
   }
 }
 
+/* 플로팅 패널 스타일 */
+.floatingPanel {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.8),
+    0 10px 10px -5px rgba(0, 0, 0, 0.6);
+  z-index: 9999; /* 가장 위에 표시되도록 z-index 높임 */
+}
+
+.panelHeader {
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 검색 입력창 스타일 */
+.searchContainer {
+  margin-bottom: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.searchInput:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
 /* 수강생 리스트 스타일 */
 .studentList {
   list-style: none;
@@ -152,26 +201,4 @@
 
 .studentItem:active {
   cursor: grabbing;
-}
-
-/* 플로팅 패널 스타일 */
-.floatingPanel {
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.8),
-    0 10px 10px -5px rgba(0, 0, 0, 0.6);
-  z-index: 9999;
-}
-
-.panelHeader {
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 16px;
-  text-align: center;
-  margin-bottom: 16px;
-  padding: 8px 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }

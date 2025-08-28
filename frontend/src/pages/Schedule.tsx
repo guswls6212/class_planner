@@ -35,6 +35,17 @@ export default function SchedulePage() {
   );
   const [students] = useLocal<Student[]>('students', []);
 
+  // 학생 검색 상태
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 검색어에 따라 필터링된 학생 목록
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    return students.filter(student =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [students, searchQuery]);
+
   const selectedStudentEnrolls = useMemo(
     () => enrollments.filter(e => e.studentId === selectedStudentId),
     [enrollments, selectedStudentId]
@@ -348,8 +359,20 @@ export default function SchedulePage() {
         >
           수강생 리스트
         </div>
+
+        {/* 검색 입력창 */}
+        <div className={styles.searchContainer}>
+          <input
+            type="text"
+            placeholder="학생 이름 검색..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+        </div>
+
         <div className={styles.studentList} role="list">
-          {students.map(s => (
+          {filteredStudents.map(s => (
             <div key={s.id} role="listitem">
               <div
                 draggable
@@ -375,12 +398,14 @@ export default function SchedulePage() {
               </div>
             </div>
           ))}
-          {students.length === 0 && (
+          {filteredStudents.length === 0 && (
             <div
               style={{ color: 'var(--color-gray-400)', padding: '8px 12px' }}
               role="listitem"
             >
-              학생 페이지에서 학생을 추가하세요
+              {searchQuery.trim()
+                ? '검색 결과가 없습니다'
+                : '학생 페이지에서 학생을 추가하세요'}
             </div>
           )}
         </div>

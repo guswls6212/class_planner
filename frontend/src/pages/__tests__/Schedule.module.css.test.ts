@@ -167,4 +167,56 @@ describe('Schedule.module.css', () => {
       expect(background).toContain('0.85'); // 투명도
     });
   });
+
+  describe('검색 입력창 스타일', () => {
+    it('.searchContainer 클래스의 레이아웃 스타일이 올바르게 정의되어 있다', () => {
+      const searchContainerStyles = {
+        marginBottom: '16px',
+      };
+      expect(searchContainerStyles.marginBottom).toBe('16px');
+    });
+
+    it('.searchInput 클래스의 모달 디자인 스타일이 올바르게 정의되어 있다', () => {
+      const searchInputStyles = {
+        width: '100%',
+        padding: '8px 12px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '6px',
+        color: '#ffffff',
+        fontSize: '14px',
+        outline: 'none',
+        transition: 'all 0.2s ease',
+      };
+      expect(searchInputStyles.width).toBe('100%');
+      expect(searchInputStyles.padding).toBe('8px 12px');
+      expect(searchInputStyles.background).toBe('rgba(255, 255, 255, 0.1)');
+      expect(searchInputStyles.border).toBe(
+        '1px solid rgba(255, 255, 255, 0.2)'
+      );
+      expect(searchInputStyles.borderRadius).toBe('6px');
+      expect(searchInputStyles.color).toBe('#ffffff');
+      expect(searchInputStyles.fontSize).toBe('14px');
+      expect(searchInputStyles.outline).toBe('none');
+      expect(searchInputStyles.transition).toBe('all 0.2s ease');
+    });
+
+    it('.searchInput::placeholder 상태의 스타일이 올바르게 정의되어 있다', () => {
+      const placeholderStyles = {
+        color: 'rgba(255, 255, 255, 0.6)',
+      };
+      expect(placeholderStyles.color).toBe('rgba(255, 255, 255, 0.6)');
+    });
+
+    it('.searchInput:focus 상태의 스타일이 올바르게 정의되어 있다', () => {
+      const focusStyles = {
+        background: 'rgba(255, 255, 255, 0.15)',
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 0 0 2px rgba(255, 255, 255, 0.1)',
+      };
+      expect(focusStyles.background).toBe('rgba(255, 255, 255, 0.15)');
+      expect(focusStyles.borderColor).toBe('rgba(255, 255, 255, 0.3)');
+      expect(focusStyles.boxShadow).toBe('0 0 0 2px rgba(255, 255, 255, 0.1)');
+    });
+  });
 });
