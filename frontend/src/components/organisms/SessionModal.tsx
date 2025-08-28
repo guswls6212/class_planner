@@ -20,91 +20,6 @@ interface SessionModalProps {
 
 // 유틸리티 함수들 (테스트 가능)
 // eslint-disable-next-line react-refresh/only-export-components
-export const getModalStyles = (): React.CSSProperties => {
-  return {
-    position: 'fixed',
-    left: '50%',
-    top: '50%',
-    transform: 'translate(-50%, -50%)',
-    background: 'rgba(0,0,0,0.9)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    padding: 16,
-    zIndex: 1000,
-    minWidth: 320,
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getTitleStyles = (): React.CSSProperties => {
-  return {
-    margin: '0 0 12px 0',
-    color: '#fff',
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getFormGridStyles = (): React.CSSProperties => {
-  return {
-    display: 'grid',
-    gap: 8,
-    marginBottom: 16,
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getLabelStyles = (): React.CSSProperties => {
-  return {
-    display: 'block',
-    color: '#ccc',
-    fontSize: 12,
-    marginBottom: 4,
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getSelectStyles = (): React.CSSProperties => {
-  return {
-    width: '100%',
-    padding: '6px',
-    borderRadius: 4,
-    background: '#333',
-    color: '#fff',
-    border: '1px solid #555',
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getInputStyles = (): React.CSSProperties => {
-  return {
-    width: '100%',
-    padding: '6px',
-    borderRadius: 4,
-    background: '#333',
-    color: '#fff',
-    border: '1px solid #555',
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getButtonContainerStyles = (): React.CSSProperties => {
-  return {
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'space-between',
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getRightButtonContainerStyles = (): React.CSSProperties => {
-  return {
-    display: 'flex',
-    gap: 8,
-    marginLeft: 'auto',
-  };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
 export const shouldShowModal = (isOpen: boolean): boolean => {
   return isOpen;
 };
@@ -172,23 +87,14 @@ export default function SessionModal({
 }: SessionModalProps) {
   if (!shouldShowModal(isOpen)) return null;
 
-  const modalStyles = getModalStyles();
-  const titleStyles = getTitleStyles();
-  const formGridStyles = getFormGridStyles();
-  const labelStyles = getLabelStyles();
-  const selectStyles = getSelectStyles();
-  const inputStyles = getInputStyles();
-  const buttonContainerStyles = getButtonContainerStyles();
-  const rightButtonContainerStyles = getRightButtonContainerStyles();
-
   return (
-    <div style={modalStyles}>
-      <h4 style={titleStyles}>{title}</h4>
+    <div className="session-modal">
+      <h4>{title}</h4>
 
-      <div style={formGridStyles}>
+      <div className="session-modal-form">
         <div>
-          <label style={labelStyles}>과목</label>
-          <select id={getSubjectSelectId(isEdit)} style={selectStyles}>
+          <label>과목</label>
+          <select id={getSubjectSelectId(isEdit)}>
             {subjects.map(sub => (
               <option key={sub.id} value={sub.id}>
                 {sub.name}
@@ -198,12 +104,8 @@ export default function SessionModal({
         </div>
 
         <div>
-          <label style={labelStyles}>요일</label>
-          <select
-            id={getWeekdaySelectId(isEdit)}
-            defaultValue={data.weekday}
-            style={selectStyles}
-          >
+          <label>요일</label>
+          <select id={getWeekdaySelectId(isEdit)} defaultValue={data.weekday}>
             {weekdays.map((w, idx) => (
               <option key={idx} value={idx}>
                 {w}
@@ -213,35 +115,33 @@ export default function SessionModal({
         </div>
 
         <div>
-          <label style={labelStyles}>시작 시간</label>
+          <label>시작 시간</label>
           <input
             id={getStartTimeInputId(isEdit)}
             type="time"
             defaultValue={data.startTime}
-            style={inputStyles}
           />
         </div>
 
         <div>
-          <label style={labelStyles}>종료 시간</label>
+          <label>종료 시간</label>
           <input
             id={getEndTimeInputId(isEdit)}
             type="time"
             defaultValue={data.endTime}
-            style={inputStyles}
           />
         </div>
       </div>
 
-      <div style={buttonContainerStyles}>
-        {shouldShowDeleteButton(isEdit, onDelete) && (
+      <div className="session-modal-buttons">
+        {shouldShowDeleteButton(isEdit, onDelete) && onDelete && (
           <Button variant="danger" size="small" onClick={onDelete}>
             삭제
           </Button>
         )}
 
-        <div style={rightButtonContainerStyles}>
-          <Button variant="secondary" size="small" onClick={onCancel}>
+        <div className="session-modal-right-buttons">
+          <Button variant="transparent" size="small" onClick={onCancel}>
             취소
           </Button>
           <Button variant="primary" size="small" onClick={onSubmit}>

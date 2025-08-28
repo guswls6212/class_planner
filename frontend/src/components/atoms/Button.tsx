@@ -46,9 +46,10 @@ export const Button: React.FC<ButtonProps> = ({
       case 'transparent':
         return {
           ...baseStyles,
-          padding: '0',
+          padding: size === 'small' ? '4px 8px' : '8px 16px',
           background: 'transparent',
           color: 'var(--color-text-primary)',
+          border: '1px solid var(--color-border)',
         };
       default:
         return baseStyles;

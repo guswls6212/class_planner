@@ -461,36 +461,18 @@ export default function SchedulePage() {
 
       {/* 편집 모달 */}
       {showEditModal && editModalData && (
-        <div
-          className="modal-overlay position-fixed z-1000"
-          style={{
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            borderRadius: 8,
-            padding: 16,
-            minWidth: 320,
-            zIndex: 9999,
-            position: 'fixed',
-          }}
-        >
+        <div className="modal-overlay">
           <h4 className="modal-header">수업 편집</h4>
           <div className="modal-form">
             <div className="form-group">
               <label className="form-label">학생</label>
-              <div
-                className="form-input"
-                style={{ background: 'var(--color-gray-700)' }}
-              >
+              <div className="form-input">
                 {students.find(s => s.id === editModalData.studentId)?.name}
               </div>
             </div>
             <div className="form-group">
               <label className="form-label">과목</label>
-              <div
-                className="form-input"
-                style={{ background: 'var(--color-gray-700)' }}
-              >
+              <div className="form-input">
                 {subjects.find(s => s.id === editModalData.subjectId)?.name}
               </div>
             </div>
@@ -527,11 +509,9 @@ export default function SchedulePage() {
               />
             </div>
           </div>
-          <div
-            className="modal-actions"
-            style={{ justifyContent: 'space-between' }}
-          >
+          <div className="modal-actions">
             <Button
+              variant="danger"
               onClick={() => {
                 if (confirm('정말 삭제하시겠습니까?')) {
                   deleteSession(editModalData.sessionId);
@@ -542,8 +522,14 @@ export default function SchedulePage() {
               삭제
             </Button>
             <div style={{ display: 'flex', gap: 8 }}>
-              <Button onClick={() => setShowEditModal(false)}>취소</Button>
               <Button
+                variant="transparent"
+                onClick={() => setShowEditModal(false)}
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
                 onClick={() => {
                   const weekday = Number(
                     (
