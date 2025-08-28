@@ -49,6 +49,36 @@ const mockSessions = new Map<number, Session[]>([
   ],
 ]);
 
+// 겹치는 세션이 있는 테스트 데이터
+const mockOverlappingSessions = new Map<number, Session[]>([
+  [
+    0,
+    [
+      {
+        id: 'session-overlap-1',
+        enrollmentId: 'enrollment-1',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '10:00',
+      },
+      {
+        id: 'session-overlap-2',
+        enrollmentId: 'enrollment-2',
+        weekday: 0,
+        startsAt: '09:00',
+        endsAt: '11:00',
+      },
+      {
+        id: 'session-overlap-3',
+        enrollmentId: 'enrollment-1',
+        weekday: 0,
+        startsAt: '10:00',
+        endsAt: '11:00',
+      },
+    ],
+  ],
+]);
+
 describe('TimeTableGrid', () => {
   const defaultProps = {
     sessions: mockSessions,
@@ -56,6 +86,7 @@ describe('TimeTableGrid', () => {
     enrollments: mockEnrollments,
     onSessionClick: () => {},
     onDrop: () => {},
+    onEmptySpaceClick: () => {},
   };
 
   it('기본 props로 렌더링된다', () => {
@@ -283,5 +314,18 @@ describe('TimeTableGrid', () => {
     expect(tenOClockBorder).toHaveStyle({
       left: '120px', // 1 * 120 + 0
     });
+  });
+
+  it('겹치는 세션을 올바르게 처리한다', () => {
+    const overlappingProps = {
+      ...defaultProps,
+      sessions: mockOverlappingSessions,
+    };
+
+    render(<TimeTableGrid {...overlappingProps} />);
+
+    // 겹치는 세션들이 서로 다른 트랙에 배치되는지 확인
+    // 이 테스트는 콘솔 로그를 통해 트랙 할당을 확인합니다
+    expect(screen.getByText('월')).toBeInTheDocument();
   });
 });

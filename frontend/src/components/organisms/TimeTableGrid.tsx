@@ -32,55 +32,60 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
     [hourCols]
   );
 
-  // 🚀 Phase 2: O(n log n) 트랙 할당 알고리즘
-  const getSessionPosition = useCallback(
-    (session: Session, weekday: number) => {
-      console.log(
-        `\n=== Analyzing session: ${session.startsAt}-${session.endsAt} on weekday ${weekday} ===`
-      );
+  // 🚀 Phase 2: O(n log n) Y축 위치 할당 알고리즘
+  const getSessionYPositions = useCallback(
+    (weekday: number): Map<string, number> => {
+      console.log(`\n=== Calculating Y positions for weekday ${weekday} ===`);
 
-      // 현재 요일의 세션들을 시작 시간 기준으로 정렬 (O(n log n))
+      // 현재 요일의 실제 세션들을 시작 시간 기준으로 정렬 (O(n log n))
       const daySessions = sessions.get(weekday) || [];
       const sortedSessions = [...daySessions].sort(
         (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
       );
 
-      // 현재 세션의 시간 정보
-      const sessionStart = timeToMinutes(session.startsAt);
-      const sessionEnd = timeToMinutes(session.endsAt);
-
-      // 트랙별 종료 시간을 관리하는 최소 힙 구조
-      const trackEndTimes: number[] = [];
-
-      // 정렬된 세션들을 순회하며 트랙 할당 (O(n log n))
-      for (const existingSession of sortedSessions) {
-        if (existingSession.id === session.id) continue; // 자기 자신 제외
-
-        const existingStart = timeToMinutes(existingSession.startsAt);
-        const existingEnd = timeToMinutes(existingSession.endsAt);
-
-        // 시간 겹침 확인
-        if (sessionStart < existingEnd && existingStart < sessionEnd) {
-          // 겹치는 경우: 새로운 트랙 필요
-          continue;
-        }
+      if (sortedSessions.length === 0) {
+        console.log(`  No sessions for weekday ${weekday}`);
+        return new Map();
       }
 
-      // 기존 트랙 중에서 배치 가능한 곳 찾기 (이진 검색으로 최적화)
-      let trackIndex = 0;
-      for (; trackIndex < trackEndTimes.length; trackIndex++) {
-        if (sessionStart >= trackEndTimes[trackIndex]) {
-          // 이 트랙에 배치 가능
-          trackEndTimes[trackIndex] = sessionEnd;
-          console.log(`  Assigned to existing track ${trackIndex}`);
-          return trackIndex;
+      // 각 세션의 Y축 위치를 계산
+      const sessionYPositions = new Map<string, number>();
+      const activeTracks: number[] = []; // 현재 활성 트랙들의 종료 시간
+
+      for (const session of sortedSessions) {
+        const sessionStart = timeToMinutes(session.startsAt);
+        const sessionEnd = timeToMinutes(session.endsAt);
+
+        // 현재 시간에 종료된 트랙들을 제거
+        while (activeTracks.length > 0 && activeTracks[0] <= sessionStart) {
+          activeTracks.shift();
         }
+
+        // 사용 가능한 트랙 찾기
+        let trackIndex = 0;
+        for (; trackIndex < activeTracks.length; trackIndex++) {
+          if (sessionStart >= activeTracks[trackIndex]) {
+            // 이 트랙에 배치 가능
+            activeTracks[trackIndex] = sessionEnd;
+            break;
+          }
+        }
+
+        // 사용 가능한 트랙이 없으면 새로운 트랙 생성
+        if (trackIndex === activeTracks.length) {
+          activeTracks.push(sessionEnd);
+        }
+
+        // Y축 위치 할당 (트랙 인덱스 * 32)
+        const yPosition = trackIndex;
+        sessionYPositions.set(session.id, yPosition);
+
+        console.log(
+          `  Session ${session.id} (${session.startsAt}-${session.endsAt}): assigned to track ${trackIndex}, Y position ${yPosition}`
+        );
       }
 
-      // 새로운 트랙 생성
-      trackEndTimes.push(sessionEnd);
-      console.log(`  Assigned to new track ${trackIndex}`);
-      return trackIndex;
+      return sessionYPositions;
     },
     [sessions]
   );
@@ -192,20 +197,23 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
       })}
 
       {/* 요일별 행 (Y축 왼쪽) */}
-      {Array.from({ length: 7 }, (_, weekday) => (
-        <TimeTableRow
-          key={weekday}
-          weekday={weekday}
-          height={weekdayHeights[weekday]}
-          sessions={sessions}
-          subjects={subjects}
-          enrollments={enrollments}
-          getSessionPosition={getSessionPosition}
-          onSessionClick={onSessionClick}
-          onDrop={onDrop}
-          onEmptySpaceClick={onEmptySpaceClick}
-        />
-      ))}
+      {Array.from({ length: 7 }, (_, weekday) => {
+        const sessionYPositions = getSessionYPositions(weekday);
+        return (
+          <TimeTableRow
+            key={weekday}
+            weekday={weekday}
+            height={weekdayHeights[weekday]}
+            sessions={sessions}
+            subjects={subjects}
+            enrollments={enrollments}
+            sessionYPositions={sessionYPositions}
+            onSessionClick={onSessionClick}
+            onDrop={onDrop}
+            onEmptySpaceClick={onEmptySpaceClick}
+          />
+        );
+      })}
     </div>
   );
 };

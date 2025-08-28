@@ -101,11 +101,10 @@ const mockSessions = new Map<number, Session[]>([
   ],
 ]);
 
-const mockGetSessionPosition = vi.fn((session: Session, weekday: number) => {
-  const daySessions = mockSessions.get(weekday) || [];
-  const index = daySessions.findIndex(s => s.id === session.id);
-  return index >= 0 ? index : 0;
-});
+const mockSessionYPositions = new Map<string, number>([
+  ['session-1', 0],
+  ['session-2', 0],
+]);
 
 describe('TimeTableRow 렌더링 테스트', () => {
   const defaultProps = {
@@ -114,9 +113,10 @@ describe('TimeTableRow 렌더링 테스트', () => {
     sessions: mockSessions,
     subjects: mockSubjects,
     enrollments: mockEnrollments,
-    getSessionPosition: mockGetSessionPosition,
+    sessionYPositions: mockSessionYPositions,
     onSessionClick: vi.fn(),
     onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
   };
 
   beforeEach(() => {
@@ -257,9 +257,18 @@ describe('TimeTableRow 렌더링 테스트', () => {
   });
 
   it('여러 요일의 세션을 올바르게 렌더링한다', () => {
+    // '영어' 세션의 weekday 속성을 1로 수정한 새로운 데이터를 만듭니다.
     const multiDaySessions = new Map<number, Session[]>([
-      [0, [mockSessions.get(0)![0]]], // 월요일: 1개 세션
-      [1, [mockSessions.get(0)![1]]], // 화요일: 1개 세션
+      [0, [mockSessions.get(0)![0]]], // 월요일: 수학 세션 (weekday: 0)
+      [
+        1,
+        [
+          {
+            ...mockSessions.get(0)![1], // 기존 영어 세션 데이터를 복사하고
+            weekday: 1, // weekday를 1(화요일)로 덮어씁니다.
+          },
+        ],
+      ],
     ]);
 
     const { rerender } = render(
@@ -274,8 +283,10 @@ describe('TimeTableRow 렌더링 테스트', () => {
       <TimeTableRow {...defaultProps} weekday={1} sessions={multiDaySessions} />
     );
 
-    // 화요일 세션 확인
+    // 화요일 헤더 확인
     expect(screen.getByText('화')).toBeInTheDocument();
+
+    // 화요일에 해당하는 세션이 렌더링되는지 확인 (영어 10:00-11:00)
     expect(screen.getByText('영어 10:00-11:00')).toBeInTheDocument();
   });
 

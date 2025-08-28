@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Session, Subject } from '../../lib/planner';
-import { timeToMinutes } from '../../lib/planner';
+
 import DropZone from './DropZone';
 import SessionBlock from './SessionBlock';
 
@@ -10,7 +10,7 @@ interface TimeTableRowProps {
   sessions: Map<number, Session[]>;
   subjects: Subject[];
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
-  getSessionPosition: (session: Session, weekday: number) => number;
+  sessionYPositions: Map<string, number>;
   onSessionClick: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
@@ -24,7 +24,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   sessions,
   subjects,
   enrollments,
-  getSessionPosition,
+  sessionYPositions,
   onSessionClick,
   onDrop,
   onEmptySpaceClick,
@@ -143,46 +143,37 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           );
         })}
 
-        {/* 세션 블록들 - 해당 요일의 모든 세션을 정확한 위치에 배치 */}
-        {(sessions.get(weekday) || []).map(session => {
-          const groupIndex = getSessionPosition(session, weekday);
-
-          // enrollmentId를 통해 올바른 subject 찾기
-          const enrollment = enrollments.find(
-            e => e.id === session.enrollmentId
-          );
-          const subject = subjects.find(s => s.id === enrollment?.subjectId);
-
-          // 세션의 실제 시작 시간과 끝 시간을 기반으로 위치와 너비 계산
-          const sessionStartMinutes =
-            parseInt(session.startsAt.split(':')[0]) * 60 +
-            parseInt(session.startsAt.split(':')[1]);
-          const sessionEndMinutes =
-            parseInt(session.endsAt.split(':')[0]) * 60 +
-            parseInt(session.endsAt.split(':')[1]);
-          const dayStartMinutes = 9 * 60; // 9:00
-
-          const left = ((sessionStartMinutes - dayStartMinutes) / 60) * 120;
-          const width = ((sessionEndMinutes - sessionStartMinutes) / 60) * 120;
-
-          // yOffset 계산: 그룹 인덱스 * 32 + 그룹 내 위치 * 32
-          // 그룹 내 위치는 시작 시간 순으로 결정
-          const daySessions = sessions.get(weekday) || [];
-          const overlappingSessions = daySessions.filter(s => {
-            if (s.id === session.id) return false;
-            const sStart = timeToMinutes(s.startsAt);
-            const sEnd = timeToMinutes(s.endsAt);
-            const sessionStart = timeToMinutes(session.startsAt);
-            const sessionEnd = timeToMinutes(session.endsAt);
-            return sStart < sessionEnd && sessionStart < sEnd;
-          });
-
-          // 겹치는 세션이 없으면 그룹 인덱스만 사용
-          if (overlappingSessions.length === 0) {
-            const yOffset = groupIndex * 32;
-            console.log(
-              `Rendering session: ${session.id} (${session.startsAt}-${session.endsAt}) on weekday ${weekday}, groupIndex: ${groupIndex}, left: ${left}, width: ${width}, yOffset: ${yOffset} (no overlap)`
+        {/* 세션 블록들 - 현재 요일과 일치하는 세션만 정확한 위치에 배치 */}
+        {(sessions.get(weekday) || [])
+          .filter(session => session.weekday === weekday) // 현재 요일과 일치하는 세션만 필터링
+          .map(session => {
+            // enrollmentId를 통해 올바른 subject 찾기
+            const enrollment = enrollments.find(
+              e => e.id === session.enrollmentId
             );
+            const subject = subjects.find(s => s.id === enrollment?.subjectId);
+
+            // 세션의 실제 시작 시간과 끝 시간을 기반으로 위치와 너비 계산
+            const sessionStartMinutes =
+              parseInt(session.startsAt.split(':')[0]) * 60 +
+              parseInt(session.startsAt.split(':')[1]);
+            const sessionEndMinutes =
+              parseInt(session.endsAt.split(':')[0]) * 60 +
+              parseInt(session.endsAt.split(':')[1]);
+            const dayStartMinutes = 9 * 60; // 9:00
+
+            const left = ((sessionStartMinutes - dayStartMinutes) / 60) * 120;
+            const width =
+              ((sessionEndMinutes - sessionStartMinutes) / 60) * 120;
+
+            // yOffset 계산: sessionYPositions에서 미리 계산된 Y축 위치 사용
+            const yPosition = sessionYPositions.get(session.id) || 0;
+            const yOffset = yPosition * 32;
+
+            console.log(
+              `Rendering session: ${session.id} (${session.startsAt}-${session.endsAt}) on weekday ${weekday}, yPosition: ${yPosition}, left: ${left}, width: ${width}, yOffset: ${yOffset}`
+            );
+
             return (
               <SessionBlock
                 key={session.id}
@@ -200,39 +191,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 }}
               />
             );
-          }
-
-          // 겹치는 세션이 있으면 그룹 내 위치도 계산
-          const allOverlapping = [...overlappingSessions, session].sort(
-            (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
-          );
-          const groupPosition = allOverlapping.findIndex(
-            s => s.id === session.id
-          );
-          const yOffset = groupIndex * 32 + groupPosition * 32;
-
-          console.log(
-            `Rendering session: ${session.id} (${session.startsAt}-${session.endsAt}) on weekday ${weekday}, groupIndex: ${groupIndex}, groupPosition: ${groupPosition}, left: ${left}, width: ${width}, yOffset: ${yOffset}`
-          );
-
-          return (
-            <SessionBlock
-              key={session.id}
-              session={session}
-              subject={subject || subjects[0]}
-              left={left}
-              width={width}
-              yOffset={yOffset}
-              onClick={() => {
-                console.log(
-                  '🎯 TimeTableRow onClick triggered for session:',
-                  session.id
-                );
-                onSessionClick(session);
-              }}
-            />
-          );
-        })}
+          })}
       </div>
     </div>
   );
