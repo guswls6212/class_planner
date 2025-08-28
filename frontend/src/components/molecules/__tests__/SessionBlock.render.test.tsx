@@ -6,7 +6,7 @@ import SessionBlock from '../SessionBlock';
 // Mock 데이터
 const mockSubject: Subject = {
   id: 'subject-1',
-  name: '수학',
+  name: '중등수학',
   color: '#f59e0b',
 };
 
@@ -39,7 +39,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    expect(screen.getByText('수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -54,7 +54,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalled();
@@ -72,7 +72,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     expect(sessionBlock).toHaveStyle({
       background: 'rgb(245, 158, 11)', // #f59e0b
     });
@@ -90,7 +90,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     expect(sessionBlock).toHaveStyle({
       border: '1px solid rgba(255, 255, 255, 0.2)',
     });
@@ -108,7 +108,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
 
     // 기본 스타일 확인
     expect(sessionBlock).toHaveStyle({
@@ -138,7 +138,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       );
 
       expect(
-        screen.getByText(`수학 ${session.startsAt}-${session.endsAt}`)
+        screen.getByText(`중등수학 ${session.startsAt}-${session.endsAt}`)
       ).toBeInTheDocument();
       unmount();
     });

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Session, Subject } from '../../lib/planner';
+import type { Session, Subject } from '../../../lib/planner';
 import SessionBlock from '../SessionBlock';
 
 // Mock 데이터
@@ -14,7 +14,7 @@ const mockSession: Session = {
 
 const mockSubject: Subject = {
   id: 'subject-1',
-  name: '수학',
+  name: '중등수학',
   color: '#f59e0b',
 };
 
@@ -31,7 +31,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
   });
 
   it('과목이 없을 때 기본 텍스트를 표시한다', () => {
@@ -62,7 +62,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
@@ -80,7 +80,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
 
     expect(sessionBlock).toHaveStyle({
       position: 'absolute',
@@ -103,7 +103,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     expect(sessionBlock).toHaveStyle({
       background: '#f59e0b',
     });
@@ -121,7 +121,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     expect(sessionBlock).toHaveStyle({
       zIndex: 1064, // 1000 + 64
     });
@@ -139,7 +139,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
 
     expect(sessionBlock).toHaveStyle({
       color: '#fff',
@@ -167,7 +167,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
     const clickEvent = new MouseEvent('click', { bubbles: true });
 
     fireEvent(sessionBlock, clickEvent);

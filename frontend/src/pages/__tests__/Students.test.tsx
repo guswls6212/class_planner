@@ -122,15 +122,15 @@ describe('StudentsPage', () => {
     await waitFor(() => {
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('수학')
+        expect.stringContaining('중등수학')
       );
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('영어')
+        expect.stringContaining('중등영어')
       );
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('국어')
+        expect.stringContaining('중등국어')
       );
     });
   });
@@ -159,9 +159,12 @@ describe('StudentsPage', () => {
       if (lastSubjectsCall) {
         const subjects = JSON.parse(lastSubjectsCall[1]);
         expect(subjects).toEqual([
-          { id: expect.any(String), name: '수학', color: '#f59e0b' },
-          { id: expect.any(String), name: '영어', color: '#3b82f6' },
-          { id: expect.any(String), name: '국어', color: '#10b981' },
+          { id: expect.any(String), name: '중등수학', color: '#f59e0b' },
+          { id: expect.any(String), name: '중등영어', color: '#3b82f6' },
+          { id: expect.any(String), name: '중등국어', color: '#10b981' },
+          { id: expect.any(String), name: '고등수학', color: '#ef4444' },
+          { id: expect.any(String), name: '고등영어', color: '#8b5cf6' },
+          { id: expect.any(String), name: '중등사회', color: '#06b6d4' },
         ]);
       }
     });

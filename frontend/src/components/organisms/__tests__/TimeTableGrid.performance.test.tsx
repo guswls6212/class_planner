@@ -6,7 +6,7 @@ import TimeTableGrid from '../TimeTableGrid';
 // 성능 테스트용 대용량 데이터 생성
 function generateLargeTestData(sessionCount: number) {
   const subjects: Subject[] = [
-    { id: 'subject-1', name: '수학', color: '#f59e0b' },
+    { id: 'subject-1', name: '중등수학', color: '#f59e0b' },
     { id: 'subject-2', name: '영어', color: '#3b82f6' },
     { id: 'subject-3', name: '국어', color: '#10b981' },
   ];

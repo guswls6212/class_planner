@@ -70,8 +70,8 @@ vi.mock('../DropZone', () => ({
 
 // Mock 데이터
 const mockSubjects: Subject[] = [
-  { id: 'subject-1', name: '수학', color: '#f59e0b' },
-  { id: 'subject-2', name: '영어', color: '#3b82f6' },
+  { id: 'subject-1', name: '중등수학', color: '#f59e0b' },
+  { id: 'subject-2', name: '중등영어', color: '#3b82f6' },
 ];
 
 const mockEnrollments = [
@@ -160,8 +160,8 @@ describe('TimeTableRow 렌더링 테스트', () => {
     expect(screen.getByTestId('session-block-session-2')).toBeInTheDocument();
 
     // 세션 내용 확인
-    expect(screen.getByText('수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('영어 10:00-11:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등영어 10:00-11:00')).toBeInTheDocument();
   });
 
   it('세션 클릭 이벤트를 올바르게 처리한다', () => {
@@ -259,7 +259,7 @@ describe('TimeTableRow 렌더링 테스트', () => {
   it('여러 요일의 세션을 올바르게 렌더링한다', () => {
     // '영어' 세션의 weekday 속성을 1로 수정한 새로운 데이터를 만듭니다.
     const multiDaySessions = new Map<number, Session[]>([
-      [0, [mockSessions.get(0)![0]]], // 월요일: 수학 세션 (weekday: 0)
+      [0, [mockSessions.get(0)![0]]], // 월요일: 중등수학 세션 (weekday: 0)
       [
         1,
         [
@@ -276,7 +276,7 @@ describe('TimeTableRow 렌더링 테스트', () => {
     );
 
     // 월요일 세션 확인
-    expect(screen.getByText('수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
 
     // 화요일로 변경
     rerender(
@@ -286,8 +286,8 @@ describe('TimeTableRow 렌더링 테스트', () => {
     // 화요일 헤더 확인
     expect(screen.getByText('화')).toBeInTheDocument();
 
-    // 화요일에 해당하는 세션이 렌더링되는지 확인 (영어 10:00-11:00)
-    expect(screen.getByText('영어 10:00-11:00')).toBeInTheDocument();
+    // 화요일에 해당하는 세션이 렌더링되는지 확인 (중등영어 10:00-11:00)
+    expect(screen.getByText('중등영어 10:00-11:00')).toBeInTheDocument();
   });
 
   it('시간별 세로 구분선을 올바르게 렌더링한다', () => {

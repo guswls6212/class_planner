@@ -20,12 +20,12 @@ describe('SessionBlock', () => {
   it('과목 데이터 구조가 올바르게 정의되어 있다', () => {
     const mockSubject: Subject = {
       id: 'subject-1',
-      name: '수학',
+      name: '중등수학',
       color: '#f59e0b',
     };
 
     expect(mockSubject.id).toBe('subject-1');
-    expect(mockSubject.name).toBe('수학');
+    expect(mockSubject.name).toBe('중등수학');
     expect(mockSubject.color).toBe('#f59e0b');
   });
 
@@ -56,7 +56,7 @@ describe('SessionBlock', () => {
 
   it('세션 텍스트 형식이 올바르게 정의되어 있다', () => {
     const sessionTexts = [
-      '수학 09:00-10:00',
+      '중등수학 09:00-10:00',
       '영어 10:00-11:00',
       '국어 11:00-12:00',
     ];
@@ -82,12 +82,12 @@ describe('SessionBlock', () => {
 
   it('과목별 색상 시스템이 올바르게 정의되어 있다', () => {
     const subjectColors = {
-      수학: '#f59e0b', // 주황색
+      중등수학: '#f59e0b', // 주황색
       영어: '#3b82f6', // 파란색
       국어: '#10b981', // 초록색
     };
 
-    expect(subjectColors.수학).toBe('#f59e0b');
+    expect(subjectColors.중등수학).toBe('#f59e0b');
     expect(subjectColors.영어).toBe('#3b82f6');
     expect(subjectColors.국어).toBe('#10b981');
   });

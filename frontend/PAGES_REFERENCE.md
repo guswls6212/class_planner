@@ -58,9 +58,12 @@ function addStudent() {
 useEffect(() => {
   if (subjects.length === 0) {
     setSubjects([
-      { id: uid(), name: '수학', color: '#f59e0b' }, // 주황색
-      { id: uid(), name: '영어', color: '#3b82f6' }, // 파란색
-      { id: uid(), name: '국어', color: '#10b981' }, // 초록색
+      { id: uid(), name: '중등수학', color: '#f59e0b' }, // 주황색
+      { id: uid(), name: '중등영어', color: '#3b82f6' }, // 파란색
+      { id: uid(), name: '중등국어', color: '#10b981' }, // 초록색
+      { id: uid(), name: '고등수학', color: '#ef4444' }, // 빨간색
+      { id: uid(), name: '고등영어', color: '#8b5cf6' }, // 보라색
+      { id: uid(), name: '중등사회', color: '#06b6d4' }, // 청록색
     ]);
   }
 }, []);
@@ -70,7 +73,7 @@ useEffect(() => {
 
 - **그리드 레이아웃**: `340px 1fr` (좌측 고정, 우측 확장)
 - **간격**: `gap: 16px`, `padding: 16px`
-- **기본 과목 색상**: 수학(주황), 영어(파란색), 국어(초록색)
+- **기본 과목 색상**: 중등수학(주황), 중등영어(파란색), 중등국어(초록색), 고등수학(빨간색), 고등영어(보라색), 중등사회(청록색)
 
 #### ⚠️ **현재 상태에서 주의사항**
 

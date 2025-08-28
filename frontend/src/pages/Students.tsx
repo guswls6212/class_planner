@@ -46,11 +46,20 @@ export default function StudentsPage() {
   }
 
   useEffect(() => {
-    if (subjects.length === 0) {
+    // 기존 과목이 이전 이름을 사용하고 있는지 확인
+    const hasOldSubjects = subjects.some(subject =>
+      ['수학', '영어', '국어'].includes(subject.name)
+    );
+
+    // 기존 과목이 없거나 이전 이름을 사용하고 있으면 새 과목으로 교체
+    if (subjects.length === 0 || hasOldSubjects) {
       setSubjects([
-        { id: uid(), name: '수학', color: '#f59e0b' },
-        { id: uid(), name: '영어', color: '#3b82f6' },
-        { id: uid(), name: '국어', color: '#10b981' },
+        { id: uid(), name: '중등수학', color: '#f59e0b' }, // 주황색
+        { id: uid(), name: '중등영어', color: '#3b82f6' }, // 파란색
+        { id: uid(), name: '중등국어', color: '#10b981' }, // 초록색
+        { id: uid(), name: '고등수학', color: '#ef4444' }, // 빨간색
+        { id: uid(), name: '고등영어', color: '#8b5cf6' }, // 보라색
+        { id: uid(), name: '중등사회', color: '#06b6d4' }, // 청록색
       ]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

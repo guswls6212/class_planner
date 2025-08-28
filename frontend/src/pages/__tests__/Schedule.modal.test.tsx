@@ -36,8 +36,8 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
           ]);
         case 'subjects':
           return JSON.stringify([
-            { id: '1', name: '수학', color: '#f59e0b' },
-            { id: '2', name: '영어', color: '#3b82f6' },
+            { id: '1', name: '중등수학', color: '#f59e0b' },
+            { id: '2', name: '중등영어', color: '#3b82f6' },
           ]);
         case 'enrollments':
           return JSON.stringify([
@@ -79,7 +79,7 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
       const sessionBlock =
         screen.getByTestId('session-block-1') ||
         document.querySelector('[data-session-id="1"]') ||
-        screen.getByText(/수학/);
+        screen.getByText(/중등수학/);
 
       if (sessionBlock) {
         fireEvent.click(sessionBlock);
@@ -137,7 +137,7 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
         .closest(`.${styles.modalOverlay}`);
       if (modal) {
         const subjectInfo = modal.querySelectorAll(`.${styles.formInput}`)[1];
-        expect(subjectInfo).toHaveTextContent('수학');
+        expect(subjectInfo).toHaveTextContent('중등수학');
       }
     });
 
@@ -168,7 +168,7 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
       const sessionBlock =
         screen.getByTestId('session-block-1') ||
         document.querySelector('[data-session-id="1"]') ||
-        screen.getByText(/수학/);
+        screen.getByText(/중등수학/);
 
       if (sessionBlock) {
         fireEvent.click(sessionBlock);
@@ -216,7 +216,7 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
       const sessionBlock =
         screen.getByTestId('session-block-1') ||
         document.querySelector('[data-session-id="1"]') ||
-        screen.getByText(/수학/);
+        screen.getByText(/중등수학/);
 
       if (sessionBlock) {
         fireEvent.click(sessionBlock);
@@ -252,7 +252,7 @@ describe('SchedulePage - 세션 편집 모달 테스트', () => {
       const sessionBlock =
         screen.getByTestId('session-block-1') ||
         document.querySelector('[data-session-id="1"]') ||
-        screen.getByText(/수학/);
+        screen.getByText(/중등수학/);
 
       if (sessionBlock) {
         fireEvent.click(sessionBlock);
