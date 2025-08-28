@@ -278,4 +278,107 @@ describe('TimeTableRow 렌더링 테스트', () => {
     expect(screen.getByText('화')).toBeInTheDocument();
     expect(screen.getByText('영어 10:00-11:00')).toBeInTheDocument();
   });
+
+  it('시간별 세로 구분선을 올바르게 렌더링한다', () => {
+    render(<TimeTableRow {...defaultProps} />);
+
+    // 시간별 세로 구분선이 15개 있어야 함 (9:00 ~ 23:00)
+    const timeBorders = screen.getAllByTestId(/^time-border-/);
+    expect(timeBorders).toHaveLength(15);
+
+    // 첫 번째 구분선 (9:00)의 위치와 스타일 확인
+    const firstBorder = screen.getByTestId('time-border-0');
+    expect(firstBorder).toBeInTheDocument();
+    expect(firstBorder).toHaveStyle({
+      position: 'absolute',
+      left: '0px',
+      width: '1px',
+      backgroundColor: 'var(--color-border-grid)',
+      opacity: '0.6',
+      zIndex: '1',
+    });
+
+    // 마지막 구분선 (23:00)의 위치 확인
+    const lastBorder = screen.getByTestId('time-border-14');
+    expect(lastBorder).toBeInTheDocument();
+    expect(lastBorder).toHaveStyle({
+      left: '1680px', // 14 * 120px
+    });
+  });
+
+  it('30분 구분선을 올바르게 렌더링한다', () => {
+    render(<TimeTableRow {...defaultProps} />);
+
+    // 30분 구분선이 30개 있어야 함 (9:00 ~ 23:00, 30분 단위)
+    const halfHourBorders = screen.getAllByTestId(/^half-hour-border-/);
+    expect(halfHourBorders).toHaveLength(30);
+
+    // 9:30 구분선 확인
+    const nineThirtyBorder = screen.getByTestId('half-hour-border-1');
+    expect(nineThirtyBorder).toBeInTheDocument();
+    expect(nineThirtyBorder).toHaveStyle({
+      position: 'absolute',
+      left: '60px', // 0 * 120 + 60
+      width: '1px',
+      backgroundColor: 'var(--color-border-grid-light)',
+      opacity: '0.4',
+      zIndex: '1',
+    });
+
+    // 10:00 구분선 확인 (시간별 구분선과 겹침)
+    const tenOClockBorder = screen.getByTestId('half-hour-border-2');
+    expect(tenOClockBorder).toBeInTheDocument();
+    expect(tenOClockBorder).toHaveStyle({
+      left: '120px', // 1 * 120 + 0
+    });
+  });
+
+  it('구분선이 세션 컨테이너 내부에 올바르게 배치된다', () => {
+    render(<TimeTableRow {...defaultProps} />);
+
+    const sessionContainer = screen.getByText('월').closest('.time-table-row')
+      ?.children[1] as HTMLElement;
+
+    // 구분선들이 세션 컨테이너 내부에 있어야 함
+    const timeBorders = sessionContainer.querySelectorAll(
+      '[data-testid^="time-border-"]'
+    );
+    const halfHourBorders = sessionContainer.querySelectorAll(
+      '[data-testid^="half-hour-border-"]'
+    );
+
+    expect(timeBorders.length).toBeGreaterThan(0);
+    expect(halfHourBorders.length).toBeGreaterThan(0);
+
+    // 구분선들이 세션 컨테이너의 자식 요소여야 함
+    timeBorders.forEach(border => {
+      expect(sessionContainer.contains(border)).toBe(true);
+    });
+
+    halfHourBorders.forEach(border => {
+      expect(sessionContainer.contains(border)).toBe(true);
+    });
+  });
+
+  it('구분선의 z-index가 올바르게 설정된다', () => {
+    render(<TimeTableRow {...defaultProps} />);
+
+    // 시간별 구분선의 z-index 확인
+    const timeBorder = screen.getByTestId('time-border-0');
+    expect(timeBorder).toHaveStyle({
+      zIndex: '1',
+    });
+
+    // 30분 구분선의 z-index 확인
+    const halfHourBorder = screen.getByTestId('half-hour-border-1');
+    expect(halfHourBorder).toHaveStyle({
+      zIndex: '1',
+    });
+
+    // 드롭존의 z-index가 더 높아야 함 (세션과 상호작용 가능)
+    const dropZone = screen.getByTestId('drop-zone-0-09:00');
+    expect(dropZone).toHaveStyle({
+      zIndex: '5',
+    });
+  });
 });

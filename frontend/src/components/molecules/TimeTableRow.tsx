@@ -69,6 +69,52 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           gridColumn: '2 / -1', // 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >
+        {/* 시간별 세로 구분선 */}
+        {Array.from({ length: 15 }, (_, hour) => {
+          const left = hour * 120; // 각 시간대별 위치
+
+          return (
+            <div
+              key={`border-${hour}`}
+              data-testid={`time-border-${hour}`}
+              style={{
+                position: 'absolute',
+                left: `${left}px`,
+                top: 0,
+                width: '1px',
+                height: '100%',
+                backgroundColor: 'var(--color-border-grid)',
+                opacity: 0.6,
+                zIndex: 1,
+              }}
+            />
+          );
+        })}
+
+        {/* 30분 구분선 */}
+        {Array.from({ length: 30 }, (_, halfHour) => {
+          const hourValue = Math.floor(halfHour / 2) + 9; // 9:00부터 시작
+          const isHalfHour = halfHour % 2 === 1; // 30분인지 확인
+          const left = (hourValue - 9) * 120 + (isHalfHour ? 60 : 0); // 각 30분별 위치
+
+          return (
+            <div
+              key={`half-hour-border-${halfHour}`}
+              data-testid={`half-hour-border-${halfHour}`}
+              style={{
+                position: 'absolute',
+                left: `${left}px`,
+                top: 0,
+                width: '1px',
+                height: '100%',
+                backgroundColor: 'var(--color-border-grid-light)',
+                opacity: 0.4,
+                zIndex: 1,
+              }}
+            />
+          );
+        })}
+
         {/* 드롭 존들 - 각 시간대별로 */}
         {Array.from({ length: 15 }, (_, hour) => {
           const hourValue = hour + 9; // 9:00부터 시작

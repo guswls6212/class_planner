@@ -64,6 +64,11 @@
   --color-text-muted: #6b7280;
   --color-border: #d1d5db;
   --color-border-light: #e5e7eb;
+
+  /* 경계선 색상 - 라이트모드 */
+  --color-border-grid: #d1d5db;
+  --color-border-grid-light: #e5e7eb;
+  --color-border-grid-lighter: #f3f4f6;
 }
 
 /* 다크모드 테마 */
@@ -76,6 +81,11 @@
   --color-text-muted: #9ca3af;
   --color-border: #4b5563;
   --color-border-light: #6b7280;
+
+  /* 경계선 색상 - 다크모드 */
+  --color-border-grid: #6b7280;
+  --color-border-grid-light: #9ca3af;
+  --color-border-grid-lighter: #d1d5db;
 }
 
 /* 기본 리셋 */

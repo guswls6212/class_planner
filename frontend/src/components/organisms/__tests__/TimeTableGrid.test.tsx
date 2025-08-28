@@ -217,4 +217,71 @@ describe('TimeTableGrid', () => {
       gridTemplateRows: '40px 60px 60px 60px 60px 60px 60px 60px',
     });
   });
+
+  it('시간별 세로 구분선을 올바르게 렌더링한다', () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    // 시간별 세로 구분선이 15 * 7 = 105개 있어야 함 (7일 x 15시간)
+    // 구분선들은 TimeTableRow 내부에 있으므로 전체 문서에서 찾아야 함
+    const timeBorders = document.querySelectorAll(
+      '[data-testid^="time-border-"]'
+    );
+    expect(timeBorders).toHaveLength(105);
+
+    // 첫 번째 구분선 (9:00)의 위치와 스타일 확인
+    const firstBorder = document.querySelector(
+      '[data-testid="time-border-0"]'
+    ) as HTMLElement;
+    expect(firstBorder).toBeInTheDocument();
+    expect(firstBorder).toHaveStyle({
+      position: 'absolute',
+      left: '0px',
+      width: '1px',
+      backgroundColor: 'var(--color-border-grid)',
+      opacity: '0.6',
+      zIndex: '1',
+    });
+
+    // 마지막 구분선 (23:00)의 위치 확인
+    const lastBorder = document.querySelector(
+      '[data-testid="time-border-14"]'
+    ) as HTMLElement;
+    expect(lastBorder).toBeInTheDocument();
+    expect(lastBorder).toHaveStyle({
+      left: '1680px', // 14 * 120px
+    });
+  });
+
+  it('30분 구분선을 올바르게 렌더링한다', () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    // 30분 구분선이 30 * 7 = 210개 있어야 함 (7일 x 30개 30분 단위)
+    const halfHourBorders = document.querySelectorAll(
+      '[data-testid^="half-hour-border-"]'
+    );
+    expect(halfHourBorders).toHaveLength(210);
+
+    // 9:30 구분선 확인
+    const nineThirtyBorder = document.querySelector(
+      '[data-testid="half-hour-border-1"]'
+    ) as HTMLElement;
+    expect(nineThirtyBorder).toBeInTheDocument();
+    expect(nineThirtyBorder).toHaveStyle({
+      position: 'absolute',
+      left: '60px', // 0 * 120 + 60
+      width: '1px',
+      backgroundColor: 'var(--color-border-grid-light)',
+      opacity: '0.4',
+      zIndex: '1',
+    });
+
+    // 10:00 구분선 확인 (시간별 구분선과 겹침)
+    const tenOClockBorder = document.querySelector(
+      '[data-testid="half-hour-border-2"]'
+    ) as HTMLElement;
+    expect(tenOClockBorder).toBeInTheDocument();
+    expect(tenOClockBorder).toHaveStyle({
+      left: '120px', // 1 * 120 + 0
+    });
+  });
 });

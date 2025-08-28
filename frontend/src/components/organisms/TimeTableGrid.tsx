@@ -162,8 +162,9 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
       <div style={{ backgroundColor: 'var(--color-background)' }} />
 
       {/* 시간 헤더 (X축 상단) */}
-      {timeSlots.map(hour => {
+      {timeSlots.map((hour, index) => {
         const timeString = `${hour.toString().padStart(2, '0')}:00`;
+        const isLastHour = index === timeSlots.length - 1;
         return (
           <div
             key={hour}
@@ -174,6 +175,9 @@ export const TimeTableGrid: React.FC<TimeTableGridProps> = ({
               fontSize: '12px',
               color: 'var(--color-text-secondary)',
               border: '1px solid var(--color-border)',
+              borderRight: isLastHour
+                ? '1px solid var(--color-border)'
+                : '1px solid var(--color-border-grid)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

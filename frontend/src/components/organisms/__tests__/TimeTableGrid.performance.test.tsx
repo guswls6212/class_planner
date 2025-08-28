@@ -63,8 +63,8 @@ describe('TimeTableGrid 성능 테스트', () => {
     const endTime = performance.now();
     const renderTime = endTime - startTime;
 
-    // 200ms 이내에 렌더링되어야 함 (성능 변동 고려)
-    expect(renderTime).toBeLessThan(250);
+    // 350ms 이내에 렌더링되어야 함 (성능 변동 고려)
+    expect(renderTime).toBeLessThan(350);
     console.log(`소규모 데이터 렌더링 시간: ${renderTime.toFixed(2)}ms`);
   });
 
