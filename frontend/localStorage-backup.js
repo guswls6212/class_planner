@@ -1,0 +1,111 @@
+// localStorage 백업/복원 유틸리티 스크립트
+// 브라우저 콘솔에서 실행하세요
+
+const LocalStorageManager = {
+  // 현재 localStorage 데이터 백업
+  backup() {
+    const backup = {
+      timestamp: new Date().toISOString(),
+      data: {
+        students: JSON.parse(localStorage.getItem('students') || '[]'),
+        subjects: JSON.parse(localStorage.getItem('subjects') || '[]'),
+        enrollments: JSON.parse(localStorage.getItem('enrollments') || '[]'),
+        selectedStudent: localStorage.getItem('ui:selectedStudent') || '',
+      },
+    };
+
+    console.log('📋 백업 완료:', backup);
+
+    // JSON으로 변환하여 클립보드에 복사
+    const backupJson = JSON.stringify(backup, null, 2);
+    navigator.clipboard
+      .writeText(backupJson)
+      .then(() => {
+        console.log('✅ 백업 데이터가 클립보드에 복사되었습니다!');
+        console.log('💡 이 데이터를 안전한 곳에 저장해두세요.');
+      })
+      .catch(() => {
+        console.log('📄 백업 JSON (수동 복사):', backupJson);
+      });
+
+    return backup;
+  },
+
+  // 백업 데이터 복원
+  restore(backupData) {
+    try {
+      if (typeof backupData === 'string') {
+        backupData = JSON.parse(backupData);
+      }
+
+      const { data } = backupData;
+
+      // localStorage에 복원
+      Object.entries(data).forEach(([key, value]) => {
+        if (key === 'selectedStudent') {
+          localStorage.setItem('ui:selectedStudent', value);
+        } else {
+          localStorage.setItem(key, JSON.stringify(value));
+        }
+      });
+
+      console.log('✅ 백업 데이터가 성공적으로 복원되었습니다!');
+      console.log('🔄 페이지를 새로고침하세요.');
+
+      return true;
+    } catch (error) {
+      console.error('❌ 복원 실패:', error);
+      return false;
+    }
+  },
+
+  // 현재 localStorage 상태 확인
+  status() {
+    const status = {
+      students: JSON.parse(localStorage.getItem('students') || '[]'),
+      subjects: JSON.parse(localStorage.getItem('subjects') || '[]'),
+      enrollments: JSON.parse(localStorage.getItem('enrollments') || '[]'),
+      selectedStudent: localStorage.getItem('ui:selectedStudent') || '',
+    };
+
+    console.log('📊 현재 localStorage 상태:', status);
+    console.log(`📚 학생: ${status.students.length}명`);
+    console.log(`📖 과목: ${status.subjects.length}개`);
+    console.log(`⏰ 수업: ${status.enrollments.length}개`);
+
+    return status;
+  },
+
+  // localStorage 초기화 (주의!)
+  clear() {
+    if (confirm('⚠️ 정말로 모든 데이터를 삭제하시겠습니까?')) {
+      localStorage.clear();
+      console.log('🗑️ localStorage가 초기화되었습니다.');
+      return true;
+    }
+    return false;
+  },
+
+  // 특정 키만 삭제
+  remove(key) {
+    if (localStorage.getItem(key)) {
+      localStorage.removeItem(key);
+      console.log(`🗑️ ${key}가 삭제되었습니다.`);
+      return true;
+    } else {
+      console.log(`❌ ${key}를 찾을 수 없습니다.`);
+      return false;
+    }
+  },
+};
+
+// 전역 객체로 등록
+window.LocalStorageManager = LocalStorageManager;
+
+console.log('🚀 LocalStorageManager가 로드되었습니다!');
+console.log('사용법:');
+console.log('- LocalStorageManager.backup() : 데이터 백업');
+console.log('- LocalStorageManager.restore(backupData) : 데이터 복원');
+console.log('- LocalStorageManager.status() : 현재 상태 확인');
+console.log('- LocalStorageManager.clear() : 모든 데이터 삭제');
+console.log('- LocalStorageManager.remove(key) : 특정 키 삭제');

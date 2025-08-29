@@ -159,12 +159,15 @@ describe('StudentsPage', () => {
       if (lastSubjectsCall) {
         const subjects = JSON.parse(lastSubjectsCall[1]);
         expect(subjects).toEqual([
+          { id: expect.any(String), name: '초등수학', color: '#fbbf24' },
           { id: expect.any(String), name: '중등수학', color: '#f59e0b' },
           { id: expect.any(String), name: '중등영어', color: '#3b82f6' },
           { id: expect.any(String), name: '중등국어', color: '#10b981' },
+          { id: expect.any(String), name: '중등과학', color: '#ec4899' },
+          { id: expect.any(String), name: '중등사회', color: '#06b6d4' },
           { id: expect.any(String), name: '고등수학', color: '#ef4444' },
           { id: expect.any(String), name: '고등영어', color: '#8b5cf6' },
-          { id: expect.any(String), name: '중등사회', color: '#06b6d4' },
+          { id: expect.any(String), name: '고등국어', color: '#059669' },
         ]);
       }
     });
