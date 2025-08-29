@@ -46,7 +46,10 @@ function useLocal<T>(key: string, initial: T) {
 
 export default function SchedulePage() {
   const [subjects] = useLocal<Subject[]>('subjects', []);
-  const [enrollments] = useLocal<Enrollment[]>('enrollments', []);
+  const [enrollments, setEnrollments] = useLocal<Enrollment[]>(
+    'enrollments',
+    []
+  );
   const [sessions, setSessions] = useLocal<Session[]>('sessions', []);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     'ui:selectedStudent',
@@ -125,6 +128,9 @@ export default function SchedulePage() {
       student.name.toLowerCase().includes(studentInputValue.toLowerCase())
     );
   }, [students, studentInputValue]);
+
+  // 🆕 수업 편집 모달용 학생 입력 상태
+  const [editStudentInputValue, setEditStudentInputValue] = useState('');
 
   // 🆕 학생 추가 함수
   const addStudent = (studentId: string) => {
@@ -703,32 +709,240 @@ export default function SchedulePage() {
               <h4 className="modal-title">수업 편집</h4>
               <div className="modal-form">
                 <div className="form-group">
-                  <label className="form-label">학생</label>
-                  <div className="form-input form-input-disabled">
+                  <Label htmlFor="edit-modal-students" required>
+                    학생
+                  </Label>
+                  <div className={styles.studentTagsContainer}>
+                    {/* 선택된 학생들을 태그로 표시 */}
                     {(() => {
-                      const enrollment = enrollments.find(
-                        e => e.id === editModalData.enrollmentIds?.[0]
-                      );
-                      const student = students.find(
-                        s => s.id === enrollment?.studentId
-                      );
-                      return student?.name || 'Unknown';
+                      const selectedStudents =
+                        editModalData.enrollmentIds
+                          ?.map(enrollmentId => {
+                            const enrollment = enrollments.find(
+                              e => e.id === enrollmentId
+                            );
+                            if (!enrollment) return null;
+                            const student = students.find(
+                              s => s.id === enrollment.studentId
+                            );
+                            return student
+                              ? { id: student.id, name: student.name }
+                              : null;
+                          })
+                          .filter(Boolean) || [];
+
+                      return selectedStudents.map(student => (
+                        <div key={student!.id} className={styles.studentTag}>
+                          <span>{student!.name}</span>
+                          <button
+                            type="button"
+                            className={styles.removeStudentBtn}
+                            onClick={() => {
+                              // 학생 제거 로직
+                              const updatedEnrollmentIds =
+                                editModalData.enrollmentIds?.filter(
+                                  id =>
+                                    id !==
+                                    editModalData.enrollmentIds?.find(
+                                      enrollmentId => {
+                                        const enrollment = enrollments.find(
+                                          e => e.id === enrollmentId
+                                        );
+                                        return (
+                                          enrollment?.studentId === student!.id
+                                        );
+                                      }
+                                    )
+                                );
+                              setEditModalData(prev =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      enrollmentIds: updatedEnrollmentIds || [],
+                                    }
+                                  : null
+                              );
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ));
                     })()}
+                  </div>
+                  {/* 학생 추가 입력창 */}
+                  <div className={styles.studentInputContainer}>
+                    <input
+                      type="text"
+                      placeholder="학생 이름을 입력하세요"
+                      className="form-input"
+                      value={editStudentInputValue}
+                      onChange={e => setEditStudentInputValue(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // 학생 추가 로직
+                          const student = students.find(
+                            s =>
+                              s.name.toLowerCase() ===
+                              editStudentInputValue.toLowerCase()
+                          );
+                          if (student) {
+                            // enrollment가 있는지 확인하고 없으면 생성
+                            let enrollment = enrollments.find(
+                              e =>
+                                e.studentId === student.id &&
+                                e.subjectId ===
+                                  (() => {
+                                    const firstEnrollment = enrollments.find(
+                                      e =>
+                                        e.id ===
+                                        editModalData?.enrollmentIds?.[0]
+                                    );
+                                    return firstEnrollment?.subjectId || '';
+                                  })()
+                            );
+                            if (!enrollment) {
+                              enrollment = {
+                                id: crypto.randomUUID(),
+                                studentId: student.id,
+                                subjectId: (() => {
+                                  const firstEnrollment = enrollments.find(
+                                    e =>
+                                      e.id === editModalData?.enrollmentIds?.[0]
+                                  );
+                                  return firstEnrollment?.subjectId || '';
+                                })(),
+                              };
+                              setEnrollments(prev => [...prev, enrollment!]);
+                            }
+                            // enrollmentIds에 추가
+                            if (
+                              editModalData &&
+                              !editModalData.enrollmentIds?.includes(
+                                enrollment.id
+                              )
+                            ) {
+                              setEditModalData(prev =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      enrollmentIds: [
+                                        ...(prev.enrollmentIds || []),
+                                        enrollment!.id,
+                                      ],
+                                    }
+                                  : null
+                              );
+                            }
+                          }
+                          setEditStudentInputValue('');
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={styles.addStudentBtn}
+                      onClick={() => {
+                        const student = students.find(
+                          s =>
+                            s.name.toLowerCase() ===
+                            editStudentInputValue.toLowerCase()
+                        );
+                        if (student) {
+                          let enrollment = enrollments.find(
+                            e =>
+                              e.studentId === student.id &&
+                              e.subjectId ===
+                                (() => {
+                                  const firstEnrollment = enrollments.find(
+                                    e =>
+                                      e.id === editModalData?.enrollmentIds?.[0]
+                                  );
+                                  return firstEnrollment?.subjectId || '';
+                                })()
+                          );
+                          if (!enrollment) {
+                            enrollment = {
+                              id: crypto.randomUUID(),
+                              studentId: student.id,
+                              subjectId: (() => {
+                                const firstEnrollment = enrollments.find(
+                                  e =>
+                                    e.id === editModalData?.enrollmentIds?.[0]
+                                );
+                                return firstEnrollment?.subjectId || '';
+                              })(),
+                            };
+                            setEnrollments(prev => [...prev, enrollment!]);
+                          }
+                          if (
+                            editModalData &&
+                            !editModalData.enrollmentIds?.includes(
+                              enrollment.id
+                            )
+                          ) {
+                            setEditModalData(prev =>
+                              prev
+                                ? {
+                                    ...prev,
+                                    enrollmentIds: [
+                                      ...(prev.enrollmentIds || []),
+                                      enrollment!.id,
+                                    ],
+                                  }
+                                : null
+                            );
+                          }
+                        }
+                        setEditStudentInputValue('');
+                      }}
+                    >
+                      추가
+                    </button>
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">과목</label>
-                  <div className="form-input form-input-disabled">
-                    {(() => {
+                  <Label htmlFor="edit-modal-subject" required>
+                    과목
+                  </Label>
+                  <select
+                    id="edit-modal-subject"
+                    className="form-select"
+                    value={(() => {
                       const enrollment = enrollments.find(
                         e => e.id === editModalData.enrollmentIds?.[0]
                       );
-                      const subject = subjects.find(
-                        s => s.id === enrollment?.subjectId
-                      );
-                      return subject?.name || 'Unknown';
+                      return enrollment?.subjectId || '';
                     })()}
-                  </div>
+                    onChange={e => {
+                      const subjectId = e.target.value;
+
+                      // 과목이 변경되면 기존 enrollment들을 새로운 과목으로 업데이트
+                      if (editModalData?.enrollmentIds) {
+                        const updatedEnrollments = enrollments.map(
+                          enrollment => {
+                            if (
+                              editModalData.enrollmentIds?.includes(
+                                enrollment.id
+                              )
+                            ) {
+                              return { ...enrollment, subjectId };
+                            }
+                            return enrollment;
+                          }
+                        );
+                        setEnrollments(updatedEnrollments);
+                      }
+                    }}
+                  >
+                    <option value="">과목을 선택하세요</option>
+                    {subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">요일</label>
@@ -820,6 +1034,34 @@ export default function SchedulePage() {
                             : s
                         )
                       );
+
+                      // enrollment 업데이트 (과목 변경 시)
+                      const currentSubjectId = (() => {
+                        const firstEnrollment = enrollments.find(
+                          e => e.id === editModalData.enrollmentIds?.[0]
+                        );
+                        return firstEnrollment?.subjectId || '';
+                      })();
+
+                      if (currentSubjectId) {
+                        const updatedEnrollments = enrollments.map(
+                          enrollment => {
+                            if (
+                              editModalData.enrollmentIds?.includes(
+                                enrollment.id
+                              )
+                            ) {
+                              return {
+                                ...enrollment,
+                                subjectId: currentSubjectId,
+                              };
+                            }
+                            return enrollment;
+                          }
+                        );
+                        setEnrollments(updatedEnrollments);
+                      }
+
                       setShowEditModal(false);
                     }}
                   >

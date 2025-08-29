@@ -112,7 +112,7 @@ type GroupSessionData = {
   onSessionClick={handleSessionClick}
   onDrop={handleDrop}
   onEmptySpaceClick={handleEmptySpaceClick}
-/>
+/>;
 ```
 
 #### 🔧 **현재 주요 기능**
