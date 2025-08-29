@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import type { Enrollment, Session, Subject } from '../../../lib/planner';
+import type { Enrollment, Subject } from '../../../lib/planner';
 import TimeTableGrid from '../TimeTableGrid';
 
 // localStorage 모킹
@@ -33,62 +33,58 @@ const mockEnrollments: Enrollment[] = [
   { id: '6', studentId: '1', subjectId: '6' },
 ];
 
-const mockSessions: Map<number, Session[]> = new Map([
-  [
-    0, // 월요일
-    [
-      {
-        id: '1',
-        enrollmentId: '1',
-        weekday: 0,
-        startsAt: '09:00',
-        endsAt: '10:00',
-      },
-      {
-        id: '2',
-        enrollmentId: '2',
-        weekday: 0,
-        startsAt: '09:15',
-        endsAt: '10:15',
-      },
-      {
-        id: '3',
-        enrollmentId: '3',
-        weekday: 0,
-        startsAt: '09:30',
-        endsAt: '10:30',
-      },
-      {
-        id: '4',
-        enrollmentId: '4',
-        weekday: 0,
-        startsAt: '09:45',
-        endsAt: '10:45',
-      },
-      {
-        id: '5',
-        enrollmentId: '5',
-        weekday: 0,
-        startsAt: '10:00',
-        endsAt: '11:00',
-      },
-      {
-        id: '6',
-        enrollmentId: '6',
-        weekday: 0,
-        startsAt: '10:15',
-        endsAt: '11:15',
-      },
-    ],
-  ],
-]);
-
 describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
-  beforeEach(() => {
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(mockSubjects));
-  });
-
   test('겹치는 세션들이 순차적으로 Y축으로 분리되어 배치되어야 함', () => {
+    const mockSessions = new Map([
+      [
+        0, // 월요일
+        [
+          {
+            id: '1',
+            enrollmentId: '1',
+            weekday: 0,
+            startsAt: '09:00',
+            endsAt: '10:00',
+          },
+          {
+            id: '2',
+            enrollmentId: '2',
+            weekday: 0,
+            startsAt: '09:15',
+            endsAt: '10:15',
+          },
+          {
+            id: '3',
+            enrollmentId: '3',
+            weekday: 0,
+            startsAt: '09:30',
+            endsAt: '10:30',
+          },
+          {
+            id: '4',
+            enrollmentId: '4',
+            weekday: 0,
+            startsAt: '09:45',
+            endsAt: '10:45',
+          },
+          {
+            id: '5',
+            enrollmentId: '5',
+            weekday: 0,
+            startsAt: '10:00',
+            endsAt: '11:00',
+          },
+          {
+            id: '6',
+            enrollmentId: '6',
+            weekday: 0,
+            startsAt: '10:15',
+            endsAt: '11:15',
+          },
+        ],
+      ],
+    ]);
+
     render(
       <TimeTableGrid
         sessions={mockSessions}
@@ -102,12 +98,15 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
     );
 
     // 월요일 세션들이 순차적으로 배치되어야 함
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등국어 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('고등수학 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('고등영어 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등사회 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('중등영어')).toBeInTheDocument();
+    expect(screen.getByText('중등국어')).toBeInTheDocument();
+    expect(screen.getByText('고등수학')).toBeInTheDocument();
+    expect(screen.getByText('고등영어')).toBeInTheDocument();
+    expect(screen.getByText('중등사회')).toBeInTheDocument();
+
+    // 학생 이름은 6개 세션 모두에 표시되어야 함
+    expect(screen.getAllByText('김요섭')).toHaveLength(6);
   });
 
   test('겹치지 않는 세션들은 같은 Y축 위치에 배치되어야 함', () => {
@@ -146,33 +145,33 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
     );
 
     // 겹치지 않는 세션들은 모두 yPosition: 0에 배치되어야 함
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('중등영어')).toBeInTheDocument();
   });
 
   test('부분적으로 겹치는 세션들도 겹치는 것으로 판단해야 함', () => {
     const partialOverlapSessions = new Map([
       [
-        2, // 수요일
+        0, // 월요일
         [
           {
             id: '9',
             enrollmentId: '1',
-            weekday: 2,
+            weekday: 0,
             startsAt: '09:00',
             endsAt: '10:00',
           },
           {
             id: '10',
             enrollmentId: '2',
-            weekday: 2,
+            weekday: 0,
             startsAt: '09:30',
             endsAt: '10:30',
           },
           {
             id: '11',
             enrollmentId: '3',
-            weekday: 2,
+            weekday: 0,
             startsAt: '10:00',
             endsAt: '11:00',
           },
@@ -194,8 +193,8 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
     // 10:00-11:00은 09:30-10:30과 겹침 → yPosition: 32
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
-    expect(screen.getByText('중등국어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('중등영어')).toBeInTheDocument();
+    expect(screen.getByText('중등국어')).toBeInTheDocument();
   });
 });

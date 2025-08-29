@@ -64,13 +64,15 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
     render(<TimeTableRow {...defaultProps} />);
 
     // 첫 번째 세션: 중등수학 김요섭
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('김요섭')).toBeInTheDocument();
 
     // 두 번째 세션: 중등영어 이영희
-    expect(screen.getByText('중등영어 이영희')).toBeInTheDocument();
+    expect(screen.getByText('중등영어')).toBeInTheDocument();
+    expect(screen.getByText('이영희')).toBeInTheDocument();
   });
 
-  it('enrollment이 없을 때 Unknown으로 표시한다', () => {
+  it('enrollment이 없을 때 subjects[0]를 fallback으로 사용한다', () => {
     const sessionsWithoutEnrollment = new Map<number, Session[]>([
       [
         0,
@@ -90,8 +92,10 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
       <TimeTableRow {...defaultProps} sessions={sessionsWithoutEnrollment} />
     );
 
-    // enrollment가 없으면 과목명만 표시
+    // enrollment가 없으면 subjects[0] (중등수학)을 fallback으로 사용
     expect(screen.getByText('중등수학')).toBeInTheDocument();
+    // 학생 이름은 표시되지 않아야 함
+    expect(screen.queryByText('김요섭')).not.toBeInTheDocument();
   });
 
   it('학생 정보가 없을 때 과목명만 표시한다', () => {
@@ -155,7 +159,9 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
     );
 
     // 화요일 세션만 표시되어야 함
-    expect(screen.getByText('중등영어 이영희')).toBeInTheDocument();
-    expect(screen.queryByText('중등수학 김요섭')).not.toBeInTheDocument();
+    expect(screen.getByText('중등영어')).toBeInTheDocument();
+    expect(screen.getByText('이영희')).toBeInTheDocument();
+    expect(screen.queryByText('중등수학')).not.toBeInTheDocument();
+    expect(screen.queryByText('김요섭')).not.toBeInTheDocument();
   });
 });

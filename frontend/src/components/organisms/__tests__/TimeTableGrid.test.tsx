@@ -182,8 +182,10 @@ describe('TimeTableGrid', () => {
     );
 
     // 겹치는 세션들이 순차적으로 Y축으로 분리되어야 함
-    expect(screen.getAllByText('중등수학 김요섭')).toHaveLength(2);
-    expect(screen.getAllByText('영어 이영희')).toHaveLength(2);
+    expect(screen.getAllByText('중등수학')).toHaveLength(2);
+    expect(screen.getAllByText('김요섭')).toHaveLength(2);
+    expect(screen.getAllByText('영어')).toHaveLength(2);
+    expect(screen.getAllByText('이영희')).toHaveLength(2);
   });
 
   it('부분적으로 겹치는 세션들도 겹치는 것으로 판단하여 Y축으로 분리한다', () => {
@@ -222,8 +224,10 @@ describe('TimeTableGrid', () => {
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
     // 10:00-11:00은 09:30-10:30과 겹침 → yPosition: 32
-    expect(screen.getAllByText('중등수학 김요섭')).toHaveLength(2);
-    expect(screen.getAllByText('영어 이영희')).toHaveLength(1);
+    expect(screen.getAllByText('중등수학')).toHaveLength(2);
+    expect(screen.getAllByText('김요섭')).toHaveLength(2);
+    expect(screen.getAllByText('영어')).toHaveLength(1);
+    expect(screen.getAllByText('이영희')).toHaveLength(1);
   });
 
   it('좌상단 빈칸을 렌더링한다', () => {

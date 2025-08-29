@@ -88,7 +88,6 @@ export default function SessionBlock({
   onClick,
 }: SessionBlockProps) {
   const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
-  const blockText = getSessionBlockText(subject?.name, student?.name);
 
   const handleClick = (e: React.MouseEvent) => {
     console.log('🖱️ SessionBlock clicked!', {
@@ -113,7 +112,14 @@ export default function SessionBlock({
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
     >
-      {blockText}
+      <span style={{ color: '#fff', fontWeight: '600' }}>
+        {subject?.name ?? 'Unknown'}
+      </span>
+      {student?.name && (
+        <span style={{ color: 'rgba(255, 255, 255, 0.7)', marginLeft: '4px' }}>
+          {student.name}
+        </span>
+      )}
     </div>
   );
 }

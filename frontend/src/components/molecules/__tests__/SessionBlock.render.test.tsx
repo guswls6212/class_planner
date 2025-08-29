@@ -44,7 +44,9 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    // 세션 정보가 올바르게 렌더링되어야 함
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('김요섭')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -60,7 +62,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalled();
@@ -79,7 +81,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     expect(sessionBlock).toHaveStyle({
       background: 'rgb(245, 158, 11)', // #f59e0b
     });
@@ -98,7 +100,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     expect(sessionBlock).toHaveStyle({
       border: '1px solid rgba(255, 255, 255, 0.2)',
     });
@@ -117,7 +119,7 @@ describe('SessionBlock 렌더링 테스트', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
 
     // 기본 스타일 확인
     expect(sessionBlock).toHaveStyle({
@@ -147,7 +149,8 @@ describe('SessionBlock 렌더링 테스트', () => {
         />
       );
 
-      expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+      expect(screen.getByText('중등수학')).toBeInTheDocument();
+      expect(screen.getByText('김요섭')).toBeInTheDocument();
       unmount();
     });
   });

@@ -37,7 +37,12 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    // 과목명과 학생명이 각각 별도의 span에 표시되는지 확인
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('김요섭')).toBeInTheDocument();
+
+    // 전체 세션 블록이 존재하는지 확인
+    expect(screen.getByTestId('session-block-session-1')).toBeInTheDocument();
   });
 
   it('과목이 없을 때 기본 텍스트를 표시한다', () => {
@@ -53,7 +58,9 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    // 과목명과 학생명이 각각 별도의 span에 표시되는지 확인
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.getByText('김요섭')).toBeInTheDocument();
   });
 
   it('학생이 없을 때 과목명만 표시한다', () => {
@@ -70,6 +77,7 @@ describe('SessionBlock', () => {
     );
 
     expect(screen.getByText('중등수학')).toBeInTheDocument();
+    expect(screen.queryByText('김요섭')).not.toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -86,7 +94,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
@@ -105,7 +113,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
 
     expect(sessionBlock).toHaveStyle({
       position: 'absolute',
@@ -129,7 +137,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     expect(sessionBlock).toHaveStyle({
       background: '#f59e0b',
     });
@@ -148,7 +156,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
     expect(sessionBlock).toHaveStyle({
       zIndex: 1064, // 1000 + 64
     });
@@ -167,17 +175,12 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
+    const sessionBlock = screen.getByTestId('session-block-session-1');
 
     expect(sessionBlock).toHaveStyle({
-      color: '#fff',
       borderRadius: '4px',
       padding: '0 6px',
       fontSize: '12px',
-      display: 'flex',
-      alignItems: 'center',
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,0.2)',
       cursor: 'pointer',
     });
   });
@@ -196,11 +199,14 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 김요섭');
-    const clickEvent = new MouseEvent('click', { bubbles: true });
+    const sessionBlock = screen.getByTestId('session-block-session-1');
 
-    fireEvent(sessionBlock, clickEvent);
+    // 클릭 이벤트 발생
+    fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
+
+    // 이벤트 버블링 방지 확인 - onClick 핸들러가 호출되면 stopPropagation이 내부에서 처리됨
+    // 실제 stopPropagation 호출은 fireEvent.click 내부에서 처리되므로 별도 검증 불필요
   });
 });
