@@ -304,3 +304,19 @@
 .studentSearchItem:last-child {
   border-bottom: none;
 }
+
+.noSearchResults {
+  padding: 12px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.studentNotFound {
+  color: var(--color-danger);
+  font-size: 12px;
+  font-style: italic;
+}

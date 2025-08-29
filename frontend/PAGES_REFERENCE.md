@@ -212,6 +212,7 @@ function handleEmptySpaceClick(weekday: number, time: string) {
 - **위치**: `src/components/organisms/StudentManagementSection.tsx`
 - **역할**: 학생 관리 전체 섹션 (추가, 목록, 삭제)
 - **Props**: `students`, `newStudentName`, `selectedStudentId`, 이벤트 핸들러들
+- **테스트**: `src/components/organisms/__tests__/StudentManagementSection.test.tsx` ✅ 완성
 
 #### **2. TimeTableGrid**
 
@@ -435,6 +436,8 @@ npm run storybook
 - ✅ **편집 불가능한 필드**: 학생, 과목 필드를 흐리게 표시하여 편집 불가능함을 시각적으로 표현
 - ✅ **빈 공간 클릭 모달**: 시간표 빈 곳 클릭 시 과목, 종료시간, 학생 선택하여 수업 추가 가능
 - ✅ **세션 셀 요일 표시**: 세션 셀 맨 앞에 요일(월, 화, 수, 목, 금, 토, 일)을 표시하여 사용자가 어떤 요일의 수업인지 쉽게 파악 가능
+- ✅ **실시간 학생 검색**: 수업 편집 모달에서 학생 이름 입력 시 실시간으로 검색 결과 표시
+- ✅ **UX 개선**: 존재하지 않는 학생 추가 시도 시 입력창 유지 및 적절한 피드백 제공
 
 ### **6. 🆕 그룹 수업 시스템**
 
@@ -444,6 +447,7 @@ npm run storybook
 - ✅ **태그 제거**: X 버튼으로 개별 학생 태그 제거
 - ✅ **과목 필터링**: 선택된 학생들이 수강하는 과목만 드롭다운에 표시
 - ✅ **유효성 검사**: 학생이 선택되지 않으면 과목 선택 및 추가 버튼 비활성화
+- ✅ **수업 편집 모달**: 기존 수업 편집 시에도 태그 기반 학생 선택 및 실시간 검색 지원
 
 ### **7. 🆕 코드 품질 개선**
 

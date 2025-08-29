@@ -1,4 +1,20 @@
-import { Session, Subject } from '../../lib/planner';
+import type { CSSProperties } from 'react';
+
+// 타입을 직접 정의하여 import 의존성 제거
+type Session = {
+  id: string;
+  enrollmentIds: string[];
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  room?: string;
+};
+
+type Subject = {
+  id: string;
+  name: string;
+  color: string;
+};
 
 // 🆕 여러 학생의 이름을 표시하는 함수
 export const getGroupStudentNames = (
@@ -60,7 +76,7 @@ export const getSessionBlockStyles = (
   width: number,
   yOffset: number,
   subjectColor?: string
-): React.CSSProperties => {
+): CSSProperties => {
   return {
     position: 'absolute',
     left,
