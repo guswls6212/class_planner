@@ -17,7 +17,7 @@ const mockStudent = {
 
 const mockSession: Session = {
   id: 'session-1',
-  enrollmentId: 'enrollment-1',
+  enrollmentIds: ['enrollment-1'],
   startsAt: '09:00',
   endsAt: '10:00',
   weekday: 1,
@@ -28,6 +28,16 @@ const mockProps = {
   left: 100,
   width: 120,
   yOffset: 0,
+  yPosition: 0,
+  subjects: [mockSubject],
+  enrollments: [
+    {
+      id: 'enrollment-1',
+      studentId: 'student-1',
+      subjectId: 'subject-1',
+    },
+  ],
+  students: [mockStudent],
 };
 
 describe('SessionBlock 렌더링 테스트', () => {
@@ -37,8 +47,6 @@ describe('SessionBlock 렌더링 테스트', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
@@ -55,8 +63,6 @@ describe('SessionBlock 렌더링 테스트', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
@@ -74,8 +80,6 @@ describe('SessionBlock 렌더링 테스트', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
@@ -93,8 +97,6 @@ describe('SessionBlock 렌더링 테스트', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
@@ -112,8 +114,6 @@ describe('SessionBlock 렌더링 테스트', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
@@ -140,13 +140,7 @@ describe('SessionBlock 렌더링 테스트', () => {
 
     sessions.forEach(session => {
       const { unmount } = render(
-        <SessionBlock
-          session={session}
-          subject={mockSubject}
-          student={mockStudent}
-          onClick={mockOnClick}
-          {...mockProps}
-        />
+        <SessionBlock session={session} onClick={mockOnClick} {...mockProps} />
       );
 
       expect(screen.getByText('중등수학')).toBeInTheDocument();

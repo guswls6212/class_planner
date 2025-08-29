@@ -107,10 +107,10 @@ export default function StudentsPage() {
 
   return (
     <div
-      className="grid"
       data-testid="students-page"
+      className="grid"
       style={{
-        gridTemplateColumns: '340px 1fr',
+        gridTemplateColumns: '340px 1fr', // ⚠️ 중요: 좌측 340px 고정 너비
         gap: 16,
         padding: 16,
       }}

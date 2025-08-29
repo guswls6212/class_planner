@@ -1,14 +1,72 @@
+import React from 'react';
 import type { Session, Subject } from '../../lib/planner';
 
 interface SessionBlockProps {
   session: Session;
-  subject: Subject;
-  student?: { id: string; name: string };
+  subjects: Subject[];
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
+  students: Array<{ id: string; name: string }>;
+  yPosition: number;
   left: number;
   width: number;
   yOffset: number;
   onClick: () => void;
+  style?: React.CSSProperties;
 }
+
+// 🆕 여러 학생의 이름을 표시하는 함수
+export const getGroupStudentNames = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  students: Array<{ id: string; name: string }>
+): string[] => {
+  // enrollmentIds가 undefined이거나 비어있는 경우 처리
+  if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
+    return [];
+  }
+
+  return session.enrollmentIds
+    .map(enrollmentId => {
+      const enrollment = enrollments?.find(e => e.id === enrollmentId);
+      if (!enrollment) return null;
+
+      const student = students?.find(s => s.id === enrollment.studentId);
+      return student?.name;
+    })
+    .filter(Boolean) as string[];
+};
+
+// 🆕 과목 정보를 가져오는 함수
+export const getSessionSubject = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  subjects: Subject[]
+): Subject | null => {
+  // enrollmentIds가 undefined이거나 비어있는 경우 처리
+  if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
+    return null; // fallback 제거, null 반환하여 Unknown 표시
+  }
+
+  // 첫 번째 enrollment에서 과목 정보 가져오기
+  const firstEnrollment = enrollments?.find(
+    e => e.id === session.enrollmentIds[0]
+  );
+  if (!firstEnrollment) {
+    return null; // enrollment가 없으면 null 반환하여 Unknown 표시
+  }
+
+  return (
+    subjects?.find(s => s.id === firstEnrollment.subjectId) || null // fallback 제거, null 반환하여 Unknown 표시
+  );
+};
+
+// 🆕 그룹 학생 이름을 표시하는 함수
+export const getGroupStudentDisplayText = (studentNames: string[]): string => {
+  if (studentNames.length === 0) return '';
+  if (studentNames.length === 1) return studentNames[0];
+  if (studentNames.length === 2) return studentNames.join(', ');
+  return `${studentNames[0]}, ${studentNames[1]} 외 ${studentNames.length - 2}명`;
+};
 
 // 유틸리티 함수들 (테스트 가능)
 // eslint-disable-next-line react-refresh/only-export-components
@@ -36,17 +94,6 @@ export const getSessionBlockStyles = (
     border: '1px solid rgba(255,255,255,0.2)',
     cursor: 'pointer',
   };
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const getSessionBlockText = (
-  subjectName?: string,
-  studentName?: string
-): string => {
-  if (studentName) {
-    return `${subjectName ?? 'Unknown'} ${studentName}`;
-  }
-  return `${subjectName ?? 'Unknown'}`;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -80,26 +127,30 @@ export const shouldShowSubjectName = (subjectName?: string): boolean => {
 
 export default function SessionBlock({
   session,
-  subject,
-  student,
+  subjects,
+  enrollments,
+  students,
   left,
   width,
   yOffset,
   onClick,
 }: SessionBlockProps) {
+  // 🆕 과목과 학생 정보 가져오기
+  const subject = getSessionSubject(session, enrollments, subjects);
+  const studentNames = getGroupStudentNames(session, enrollments, students);
+
   const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
 
   const handleClick = (e: React.MouseEvent) => {
     console.log('🖱️ SessionBlock clicked!', {
       sessionId: session.id,
       subjectName: subject?.name,
-      studentName: student?.name,
+      studentNames,
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       left,
       width,
       yOffset,
-      zIndex: styles.zIndex,
     });
     e.stopPropagation(); // 이벤트 버블링 방지
     onClick();
@@ -111,9 +162,9 @@ export default function SessionBlock({
       onClick={handleClick}
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
+      className="session-block"
     >
       <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-        {/* 첫 번째 줄: 과목명과 학생명 */}
         <div
           style={{
             display: 'flex',
@@ -124,15 +175,14 @@ export default function SessionBlock({
           <span style={{ color: '#fff', fontWeight: '600' }}>
             {subject?.name ?? 'Unknown'}
           </span>
-          {student?.name && (
+          {studentNames.length > 0 && (
             <span
               style={{ color: 'rgba(255, 255, 255, 0.7)', marginLeft: '4px' }}
             >
-              {student.name}
+              {getGroupStudentDisplayText(studentNames)}
             </span>
           )}
         </div>
-        {/* 두 번째 줄: 시간 정보 */}
         <div
           style={{
             fontSize: '10px',

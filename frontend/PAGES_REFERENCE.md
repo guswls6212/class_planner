@@ -109,7 +109,7 @@ useEffect(() => {
 - **시간표 표시**: 7일 x 시간별 그리드 (9:00 ~ 24:00)
 - **세션 관리**: 드래그 앤 드롭으로 수업 추가
 - **학생 선택**: 특정 학생의 시간표만 표시 (필터링)
-- **세션 편집**: 클릭으로 수업 정보 수정/삭제 모달
+- **세션 편집**: 클릭으로 수업 정보 수정/삭제 모달 ✅ 완성
 - **플로팅 패널**: 드래그 가능한 학생 목록 패널
 - **동적 높이**: 겹치는 세션 수에 따른 요일별 높이 자동 조정
 
@@ -136,7 +136,7 @@ const displaySessions = useMemo(() => {
   }
 }, [sessions, selectedStudentEnrolls, selectedStudentId]);
 
-// 드래그 앤 드롭 처리
+// 드래그 앤 드롭 처리 ✅ 완성
 function handleDrop(weekday: number, time: string, enrollmentId: string) {
   const enrollment = enrollments.find(e => e.id === enrollmentId);
   if (!enrollment) return;
@@ -163,7 +163,9 @@ function handleDrop(weekday: number, time: string, enrollmentId: string) {
 1. **TimeTableGrid**: Atomic Design 컴포넌트로 분리됨
 2. **동적 높이**: `getWeekdayHeight()` 함수로 요일별 높이 자동 계산
 3. **세션 필터링**: 선택된 학생의 세션만 표시하는 로직 보존
-4. **드래그 앤 드롭**: 학생 ID 전달 및 세션 생성 모달 로직 유지
+4. **드래그 앤 드롭**: ✅ 완성 - enrollment ID 전달 및 그룹 수업 추가 모달 로직 구현
+5. **세션 편집**: ✅ 완성 - 클릭 시 편집/삭제 모달 열림
+6. **학생 선택**: ✅ 완성 - onMouseDown 이벤트로 선택 상태 관리
 
 ---
 
@@ -334,6 +336,9 @@ npm run storybook
 - ✅ **순차적 Y축 배치**: 겹치는 세션마다 32px씩 아래로 배치하여 시각적 겹침 완전 방지
 - ✅ **동적 높이 계산**: 실제 세션의 최대 yPosition을 반영한 요일별 높이 자동 조정
 - ✅ **Atomic Design 구조**: 체계적이고 유지보수 가능한 컴포넌트 구조
+- ✅ **드래그 앤 드롭 시스템**: enrollment ID 기반으로 정확한 학생-과목 연결
+- ✅ **세션 편집 시스템**: 클릭 시 편집/삭제 모달로 완전한 CRUD 기능 구현
+- ✅ **학생 선택 시스템**: onMouseDown 이벤트로 안정적인 선택 상태 관리
 
 ### **3. 성능 개선**
 

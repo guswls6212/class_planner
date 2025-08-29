@@ -23,7 +23,7 @@ function generateLargeTestData(sessionCount: number) {
 
       daySessions.push({
         id: `session-${weekday}-${i}`,
-        enrollmentId: `enrollment-${i}`,
+        enrollmentIds: [`enrollment-${i}`],
         startsAt: `${startHour.toString().padStart(2, '0')}:00`,
         endsAt: `${endHour.toString().padStart(2, '0')}:00`,
         weekday,

@@ -3,26 +3,23 @@ import styles from './Button.module.css';
 
 interface ButtonProps {
   children: React.ReactNode;
-  onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void;
-  variant?: 'primary' | 'danger' | 'transparent';
+  variant?: 'primary' | 'secondary' | 'danger' | 'transparent';
   size?: 'small' | 'medium' | 'large';
+  disabled?: boolean;
+  onClick?: () => void;
   className?: string;
   style?: React.CSSProperties;
-  'data-testid'?: string;
-  disabled?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
   children,
-  onClick,
   variant = 'primary',
   size = 'medium',
+  disabled = false,
+  onClick,
   className = '',
   style = {},
-  'data-testid': dataTestId,
-  disabled = false,
 }) => {
-  // CSS Module 클래스들을 조합
   const buttonClasses = [
     styles.button,
     styles[variant],
@@ -34,11 +31,10 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      onClick={onClick}
       className={buttonClasses}
-      style={style}
-      data-testid={dataTestId}
+      onClick={onClick}
       disabled={disabled}
+      style={style}
     >
       {children}
     </button>

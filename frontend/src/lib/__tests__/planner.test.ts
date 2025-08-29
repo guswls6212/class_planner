@@ -134,13 +134,13 @@ describe('planner.ts', () => {
 
     it('같은 학생의 겹치는 세션을 감지한다', () => {
       const sessionA = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       };
       const sessionB = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:30',
         endsAt: '10:30',
@@ -153,13 +153,13 @@ describe('planner.ts', () => {
 
     it('다른 요일의 세션은 겹치지 않는다', () => {
       const sessionA = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       };
       const sessionB = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 1,
         startsAt: '09:00',
         endsAt: '10:00',
@@ -172,13 +172,13 @@ describe('planner.ts', () => {
 
     it('다른 학생의 세션은 겹치지 않는다', () => {
       const sessionA = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       };
       const sessionB = {
-        enrollmentId: 'enrollment2',
+        enrollmentIds: ['enrollment2'],
         weekday: 0,
         startsAt: '09:30',
         endsAt: '10:30',
@@ -191,13 +191,13 @@ describe('planner.ts', () => {
 
     it('시간이 겹치지 않는 세션은 겹치지 않는다', () => {
       const sessionA = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       };
       const sessionB = {
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '10:00',
         endsAt: '11:00',
@@ -210,13 +210,13 @@ describe('planner.ts', () => {
 
     it('존재하지 않는 enrollment는 겹치지 않는다', () => {
       const sessionA = {
-        enrollmentId: 'nonexistent',
+        enrollmentIds: ['nonexistent'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       };
       const sessionB = {
-        enrollmentId: 'nonexistent',
+        enrollmentIds: ['nonexistent'],
         weekday: 0,
         startsAt: '09:30',
         endsAt: '10:30',

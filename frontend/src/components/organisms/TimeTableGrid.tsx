@@ -151,6 +151,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       <div
         ref={ref}
         className={`time-table-grid ${className}`}
+        data-testid="time-table-grid"
         style={{
           display: 'grid',
           gridTemplateColumns,

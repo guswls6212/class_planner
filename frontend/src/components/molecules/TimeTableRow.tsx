@@ -33,8 +33,64 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   className = '',
   style = {},
 }) => {
-  const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-  const weekdayName = weekdays[weekday];
+  const weekdaySessions = sessions.get(weekday) || [];
+
+  // 🆕 시간을 분으로 변환하는 헬퍼 함수
+  const timeToMinutes = (time: string): number => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // 🆕 시간대별로 세션을 그룹화 (그룹 수업 고려)
+  const sessionsByTime = React.useMemo(() => {
+    const timeMap = new Map<string, Session[]>();
+
+    weekdaySessions.forEach(session => {
+      const timeKey = `${session.startsAt}-${session.endsAt}`;
+      if (!timeMap.has(timeKey)) {
+        timeMap.set(timeKey, []);
+      }
+      timeMap.get(timeKey)!.push(session);
+    });
+
+    return timeMap;
+  }, [weekdaySessions]);
+
+  // 🆕 시간대별로 겹치는 세션들을 병합하여 표시
+  const mergedSessions = React.useMemo(() => {
+    const merged: Array<{
+      session: Session;
+      yPosition: number;
+      left: number;
+      width: number;
+      yOffset: number;
+    }> = [];
+
+    sessionsByTime.forEach((sessionsInTime, timeKey) => {
+      const [startTime] = timeKey.split('-');
+      const timeSlot = timeToMinutes(startTime);
+      const left = ((timeSlot - 9 * 60) / 60) * 120; // 9:00 기준으로 계산
+
+      // 🆕 같은 시간대의 세션들을 하나로 병합하여 표시
+      if (sessionsInTime.length > 0) {
+        const primarySession = sessionsInTime[0];
+        const yPosition = sessionYPositions.get(primarySession.id) || 0;
+
+        // 🆕 여러 학생이 있는 경우를 고려하여 너비 조정
+        const width = Math.max(120, sessionsInTime.length * 30); // 최소 120px, 학생당 30px 추가
+
+        merged.push({
+          session: primarySession,
+          yPosition,
+          left,
+          width,
+          yOffset: yPosition,
+        });
+      }
+    });
+
+    return merged;
+  }, [sessionsByTime, sessionYPositions, timeToMinutes]);
 
   return (
     <div
@@ -60,7 +116,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           height: `${height}px`,
         }}
       >
-        {weekdayName}
+        {['월', '화', '수', '목', '금', '토', '일'][weekday]}
       </div>
 
       {/* 요일별 세션 컨테이너 (X축 전체) */}
@@ -73,141 +129,45 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           gridColumn: '2 / -1', // 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >
-        {/* 시간별 세로 구분선 */}
-        {Array.from({ length: 15 }, (_, hour) => {
-          const left = hour * 120; // 각 시간대별 위치
-
-          return (
-            <div
-              key={`border-${hour}`}
-              data-testid={`time-border-${hour}`}
-              style={{
-                position: 'absolute',
-                left: `${left}px`,
-                top: 0,
-                width: '1px',
-                height: '100%',
-                backgroundColor: 'var(--color-border-grid)',
-                opacity: 0.6,
-                zIndex: 1,
-              }}
-            />
-          );
-        })}
-
-        {/* 30분 구분선 */}
-        {Array.from({ length: 30 }, (_, halfHour) => {
-          const hourValue = Math.floor(halfHour / 2) + 9; // 9:00부터 시작
-          const isHalfHour = halfHour % 2 === 1; // 30분인지 확인
-          const left = (hourValue - 9) * 120 + (isHalfHour ? 60 : 0); // 각 30분별 위치
-
-          return (
-            <div
-              key={`half-hour-border-${halfHour}`}
-              data-testid={`half-hour-border-${halfHour}`}
-              style={{
-                position: 'absolute',
-                left: `${left}px`,
-                top: 0,
-                width: '1px',
-                height: '100%',
-                backgroundColor: 'var(--color-border-grid-light)',
-                opacity: 0.4,
-                zIndex: 1,
-              }}
-            />
-          );
-        })}
-
         {/* 드롭 존들 - 각 시간대별로 */}
         {Array.from({ length: 15 }, (_, hour) => {
           const hourValue = hour + 9; // 9:00부터 시작
+          const timeString = `${hourValue.toString().padStart(2, '0')}:00`;
+
           return (
             <DropZone
               key={hour}
-              hourIdx={hour}
-              height={height}
-              onDrop={e => {
-                const enrollmentId = e.dataTransfer.getData('text/plain');
-                if (enrollmentId) {
-                  const timeString = `${hourValue.toString().padStart(2, '0')}:00`;
-                  onDrop(weekday, timeString, enrollmentId);
-                }
-              }}
-              onDragEnter={() => {}}
-              onDragLeave={() => {}}
-              onDragOver={e => e.preventDefault()}
-              onClick={() => {
-                const timeString = `${hourValue.toString().padStart(2, '0')}:00`;
-                onEmptySpaceClick(weekday, timeString);
+              weekday={weekday}
+              time={timeString}
+              onDrop={onDrop}
+              onEmptySpaceClick={onEmptySpaceClick}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: `${hour * 120}px`,
+                width: '120px',
+                height: `${height}px`,
+                zIndex: 1,
               }}
             />
           );
         })}
 
-        {/* 세션 블록들 - 현재 요일과 일치하는 세션만 정확한 위치에 배치 */}
-        {(sessions.get(weekday) || [])
-          .filter(session => session.weekday === weekday) // 현재 요일과 일치하는 세션만 필터링
-          .map(session => {
-            // enrollmentId를 통해 올바른 subject와 student 찾기
-            const enrollment = enrollments.find(
-              e => e.id === session.enrollmentId
-            );
-            const subject = subjects.find(s => s.id === enrollment?.subjectId);
-            const student = students.find(s => s.id === enrollment?.studentId);
-
-            // 디버깅을 위한 로그 추가
-            console.log(`🔍 Session ${session.id}:`, {
-              enrollmentId: session.enrollmentId,
-              enrollment: enrollment,
-              subject: subject,
-              student: student,
-              expectedText:
-                subject && student
-                  ? `${subject.name} ${student.name}`
-                  : 'Unknown',
-            });
-
-            // 세션의 실제 시작 시간과 끝 시간을 기반으로 위치와 너비 계산
-            const sessionStartMinutes =
-              parseInt(session.startsAt.split(':')[0]) * 60 +
-              parseInt(session.startsAt.split(':')[1]);
-            const sessionEndMinutes =
-              parseInt(session.endsAt.split(':')[0]) * 60 +
-              parseInt(session.endsAt.split(':')[1]);
-            const dayStartMinutes = 9 * 60; // 9:00
-
-            const left = ((sessionStartMinutes - dayStartMinutes) / 60) * 120;
-            const width =
-              ((sessionEndMinutes - sessionStartMinutes) / 60) * 120;
-
-            // yOffset 계산: sessionYPositions에서 미리 계산된 Y축 위치 사용
-            const yPosition = sessionYPositions.get(session.id) || 0;
-            const yOffset = yPosition; // 이미 32를 곱한 값이므로 그대로 사용
-
-            console.log(
-              `Rendering session: ${session.id} (${session.startsAt}-${session.endsAt}) on weekday ${weekday}, yPosition: ${yPosition}, left: ${left}, width: ${width}, yOffset: ${yOffset}`
-            );
-
-            return (
-              <SessionBlock
-                key={session.id}
-                session={session}
-                subject={subject || subjects[0]}
-                student={student}
-                left={left}
-                width={width}
-                yOffset={yOffset}
-                onClick={() => {
-                  console.log(
-                    '🎯 TimeTableRow onClick triggered for session:',
-                    session.id
-                  );
-                  onSessionClick(session);
-                }}
-              />
-            );
-          })}
+        {/* 세션 블록들 */}
+        {mergedSessions.map(session => (
+          <SessionBlock
+            key={session.session.id}
+            session={session.session}
+            subjects={subjects}
+            enrollments={enrollments}
+            students={students}
+            yPosition={session.yPosition}
+            left={session.left}
+            width={session.width}
+            yOffset={session.yOffset}
+            onClick={() => onSessionClick(session.session)}
+          />
+        ))}
       </div>
     </div>
   );

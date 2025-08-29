@@ -5,7 +5,7 @@ describe('SessionBlock', () => {
   it('세션 데이터 구조가 올바르게 정의되어 있다', () => {
     const mockSession: Session = {
       id: 'session-1',
-      enrollmentId: 'enrollment-1',
+      enrollmentIds: ['enrollment-1'],
       weekday: 0,
       startsAt: '09:00',
       endsAt: '10:00',

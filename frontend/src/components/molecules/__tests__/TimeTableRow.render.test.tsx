@@ -25,14 +25,14 @@ const mockSessions = new Map<number, Session[]>([
     [
       {
         id: 'session-1',
-        enrollmentId: 'enrollment-1',
+        enrollmentIds: ['enrollment-1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
       },
       {
         id: 'session-2',
-        enrollmentId: 'enrollment-2',
+        enrollmentIds: ['enrollment-2'],
         weekday: 0,
         startsAt: '10:00',
         endsAt: '11:00',
@@ -79,7 +79,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
         [
           {
             id: 'session-3',
-            enrollmentId: 'non-existent-enrollment',
+            enrollmentIds: ['non-existent-enrollment'],
             weekday: 0,
             startsAt: '11:00',
             endsAt: '12:00',
@@ -92,10 +92,8 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
       <TimeTableRow {...defaultProps} sessions={sessionsWithoutEnrollment} />
     );
 
-    // enrollment가 없으면 subjects[0] (중등수학)을 fallback으로 사용
-    expect(screen.getByText('중등수학')).toBeInTheDocument();
-    // 학생 이름은 표시되지 않아야 함
-    expect(screen.queryByText('김요섭')).not.toBeInTheDocument();
+    // enrollment가 없으면 "Unknown"을 표시 (fallback 제거됨)
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 
   it('학생 정보가 없을 때 과목명만 표시한다', () => {
@@ -105,7 +103,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
         [
           {
             id: 'session-4',
-            enrollmentId: 'enrollment-1',
+            enrollmentIds: ['enrollment-1'],
             weekday: 0,
             startsAt: '12:00',
             endsAt: '13:00',
@@ -133,7 +131,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
         [
           {
             id: 'session-5',
-            enrollmentId: 'enrollment-1',
+            enrollmentIds: ['enrollment-1'],
             weekday: 0,
             startsAt: '09:00',
             endsAt: '10:00',
@@ -145,7 +143,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
         [
           {
             id: 'session-6',
-            enrollmentId: 'enrollment-2',
+            enrollmentIds: ['enrollment-2'],
             weekday: 1,
             startsAt: '10:00',
             endsAt: '11:00',

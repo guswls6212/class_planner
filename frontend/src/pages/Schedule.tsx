@@ -4,30 +4,49 @@ import Label from '../components/atoms/Label';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
 import { downloadTimetableAsPDF } from '../lib/pdf-utils';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
-import { weekdays } from '../lib/planner';
+import {
+  canFormGroupSession,
+  createGroupSession,
+  mergeIntoGroupSession,
+  weekdays,
+} from '../lib/planner';
 import styles from './Schedule.module.css';
+
+// 🆕 그룹 수업을 위한 새로운 타입
+type GroupSessionData = {
+  studentId: string;
+  subjectId: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  room?: string;
+};
 
 function useLocal<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : initial;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : initial;
     } catch {
       return initial;
     }
   });
-  useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-  return [value, setValue] as const;
+
+  const setValueWithStorage = (newValue: T | ((prev: T) => T)) => {
+    const finalValue =
+      typeof newValue === 'function'
+        ? (newValue as (prev: T) => T)(value)
+        : newValue;
+    setValue(finalValue);
+    localStorage.setItem(key, JSON.stringify(finalValue));
+  };
+
+  return [value, setValueWithStorage] as const;
 }
 
 export default function SchedulePage() {
   const [subjects] = useLocal<Subject[]>('subjects', []);
-  const [enrollments, setEnrollments] = useLocal<Enrollment[]>(
-    'enrollments',
-    []
-  );
+  const [enrollments] = useLocal<Enrollment[]>('enrollments', []);
   const [sessions, setSessions] = useLocal<Session[]>('sessions', []);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     'ui:selectedStudent',
@@ -46,19 +65,22 @@ export default function SchedulePage() {
     );
   }, [students, searchQuery]);
 
-  const selectedStudentEnrolls = useMemo(
-    () => enrollments.filter(e => e.studentId === selectedStudentId),
-    [enrollments, selectedStudentId]
-  );
+  // 🆕 selectedStudentId 변경 감지
+  useEffect(() => {
+    console.log('🆕 selectedStudentId 변경됨:', selectedStudentId);
+  }, [selectedStudentId]);
 
-  // 선택된 학생이 있으면 해당 학생의 세션만, 없으면 전체 세션 표시
+  // 🆕 선택된 학생이 있으면 해당 학생의 세션만, 없으면 전체 세션 표시
   const displaySessions = useMemo(() => {
     if (selectedStudentId) {
-      // 선택된 학생의 세션만 필터링
+      // 🆕 enrollmentIds를 사용하여 선택된 학생의 세션만 필터링
       return new Map<number, Session[]>(
         sessions
           .filter(s =>
-            selectedStudentEnrolls.some(e => e.id === s.enrollmentId)
+            s.enrollmentIds.some(enrollmentId => {
+              const enrollment = enrollments.find(e => e.id === enrollmentId);
+              return enrollment?.studentId === selectedStudentId;
+            })
           )
           .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
           .reduce((acc, s) => {
@@ -81,9 +103,169 @@ export default function SchedulePage() {
           }, new Map<number, Session[]>())
       );
     }
-  }, [sessions, selectedStudentEnrolls, selectedStudentId]);
+  }, [sessions, enrollments, selectedStudentId]);
 
-  // 학생 패널 위치 (드래그로 이동 가능)
+  // 🆕 그룹 수업 모달 상태
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [groupModalData, setGroupModalData] = useState<GroupSessionData>({
+    studentId: '',
+    subjectId: '',
+    weekday: 0,
+    startTime: '',
+    endTime: '',
+  });
+
+  // 🆕 그룹 수업 추가 함수
+  const addGroupSession = (data: GroupSessionData) => {
+    // 🆕 그룹 수업 판단 및 처리
+    const { canForm, existingSessionId } = canFormGroupSession(
+      {
+        studentId: data.studentId,
+        subjectId: data.subjectId,
+        weekday: data.weekday,
+        startsAt: data.startTime,
+        endsAt: data.endTime,
+        room: data.room,
+      },
+      sessions,
+      enrollments
+    );
+
+    if (canForm && existingSessionId) {
+      // 🆕 기존 세션에 학생 추가 (그룹 수업)
+      const existingSession = sessions.find(s => s.id === existingSessionId);
+      if (existingSession) {
+        const updatedSession = mergeIntoGroupSession(
+          {
+            studentId: data.studentId,
+            subjectId: data.subjectId,
+            weekday: data.weekday,
+            startsAt: data.startTime,
+            endsAt: data.endTime,
+            room: data.room,
+          },
+          existingSession,
+          enrollments
+        );
+
+        setSessions(prev =>
+          prev.map(s => (s.id === existingSessionId ? updatedSession : s))
+        );
+      }
+    } else {
+      // 🆕 새로운 세션 생성
+      const newSession = createGroupSession(
+        {
+          studentId: data.studentId,
+          subjectId: data.subjectId,
+          weekday: data.weekday,
+          startsAt: data.startTime,
+          endsAt: data.endTime,
+          room: data.room,
+        },
+        enrollments
+      );
+
+      setSessions(prev => [...prev, newSession]);
+    }
+
+    setShowGroupModal(false);
+  };
+
+  // 🆕 그룹 수업 모달 열기
+  const openGroupModal = (weekday: number, time: string) => {
+    console.log('🆕 그룹 수업 모달 열기:', { weekday, time });
+    setGroupModalData({
+      studentId: '',
+      subjectId: '',
+      weekday,
+      startTime: time,
+      endTime: getNextHour(time),
+    });
+    setShowGroupModal(true);
+    console.log('🆕 모달 상태 설정 완료:', { showGroupModal: true });
+  };
+
+  // 🆕 다음 시간 계산
+  const getNextHour = (time: string): string => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const nextHour = hours + 1;
+    return `${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  // 🆕 드래그 앤 드롭 처리
+  const handleDrop = (weekday: number, time: string, enrollmentId: string) => {
+    console.log('🆕 handleDrop 호출됨:', { weekday, time, enrollmentId });
+
+    const enrollment = enrollments.find(e => e.id === enrollmentId);
+    console.log('🆕 찾은 enrollment:', enrollment);
+
+    if (!enrollment) {
+      console.log('🆕 enrollment를 찾을 수 없음');
+      return;
+    }
+
+    console.log('🆕 그룹 수업 모달 데이터 설정:', {
+      studentId: enrollment.studentId,
+      subjectId: enrollment.subjectId,
+      weekday,
+      startTime: time,
+      endTime: getNextHour(time),
+    });
+
+    // 🆕 그룹 수업 모달 열기
+    setGroupModalData({
+      studentId: enrollment.studentId,
+      subjectId: enrollment.subjectId,
+      weekday,
+      startTime: time,
+      endTime: getNextHour(time),
+    });
+
+    console.log('🆕 showGroupModal을 true로 설정');
+    setShowGroupModal(true);
+
+    console.log('🆕 handleDrop 완료');
+  };
+
+  // 🆕 빈 공간 클릭 처리
+  const handleEmptySpaceClick = (weekday: number, time: string) => {
+    console.log('🆕 빈 공간 클릭됨:', { weekday, time });
+    openGroupModal(weekday, time);
+  };
+
+  // 🆕 세션 편집 모달 상태
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalData, setEditModalData] = useState<Session | null>(null);
+
+  // 🆕 세션 클릭 처리
+  const handleSessionClick = (session: Session) => {
+    setEditModalData(session);
+    setShowEditModal(true);
+  };
+
+  // 🆕 PDF 다운로드 처리
+  const timeTableRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handlePDFDownload = async () => {
+    if (!timeTableRef.current) return;
+
+    setIsDownloading(true);
+    try {
+      // 선택된 학생 이름 찾기
+      const selectedStudent = students.find(s => s.id === selectedStudentId);
+      const studentName = selectedStudent?.name;
+
+      await downloadTimetableAsPDF(timeTableRef.current, studentName);
+    } catch (error) {
+      console.error('PDF 다운로드 실패:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // 학생 패널 위치 (드래그로 이동 가능) - 원래 위치로 복원
   const [panelPos, setPanelPos] = useLocal<{ x: number; y: number }>(
     'ui:studentsPanelPos',
     { x: 600, y: 90 }
@@ -94,242 +276,13 @@ export default function SchedulePage() {
     y: 0,
   });
 
-  // PDF 다운로드 관련
-  const timeTableRef = useRef<HTMLDivElement>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-
-  // PDF 다운로드 함수
-  const handlePDFDownload = async () => {
-    if (!timeTableRef.current) return;
-
-    try {
-      setIsDownloading(true);
-
-      // 선택된 학생 이름 가져오기
-      const selectedStudent = students.find(s => s.id === selectedStudentId);
-      const studentName = selectedStudent?.name;
-
-      // 시간표를 PDF로 다운로드
-      await downloadTimetableAsPDF(timeTableRef.current, studentName);
-
-      console.log('PDF 다운로드 완료!');
-    } catch (error) {
-      console.error('PDF 다운로드 실패:', error);
-      alert('PDF 다운로드에 실패했습니다. 다시 시도해주세요.');
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - panelPos.x,
+      y: e.clientY - panelPos.y,
+    });
   };
-
-  // 모달 상태
-  const [showModal, setShowModal] = useState(false);
-  const [modalData, setModalData] = useState({
-    studentId: '',
-    weekday: 0,
-    startTime: '',
-    endTime: '',
-  });
-
-  // 빈 공간 클릭 모달 상태
-  const [showEmptySpaceModal, setShowEmptySpaceModal] = useState(false);
-  const [emptySpaceModalData, setEmptySpaceModalData] = useState({
-    weekday: 0,
-    startTime: '',
-    endTime: '',
-    studentId: '',
-    subjectId: '',
-  });
-
-  // 편집 모달 상태
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editModalData, setEditModalData] = useState<{
-    sessionId: string;
-    enrollmentId: string;
-    studentId: string;
-    subjectId: string;
-    weekday: number;
-    startTime: string;
-    endTime: string;
-  } | null>(null);
-
-  // 과목 추가 함수 - 사용하지 않으므로 제거
-  // function addEnrollment(studentId: string, subjectId: string) {
-  //   const exists = enrollments.some(
-  //     e => e.studentId === studentId && e.subjectId === subjectId
-  //   );
-  //   if (exists) return;
-  //   const e: Enrollment = { id: crypto.randomUUID(), studentId, subjectId };
-  //   setEnrollments([...enrollments, e]);
-  // }
-
-  // 세션 추가 함수
-  function addSession(
-    enrollmentId: string,
-    weekday: number,
-    startsAt: string,
-    endsAt: string
-  ) {
-    const overlaps = sessions.some(s =>
-      s.enrollmentId !== enrollmentId
-        ? sessionsOverlapSameStudent(
-            s,
-            { enrollmentId, weekday, startsAt, endsAt } as Omit<Session, 'id'>,
-            enrollments
-          )
-        : false
-    );
-    if (overlaps) {
-      alert('시간이 겹칩니다.');
-      return;
-    }
-    const se: Session = {
-      id: crypto.randomUUID(),
-      enrollmentId,
-      weekday,
-      startsAt,
-      endsAt,
-    };
-    setSessions([...sessions, se]);
-  }
-
-  // 세션 편집 함수
-  function editSession(
-    sessionId: string,
-    enrollmentId: string,
-    weekday: number,
-    startsAt: string,
-    endsAt: string
-  ) {
-    const overlaps = sessions.some(s =>
-      s.id !== sessionId && s.enrollmentId !== enrollmentId
-        ? sessionsOverlapSameStudent(
-            s,
-            { enrollmentId, weekday, startsAt, endsAt } as Omit<Session, 'id'>,
-            enrollments
-          )
-        : false
-    );
-    if (overlaps) {
-      alert('시간이 겹칩니다.');
-      return;
-    }
-
-    setSessions(prev =>
-      prev.map(s =>
-        s.id === sessionId ? { ...s, weekday, startsAt, endsAt } : s
-      )
-    );
-  }
-
-  // 세션 삭제 함수
-  function deleteSession(sessionId: string) {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-  }
-
-  // 빈 공간 클릭 핸들러
-  function handleEmptySpaceClick(weekday: number, time: string) {
-    setEmptySpaceModalData({
-      weekday,
-      startTime: time,
-      endTime: getNextHour(time),
-      studentId: '',
-      subjectId: '',
-    });
-    setShowEmptySpaceModal(true);
-  }
-
-  // 다음 시간 계산 함수
-  function getNextHour(time: string): string {
-    const [hours, minutes] = time.split(':').map(Number);
-    const nextHour = hours + 1;
-    return `${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  }
-
-  // 편집 모달 표시 함수
-  function openEditModal(session: Session) {
-    console.log('🔍 openEditModal called with session:', session);
-
-    const enrollment = enrollments.find(e => e.id === session.enrollmentId);
-    console.log('🔍 Found enrollment:', enrollment);
-
-    const student = students.find(s => s.id === enrollment?.studentId);
-    console.log('🔍 Found student:', student);
-
-    const subject = subjects.find(sub => sub.id === enrollment?.subjectId);
-    console.log('🔍 Found subject:', subject);
-
-    if (!enrollment || !student || !subject) {
-      console.log('❌ Modal not opened - missing data:', {
-        hasEnrollment: !!enrollment,
-        hasStudent: !!student,
-        hasSubject: !!subject,
-      });
-      return;
-    }
-
-    console.log('✅ Opening modal with data:', {
-      sessionId: session.id,
-      enrollmentId: session.enrollmentId,
-      studentId: student.id,
-      subjectId: subject.id,
-      weekday: session.weekday,
-      startTime: session.startsAt,
-      endTime: session.endsAt,
-    });
-
-    setEditModalData({
-      sessionId: session.id,
-      enrollmentId: session.enrollmentId,
-      studentId: student.id,
-      subjectId: subject.id,
-      weekday: session.weekday,
-      startTime: session.startsAt,
-      endTime: session.endsAt,
-    });
-    setShowEditModal(true);
-  }
-
-  // 모달에서 과목 선택 및 시간 설정 완료
-  function handleModalSubmit() {
-    const { studentId, startTime, endTime } = modalData;
-    const subjectId = (
-      document.getElementById('modal-subject') as HTMLSelectElement
-    )?.value;
-    const weekday = Number(
-      (document.getElementById('modal-weekday') as HTMLSelectElement)?.value
-    );
-    const customStartTime = (
-      document.getElementById('modal-start-time') as HTMLInputElement
-    )?.value;
-    const customEndTime = (
-      document.getElementById('modal-end-time') as HTMLInputElement
-    )?.value;
-
-    if (!subjectId) return;
-
-    // 과목 등록 (없으면)
-    let enrollmentId = enrollments.find(
-      e => e.studentId === studentId && e.subjectId === subjectId
-    )?.id;
-    if (!enrollmentId) {
-      const newEnrollment: Enrollment = {
-        id: crypto.randomUUID(),
-        studentId,
-        subjectId,
-      };
-      setEnrollments([...enrollments, newEnrollment]);
-      enrollmentId = newEnrollment.id;
-    }
-
-    // 세션 추가
-    addSession(
-      enrollmentId,
-      weekday,
-      customStartTime || startTime,
-      customEndTime || endTime
-    );
-    setShowModal(false);
-  }
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -363,7 +316,7 @@ export default function SchedulePage() {
         </p>
       )}
 
-      {/* 시간표 다운로드 버튼 */}
+      {/* 시간표 다운로드 버튼 - 원래 위치로 복원 */}
       <div style={{ marginBottom: '16px', textAlign: 'right' }}>
         <Button
           variant="primary"
@@ -374,37 +327,20 @@ export default function SchedulePage() {
         </Button>
       </div>
 
-      {/* TimeTableGrid 컴포넌트 사용 */}
+      {/* 🆕 시간표 그리드 */}
       <div ref={timeTableRef}>
         <TimeTableGrid
           sessions={displaySessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}
-          onSessionClick={openEditModal}
-          onDrop={(weekday, time, enrollmentId) => {
-            // 드롭된 학생 ID를 enrollmentId로 사용
-            const studentId = enrollmentId;
-
-            // 모달 데이터 설정
-            const [hours, minutes] = time.split(':').map(Number);
-            const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            const endTime = `${(hours + 1).toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-
-            // 모달 표시
-            setModalData({
-              studentId,
-              weekday,
-              startTime,
-              endTime,
-            });
-            setShowModal(true);
-          }}
+          onSessionClick={handleSessionClick}
+          onDrop={handleDrop}
           onEmptySpaceClick={handleEmptySpaceClick}
         />
       </div>
 
-      {/* 플로팅 학생 리스트 패널 */}
+      {/* 🆕 학생 패널 - 원래 위치로 복원 */}
       <div
         className={`${styles.floatingPanel} position-fixed overflow-auto`}
         style={{
@@ -414,19 +350,12 @@ export default function SchedulePage() {
           maxHeight: '400px',
           padding: 16,
         }}
+        onMouseDown={handleMouseDown}
       >
         {/* 드래그 가능한 헤더 */}
         <div
           className={`${styles.panelHeader} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-          onMouseDown={e => {
-            if (e.target === e.currentTarget) {
-              setIsDragging(true);
-              setDragOffset({
-                x: e.nativeEvent.offsetX,
-                y: e.nativeEvent.offsetY,
-              });
-            }
-          }}
+          data-testid="students-panel-header"
         >
           수강생 리스트
         </div>
@@ -448,20 +377,47 @@ export default function SchedulePage() {
               <div
                 draggable
                 className={`${styles.studentItem} ${selectedStudentId === s.id ? styles.selected : ''}`}
+                data-testid={`student-item-${s.id}`}
                 onDragStart={e => {
-                  e.dataTransfer.setData('text/plain', s.id);
+                  // 해당 학생의 첫 번째 enrollment ID를 찾아서 전달
+                  const studentEnrollment = enrollments.find(
+                    e => e.studentId === s.id
+                  );
+                  if (studentEnrollment) {
+                    console.log(
+                      '🆕 드래그 시작 - enrollment ID 전달:',
+                      studentEnrollment.id
+                    );
+                    e.dataTransfer.setData('text/plain', studentEnrollment.id);
+                  } else {
+                    console.log(
+                      '🆕 드래그 시작 - enrollment를 찾을 수 없음:',
+                      s.id
+                    );
+                    e.dataTransfer.setData('text/plain', '');
+                  }
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
                 onMouseDown={() => {
+                  console.log('🆕 학생 onMouseDown 이벤트:', {
+                    studentId: s.id,
+                    currentSelectedId: selectedStudentId,
+                    isDragging,
+                  });
+
                   // 드래그 중이 아닐 때만 클릭 이벤트 처리
                   if (!isDragging) {
                     if (selectedStudentId === s.id) {
                       // 이미 선택된 학생이면 선택 해제
+                      console.log('🆕 선택 해제:', s.id);
                       setSelectedStudentId('');
                     } else {
                       // 새로운 학생 선택
+                      console.log('🆕 새로운 학생 선택:', s.id);
                       setSelectedStudentId(s.id);
                     }
+                  } else {
+                    console.log('🆕 드래그 중이므로 클릭 이벤트 무시');
                   }
                 }}
               >
@@ -482,23 +438,67 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* 과목 선택 및 시간 설정 모달 */}
-      {showModal && (
+      {/* 그룹 수업 추가 모달 */}
+      {showGroupModal && (
         <div className="modal-backdrop">
           <div className="modal-overlay">
             <div className="modal-content">
-              <h4 className="modal-title">수업 추가</h4>
+              <h4 className="modal-title">그룹 수업 추가</h4>
               <div className="modal-form">
+                <div className="form-group">
+                  <Label htmlFor="modal-student" required>
+                    학생
+                  </Label>
+                  <select
+                    id="modal-student"
+                    className="form-select"
+                    value={groupModalData.studentId}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        studentId: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">학생을 선택하세요</option>
+                    {students.map(student => (
+                      <option key={student.id} value={student.id}>
+                        {student.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <Label htmlFor="modal-subject" required>
                     과목
                   </Label>
-                  <select id="modal-subject" className="form-select">
-                    {subjects.map(sub => (
-                      <option key={sub.id} value={sub.id}>
-                        {sub.name}
-                      </option>
-                    ))}
+                  <select
+                    id="modal-subject"
+                    className="form-select"
+                    value={groupModalData.subjectId}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        subjectId: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">과목을 선택하세요</option>
+                    {enrollments
+                      .filter(e => e.studentId === groupModalData.studentId)
+                      .map(enrollment => {
+                        const subject = subjects.find(
+                          s => s.id === enrollment.subjectId
+                        );
+                        return subject ? (
+                          <option
+                            key={enrollment.id}
+                            value={enrollment.subjectId}
+                          >
+                            {subject.name}
+                          </option>
+                        ) : null;
+                      })}
                   </select>
                 </div>
                 <div className="form-group">
@@ -508,7 +508,13 @@ export default function SchedulePage() {
                   <select
                     id="modal-weekday"
                     className="form-select"
-                    defaultValue={modalData.weekday}
+                    value={groupModalData.weekday}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        weekday: Number(e.target.value),
+                      }))
+                    }
                   >
                     {weekdays.map((w, idx) => (
                       <option key={idx} value={idx}>
@@ -525,7 +531,13 @@ export default function SchedulePage() {
                     id="modal-start-time"
                     type="time"
                     className="form-input"
-                    defaultValue={modalData.startTime}
+                    value={groupModalData.startTime}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        startTime: e.target.value,
+                      }))
+                    }
                   />
                 </div>
                 <div className="form-group">
@@ -536,18 +548,49 @@ export default function SchedulePage() {
                     id="modal-end-time"
                     type="time"
                     className="form-input"
-                    defaultValue={modalData.endTime}
+                    value={groupModalData.endTime}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        endTime: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <Label htmlFor="modal-room">강의실</Label>
+                  <input
+                    id="modal-room"
+                    type="text"
+                    className="form-input"
+                    placeholder="강의실 (선택사항)"
+                    value={groupModalData.room || ''}
+                    onChange={e =>
+                      setGroupModalData(prev => ({
+                        ...prev,
+                        room: e.target.value,
+                      }))
+                    }
                   />
                 </div>
               </div>
               <div className="modal-actions">
                 <Button
                   variant="transparent"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => setShowGroupModal(false)}
                 >
                   취소
                 </Button>
-                <Button variant="primary" onClick={handleModalSubmit}>
+                <Button
+                  variant="primary"
+                  onClick={() => addGroupSession(groupModalData)}
+                  disabled={
+                    !groupModalData.studentId ||
+                    !groupModalData.subjectId ||
+                    !groupModalData.startTime ||
+                    !groupModalData.endTime
+                  }
+                >
                   추가
                 </Button>
               </div>
@@ -556,7 +599,7 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {/* 편집 모달 */}
+      {/* 세션 편집 모달 */}
       {showEditModal && editModalData && (
         <div className="modal-backdrop">
           <div className="modal-overlay">
@@ -566,13 +609,29 @@ export default function SchedulePage() {
                 <div className="form-group">
                   <label className="form-label">학생</label>
                   <div className="form-input form-input-disabled">
-                    {students.find(s => s.id === editModalData.studentId)?.name}
+                    {(() => {
+                      const enrollment = enrollments.find(
+                        e => e.id === editModalData.enrollmentIds?.[0]
+                      );
+                      const student = students.find(
+                        s => s.id === enrollment?.studentId
+                      );
+                      return student?.name || 'Unknown';
+                    })()}
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">과목</label>
                   <div className="form-input form-input-disabled">
-                    {subjects.find(s => s.id === editModalData.subjectId)?.name}
+                    {(() => {
+                      const enrollment = enrollments.find(
+                        e => e.id === editModalData.enrollmentIds?.[0]
+                      );
+                      const subject = subjects.find(
+                        s => s.id === enrollment?.subjectId
+                      );
+                      return subject?.name || 'Unknown';
+                    })()}
                   </div>
                 </div>
                 <div className="form-group">
@@ -595,7 +654,7 @@ export default function SchedulePage() {
                     id="edit-modal-start-time"
                     type="time"
                     className="form-input"
-                    defaultValue={editModalData.startTime}
+                    defaultValue={editModalData.startsAt}
                   />
                 </div>
                 <div className="form-group">
@@ -604,7 +663,7 @@ export default function SchedulePage() {
                     id="edit-modal-end-time"
                     type="time"
                     className="form-input"
-                    defaultValue={editModalData.endTime}
+                    defaultValue={editModalData.endsAt}
                   />
                 </div>
               </div>
@@ -612,8 +671,10 @@ export default function SchedulePage() {
                 <Button
                   variant="danger"
                   onClick={() => {
-                    if (confirm('정말 삭제하시겠습니까?')) {
-                      deleteSession(editModalData.sessionId);
+                    if (confirm('정말로 이 수업을 삭제하시겠습니까?')) {
+                      setSessions(prev =>
+                        prev.filter(s => s.id !== editModalData.id)
+                      );
                       setShowEditModal(false);
                     }
                   }}
@@ -650,12 +711,18 @@ export default function SchedulePage() {
 
                       if (!startTime || !endTime) return;
 
-                      editSession(
-                        editModalData.sessionId,
-                        editModalData.enrollmentId,
-                        weekday,
-                        startTime,
-                        endTime
+                      // 세션 업데이트
+                      setSessions(prev =>
+                        prev.map(s =>
+                          s.id === editModalData.id
+                            ? {
+                                ...s,
+                                weekday,
+                                startsAt: startTime,
+                                endsAt: endTime,
+                              }
+                            : s
+                        )
                       );
                       setShowEditModal(false);
                     }}
@@ -670,7 +737,8 @@ export default function SchedulePage() {
       )}
 
       {/* 빈 공간 클릭 모달 */}
-      {showEmptySpaceModal && (
+      {/* This modal is now handled by handleEmptySpaceClick */}
+      {/* {showEmptySpaceModal && (
         <div className="modal-backdrop">
           <div className="modal-overlay">
             <div className="modal-content">
@@ -808,29 +876,7 @@ export default function SchedulePage() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
-}
-
-function sessionsOverlapSameStudent(
-  a: {
-    enrollmentId: string;
-    weekday: number;
-    startsAt: string;
-    endsAt: string;
-  },
-  b: {
-    enrollmentId: string;
-    weekday: number;
-    startsAt: string;
-    endsAt: string;
-  },
-  enrolls: Enrollment[]
-) {
-  if (a.weekday !== b.weekday) return false;
-  const aStudent = enrolls.find(e => e.id === a.enrollmentId)?.studentId;
-  const bStudent = enrolls.find(e => e.id === b.enrollmentId)?.studentId;
-  if (!aStudent || !bStudent || aStudent !== bStudent) return false;
-  return a.startsAt < b.endsAt && b.startsAt < a.endsAt;
 }

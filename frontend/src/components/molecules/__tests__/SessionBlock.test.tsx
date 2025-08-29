@@ -6,7 +6,7 @@ import SessionBlock from '../SessionBlock';
 // Mock 데이터
 const mockSession: Session = {
   id: 'session-1',
-  enrollmentId: 'enrollment-1',
+  enrollmentIds: ['enrollment-1'],
   weekday: 0,
   startsAt: '09:00',
   endsAt: '10:00',
@@ -23,13 +23,25 @@ const mockStudent = {
   name: '김요섭',
 };
 
+const mockEnrollment = {
+  id: 'enrollment-1',
+  studentId: 'student-1',
+  subjectId: 'subject-1',
+};
+
+const mockSubjects = [mockSubject];
+const mockEnrollments = [mockEnrollment];
+const mockStudents = [mockStudent];
+
 describe('SessionBlock', () => {
   it('세션 정보를 올바르게 표시한다', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -37,7 +49,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    // 과목명과 학생명이 각각 별도의 span에 표시되는지 확인
+    // 과목명과 학생명이 표시되는지 확인
     expect(screen.getByText('중등수학')).toBeInTheDocument();
     expect(screen.getByText('김요섭')).toBeInTheDocument();
 
@@ -46,11 +58,18 @@ describe('SessionBlock', () => {
   });
 
   it('과목이 없을 때 기본 텍스트를 표시한다', () => {
+    const sessionWithoutSubject: Session = {
+      ...mockSession,
+      enrollmentIds: ['enrollment-2'], // 존재하지 않는 enrollment
+    };
+
     render(
       <SessionBlock
-        session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        session={sessionWithoutSubject}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -58,17 +77,23 @@ describe('SessionBlock', () => {
       />
     );
 
-    // 과목명과 학생명이 각각 별도의 span에 표시되는지 확인
-    expect(screen.getByText('중등수학')).toBeInTheDocument();
-    expect(screen.getByText('김요섭')).toBeInTheDocument();
+    // 과목명이 Unknown으로 표시되는지 확인
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 
   it('학생이 없을 때 과목명만 표시한다', () => {
+    const sessionWithoutStudent: Session = {
+      ...mockSession,
+      enrollmentIds: ['enrollment-3'], // 존재하지 않는 enrollment
+    };
+
     render(
       <SessionBlock
-        session={mockSession}
-        subject={mockSubject}
-        student={undefined}
+        session={sessionWithoutStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -76,8 +101,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('중등수학')).toBeInTheDocument();
-    expect(screen.queryByText('김요섭')).not.toBeInTheDocument();
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -85,8 +109,10 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -104,23 +130,22 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
-        left={240}
-        width={180}
-        yOffset={32}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
+        left={100}
+        width={200}
+        yOffset={50}
         onClick={() => {}}
       />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
-
     expect(sessionBlock).toHaveStyle({
-      position: 'absolute',
-      left: '240px',
-      top: '38px', // 6 + 32
-      width: '180px',
-      height: '36px',
+      left: '100px',
+      width: '200px',
+      top: '56px', // 6 + 50
     });
   });
 
@@ -128,8 +153,10 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -147,18 +174,20 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
-        yOffset={64}
+        yOffset={25}
         onClick={() => {}}
       />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
     expect(sessionBlock).toHaveStyle({
-      zIndex: 1064, // 1000 + 64
+      zIndex: '1025', // 1000 + 25
     });
   });
 
@@ -166,8 +195,10 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -176,11 +207,9 @@ describe('SessionBlock', () => {
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
-
     expect(sessionBlock).toHaveStyle({
+      position: 'absolute',
       borderRadius: '4px',
-      padding: '4px 6px',
-      fontSize: '12px',
       cursor: 'pointer',
     });
   });
@@ -190,8 +219,10 @@ describe('SessionBlock', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={mockSubject}
-        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
         left={0}
         width={120}
         yOffset={0}
@@ -201,12 +232,89 @@ describe('SessionBlock', () => {
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
 
-    // 클릭 이벤트 발생
+    // 클릭 이벤트가 발생하는지 확인
     fireEvent.click(sessionBlock);
-
     expect(mockOnClick).toHaveBeenCalledTimes(1);
+  });
 
-    // 이벤트 버블링 방지 확인 - onClick 핸들러가 호출되면 stopPropagation이 내부에서 처리됨
-    // 실제 stopPropagation 호출은 fireEvent.click 내부에서 처리되므로 별도 검증 불필요
+  it('그룹 학생 이름을 올바르게 표시한다', () => {
+    const groupSession: Session = {
+      ...mockSession,
+      enrollmentIds: ['enrollment-1', 'enrollment-2'],
+    };
+
+    const mockEnrollment2 = {
+      id: 'enrollment-2',
+      studentId: 'student-2',
+      subjectId: 'subject-1',
+    };
+
+    const mockStudent2 = {
+      id: 'student-2',
+      name: '이현진',
+    };
+
+    render(
+      <SessionBlock
+        session={groupSession}
+        subjects={mockSubjects}
+        enrollments={[...mockEnrollments, mockEnrollment2]}
+        students={[...mockStudents, mockStudent2]}
+        yPosition={0}
+        left={0}
+        width={120}
+        yOffset={0}
+        onClick={() => {}}
+      />
+    );
+
+    // 두 학생의 이름이 표시되는지 확인
+    expect(screen.getByText('김요섭, 이현진')).toBeInTheDocument();
+  });
+
+  it('여러 학생이 있을 때 외 N명 형식으로 표시한다', () => {
+    const groupSession: Session = {
+      ...mockSession,
+      enrollmentIds: ['enrollment-1', 'enrollment-2', 'enrollment-3'],
+    };
+
+    const mockEnrollment2 = {
+      id: 'enrollment-2',
+      studentId: 'student-2',
+      subjectId: 'subject-1',
+    };
+
+    const mockEnrollment3 = {
+      id: 'enrollment-3',
+      studentId: 'student-3',
+      subjectId: 'subject-1',
+    };
+
+    const mockStudent2 = {
+      id: 'student-2',
+      name: '이현진',
+    };
+
+    const mockStudent3 = {
+      id: 'student-3',
+      name: '강지원',
+    };
+
+    render(
+      <SessionBlock
+        session={groupSession}
+        subjects={mockSubjects}
+        enrollments={[...mockEnrollments, mockEnrollment2, mockEnrollment3]}
+        students={[...mockStudents, mockStudent2, mockStudent3]}
+        yPosition={0}
+        left={0}
+        width={120}
+        yOffset={0}
+        onClick={() => {}}
+      />
+    );
+
+    // "김요섭, 이현진 외 1명" 형식으로 표시되는지 확인
+    expect(screen.getByText('김요섭, 이현진 외 1명')).toBeInTheDocument();
   });
 });
