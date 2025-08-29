@@ -10,6 +10,7 @@ interface TimeTableRowProps {
   sessions: Map<number, Session[]>;
   subjects: Subject[];
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
+  students: Array<{ id: string; name: string }>;
   sessionYPositions: Map<string, number>;
   onSessionClick: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
@@ -24,6 +25,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   sessions,
   subjects,
   enrollments,
+  students,
   sessionYPositions,
   onSessionClick,
   onDrop,
@@ -147,11 +149,24 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         {(sessions.get(weekday) || [])
           .filter(session => session.weekday === weekday) // 현재 요일과 일치하는 세션만 필터링
           .map(session => {
-            // enrollmentId를 통해 올바른 subject 찾기
+            // enrollmentId를 통해 올바른 subject와 student 찾기
             const enrollment = enrollments.find(
               e => e.id === session.enrollmentId
             );
             const subject = subjects.find(s => s.id === enrollment?.subjectId);
+            const student = students.find(s => s.id === enrollment?.studentId);
+
+            // 디버깅을 위한 로그 추가
+            console.log(`🔍 Session ${session.id}:`, {
+              enrollmentId: session.enrollmentId,
+              enrollment: enrollment,
+              subject: subject,
+              student: student,
+              expectedText:
+                subject && student
+                  ? `${subject.name} ${student.name}`
+                  : 'Unknown',
+            });
 
             // 세션의 실제 시작 시간과 끝 시간을 기반으로 위치와 너비 계산
             const sessionStartMinutes =
@@ -179,6 +194,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 key={session.id}
                 session={session}
                 subject={subject || subjects[0]}
+                student={student}
                 left={left}
                 width={width}
                 yOffset={yOffset}

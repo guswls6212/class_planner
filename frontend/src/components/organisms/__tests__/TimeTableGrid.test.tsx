@@ -10,6 +10,11 @@ const mockSubjects: Subject[] = [
   { id: 'subject-3', name: '국어', color: '#10b981' },
 ];
 
+const mockStudents = [
+  { id: 'student-1', name: '김요섭' },
+  { id: 'student-2', name: '이영희' },
+];
+
 const mockEnrollments = [
   { id: 'enrollment-1', studentId: 'student-1', subjectId: 'subject-1' },
   { id: 'enrollment-2', studentId: 'student-2', subjectId: 'subject-2' },
@@ -91,6 +96,7 @@ describe('TimeTableGrid', () => {
     sessions: mockSessions,
     subjects: mockSubjects,
     enrollments: mockEnrollments,
+    students: mockStudents,
     onSessionClick: () => {},
     onDrop: () => {},
     onEmptySpaceClick: () => {},
@@ -176,10 +182,8 @@ describe('TimeTableGrid', () => {
     );
 
     // 겹치는 세션들이 순차적으로 Y축으로 분리되어야 함
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('영어 09:15-10:15')).toBeInTheDocument();
-    expect(screen.getByText('중등수학 09:30-10:30')).toBeInTheDocument();
-    expect(screen.getByText('영어 09:45-10:45')).toBeInTheDocument();
+    expect(screen.getAllByText('중등수학 김요섭')).toHaveLength(2);
+    expect(screen.getAllByText('영어 이영희')).toHaveLength(2);
   });
 
   it('부분적으로 겹치는 세션들도 겹치는 것으로 판단하여 Y축으로 분리한다', () => {
@@ -218,9 +222,8 @@ describe('TimeTableGrid', () => {
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
     // 10:00-11:00은 09:30-10:30과 겹침 → yPosition: 32
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('영어 09:30-10:30')).toBeInTheDocument();
-    expect(screen.getByText('중등수학 10:00-11:00')).toBeInTheDocument();
+    expect(screen.getAllByText('중등수학 김요섭')).toHaveLength(2);
+    expect(screen.getAllByText('영어 이영희')).toHaveLength(1);
   });
 
   it('좌상단 빈칸을 렌더링한다', () => {

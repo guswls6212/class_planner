@@ -39,12 +39,18 @@ function generateLargeTestData(sessionCount: number) {
     subjectId: `subject-${(i % 3) + 1}`,
   }));
 
-  return { sessions, subjects, enrollments };
+  const students = Array.from({ length: sessionCount }, (_, i) => ({
+    id: `student-${i}`,
+    name: `학생${i}`,
+  }));
+
+  return { sessions, subjects, enrollments, students };
 }
 
 describe('TimeTableGrid 성능 테스트', () => {
   it('소규모 데이터(10개 세션)에서 빠르게 렌더링된다', () => {
-    const { sessions, subjects, enrollments } = generateLargeTestData(10);
+    const { sessions, subjects, enrollments, students } =
+      generateLargeTestData(10);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
     const mockOnEmptySpaceClick = vi.fn();
@@ -56,6 +62,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={sessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -71,7 +78,8 @@ describe('TimeTableGrid 성능 테스트', () => {
   });
 
   it('중간 규모 데이터(50개 세션)에서 적절한 성능을 보인다', () => {
-    const { sessions, subjects, enrollments } = generateLargeTestData(50);
+    const { sessions, subjects, enrollments, students } =
+      generateLargeTestData(50);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
     const mockOnEmptySpaceClick = vi.fn();
@@ -83,6 +91,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={sessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -98,7 +107,8 @@ describe('TimeTableGrid 성능 테스트', () => {
   });
 
   it('대규모 데이터(100개 세션)에서도 성능이 급격히 저하되지 않는다', () => {
-    const { sessions, subjects, enrollments } = generateLargeTestData(100);
+    const { sessions, subjects, enrollments, students } =
+      generateLargeTestData(100);
     const mockOnSessionClick = vi.fn();
     const mockOnDrop = vi.fn();
     const mockOnEmptySpaceClick = vi.fn();
@@ -110,6 +120,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={sessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -130,12 +141,14 @@ describe('TimeTableGrid 성능 테스트', () => {
     const mockOnDrop = vi.fn();
     const mockOnEmptySpaceClick = vi.fn();
 
+    const { students } = generateLargeTestData(50);
     // 첫 번째 렌더링
     const { rerender } = render(
       <TimeTableGrid
         sessions={sessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -149,6 +162,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={sessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -178,6 +192,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={smallData.sessions}
         subjects={smallData.subjects}
         enrollments={smallData.enrollments}
+        students={smallData.students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -192,6 +207,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={mediumData.sessions}
         subjects={mediumData.subjects}
         enrollments={mediumData.enrollments}
+        students={mediumData.students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
@@ -206,6 +222,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         sessions={largeData.sessions}
         subjects={largeData.subjects}
         enrollments={largeData.enrollments}
+        students={largeData.students}
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}

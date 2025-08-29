@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import { Enrollment, Session, Subject } from '../../../lib/planner';
+import type { Enrollment, Session, Subject } from '../../../lib/planner';
 import TimeTableGrid from '../TimeTableGrid';
 
 // localStorage 모킹
@@ -21,6 +21,8 @@ const mockSubjects: Subject[] = [
   { id: '5', name: '고등영어', color: '#8b5cf6' },
   { id: '6', name: '중등사회', color: '#06b6d4' },
 ];
+
+const mockStudents = [{ id: '1', name: '김요섭' }];
 
 const mockEnrollments: Enrollment[] = [
   { id: '1', studentId: '1', subjectId: '1' },
@@ -92,18 +94,20 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         sessions={mockSessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 
     // 월요일 세션들이 순차적으로 배치되어야 함
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 09:15-10:15')).toBeInTheDocument();
-    expect(screen.getByText('중등국어 09:30-10:30')).toBeInTheDocument();
-    expect(screen.getByText('고등수학 09:45-10:45')).toBeInTheDocument();
-    expect(screen.getByText('고등영어 10:00-11:00')).toBeInTheDocument();
-    expect(screen.getByText('중등사회 10:15-11:15')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등국어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('고등수학 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('고등영어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등사회 김요섭')).toBeInTheDocument();
   });
 
   test('겹치지 않는 세션들은 같은 Y축 위치에 배치되어야 함', () => {
@@ -134,14 +138,16 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         sessions={nonOverlappingSessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 
     // 겹치지 않는 세션들은 모두 yPosition: 0에 배치되어야 함
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 11:00-12:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
   });
 
   test('부분적으로 겹치는 세션들도 겹치는 것으로 판단해야 함', () => {
@@ -179,15 +185,17 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         sessions={partialOverlapSessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
     // 10:00-11:00은 09:30-10:30과 겹침 → yPosition: 32
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
-    expect(screen.getByText('중등영어 09:30-10:30')).toBeInTheDocument();
-    expect(screen.getByText('중등국어 10:00-11:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등영어 김요섭')).toBeInTheDocument();
+    expect(screen.getByText('중등국어 김요섭')).toBeInTheDocument();
   });
 });

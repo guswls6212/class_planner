@@ -19,6 +19,8 @@ const mockSubjects: Subject[] = [
   { id: '3', name: '중등국어', color: '#10b981' },
 ];
 
+const mockStudents = [{ id: '1', name: '김요섭' }];
+
 const mockEnrollments: Enrollment[] = [
   { id: '1', studentId: '1', subjectId: '1' },
   { id: '2', studentId: '1', subjectId: '2' },
@@ -38,8 +40,10 @@ describe('TimeTableGrid 동적 높이 계산', () => {
         sessions={emptySessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 
@@ -125,8 +129,10 @@ describe('TimeTableGrid 동적 높이 계산', () => {
         sessions={overlappingSessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 
@@ -201,8 +207,10 @@ describe('TimeTableGrid 동적 높이 계산', () => {
         sessions={complexSessions}
         subjects={mockSubjects}
         enrollments={mockEnrollments}
+        students={mockStudents}
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
       />
     );
 

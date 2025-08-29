@@ -3,6 +3,7 @@ import type { Session, Subject } from '../../lib/planner';
 interface SessionBlockProps {
   session: Session;
   subject: Subject;
+  student?: { id: string; name: string };
   left: number;
   width: number;
   yOffset: number;
@@ -40,10 +41,12 @@ export const getSessionBlockStyles = (
 // eslint-disable-next-line react-refresh/only-export-components
 export const getSessionBlockText = (
   subjectName?: string,
-  startsAt?: string,
-  endsAt?: string
+  studentName?: string
 ): string => {
-  return `${subjectName ?? 'Unknown'} ${startsAt ?? ''}-${endsAt ?? ''}`;
+  if (studentName) {
+    return `${subjectName ?? 'Unknown'} ${studentName}`;
+  }
+  return `${subjectName ?? 'Unknown'}`;
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -78,22 +81,20 @@ export const shouldShowSubjectName = (subjectName?: string): boolean => {
 export default function SessionBlock({
   session,
   subject,
+  student,
   left,
   width,
   yOffset,
   onClick,
 }: SessionBlockProps) {
   const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
-  const blockText = getSessionBlockText(
-    subject?.name,
-    session.startsAt,
-    session.endsAt
-  );
+  const blockText = getSessionBlockText(subject?.name, student?.name);
 
   const handleClick = (e: React.MouseEvent) => {
     console.log('🖱️ SessionBlock clicked!', {
       sessionId: session.id,
       subjectName: subject?.name,
+      studentName: student?.name,
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       left,

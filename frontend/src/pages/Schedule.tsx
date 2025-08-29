@@ -340,6 +340,7 @@ export default function SchedulePage() {
         sessions={displaySessions}
         subjects={subjects}
         enrollments={enrollments}
+        students={students}
         onSessionClick={openEditModal}
         onDrop={(weekday, time, enrollmentId) => {
           // 드롭된 학생 ID를 enrollmentId로 사용

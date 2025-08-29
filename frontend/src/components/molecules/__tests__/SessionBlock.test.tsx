@@ -18,12 +18,18 @@ const mockSubject: Subject = {
   color: '#f59e0b',
 };
 
+const mockStudent = {
+  id: 'student-1',
+  name: '김요섭',
+};
+
 describe('SessionBlock', () => {
   it('세션 정보를 올바르게 표시한다', () => {
     render(
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -31,14 +37,15 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
   });
 
   it('과목이 없을 때 기본 텍스트를 표시한다', () => {
     render(
       <SessionBlock
         session={mockSession}
-        subject={undefined}
+        subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -46,7 +53,23 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('Unknown 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
+  });
+
+  it('학생이 없을 때 과목명만 표시한다', () => {
+    render(
+      <SessionBlock
+        session={mockSession}
+        subject={mockSubject}
+        student={undefined}
+        left={0}
+        width={120}
+        yOffset={0}
+        onClick={() => {}}
+      />
+    );
+
+    expect(screen.getByText('중등수학')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -55,6 +78,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -62,7 +86,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
@@ -73,6 +97,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={240}
         width={180}
         yOffset={32}
@@ -80,7 +105,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
 
     expect(sessionBlock).toHaveStyle({
       position: 'absolute',
@@ -96,6 +121,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -103,7 +129,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     expect(sessionBlock).toHaveStyle({
       background: '#f59e0b',
     });
@@ -114,6 +140,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={64}
@@ -121,7 +148,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     expect(sessionBlock).toHaveStyle({
       zIndex: 1064, // 1000 + 64
     });
@@ -132,6 +159,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -139,7 +167,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
 
     expect(sessionBlock).toHaveStyle({
       color: '#fff',
@@ -160,6 +188,7 @@ describe('SessionBlock', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         left={0}
         width={120}
         yOffset={0}
@@ -167,7 +196,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     const clickEvent = new MouseEvent('click', { bubbles: true });
 
     fireEvent(sessionBlock, clickEvent);

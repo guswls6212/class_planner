@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Session, Subject } from '../../lib/planner';
+import type { Session, Subject } from '../../../lib/planner';
 import SessionBlock from '../SessionBlock';
 
 // Mock 데이터
@@ -10,13 +10,17 @@ const mockSubject: Subject = {
   color: '#f59e0b',
 };
 
+const mockStudent = {
+  id: 'student-1',
+  name: '김요섭',
+};
+
 const mockSession: Session = {
   id: 'session-1',
   enrollmentId: 'enrollment-1',
   startsAt: '09:00',
   endsAt: '10:00',
   weekday: 1,
-  track: 0,
 };
 
 // Mock props
@@ -34,12 +38,13 @@ describe('SessionBlock 렌더링 테스트', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
     );
 
-    expect(screen.getByText('중등수학 09:00-10:00')).toBeInTheDocument();
+    expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {
@@ -49,12 +54,13 @@ describe('SessionBlock 렌더링 테스트', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     fireEvent.click(sessionBlock);
 
     expect(mockOnClick).toHaveBeenCalled();
@@ -67,12 +73,13 @@ describe('SessionBlock 렌더링 테스트', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     expect(sessionBlock).toHaveStyle({
       background: 'rgb(245, 158, 11)', // #f59e0b
     });
@@ -85,12 +92,13 @@ describe('SessionBlock 렌더링 테스트', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
     expect(sessionBlock).toHaveStyle({
       border: '1px solid rgba(255, 255, 255, 0.2)',
     });
@@ -103,12 +111,13 @@ describe('SessionBlock 렌더링 테스트', () => {
       <SessionBlock
         session={mockSession}
         subject={mockSubject}
+        student={mockStudent}
         onClick={mockOnClick}
         {...mockProps}
       />
     );
 
-    const sessionBlock = screen.getByText('중등수학 09:00-10:00');
+    const sessionBlock = screen.getByText('중등수학 김요섭');
 
     // 기본 스타일 확인
     expect(sessionBlock).toHaveStyle({
@@ -132,14 +141,13 @@ describe('SessionBlock 렌더링 테스트', () => {
         <SessionBlock
           session={session}
           subject={mockSubject}
+          student={mockStudent}
           onClick={mockOnClick}
           {...mockProps}
         />
       );
 
-      expect(
-        screen.getByText(`중등수학 ${session.startsAt}-${session.endsAt}`)
-      ).toBeInTheDocument();
+      expect(screen.getByText('중등수학 김요섭')).toBeInTheDocument();
       unmount();
     });
   });
