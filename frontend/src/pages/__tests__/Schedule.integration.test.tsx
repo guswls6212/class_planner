@@ -97,7 +97,7 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
 
       // 🆕 모달이 열렸는지 확인
       await waitFor(() => {
-        expect(screen.getByText('그룹 수업 추가')).toBeInTheDocument();
+        expect(screen.getByText('수업 추가')).toBeInTheDocument();
       });
     });
   });
@@ -129,13 +129,15 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
 
       // 4. 수업 추가 모달이 열렸는지 확인
       await waitFor(() => {
-        expect(screen.getByText('그룹 수업 추가')).toBeInTheDocument();
+        expect(screen.getByText('수업 추가')).toBeInTheDocument();
       });
 
       // 5. 모달에 드롭된 학생과 시간 정보가 미리 입력되었는지 확인
-      const studentSelect = screen.getByRole('combobox', {
-        name: '학생 *',
-      }) as HTMLSelectElement;
+      // 학생은 태그로 표시됨 (모달 내의 태그만 찾기)
+      const modal = screen.getByText('수업 추가').closest('.modal-content');
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveTextContent('김요섭');
+
       const subjectSelect = screen.getByRole('combobox', {
         name: '과목 *',
       }) as HTMLSelectElement;
@@ -146,7 +148,6 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
         '09:00'
       ) as HTMLInputElement;
 
-      expect(studentSelect.value).toBe('1'); // 김요섭의 ID
       expect(subjectSelect.value).toBe('1'); // 중등수학의 ID
       expect(weekdaySelect.value).toBe('0'); // 월요일
       expect(startTimeInput.value).toBe('09:00');
@@ -160,13 +161,16 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
       fireEvent.click(dropZone);
 
       await waitFor(() => {
-        expect(screen.getByText('그룹 수업 추가')).toBeInTheDocument();
+        expect(screen.getByText('수업 추가')).toBeInTheDocument();
       });
 
       // 2. 폼 입력
-      const studentSelect = screen.getByRole('combobox', {
-        name: '학생 *',
-      }) as HTMLSelectElement;
+      // 학생 입력 (태그 시스템)
+      const studentInput =
+        screen.getByPlaceholderText('학생 이름을 입력하세요');
+      fireEvent.change(studentInput, { target: { value: '이영희' } });
+      fireEvent.keyDown(studentInput, { key: 'Enter' });
+
       const subjectSelect = screen.getByRole('combobox', {
         name: '과목 *',
       }) as HTMLSelectElement;
@@ -177,18 +181,21 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
         '10:00'
       ) as HTMLInputElement;
 
-      fireEvent.change(studentSelect, { target: { value: '2' } }); // 이영희
       fireEvent.change(subjectSelect, { target: { value: '2' } }); // 중등영어
       fireEvent.change(startTimeInput, { target: { value: '14:00' } });
       fireEvent.change(endTimeInput, { target: { value: '15:00' } });
 
-      // 3. 추가 버튼 클릭
-      const addButton = screen.getByText('추가');
+      // 3. 추가 버튼 클릭 (모달 하단의 추가 버튼)
+      const modal = screen.getByText('수업 추가').closest('.modal-content');
+      const addButton = modal?.querySelector(
+        '.modal-actions .button.primary'
+      ) as HTMLButtonElement;
+      expect(addButton).toBeInTheDocument();
       fireEvent.click(addButton);
 
       // 4. 모달이 닫혔는지 확인
       await waitFor(() => {
-        expect(screen.queryByText('그룹 수업 추가')).not.toBeInTheDocument();
+        expect(screen.queryByText('수업 추가')).not.toBeInTheDocument();
       });
     });
   });

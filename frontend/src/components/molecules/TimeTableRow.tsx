@@ -33,13 +33,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   className = '',
   style = {},
 }) => {
-  const weekdaySessions = sessions.get(weekday) || [];
-
   // 🆕 시간을 분으로 변환하는 헬퍼 함수
-  const timeToMinutes = (time: string): number => {
+  const timeToMinutes = React.useCallback((time: string): number => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
-  };
+  }, []);
+
+  // 🆕 요일별 세션을 useMemo로 최적화
+  const weekdaySessions = React.useMemo(() => {
+    return sessions.get(weekday) || [];
+  }, [sessions, weekday]);
 
   // 🆕 시간대별로 세션을 그룹화 (그룹 수업 고려)
   const sessionsByTime = React.useMemo(() => {

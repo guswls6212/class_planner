@@ -94,34 +94,52 @@ useEffect(() => {
 #### 🎨 **현재 디자인 구조**
 
 ```tsx
+// 🆕 그룹 수업을 위한 새로운 타입
+type GroupSessionData = {
+  studentIds: string[]; // 여러 학생 ID 배열로 변경
+  subjectId: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  room?: string;
+};
+
 // 시간표 그리드 구조
-<TimeTableGrid // 🆕 Atomic Design 컴포넌트 사용
+<TimeTableGrid
   sessions={displaySessions}
   subjects={subjects}
   enrollments={enrollments}
   onSessionClick={handleSessionClick}
   onDrop={handleDrop}
+  onEmptySpaceClick={handleEmptySpaceClick}
 />
 ```
 
 #### 🔧 **현재 주요 기능**
 
 - **시간표 표시**: 7일 x 시간별 그리드 (9:00 ~ 24:00)
-- **세션 관리**: 드래그 앤 드롭으로 수업 추가
-- **학생 선택**: 특정 학생의 시간표만 표시 (필터링)
+- **세션 관리**: 드래그 앤 드롭으로 수업 추가 ✅ 완성
+- **학생 선택**: 특정 학생의 시간표만 표시 (필터링) ✅ 완성
 - **세션 편집**: 클릭으로 수업 정보 수정/삭제 모달 ✅ 완성
-- **플로팅 패널**: 드래그 가능한 학생 목록 패널
-- **동적 높이**: 겹치는 세션 수에 따른 요일별 높이 자동 조정
+- **플로팅 패널**: 드래그 가능한 학생 목록 패널 ✅ 완성
+- **동적 높이**: 겹치는 세션 수에 따른 요일별 높이 자동 조정 ✅ 완성
+- **🆕 그룹 수업**: 여러 학생을 동시에 포함하는 그룹 수업 생성 ✅ 완성
+- **🆕 태그 기반 학생 선택**: 드롭다운 대신 태그 형태의 다중 학생 선택 ✅ 완성
 
 #### 🎯 **현재 핵심 로직**
 
 ```tsx
-// 선택된 학생의 세션만 필터링
+// 🆕 선택된 학생의 세션만 필터링 (enrollmentIds 기반)
 const displaySessions = useMemo(() => {
   if (selectedStudentId) {
     return new Map<number, Session[]>(
       sessions
-        .filter(s => selectedStudentEnrolls.some(e => e.id === s.enrollmentId))
+        .filter(s =>
+          s.enrollmentIds.some(enrollmentId => {
+            const enrollment = enrollments.find(e => e.id === enrollmentId);
+            return enrollment?.studentId === selectedStudentId;
+          })
+        )
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
         .reduce((acc, s) => {
           const list = acc.get(s.weekday) ?? [];
@@ -134,20 +152,36 @@ const displaySessions = useMemo(() => {
     // 전체 학생의 세션 표시
     return new Map<number, Session[]>(/* ... */);
   }
-}, [sessions, selectedStudentEnrolls, selectedStudentId]);
+}, [sessions, enrollments, selectedStudentId]);
 
-// 드래그 앤 드롭 처리 ✅ 완성
+// 🆕 드래그 앤 드롭 처리 (enrollmentId 기반) ✅ 완성
 function handleDrop(weekday: number, time: string, enrollmentId: string) {
   const enrollment = enrollments.find(e => e.id === enrollmentId);
   if (!enrollment) return;
 
-  setModalData({
-    studentId: enrollment.studentId,
+  // 🆕 그룹 수업 모달 데이터 설정
+  setGroupModalData({
+    studentIds: [enrollment.studentId], // 단일 학생도 배열로 처리
+    subjectId: '',
     weekday,
     startTime: time,
     endTime: getNextHour(time),
+    room: '',
   });
-  setShowModal(true);
+  setShowGroupModal(true);
+}
+
+// 🆕 빈 공간 클릭 처리 ✅ 완성
+function handleEmptySpaceClick(weekday: number, time: string) {
+  setGroupModalData({
+    studentIds: [],
+    subjectId: '',
+    weekday,
+    startTime: time,
+    endTime: getNextHour(time),
+    room: '',
+  });
+  setShowGroupModal(true);
 }
 ```
 
@@ -205,6 +239,8 @@ function handleDrop(weekday: number, time: string, enrollmentId: string) {
   - 동적 위치, 크기, z-index 관리
   - 요일 표시 (예: "월 국어 09:00-10:00")
   - 겹치는 세션 Y축 분리 처리
+  - 🆕 **유틸리티 함수 분리**: `SessionBlock.utils.ts`로 로직 분리
+  - 🆕 **그룹 학생 표시**: 여러 학생 이름을 "학생1, 학생2 외 N명" 형태로 표시
 
 #### **3. DropZone**
 
@@ -400,7 +436,23 @@ npm run storybook
 - ✅ **빈 공간 클릭 모달**: 시간표 빈 곳 클릭 시 과목, 종료시간, 학생 선택하여 수업 추가 가능
 - ✅ **세션 셀 요일 표시**: 세션 셀 맨 앞에 요일(월, 화, 수, 목, 금, 토, 일)을 표시하여 사용자가 어떤 요일의 수업인지 쉽게 파악 가능
 
-### **6. 🆕 세션 겹침 문제 완전 해결**
+### **6. 🆕 그룹 수업 시스템**
+
+- ✅ **태그 기반 학생 선택**: 드롭다운 대신 태그 형태의 다중 학생 선택 UI
+- ✅ **실시간 학생 검색**: 입력창에 학생 이름 입력 시 실시간 필터링
+- ✅ **중복 방지**: 이미 선택된 학생은 중복 추가 방지
+- ✅ **태그 제거**: X 버튼으로 개별 학생 태그 제거
+- ✅ **과목 필터링**: 선택된 학생들이 수강하는 과목만 드롭다운에 표시
+- ✅ **유효성 검사**: 학생이 선택되지 않으면 과목 선택 및 추가 버튼 비활성화
+
+### **7. 🆕 코드 품질 개선**
+
+- ✅ **ESLint 오류 해결**: react-refresh/only-export-components 오류 완전 해결
+- ✅ **유틸리티 함수 분리**: SessionBlock의 로직을 SessionBlock.utils.ts로 분리
+- ✅ **React Hooks 최적화**: useCallback과 useMemo를 활용한 성능 최적화
+- ✅ **타입 안전성**: TypeScript 타입 정의 개선 및 일관성 유지
+
+### **8. 🆕 세션 겹침 문제 완전 해결**
 
 - ✅ **정확한 겹침 판단 로직**: 일부라도 겹치면 겹치는 것으로 판단하는 알고리즘 구현
 - ✅ **순차적 Y축 배치**: 겹치는 세션마다 32px씩 아래로 배치하여 시각적 겹침 완전 방지
@@ -408,7 +460,7 @@ npm run storybook
 - ✅ **포괄적인 테스트 코드**: 겹침 판단 로직, Y축 배치, 동적 높이 계산에 대한 완벽한 테스트 구현
 - ✅ **성능 최적화**: O(n log n) 알고리즘으로 대용량 세션 데이터 처리 최적화
 
-### **7. 🆕 학생 이름 표시 시스템**
+### **9. 🆕 학생 이름 표시 시스템**
 
 - ✅ **세션 셀 텍스트 개선**: 기존 "과목명 + 시간"에서 "과목명 + 학생명" 형태로 변경
 - ✅ **학생 정보 연결**: enrollment를 통해 student 정보를 찾아 SessionBlock에 전달
@@ -416,7 +468,7 @@ npm run storybook
 - ✅ **유연한 표시**: 학생 정보가 없을 경우 과목명만 표시하는 fallback 처리
 - ✅ **Props 인터페이스 확장**: SessionBlock에 student prop 추가로 학생 정보 전달 가능
 
-### **8. 🆕 PDF 다운로드 시스템**
+### **10. 🆕 PDF 다운로드 시스템**
 
 - ✅ **A4 가로 방향 PDF 생성**: 프린트에 최적화된 가로 방향 레이아웃
 - ✅ **라이트 테마 강제 적용**: 다크 테마에서도 라이트 테마로 PDF 다운로드

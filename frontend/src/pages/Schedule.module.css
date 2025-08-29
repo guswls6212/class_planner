@@ -202,3 +202,105 @@
 .studentItem:active {
   cursor: grabbing;
 }
+
+/* 학생 태그 관련 스타일 */
+.studentTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-height: 32px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-secondary);
+}
+
+.studentTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.removeStudentBtn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+.removeStudentBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.studentInputContainer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.studentInputContainer .formInput {
+  flex: 1;
+}
+
+.addStudentBtn {
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.addStudentBtn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.addStudentBtn:disabled {
+  background: var(--color-gray-400);
+  cursor: not-allowed;
+}
+
+.studentSearchResults {
+  margin-top: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-primary);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.studentSearchItem {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color 0.2s ease;
+}
+
+.studentSearchItem:hover {
+  background: var(--color-bg-secondary);
+}
+
+.studentSearchItem:last-child {
+  border-bottom: none;
+}

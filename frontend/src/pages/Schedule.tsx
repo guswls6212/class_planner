@@ -14,7 +14,7 @@ import styles from './Schedule.module.css';
 
 // 🆕 그룹 수업을 위한 새로운 타입
 type GroupSessionData = {
-  studentId: string;
+  studentIds: string[]; // 여러 학생 ID 배열로 변경
   subjectId: string;
   weekday: number;
   startTime: string;
@@ -108,19 +108,69 @@ export default function SchedulePage() {
   // 🆕 그룹 수업 모달 상태
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [groupModalData, setGroupModalData] = useState<GroupSessionData>({
-    studentId: '',
+    studentIds: [], // 빈 배열로 초기화
     subjectId: '',
     weekday: 0,
     startTime: '',
     endTime: '',
   });
 
+  // 🆕 학생 입력 관련 상태
+  const [studentInputValue, setStudentInputValue] = useState('');
+
+  // 🆕 모달용 학생 검색 결과
+  const filteredStudentsForModal = useMemo(() => {
+    if (!studentInputValue.trim()) return [];
+    return students.filter(student =>
+      student.name.toLowerCase().includes(studentInputValue.toLowerCase())
+    );
+  }, [students, studentInputValue]);
+
+  // 🆕 학생 추가 함수
+  const addStudent = (studentId: string) => {
+    if (!groupModalData.studentIds.includes(studentId)) {
+      setGroupModalData(prev => ({
+        ...prev,
+        studentIds: [...prev.studentIds, studentId],
+      }));
+    }
+    setStudentInputValue('');
+  };
+
+  // 🆕 학생 제거 함수
+  const removeStudent = (studentId: string) => {
+    setGroupModalData(prev => ({
+      ...prev,
+      studentIds: prev.studentIds.filter(id => id !== studentId),
+    }));
+  };
+
+  // 🆕 입력창에서 학생 추가 함수
+  const addStudentFromInput = () => {
+    const trimmedValue = studentInputValue.trim();
+    if (!trimmedValue) return;
+
+    // 정확한 이름으로 학생 찾기
+    const student = students.find(s => s.name === trimmedValue);
+    if (student && !groupModalData.studentIds.includes(student.id)) {
+      addStudent(student.id);
+    }
+  };
+
+  // 🆕 입력창 키보드 이벤트 처리
+  const handleStudentInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addStudentFromInput();
+    }
+  };
+
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = (data: GroupSessionData) => {
-    // 🆕 그룹 수업 판단 및 처리
+    // 🆕 그룹 수업 판단 및 처리 (첫 번째 학생 기준)
     const { canForm, existingSessionId } = canFormGroupSession(
       {
-        studentId: data.studentId,
+        studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
         subjectId: data.subjectId,
         weekday: data.weekday,
         startsAt: data.startTime,
@@ -137,7 +187,7 @@ export default function SchedulePage() {
       if (existingSession) {
         const updatedSession = mergeIntoGroupSession(
           {
-            studentId: data.studentId,
+            studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
             subjectId: data.subjectId,
             weekday: data.weekday,
             startsAt: data.startTime,
@@ -156,7 +206,7 @@ export default function SchedulePage() {
       // 🆕 새로운 세션 생성
       const newSession = createGroupSession(
         {
-          studentId: data.studentId,
+          studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
           subjectId: data.subjectId,
           weekday: data.weekday,
           startsAt: data.startTime,
@@ -176,7 +226,7 @@ export default function SchedulePage() {
   const openGroupModal = (weekday: number, time: string) => {
     console.log('🆕 그룹 수업 모달 열기:', { weekday, time });
     setGroupModalData({
-      studentId: '',
+      studentIds: [], // 빈 배열로 초기화
       subjectId: '',
       weekday,
       startTime: time,
@@ -215,7 +265,7 @@ export default function SchedulePage() {
 
     // 🆕 그룹 수업 모달 열기
     setGroupModalData({
-      studentId: enrollment.studentId,
+      studentIds: [enrollment.studentId], // 배열로 변경
       subjectId: enrollment.subjectId,
       weekday,
       startTime: time,
@@ -443,30 +493,68 @@ export default function SchedulePage() {
         <div className="modal-backdrop">
           <div className="modal-overlay">
             <div className="modal-content">
-              <h4 className="modal-title">그룹 수업 추가</h4>
+              <h4 className="modal-title">수업 추가</h4>
               <div className="modal-form">
                 <div className="form-group">
                   <Label htmlFor="modal-student" required>
                     학생
                   </Label>
-                  <select
-                    id="modal-student"
-                    className="form-select"
-                    value={groupModalData.studentId}
-                    onChange={e =>
-                      setGroupModalData(prev => ({
-                        ...prev,
-                        studentId: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">학생을 선택하세요</option>
-                    {students.map(student => (
-                      <option key={student.id} value={student.id}>
-                        {student.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className={styles.studentTagsContainer}>
+                    {/* 선택된 학생 태그들 */}
+                    {groupModalData.studentIds.map(studentId => {
+                      const student = students.find(s => s.id === studentId);
+                      return student ? (
+                        <span key={studentId} className={styles.studentTag}>
+                          {student.name}
+                          <button
+                            type="button"
+                            className={styles.removeStudentBtn}
+                            onClick={() => removeStudent(studentId)}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                  <div className={styles.studentInputContainer}>
+                    <input
+                      id="modal-student-input"
+                      type="text"
+                      className="form-input"
+                      placeholder="학생 이름을 입력하세요"
+                      value={studentInputValue}
+                      onChange={e => setStudentInputValue(e.target.value)}
+                      onKeyDown={handleStudentInputKeyDown}
+                    />
+                    <button
+                      type="button"
+                      className={styles.addStudentBtn}
+                      onClick={addStudentFromInput}
+                      disabled={!studentInputValue.trim()}
+                    >
+                      추가
+                    </button>
+                  </div>
+                  {/* 학생 검색 결과 */}
+                  {studentInputValue && (
+                    <div className={styles.studentSearchResults}>
+                      {filteredStudentsForModal
+                        .filter(
+                          student =>
+                            !groupModalData.studentIds.includes(student.id)
+                        )
+                        .map(student => (
+                          <div
+                            key={student.id}
+                            className={styles.studentSearchItem}
+                            onClick={() => addStudent(student.id)}
+                          >
+                            {student.name}
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <Label htmlFor="modal-subject" required>
@@ -482,23 +570,31 @@ export default function SchedulePage() {
                         subjectId: e.target.value,
                       }))
                     }
+                    disabled={groupModalData.studentIds.length === 0}
                   >
-                    <option value="">과목을 선택하세요</option>
-                    {enrollments
-                      .filter(e => e.studentId === groupModalData.studentId)
-                      .map(enrollment => {
-                        const subject = subjects.find(
-                          s => s.id === enrollment.subjectId
-                        );
-                        return subject ? (
-                          <option
-                            key={enrollment.id}
-                            value={enrollment.subjectId}
-                          >
-                            {subject.name}
-                          </option>
-                        ) : null;
-                      })}
+                    <option value="">
+                      {groupModalData.studentIds.length === 0
+                        ? '먼저 학생을 선택하세요'
+                        : '과목을 선택하세요'}
+                    </option>
+                    {groupModalData.studentIds.length > 0 &&
+                      enrollments
+                        .filter(e =>
+                          groupModalData.studentIds.includes(e.studentId)
+                        )
+                        .map(enrollment => {
+                          const subject = subjects.find(
+                            s => s.id === enrollment.subjectId
+                          );
+                          return subject ? (
+                            <option
+                              key={enrollment.id}
+                              value={enrollment.subjectId}
+                            >
+                              {subject.name}
+                            </option>
+                          ) : null;
+                        })}
                   </select>
                 </div>
                 <div className="form-group">
@@ -585,7 +681,7 @@ export default function SchedulePage() {
                   variant="primary"
                   onClick={() => addGroupSession(groupModalData)}
                   disabled={
-                    !groupModalData.studentId ||
+                    groupModalData.studentIds.length === 0 ||
                     !groupModalData.subjectId ||
                     !groupModalData.startTime ||
                     !groupModalData.endTime
