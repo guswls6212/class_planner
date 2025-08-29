@@ -125,7 +125,7 @@ describe('SessionBlock 렌더링 테스트', () => {
     expect(sessionBlock).toHaveStyle({
       position: 'absolute',
       borderRadius: '4px',
-      padding: '0px 6px',
+      padding: '4px 6px',
       cursor: 'pointer',
     });
   });

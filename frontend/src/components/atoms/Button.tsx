@@ -9,6 +9,7 @@ interface ButtonProps {
   className?: string;
   style?: React.CSSProperties;
   'data-testid'?: string;
+  disabled?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -19,6 +20,7 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   style = {},
   'data-testid': dataTestId,
+  disabled = false,
 }) => {
   // CSS Module 클래스들을 조합
   const buttonClasses = [
@@ -36,6 +38,7 @@ export const Button: React.FC<ButtonProps> = ({
       className={buttonClasses}
       style={style}
       data-testid={dataTestId}
+      disabled={disabled}
     >
       {children}
     </button>

@@ -26,6 +26,8 @@
     "prepare-commit": "npm run test:run && npm run lint:fix && npm run format && npx tsc --noEmit"
   },
   "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.1"
@@ -41,6 +43,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/html2canvas": "^0.5.35",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",

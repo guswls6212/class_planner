@@ -22,12 +22,12 @@ export const getSessionBlockStyles = (
     position: 'absolute',
     left,
     top: 6 + yOffset,
-    height: 28,
+    height: 36, // 시간 정보를 위해 높이 증가
     width,
     background: subjectColor ?? '#888',
     color: '#fff',
     borderRadius: 4,
-    padding: '0 6px',
+    padding: '4px 6px', // 상하 패딩 증가
     fontSize: 12,
     display: 'flex',
     alignItems: 'center',
@@ -112,14 +112,38 @@ export default function SessionBlock({
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
     >
-      <span style={{ color: '#fff', fontWeight: '600' }}>
-        {subject?.name ?? 'Unknown'}
-      </span>
-      {student?.name && (
-        <span style={{ color: 'rgba(255, 255, 255, 0.7)', marginLeft: '4px' }}>
-          {student.name}
-        </span>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        {/* 첫 번째 줄: 과목명과 학생명 */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span style={{ color: '#fff', fontWeight: '600' }}>
+            {subject?.name ?? 'Unknown'}
+          </span>
+          {student?.name && (
+            <span
+              style={{ color: 'rgba(255, 255, 255, 0.7)', marginLeft: '4px' }}
+            >
+              {student.name}
+            </span>
+          )}
+        </div>
+        {/* 두 번째 줄: 시간 정보 */}
+        <div
+          style={{
+            fontSize: '10px',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginTop: '2px',
+            textAlign: 'center',
+          }}
+        >
+          {session.startsAt} - {session.endsAt}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Button from '../components/atoms/Button';
 import Label from '../components/atoms/Label';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
+import { downloadTimetableAsPDF } from '../lib/pdf-utils';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
 import { weekdays } from '../lib/planner';
 import styles from './Schedule.module.css';
@@ -92,6 +93,33 @@ export default function SchedulePage() {
     x: 0,
     y: 0,
   });
+
+  // PDF 다운로드 관련
+  const timeTableRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // PDF 다운로드 함수
+  const handlePDFDownload = async () => {
+    if (!timeTableRef.current) return;
+
+    try {
+      setIsDownloading(true);
+
+      // 선택된 학생 이름 가져오기
+      const selectedStudent = students.find(s => s.id === selectedStudentId);
+      const studentName = selectedStudent?.name;
+
+      // 시간표를 PDF로 다운로드
+      await downloadTimetableAsPDF(timeTableRef.current, studentName);
+
+      console.log('PDF 다운로드 완료!');
+    } catch (error) {
+      console.error('PDF 다운로드 실패:', error);
+      alert('PDF 다운로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // 모달 상태
   const [showModal, setShowModal] = useState(false);
@@ -335,33 +363,46 @@ export default function SchedulePage() {
         </p>
       )}
 
+      {/* 시간표 다운로드 버튼 */}
+      <div style={{ marginBottom: '16px', textAlign: 'right' }}>
+        <Button
+          variant="primary"
+          onClick={handlePDFDownload}
+          disabled={isDownloading}
+        >
+          {isDownloading ? '다운로드 중...' : '시간표 다운로드'}
+        </Button>
+      </div>
+
       {/* TimeTableGrid 컴포넌트 사용 */}
-      <TimeTableGrid
-        sessions={displaySessions}
-        subjects={subjects}
-        enrollments={enrollments}
-        students={students}
-        onSessionClick={openEditModal}
-        onDrop={(weekday, time, enrollmentId) => {
-          // 드롭된 학생 ID를 enrollmentId로 사용
-          const studentId = enrollmentId;
+      <div ref={timeTableRef}>
+        <TimeTableGrid
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          students={students}
+          onSessionClick={openEditModal}
+          onDrop={(weekday, time, enrollmentId) => {
+            // 드롭된 학생 ID를 enrollmentId로 사용
+            const studentId = enrollmentId;
 
-          // 모달 데이터 설정
-          const [hours, minutes] = time.split(':').map(Number);
-          const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-          const endTime = `${(hours + 1).toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            // 모달 데이터 설정
+            const [hours, minutes] = time.split(':').map(Number);
+            const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            const endTime = `${(hours + 1).toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
-          // 모달 표시
-          setModalData({
-            studentId,
-            weekday,
-            startTime,
-            endTime,
-          });
-          setShowModal(true);
-        }}
-        onEmptySpaceClick={handleEmptySpaceClick}
-      />
+            // 모달 표시
+            setModalData({
+              studentId,
+              weekday,
+              startTime,
+              endTime,
+            });
+            setShowModal(true);
+          }}
+          onEmptySpaceClick={handleEmptySpaceClick}
+        />
+      </div>
 
       {/* 플로팅 학생 리스트 패널 */}
       <div

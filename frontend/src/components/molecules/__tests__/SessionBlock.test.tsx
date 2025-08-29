@@ -120,7 +120,7 @@ describe('SessionBlock', () => {
       left: '240px',
       top: '38px', // 6 + 32
       width: '180px',
-      height: '28px',
+      height: '36px',
     });
   });
 
@@ -179,7 +179,7 @@ describe('SessionBlock', () => {
 
     expect(sessionBlock).toHaveStyle({
       borderRadius: '4px',
-      padding: '0 6px',
+      padding: '4px 6px',
       fontSize: '12px',
       cursor: 'pointer',
     });
