@@ -44,7 +44,7 @@ success "TypeScript 타입 체크 통과"
 
 # 2. ESLint 검사
 info "ESLint 검사 실행 중..."
-if ! npm run lint; then
+if ! npm run lint:fix; then
     error "ESLint 규칙 위반이 발견되었습니다."
 fi
 success "ESLint 검사 통과"

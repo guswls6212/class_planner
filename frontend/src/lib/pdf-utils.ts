@@ -30,6 +30,19 @@ export async function captureElement(
   // 스타일 복원 실패 시 자동 복원을 위한 백업
   const styleBackup = new Map<HTMLElement, { [key: string]: string }>();
 
+  // 원본 스크롤 위치 백업
+  const originalScrollLeft = element.scrollLeft;
+  const originalScrollTop = element.scrollTop;
+
+  // 원본 스타일 백업
+  const originalOverflow = element.style.overflow;
+  const originalMaxWidth = element.style.maxWidth;
+  const originalMaxHeight = element.style.maxHeight;
+  const originalPosition = element.style.position;
+  const originalTop = element.style.top;
+  const originalLeft = element.style.left;
+  const originalZIndex = element.style.zIndex;
+
   try {
     // 라이트 테마 CSS 변수들로 강제 변경
     const lightThemeVars = {
@@ -172,8 +185,25 @@ export async function captureElement(
       }
     });
 
+    // 캡처 전 스크롤 위치를 0으로 설정하여 전체 내용 캡처
+    element.scrollLeft = 0;
+    element.scrollTop = 0;
+
+    // 캡처를 위해 요소 스타일 임시 변경 - 전체 내용이 보이도록 설정
+    element.style.overflow = 'visible';
+    element.style.maxWidth = 'none';
+    element.style.maxHeight = 'none';
+    element.style.position = 'absolute';
+    element.style.top = '0';
+    element.style.left = '0';
+    element.style.zIndex = '9999';
+
+    // 스크롤 위치를 0으로 설정
+    element.scrollLeft = 0;
+    element.scrollTop = 0;
+
     // 잠시 대기하여 스타일 변경이 적용되도록 함
-    await new Promise(resolve => setTimeout(resolve, 150));
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // 스타일 변경이 완전히 적용되었는지 확인
     await new Promise(resolve => {
@@ -182,19 +212,43 @@ export async function captureElement(
       });
     });
 
-    // html2canvas로 캡처
+    // html2canvas로 캡처 - 전체 내용을 캡처하기 위해 스크롤 위치 고려
     const canvas = await html2canvas(element, {
-      // scale: quality, // html2canvas 옵션에서 제거됨
       background: backgroundColor,
       useCORS: true,
       allowTaint: true,
       logging: false,
       width: element.scrollWidth,
       height: element.scrollHeight,
-    });
+      windowWidth: element.scrollWidth, // 전체 너비 사용
+      windowHeight: element.scrollHeight, // 전체 높이 사용
+      scale: 1, // 스케일을 1로 설정하여 정확한 크기 캡처
+      foreignObjectRendering: false, // 외부 객체 렌더링 비활성화
+      removeContainer: false, // 컨테이너 제거하지 않음
+      ignoreElements: (element: Element) => {
+        // 스크롤바나 불필요한 요소 제외
+        return (
+          element.classList.contains('scrollbar') ||
+          (element as HTMLElement).style.position === 'fixed'
+        );
+      },
+    } as Parameters<typeof html2canvas>[1]);
 
     return canvas;
   } finally {
+    // 원본 스크롤 위치 복원
+    element.scrollLeft = originalScrollLeft;
+    element.scrollTop = originalScrollTop;
+
+    // 원본 요소 스타일 복원
+    element.style.overflow = originalOverflow;
+    element.style.maxWidth = originalMaxWidth;
+    element.style.maxHeight = originalMaxHeight;
+    element.style.position = originalPosition;
+    element.style.top = originalTop;
+    element.style.left = originalLeft;
+    element.style.zIndex = originalZIndex;
+
     // 원본 스타일 복원
     originalCSSVars.forEach((value, varName) => {
       document.documentElement.style.setProperty(varName, value);

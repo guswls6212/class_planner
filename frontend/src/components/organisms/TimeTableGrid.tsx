@@ -197,6 +197,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 alignItems: 'center',
                 justifyContent: 'center',
                 height: '40px',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
               }}
             >
               {timeString}

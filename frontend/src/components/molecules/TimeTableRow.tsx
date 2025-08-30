@@ -123,7 +123,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         ...style,
       }}
     >
-      {/* 요일 라벨 (Y축 왼쪽) */}
+      {/* 요일 라벨 (Y축 왼쪽) - 고정 */}
       <div
         style={{
           backgroundColor: 'var(--color-background)',
@@ -137,6 +137,9 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           height: `${height}px`,
+          position: 'sticky',
+          left: 0,
+          zIndex: 10,
         }}
       >
         {['월', '화', '수', '목', '금', '토', '일'][weekday]}
