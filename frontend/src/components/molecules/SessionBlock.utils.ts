@@ -13,7 +13,7 @@ type Session = {
 type Subject = {
   id: string;
   name: string;
-  color: string;
+  color: string | undefined; // 🆕 planner.ts와 일치하도록 수정
 };
 
 // 🆕 여러 학생의 이름을 표시하는 함수
@@ -70,7 +70,7 @@ export const getGroupStudentDisplayText = (studentNames: string[]): string => {
   return `${studentNames[0]}, ${studentNames[1]} 외 ${studentNames.length - 2}명`;
 };
 
-// 유틸리티 함수들 (테스트 가능)
+// 🆕 세션 셀 높이를 동적으로 조정하는 스타일
 export const getSessionBlockStyles = (
   left: number,
   width: number,
@@ -81,12 +81,12 @@ export const getSessionBlockStyles = (
     position: 'absolute',
     left,
     top: 6 + yOffset,
-    height: 36, // 시간 정보를 위해 높이 증가
+    // height 제거 - 내부 콘텐츠 크기에 맞게 동적 조정
     width,
     background: subjectColor ?? '#888',
     color: '#fff',
     borderRadius: 4,
-    padding: '4px 6px', // 상하 패딩 증가
+    padding: '0px', // 🆕 padding을 완전히 제거
     fontSize: 12,
     display: 'flex',
     alignItems: 'center',

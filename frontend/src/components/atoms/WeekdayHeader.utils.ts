@@ -12,7 +12,7 @@ export interface WeekdayHeaderStyles {
 }
 
 export function getWeekdayHeaderStyles(
-  customStyle: React.CSSProperties = {}
+  customStyle: Partial<WeekdayHeaderStyles> = {}
 ): WeekdayHeaderStyles {
   const baseStyles: WeekdayHeaderStyles = {
     backgroundColor: 'var(--color-background)',

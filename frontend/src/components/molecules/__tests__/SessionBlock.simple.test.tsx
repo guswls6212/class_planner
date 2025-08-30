@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import type { Session, Subject } from '../../lib/planner';
+// 로컬 타입 정의 (SessionBlock.tsx와 동일)
+type Session = {
+  id: string;
+  enrollmentIds: string[];
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  room?: string;
+};
+
+type Subject = {
+  id: string;
+  name: string;
+  color: string | undefined;
+};
 
 describe('SessionBlock', () => {
   it('세션 데이터 구조가 올바르게 정의되어 있다', () => {

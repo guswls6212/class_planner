@@ -31,13 +31,17 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     },
     ref
   ) => {
-    const hourCols = 24 - 9; // 9:00 ~ 24:00 (15시간)
+    // 🆕 30분 단위로 변경: 9:00 ~ 24:00 (30개 열)
+    const timeSlots30Min = useMemo(() => {
+      const slots: string[] = [];
+      for (let hour = 9; hour < 24; hour++) {
+        slots.push(`${hour.toString().padStart(2, '0')}:00`);
+        slots.push(`${hour.toString().padStart(2, '0')}:30`);
+      }
+      return slots;
+    }, []);
 
-    // 시간 슬롯을 useMemo로 최적화
-    const timeSlots = useMemo(
-      () => Array.from({ length: hourCols }, (_, i) => i + 9),
-      [hourCols]
-    );
+    const timeCols = timeSlots30Min.length; // 30개 열
 
     // 🚀 Phase 1: O(n log n) 세션 Y축 위치 계산 알고리즘
     const getSessionYPositions = useCallback(
@@ -80,8 +84,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             }
           }
 
-          // 겹치는 세션이 있으면 그 다음 줄에 배치, 없으면 첫 번째 줄
-          const yPosition = maxOverlappingY >= 0 ? maxOverlappingY + 40 : 0;
+          // 🆕 겹치는 세션이 있으면 그 다음 줄에 배치, 없으면 첫 번째 줄
+          // 세션 셀 높이를 동적으로 계산: 과목명(11px) + 학생명(10px) + 시간(9px) + margin(3px) = 33px
+          const sessionHeight = 33; // 🆕 실제 세션 블록 높이
+          const yPosition =
+            maxOverlappingY >= 0 ? maxOverlappingY + sessionHeight : 0;
           sessionYPositions.set(currentSession.id, yPosition);
 
           // 디버깅을 위한 상세 로그
@@ -102,23 +109,25 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions]
     );
 
-    // 🚀 Phase 2: O(n log n) 겹침 계산 알고리즘
+    // 🆕 요일별 높이 계산: 기본 33px + 겹침당 33px
     const getWeekdayHeight = useCallback(
       (weekday: number): number => {
-        const daySessions = sessions.get(weekday) || [];
-        if (daySessions.length === 0) return 60; // 기본 높이
-
-        // 실제 세션의 Y축 위치를 계산하여 최대 yPosition 찾기
         const sessionYPositions = getSessionYPositions(weekday);
-        let maxYPosition = 0;
+        const daySessions = sessions.get(weekday) || [];
 
-        for (const yPosition of sessionYPositions.values()) {
-          maxYPosition = Math.max(maxYPosition, yPosition);
+        if (daySessions.length === 0) {
+          return 33; // 🆕 기본 높이를 33px로 줄임
         }
 
-        // 최대 yPosition + 세션 높이(40px) + 여백(28px) = 실제 필요한 높이
-        const requiredHeight = maxYPosition + 40 + 28;
-        const finalHeight = Math.max(60, requiredHeight);
+        // 최대 yPosition을 찾아서 필요한 높이 계산
+        let maxYPosition = 0;
+        for (const yPos of sessionYPositions.values()) {
+          maxYPosition = Math.max(maxYPosition, yPos);
+        }
+
+        // 🆕 기본 높이 33px + 최대 yPosition + 세션 셀 높이 33px
+        const requiredHeight = Math.max(33, maxYPosition + 33);
+        const finalHeight = Math.max(requiredHeight, 33);
 
         console.log(
           `Weekday ${weekday}: ${daySessions.length} sessions, max yPosition: ${maxYPosition}, required height: ${requiredHeight}, final height: ${finalHeight}`
@@ -141,10 +150,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [weekdayHeights]
     );
 
-    // 그리드 템플릿 열을 useMemo로 최적화
+    // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 60px
     const gridTemplateColumns = useMemo(
-      () => `80px repeat(${hourCols}, 120px)`,
-      [hourCols]
+      () => `80px repeat(${timeCols}, 60px)`,
+      [timeCols]
     );
 
     return (
@@ -166,21 +175,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         {/* 좌상단 빈칸 */}
         <div style={{ backgroundColor: 'var(--color-background)' }} />
 
-        {/* 시간 헤더 (X축 상단) */}
-        {timeSlots.map((hour, index) => {
-          const timeString = `${hour.toString().padStart(2, '0')}:00`;
-          const isLastHour = index === timeSlots.length - 1;
+        {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
+        {timeSlots30Min.map((timeString, index) => {
+          const isLastTime = index === timeSlots30Min.length - 1;
           return (
             <div
-              key={hour}
+              key={timeString}
               style={{
                 backgroundColor: 'var(--color-background)',
-                padding: '8px',
+                padding: '4px', // 🆕 패딩을 줄여서 30분 단위에 맞춤
                 textAlign: 'center',
-                fontSize: '12px',
+                fontSize: '11px', // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
                 color: 'var(--color-text-secondary)',
                 border: '1px solid var(--color-border)',
-                borderRight: isLastHour
+                borderRight: isLastTime
                   ? '1px solid var(--color-border)'
                   : '1px solid var(--color-border-grid)',
                 display: 'flex',

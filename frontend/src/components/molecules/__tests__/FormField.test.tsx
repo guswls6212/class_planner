@@ -4,6 +4,9 @@ import FormField from '../FormField';
 describe('FormField', () => {
   const defaultProps = {
     label: '테스트 라벨',
+    name: 'test-field',
+    value: '',
+    onChange: () => {},
     children: <input type="text" data-testid="test-input" />,
   };
 

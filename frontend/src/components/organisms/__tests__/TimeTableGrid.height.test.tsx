@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
-import { Enrollment, Subject } from '../../../lib/planner';
+import type { Enrollment, Subject } from '../../../lib/planner';
 import TimeTableGrid from '../TimeTableGrid';
 
 // localStorage 모킹
@@ -47,10 +47,10 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 모든 요일이 기본 높이를 가져야 함
+    // 모든 요일이 기본 높이를 가져야 함 (90px로 변경)
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 60px 60px 60px 60px 60px 60px 60px'
+      'grid-template-rows: 40px 33px 33px 33px 33px 33px 33px 33px'
     );
   });
 
@@ -136,11 +136,11 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 월요일은 더 큰 높이를 가져야 함 (max yPosition: 200 + 40 + 28 = 268)
-    // 화요일은 작은 높이를 가져야 함 (max yPosition: 40 + 40 + 28 = 108)
+    // 월요일: 6개 세션 겹침 (max yPosition: 225 + 90 = 315)
+    // 화요일: 2개 세션 겹침 (max yPosition: 45 + 90 = 135)
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 268px 108px 60px 60px 60px 60px 60px'
+      'grid-template-rows: 40px 198px 66px 33px 33px 33px 33px 33px'
     );
   });
 
@@ -214,11 +214,11 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 7개 세션이 순차적으로 겹침: yPosition 0, 32, 64, 96, 128, 160, 192
-    // 최대 yPosition: 240 + 40 + 28 = 308
+    // 7개 세션이 순차적으로 겹침: yPosition 0, 45, 90, 135, 180, 225, 270
+    // 최대 yPosition: 270 + 90 = 360
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 308px 60px 60px 60px 60px 60px 60px'
+      'grid-template-rows: 40px 231px 33px 33px 33px 33px 33px 33px'
     );
   });
 });

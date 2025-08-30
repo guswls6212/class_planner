@@ -54,8 +54,7 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
         <Button
           variant="danger"
           size="small"
-          onClick={e => {
-            e?.stopPropagation();
+          onClick={() => {
             onDelete(student.id);
           }}
         >

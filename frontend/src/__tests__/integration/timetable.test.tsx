@@ -18,7 +18,17 @@ vi.mock('../../components/organisms/TimeTableGrid', () => ({
       <div data-testid="sessions-count">
         총 세션 수: {Array.from(sessions.values()).flat().length}
       </div>
-      <button onClick={() => onSessionClick({ id: 'test-session' })}>
+      <button
+        onClick={() =>
+          onSessionClick({
+            id: 'test-session',
+            enrollmentIds: ['test-enrollment'],
+            weekday: 0,
+            startsAt: '09:00',
+            endsAt: '10:00',
+          })
+        }
+      >
         세션 클릭 테스트
       </button>
       <button onClick={() => onDrop(0, '10:00', 'test-enrollment')}>
@@ -116,14 +126,14 @@ const mockEnrollments: Enrollment[] = [
 const mockSessions: Session[] = [
   {
     id: 'session-1',
-    enrollmentId: 'enrollment-1',
+    enrollmentIds: ['enrollment-1'],
     weekday: 0,
     startsAt: '09:00',
     endsAt: '10:00',
   },
   {
     id: 'session-2',
-    enrollmentId: 'enrollment-2',
+    enrollmentIds: ['enrollment-2'],
     weekday: 1,
     startsAt: '10:00',
     endsAt: '11:00',

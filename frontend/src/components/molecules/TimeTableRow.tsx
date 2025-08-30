@@ -59,6 +59,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return timeMap;
   }, [weekdaySessions]);
 
+  // 🆕 30분 단위 시간 슬롯 생성
+  const timeSlots30Min = React.useMemo(() => {
+    const slots: string[] = [];
+    for (let hour = 9; hour < 24; hour++) {
+      slots.push(`${hour.toString().padStart(2, '0')}:00`);
+      slots.push(`${hour.toString().padStart(2, '0')}:30`);
+    }
+    return slots;
+  }, []);
+
   // 🆕 시간대별로 겹치는 세션들을 병합하여 표시
   const mergedSessions = React.useMemo(() => {
     const merged: Array<{
@@ -72,15 +82,20 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     sessionsByTime.forEach((sessionsInTime, timeKey) => {
       const [startTime] = timeKey.split('-');
       const timeSlot = timeToMinutes(startTime);
-      const left = ((timeSlot - 9 * 60) / 60) * 120; // 9:00 기준으로 계산
+      // 🆕 30분 단위로 변경: 9:00 기준으로 30분 단위 인덱스 계산
+      const timeIndex = (timeSlot - 9 * 60) / 30;
+      const left = timeIndex * 60; // 30분당 60px
 
       // 🆕 같은 시간대의 세션들을 하나로 병합하여 표시
       if (sessionsInTime.length > 0) {
         const primarySession = sessionsInTime[0];
         const yPosition = sessionYPositions.get(primarySession.id) || 0;
 
-        // 🆕 여러 학생이 있는 경우를 고려하여 너비 조정
-        const width = Math.max(120, sessionsInTime.length * 30); // 최소 120px, 학생당 30px 추가
+        // 🆕 30분 단위로 변경: 기본 너비 60px, 1시간 수업은 120px
+        const sessionDuration =
+          timeToMinutes(primarySession.endsAt) -
+          timeToMinutes(primarySession.startsAt);
+        const width = sessionDuration >= 60 ? 120 : 60; // 1시간 이상이면 2칸(120px), 30분이면 1칸(60px)
 
         merged.push({
           session: primarySession,
@@ -132,14 +147,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           gridColumn: '2 / -1', // 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >
-        {/* 드롭 존들 - 각 시간대별로 */}
-        {Array.from({ length: 15 }, (_, hour) => {
-          const hourValue = hour + 9; // 9:00부터 시작
-          const timeString = `${hourValue.toString().padStart(2, '0')}:00`;
-
+        {/* 🆕 드롭 존들 - 30분 단위로 30개 */}
+        {timeSlots30Min.map((timeString, index) => {
           return (
             <DropZone
-              key={hour}
+              key={timeString}
               weekday={weekday}
               time={timeString}
               onDrop={onDrop}
@@ -147,8 +159,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               style={{
                 position: 'absolute',
                 top: 0,
-                left: `${hour * 120}px`,
-                width: '120px',
+                left: `${index * 60}px`, // 🆕 30분당 60px
+                width: '60px', // 🆕 30분 단위 너비
                 height: `${height}px`,
                 zIndex: 1,
               }}
@@ -161,7 +173,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           <SessionBlock
             key={session.session.id}
             session={session.session}
-            subjects={subjects}
+            subjects={subjects.map(subject => ({
+              ...subject,
+              color: subject.color || '#000000', // 기본 색상 제공
+            }))}
             enrollments={enrollments}
             students={students}
             yPosition={session.yPosition}

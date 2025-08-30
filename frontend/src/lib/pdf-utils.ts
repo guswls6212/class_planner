@@ -21,7 +21,7 @@ export async function captureElement(
   element: HTMLElement,
   options: { quality?: number; backgroundColor?: string } = {}
 ): Promise<HTMLCanvasElement> {
-  const { quality = 2, backgroundColor = '#ffffff' } = options;
+  const { backgroundColor = '#ffffff' } = options;
 
   // 원본 스타일 백업 - 더 안전한 방식으로 변경
   const originalStyles = new Map<HTMLElement, Map<string, string>>();
@@ -184,8 +184,8 @@ export async function captureElement(
 
     // html2canvas로 캡처
     const canvas = await html2canvas(element, {
-      scale: quality,
-      backgroundColor,
+      // scale: quality, // html2canvas 옵션에서 제거됨
+      background: backgroundColor,
       useCORS: true,
       allowTaint: true,
       logging: false,
@@ -204,7 +204,8 @@ export async function captureElement(
     originalStyles.forEach((elementStyles, htmlElement) => {
       elementStyles.forEach((value, property) => {
         if (value !== undefined && value !== null) {
-          (htmlElement.style as Record<string, string>)[property] = value;
+          (htmlElement.style as unknown as Record<string, string>)[property] =
+            value;
         }
       });
     });
@@ -213,7 +214,8 @@ export async function captureElement(
     styleBackup.forEach((styles, htmlElement) => {
       Object.entries(styles).forEach(([property, value]) => {
         if (value !== undefined && value !== null) {
-          (htmlElement.style as Record<string, string>)[property] = value;
+          (htmlElement.style as unknown as Record<string, string>)[property] =
+            value;
         }
       });
     });
@@ -223,7 +225,8 @@ export async function captureElement(
       styleBackup.forEach((styles, htmlElement) => {
         Object.entries(styles).forEach(([property, value]) => {
           if (value !== undefined && value !== null) {
-            (htmlElement.style as Record<string, string>)[property] = value;
+            (htmlElement.style as unknown as Record<string, string>)[property] =
+              value;
           }
         });
       });

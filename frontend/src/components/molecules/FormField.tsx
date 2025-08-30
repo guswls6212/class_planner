@@ -6,7 +6,7 @@ interface FormFieldProps {
   label: string;
   name: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   type?: 'text' | 'email' | 'password' | 'number';
   required?: boolean;
@@ -47,7 +47,7 @@ export const getInputProps = (
   type: 'text' | 'email' | 'password' | 'number',
   placeholder: string | undefined,
   value: string,
-  onChange: (value: string) => void,
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
   disabled: boolean,
   size: 'small' | 'medium' | 'large',
   error: string | undefined
@@ -59,7 +59,7 @@ export const getInputProps = (
     onChange,
     disabled,
     size,
-    error,
+    error: Boolean(error),
   };
 };
 

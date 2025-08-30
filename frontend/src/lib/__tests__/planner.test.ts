@@ -345,7 +345,7 @@ describe('planner.ts', () => {
     it('Session 타입이 올바르게 정의되어 있다', () => {
       const session: Session = {
         id: 'session1',
-        enrollmentId: 'enrollment1',
+        enrollmentIds: ['enrollment1'],
         weekday: 0,
         startsAt: '09:00',
         endsAt: '10:00',
@@ -353,7 +353,7 @@ describe('planner.ts', () => {
       };
 
       expect(session.id).toBe('session1');
-      expect(session.enrollmentId).toBe('enrollment1');
+      expect(session.enrollmentIds).toContain('enrollment1');
       expect(session.weekday).toBe(0);
       expect(session.startsAt).toBe('09:00');
       expect(session.endsAt).toBe('10:00');

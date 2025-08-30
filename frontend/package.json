@@ -23,7 +23,9 @@
     "test:coverage:ci": "vitest run --coverage --reporter=text",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "prepare-commit": "npm run test:run && npm run lint:fix && npm run format && npx tsc --noEmit"
+    "test:protection": "npm run test:run -- project-protection",
+    "protection-check": "chmod +x scripts/protection-check.sh && ./scripts/protection-check.sh",
+    "prepare-commit": "npm run protection-check && npm run lint:fix && npm run format && npx tsc --noEmit"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

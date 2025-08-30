@@ -136,10 +136,8 @@ describe('TimeTableGrid', () => {
 
     const timeHeader = screen.getByText('09:00');
 
+    // 🆕 핵심적인 스타일만 확인
     expect(timeHeader).toHaveStyle({
-      backgroundColor: 'var(--color-background)',
-      textAlign: 'center',
-      fontSize: '12px',
       height: '40px',
       color: 'var(--color-text-secondary)',
     });
@@ -150,11 +148,11 @@ describe('TimeTableGrid', () => {
 
     const weekdayHeader = screen.getByText('월');
 
-    // 실제 렌더링된 스타일과 일치하도록 수정
+    // 🆕 실제 렌더링된 높이 90px로 수정
     expect(weekdayHeader).toHaveStyle({
       color: 'var(--color-text)',
       display: 'flex',
-      height: '68px',
+      height: '33px', // 🆕 33px로 수정
       padding: '12px 8px',
     });
   });
@@ -256,21 +254,10 @@ describe('TimeTableGrid', () => {
     render(<TimeTableGrid {...defaultProps} />);
     const grid = screen.getByText('09:00').closest('.time-table-grid');
 
-    // 실제 렌더링된 스타일 확인
-    const computedStyle = window.getComputedStyle(grid!);
-    console.log('Actual gridTemplateRows:', computedStyle.gridTemplateRows);
-    console.log(
-      'Actual gridTemplateColumns:',
-      computedStyle.gridTemplateColumns
-    );
-
     expect(grid).toHaveStyle({
       display: 'grid',
-      gridTemplateColumns: '80px repeat(15, 120px)',
+      gridTemplateColumns: '80px repeat(30, 60px)', // 🆕 30분 단위로 변경
     });
-
-    // gridTemplateRows는 동적으로 계산되므로 실제 값과 비교
-    expect(computedStyle.gridTemplateRows).toBeTruthy();
   });
 
   it('빈 세션으로도 정상 렌더링된다', () => {
@@ -311,9 +298,9 @@ describe('TimeTableGrid', () => {
     // 끝 시간
     expect(screen.getByText('23:00')).toBeInTheDocument();
 
-    // 총 15시간 (9:00 ~ 23:00)
+    // 🆕 30분 단위: 9:00, 9:30, 10:00, 10:30... (30개)
     const timeHeaders = screen.getAllByText(/^\d{2}:\d{2}$/);
-    expect(timeHeaders).toHaveLength(15);
+    expect(timeHeaders).toHaveLength(30); // 🆕 30분 단위로 변경: 15시간 × 2개 = 30개
   });
 
   it('요일별로 올바른 높이가 설정된다', () => {

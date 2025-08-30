@@ -1,7 +1,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Session, Subject } from '../../../lib/planner';
 import SessionBlock from '../SessionBlock';
+
+// 로컬 타입 정의 (SessionBlock.tsx와 동일)
+type Session = {
+  id: string;
+  enrollmentIds: string[];
+  weekday: number;
+  startsAt: string;
+  endsAt: string;
+  room?: string;
+};
+
+type Subject = {
+  id: string;
+  name: string;
+  color: string;
+};
 
 // Mock 데이터
 const mockSubject: Subject = {
@@ -125,7 +140,7 @@ describe('SessionBlock 렌더링 테스트', () => {
     expect(sessionBlock).toHaveStyle({
       position: 'absolute',
       borderRadius: '4px',
-      padding: '4px 6px',
+      padding: '0px', // 🆕 padding을 완전히 제거
       cursor: 'pointer',
     });
   });

@@ -54,8 +54,8 @@ export const getTypographyClasses = (
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const getTypographyComponent = (variant: string): string => {
-  return variant.startsWith('h') ? variant : 'span';
+export const getTypographyComponent = (variant: string): React.ElementType => {
+  return variant.startsWith('h') ? (variant as React.ElementType) : 'span';
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
