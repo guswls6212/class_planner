@@ -152,9 +152,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [weekdayHeights]
     );
 
-    // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 60px
+    // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 100px (학생 이름 표시를 위해)
     const gridTemplateColumns = useMemo(
-      () => `80px repeat(${timeCols}, 60px)`,
+      () => `80px repeat(${timeCols}, 100px)`,
       [timeCols]
     );
 

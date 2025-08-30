@@ -86,18 +86,21 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const timeSlot = timeToMinutes(startTime);
       // 🆕 30분 단위로 변경: 9:00 기준으로 30분 단위 인덱스 계산
       const timeIndex = (timeSlot - 9 * 60) / 30;
-      const left = timeIndex * 60; // 30분당 60px
+      const left = timeIndex * 100; // 30분당 100px로 증가 (학생 이름 표시를 위해)
 
       // 🆕 같은 시간대의 세션들을 하나로 병합하여 표시
       if (sessionsInTime.length > 0) {
         const primarySession = sessionsInTime[0];
         const yPosition = sessionYPositions.get(primarySession.id) || 0;
 
-        // 🆕 세션셀 너비를 "외 N명" 텍스트까지 고려하여 더 늘리도록 수정
+        // 🆕 세션셀 너비를 실제 시간 길이에 맞게 계산
         const sessionDuration =
           timeToMinutes(primarySession.endsAt) -
           timeToMinutes(primarySession.startsAt);
-        const width = sessionDuration >= 60 ? 240 : 180; // 1시간 이상이면 4칸(240px), 30분이면 3칸(180px)
+        const timeBasedWidth = (sessionDuration / 30) * 100; // 30분당 100px 기준
+
+        // 🆕 정확한 시간 기반 너비 사용
+        const width = timeBasedWidth;
 
         merged.push({
           session: primarySession,
@@ -161,8 +164,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               style={{
                 position: 'absolute',
                 top: 0,
-                left: `${index * 60}px`, // 🆕 30분당 60px
-                width: '60px', // 🆕 30분 단위 너비
+                left: `${index * 100}px`, // 🆕 30분당 100px
+                width: '100px', // 🆕 30분 단위 너비
                 height: `${height}px`,
                 zIndex: 1,
               }}

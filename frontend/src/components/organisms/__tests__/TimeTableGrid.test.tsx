@@ -256,7 +256,7 @@ describe('TimeTableGrid', () => {
 
     expect(grid).toHaveStyle({
       display: 'grid',
-      gridTemplateColumns: '80px repeat(30, 60px)', // 🆕 30분 단위로 변경
+      gridTemplateColumns: '80px repeat(30, 100px)', // 🆕 30분 단위로 변경 (학생 이름 표시를 위해)
     });
   });
 
