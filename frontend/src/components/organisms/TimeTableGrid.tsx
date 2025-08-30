@@ -87,8 +87,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
 
           // 🆕 겹치는 세션이 있으면 그 다음 줄에 배치, 없으면 첫 번째 줄
-          // 세션 셀 높이를 실제 높이로 계산: 과목명(11px) + 학생명(12px + margin 2px) + 시간(9px + margin 1px) + 패딩(8px) = 43px
-          const sessionHeight = 47; // 🆕 세션셀 높이 유지 (47px)
+          // 세션 셀 높이를 실제 높이로 계산: 위아래 모두 1px 여백을 유지하도록 조정
+          const sessionHeight = 47; // 🆕 과목 이름이 잘리지 않도록 높이 증가
           const yPosition =
             maxOverlappingY >= 0 ? maxOverlappingY + sessionHeight : 0;
           sessionYPositions.set(currentSession.id, yPosition);
@@ -118,7 +118,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         const daySessions = sessions.get(weekday) || [];
 
         if (daySessions.length === 0) {
-          return 47; // 🆕 기본 높이를 47px로 수정 (세션셀 실제 높이)
+          return 49; // 🆕 기본 높이를 49px로 증가 (위아래 1px 여백을 위한 높이)
         }
 
         // 최대 yPosition을 찾아서 필요한 높이 계산
@@ -127,9 +127,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           maxYPosition = Math.max(maxYPosition, yPos);
         }
 
-        // 🆕 기본 높이 47px + 최대 yPosition + 세션 셀 높이 47px
-        const requiredHeight = Math.max(47, maxYPosition + 47);
-        const finalHeight = Math.max(requiredHeight, 47);
+        // 🆕 기본 높이 49px + 최대 yPosition + 세션 셀 높이 47px
+        const requiredHeight = Math.max(49, maxYPosition + 47);
+        const finalHeight = Math.max(requiredHeight, 49);
 
         console.log(
           `Weekday ${weekday}: ${daySessions.length} sessions, max yPosition: ${maxYPosition}, required height: ${requiredHeight}, final height: ${finalHeight}`

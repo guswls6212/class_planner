@@ -110,7 +110,7 @@ export default function SessionBlock({
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'flex-start',
-            height: '11px', // 🆕 폰트 크기와 동일하게 설정
+            height: '13px', // 🆕 과목 이름이 잘리지 않도록 높이 증가
             overflow: 'hidden',
           }}
         >

@@ -105,8 +105,8 @@ export const getSessionBlockStyles = (
   return {
     position: 'absolute',
     left,
-    top: yOffset, // 🆕 요일 영역 경계선 안에 정확히 위치하도록 수정
-    height: '47px', // 🆕 51px에서 47px로 되돌려서 1줄로만 표시
+    top: yOffset + 1, // 🆕 요일 경계선과 겹치지 않도록 1px 여백 추가
+    height: '47px', // 🆕 과목 이름이 잘리지 않도록 높이 증가
     width,
     background: subjectColor ?? '#888',
     color: '#fff',

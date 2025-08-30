@@ -160,7 +160,7 @@ describe('SessionBlock', () => {
     expect(sessionBlock).toHaveStyle({
       left: '100px',
       width: '200px',
-      top: '50px', // yOffset 값 그대로
+      top: '51px', // yOffset + 1 (요일 경계선과 겹치지 않도록)
     });
   });
 
