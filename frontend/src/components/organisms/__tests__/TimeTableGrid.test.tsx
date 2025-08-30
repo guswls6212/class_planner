@@ -148,11 +148,11 @@ describe('TimeTableGrid', () => {
 
     const weekdayHeader = screen.getByText('월');
 
-    // 🆕 실제 렌더링된 높이 90px로 수정
+    // 🆕 실제 렌더링된 높이 47px로 수정
     expect(weekdayHeader).toHaveStyle({
       color: 'var(--color-text)',
       display: 'flex',
-      height: '33px', // 🆕 33px로 수정
+      height: '47px', // 🆕 47px로 수정
       padding: '12px 8px',
     });
   });

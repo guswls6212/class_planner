@@ -14,6 +14,7 @@ interface TimeTableGridProps {
   className?: string;
   style?: React.CSSProperties;
   ref?: React.Ref<HTMLDivElement>;
+  selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
 }
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
@@ -28,6 +29,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onEmptySpaceClick,
       className = '',
       style = {},
+      selectedStudentId, // 🆕 선택된 학생 ID 추가
     },
     ref
   ) => {
@@ -85,8 +87,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
 
           // 🆕 겹치는 세션이 있으면 그 다음 줄에 배치, 없으면 첫 번째 줄
-          // 세션 셀 높이를 동적으로 계산: 과목명(11px) + 학생명(10px) + 시간(9px) + margin(3px) = 33px
-          const sessionHeight = 33; // 🆕 실제 세션 블록 높이
+          // 세션 셀 높이를 실제 높이로 계산: 과목명(11px) + 학생명(12px + margin 2px) + 시간(9px + margin 1px) + 패딩(8px) = 43px
+          const sessionHeight = 47; // 🆕 세션셀 높이 유지 (47px)
           const yPosition =
             maxOverlappingY >= 0 ? maxOverlappingY + sessionHeight : 0;
           sessionYPositions.set(currentSession.id, yPosition);
@@ -109,14 +111,14 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions]
     );
 
-    // 🆕 요일별 높이 계산: 기본 33px + 겹침당 33px
+    // 🆕 요일별 높이 계산: 기본 47px + 겹침당 47px
     const getWeekdayHeight = useCallback(
       (weekday: number): number => {
         const sessionYPositions = getSessionYPositions(weekday);
         const daySessions = sessions.get(weekday) || [];
 
         if (daySessions.length === 0) {
-          return 33; // 🆕 기본 높이를 33px로 줄임
+          return 47; // 🆕 기본 높이를 47px로 수정 (세션셀 실제 높이)
         }
 
         // 최대 yPosition을 찾아서 필요한 높이 계산
@@ -125,9 +127,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           maxYPosition = Math.max(maxYPosition, yPos);
         }
 
-        // 🆕 기본 높이 33px + 최대 yPosition + 세션 셀 높이 33px
-        const requiredHeight = Math.max(33, maxYPosition + 33);
-        const finalHeight = Math.max(requiredHeight, 33);
+        // 🆕 기본 높이 47px + 최대 yPosition + 세션 셀 높이 47px
+        const requiredHeight = Math.max(47, maxYPosition + 47);
+        const finalHeight = Math.max(requiredHeight, 47);
 
         console.log(
           `Weekday ${weekday}: ${daySessions.length} sessions, max yPosition: ${maxYPosition}, required height: ${requiredHeight}, final height: ${finalHeight}`
@@ -218,6 +220,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               onSessionClick={onSessionClick}
               onDrop={onDrop}
               onEmptySpaceClick={onEmptySpaceClick}
+              selectedStudentId={selectedStudentId}
             />
           );
         })}

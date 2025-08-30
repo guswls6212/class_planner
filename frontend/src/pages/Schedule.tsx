@@ -183,11 +183,18 @@ export default function SchedulePage() {
       setEnrollments(prev => [...prev, enrollment!]);
     }
 
-    // enrollmentIds에 추가
+    // enrollmentIds에 추가 (최대 14명 제한)
     if (
       editModalData &&
       !editModalData.enrollmentIds?.includes(enrollment.id)
     ) {
+      // 🆕 최대 14명 제한 확인
+      const currentCount = editModalData.enrollmentIds?.length || 0;
+      if (currentCount >= 14) {
+        alert('최대 14명까지 추가할 수 있습니다.');
+        return;
+      }
+
       setEditModalData(prev =>
         prev
           ? {
@@ -201,9 +208,15 @@ export default function SchedulePage() {
     }
   };
 
-  // 🆕 학생 추가 함수
+  // 🆕 학생 추가 함수 (최대 14명 제한)
   const addStudent = (studentId: string) => {
     if (!groupModalData.studentIds.includes(studentId)) {
+      // 🆕 최대 14명 제한 확인
+      if (groupModalData.studentIds.length >= 14) {
+        alert('최대 14명까지 추가할 수 있습니다.');
+        return;
+      }
+
       setGroupModalData(prev => ({
         ...prev,
         studentIds: [...prev.studentIds, studentId],
@@ -220,7 +233,7 @@ export default function SchedulePage() {
     }));
   };
 
-  // 🆕 입력창에서 학생 추가 함수
+  // 🆕 입력창에서 학생 추가 함수 (최대 14명 제한)
   const addStudentFromInput = () => {
     const trimmedValue = studentInputValue.trim();
     if (!trimmedValue) return;
@@ -228,6 +241,11 @@ export default function SchedulePage() {
     // 정확한 이름으로 학생 찾기
     const student = students.find(s => s.name === trimmedValue);
     if (student && !groupModalData.studentIds.includes(student.id)) {
+      // 🆕 최대 14명 제한 확인
+      if (groupModalData.studentIds.length >= 14) {
+        alert('최대 14명까지 추가할 수 있습니다.');
+        return;
+      }
       addStudent(student.id);
     }
   };
@@ -462,6 +480,7 @@ export default function SchedulePage() {
           onSessionClick={handleSessionClick}
           onDrop={handleDrop}
           onEmptySpaceClick={handleEmptySpaceClick}
+          selectedStudentId={selectedStudentId} // 🆕 선택된 학생 ID 전달
         />
       </div>
 

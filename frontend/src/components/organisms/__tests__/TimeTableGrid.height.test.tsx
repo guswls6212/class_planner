@@ -47,10 +47,10 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 모든 요일이 기본 높이를 가져야 함 (90px로 변경)
+    // 모든 요일이 기본 높이를 가져야 함 (47px로 변경)
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 33px 33px 33px 33px 33px 33px 33px'
+      'grid-template-rows: 40px 47px 47px 47px 47px 47px 47px 47px'
     );
   });
 
@@ -136,11 +136,11 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 월요일: 6개 세션 겹침 (max yPosition: 225 + 90 = 315)
-    // 화요일: 2개 세션 겹침 (max yPosition: 45 + 90 = 135)
+    // 월요일: 6개 세션 겹침 (max yPosition: 235 + 94 = 329)
+    // 화요일: 2개 세션 겹침 (max yPosition: 47 + 47 = 94)
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 198px 66px 33px 33px 33px 33px 33px'
+      'grid-template-rows: 40px 282px 94px 47px 47px 47px 47px 47px'
     );
   });
 
@@ -214,11 +214,11 @@ describe('TimeTableGrid 동적 높이 계산', () => {
       />
     );
 
-    // 7개 세션이 순차적으로 겹침: yPosition 0, 45, 90, 135, 180, 225, 270
-    // 최대 yPosition: 270 + 90 = 360
+    // 7개 세션이 순차적으로 겹침: yPosition 0, 47, 94, 141, 188, 235, 282
+    // 최대 yPosition: 282 + 47 = 329
     const grid = screen.getByText('09:00').closest('.time-table-grid');
     expect(grid).toHaveStyle(
-      'grid-template-rows: 40px 231px 33px 33px 33px 33px 33px 33px'
+      'grid-template-rows: 40px 329px 47px 47px 47px 47px 47px 47px'
     );
   });
 });

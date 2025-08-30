@@ -33,6 +33,7 @@ interface SessionBlockProps {
   yOffset: number;
   onClick: () => void;
   style?: React.CSSProperties;
+  selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -58,10 +59,16 @@ export default function SessionBlock({
   width,
   yOffset,
   onClick,
+  selectedStudentId, // 🆕 선택된 학생 ID 추가
 }: SessionBlockProps) {
   // 🆕 과목과 학생 정보 가져오기
   const subject = getSessionSubject(session, enrollments, subjects);
-  const studentNames = getGroupStudentNames(session, enrollments, students);
+  const studentNames = getGroupStudentNames(
+    session,
+    enrollments,
+    students,
+    selectedStudentId
+  );
 
   const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
 
@@ -128,7 +135,7 @@ export default function SessionBlock({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
-              height: '10px', // 🆕 폰트 크기와 동일하게 설정
+              height: '12px', // 🆕 16px에서 12px로 되돌려서 1줄로만 표시
               overflow: 'hidden',
               marginTop: '1px', // 🆕 위쪽 margin 1px
               marginBottom: '1px', // 🆕 아래쪽 margin 1px 추가

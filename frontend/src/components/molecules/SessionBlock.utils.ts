@@ -20,13 +20,34 @@ type Subject = {
 export const getGroupStudentNames = (
   session: Session,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
-  students: Array<{ id: string; name: string }>
+  students: Array<{ id: string; name: string }>,
+  selectedStudentId?: string // 🆕 선택된 학생 ID 추가
 ): string[] => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
     return [];
   }
 
+  // 🆕 필터링된 상태에서는 선택된 학생의 이름만 반환
+  if (selectedStudentId) {
+    const selectedStudentEnrollment = session.enrollmentIds.find(
+      enrollmentId => {
+        const enrollment = enrollments?.find(e => e.id === enrollmentId);
+        return enrollment?.studentId === selectedStudentId;
+      }
+    );
+
+    if (selectedStudentEnrollment) {
+      const enrollment = enrollments?.find(
+        e => e.id === selectedStudentEnrollment
+      );
+      const student = students?.find(s => s.id === enrollment?.studentId);
+      return student?.name ? [student.name] : [];
+    }
+    return [];
+  }
+
+  // 전체 학생 이름 반환 (기존 로직)
   return session.enrollmentIds
     .map(enrollmentId => {
       const enrollment = enrollments?.find(e => e.id === enrollmentId);
@@ -62,12 +83,16 @@ export const getSessionSubject = (
   );
 };
 
-// 🆕 그룹 학생 이름을 표시하는 함수
+// 🆕 그룹 학생 이름을 표시하는 함수 (최대 5명까지 표시)
 export const getGroupStudentDisplayText = (studentNames: string[]): string => {
   if (studentNames.length === 0) return '';
   if (studentNames.length === 1) return studentNames[0];
   if (studentNames.length === 2) return studentNames.join(', ');
-  return `${studentNames[0]}, ${studentNames[1]} 외 ${studentNames.length - 2}명`;
+  if (studentNames.length === 3) return studentNames.join(', ');
+  if (studentNames.length === 4) return studentNames.join(', ');
+  if (studentNames.length === 5) return studentNames.join(', ');
+  // 6명 이상인 경우: 첫 5명 + 외 N명
+  return `${studentNames.slice(0, 5).join(', ')} 외 ${studentNames.length - 5}명`;
 };
 
 // 🆕 세션 셀 높이를 동적으로 조정하는 스타일
@@ -80,8 +105,8 @@ export const getSessionBlockStyles = (
   return {
     position: 'absolute',
     left,
-    top: 6 + yOffset,
-    // height 제거 - 내부 콘텐츠 크기에 맞게 동적 조정
+    top: yOffset, // 🆕 요일 영역 경계선 안에 정확히 위치하도록 수정
+    height: '47px', // 🆕 51px에서 47px로 되돌려서 1줄로만 표시
     width,
     background: subjectColor ?? '#888',
     color: '#fff',
@@ -98,7 +123,7 @@ export const getSessionBlockStyles = (
 };
 
 export const calculateTopPosition = (yOffset: number): number => {
-  return 6 + yOffset;
+  return yOffset; // 🆕 요일 영역 경계선 안에 정확히 위치하도록 수정
 };
 
 export const calculateZIndex = (yOffset: number): number => {

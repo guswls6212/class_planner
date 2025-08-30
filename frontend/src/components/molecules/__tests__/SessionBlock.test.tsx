@@ -160,7 +160,7 @@ describe('SessionBlock', () => {
     expect(sessionBlock).toHaveStyle({
       left: '100px',
       width: '200px',
-      top: '56px', // 6 + 50
+      top: '50px', // yOffset 값 그대로
     });
   });
 
@@ -329,7 +329,94 @@ describe('SessionBlock', () => {
       />
     );
 
-    // "김요섭, 이현진 외 1명" 형식으로 표시되는지 확인
-    expect(screen.getByText('김요섭, 이현진 외 1명')).toBeInTheDocument();
+    // 🆕 3명인 경우: "김요섭, 이현진, 강지원" 형식으로 표시되는지 확인
+    expect(screen.getByText('김요섭, 이현진, 강지원')).toBeInTheDocument();
+  });
+
+  it('3명인 경우: "김요섭, 이현진, 강지원" 형식으로 표시되는지 확인', () => {
+    const groupSession: Session = {
+      ...mockSession,
+      enrollmentIds: ['enrollment-1', 'enrollment-2', 'enrollment-3'],
+    };
+
+    const mockEnrollments = [
+      { id: 'enrollment-1', studentId: 'student-1', subjectId: 'subject-1' },
+      { id: 'enrollment-2', studentId: 'student-2', subjectId: 'subject-1' },
+      { id: 'enrollment-3', studentId: 'student-3', subjectId: 'subject-1' },
+    ];
+
+    const mockStudents = [
+      { id: 'student-1', name: '김요섭' },
+      { id: 'student-2', name: '이현진' },
+      { id: 'student-3', name: '강지원' },
+    ];
+
+    render(
+      <SessionBlock
+        session={groupSession}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
+        left={0}
+        width={120}
+        yOffset={0}
+        onClick={() => {}}
+      />
+    );
+
+    // 3명인 경우: "김요섭, 이현진, 강지원" 형식으로 표시되는지 확인
+    expect(screen.getByText('김요섭, 이현진, 강지원')).toBeInTheDocument();
+  });
+
+  it('6명 이상인 경우 외 N명 형식으로 표시한다', () => {
+    const groupSession: Session = {
+      ...mockSession,
+      enrollmentIds: [
+        'enrollment-1',
+        'enrollment-2',
+        'enrollment-3',
+        'enrollment-4',
+        'enrollment-5',
+        'enrollment-6',
+      ],
+    };
+
+    const mockEnrollments = [
+      { id: 'enrollment-1', studentId: 'student-1', subjectId: 'subject-1' },
+      { id: 'enrollment-2', studentId: 'student-2', subjectId: 'subject-1' },
+      { id: 'enrollment-3', studentId: 'student-3', subjectId: 'subject-1' },
+      { id: 'enrollment-4', studentId: 'student-4', subjectId: 'subject-1' },
+      { id: 'enrollment-5', studentId: 'student-5', subjectId: 'subject-1' },
+      { id: 'enrollment-6', studentId: 'student-6', subjectId: 'subject-1' },
+    ];
+
+    const mockStudents = [
+      { id: 'student-1', name: '김요섭' },
+      { id: 'student-2', name: '이현진' },
+      { id: 'student-3', name: '강지원' },
+      { id: 'student-4', name: '박민수' },
+      { id: 'student-5', name: '정수영' },
+      { id: 'student-6', name: '최영희' },
+    ];
+
+    render(
+      <SessionBlock
+        session={groupSession}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        students={mockStudents}
+        yPosition={0}
+        left={0}
+        width={120}
+        yOffset={0}
+        onClick={() => {}}
+      />
+    );
+
+    // 6명인 경우: "김요섭, 이현진, 강지원, 박민수, 정수영 외 1명" 형식으로 표시되는지 확인
+    expect(
+      screen.getByText('김요섭, 이현진, 강지원, 박민수, 정수영 외 1명')
+    ).toBeInTheDocument();
   });
 });

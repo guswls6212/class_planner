@@ -17,6 +17,7 @@ interface TimeTableRowProps {
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
+  selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
 }
 
 export const TimeTableRow: React.FC<TimeTableRowProps> = ({
@@ -32,6 +33,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onEmptySpaceClick,
   className = '',
   style = {},
+  selectedStudentId, // 🆕 선택된 학생 ID 추가
 }) => {
   // 🆕 시간을 분으로 변환하는 헬퍼 함수
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -91,11 +93,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         const primarySession = sessionsInTime[0];
         const yPosition = sessionYPositions.get(primarySession.id) || 0;
 
-        // 🆕 30분 단위로 변경: 기본 너비 60px, 1시간 수업은 120px
+        // 🆕 세션셀 너비를 "외 N명" 텍스트까지 고려하여 더 늘리도록 수정
         const sessionDuration =
           timeToMinutes(primarySession.endsAt) -
           timeToMinutes(primarySession.startsAt);
-        const width = sessionDuration >= 60 ? 120 : 60; // 1시간 이상이면 2칸(120px), 30분이면 1칸(60px)
+        const width = sessionDuration >= 60 ? 240 : 180; // 1시간 이상이면 4칸(240px), 30분이면 3칸(180px)
 
         merged.push({
           session: primarySession,
@@ -184,6 +186,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             width={session.width}
             yOffset={session.yOffset}
             onClick={() => onSessionClick(session.session)}
+            selectedStudentId={selectedStudentId}
           />
         ))}
       </div>
