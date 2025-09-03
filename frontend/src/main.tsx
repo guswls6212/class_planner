@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom';
 import ThemeToggle from './components/atoms/ThemeToggle';
 import { ThemeProvider } from './contexts/ThemeContext';
+import ManualPage from './pages/Manual';
 import SchedulePage from './pages/Schedule';
 import StudentsPage from './pages/Students';
 import './styles/global.css';
@@ -53,6 +54,19 @@ function Layout() {
           >
             시간표
           </NavLink>
+          <NavLink
+            to="/manual"
+            style={({ isActive }) => ({
+              fontWeight: isActive ? 600 : 400,
+              textDecoration: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background: isActive ? 'var(--color-primary)' : 'transparent',
+              color: isActive ? 'white' : 'var(--color-text-primary)',
+            })}
+          >
+            사용법
+          </NavLink>
         </div>
         <ThemeToggle size="small" variant="both" />
       </nav>
@@ -69,6 +83,7 @@ const router = createBrowserRouter([
       { index: true, element: <StudentsPage /> },
       { path: 'students', element: <StudentsPage /> },
       { path: 'schedule', element: <SchedulePage /> },
+      { path: 'manual', element: <ManualPage /> },
     ],
   },
 ]);
