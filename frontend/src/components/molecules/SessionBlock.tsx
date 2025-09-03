@@ -93,6 +93,8 @@ export default function SessionBlock({
       onClick={handleClick}
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
+      data-starts-at={session.startsAt}
+      data-ends-at={session.endsAt}
       className="session-block"
     >
       <div

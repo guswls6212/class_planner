@@ -119,7 +119,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     <div
       className={`time-table-row ${className}`}
       style={{
-        display: 'contents',
+        display: 'contents', // 🆕 다시 contents로 변경 (부모 그리드에 직접 참여)
         ...style,
       }}
     >
@@ -140,6 +140,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           position: 'sticky',
           left: 0,
           zIndex: 10,
+          gridColumn: '1', // 🆕 첫 번째 열에 명시적으로 배치
         }}
       >
         {['월', '화', '수', '목', '금', '토', '일'][weekday]}
@@ -152,7 +153,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           backgroundColor: 'var(--color-background)',
           minHeight: `${height}px`,
           border: '1px solid var(--color-border-grid)',
-          gridColumn: '2 / -1', // 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
+          gridColumn: '2 / -1', // 🆕 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >
         {/* 🆕 드롭 존들 - 30분 단위로 30개 */}

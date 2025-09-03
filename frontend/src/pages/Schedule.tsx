@@ -73,6 +73,15 @@ export default function SchedulePage() {
     console.log('🆕 selectedStudentId 변경됨:', selectedStudentId);
   }, [selectedStudentId]);
 
+  // 🆕 학생 데이터 디버깅
+  useEffect(() => {
+    console.log('🆕 학생 데이터 상태:', {
+      studentsCount: students.length,
+      filteredStudentsCount: filteredStudents.length,
+      searchQuery,
+    });
+  }, [students, filteredStudents, searchQuery]);
+
   // 🆕 선택된 학생이 있으면 해당 학생의 세션만, 없으면 전체 세션 표시
   const displaySessions = useMemo(() => {
     if (selectedStudentId) {
@@ -408,16 +417,32 @@ export default function SchedulePage() {
     }
   };
 
-  // 학생 패널 위치 (드래그로 이동 가능) - 원래 위치로 복원
+  // 학생 패널 위치 (드래그로 이동 가능) - 화면 정중앙에 표시
   const [panelPos, setPanelPos] = useLocal<{ x: number; y: number }>(
     'ui:studentsPanelPos',
-    { x: 600, y: 90 }
+    { x: 0, y: 0 } // 🆕 초기값을 0으로 설정하고 useEffect에서 계산
   );
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
   });
+
+  // 🆕 패널을 화면 정중앙에 위치시키는 useEffect
+  useEffect(() => {
+    // 패널이 처음 로딩될 때만 화면 정중앙에 위치
+    const savedPos = localStorage.getItem('ui:studentsPanelPos');
+    if (!savedPos) {
+      // 저장된 위치가 없으면 화면 정중앙에 위치
+      const panelWidth = 280; // 패널 너비
+      const panelHeight = 400; // 패널 높이
+      const centerX = (window.innerWidth - panelWidth) / 2;
+      const centerY = (window.innerHeight - panelHeight) / 2;
+
+      console.log('🆕 패널을 화면 정중앙에 위치:', { centerX, centerY });
+      setPanelPos({ x: centerX, y: centerY });
+    }
+  }, [setPanelPos]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
