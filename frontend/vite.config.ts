@@ -11,6 +11,7 @@ import path from 'node:path';
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   plugins: [react()],
+  base: '/class_planner/',
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), './src'),
