@@ -4,12 +4,7 @@ import Label from '../components/atoms/Label';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
 import { downloadTimetableAsPDF } from '../lib/pdf-utils';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
-import {
-  canFormGroupSession,
-  createGroupSession,
-  mergeIntoGroupSession,
-  weekdays,
-} from '../lib/planner';
+import { weekdays } from '../lib/planner';
 import styles from './Schedule.module.css';
 
 // 🆕 그룹 수업을 위한 새로운 타입
@@ -147,29 +142,21 @@ export default function SchedulePage() {
     endTime: '',
   });
 
-  // 🆕 수업 편집 모달용 시작 시간 변경 처리
+  // 🆕 수업 편집 모달용 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
   const handleEditStartTimeChange = (newStartTime: string) => {
     setEditModalTimeData(prev => {
       const currentEndTime = prev.endTime;
 
-      // 시작 시간이 종료 시간보다 늦으면 종료 시간을 자동으로 조정
+      // 시작 시간이 종료 시간보다 늦으면 경고만 표시하고 자동 조정하지 않음
       if (
         newStartTime &&
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        const startMinutes =
-          parseInt(newStartTime.split(':')[0]) * 60 +
-          parseInt(newStartTime.split(':')[1]);
-        const newEndMinutes = startMinutes + 60; // 1시간 후
-        const newEndHour = Math.floor(newEndMinutes / 60);
-        const newEndMinute = newEndMinutes % 60;
-        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-
-        return {
-          startTime: newStartTime,
-          endTime: newEndTime,
-        };
+        // 경고 메시지 표시 (선택사항)
+        console.warn(
+          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.'
+        );
       }
 
       return {
@@ -179,29 +166,21 @@ export default function SchedulePage() {
     });
   };
 
-  // 🆕 수업 편집 모달용 종료 시간 변경 처리
+  // 🆕 수업 편집 모달용 종료 시간 변경 처리 (시작 시간보다 빠르지 않도록)
   const handleEditEndTimeChange = (newEndTime: string) => {
     setEditModalTimeData(prev => {
       const currentStartTime = prev.startTime;
 
-      // 종료 시간이 시작 시간보다 빠르면 시작 시간을 자동으로 조정
+      // 종료 시간이 시작 시간보다 빠르면 경고만 표시하고 자동 조정하지 않음
       if (
         newEndTime &&
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        const endMinutes =
-          parseInt(newEndTime.split(':')[0]) * 60 +
-          parseInt(newEndTime.split(':')[1]);
-        const newStartMinutes = endMinutes - 60; // 1시간 전
-        const newStartHour = Math.floor(newStartMinutes / 60);
-        const newStartMinute = newStartMinutes % 60;
-        const newStartTime = `${newStartHour.toString().padStart(2, '0')}:${newStartMinute.toString().padStart(2, '0')}`;
-
-        return {
-          startTime: newStartTime,
-          endTime: newEndTime,
-        };
+        // 경고 메시지 표시 (선택사항)
+        console.warn(
+          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.'
+        );
       }
 
       return {
@@ -345,54 +324,19 @@ export default function SchedulePage() {
       return;
     }
 
-    // 🆕 그룹 수업 판단 및 처리 (첫 번째 학생 기준)
-    const { canForm, existingSessionId } = canFormGroupSession(
-      {
-        studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
-        subjectId: data.subjectId,
-        weekday: data.weekday,
-        startsAt: data.startTime,
-        endsAt: data.endTime,
-        room: data.room,
-      },
-      sessions,
-      enrollments
-    );
+    // 🆕 모든 학생에 대해 enrollment 확인 및 생성
+    const studentEnrollments: Enrollment[] = [];
 
-    if (canForm && existingSessionId) {
-      // 🆕 기존 세션에 학생 추가 (그룹 수업)
-      const existingSession = sessions.find(s => s.id === existingSessionId);
-      if (existingSession) {
-        const updatedSession = mergeIntoGroupSession(
-          {
-            studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
-            subjectId: data.subjectId,
-            weekday: data.weekday,
-            startsAt: data.startTime,
-            endsAt: data.endTime,
-            room: data.room,
-          },
-          existingSession,
-          enrollments
-        );
-
-        setSessions(prev =>
-          prev.map(s => (s.id === existingSessionId ? updatedSession : s))
-        );
-      }
-    } else {
-      // 🆕 새로운 세션 생성
-      // enrollment가 없으면 자동으로 생성
+    for (const studentId of data.studentIds) {
       let enrollment = enrollments.find(
-        e =>
-          e.studentId === data.studentIds[0] && e.subjectId === data.subjectId
+        e => e.studentId === studentId && e.subjectId === data.subjectId
       );
 
       if (!enrollment) {
         // enrollment가 없으면 새로 생성
         const newEnrollment: Enrollment = {
           id: crypto.randomUUID(),
-          studentId: data.studentIds[0],
+          studentId: studentId,
           subjectId: data.subjectId,
         };
 
@@ -401,21 +345,20 @@ export default function SchedulePage() {
         enrollment = newEnrollment;
       }
 
-      const newSession = createGroupSession(
-        {
-          studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
-          subjectId: data.subjectId,
-          weekday: data.weekday,
-          startsAt: data.startTime,
-          endsAt: data.endTime,
-          room: data.room,
-        },
-        [...enrollments, enrollment] // 새로 생성된 enrollment 포함
-      );
-
-      setSessions(prev => [...prev, newSession]);
+      studentEnrollments.push(enrollment);
     }
 
+    // 🆕 새로운 세션 생성 (모든 학생 포함)
+    const newSession: Session = {
+      id: crypto.randomUUID(),
+      enrollmentIds: studentEnrollments.map(e => e.id), // 모든 학생의 enrollment ID 포함
+      weekday: data.weekday,
+      startsAt: data.startTime,
+      endsAt: data.endTime,
+      room: data.room,
+    };
+
+    setSessions(prev => [...prev, newSession]);
     setShowGroupModal(false);
   };
 
@@ -451,25 +394,16 @@ export default function SchedulePage() {
     setGroupModalData(prev => {
       const currentEndTime = prev.endTime;
 
-      // 시작 시간이 종료 시간보다 늦으면 종료 시간을 자동으로 조정
+      // 시작 시간이 종료 시간보다 늦으면 경고만 표시하고 자동 조정하지 않음
       if (
         newStartTime &&
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        const startMinutes =
-          parseInt(newStartTime.split(':')[0]) * 60 +
-          parseInt(newStartTime.split(':')[1]);
-        const newEndMinutes = startMinutes + 60; // 1시간 후
-        const newEndHour = Math.floor(newEndMinutes / 60);
-        const newEndMinute = newEndMinutes % 60;
-        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-
-        return {
-          ...prev,
-          startTime: newStartTime,
-          endTime: newEndTime,
-        };
+        // 경고 메시지 표시 (선택사항)
+        console.warn(
+          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.'
+        );
       }
 
       return {
@@ -484,25 +418,16 @@ export default function SchedulePage() {
     setGroupModalData(prev => {
       const currentStartTime = prev.startTime;
 
-      // 종료 시간이 시작 시간보다 빠르면 시작 시간을 자동으로 조정
+      // 종료 시간이 시작 시간보다 빠르면 경고만 표시하고 자동 조정하지 않음
       if (
         newEndTime &&
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        const endMinutes =
-          parseInt(newEndTime.split(':')[0]) * 60 +
-          parseInt(newEndTime.split(':')[1]);
-        const newStartMinutes = endMinutes - 60; // 1시간 전
-        const newStartHour = Math.floor(newStartMinutes / 60);
-        const newStartMinute = newStartMinutes % 60;
-        const newStartTime = `${newStartHour.toString().padStart(2, '0')}:${newStartMinute.toString().padStart(2, '0')}`;
-
-        return {
-          ...prev,
-          startTime: newStartTime,
-          endTime: newEndTime,
-        };
+        // 경고 메시지 표시 (선택사항)
+        console.warn(
+          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.'
+        );
       }
 
       return {
