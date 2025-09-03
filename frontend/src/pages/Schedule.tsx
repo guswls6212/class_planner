@@ -313,6 +313,8 @@ export default function SchedulePage() {
     if (e.key === 'Enter') {
       e.preventDefault();
       addStudentFromInput();
+      // 🆕 입력창 완전 초기화 (이중 보장)
+      setStudentInputValue('');
     }
   };
 
@@ -323,6 +325,25 @@ export default function SchedulePage() {
       alert('시작 시간은 종료 시간보다 빨라야 합니다.');
       return;
     }
+
+    // 🆕 과목 선택 검증
+    if (!data.subjectId) {
+      alert('과목을 선택해주세요.');
+      return;
+    }
+
+    // 🆕 학생 선택 검증
+    if (!data.studentIds || data.studentIds.length === 0) {
+      alert('학생을 선택해주세요.');
+      return;
+    }
+
+    console.log('🔍 addGroupSession 호출:', {
+      subjectId: data.subjectId,
+      studentIds: data.studentIds,
+      startTime: data.startTime,
+      endTime: data.endTime,
+    });
 
     // 🆕 모든 학생에 대해 enrollment 확인 및 생성
     const studentEnrollments: Enrollment[] = [];
@@ -339,6 +360,12 @@ export default function SchedulePage() {
           studentId: studentId,
           subjectId: data.subjectId,
         };
+
+        console.log('🔍 새로운 enrollment 생성:', {
+          enrollmentId: newEnrollment.id,
+          studentId: newEnrollment.studentId,
+          subjectId: newEnrollment.subjectId,
+        });
 
         // enrollments에 추가
         setEnrollments(prev => [...prev, newEnrollment]);
@@ -357,6 +384,14 @@ export default function SchedulePage() {
       endsAt: data.endTime,
       room: data.room,
     };
+
+    console.log('🔍 새로운 세션 생성:', {
+      sessionId: newSession.id,
+      enrollmentIds: newSession.enrollmentIds,
+      weekday: newSession.weekday,
+      startsAt: newSession.startsAt,
+      endsAt: newSession.endsAt,
+    });
 
     setSessions(prev => [...prev, newSession]);
     setShowGroupModal(false);
@@ -1040,6 +1075,8 @@ export default function SchedulePage() {
                         if (e.key === 'Enter') {
                           e.preventDefault();
                           handleEditStudentAdd();
+                          // 🆕 입력창 완전 초기화
+                          setEditStudentInputValue('');
                         }
                       }}
                     />

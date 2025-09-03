@@ -155,6 +155,25 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           ...style,
         }}
       >
+        {/* 🆕 디버깅: 세션 데이터 확인 */}
+        {(() => {
+          console.log('🔍 TimeTableGrid 렌더링:', {
+            totalSessions: Array.from(sessions.values()).flat().length,
+            sessionsByWeekday: Array.from(sessions.entries()).map(
+              ([weekday, sessions]) => ({
+                weekday,
+                sessionCount: sessions.length,
+                sessions: sessions.map(s => ({
+                  id: s.id,
+                  startsAt: s.startsAt,
+                  endsAt: s.endsAt,
+                })),
+              })
+            ),
+          });
+          return null;
+        })()}
+
         {/* 좌상단 빈칸 */}
         <div style={{ backgroundColor: 'var(--color-background)' }} />
 

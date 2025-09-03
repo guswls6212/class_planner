@@ -61,6 +61,20 @@ export default function SessionBlock({
   onClick,
   selectedStudentId, // 🆕 선택된 학생 ID 추가
 }: SessionBlockProps) {
+  // 🆕 디버깅: SessionBlock 렌더링 시작
+  console.log('🔍 SessionBlock 렌더링 시작:', {
+    sessionId: session.id,
+    enrollmentIds: session.enrollmentIds,
+    startsAt: session.startsAt,
+    endsAt: session.endsAt,
+    left,
+    width,
+    yOffset,
+    subjectsCount: subjects.length,
+    enrollmentsCount: enrollments.length,
+    studentsCount: students.length,
+  });
+
   // 🆕 과목과 학생 정보 가져오기
   const subject = getSessionSubject(session, enrollments, subjects);
   const studentNames = getGroupStudentNames(
@@ -69,6 +83,38 @@ export default function SessionBlock({
     students,
     selectedStudentId
   );
+
+  // 🆕 디버깅: 과목 및 학생 정보 확인
+  console.log('🔍 SessionBlock 데이터 확인:', {
+    sessionId: session.id,
+    subject: subject
+      ? { id: subject.id, name: subject.name, color: subject.color }
+      : null,
+    studentNames,
+    enrollmentIds: session.enrollmentIds,
+    enrollments: session.enrollmentIds.map(id => {
+      const enrollment = enrollments.find(e => e.id === id);
+      const student = enrollment
+        ? students.find(s => s.id === enrollment.studentId)
+        : null;
+      return {
+        enrollmentId: id,
+        enrollment,
+        student: student ? { id: student.id, name: student.name } : null,
+      };
+    }),
+  });
+
+  // 🆕 디버깅 정보 추가
+  if (!subject) {
+    console.warn('🔍 SessionBlock 렌더링: 과목 정보 없음', {
+      sessionId: session.id,
+      enrollmentIds: session.enrollmentIds,
+      subjectsCount: subjects.length,
+      enrollmentsCount: enrollments.length,
+      studentsCount: students.length,
+    });
+  }
 
   const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
 
@@ -126,7 +172,7 @@ export default function SessionBlock({
               lineHeight: '1.1',
             }}
           >
-            {subject?.name ?? 'Unknown'}
+            {subject?.name || '과목 없음'}
           </span>
         </div>
 

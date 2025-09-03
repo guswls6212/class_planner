@@ -92,8 +92,8 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
       <TimeTableRow {...defaultProps} sessions={sessionsWithoutEnrollment} />
     );
 
-    // enrollment가 없으면 "Unknown"을 표시 (fallback 제거됨)
-    expect(screen.getByText('Unknown')).toBeInTheDocument();
+    // enrollment가 없으면 "과목 없음"을 표시
+    expect(screen.getByText('과목 없음')).toBeInTheDocument();
   });
 
   it('학생 정보가 없을 때 과목명만 표시한다', () => {

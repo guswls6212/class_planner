@@ -92,8 +92,8 @@ describe('SessionBlock', () => {
       />
     );
 
-    // 과목명이 Unknown으로 표시되는지 확인
-    expect(screen.getByText('Unknown')).toBeInTheDocument();
+    // 과목명이 과목 없음으로 표시되는지 확인
+    expect(screen.getByText('과목 없음')).toBeInTheDocument();
   });
 
   it('학생이 없을 때 과목명만 표시한다', () => {
@@ -116,7 +116,7 @@ describe('SessionBlock', () => {
       />
     );
 
-    expect(screen.getByText('Unknown')).toBeInTheDocument();
+    expect(screen.getByText('과목 없음')).toBeInTheDocument();
   });
 
   it('클릭 이벤트를 올바르게 처리한다', () => {

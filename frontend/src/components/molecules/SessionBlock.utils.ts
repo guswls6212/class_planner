@@ -67,7 +67,8 @@ export const getSessionSubject = (
 ): Subject | null => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
-    return null; // fallback 제거, null 반환하여 Unknown 표시
+    console.warn('🔍 SessionBlock: enrollmentIds가 비어있음', session.id);
+    return null;
   }
 
   // 첫 번째 enrollment에서 과목 정보 가져오기
@@ -75,12 +76,32 @@ export const getSessionSubject = (
     e => e.id === session.enrollmentIds[0]
   );
   if (!firstEnrollment) {
-    return null; // enrollment가 없으면 null 반환하여 Unknown 표시
+    console.warn('🔍 SessionBlock: enrollment를 찾을 수 없음', {
+      sessionId: session.id,
+      enrollmentId: session.enrollmentIds[0],
+      availableEnrollments: enrollments?.map(e => e.id),
+    });
+    return null;
   }
 
-  return (
-    subjects?.find(s => s.id === firstEnrollment.subjectId) || null // fallback 제거, null 반환하여 Unknown 표시
-  );
+  const subject = subjects?.find(s => s.id === firstEnrollment.subjectId);
+  if (!subject) {
+    console.warn('🔍 SessionBlock: 과목을 찾을 수 없음', {
+      sessionId: session.id,
+      enrollmentId: firstEnrollment.id,
+      subjectId: firstEnrollment.subjectId,
+      availableSubjects: subjects?.map(s => ({ id: s.id, name: s.name })),
+    });
+
+    // 🆕 과목을 찾을 수 없을 때 기본 과목 반환 (Unknown 대신)
+    if (subjects && subjects.length > 0) {
+      console.log('🔍 SessionBlock: 기본 과목 사용', subjects[0]);
+      return subjects[0];
+    }
+    return null;
+  }
+
+  return subject;
 };
 
 // 🆕 그룹 학생 이름을 표시하는 함수 (최대 5명까지 표시)

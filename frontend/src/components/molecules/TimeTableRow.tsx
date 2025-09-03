@@ -84,32 +84,43 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     sessionsByTime.forEach((sessionsInTime, timeKey) => {
       const [startTime] = timeKey.split('-');
       const timeSlot = timeToMinutes(startTime);
-      // 🆕 30분 단위로 변경: 9:00 기준으로 30분 단위 인덱스 계산
+
+      // 🆕 정확한 시간 기반 위치 계산 (소수점 제거)
       const timeIndex = (timeSlot - 9 * 60) / 30;
-      const left = timeIndex * 100; // 30분당 100px로 증가 (학생 이름 표시를 위해)
+      const left = Math.round(timeIndex * 100); // 🆕 Math.round로 소수점 제거
 
-      // 🆕 같은 시간대의 세션들을 하나로 병합하여 표시
-      if (sessionsInTime.length > 0) {
-        const primarySession = sessionsInTime[0];
-        const yPosition = sessionYPositions.get(primarySession.id) || 0;
+      // 🆕 같은 시간대의 모든 세션을 개별적으로 표시
+      sessionsInTime.forEach((session, index) => {
+        const yPosition = sessionYPositions.get(session.id) || 0;
 
-        // 🆕 세션셀 너비를 실제 시간 길이에 맞게 계산
+        // 🆕 세션셀 너비를 실제 시간 길이에 맞게 계산 (소수점 제거)
         const sessionDuration =
-          timeToMinutes(primarySession.endsAt) -
-          timeToMinutes(primarySession.startsAt);
-        const timeBasedWidth = (sessionDuration / 30) * 100; // 30분당 100px 기준
+          timeToMinutes(session.endsAt) - timeToMinutes(session.startsAt);
+        const timeBasedWidth = Math.round((sessionDuration / 30) * 100); // 🆕 Math.round로 소수점 제거
 
         // 🆕 정확한 시간 기반 너비 사용
-        const width = timeBasedWidth;
+        const width = Math.max(timeBasedWidth, 50); // 🆕 최소 너비 50px 보장
+
+        console.log('🔍 세션 위치 계산:', {
+          sessionId: session.id,
+          startTime: session.startsAt,
+          endTime: session.endsAt,
+          timeIndex,
+          left,
+          width,
+          timeBasedWidth,
+          yPosition,
+          index,
+        });
 
         merged.push({
-          session: primarySession,
+          session: session,
           yPosition,
           left,
           width,
           yOffset: yPosition,
         });
-      }
+      });
     });
 
     return merged;
@@ -123,6 +134,29 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         ...style,
       }}
     >
+      {/* 🆕 디버깅: 요일별 세션 데이터 확인 */}
+      {(() => {
+        console.log('🔍 TimeTableRow 렌더링:', {
+          weekday,
+          weekdaySessions: weekdaySessions.length,
+          sessions: weekdaySessions.map(s => ({
+            id: s.id,
+            startsAt: s.startsAt,
+            endsAt: s.endsAt,
+          })),
+          mergedSessions: mergedSessions.length,
+          mergedSessionsData: mergedSessions.map(s => ({
+            sessionId: s.session.id,
+            startsAt: s.session.startsAt,
+            endsAt: s.session.endsAt,
+            left: s.left,
+            width: s.width,
+            yPosition: s.yPosition,
+          })),
+        });
+        return null;
+      })()}
+
       {/* 요일 라벨 (Y축 왼쪽) - 고정 */}
       <div
         style={{
