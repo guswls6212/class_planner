@@ -1,4 +1,7 @@
+import { getDeploymentStatus, formatDeploymentTime } from '../lib/build-info';
+
 export default function ManualPage() {
+  const deploymentStatus = getDeploymentStatus();
   return (
     <div style={{ padding: 16, maxWidth: 800, margin: '0 auto' }}>
       <h1>📚 클래스 플래너 사용자 매뉴얼</h1>
@@ -315,6 +318,45 @@ export default function ManualPage() {
           color: 'var(--color-text-secondary)',
         }}
       >
+        <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 16px',
+              borderRadius: 8,
+              backgroundColor: deploymentStatus.isLatest
+                ? 'var(--color-success-bg)'
+                : 'var(--color-warning-bg)',
+              color: deploymentStatus.isLatest
+                ? 'var(--color-success-text)'
+                : 'var(--color-warning-text)',
+              fontSize: '14px',
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>
+              {deploymentStatus.isLatest ? '🟢' : '🟡'}
+            </span>
+            <span>
+              {deploymentStatus.isLatest ? '최신 버전' : '업데이트 필요'}
+            </span>
+            <span style={{ fontSize: '12px', opacity: 0.8 }}>
+              v{deploymentStatus.version}
+            </span>
+          </div>
+        </div>
+
+        <div style={{ fontSize: '12px', marginBottom: 16 }}>
+          <p style={{ margin: '4px 0' }}>
+            마지막 배포: {formatDeploymentTime(deploymentStatus.lastDeployed)}
+          </p>
+          <p style={{ margin: '4px 0' }}>
+            환경: {import.meta.env.MODE === 'production' ? '프로덕션' : '개발'}
+          </p>
+        </div>
+
         <p>
           <strong>문의사항이나 버그 리포트는 개발팀에 연락해 주세요.</strong>
         </p>

@@ -347,6 +347,7 @@ export default function SchedulePage() {
 
     // 🆕 모든 학생에 대해 enrollment 확인 및 생성
     const studentEnrollments: Enrollment[] = [];
+    const newEnrollments: Enrollment[] = [];
 
     for (const studentId of data.studentIds) {
       let enrollment = enrollments.find(
@@ -367,12 +368,16 @@ export default function SchedulePage() {
           subjectId: newEnrollment.subjectId,
         });
 
-        // enrollments에 추가
-        setEnrollments(prev => [...prev, newEnrollment]);
+        newEnrollments.push(newEnrollment);
         enrollment = newEnrollment;
       }
 
       studentEnrollments.push(enrollment);
+    }
+
+    // 🆕 새로운 enrollment들을 먼저 추가
+    if (newEnrollments.length > 0) {
+      setEnrollments(prev => [...prev, ...newEnrollments]);
     }
 
     // 🆕 새로운 세션 생성 (모든 학생 포함)

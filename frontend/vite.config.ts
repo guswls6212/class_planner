@@ -13,6 +13,12 @@ import path from 'node:path';
 export default defineConfig(({ command: _command }) => ({
   plugins: [react()],
   base: '/class_planner/',
+  define: {
+    // 빌드 시점의 환경 변수 정의
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '1.0.0'),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+    'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(process.env.GIT_COMMIT_HASH || 'unknown'),
+  },
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), './src'),
