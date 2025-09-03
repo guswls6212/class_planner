@@ -84,14 +84,14 @@ success "빌드 테스트 통과"
 
 # 8. 문서 일관성 체크
 info "문서 일관성 체크 중..."
-if [ ! -f "COMMAND_IMPACT_SCOPE.md" ]; then
-    warning "COMMAND_IMPACT_SCOPE.md 파일이 없습니다."
+if [ ! -f "DEVELOPER_GUIDE.md" ]; then
+    warning "DEVELOPER_GUIDE.md 파일이 없습니다."
 fi
-if [ ! -f "PAGES_REFERENCE.md" ]; then
-    warning "PAGES_REFERENCE.md 파일이 없습니다."
+if [ ! -f "USER_MANUAL.md" ]; then
+    warning "USER_MANUAL.md 파일이 없습니다."
 fi
-if [ ! -f "FUNCTIONALITY_CHECKLIST.md" ]; then
-    warning "FUNCTIONALITY_CHECKLIST.md 파일이 없습니다."
+if [ ! -f "README.md" ]; then
+    warning "README.md 파일이 없습니다."
 fi
 success "문서 일관성 체크 완료"
 

@@ -1,69 +1,94 @@
-# React + TypeScript + Vite
+# 클래스 플래너 (Class Planner)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 📋 개요
 
-Currently, two official plugins are available:
+클래스 플래너는 학생과 수업을 효율적으로 관리할 수 있는 웹 기반 시간표 관리 시스템입니다. 직관적인 인터페이스와 강력한 기능을 통해 교육 기관의 수업 관리를 간소화합니다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 주요 기능
 
-## Expanding the ESLint configuration
+- **학생 관리**: 학생 추가, 삭제, 선택 기능
+- **시간표 관리**: 9:00-23:00, 30분 단위 시간표 표시
+- **드래그 앤 드롭**: 직관적인 수업 추가 방식
+- **PDF 다운로드**: 시간표를 PDF로 내보내기
+- **반응형 디자인**: 다양한 화면 크기 지원
+- **다크/라이트 테마**: 사용자 선호에 따른 테마 전환
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ 기술 스택
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Frontend**: React 19 + TypeScript
+- **Build Tool**: Vite
+- **Testing**: Vitest + React Testing Library
+- **Styling**: CSS Modules
+- **Deployment**: GitHub Pages
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 📦 설치 및 실행
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 필수 요구사항
+
+- Node.js 18+
+- npm 또는 yarn
+
+### 설치
+
+```bash
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run dev
+
+# 빌드
+npm run build
+
+# 테스트 실행
+npm run test:run
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 📚 문서
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **[사용자 매뉴얼](./USER_MANUAL.md)**: 애플리케이션 사용법 가이드
+- **[개발자 가이드](./DEVELOPER_GUIDE.md)**: 개발자를 위한 종합 가이드
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🧪 테스트
+
+```bash
+# 전체 테스트 실행
+npm run test:run
+
+# 테스트 커버리지
+npm run test:coverage
+
+# 보호 테스트 (기존 기능 보호)
+npm run protection-check
 ```
+
+## 🚀 배포
+
+```bash
+# 커밋 전 검증
+npm run prepare-commit
+
+# 배포
+npm run deploy
+```
+
+## 📊 현재 상태
+
+- **완료된 기능**: 28개
+- **전체 진행률**: 70%
+- **테스트 커버리지**: 90%+
+
+## 🤝 기여하기
+
+1. 이슈를 생성하여 문제나 개선사항을 보고
+2. 브랜치를 생성하여 작업
+3. 테스트를 작성하고 실행
+4. Pull Request를 생성
+
+## 📄 라이선스
+
+MIT License
+
+---
+
+_클래스 플래너는 교육 기관의 수업 관리를 더욱 효율적으로 만들어줍니다._

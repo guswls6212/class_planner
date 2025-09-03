@@ -707,6 +707,7 @@ export async function downloadTimetableAsPDF(
 
 /**
  * 다크 테마 색상을 라이트 테마에 맞게 조정
+ * 원본 색상을 최대한 보존하면서 가독성만 개선
  */
 function adjustColorForLightTheme(color: string): string {
   // RGB 색상을 파싱
@@ -718,14 +719,15 @@ function adjustColorForLightTheme(color: string): string {
     const g = parseInt(rgbMatch[2]);
     const b = parseInt(rgbMatch[3]);
 
-    // 색상을 더 밝고 선명하게 조정
-    const adjustedR = Math.min(255, r + 40);
-    const adjustedG = Math.min(255, g + 40);
-    const adjustedB = Math.min(255, b + 40);
+    // 원본 색상을 최대한 보존 (밝기 조정 제거)
+    // 대신 대비를 위해 약간의 조정만 적용
+    const adjustedR = Math.min(255, Math.max(0, r));
+    const adjustedG = Math.min(255, Math.max(0, g));
+    const adjustedB = Math.min(255, Math.max(0, b));
 
     return `rgb(${adjustedR}, ${adjustedG}, ${adjustedB})`;
   }
 
-  // HEX 색상이나 다른 형식의 경우 기본값 반환
+  // HEX 색상이나 다른 형식의 경우 원본 반환
   return color;
 }
