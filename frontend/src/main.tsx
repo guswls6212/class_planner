@@ -75,18 +75,23 @@ function Layout() {
   );
 }
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <Layout />,
+      children: [
+        { index: true, element: <StudentsPage /> },
+        { path: 'students', element: <StudentsPage /> },
+        { path: 'schedule', element: <SchedulePage /> },
+        { path: 'manual', element: <ManualPage /> },
+      ],
+    },
+  ],
   {
-    path: '/',
-    element: <Layout />,
-    children: [
-      { index: true, element: <StudentsPage /> },
-      { path: 'students', element: <StudentsPage /> },
-      { path: 'schedule', element: <SchedulePage /> },
-      { path: 'manual', element: <ManualPage /> },
-    ],
-  },
-]);
+    basename: '/class_planner',
+  }
+);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

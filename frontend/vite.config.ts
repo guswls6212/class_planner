@@ -9,7 +9,8 @@ import path from 'node:path';
 // import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
-export default defineConfig({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default defineConfig(({ command: _command }) => ({
   plugins: [react()],
   base: '/class_planner/',
   resolve: {
@@ -74,4 +75,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

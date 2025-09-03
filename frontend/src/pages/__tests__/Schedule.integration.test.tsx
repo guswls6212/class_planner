@@ -134,7 +134,9 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
 
       // 5. 모달에 드롭된 학생과 시간 정보가 미리 입력되었는지 확인
       // 학생은 태그로 표시됨 (모달 내의 태그만 찾기)
-      const modal = screen.getByText('수업 추가').closest('.modal-content');
+      const modal = screen
+        .getByText('수업 추가')
+        .closest('[class*="modalContent"]');
       expect(modal).toBeInTheDocument();
       expect(modal).toHaveTextContent('김요섭');
 
@@ -186,9 +188,11 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
       fireEvent.change(endTimeInput, { target: { value: '15:00' } });
 
       // 3. 추가 버튼 클릭 (모달 하단의 추가 버튼)
-      const modal = screen.getByText('수업 추가').closest('.modal-content');
+      const modal = screen
+        .getByText('수업 추가')
+        .closest('[class*="modalContent"]');
       const addButton = modal?.querySelector(
-        '.modal-actions .button.primary'
+        '[class*="modalActions"] .button.primary'
       ) as HTMLButtonElement;
       expect(addButton).toBeInTheDocument();
       fireEvent.click(addButton);

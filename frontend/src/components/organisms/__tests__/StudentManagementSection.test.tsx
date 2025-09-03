@@ -91,10 +91,17 @@ describe('StudentManagementSection', () => {
 
   test('추가 버튼 클릭 시 onAddStudent가 호출된다', () => {
     const mockOnAdd = vi.fn();
+    const mockOnChange = vi.fn();
     render(
-      <StudentManagementSection {...defaultProps} onAddStudent={mockOnAdd} />
+      <StudentManagementSection
+        {...defaultProps}
+        onAddStudent={mockOnAdd}
+        onNewStudentNameChange={mockOnChange}
+        newStudentName="새로운 학생"
+      />
     );
 
+    // 추가 버튼 클릭
     const addButton = screen.getByRole('button', { name: '추가' });
     fireEvent.click(addButton);
 

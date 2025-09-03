@@ -21,8 +21,6 @@ function useLocal<T>(key: string, initial: T) {
 export default function StudentsPage() {
   const [students, setStudents] = useLocal<Student[]>('students', []);
   const [subjects, setSubjects] = useLocal<Subject[]>('subjects', []);
-  // 사용하지 않는 변수들 제거
-  // const [enrollments, setEnrollments] = useLocal<Enrollment[]>('enrollments', []);
 
   const [newStudentName, setNewStudentName] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(

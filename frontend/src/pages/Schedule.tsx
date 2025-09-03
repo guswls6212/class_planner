@@ -141,6 +141,76 @@ export default function SchedulePage() {
   // 🆕 수업 편집 모달용 학생 입력 상태
   const [editStudentInputValue, setEditStudentInputValue] = useState('');
 
+  // 🆕 수업 편집 모달용 시간 상태
+  const [editModalTimeData, setEditModalTimeData] = useState({
+    startTime: '',
+    endTime: '',
+  });
+
+  // 🆕 수업 편집 모달용 시작 시간 변경 처리
+  const handleEditStartTimeChange = (newStartTime: string) => {
+    setEditModalTimeData(prev => {
+      const currentEndTime = prev.endTime;
+
+      // 시작 시간이 종료 시간보다 늦으면 종료 시간을 자동으로 조정
+      if (
+        newStartTime &&
+        currentEndTime &&
+        !validateTimeRange(newStartTime, currentEndTime)
+      ) {
+        const startMinutes =
+          parseInt(newStartTime.split(':')[0]) * 60 +
+          parseInt(newStartTime.split(':')[1]);
+        const newEndMinutes = startMinutes + 60; // 1시간 후
+        const newEndHour = Math.floor(newEndMinutes / 60);
+        const newEndMinute = newEndMinutes % 60;
+        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+
+        return {
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+      }
+
+      return {
+        ...prev,
+        startTime: newStartTime,
+      };
+    });
+  };
+
+  // 🆕 수업 편집 모달용 종료 시간 변경 처리
+  const handleEditEndTimeChange = (newEndTime: string) => {
+    setEditModalTimeData(prev => {
+      const currentStartTime = prev.startTime;
+
+      // 종료 시간이 시작 시간보다 빠르면 시작 시간을 자동으로 조정
+      if (
+        newEndTime &&
+        currentStartTime &&
+        !validateTimeRange(currentStartTime, newEndTime)
+      ) {
+        const endMinutes =
+          parseInt(newEndTime.split(':')[0]) * 60 +
+          parseInt(newEndTime.split(':')[1]);
+        const newStartMinutes = endMinutes - 60; // 1시간 전
+        const newStartHour = Math.floor(newStartMinutes / 60);
+        const newStartMinute = newStartMinutes % 60;
+        const newStartTime = `${newStartHour.toString().padStart(2, '0')}:${newStartMinute.toString().padStart(2, '0')}`;
+
+        return {
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+      }
+
+      return {
+        ...prev,
+        endTime: newEndTime,
+      };
+    });
+  };
+
   // 🆕 수업 편집 모달용 학생 추가 함수
   const handleEditStudentAdd = (studentId?: string) => {
     const targetStudentId =
@@ -269,6 +339,12 @@ export default function SchedulePage() {
 
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = (data: GroupSessionData) => {
+    // 시간 유효성 검사
+    if (!validateTimeRange(data.startTime, data.endTime)) {
+      alert('시작 시간은 종료 시간보다 빨라야 합니다.');
+      return;
+    }
+
     // 🆕 그룹 수업 판단 및 처리 (첫 번째 학생 기준)
     const { canForm, existingSessionId } = canFormGroupSession(
       {
@@ -306,6 +382,25 @@ export default function SchedulePage() {
       }
     } else {
       // 🆕 새로운 세션 생성
+      // enrollment가 없으면 자동으로 생성
+      let enrollment = enrollments.find(
+        e =>
+          e.studentId === data.studentIds[0] && e.subjectId === data.subjectId
+      );
+
+      if (!enrollment) {
+        // enrollment가 없으면 새로 생성
+        const newEnrollment: Enrollment = {
+          id: crypto.randomUUID(),
+          studentId: data.studentIds[0],
+          subjectId: data.subjectId,
+        };
+
+        // enrollments에 추가
+        setEnrollments(prev => [...prev, newEnrollment]);
+        enrollment = newEnrollment;
+      }
+
       const newSession = createGroupSession(
         {
           studentId: data.studentIds[0], // 첫 번째 학생 ID 사용
@@ -315,7 +410,7 @@ export default function SchedulePage() {
           endsAt: data.endTime,
           room: data.room,
         },
-        enrollments
+        [...enrollments, enrollment] // 새로 생성된 enrollment 포함
       );
 
       setSessions(prev => [...prev, newSession]);
@@ -338,6 +433,85 @@ export default function SchedulePage() {
     console.log('🆕 모달 상태 설정 완료:', { showGroupModal: true });
   };
 
+  // 🆕 시간 유효성 검사 함수
+  const validateTimeRange = (startTime: string, endTime: string): boolean => {
+    if (!startTime || !endTime) return false;
+
+    const startMinutes =
+      parseInt(startTime.split(':')[0]) * 60 +
+      parseInt(startTime.split(':')[1]);
+    const endMinutes =
+      parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
+
+    return startMinutes < endMinutes;
+  };
+
+  // 🆕 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
+  const handleStartTimeChange = (newStartTime: string) => {
+    setGroupModalData(prev => {
+      const currentEndTime = prev.endTime;
+
+      // 시작 시간이 종료 시간보다 늦으면 종료 시간을 자동으로 조정
+      if (
+        newStartTime &&
+        currentEndTime &&
+        !validateTimeRange(newStartTime, currentEndTime)
+      ) {
+        const startMinutes =
+          parseInt(newStartTime.split(':')[0]) * 60 +
+          parseInt(newStartTime.split(':')[1]);
+        const newEndMinutes = startMinutes + 60; // 1시간 후
+        const newEndHour = Math.floor(newEndMinutes / 60);
+        const newEndMinute = newEndMinutes % 60;
+        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
+
+        return {
+          ...prev,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+      }
+
+      return {
+        ...prev,
+        startTime: newStartTime,
+      };
+    });
+  };
+
+  // 🆕 종료 시간 변경 처리 (시작 시간보다 빠르지 않도록)
+  const handleEndTimeChange = (newEndTime: string) => {
+    setGroupModalData(prev => {
+      const currentStartTime = prev.startTime;
+
+      // 종료 시간이 시작 시간보다 빠르면 시작 시간을 자동으로 조정
+      if (
+        newEndTime &&
+        currentStartTime &&
+        !validateTimeRange(currentStartTime, newEndTime)
+      ) {
+        const endMinutes =
+          parseInt(newEndTime.split(':')[0]) * 60 +
+          parseInt(newEndTime.split(':')[1]);
+        const newStartMinutes = endMinutes - 60; // 1시간 전
+        const newStartHour = Math.floor(newStartMinutes / 60);
+        const newStartMinute = newStartMinutes % 60;
+        const newStartTime = `${newStartHour.toString().padStart(2, '0')}:${newStartMinute.toString().padStart(2, '0')}`;
+
+        return {
+          ...prev,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+      }
+
+      return {
+        ...prev,
+        endTime: newEndTime,
+      };
+    });
+  };
+
   // 🆕 다음 시간 계산
   const getNextHour = (time: string): string => {
     const [hours, minutes] = time.split(':').map(Number);
@@ -349,6 +523,40 @@ export default function SchedulePage() {
   const handleDrop = (weekday: number, time: string, enrollmentId: string) => {
     console.log('🆕 handleDrop 호출됨:', { weekday, time, enrollmentId });
 
+    // 학생 ID인지 확인 (enrollment가 없는 경우)
+    if (enrollmentId.startsWith('student:')) {
+      const studentId = enrollmentId.replace('student:', '');
+      console.log('🆕 학생 ID로 드롭됨:', studentId);
+
+      // 학생 정보 찾기
+      const student = students.find(s => s.id === studentId);
+      if (!student) {
+        console.log('🆕 학생을 찾을 수 없음:', studentId);
+        return;
+      }
+
+      console.log('🆕 그룹 수업 모달 데이터 설정 (학생 ID):', {
+        studentId,
+        weekday,
+        startTime: time,
+        endTime: getNextHour(time),
+      });
+
+      // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
+      setGroupModalData({
+        studentIds: [studentId],
+        subjectId: '', // 과목은 선택되지 않은 상태
+        weekday,
+        startTime: time,
+        endTime: getNextHour(time),
+      });
+
+      console.log('🆕 showGroupModal을 true로 설정');
+      setShowGroupModal(true);
+      return;
+    }
+
+    // 기존 enrollment 처리
     const enrollment = enrollments.find(e => e.id === enrollmentId);
     console.log('🆕 찾은 enrollment:', enrollment);
 
@@ -393,6 +601,10 @@ export default function SchedulePage() {
   // 🆕 세션 클릭 처리
   const handleSessionClick = (session: Session) => {
     setEditModalData(session);
+    setEditModalTimeData({
+      startTime: session.startsAt,
+      endTime: session.endsAt,
+    });
     setShowEditModal(true);
   };
 
@@ -560,10 +772,11 @@ export default function SchedulePage() {
                     e.dataTransfer.setData('text/plain', studentEnrollment.id);
                   } else {
                     console.log(
-                      '🆕 드래그 시작 - enrollment를 찾을 수 없음:',
+                      '🆕 드래그 시작 - 학생 ID 전달 (enrollment 없음):',
                       s.id
                     );
-                    e.dataTransfer.setData('text/plain', '');
+                    // enrollment가 없으면 학생 ID를 직접 전달
+                    e.dataTransfer.setData('text/plain', `student:${s.id}`);
                   }
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
@@ -610,10 +823,10 @@ export default function SchedulePage() {
       {/* 그룹 수업 추가 모달 */}
       {showGroupModal && (
         <div className="modal-backdrop">
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h4 className="modal-title">수업 추가</h4>
-              <div className="modal-form">
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <h4 className={styles.modalTitle}>수업 추가</h4>
+              <div className={styles.modalForm}>
                 <div className="form-group">
                   <Label htmlFor="modal-student" required>
                     학생
@@ -658,12 +871,40 @@ export default function SchedulePage() {
                   {/* 학생 검색 결과 */}
                   {studentInputValue && (
                     <div className={styles.studentSearchResults}>
-                      {filteredStudentsForModal
-                        .filter(
-                          student =>
-                            !groupModalData.studentIds.includes(student.id)
-                        )
-                        .map(student => (
+                      {(() => {
+                        const filteredStudents =
+                          filteredStudentsForModal.filter(
+                            student =>
+                              !groupModalData.studentIds.includes(student.id)
+                          );
+
+                        if (filteredStudents.length === 0) {
+                          const studentExists = students.some(
+                            s =>
+                              s.name.toLowerCase() ===
+                              studentInputValue.toLowerCase()
+                          );
+
+                          console.log('🔍 그룹 모달 학생 검색 디버깅:', {
+                            studentInputValue,
+                            filteredStudentsLength: filteredStudents.length,
+                            studentExists,
+                            totalStudents: students.length,
+                          });
+
+                          return (
+                            <div className={styles.noSearchResults}>
+                              <span>검색 결과가 없습니다</span>
+                              {!studentExists && (
+                                <span className={styles.studentNotFound}>
+                                  (존재하지 않는 학생입니다)
+                                </span>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return filteredStudents.map(student => (
                           <div
                             key={student.id}
                             className={styles.studentSearchItem}
@@ -671,7 +912,8 @@ export default function SchedulePage() {
                           >
                             {student.name}
                           </div>
-                        ))}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
@@ -697,23 +939,11 @@ export default function SchedulePage() {
                         : '과목을 선택하세요'}
                     </option>
                     {groupModalData.studentIds.length > 0 &&
-                      enrollments
-                        .filter(e =>
-                          groupModalData.studentIds.includes(e.studentId)
-                        )
-                        .map(enrollment => {
-                          const subject = subjects.find(
-                            s => s.id === enrollment.subjectId
-                          );
-                          return subject ? (
-                            <option
-                              key={enrollment.id}
-                              value={enrollment.subjectId}
-                            >
-                              {subject.name}
-                            </option>
-                          ) : null;
-                        })}
+                      subjects.map(subject => (
+                        <option key={subject.id} value={subject.id}>
+                          {subject.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div className="form-group">
@@ -747,12 +977,7 @@ export default function SchedulePage() {
                     type="time"
                     className="form-input"
                     value={groupModalData.startTime}
-                    onChange={e =>
-                      setGroupModalData(prev => ({
-                        ...prev,
-                        startTime: e.target.value,
-                      }))
-                    }
+                    onChange={e => handleStartTimeChange(e.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -764,12 +989,7 @@ export default function SchedulePage() {
                     type="time"
                     className="form-input"
                     value={groupModalData.endTime}
-                    onChange={e =>
-                      setGroupModalData(prev => ({
-                        ...prev,
-                        endTime: e.target.value,
-                      }))
-                    }
+                    onChange={e => handleEndTimeChange(e.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -789,7 +1009,7 @@ export default function SchedulePage() {
                   />
                 </div>
               </div>
-              <div className="modal-actions">
+              <div className={styles.modalActions}>
                 <Button
                   variant="transparent"
                   onClick={() => setShowGroupModal(false)}
@@ -817,10 +1037,10 @@ export default function SchedulePage() {
       {/* 세션 편집 모달 */}
       {showEditModal && editModalData && (
         <div className="modal-backdrop">
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h4 className="modal-title">수업 편집</h4>
-              <div className="modal-form">
+          <div className={styles.modalOverlay}>
+            <div className={styles.modalContent}>
+              <h4 className={styles.modalTitle}>수업 편집</h4>
+              <div className={styles.modalForm}>
                 <div className="form-group">
                   <Label htmlFor="edit-modal-students" required>
                     학생
@@ -1018,7 +1238,8 @@ export default function SchedulePage() {
                     id="edit-modal-start-time"
                     type="time"
                     className="form-input"
-                    defaultValue={editModalData.startsAt}
+                    value={editModalTimeData.startTime}
+                    onChange={e => handleEditStartTimeChange(e.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -1027,11 +1248,12 @@ export default function SchedulePage() {
                     id="edit-modal-end-time"
                     type="time"
                     className="form-input"
-                    defaultValue={editModalData.endsAt}
+                    value={editModalTimeData.endTime}
+                    onChange={e => handleEditEndTimeChange(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="modal-actions">
+              <div className={styles.modalActions}>
                 <Button
                   variant="danger"
                   onClick={() => {
@@ -1062,18 +1284,16 @@ export default function SchedulePage() {
                           ) as HTMLSelectElement
                         )?.value
                       );
-                      const startTime = (
-                        document.getElementById(
-                          'edit-modal-start-time'
-                        ) as HTMLInputElement
-                      )?.value;
-                      const endTime = (
-                        document.getElementById(
-                          'edit-modal-end-time'
-                        ) as HTMLInputElement
-                      )?.value;
+                      const startTime = editModalTimeData.startTime;
+                      const endTime = editModalTimeData.endTime;
 
                       if (!startTime || !endTime) return;
+
+                      // 시간 유효성 검사
+                      if (!validateTimeRange(startTime, endTime)) {
+                        alert('시작 시간은 종료 시간보다 빨라야 합니다.');
+                        return;
+                      }
 
                       // 세션 업데이트 (enrollmentIds 포함)
                       setSessions(prev =>

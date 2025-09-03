@@ -1,490 +1,392 @@
-# 📚 Pages 컴포넌트 참고 문서
+# 페이지 참조 가이드
 
-## 🎯 목적
+## 📋 개요
 
-이 문서는 `main.tsx`에서 실제로 사용되는 Pages 컴포넌트들의 **현재 완성된** 디자인, 기능, 로직을 상세히 기록하여, 향후 개발 및 수정 시 참고하기 위한 것입니다.
+이 문서는 클래스 플래너 애플리케이션의 각 페이지와 컴포넌트에 대한 상세한 참조 가이드입니다. 개발자와 사용자가 애플리케이션의 구조를 이해하고 효율적으로 사용할 수 있도록 도와줍니다.
 
 ---
 
-## 📁 실제 사용되는 Pages 컴포넌트
+## 🏠 **메인 페이지들**
 
-### 1. StudentsPage (`/students`)
+### 📚 **Students 페이지** (`/students`)
 
 **파일**: `src/pages/Students.tsx`
 
-#### 🎨 **현재 디자인 구조**
+#### 🎯 **기능**
 
-```tsx
-<div
-  className="grid"
-  style={{
-    gridTemplateColumns: '340px 1fr', // ⚠️ 중요: 좌측 340px 고정 너비
-    gap: 16,
-    padding: 16,
-  }}
->
-  <StudentManagementSection /> // 🆕 Atomic Design 컴포넌트 사용
-</div>
-```
+- 학생 관리 (추가, 삭제, 선택)
+- 기본 과목 자동 생성
+- localStorage 데이터 저장/복원
 
-#### 🔧 **현재 주요 기능**
+#### 🎨 **UI 구성**
 
-- **학생 추가**: 입력창 + 추가 버튼 (중복 이름 체크 포함)
-- **학생 목록**: 선택 가능한 학생 리스트
-- **학생 삭제**: 각 학생별 삭제 버튼
-- **학생 선택**: 클릭으로 선택 상태 관리 (localStorage 저장)
-- **과목 자동 생성**: 수학, 영어, 국어 기본 과목 자동 생성
+- 좌측 340px 고정 너비 레이아웃
+- 학생 목록 표시
+- 학생 추가 폼
+- 선택된 학생 시각적 표시
 
-#### 🎯 **현재 핵심 로직**
+#### 🔧 **주요 컴포넌트**
 
-```tsx
-// 학생 추가 (중복 체크 포함)
-function addStudent() {
-  const name = newStudentName.trim();
-  if (!name) return;
+- `StudentManagementSection` (Organism)
+- `StudentInputSection` (Molecule)
+- `StudentListItem` (Atom)
 
-  // 중복 이름 체크
-  if (students.some(s => s.name === name)) {
-    alert('이미 존재하는 학생 이름입니다.');
-    return;
-  }
+#### 📊 **데이터 구조**
 
-  const student: Student = { id: uid(), name };
-  setStudents(prev => [...prev, student]);
-  setNewStudentName('');
+```typescript
+interface Student {
+  id: string;
+  name: string;
 }
 
-// 기본 과목 자동 생성
-useEffect(() => {
-  if (subjects.length === 0) {
-    setSubjects([
-      { id: uid(), name: '초등수학', color: '#fbbf24' }, // 밝은 노란색
-      { id: uid(), name: '중등수학', color: '#f59e0b' }, // 주황색
-      { id: uid(), name: '중등영어', color: '#3b82f6' }, // 파란색
-      { id: uid(), name: '중등국어', color: '#10b981' }, // 초록색
-      { id: uid(), name: '중등과학', color: '#ec4899' }, // 분홍색
-      { id: uid(), name: '중등사회', color: '#06b6d4' }, // 청록색
-      { id: uid(), name: '고등수학', color: '#ef4444' }, // 빨간색
-      { id: uid(), name: '고등영어', color: '#8b5cf6' }, // 보라색
-      { id: uid(), name: '고등국어', color: '#059669' }, // 진한 초록색
-    ]);
-  }
-}, []);
+interface Subject {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface Enrollment {
+  id: string;
+  studentId: string;
+  subjectId: string;
+}
 ```
-
-#### 🎨 **현재 스타일 세부사항**
-
-- **그리드 레이아웃**: `340px 1fr` (좌측 고정, 우측 확장)
-- **간격**: `gap: 16px`, `padding: 16px`
-- **기본 과목 색상**: 초등수학(밝은 노란색), 중등수학(주황), 중등영어(파란색), 중등국어(초록색), 중등과학(분홍색), 중등사회(청록색), 고등수학(빨간색), 고등영어(보라색), 고등국어(진한 초록색)
-
-#### ⚠️ **현재 상태에서 주의사항**
-
-1. **좌측 너비**: `340px` 고정 너비 유지 필수
-2. **그리드 레이아웃**: `gridTemplateColumns: '340px 1fr'` 구조 유지
-3. **StudentManagementSection**: Atomic Design 컴포넌트로 분리됨
-4. **localStorage**: 학생 목록, 선택 상태, 과목 정보 모두 저장
 
 ---
 
-### 2. SchedulePage (`/schedule`)
+### 📅 **Schedule 페이지** (`/schedule`)
 
 **파일**: `src/pages/Schedule.tsx`
 
-#### 🎨 **현재 디자인 구조**
+#### 🎯 **기능**
 
-```tsx
-// 🆕 그룹 수업을 위한 새로운 타입
-type GroupSessionData = {
-  studentIds: string[]; // 여러 학생 ID 배열로 변경
+- 시간표 표시 (9:00-23:00, 30분 단위)
+- 드래그 앤 드롭으로 수업 추가
+- 수업 편집 및 삭제
+- 학생별 필터링
+- PDF 다운로드
+
+#### 🎨 **UI 구성**
+
+- 7일 x 시간별 그리드 레이아웃
+- 플로팅 학생 패널
+- 모달 시스템 (수업 추가/편집)
+- PDF 다운로드 버튼
+
+#### 🔧 **주요 컴포넌트**
+
+- `TimeTableGrid` (Organism)
+- `SessionBlock` (Molecule)
+- `DropZone` (Molecule)
+- `StudentPanel` (Organism)
+
+#### 📊 **데이터 구조**
+
+```typescript
+interface Session {
+  id: string;
+  studentId: string;
   subjectId: string;
   weekday: number;
   startTime: string;
   endTime: string;
-  room?: string;
-};
-
-// 시간표 그리드 구조
-<TimeTableGrid
-  sessions={displaySessions}
-  subjects={subjects}
-  enrollments={enrollments}
-  onSessionClick={handleSessionClick}
-  onDrop={handleDrop}
-  onEmptySpaceClick={handleEmptySpaceClick}
-/>;
-```
-
-#### 🔧 **현재 주요 기능**
-
-- **시간표 표시**: 7일 x 시간별 그리드 (9:00 ~ 24:00)
-- **세션 관리**: 드래그 앤 드롭으로 수업 추가 ✅ 완성
-- **학생 선택**: 특정 학생의 시간표만 표시 (필터링) ✅ 완성
-- **세션 편집**: 클릭으로 수업 정보 수정/삭제 모달 ✅ 완성
-- **플로팅 패널**: 드래그 가능한 학생 목록 패널 ✅ 완성
-- **동적 높이**: 겹치는 세션 수에 따른 요일별 높이 자동 조정 ✅ 완성
-- **🆕 그룹 수업**: 여러 학생을 동시에 포함하는 그룹 수업 생성 ✅ 완성
-- **🆕 태그 기반 학생 선택**: 드롭다운 대신 태그 형태의 다중 학생 선택 ✅ 완성
-
-#### 🎯 **현재 핵심 로직**
-
-```tsx
-// 🆕 선택된 학생의 세션만 필터링 (enrollmentIds 기반)
-const displaySessions = useMemo(() => {
-  if (selectedStudentId) {
-    return new Map<number, Session[]>(
-      sessions
-        .filter(s =>
-          s.enrollmentIds.some(enrollmentId => {
-            const enrollment = enrollments.find(e => e.id === enrollmentId);
-            return enrollment?.studentId === selectedStudentId;
-          })
-        )
-        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-        .reduce((acc, s) => {
-          const list = acc.get(s.weekday) ?? [];
-          list.push(s);
-          acc.set(s.weekday, list);
-          return acc;
-        }, new Map<number, Session[]>())
-    );
-  } else {
-    // 전체 학생의 세션 표시
-    return new Map<number, Session[]>(/* ... */);
-  }
-}, [sessions, enrollments, selectedStudentId]);
-
-// 🆕 드래그 앤 드롭 처리 (enrollmentId 기반) ✅ 완성
-function handleDrop(weekday: number, time: string, enrollmentId: string) {
-  const enrollment = enrollments.find(e => e.id === enrollmentId);
-  if (!enrollment) return;
-
-  // 🆕 그룹 수업 모달 데이터 설정
-  setGroupModalData({
-    studentIds: [enrollment.studentId], // 단일 학생도 배열로 처리
-    subjectId: '',
-    weekday,
-    startTime: time,
-    endTime: getNextHour(time),
-    room: '',
-  });
-  setShowGroupModal(true);
-}
-
-// 🆕 빈 공간 클릭 처리 ✅ 완성
-function handleEmptySpaceClick(weekday: number, time: string) {
-  setGroupModalData({
-    studentIds: [],
-    subjectId: '',
-    weekday,
-    startTime: time,
-    endTime: getNextHour(time),
-    room: '',
-  });
-  setShowGroupModal(true);
+  classroom?: string;
 }
 ```
 
-#### 🎨 **현재 스타일 세부사항**
+#### 🆕 **최신 기능**
 
-- **시간 범위**: 9:00 ~ 24:00 (15시간)
-- **요일 높이**: 동적 계산 (기본 60px + 겹침당 32px)
-- **세션 블록**: 과목별 색상, 둥근 모서리, 호버 효과
-- **플로팅 패널**: 반투명 배경, 드래그 가능
-
-#### ⚠️ **현재 상태에서 주의사항**
-
-1. **TimeTableGrid**: Atomic Design 컴포넌트로 분리됨
-2. **동적 높이**: `getWeekdayHeight()` 함수로 요일별 높이 자동 계산
-3. **세션 필터링**: 선택된 학생의 세션만 표시하는 로직 보존
-4. **드래그 앤 드롭**: ✅ 완성 - enrollment ID 전달 및 그룹 수업 추가 모달 로직 구현
-5. **세션 편집**: ✅ 완성 - 클릭 시 편집/삭제 모달 열림
-6. **학생 선택**: ✅ 완성 - onMouseDown 이벤트로 선택 상태 관리
+- **시간 범위 검증**: 시작 시간이 종료 시간보다 늦을 수 없음
+- **자동 시간 조정**: 시작 시간이 종료 시간보다 늦으면 자동으로 조정
+- **스크롤 가능한 모달**: 긴 내용도 모달에서 스크롤 가능
+- **존재하지 않는 학생 피드백**: 모달에서 적절한 피드백 제공
 
 ---
 
-## 🆕 **Atomic Design 컴포넌트 구조**
+### 📖 **Manual 페이지** (`/manual`)
 
-### **Organisms (유기체)**
+**파일**: `src/pages/Manual.tsx`
 
-#### **1. StudentManagementSection**
+#### 🎯 **기능**
 
-- **위치**: `src/components/organisms/StudentManagementSection.tsx`
-- **역할**: 학생 관리 전체 섹션 (추가, 목록, 삭제)
-- **Props**: `students`, `newStudentName`, `selectedStudentId`, 이벤트 핸들러들
-- **테스트**: `src/components/organisms/__tests__/StudentManagementSection.test.tsx` ✅ 완성
+- 사용자 매뉴얼 표시
+- 애플리케이션 사용법 안내
 
-#### **2. TimeTableGrid**
+#### 🎨 **UI 구성**
 
-- **위치**: `src/components/organisms/TimeTableGrid.tsx`
-- **역할**: 시간표 그리드 전체 구조 및 로직
-- **핵심 기능**:
-  - **정확한 겹침 판단 시스템**: 일부라도 겹치면 겹치는 것으로 판단
-  - **순차적 Y축 배치**: 겹치는 세션마다 32px씩 아래로 배치
-  - **동적 요일 높이 계산**: 실제 세션의 최대 yPosition을 반영한 높이 자동 조정
-  - **시간별 경계선 관리**: 테마별 색상 시스템
-
-### **Molecules (분자)**
-
-#### **1. TimeTableRow**
-
-- **위치**: `src/components/molecules/TimeTableRow.tsx`
-- **역할**: 요일별 행 전체 관리
-- **핵심 기능**: 세션 위치 계산, 드롭 존 배치
-
-#### **2. SessionBlock**
-
-- **위치**: `src/components/molecules/SessionBlock.tsx`
-- **역할**: 개별 수업 세션 표시
-- **핵심 기능**:
-  - 동적 위치, 크기, z-index 관리
-  - 요일 표시 (예: "월 국어 09:00-10:00")
-  - 겹치는 세션 Y축 분리 처리
-  - 🆕 **유틸리티 함수 분리**: `SessionBlock.utils.ts`로 로직 분리
-  - 🆕 **그룹 학생 표시**: 여러 학생 이름을 "학생1, 학생2 외 N명" 형태로 표시
-
-#### **3. DropZone**
-
-- **위치**: `src/components/molecules/DropZone.tsx`
-- **역할**: 드래그 앤 드롭 수신 영역
-- **핵심 기능**: 시간대별 정확한 위치, 시각적 피드백
-
-### **Atoms (원자)**
-
-#### **1. TimeSlot**
-
-- **위치**: `src/components/atoms/TimeSlot.tsx`
-- **역할**: 시간 슬롯 표시 (9:00, 10:00, 11:00...)
-
-#### **2. WeekdayHeader**
-
-- **위치**: `src/components/atoms/WeekdayHeader.tsx`
-- **역할**: 요일 라벨 표시 (월, 화, 수, 목, 금, 토, 일)
+- 마크다운 형식의 문서 표시
+- 스크롤 가능한 레이아웃
 
 ---
 
-## 🎨 **현재 완성된 시각적 요소들**
+## 🧩 **컴포넌트 구조**
 
-### **1. 경계선 시스템**
+### ⚛️ **Atoms (원자)**
 
-- **시간대별 세로 구분선**: `1px solid var(--color-border-grid)` (opacity: 0.6)
-- **30분 구분선**: `1px solid var(--color-border-grid-light)` (opacity: 0.4)
-- **테마별 색상**: 다크/라이트 모드에 따른 자동 색상 조정
+**위치**: `src/components/atoms/`
 
-### **2. 색상 시스템**
+#### **Button** (`Button.tsx`)
 
-```css
-/* 다크모드 */
---color-border-grid: #6b7280; /* 진한 회색 */
---color-border-grid-light: #9ca3af; /* 중간 회색 */
---color-border-grid-lighter: #d1d5db; /* 연한 회색 */
+- 재사용 가능한 버튼 컴포넌트
+- 다양한 크기와 스타일 지원
+- 클릭 이벤트 처리
 
-/* 라이트모드 */
---color-border-grid: #d1d5db; /* 진한 회색 */
---color-border-grid-light: #e5e7eb; /* 중간 회색 */
---color-border-grid-lighter: #f3f4f6; /* 연한 회색 */
+#### **Input** (`Input.tsx`)
+
+- 텍스트 입력 필드
+- 플레이스홀더, 에러 상태 지원
+- 키보드 이벤트 처리
+
+#### **Label** (`Label.tsx`)
+
+- 텍스트 라벨 컴포넌트
+- 다양한 스타일링 옵션
+
+#### **StudentListItem** (`StudentListItem.tsx`)
+
+- 학생 목록 아이템
+- 선택 상태 표시
+- 삭제 버튼 포함
+
+#### **TimeSlot** (`TimeSlot.tsx`)
+
+- 시간 슬롯 표시
+- 시간대별 스타일링
+
+#### **WeekdayHeader** (`WeekdayHeader.tsx`)
+
+- 요일 헤더 표시
+- 요일별 스타일링
+
+#### **ThemeToggle** (`ThemeToggle.tsx`)
+
+- 다크/라이트 테마 전환
+- 토글 버튼 UI
+
+---
+
+### 🔬 **Molecules (분자)**
+
+**위치**: `src/components/molecules/`
+
+#### **Card** (`Card.tsx`)
+
+- 카드 형태의 컨테이너
+- 헤더, 본문, 푸터 구조
+
+#### **DropZone** (`DropZone.tsx`)
+
+- 드래그 앤 드롭 영역
+- 드롭 이벤트 처리
+
+#### **FormField** (`FormField.tsx`)
+
+- 폼 필드와 라벨 조합
+- 에러 메시지 표시
+
+#### **SessionBlock** (`SessionBlock.tsx`)
+
+- 수업 세션 블록
+- 클릭 이벤트 처리
+- 겹침 처리
+
+#### **StudentInputSection** (`StudentInputSection.tsx`)
+
+- 학생 추가 입력 섹션
+- 에러 메시지 처리
+- 키보드 이벤트 지원
+
+#### **TimeTableRow** (`TimeTableRow.tsx`)
+
+- 시간표 행
+- 세션 배치 로직
+
+---
+
+### 🦠 **Organisms (유기체)**
+
+**위치**: `src/components/organisms/`
+
+#### **StudentManagementSection** (`StudentManagementSection.tsx`)
+
+- 학생 관리 전체 섹션
+- 학생 목록과 추가 폼 통합
+
+#### **TimeTableGrid** (`TimeTableGrid.tsx`)
+
+- 시간표 그리드 전체
+- 세션 배치 알고리즘
+- 성능 최적화
+
+#### **StudentPanel** (`StudentPanel.tsx`)
+
+- 플로팅 학생 패널
+- 검색 기능
+- 드래그 가능
+
+#### **SessionModal** (`SessionModal.tsx`)
+
+- 수업 추가/편집 모달
+- 폼 처리
+- 유효성 검증
+
+---
+
+## 🔧 **유틸리티 및 라이브러리**
+
+### 📚 **Lib 폴더**
+
+**위치**: `src/lib/`
+
+#### **planner.ts**
+
+- 핵심 비즈니스 로직
+- 데이터 처리 함수
+- 유틸리티 함수
+
+#### **pdf-utils.ts**
+
+- PDF 생성 기능
+- HTML to PDF 변환
+- 세션 범위 기반 필터링
+
+### 🎨 **Contexts**
+
+**위치**: `src/contexts/`
+
+#### **ThemeContext** (`ThemeContext.tsx`)
+
+- 테마 상태 관리
+- 다크/라이트 모드 전환
+- CSS 변수 관리
+
+---
+
+## 🧪 **테스트 구조**
+
+### 📁 **테스트 파일 위치**
+
+- `src/**/__tests__/` - 각 컴포넌트별 테스트
+- `src/pages/__tests__/` - 페이지별 테스트
+- `src/lib/__tests__/` - 유틸리티 함수 테스트
+
+### 🎯 **테스트 유형**
+
+- **단위 테스트**: 개별 컴포넌트/함수 테스트
+- **통합 테스트**: 페이지 전체 기능 테스트
+- **E2E 테스트**: 사용자 시나리오 테스트
+- **성능 테스트**: 알고리즘 성능 검증
+
+---
+
+## 🎨 **스타일링 시스템**
+
+### 🎨 **CSS Modules**
+
+- 컴포넌트별 스타일 격리
+- 클래스명 자동 생성
+- TypeScript 지원
+
+### 🌙 **테마 시스템**
+
+- CSS 변수 기반
+- 다크/라이트 모드
+- 동적 테마 전환
+
+### 📱 **반응형 디자인**
+
+- 모바일 친화적 레이아웃
+- 유연한 그리드 시스템
+- 브레이크포인트 기반 스타일링
+
+---
+
+## 📊 **데이터 플로우**
+
+### 🔄 **상태 관리**
+
+```mermaid
+graph TD
+    A[localStorage] --> B[useLocal Hook]
+    B --> C[Component State]
+    C --> D[UI Update]
+    D --> A
 ```
 
-### **3. 그리드 구조**
+### 🎯 **이벤트 플로우**
 
-- **CSS Grid**: `display: grid`
-- **열 구조**: `80px repeat(15, 120px)` (요일 라벨 + 15개 시간대)
-- **행 구조**: `40px` (시간 헤더) + 동적 요일 높이
-- **간격**: `gap: 1px` 제거로 깔끔한 배경
-
----
-
-## 🚨 **현재 상태에서 핵심 체크리스트**
-
-### ✅ **Students.tsx**
-
-- [x] 좌측 너비 `340px` 고정 유지 ✅
-- [x] 그리드 레이아웃 `340px 1fr` 구조 보존 ✅
-- [x] 학생 추가/삭제 기능 로직 유지 ✅
-- [x] 선택 상태 관리 로직 보존 ✅
-- [x] Atomic Design 컴포넌트로 분리 완료 ✅
-
-### ✅ **Schedule.tsx**
-
-- [x] 시간표 그리드 `80px + 120px * 15` 구조 유지 ✅
-- [x] 세션 겹침 처리 Y축 계산 로직 보존 ✅
-- [x] 드래그 앤 드롭 기능 완전 보존 ✅
-- [x] 동적 요일 높이 계산 로직 구현 ✅
-- [x] Atomic Design 컴포넌트로 분리 완료 ✅
-
-### ✅ **새로 추가된 기능**
-
-- [x] 트랙 기반 세션 배치 시스템 ✅
-- [x] 경계선 정렬 문제 완전 해결 ✅
-- [x] 테마별 경계선 색상 시스템 ✅
-- [x] 동적 요일 높이 계산 ✅
-
----
-
-## 📝 **참고 명령어**
-
-### **현재 상태 확인**
-
-```bash
-# Git 상태 확인
-git status
-
-# 현재 브랜치 확인
-git branch
-
-# 최근 커밋 확인
-git log --oneline -5
-```
-
-### **컴포넌트 테스트**
-
-```bash
-# ESLint 검사
-npm run lint
-
-# 테스트 실행
-npm test
-
-# 개발 서버 실행
-npm run dev
-```
-
-### **Storybook 확인**
-
-```bash
-# Storybook 실행
-npm run storybook
+```mermaid
+graph TD
+    A[User Action] --> B[Event Handler]
+    B --> C[State Update]
+    C --> D[UI Re-render]
+    D --> E[localStorage Save]
 ```
 
 ---
 
-## 🎯 **현재 완성된 주요 성과**
+## 🚀 **성능 최적화**
 
-### **1. 시각적 개선**
+### ⚡ **알고리즘 개선**
 
-- ✅ **경계선 정렬 문제 완전 해결**: 시간이 지날수록 어긋나는 문제 해결
-- ✅ **테마별 색상 시스템**: 다크/라이트 모드 자동 대응
-- ✅ **세션 겹침 문제 완전 해결**: 겹치는 세션들이 순차적으로 Y축으로 분리되어 표시
-- ✅ **동적 요일 높이**: 겹치는 세션 수에 따라 요일별 높이가 자동으로 조정되어 모든 세션이 해당 요일 영역 내에 표시
+- 세션 배치 알고리즘: O(n log n) 복잡도
+- 겹침 처리 최적화
+- 메모이제이션 활용
 
-### **2. 기능적 개선**
+### 🎯 **렌더링 최적화**
 
-- ✅ **정확한 겹침 판단 시스템**: 일부라도 겹치면 겹치는 것으로 판단하는 로직 구현
-- ✅ **순차적 Y축 배치**: 겹치는 세션마다 32px씩 아래로 배치하여 시각적 겹침 완전 방지
-- ✅ **동적 높이 계산**: 실제 세션의 최대 yPosition을 반영한 요일별 높이 자동 조정
-- ✅ **Atomic Design 구조**: 체계적이고 유지보수 가능한 컴포넌트 구조
-- ✅ **드래그 앤 드롭 시스템**: enrollment ID 기반으로 정확한 학생-과목 연결
-- ✅ **세션 편집 시스템**: 클릭 시 편집/삭제 모달로 완전한 CRUD 기능 구현
-- ✅ **학생 선택 시스템**: onMouseDown 이벤트로 안정적인 선택 상태 관리
-
-### **3. 성능 개선**
-
-- ✅ **불필요한 렌더링 방지**: useMemo, useCallback 활용
-- ✅ **효율적인 세션 배치**: O(n²) → O(n log n) 알고리즘으로 성능 향상
-- ✅ **메모리 최적화**: 불필요한 배열 생성 방지
-- ✅ **알고리즘 복잡도 개선**: 100개 세션에서 288ms 렌더링 성능 달성
-- ✅ **정확한 겹침 판단**: 일부라도 겹치면 겹치는 것으로 판단하는 로직 구현
-- ✅ **순차적 Y축 배치**: 겹치는 세션마다 40px씩 아래로 배치하여 시각적 겹침 방지
-- ✅ **동적 높이 계산**: 실제 세션의 최대 yPosition을 반영한 요일별 높이 자동 조정
-
-### **4. PDF 다운로드 기술적 구현**
-
-- ✅ **라이브러리 조합**: `html2canvas` + `jsPDF`로 HTML → PDF 변환
-- ✅ **스타일 백업 시스템**: 이중 백업으로 원본 스타일 완벽 보존
-- ✅ **라이트 테마 변환**: CSS 변수와 직접 스타일을 라이트 테마로 강제 변경
-- ✅ **세션 셀 감지**: `data-session-id` 속성과 클래스명으로 세션 블록 자동 식별
-- ✅ **색상 조정 알고리즘**: 다크 테마 색상을 라이트 테마에 맞게 밝기 조정
-- ✅ **안전한 복원 로직**: `requestAnimationFrame`과 `setTimeout`을 활용한 다단계 복원
+- React.memo 사용
+- 불필요한 리렌더링 방지
+- 가상화 고려 (대용량 데이터)
 
 ---
 
-## 🔮 **향후 개발 방향**
+## 📝 **개발 가이드**
 
-### **1. 성능 최적화**
+### 🔧 **새 컴포넌트 추가**
 
-- [x] 트랙 할당 알고리즘 성능 개선 (O(n²) → O(n log n)) ✅
-- [x] 메모이제이션 최적화 (useMemo, useCallback) ✅
-- [x] 실시간 검색 기능 구현 ✅
-- [ ] 가상화 (Virtualization) 대용량 데이터 처리
+1. Atomic Design 패턴 따라 적절한 폴더 선택
+2. TypeScript 인터페이스 정의
+3. CSS Modules 스타일 작성
+4. 테스트 파일 생성
+5. 문서 업데이트
 
-### **2. 기능 확장**
+### 🧪 **테스트 작성**
 
-- [x] 수강생 리스트 실시간 검색 ✅
-- [ ] 세션 편집/삭제 고급 기능
-- [ ] 시간표 템플릿 시스템
-- [ ] 학생별 시간표 내보내기
+1. 컴포넌트 렌더링 테스트
+2. 사용자 상호작용 테스트
+3. 에러 케이스 테스트
+4. 성능 테스트 (필요시)
 
-### **3. 사용자 경험**
+### 📚 **문서화**
 
-- [x] 수강생 리스트 모달 디자인 ✅
-- [x] 검색 입력창 포커스 효과 ✅
-- [ ] 드래그 앤 드롭 시각적 피드백 개선
-- [ ] 반응형 디자인 최적화
-- [ ] 접근성 향상
+1. 컴포넌트 목적 명시
+2. Props 인터페이스 설명
+3. 사용 예시 제공
+4. 주의사항 기록
 
 ---
 
-### **5. 🆕 모달 디자인 시스템**
+## 🎯 **최신 업데이트**
 
-- ✅ **플로팅 패널**: 반투명 어두운 배경과 backdrop-filter 효과
-- ✅ **검색 입력창**: 모달 디자인과 일치하는 스타일링
-- ✅ **z-index 관리**: 9999로 설정하여 다른 요소들보다 위에 표시
-- ✅ **CSS Modules**: 컴포넌트별 모듈화된 스타일 관리
-- ✅ **수업 추가 모달**: z-index 20000-20002로 설정하여 세션 블록들보다 위에 표시
-- ✅ **수업 편집 모달**: backdrop과 overlay 구조로 변경하여 뒷부분 어둡게 처리
-- ✅ **필수 항목 표시**: `*` 표시를 빨간색으로 스타일링하여 가시성 향상
-- ✅ **편집 불가능한 필드**: 학생, 과목 필드를 흐리게 표시하여 편집 불가능함을 시각적으로 표현
-- ✅ **빈 공간 클릭 모달**: 시간표 빈 곳 클릭 시 과목, 종료시간, 학생 선택하여 수업 추가 가능
-- ✅ **세션 셀 요일 표시**: 세션 셀 맨 앞에 요일(월, 화, 수, 목, 금, 토, 일)을 표시하여 사용자가 어떤 요일의 수업인지 쉽게 파악 가능
-- ✅ **실시간 학생 검색**: 수업 편집 모달에서 학생 이름 입력 시 실시간으로 검색 결과 표시
-- ✅ **UX 개선**: 존재하지 않는 학생 추가 시도 시 입력창 유지 및 적절한 피드백 제공
+### 🆕 **시간 검증 시스템**
 
-### **6. 🆕 그룹 수업 시스템**
+- 시작 시간이 종료 시간보다 늦을 수 없도록 검증
+- 자동 시간 조정 기능으로 사용자 편의성 향상
+- 모달에서 실시간 피드백 제공
 
-- ✅ **태그 기반 학생 선택**: 드롭다운 대신 태그 형태의 다중 학생 선택 UI
-- ✅ **실시간 학생 검색**: 입력창에 학생 이름 입력 시 실시간 필터링
-- ✅ **중복 방지**: 이미 선택된 학생은 중복 추가 방지
-- ✅ **태그 제거**: X 버튼으로 개별 학생 태그 제거
-- ✅ **과목 필터링**: 선택된 학생들이 수강하는 과목만 드롭다운에 표시
-- ✅ **유효성 검사**: 학생이 선택되지 않으면 과목 선택 및 추가 버튼 비활성화
-- ✅ **수업 편집 모달**: 기존 수업 편집 시에도 태그 기반 학생 선택 및 실시간 검색 지원
+### 🆕 **모달 개선**
 
-### **7. 🆕 코드 품질 개선**
+- 스크롤 가능한 모달로 긴 내용도 표시 가능
+- 모달 크기 자동 조정
+- 접근성 개선
 
-- ✅ **ESLint 오류 해결**: react-refresh/only-export-components 오류 완전 해결
-- ✅ **유틸리티 함수 분리**: SessionBlock의 로직을 SessionBlock.utils.ts로 분리
-- ✅ **React Hooks 최적화**: useCallback과 useMemo를 활용한 성능 최적화
-- ✅ **타입 안전성**: TypeScript 타입 정의 개선 및 일관성 유지
+### 🆕 **에러 처리 강화**
 
-### **8. 🆕 세션 겹침 문제 완전 해결**
+- 존재하지 않는 학생 추가 시 적절한 피드백
+- 입력 검증 강화
+- 사용자 친화적 에러 메시지
 
-- ✅ **정확한 겹침 판단 로직**: 일부라도 겹치면 겹치는 것으로 판단하는 알고리즘 구현
-- ✅ **순차적 Y축 배치**: 겹치는 세션마다 32px씩 아래로 배치하여 시각적 겹침 완전 방지
-- ✅ **동적 높이 계산**: 실제 세션의 최대 yPosition을 반영한 요일별 높이 자동 조정
-- ✅ **포괄적인 테스트 코드**: 겹침 판단 로직, Y축 배치, 동적 높이 계산에 대한 완벽한 테스트 구현
-- ✅ **성능 최적화**: O(n log n) 알고리즘으로 대용량 세션 데이터 처리 최적화
+---
 
-### **9. 🆕 학생 이름 표시 시스템**
-
-- ✅ **세션 셀 텍스트 개선**: 기존 "과목명 + 시간"에서 "과목명 + 학생명" 형태로 변경
-- ✅ **학생 정보 연결**: enrollment를 통해 student 정보를 찾아 SessionBlock에 전달
-- ✅ **디버깅 로그**: 세션 렌더링 과정에서 enrollment, subject, student 정보 상세 로깅
-- ✅ **유연한 표시**: 학생 정보가 없을 경우 과목명만 표시하는 fallback 처리
-- ✅ **Props 인터페이스 확장**: SessionBlock에 student prop 추가로 학생 정보 전달 가능
-
-### **10. 🆕 PDF 다운로드 시스템**
-
-- ✅ **A4 가로 방향 PDF 생성**: 프린트에 최적화된 가로 방향 레이아웃
-- ✅ **라이트 테마 강제 적용**: 다크 테마에서도 라이트 테마로 PDF 다운로드
-- ✅ **세션 셀 가시성 향상**: 과목별 배경색과 테두리를 보존하여 가독성 확보
-- ✅ **시간 정보 명확화**: 각 세션에 시작/종료 시간을 두 번째 줄에 표시
-- ✅ **학생별 필터링 반영**: 선택된 학생의 시간표만 표시된 상태로 다운로드
-- ✅ **안전한 스타일 복원**: 이중 백업 시스템과 지연 복원으로 원본 스타일 완벽 복원
-- ✅ **파일명 자동 생성**: `{학생명}_시간표.pdf` 또는 `전체_시간표.pdf` 형태로 저장
-- ✅ **🆕 세션 범위 기반 PDF 생성**: 가장 빠른 시작 시간부터 가장 늦은 종료 시간까지만 표시
-- ✅ **🆕 시간 헤더 필터링**: 세션 범위 밖의 시간 헤더는 숨김 처리
-- ✅ **🆕 세션셀 위치 조정**: 숨겨진 헤더만큼 세션셀을 왼쪽으로 이동하여 정확한 시간 정렬
-- ✅ **🆕 DOM 복원 시스템**: PDF 생성 후 모든 변경사항을 원래대로 복원하여 브라우저 UI 보존
-- ✅ **🆕 고품질 설정**: quality: 2.0으로 인쇄용 고품질 PDF 생성
-
-_이 문서는 현재 완성된 디자인, 기능, 로직을 정확히 반영하여 작성되었습니다. 향후 개발 시 참고하여 일관성을 유지하세요._
+_이 문서는 애플리케이션의 구조와 기능을 이해하는 데 도움이 됩니다. 정기적으로 업데이트하여 최신 상태를 유지하세요._

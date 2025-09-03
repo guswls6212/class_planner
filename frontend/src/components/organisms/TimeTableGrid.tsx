@@ -48,8 +48,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 🚀 Phase 1: O(n log n) 세션 Y축 위치 계산 알고리즘
     const getSessionYPositions = useCallback(
       (weekday: number): Map<string, number> => {
-        console.log(`\n=== Calculating Y positions for weekday ${weekday} ===`);
-
         // 현재 요일의 실제 세션들을 시작 시간 기준으로 정렬 (O(n log n))
         const daySessions = sessions.get(weekday) || [];
         const sortedSessions = [...daySessions].sort(
@@ -57,7 +55,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         );
 
         if (sortedSessions.length === 0) {
-          console.log(`  No sessions for weekday ${weekday}`);
           return new Map();
         }
 
@@ -92,18 +89,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           const yPosition =
             maxOverlappingY >= 0 ? maxOverlappingY + sessionHeight : 0;
           sessionYPositions.set(currentSession.id, yPosition);
-
-          // 디버깅을 위한 상세 로그
-          console.log(
-            `  Session ${currentSession.id} (${currentSession.startsAt}-${currentSession.endsAt}): Y position ${yPosition}`
-          );
-          if (maxOverlappingY >= 0) {
-            console.log(
-              `    Overlaps with previous sessions, placed at yPosition: ${yPosition}`
-            );
-          } else {
-            console.log('    No overlap, placed at yPosition: 0');
-          }
         }
 
         return sessionYPositions;
@@ -130,10 +115,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         // 🆕 기본 높이 49px + 최대 yPosition + 세션 셀 높이 47px
         const requiredHeight = Math.max(49, maxYPosition + 47);
         const finalHeight = Math.max(requiredHeight, 49);
-
-        console.log(
-          `Weekday ${weekday}: ${daySessions.length} sessions, max yPosition: ${maxYPosition}, required height: ${requiredHeight}, final height: ${finalHeight}`
-        );
 
         return finalHeight;
       },

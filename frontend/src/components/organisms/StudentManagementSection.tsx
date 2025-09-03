@@ -11,6 +11,7 @@ interface StudentManagementSectionProps {
   onAddStudent: () => void;
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
+  errorMessage?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -25,6 +26,7 @@ export const StudentManagementSection: React.FC<
   onAddStudent,
   onSelectStudent,
   onDeleteStudent,
+  errorMessage,
   className = '',
   style = {},
 }) => {
@@ -39,6 +41,7 @@ export const StudentManagementSection: React.FC<
         newStudentName={newStudentName}
         onNewStudentNameChange={onNewStudentNameChange}
         onAddStudent={onAddStudent}
+        errorMessage={errorMessage}
       />
 
       <StudentList
