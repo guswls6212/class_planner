@@ -8,32 +8,58 @@
 
 ## 🏗️ 프로젝트 구조
 
-### 📁 디렉토리 구조
+### 📁 디렉토리 구조 (Atomic Design 패턴)
 
 ```
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── atoms/          # 원자 컴포넌트
-│   │   ├── molecules/      # 분자 컴포넌트
-│   │   └── organisms/      # 유기체 컴포넌트
-│   ├── pages/             # 페이지 컴포넌트
-│   ├── lib/               # 유틸리티 함수
-│   └── contexts/          # React Context
+│   │   ├── atoms/          # 원자 컴포넌트 (Button, Input, Label 등)
+│   │   ├── molecules/     # 분자 컴포넌트 (FormField, SessionBlock 등)
+│   │   └── organisms/     # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
+│   ├── pages/             # 페이지 컴포넌트 (Schedule, Students, Manual)
+│   ├── hooks/             # 커스텀 훅 (useStudentManagement, useDisplaySessions 등)
+│   ├── types/             # 타입 정의 파일 (scheduleTypes, studentsTypes)
+│   ├── lib/               # 유틸리티 함수 (planner, pdf-utils, build-info)
+│   └── contexts/          # React Context (ThemeContext)
 ├── scripts/               # 빌드 및 배포 스크립트
 ├── public/                # 정적 파일
 └── docs/                  # 문서 (통합됨)
 ```
 
-### 🎯 주요 페이지
+### 🎯 주요 페이지 및 컴포넌트 구조
 
 #### **Students 페이지** (`/students`)
+
+**파일 구조:**
+
+- `src/pages/Students.tsx` - 메인 페이지 컴포넌트
+- `src/hooks/useStudentManagement.ts` - 학생 CRUD 로직
+- `src/hooks/useSubjectInitialization.ts` - 과목 초기화 로직
+- `src/hooks/useLocal.ts` - localStorage 관리
+- `src/types/studentsTypes.ts` - 학생 관련 타입 정의
+- `src/components/organisms/StudentsPageLayout.tsx` - 페이지 레이아웃
+- `src/components/organisms/StudentManagementSection.tsx` - 학생 관리 섹션
+
+**주요 기능:**
 
 - 학생 관리 (추가, 삭제, 선택)
 - 기본 과목 자동 생성
 - localStorage 데이터 저장/복원
 
 #### **Schedule 페이지** (`/schedule`)
+
+**파일 구조:**
+
+- `src/pages/Schedule.tsx` - 메인 페이지 컴포넌트
+- `src/hooks/useDisplaySessions.ts` - 세션 표시 로직
+- `src/hooks/useStudentPanel.ts` - 학생 패널 상태 관리
+- `src/hooks/useTimeValidation.ts` - 시간 검증 로직
+- `src/types/scheduleTypes.ts` - 스케줄 관련 타입 정의
+- `src/components/organisms/StudentPanel.tsx` - 학생 패널 컴포넌트
+- `src/components/molecules/PDFDownloadButton.tsx` - PDF 다운로드 버튼
+
+**주요 기능:**
 
 - 시간표 표시 (9:00-23:00, 30분 단위)
 - 드래그 앤 드롭으로 수업 추가
@@ -107,6 +133,93 @@ npm run build
 ✅ 커밋 및 푸시
 ✅ GitHub Pages 배포
 ```
+
+---
+
+## 🏛️ Atomic Design 패턴 가이드
+
+### 📦 Atoms (원자 컴포넌트)
+
+**위치:** `src/components/atoms/`
+
+**특징:**
+
+- 가장 기본적인 UI 요소
+- 재사용 가능한 최소 단위
+- Props는 최소화
+
+**예시:**
+
+- `Button.tsx` - 버튼 컴포넌트
+- `Input.tsx` - 입력 필드
+- `Label.tsx` - 라벨
+- `Typography.tsx` - 텍스트 스타일
+
+### 🧬 Molecules (분자 컴포넌트)
+
+**위치:** `src/components/molecules/`
+
+**특징:**
+
+- Atoms를 조합한 단위
+- 특정 기능을 담당
+- 재사용 가능한 기능 단위
+
+**예시:**
+
+- `SessionBlock.tsx` - 세션 블록
+- `TimeTableRow.tsx` - 시간표 행
+- `StudentInputSection.tsx` - 학생 입력 섹션
+- `PDFDownloadButton.tsx` - PDF 다운로드 버튼
+
+### 🦠 Organisms (유기체 컴포넌트)
+
+**위치:** `src/components/organisms/`
+
+**특징:**
+
+- Molecules를 조합한 복합 컴포넌트
+- 페이지의 주요 섹션을 담당
+- 비즈니스 로직 포함 가능
+
+**예시:**
+
+- `TimeTableGrid.tsx` - 시간표 그리드
+- `StudentPanel.tsx` - 학생 패널
+- `StudentsPageLayout.tsx` - 학생 페이지 레이아웃
+- `StudentManagementSection.tsx` - 학생 관리 섹션
+
+### 🎣 Custom Hooks (커스텀 훅)
+
+**위치:** `src/hooks/`
+
+**특징:**
+
+- 재사용 가능한 로직
+- 상태 관리 및 사이드 이펙트
+- 컴포넌트 로직 분리
+
+**예시:**
+
+- `useStudentManagement.ts` - 학생 관리 로직
+- `useDisplaySessions.ts` - 세션 표시 로직
+- `useLocal.ts` - localStorage 관리
+- `useTimeValidation.ts` - 시간 검증 로직
+
+### 📝 Types (타입 정의)
+
+**위치:** `src/types/`
+
+**특징:**
+
+- 페이지별 타입 정의
+- 인터페이스 및 타입 안정성
+- 재사용 가능한 타입
+
+**예시:**
+
+- `scheduleTypes.ts` - 스케줄 관련 타입
+- `studentsTypes.ts` - 학생 관련 타입
 
 ---
 
@@ -219,6 +332,14 @@ npm run protection-check
 - [x] 학생 입력 후 엔터 키 시 입력창 완전 초기화
 - [x] 겹치는 세션 개별 표시
 
+#### 코드 구조 개선
+
+- [x] Atomic Design 패턴 적용
+- [x] 커스텀 훅 분리 (useStudentManagement, useDisplaySessions 등)
+- [x] 타입 정의 파일 분리 (scheduleTypes, studentsTypes)
+- [x] 컴포넌트 계층 구조 정리
+- [x] 재사용 가능한 로직 분리
+
 ### 🚀 향후 개선 사항 (12개)
 
 #### 높은 우선순위
@@ -239,7 +360,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 70%
+**전체 진행률**: 75%
 
 ---
 
@@ -331,6 +452,7 @@ npm run lint:fix
 - [React Best Practices](https://react.dev/learn)
 - [TypeScript Best Practices](https://github.com/typescript-eslint/typescript-eslint)
 - [Testing Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
+- [Atomic Design Methodology](https://bradfrost.com/blog/post/atomic-web-design/)
 
 ---
 

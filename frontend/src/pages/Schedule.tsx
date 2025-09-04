@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Button from '../components/atoms/Button';
 import Label from '../components/atoms/Label';
+import PDFDownloadButton from '../components/molecules/PDFDownloadButton';
+import StudentPanel from '../components/organisms/StudentPanel';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
-import { downloadTimetableAsPDF } from '../lib/pdf-utils';
+import { useDisplaySessions } from '../hooks/useDisplaySessions';
+import { useStudentPanel } from '../hooks/useStudentPanel';
+import { useTimeValidation } from '../hooks/useTimeValidation';
 import type { Enrollment, Session, Student, Subject } from '../lib/planner';
 import { weekdays } from '../lib/planner';
+import type { GroupSessionData } from '../types/scheduleTypes';
 import styles from './Schedule.module.css';
-
-// 🆕 그룹 수업을 위한 새로운 타입
-type GroupSessionData = {
-  studentIds: string[]; // 여러 학생 ID 배열로 변경
-  subjectId: string;
-  weekday: number;
-  startTime: string;
-  endTime: string;
-  room?: string;
-};
 
 function useLocal<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -52,17 +47,6 @@ export default function SchedulePage() {
   );
   const [students] = useLocal<Student[]>('students', []);
 
-  // 학생 검색 상태
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // 검색어에 따라 필터링된 학생 목록
-  const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) return students;
-    return students.filter(student =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [students, searchQuery]);
-
   // 🆕 selectedStudentId 변경 감지
   useEffect(() => {
     console.log('🆕 selectedStudentId 변경됨:', selectedStudentId);
@@ -72,45 +56,23 @@ export default function SchedulePage() {
   useEffect(() => {
     console.log('🆕 학생 데이터 상태:', {
       studentsCount: students.length,
-      filteredStudentsCount: filteredStudents.length,
-      searchQuery,
     });
-  }, [students, filteredStudents, searchQuery]);
+  }, [students]);
 
-  // 🆕 선택된 학생이 있으면 해당 학생의 세션만, 없으면 전체 세션 표시
-  const displaySessions = useMemo(() => {
-    if (selectedStudentId) {
-      // 🆕 enrollmentIds를 사용하여 선택된 학생의 세션만 필터링
-      return new Map<number, Session[]>(
-        sessions
-          .filter(s =>
-            s.enrollmentIds.some(enrollmentId => {
-              const enrollment = enrollments.find(e => e.id === enrollmentId);
-              return enrollment?.studentId === selectedStudentId;
-            })
-          )
-          .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-          .reduce((acc, s) => {
-            const list = acc.get(s.weekday) ?? [];
-            list.push(s);
-            acc.set(s.weekday, list);
-            return acc;
-          }, new Map<number, Session[]>())
-      );
-    } else {
-      // 전체 학생의 세션 표시
-      return new Map<number, Session[]>(
-        sessions
-          .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-          .reduce((acc, s) => {
-            const list = acc.get(s.weekday) ?? [];
-            list.push(s);
-            acc.set(s.weekday, list);
-            return acc;
-          }, new Map<number, Session[]>())
-      );
-    }
-  }, [sessions, enrollments, selectedStudentId]);
+  // 커스텀 훅 사용
+  const { sessions: displaySessions } = useDisplaySessions(
+    sessions,
+    enrollments,
+    selectedStudentId
+  );
+
+  const studentPanelState = useStudentPanel(
+    students,
+    selectedStudentId,
+    setSelectedStudentId
+  );
+
+  const { validateTimeRange, getNextHour } = useTimeValidation();
 
   // 🆕 그룹 수업 모달 상태
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -416,19 +378,6 @@ export default function SchedulePage() {
     console.log('🆕 모달 상태 설정 완료:', { showGroupModal: true });
   };
 
-  // 🆕 시간 유효성 검사 함수
-  const validateTimeRange = (startTime: string, endTime: string): boolean => {
-    if (!startTime || !endTime) return false;
-
-    const startMinutes =
-      parseInt(startTime.split(':')[0]) * 60 +
-      parseInt(startTime.split(':')[1]);
-    const endMinutes =
-      parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
-
-    return startMinutes < endMinutes;
-  };
-
   // 🆕 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
   const handleStartTimeChange = (newStartTime: string) => {
     setGroupModalData(prev => {
@@ -475,13 +424,6 @@ export default function SchedulePage() {
         endTime: newEndTime,
       };
     });
-  };
-
-  // 🆕 다음 시간 계산
-  const getNextHour = (time: string): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const nextHour = hours + 1;
-    return `${nextHour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   // 🆕 드래그 앤 드롭 처리
@@ -577,73 +519,23 @@ export default function SchedulePage() {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const handlePDFDownload = async () => {
-    if (!timeTableRef.current) return;
-
-    setIsDownloading(true);
-    try {
-      // 선택된 학생 이름 찾기
-      const selectedStudent = students.find(s => s.id === selectedStudentId);
-      const studentName = selectedStudent?.name;
-
-      await downloadTimetableAsPDF(timeTableRef.current, studentName);
-    } catch (error) {
-      console.error('PDF 다운로드 실패:', error);
-    } finally {
-      setIsDownloading(false);
+  // 드래그 시작 처리
+  const handleDragStart = (e: React.DragEvent, student: Student) => {
+    // 해당 학생의 첫 번째 enrollment ID를 찾아서 전달
+    const studentEnrollment = enrollments.find(e => e.studentId === student.id);
+    if (studentEnrollment) {
+      console.log('🆕 드래그 시작 - enrollment ID 전달:', studentEnrollment.id);
+      e.dataTransfer.setData('text/plain', studentEnrollment.id);
+    } else {
+      console.log(
+        '🆕 드래그 시작 - 학생 ID 전달 (enrollment 없음):',
+        student.id
+      );
+      // enrollment가 없으면 학생 ID를 직접 전달
+      e.dataTransfer.setData('text/plain', `student:${student.id}`);
     }
+    e.dataTransfer.effectAllowed = 'copy';
   };
-
-  // 학생 패널 위치 (드래그로 이동 가능) - 화면 정중앙에 표시
-  const [panelPos, setPanelPos] = useLocal<{ x: number; y: number }>(
-    'ui:studentsPanelPos',
-    { x: 0, y: 0 } // 🆕 초기값을 0으로 설정하고 useEffect에서 계산
-  );
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
-
-  // 🆕 패널을 화면 정중앙에 위치시키는 useEffect
-  useEffect(() => {
-    // 패널이 처음 로딩될 때만 화면 정중앙에 위치
-    const savedPos = localStorage.getItem('ui:studentsPanelPos');
-    if (!savedPos) {
-      // 저장된 위치가 없으면 화면 정중앙에 위치
-      const panelWidth = 280; // 패널 너비
-      const panelHeight = 400; // 패널 높이
-      const centerX = (window.innerWidth - panelWidth) / 2;
-      const centerY = (window.innerHeight - panelHeight) / 2;
-
-      console.log('🆕 패널을 화면 정중앙에 위치:', { centerX, centerY });
-      setPanelPos({ x: centerX, y: centerY });
-    }
-  }, [setPanelPos]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - panelPos.x,
-      y: e.clientY - panelPos.y,
-    });
-  };
-
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!isDragging) return;
-      setPanelPos({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
-    }
-    function onUp() {
-      setIsDragging(false);
-    }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [isDragging, dragOffset, setPanelPos]);
 
   return (
     <div className="timetable-container" style={{ padding: 16 }}>
@@ -661,16 +553,14 @@ export default function SchedulePage() {
         </p>
       )}
 
-      {/* 시간표 다운로드 버튼 - 원래 위치로 복원 */}
-      <div style={{ marginBottom: '16px', textAlign: 'right' }}>
-        <Button
-          variant="primary"
-          onClick={handlePDFDownload}
-          disabled={isDownloading}
-        >
-          {isDownloading ? '다운로드 중...' : '시간표 다운로드'}
-        </Button>
-      </div>
+      {/* PDF 다운로드 버튼 */}
+      <PDFDownloadButton
+        timeTableRef={timeTableRef}
+        selectedStudent={students.find(s => s.id === selectedStudentId)}
+        isDownloading={isDownloading}
+        onDownloadStart={() => setIsDownloading(true)}
+        onDownloadEnd={() => setIsDownloading(false)}
+      />
 
       {/* 🆕 시간표 그리드 */}
       <div ref={timeTableRef}>
@@ -686,104 +576,15 @@ export default function SchedulePage() {
         />
       </div>
 
-      {/* 🆕 학생 패널 - 원래 위치로 복원 */}
-      <div
-        className={`${styles.floatingPanel} position-fixed overflow-auto`}
-        style={{
-          left: panelPos.x,
-          top: panelPos.y,
-          width: 280,
-          maxHeight: '400px',
-          padding: 16,
-        }}
-        onMouseDown={handleMouseDown}
-      >
-        {/* 드래그 가능한 헤더 */}
-        <div
-          className={`${styles.panelHeader} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-          data-testid="students-panel-header"
-        >
-          수강생 리스트
-        </div>
-
-        {/* 검색 입력창 */}
-        <div className={styles.searchContainer}>
-          <input
-            type="text"
-            placeholder="학생 이름 검색..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className={styles.searchInput}
-          />
-        </div>
-
-        <div className={styles.studentList} role="list">
-          {filteredStudents.map(s => (
-            <div key={s.id} role="listitem">
-              <div
-                draggable
-                className={`${styles.studentItem} ${selectedStudentId === s.id ? styles.selected : ''}`}
-                data-testid={`student-item-${s.id}`}
-                onDragStart={e => {
-                  // 해당 학생의 첫 번째 enrollment ID를 찾아서 전달
-                  const studentEnrollment = enrollments.find(
-                    e => e.studentId === s.id
-                  );
-                  if (studentEnrollment) {
-                    console.log(
-                      '🆕 드래그 시작 - enrollment ID 전달:',
-                      studentEnrollment.id
-                    );
-                    e.dataTransfer.setData('text/plain', studentEnrollment.id);
-                  } else {
-                    console.log(
-                      '🆕 드래그 시작 - 학생 ID 전달 (enrollment 없음):',
-                      s.id
-                    );
-                    // enrollment가 없으면 학생 ID를 직접 전달
-                    e.dataTransfer.setData('text/plain', `student:${s.id}`);
-                  }
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-                onMouseDown={() => {
-                  console.log('🆕 학생 onMouseDown 이벤트:', {
-                    studentId: s.id,
-                    currentSelectedId: selectedStudentId,
-                    isDragging,
-                  });
-
-                  // 드래그 중이 아닐 때만 클릭 이벤트 처리
-                  if (!isDragging) {
-                    if (selectedStudentId === s.id) {
-                      // 이미 선택된 학생이면 선택 해제
-                      console.log('🆕 선택 해제:', s.id);
-                      setSelectedStudentId('');
-                    } else {
-                      // 새로운 학생 선택
-                      console.log('🆕 새로운 학생 선택:', s.id);
-                      setSelectedStudentId(s.id);
-                    }
-                  } else {
-                    console.log('🆕 드래그 중이므로 클릭 이벤트 무시');
-                  }
-                }}
-              >
-                {s.name}
-              </div>
-            </div>
-          ))}
-          {filteredStudents.length === 0 && (
-            <div
-              style={{ color: 'var(--color-gray-400)', padding: '8px 12px' }}
-              role="listitem"
-            >
-              {searchQuery.trim()
-                ? '검색 결과가 없습니다'
-                : '학생 페이지에서 학생을 추가하세요'}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* 🆕 학생 패널 */}
+      <StudentPanel
+        selectedStudentId={selectedStudentId}
+        panelState={studentPanelState}
+        onMouseDown={studentPanelState.handleMouseDown}
+        onStudentClick={studentPanelState.handleStudentClick}
+        onDragStart={handleDragStart}
+        onSearchChange={studentPanelState.setSearchQuery}
+      />
 
       {/* 그룹 수업 추가 모달 */}
       {showGroupModal && (
@@ -1316,148 +1117,6 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
-
-      {/* 빈 공간 클릭 모달 */}
-      {/* This modal is now handled by handleEmptySpaceClick */}
-      {/* {showEmptySpaceModal && (
-        <div className="modal-backdrop">
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <h4 className="modal-title">수업 추가</h4>
-              <div className="modal-form">
-                <div className="form-group">
-                  <label className="form-label">
-                    학생 <span className="required">*</span>
-                  </label>
-                  <select
-                    id="empty-space-student"
-                    className="form-select"
-                    value={emptySpaceModalData.studentId}
-                    onChange={e =>
-                      setEmptySpaceModalData(prev => ({
-                        ...prev,
-                        studentId: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">학생을 선택하세요</option>
-                    {students.map(student => (
-                      <option key={student.id} value={student.id}>
-                        {student.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    과목 <span className="required">*</span>
-                  </label>
-                  <select
-                    id="empty-space-subject"
-                    className="form-select"
-                    value={emptySpaceModalData.subjectId}
-                    onChange={e =>
-                      setEmptySpaceModalData(prev => ({
-                        ...prev,
-                        subjectId: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">과목을 선택하세요</option>
-                    {subjects.map(subject => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">시작 시간</label>
-                  <input
-                    id="empty-space-start-time"
-                    type="time"
-                    className="form-input"
-                    value={emptySpaceModalData.startTime}
-                    onChange={e =>
-                      setEmptySpaceModalData(prev => ({
-                        ...prev,
-                        startTime: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    종료 시간 <span className="required">*</span>
-                  </label>
-                  <input
-                    id="empty-space-end-time"
-                    type="time"
-                    className="form-input"
-                    value={emptySpaceModalData.endTime}
-                    onChange={e =>
-                      setEmptySpaceModalData(prev => ({
-                        ...prev,
-                        endTime: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="modal-actions">
-                <Button
-                  variant="transparent"
-                  onClick={() => setShowEmptySpaceModal(false)}
-                >
-                  취소
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    if (
-                      !emptySpaceModalData.studentId ||
-                      !emptySpaceModalData.subjectId ||
-                      !emptySpaceModalData.endTime
-                    ) {
-                      alert('필수 항목을 모두 입력해주세요.');
-                      return;
-                    }
-
-                    // 기존 수강 신청이 있는지 확인
-                    let enrollment = enrollments.find(
-                      e =>
-                        e.studentId === emptySpaceModalData.studentId &&
-                        e.subjectId === emptySpaceModalData.subjectId
-                    );
-
-                    // 없으면 새로 생성
-                    if (!enrollment) {
-                      enrollment = {
-                        id: crypto.randomUUID(),
-                        studentId: emptySpaceModalData.studentId,
-                        subjectId: emptySpaceModalData.subjectId,
-                      };
-                      setEnrollments(prev => [...prev, enrollment!]);
-                    }
-
-                    // 세션 추가
-                    addSession(
-                      enrollment.id,
-                      emptySpaceModalData.weekday,
-                      emptySpaceModalData.startTime,
-                      emptySpaceModalData.endTime
-                    );
-
-                    setShowEmptySpaceModal(false);
-                  }}
-                >
-                  추가
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }

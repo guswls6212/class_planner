@@ -1,53 +1,108 @@
 # 클래스 플래너 (Class Planner)
 
-## 📋 개요
-
-클래스 플래너는 학생과 수업을 효율적으로 관리할 수 있는 웹 기반 시간표 관리 시스템입니다. 직관적인 인터페이스와 강력한 기능을 통해 교육 기관의 수업 관리를 간소화합니다.
+학원이나 개인 과외 선생님이 학생들의 수업 일정을 효율적으로 관리할 수 있는 웹 기반 시간표 관리 시스템입니다.
 
 ## 🚀 주요 기능
 
-- **학생 관리**: 학생 추가, 삭제, 선택 기능
-- **시간표 관리**: 9:00-23:00, 30분 단위 시간표 표시
-- **드래그 앤 드롭**: 직관적인 수업 추가 방식
-- **PDF 다운로드**: 시간표를 PDF로 내보내기
-- **반응형 디자인**: 다양한 화면 크기 지원
-- **다크/라이트 테마**: 사용자 선호에 따른 테마 전환
+### 📚 학생 관리
 
-## 🛠️ 기술 스택
+- 학생 추가, 삭제, 선택 기능
+- 중복 학생 이름 방지
+- 학생별 수업 필터링
 
-- **Frontend**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Testing**: Vitest + React Testing Library
-- **Styling**: CSS Modules
-- **Deployment**: GitHub Pages
+### 📅 시간표 관리
 
-## 📦 설치 및 실행
+- 9:00-23:00, 30분 단위 시각적 시간표
+- 드래그 앤 드롭으로 수업 추가
+- 수업 편집 및 삭제
+- 겹치는 세션 개별 표시
+
+### 📖 과목 관리
+
+- 9개 기본 과목 자동 생성 (초등수학, 중등수학, 중등영어, 중등국어, 중등과학, 중등사회, 고등수학, 고등영어, 고등국어)
+- 과목별 고유 색상 구분
+
+### 📊 데이터 관리
+
+- localStorage 기반 자동 저장
+- PDF 다운로드 기능
+- 반응형 디자인
+
+## 🏗️ 기술 스택
+
+### Frontend
+
+- **React 18** - 사용자 인터페이스
+- **TypeScript** - 타입 안정성
+- **Vite** - 빌드 도구
+- **Vitest** - 테스트 프레임워크
+- **React Testing Library** - 컴포넌트 테스트
+
+### 스타일링
+
+- **CSS Modules** - 컴포넌트 스타일링
+- **Tailwind CSS** - 유틸리티 클래스
+
+### 상태 관리
+
+- **React Hooks** - 상태 관리
+- **localStorage** - 데이터 지속성
+
+### PDF 생성
+
+- **html2canvas** - HTML to Canvas 변환
+- **jsPDF** - PDF 생성
+
+## 🏛️ 프로젝트 구조 (Atomic Design)
+
+```
+src/
+├── components/
+│   ├── atoms/          # 원자 컴포넌트 (Button, Input, Label 등)
+│   ├── molecules/       # 분자 컴포넌트 (SessionBlock, TimeTableRow 등)
+│   └── organisms/      # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
+├── pages/              # 페이지 컴포넌트 (Schedule, Students, Manual)
+├── hooks/              # 커스텀 훅 (useStudentManagement, useDisplaySessions 등)
+├── types/              # 타입 정의 파일 (scheduleTypes, studentsTypes)
+├── lib/                # 유틸리티 함수 (planner, pdf-utils, build-info)
+└── contexts/           # React Context (ThemeContext)
+```
+
+## 🚀 시작하기
 
 ### 필수 요구사항
 
 - Node.js 18+
 - npm 또는 yarn
 
-### 설치
+### 설치 및 실행
 
 ```bash
+# 저장소 클론
+git clone https://github.com/guswls6212/class_planner.git
+cd class_planner/frontend
+
 # 의존성 설치
 npm install
 
 # 개발 서버 실행
 npm run dev
 
-# 빌드
-npm run build
-
-# 테스트 실행
-npm run test:run
+# 브라우저에서 http://localhost:5173 접속
 ```
 
-## 📚 문서
+### 빌드 및 배포
 
-- **[사용자 매뉴얼](./USER_MANUAL.md)**: 애플리케이션 사용법 가이드
-- **[개발자 가이드](./DEVELOPER_GUIDE.md)**: 개발자를 위한 종합 가이드
+```bash
+# 프로덕션 빌드
+npm run build
+
+# 빌드 결과물 미리보기
+npm run preview
+
+# GitHub Pages 배포
+npm run deploy
+```
 
 ## 🧪 테스트
 
@@ -62,33 +117,57 @@ npm run test:coverage
 npm run protection-check
 ```
 
-## 🚀 배포
+## 📚 문서
+
+- **[사용자 매뉴얼](./USER_MANUAL.md)** - 사용자를 위한 상세 가이드
+- **[개발자 가이드](./DEVELOPER_GUIDE.md)** - 개발자를 위한 기술 문서
+
+## 🔧 개발 도구
+
+### 코드 품질
 
 ```bash
-# 커밋 전 검증
-npm run prepare-commit
+# 코드 포맷팅
+npm run format
 
-# 배포
-npm run deploy
+# 린팅
+npm run lint
+npm run lint:fix
+
+# 타입 체크
+npm run type-check
 ```
 
-## 📊 현재 상태
+### 커밋 전 검증
 
-- **완료된 기능**: 28개
-- **전체 진행률**: 70%
-- **테스트 커버리지**: 90%+
+```bash
+# 전체 검증 프로세스
+npm run prepare-commit
+```
+
+## 🌐 배포
+
+- **URL**: https://guswls6212.github.io/class_planner/
+- **배포 방식**: GitHub Pages
+- **자동 배포**: main 브랜치 푸시 시 자동 배포
 
 ## 🤝 기여하기
 
-1. 이슈를 생성하여 문제나 개선사항을 보고
-2. 브랜치를 생성하여 작업
-3. 테스트를 작성하고 실행
-4. Pull Request를 생성
+1. 이 저장소를 포크합니다
+2. 새로운 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
+3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
+4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
+5. Pull Request를 생성합니다
 
 ## 📄 라이선스
 
-MIT License
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+## 📞 지원
+
+문제가 발생하거나 개선 사항이 있으시면 이슈를 생성해주세요.
 
 ---
 
-_클래스 플래너는 교육 기관의 수업 관리를 더욱 효율적으로 만들어줍니다._
+**개발자**: guswls6212  
+**최종 업데이트**: 2024년 12월 19일

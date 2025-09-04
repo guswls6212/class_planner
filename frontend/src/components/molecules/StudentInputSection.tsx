@@ -6,7 +6,7 @@ import styles from './StudentInputSection.module.css';
 interface StudentInputSectionProps {
   newStudentName: string;
   onNewStudentNameChange: (name: string) => void;
-  onAddStudent: () => void;
+  onAddStudent: (name: string) => void;
   errorMessage?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -33,7 +33,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
     }
 
     // 중복 이름 체크는 부모 컴포넌트에서 처리
-    onAddStudent();
+    onAddStudent(name);
 
     // 성공 시 에러 메시지 초기화
     setInternalErrorMessage('');

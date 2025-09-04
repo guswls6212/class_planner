@@ -8,7 +8,7 @@ interface StudentManagementSectionProps {
   newStudentName: string;
   selectedStudentId: string;
   onNewStudentNameChange: (name: string) => void;
-  onAddStudent: () => void;
+  onAddStudent: (name: string) => void;
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
   errorMessage?: string;
