@@ -294,7 +294,7 @@ npm run protection-check
 
 ## 📊 기능 체크리스트
 
-### ✅ 완료된 기능 (28개)
+### ✅ 완료된 기능 (30개)
 
 #### 핵심 기능
 
@@ -331,6 +331,8 @@ npm run protection-check
 - [x] 다중 학생 그룹 수업 지원
 - [x] 학생 입력 후 엔터 키 시 입력창 완전 초기화
 - [x] 겹치는 세션 개별 표시
+- [x] 수강생 리스트 패널 위치 저장 (localStorage)
+- [x] 드래그 가능한 플로팅 패널 (직관적 UX)
 
 #### 코드 구조 개선
 
@@ -339,6 +341,7 @@ npm run protection-check
 - [x] 타입 정의 파일 분리 (scheduleTypes, studentsTypes)
 - [x] 컴포넌트 계층 구조 정리
 - [x] 재사용 가능한 로직 분리
+- [x] 패널 위치 관리 전용 훅 (usePanelPosition)
 
 ### 🚀 향후 개선 사항 (12개)
 
@@ -360,7 +363,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 75%
+**전체 진행률**: 77%
 
 ---
 

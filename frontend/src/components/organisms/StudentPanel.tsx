@@ -36,8 +36,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
       <div
         className={`${styles.panelHeader} ${panelState.isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         data-testid="students-panel-header"
+        title="드래그하여 패널 위치를 이동할 수 있습니다"
       >
-        수강생 리스트
+        <span>수강생 리스트</span>
       </div>
 
       {/* 검색 입력창 */}

@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Student } from '../lib/planner';
-import type {
-  DragOffset,
-  PanelPosition,
-  StudentPanelState,
-} from '../types/scheduleTypes';
+import type { DragOffset, StudentPanelState } from '../types/scheduleTypes';
+import { usePanelPosition } from './usePanelPosition';
 
 export const useStudentPanel = (
   students: Student[],
@@ -16,9 +13,11 @@ export const useStudentPanel = (
   handleStudentClick: (studentId: string) => void;
 } => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [position, setPosition] = useState<PanelPosition>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<DragOffset>({ x: 0, y: 0 });
+
+  // 패널 위치 관리
+  const { position, updatePosition } = usePanelPosition();
 
   // 검색어에 따라 필터링된 학생 목록
   const filteredStudents = useMemo(() => {
@@ -27,18 +26,6 @@ export const useStudentPanel = (
       student.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [students, searchQuery]);
-
-  // 패널을 화면 정중앙에 위치시키는 useEffect
-  useEffect(() => {
-    const savedPos = localStorage.getItem('ui:studentsPanelPos');
-    if (!savedPos) {
-      const panelWidth = 280;
-      const panelHeight = 400;
-      const centerX = (window.innerWidth - panelWidth) / 2;
-      const centerY = (window.innerHeight - panelHeight) / 2;
-      setPosition({ x: centerX, y: centerY });
-    }
-  }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -58,21 +45,38 @@ export const useStudentPanel = (
     }
   };
 
+  // 드래그 이벤트 처리
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!isDragging) return;
-      setPosition({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
+
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+
+      // 화면 경계 체크
+      const maxX = window.innerWidth - 280; // 패널 너비
+      const maxY = window.innerHeight - 400; // 패널 높이
+
+      const boundedX = Math.max(0, Math.min(newX, maxX));
+      const boundedY = Math.max(0, Math.min(newY, maxY));
+
+      updatePosition({ x: boundedX, y: boundedY });
     }
+
     function onUp() {
       setIsDragging(false);
     }
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+
+    if (isDragging) {
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [isDragging, dragOffset]);
+  }, [isDragging, dragOffset, updatePosition]);
 
   return {
     position,
