@@ -11,6 +11,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import ManualPage from './pages/Manual';
 import SchedulePage from './pages/Schedule';
 import StudentsPage from './pages/Students';
+import SubjectsPage from './pages/Subjects';
 import './styles/global.css';
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -40,6 +41,19 @@ function Layout() {
             })}
           >
             학생
+          </NavLink>
+          <NavLink
+            to="/subjects"
+            style={({ isActive }) => ({
+              fontWeight: isActive ? 600 : 400,
+              textDecoration: 'none',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background: isActive ? 'var(--color-primary)' : 'transparent',
+              color: isActive ? 'white' : 'var(--color-text-primary)',
+            })}
+          >
+            과목
           </NavLink>
           <NavLink
             to="/schedule"
@@ -83,6 +97,7 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <StudentsPage /> },
         { path: 'students', element: <StudentsPage /> },
+        { path: 'subjects', element: <SubjectsPage /> },
         { path: 'schedule', element: <SchedulePage /> },
         { path: 'manual', element: <ManualPage /> },
       ],

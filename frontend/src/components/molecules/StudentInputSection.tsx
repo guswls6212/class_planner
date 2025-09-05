@@ -8,6 +8,7 @@ interface StudentInputSectionProps {
   onNewStudentNameChange: (name: string) => void;
   onAddStudent: (name: string) => void;
   errorMessage?: string;
+  students?: Array<{ name: string }>;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -17,6 +18,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
   onNewStudentNameChange,
   onAddStudent,
   errorMessage: externalErrorMessage,
+  students = [],
   className = '',
   style = {},
 }) => {
@@ -32,10 +34,15 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
       return;
     }
 
-    // 중복 이름 체크는 부모 컴포넌트에서 처리
-    onAddStudent(name);
+    // 중복 이름 체크
+    const isDuplicate = students.some(student => student.name === name);
+    if (isDuplicate) {
+      setInternalErrorMessage('이미 존재하는 학생 이름입니다.');
+      return;
+    }
 
-    // 성공 시 에러 메시지 초기화
+    // onAddStudent 호출
+    onAddStudent(name);
     setInternalErrorMessage('');
   };
 
@@ -51,7 +58,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
     <div className={`${styles.container} ${className}`} style={style}>
       <div className={styles.input}>
         <Input
-          placeholder="학생 이름"
+          placeholder="학생 이름 (검색 가능)"
           value={newStudentName}
           onChange={handleInputChange}
           onKeyPress={e => {
@@ -65,14 +72,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
       <div className={styles.button}>
         <Button onClick={handleAddStudent}>추가</Button>
       </div>
-      {errorMessage && (
-        <div
-          className={styles.error}
-          style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}
-        >
-          {errorMessage}
-        </div>
-      )}
+      {errorMessage && <div className={styles.error}>{errorMessage}</div>}
     </div>
   );
 };

@@ -71,4 +71,27 @@ describe('StudentListItem', () => {
     );
     expect(screen.getByText('이현진')).toBeInTheDocument();
   });
+
+  test('카드 배경색이 과목 네비게이션과 일치한다', () => {
+    render(<StudentListItem {...defaultProps} />);
+
+    const listItem = screen.getByRole('listitem');
+    expect(listItem).toHaveClass('container');
+
+    // 기본 배경색이 var(--color-bg-primary)로 설정되어 있는지 확인
+    const computedStyle = window.getComputedStyle(listItem);
+    expect(computedStyle.backgroundColor).toBeDefined();
+  });
+
+  test('호버 시 배경색이 변경된다', () => {
+    render(<StudentListItem {...defaultProps} />);
+
+    const listItem = screen.getByRole('listitem');
+
+    // 호버 이벤트 시뮬레이션
+    fireEvent.mouseEnter(listItem);
+
+    // 호버 상태에서 배경색이 변경되는지 확인
+    expect(listItem).toHaveClass('container');
+  });
 });

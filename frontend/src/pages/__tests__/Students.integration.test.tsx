@@ -60,7 +60,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
       render(<StudentsPage />);
 
       // 학생 추가 입력창 찾기
-      const input = screen.getByPlaceholderText('학생 이름');
+      const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
       const addButton = screen.getByRole('button', { name: /추가/i });
 
       expect(input).toBeInTheDocument();
@@ -82,18 +82,18 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
     it('중복된 학생 이름 추가를 방지한다', async () => {
       render(<StudentsPage />);
 
-      const input = screen.getByPlaceholderText('학생 이름');
+      const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
       const addButton = screen.getByRole('button', { name: /추가/i });
 
       // 이미 존재하는 학생 이름 입력
       fireEvent.change(input, { target: { value: '김요섭' } });
       fireEvent.click(addButton);
 
-      // alert가 호출되었는지 확인 (중복 체크)
+      // 화면에 에러 메시지가 표시되는지 확인 (중복 체크)
       await waitFor(() => {
-        expect(window.alert).toHaveBeenCalledWith(
-          '이미 존재하는 학생 이름입니다.'
-        );
+        expect(
+          screen.getByText('이미 존재하는 학생 이름입니다.')
+        ).toBeInTheDocument();
       });
     });
 
@@ -143,20 +143,12 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
 
   describe('기본 과목 자동 생성', () => {
     it('페이지 로드 시 기본 과목이 자동으로 생성된다', async () => {
-      // subjects가 없는 상태로 설정
-      localStorageMock.getItem.mockImplementation(key => {
-        if (key === 'subjects') return null;
-        return JSON.stringify([]);
-      });
-
+      // Students 페이지는 더 이상 과목을 직접 관리하지 않음
+      // 과목 관리는 전역 상태(useGlobalSubjects)에서 처리됨
       render(<StudentsPage />);
 
-      // 기본 과목들이 localStorage에 저장되었는지 확인
       await waitFor(() => {
-        expect(localStorageMock.setItem).toHaveBeenCalledWith(
-          'subjects',
-          expect.stringContaining('초등수학')
-        );
+        expect(screen.getByTestId('students-page')).toBeInTheDocument();
       });
     });
   });
@@ -191,8 +183,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
 
       // localStorage.getItem이 호출되었는지 확인
       expect(localStorageMock.getItem).toHaveBeenCalledWith('students');
-      expect(localStorageMock.getItem).toHaveBeenCalledWith('subjects');
-      expect(localStorageMock.getItem).toHaveBeenCalledWith('enrollments');
+      // Students 페이지는 더 이상 subjects나 enrollments를 직접 관리하지 않음
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
         'ui:selectedStudent'
       );
@@ -201,7 +192,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
     it('데이터 변경 시 localStorage에 저장한다', async () => {
       render(<StudentsPage />);
 
-      const input = screen.getByPlaceholderText('학생 이름');
+      const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
       const addButton = screen.getByRole('button', { name: /추가/i });
 
       fireEvent.change(input, { target: { value: '테스트학생' } });

@@ -68,7 +68,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
       expect(screen.getByText('학생 이름을 입력해주세요.')).toBeInTheDocument();
 
       // 입력 필드에 텍스트 입력
-      const input = screen.getByPlaceholderText('학생 이름');
+      const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
       fireEvent.change(input, { target: { value: '새로운 학생' } });
 
       // 내부 에러 메시지가 사라져야 함
@@ -182,11 +182,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
       );
 
       const errorElement = screen.getByText('에러 메시지');
-      expect(errorElement).toHaveStyle({
-        color: 'rgb(255, 0, 0)',
-        fontSize: '12px',
-        marginTop: '4px',
-      });
+      expect(errorElement).toHaveClass('error');
     });
   });
 });

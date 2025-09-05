@@ -5,9 +5,10 @@ import PDFDownloadButton from '../components/molecules/PDFDownloadButton';
 import StudentPanel from '../components/organisms/StudentPanel';
 import TimeTableGrid from '../components/organisms/TimeTableGrid';
 import { useDisplaySessions } from '../hooks/useDisplaySessions';
+import { useGlobalSubjects } from '../hooks/useGlobalSubjects';
 import { useStudentPanel } from '../hooks/useStudentPanel';
 import { useTimeValidation } from '../hooks/useTimeValidation';
-import type { Enrollment, Session, Student, Subject } from '../lib/planner';
+import type { Enrollment, Session, Student } from '../lib/planner';
 import { weekdays } from '../lib/planner';
 import type { GroupSessionData } from '../types/scheduleTypes';
 import styles from './Schedule.module.css';
@@ -35,7 +36,7 @@ function useLocal<T>(key: string, initial: T) {
 }
 
 export default function SchedulePage() {
-  const [subjects] = useLocal<Subject[]>('subjects', []);
+  const { subjects } = useGlobalSubjects();
   const [enrollments, setEnrollments] = useLocal<Enrollment[]>(
     'enrollments',
     []

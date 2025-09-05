@@ -46,6 +46,30 @@ frontend/
 - 학생 관리 (추가, 삭제, 선택)
 - 기본 과목 자동 생성
 - localStorage 데이터 저장/복원
+- 학생 목록 카드 배경색 통일 (과목 네비게이션과 일치)
+- 학생 이름 입력창 검색 기능 통합
+
+#### **Subjects 페이지** (`/subjects`)
+
+**파일 구조:**
+
+- `src/pages/Subjects.tsx` - 메인 페이지 컴포넌트
+- `src/hooks/useSubjectManagement.ts` - 과목 CRUD 로직
+- `src/hooks/useGlobalSubjects.ts` - 전역 과목 상태 관리
+- `src/types/subjectsTypes.ts` - 과목 관련 타입 정의
+- `src/components/organisms/SubjectsPageLayout.tsx` - 페이지 레이아웃
+- `src/components/organisms/SubjectManagementSection.tsx` - 과목 관리 섹션
+- `src/components/molecules/SubjectInputSection.tsx` - 과목 입력 섹션
+- `src/components/molecules/SubjectList.tsx` - 과목 목록
+- `src/components/atoms/SubjectListItem.tsx` - 과목 아이템
+
+**주요 기능:**
+
+- 과목 관리 (추가, 삭제, 편집, 선택)
+- 색상 선택 기능
+- 실시간 검색 기능
+- localStorage 데이터 저장/복원
+- 학생 네비게이션과 일치하는 디자인
 
 #### **Schedule 페이지** (`/schedule`)
 
@@ -133,6 +157,31 @@ npm run build
 ✅ 커밋 및 푸시
 ✅ GitHub Pages 배포
 ```
+
+### 5. 작업 완료 후 자동 질문 프로세스
+
+**⚠️ 중요: 모든 작업 완료 시 다음 단계를 자동으로 질문해야 합니다**
+
+작업이 완료될 때마다 다음 질문을 사용자에게 제시하고, 사용자의 승인을 받은 후 실행해야 합니다:
+
+```
+[git status에서 수정한 내용 확인후
+수정한 내용들 기능,디자인 유지하기 위해서 테스트코드, 문서최신화 작업진행해줘]
+```
+
+**질문 시점:**
+
+- 기능 구현 완료 후
+- 버그 수정 완료 후
+- UI/UX 개선 완료 후
+- 코드 리팩토링 완료 후
+
+**실행 순서:**
+
+1. `git status` 명령어로 변경사항 확인
+2. 사용자에게 위 질문 제시
+3. 사용자 승인 후 테스트 코드 및 문서 최신화 작업 실행
+4. 작업 완료 후 커밋 및 배포 진행
 
 ---
 
@@ -294,12 +343,12 @@ npm run protection-check
 
 ## 📊 기능 체크리스트
 
-### ✅ 완료된 기능 (30개)
+### ✅ 완료된 기능 (37개)
 
 #### 핵심 기능
 
 - [x] 학생 관리 (추가, 삭제, 선택)
-- [x] 과목 관리 (기본 9개 과목 자동 생성)
+- [x] 과목 관리 (추가, 삭제, 편집, 선택, 색상 선택)
 - [x] 시간표 표시 (9:00-23:00, 30분 단위)
 - [x] 드래그 앤 드롭으로 수업 추가
 - [x] 수업 편집 (시간, 과목, 학생 변경)
@@ -317,11 +366,14 @@ npm run protection-check
 - [x] 에러 메시지 표시
 - [x] 로딩 상태 표시
 - [x] 애니메이션 효과
+- [x] 학생/과목 네비게이션 디자인 일관성
+- [x] 카드 배경색 통일 (기본 배경색, 호버 시 연한 회색)
+- [x] 검색 기능 통합 (입력창에서 실시간 검색)
 
 #### 사용성 기능
 
-- [x] 키보드 단축키 지원 (Enter 키로 학생 추가)
-- [x] 중복 학생 이름 방지
+- [x] 키보드 단축키 지원 (Enter 키로 학생/과목 추가)
+- [x] 중복 학생/과목 이름 방지
 - [x] 빈 이름 입력 방지
 - [x] 시간 범위 검증
 - [x] 경고 메시지 표시
@@ -329,19 +381,25 @@ npm run protection-check
 - [x] 수업 중복 방지
 - [x] 데이터 백업/복원 기능
 - [x] 다중 학생 그룹 수업 지원
-- [x] 학생 입력 후 엔터 키 시 입력창 완전 초기화
+- [x] 학생/과목 입력 후 엔터 키 시 입력창 완전 초기화
 - [x] 겹치는 세션 개별 표시
 - [x] 수강생 리스트 패널 위치 저장 (localStorage)
 - [x] 드래그 가능한 플로팅 패널 (직관적 UX)
+- [x] 과목 색상 선택 및 편집 기능
+- [x] 실시간 검색 기능 (학생/과목 이름으로 필터링)
+- [x] 학생/과목 중복 추가 시 화면 에러 메시지 표시
+- [x] 에러 메시지 UI/UX 일관성 (학생/과목 네비게이션 동일 스타일)
 
 #### 코드 구조 개선
 
 - [x] Atomic Design 패턴 적용
-- [x] 커스텀 훅 분리 (useStudentManagement, useDisplaySessions 등)
-- [x] 타입 정의 파일 분리 (scheduleTypes, studentsTypes)
+- [x] 커스텀 훅 분리 (useStudentManagement, useDisplaySessions, useSubjectManagement 등)
+- [x] 타입 정의 파일 분리 (scheduleTypes, studentsTypes, subjectsTypes)
 - [x] 컴포넌트 계층 구조 정리
 - [x] 재사용 가능한 로직 분리
 - [x] 패널 위치 관리 전용 훅 (usePanelPosition)
+- [x] 전역 과목 상태 관리 (useGlobalSubjects)
+- [x] 과목 관리 전용 컴포넌트 구조
 
 ### 🚀 향후 개선 사항 (12개)
 
@@ -363,7 +421,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 77%
+**전체 진행률**: 87%
 
 ---
 

@@ -1,0 +1,137 @@
+/* SubjectListItem.module.css */
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+}
+
+.container:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-light);
+}
+
+.container.selected {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.colorIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.name {
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  transition: font-weight 0.2s ease;
+}
+
+.name:hover {
+  color: var(--color-primary);
+}
+
+.selectedName {
+  font-weight: bold;
+  color: var(--color-primary);
+}
+
+.editForm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex: 1;
+}
+
+.editInput {
+  flex: 1;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-xs);
+  font-size: 14px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.colorInput {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-xs);
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+
+.colorInput::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.colorInput::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--border-radius-xs);
+}
+
+.saveButton,
+.cancelButton {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--border-radius-xs);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.saveButton {
+  background: var(--color-success);
+  color: white;
+}
+
+.saveButton:hover {
+  background: var(--color-success-dark);
+}
+
+.cancelButton {
+  background: var(--color-danger);
+  color: white;
+}
+
+.cancelButton:hover {
+  background: var(--color-danger-dark);
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.editButton,
+.deleteButton {
+  /* Button 컴포넌트의 스타일을 사용하므로 추가 스타일 불필요 */
+}

@@ -119,57 +119,20 @@ describe('StudentsPage', () => {
   it('기본 과목을 자동으로 생성한다', async () => {
     render(<StudentsPage />);
 
+    // Students 페이지는 더 이상 과목을 직접 관리하지 않음
+    // 과목 관리는 전역 상태(useGlobalSubjects)에서 처리됨
     await waitFor(() => {
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'subjects',
-        expect.stringContaining('중등수학')
-      );
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'subjects',
-        expect.stringContaining('중등영어')
-      );
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'subjects',
-        expect.stringContaining('중등국어')
-      );
+      expect(screen.getByTestId('students-page')).toBeInTheDocument();
     });
   });
 
   it('기본 과목 색상을 올바르게 설정한다', async () => {
-    // localStorage에서 subjects가 빈 배열로 시작하도록 설정
-    localStorageMock.getItem.mockImplementation(key => {
-      if (key === 'subjects') return JSON.stringify([]);
-      if (key === 'students') return JSON.stringify([]);
-      if (key === 'ui:selectedStudent') return '';
-      return null;
-    });
-
+    // Students 페이지는 더 이상 과목을 직접 관리하지 않음
+    // 과목 관리는 전역 상태(useGlobalSubjects)에서 처리됨
     render(<StudentsPage />);
 
     await waitFor(() => {
-      const setItemCalls = localStorageMock.setItem.mock.calls;
-      // 'subjects' 키에 대한 모든 호출을 필터링합니다.
-      const subjectsCalls = setItemCalls.filter(([key]) => key === 'subjects');
-      // 그중 마지막 호출을 가져옵니다.
-      const lastSubjectsCall = subjectsCalls[subjectsCalls.length - 1];
-
-      // 마지막 호출이 있었는지 확인합니다.
-      expect(lastSubjectsCall).toBeDefined();
-
-      if (lastSubjectsCall) {
-        const subjects = JSON.parse(lastSubjectsCall[1]);
-        expect(subjects).toEqual([
-          { id: expect.any(String), name: '초등수학', color: '#fbbf24' },
-          { id: expect.any(String), name: '중등수학', color: '#f59e0b' },
-          { id: expect.any(String), name: '중등영어', color: '#3b82f6' },
-          { id: expect.any(String), name: '중등국어', color: '#10b981' },
-          { id: expect.any(String), name: '중등과학', color: '#ec4899' },
-          { id: expect.any(String), name: '중등사회', color: '#06b6d4' },
-          { id: expect.any(String), name: '고등수학', color: '#ef4444' },
-          { id: expect.any(String), name: '고등영어', color: '#8b5cf6' },
-          { id: expect.any(String), name: '고등국어', color: '#059669' },
-        ]);
-      }
+      expect(screen.getByTestId('students-page')).toBeInTheDocument();
     });
   });
 

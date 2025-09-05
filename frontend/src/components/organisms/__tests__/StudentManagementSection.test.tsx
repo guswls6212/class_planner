@@ -63,7 +63,9 @@ describe('StudentManagementSection', () => {
     render(<StudentManagementSection {...defaultProps} />);
 
     expect(screen.getByText('학생 목록')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('학생 이름')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('학생 이름 (검색 가능)')
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
   });
 
@@ -83,7 +85,7 @@ describe('StudentManagementSection', () => {
       />
     );
 
-    const input = screen.getByPlaceholderText('학생 이름');
+    const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
     fireEvent.change(input, { target: { value: '새로운 학생' } });
 
     expect(mockOnChange).toHaveBeenCalledWith('새로운 학생');

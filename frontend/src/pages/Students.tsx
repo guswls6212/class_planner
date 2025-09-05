@@ -2,12 +2,10 @@ import { useState } from 'react';
 import StudentsPageLayout from '../components/organisms/StudentsPageLayout';
 import { useLocal } from '../hooks/useLocal';
 import { useStudentManagement } from '../hooks/useStudentManagement';
-import { useSubjectInitialization } from '../hooks/useSubjectInitialization';
-import type { Student, Subject } from '../lib/planner';
+import type { Student } from '../lib/planner';
 
 export default function StudentsPage() {
   const [students, setStudents] = useLocal<Student[]>('students', []);
-  const [subjects, setSubjects] = useLocal<Subject[]>('subjects', []);
   const [newStudentName, setNewStudentName] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     'ui:selectedStudent',
@@ -20,9 +18,6 @@ export default function StudentsPage() {
     setStudents,
     setNewStudentName
   );
-
-  // 과목 초기화
-  useSubjectInitialization(subjects, setSubjects);
 
   // 학생 추가 핸들러
   const handleAddStudent = (name: string) => {
@@ -53,6 +48,7 @@ export default function StudentsPage() {
       onAddStudent={handleAddStudent}
       onSelectStudent={handleSelectStudent}
       onDeleteStudent={handleDeleteStudent}
+      errorMessage={studentManagement.errorMessage}
     />
   );
 }

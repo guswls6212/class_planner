@@ -42,6 +42,7 @@ export const StudentManagementSection: React.FC<
         onNewStudentNameChange={onNewStudentNameChange}
         onAddStudent={onAddStudent}
         errorMessage={errorMessage}
+        students={students}
       />
 
       <StudentList

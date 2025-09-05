@@ -10,11 +10,12 @@ export const useStudentManagement = (
   students: Student[],
   setStudents: (students: Student[]) => void,
   setNewStudentName: (name: string) => void
-): StudentActions & { formData: AddStudentFormData } => {
+): StudentActions & { formData: AddStudentFormData; errorMessage: string } => {
   const [formData, setFormData] = useState<AddStudentFormData>({
     name: '',
     isValid: false,
   });
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const validateStudentName = (name: string): AddStudentFormData => {
     const trimmedName = name.trim();
@@ -41,18 +42,20 @@ export const useStudentManagement = (
     };
   };
 
-  const addStudent = (name: string) => {
+  const addStudent = (name: string): boolean => {
     const validation = validateStudentName(name);
 
     if (!validation.isValid) {
-      alert(validation.errorMessage);
-      return;
+      setErrorMessage(validation.errorMessage || '');
+      return false;
     }
 
     const student: Student = { id: uid(), name: validation.name };
     setStudents([...students, student]);
     setNewStudentName('');
     setFormData({ name: '', isValid: false });
+    setErrorMessage(''); // 성공 시 에러 메시지 초기화
+    return true;
   };
 
   const deleteStudent = (studentId: string) => {
@@ -78,5 +81,6 @@ export const useStudentManagement = (
     selectStudent,
     updateStudentName,
     formData,
+    errorMessage,
   };
 };

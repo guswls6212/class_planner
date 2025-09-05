@@ -10,6 +10,7 @@ interface StudentsPageLayoutProps {
   onAddStudent: (name: string) => void;
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
+  errorMessage?: string;
 }
 
 const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
@@ -20,6 +21,7 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
   onAddStudent,
   onSelectStudent,
   onDeleteStudent,
+  errorMessage,
 }) => {
   return (
     <div
@@ -39,6 +41,7 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
         onAddStudent={onAddStudent}
         onSelectStudent={onSelectStudent}
         onDeleteStudent={onDeleteStudent}
+        errorMessage={errorMessage}
       />
     </div>
   );

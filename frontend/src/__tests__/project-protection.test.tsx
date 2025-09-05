@@ -50,11 +50,9 @@ describe('전체 프로젝트 보호 테스트', () => {
         </BrowserRouter>
       );
 
-      // 기본 과목들이 생성되었는지 확인
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'subjects',
-        expect.stringContaining('초등수학')
-      );
+      // Students 페이지는 더 이상 과목을 직접 관리하지 않음
+      // 과목 관리는 전역 상태(useGlobalSubjects)에서 처리됨
+      expect(screen.getByTestId('students-page')).toBeInTheDocument();
     });
 
     it('학생 선택 기능이 정상 동작해야 한다', () => {
