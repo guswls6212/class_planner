@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import type {
   AddStudentRequest,
   ApiResponse,
@@ -13,7 +14,7 @@ const setCorsHeaders: SetCorsHeaders = res => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // CORS 설정
   setCorsHeaders(res);
 
@@ -40,7 +41,7 @@ export default async function handler(req: any, res: any) {
     // Supabase 클라이언트 생성
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     // 새로운 학생 데이터 생성
@@ -95,7 +96,7 @@ export default async function handler(req: any, res: any) {
       // 중복 이름 체크
       const isDuplicate = students.some(
         (student: Student) =>
-          student.name.toLowerCase() === newStudent.name.toLowerCase()
+          student.name.toLowerCase() === newStudent.name.toLowerCase(),
       );
 
       if (isDuplicate) {
@@ -132,15 +133,15 @@ export default async function handler(req: any, res: any) {
     };
 
     res.status(200).json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 에러 로깅
-    console.error('[실패] 학생 추가 에러:', error.message);
+    console.error('[실패] 학생 추가 에러:', error instanceof Error ? error.message : '알 수 없는 오류');
 
     // 에러 응답
     const response: ApiResponse<null> = {
       success: false,
       data: null,
-      error: error.message || '서버 내부 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : '서버 내부 오류가 발생했습니다.',
     };
 
     res.status(500).json(response);

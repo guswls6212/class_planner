@@ -105,7 +105,7 @@ const router = createBrowserRouter(
   ],
   {
     basename: '/class_planner',
-  },
+  }
 );
 
 createRoot(document.getElementById('root')!).render(
@@ -113,5 +113,5 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider>
       <RouterProvider router={router} />
     </ThemeProvider>
-  </StrictMode>,
+  </StrictMode>
 );

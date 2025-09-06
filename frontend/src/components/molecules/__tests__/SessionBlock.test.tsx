@@ -61,7 +61,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 과목명과 학생명이 표시되는지 확인
@@ -89,7 +89,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 과목명이 과목 없음으로 표시되는지 확인
@@ -113,7 +113,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     expect(screen.getByText('과목 없음')).toBeInTheDocument();
@@ -132,7 +132,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={mockOnClick}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -153,7 +153,7 @@ describe('SessionBlock', () => {
         width={200}
         yOffset={50}
         onClick={() => {}}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -176,7 +176,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -197,7 +197,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={25}
         onClick={() => {}}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -218,7 +218,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -242,7 +242,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={mockOnClick}
-      />,
+      />
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -280,7 +280,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 두 학생의 이름이 표시되는지 확인
@@ -326,7 +326,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 🆕 3명인 경우: "김요섭, 이현진, 강지원" 형식으로 표시되는지 확인
@@ -362,7 +362,7 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 3명인 경우: "김요섭, 이현진, 강지원" 형식으로 표시되는지 확인
@@ -411,12 +411,12 @@ describe('SessionBlock', () => {
         width={120}
         yOffset={0}
         onClick={() => {}}
-      />,
+      />
     );
 
     // 6명인 경우: "김요섭, 이현진, 강지원, 박민수, 정수영 외 1명" 형식으로 표시되는지 확인
     expect(
-      screen.getByText('김요섭, 이현진, 강지원, 박민수, 정수영 외 1명'),
+      screen.getByText('김요섭, 이현진, 강지원, 박민수, 정수영 외 1명')
     ).toBeInTheDocument();
   });
 });

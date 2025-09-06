@@ -9,7 +9,7 @@ vi.mock('html2canvas', () => ({
       toDataURL: vi.fn(() => 'data:image/png;base64,mock-data'),
       width: 1200,
       height: 800,
-    }),
+    })
   ),
 }));
 
@@ -147,7 +147,7 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
         name: '요일 *',
       }) as HTMLSelectElement;
       const startTimeInput = screen.getByDisplayValue(
-        '09:00',
+        '09:00'
       ) as HTMLInputElement;
 
       expect(subjectSelect.value).toBe('1'); // 중등수학의 ID
@@ -177,10 +177,10 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
         name: '과목 *',
       }) as HTMLSelectElement;
       const startTimeInput = screen.getByDisplayValue(
-        '09:00',
+        '09:00'
       ) as HTMLInputElement;
       const endTimeInput = screen.getByDisplayValue(
-        '10:00',
+        '10:00'
       ) as HTMLInputElement;
 
       fireEvent.change(subjectSelect, { target: { value: '2' } }); // 중등영어
@@ -192,7 +192,7 @@ describe('SchedulePage - 실제 사용자 시나리오 통합 테스트', () => 
         .getByText('수업 추가')
         .closest('[class*="modalContent"]');
       const addButton = modal?.querySelector(
-        '[class*="modalActions"] .button.primary',
+        '[class*="modalActions"] .button.primary'
       ) as HTMLButtonElement;
       expect(addButton).toBeInTheDocument();
       fireEvent.click(addButton);

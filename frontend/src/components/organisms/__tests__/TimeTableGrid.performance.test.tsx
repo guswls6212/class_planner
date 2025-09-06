@@ -66,7 +66,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
 
     const endTime = performance.now();
@@ -95,7 +95,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
 
     const endTime = performance.now();
@@ -124,7 +124,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
 
     const endTime = performance.now();
@@ -152,7 +152,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
 
     // 동일한 props로 재렌더링
@@ -166,7 +166,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
     const endTime = performance.now();
     const rerenderTime = endTime - startTime;
@@ -196,7 +196,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
     const smallTime = performance.now() - smallStart;
 
@@ -211,7 +211,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
     const mediumTime = performance.now() - mediumStart;
 
@@ -226,7 +226,7 @@ describe('TimeTableGrid 성능 테스트', () => {
         onSessionClick={mockOnSessionClick}
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />,
+      />
     );
     const largeTime = performance.now() - largeStart;
 

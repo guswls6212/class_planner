@@ -21,7 +21,7 @@ export const getLabelClasses = (
   error: boolean,
   success: boolean,
   warning: boolean,
-  disabled: boolean,
+  disabled: boolean
 ): string => {
   return [
     'label',
@@ -81,7 +81,7 @@ export default function Label({
     error,
     success,
     warning,
-    disabled,
+    disabled
   );
   const wrapperClasses = getWrapperClasses(variant);
 

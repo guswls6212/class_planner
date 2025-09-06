@@ -19,14 +19,14 @@ describe('Schedule.module.css', () => {
       expect(floatingPanelStyles.background).toBe('rgba(0, 0, 0, 0.85)');
       expect(floatingPanelStyles.backdropFilter).toBe('blur(10px)');
       expect(floatingPanelStyles.border).toBe(
-        '1px solid rgba(255, 255, 255, 0.2)',
+        '1px solid rgba(255, 255, 255, 0.2)'
       );
       expect(floatingPanelStyles.borderRadius).toBe('12px');
       expect(floatingPanelStyles.boxShadow).toContain(
-        '0 20px 25px -5px rgba(0, 0, 0, 0.8)',
+        '0 20px 25px -5px rgba(0, 0, 0, 0.8)'
       );
       expect(floatingPanelStyles.boxShadow).toContain(
-        '0 10px 10px -5px rgba(0, 0, 0, 0.6)',
+        '0 10px 10px -5px rgba(0, 0, 0, 0.6)'
       );
       expect(floatingPanelStyles.zIndex).toBe('9999');
     });
@@ -101,7 +101,7 @@ describe('Schedule.module.css', () => {
       expect(studentItemStyles.padding).toBe('8px 12px');
       expect(studentItemStyles.borderRadius).toBe('6px');
       expect(studentItemStyles.border).toBe(
-        '1px solid rgba(255, 255, 255, 0.15)',
+        '1px solid rgba(255, 255, 255, 0.15)'
       );
       expect(studentItemStyles.background).toBe('rgba(255, 255, 255, 0.05)');
       expect(studentItemStyles.color).toBe('#fff');
@@ -192,7 +192,7 @@ describe('Schedule.module.css', () => {
       expect(searchInputStyles.padding).toBe('8px 12px');
       expect(searchInputStyles.background).toBe('rgba(255, 255, 255, 0.1)');
       expect(searchInputStyles.border).toBe(
-        '1px solid rgba(255, 255, 255, 0.2)',
+        '1px solid rgba(255, 255, 255, 0.2)'
       );
       expect(searchInputStyles.borderRadius).toBe('6px');
       expect(searchInputStyles.color).toBe('#ffffff');

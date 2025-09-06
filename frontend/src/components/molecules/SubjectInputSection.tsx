@@ -37,7 +37,7 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
 
     // 중복 이름 체크
     const isDuplicate = subjects.some(
-      subject => subject.name.toLowerCase() === name.toLowerCase(),
+      subject => subject.name.toLowerCase() === name.toLowerCase()
     );
 
     if (isDuplicate) {

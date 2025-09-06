@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import type {
   ApiResponse,
   DeleteStudentRequest,
@@ -13,7 +14,7 @@ const setCorsHeaders: SetCorsHeaders = res => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // CORS 설정
   setCorsHeaders(res);
 
@@ -40,7 +41,7 @@ export default async function handler(req: any, res: any) {
     // Supabase 클라이언트 생성
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     // 기존 사용자 데이터 조회
@@ -78,12 +79,12 @@ export default async function handler(req: any, res: any) {
 
     // 학생 목록에서 해당 학생 제거
     const updatedStudents = students.filter(
-      student => student.id !== studentId
+      student => student.id !== studentId,
     );
 
     // 세션에서도 해당 학생 제거
     const sessions = currentData.sessions || [];
-    const updatedSessions = sessions.map((session: any) => ({
+    const updatedSessions = sessions.map((session: { student_ids?: string[] }) => ({
       ...session,
       student_ids:
         session.student_ids?.filter((id: string) => id !== studentId) || [],
@@ -118,15 +119,15 @@ export default async function handler(req: any, res: any) {
     };
 
     res.status(200).json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 에러 로깅
-    console.error('[실패] 학생 삭제 에러:', error.message);
+    console.error('[실패] 학생 삭제 에러:', error instanceof Error ? error.message : '알 수 없는 오류');
 
     // 에러 응답
     const response: ApiResponse<null> = {
       success: false,
       data: null,
-      error: error.message || '서버 내부 오류가 발생했습니다.',
+      error: error instanceof Error ? error.message : '서버 내부 오류가 발생했습니다.',
     };
 
     res.status(500).json(response);

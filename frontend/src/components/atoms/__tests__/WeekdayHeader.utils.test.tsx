@@ -39,7 +39,7 @@ describe('WeekdayHeader Utils', () => {
     it('커스텀 클래스가 있을 때 올바르게 병합한다', () => {
       const classes = getWeekdayHeaderClasses(
         'weekday-header',
-        'custom-header',
+        'custom-header'
       );
       expect(classes).toBe('weekday-header custom-header');
     });
@@ -66,7 +66,7 @@ describe('WeekdayHeader Utils', () => {
       const invalidIndex = 7;
 
       expect(() => getWeekdayName(invalidIndex)).toThrow(
-        `Invalid weekday index: ${invalidIndex}. Must be between 0 and 6.`,
+        `Invalid weekday index: ${invalidIndex}. Must be between 0 and 6.`
       );
     });
   });
@@ -110,7 +110,7 @@ describe('WeekdayHeader Utils', () => {
       const invalidName = '월요일';
 
       expect(() => getWeekdayIndex(invalidName)).toThrow(
-        `Invalid weekday name: ${invalidName}. Must be one of: 일, 월, 화, 수, 목, 금, 토`,
+        `Invalid weekday name: ${invalidName}. Must be one of: 일, 월, 화, 수, 목, 금, 토`
       );
     });
   });

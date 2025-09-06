@@ -28,7 +28,7 @@ export const useTimeValidation = () => {
   const handleStartTimeChange = (
     newStartTime: string,
     currentEndTime: string,
-    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void,
+    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void
   ) => {
     if (
       newStartTime &&
@@ -45,7 +45,7 @@ export const useTimeValidation = () => {
   const handleEndTimeChange = (
     newEndTime: string,
     currentStartTime: string,
-    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void,
+    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void
   ) => {
     if (
       newEndTime &&

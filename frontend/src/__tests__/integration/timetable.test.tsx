@@ -161,8 +161,8 @@ describe('시간표 통합 테스트', () => {
     expect(screen.getByText('주간 시간표')).toBeInTheDocument();
     expect(
       screen.getByText(
-        '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.',
-      ),
+        '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.'
+      )
     ).toBeInTheDocument();
     expect(screen.getByTestId('time-table-grid')).toBeInTheDocument();
   });
@@ -227,11 +227,11 @@ describe('시간표 통합 테스트', () => {
         // 여기서는 단순히 페이지가 렌더링되었는지만 확인
         expect(
           screen.getByText(
-            '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.',
-          ),
+            '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.'
+          )
         ).toBeInTheDocument();
       },
-      { timeout: 10000 },
+      { timeout: 10000 }
     );
   });
 

@@ -19,11 +19,16 @@ frontend/
 │   │   └── organisms/     # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
 │   ├── pages/             # 페이지 컴포넌트 (Schedule, Students, Manual)
 │   ├── hooks/             # 커스텀 훅 (useStudentManagement, useDisplaySessions 등)
-│   ├── types/             # 타입 정의 파일 (scheduleTypes, studentsTypes)
+│   ├── types/             # 타입 정의 파일 (scheduleTypes, studentsTypes, apiTypes)
 │   ├── lib/               # 유틸리티 함수 (planner, pdf-utils, build-info)
-│   └── contexts/          # React Context (ThemeContext)
+│   ├── contexts/          # React Context (ThemeContext)
+│   └── utils/             # API 클라이언트 및 유틸리티 (apiClient)
+├── api/                   # Vercel 서버리스 함수 (TypeScript)
+│   └── students/          # 학생 관리 API (add.ts, list.ts, delete.ts)
 ├── scripts/               # 빌드 및 배포 스크립트
 ├── public/                # 정적 파일
+├── vercel.json            # Vercel 배포 설정
+├── supabase-schema-simple.sql # Supabase 데이터베이스 스키마
 └── docs/                  # 문서 (통합됨)
 ```
 
@@ -95,6 +100,45 @@ frontend/
 
 - 사용자 매뉴얼 표시
 - 배포 상태 확인
+
+### 🔧 백엔드 및 배포 구조
+
+#### **Vercel 서버리스 함수** (`/api`)
+
+**파일 구조:**
+
+- `api/students/add.ts` - 학생 추가 API
+- `api/students/list.ts` - 학생 목록 조회 API
+- `api/students/delete.ts` - 학생 삭제 API
+- `vercel.json` - Vercel 배포 설정
+
+**주요 기능:**
+
+- TypeScript 기반 서버리스 함수
+- Supabase JSONB 데이터베이스 연동
+- CORS 헤더 자동 설정
+- 환경 변수 기반 설정
+
+#### **Supabase 데이터베이스**
+
+**스키마 구조:**
+
+- `user_data` 테이블 (JSONB 기반)
+- 인증 없이 작동하는 구조
+- Row Level Security 비활성화
+- 자동 업데이트 트리거
+
+**JSONB 데이터 구조:**
+
+```json
+{
+  "students": [...],
+  "subjects": [...],
+  "sessions": [...],
+  "settings": {...},
+  "version": "1.0"
+}
+```
 
 ---
 
@@ -343,7 +387,7 @@ npm run protection-check
 
 ## 📊 기능 체크리스트
 
-### ✅ 완료된 기능 (37개)
+### ✅ 완료된 기능 (42개)
 
 #### 핵심 기능
 
@@ -357,6 +401,15 @@ npm run protection-check
 - [x] localStorage 데이터 저장
 - [x] 반응형 디자인
 - [x] 다크/라이트 테마 지원
+
+#### 백엔드 및 API 기능
+
+- [x] Vercel 서버리스 함수 (TypeScript)
+- [x] Supabase JSONB 데이터베이스 연동
+- [x] 학생 CRUD API (추가, 조회, 삭제)
+- [x] CORS 헤더 자동 설정
+- [x] 환경 변수 기반 설정
+- [x] API 에러 처리 및 응답 표준화
 
 #### UI/UX 기능
 
@@ -421,7 +474,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 87%
+**전체 진행률**: 90%
 
 ---
 
