@@ -178,3 +178,4 @@ npm run prepare-commit
 
 **개발자**: guswls6212  
 **최종 업데이트**: 2024년 12월 19일
+# Vercel 자동 재배포 테스트
