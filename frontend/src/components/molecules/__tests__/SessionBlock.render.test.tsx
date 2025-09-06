@@ -64,7 +64,7 @@ describe('SessionBlock 렌더링 테스트', () => {
         session={mockSession}
         onClick={mockOnClick}
         {...mockProps}
-      />
+      />,
     );
 
     // 세션 정보가 올바르게 렌더링되어야 함
@@ -80,7 +80,7 @@ describe('SessionBlock 렌더링 테스트', () => {
         session={mockSession}
         onClick={mockOnClick}
         {...mockProps}
-      />
+      />,
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -97,7 +97,7 @@ describe('SessionBlock 렌더링 테스트', () => {
         session={mockSession}
         onClick={mockOnClick}
         {...mockProps}
-      />
+      />,
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -114,7 +114,7 @@ describe('SessionBlock 렌더링 테스트', () => {
         session={mockSession}
         onClick={mockOnClick}
         {...mockProps}
-      />
+      />,
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -131,7 +131,7 @@ describe('SessionBlock 렌더링 테스트', () => {
         session={mockSession}
         onClick={mockOnClick}
         {...mockProps}
-      />
+      />,
     );
 
     const sessionBlock = screen.getByTestId('session-block-session-1');
@@ -155,7 +155,7 @@ describe('SessionBlock 렌더링 테스트', () => {
 
     sessions.forEach(session => {
       const { unmount } = render(
-        <SessionBlock session={session} onClick={mockOnClick} {...mockProps} />
+        <SessionBlock session={session} onClick={mockOnClick} {...mockProps} />,
       );
 
       expect(screen.getByText('중등수학')).toBeInTheDocument();

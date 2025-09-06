@@ -41,13 +41,13 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const header = screen.getByTestId('students-panel-header');
       expect(header).toHaveAttribute(
         'title',
-        '드래그하여 패널 위치를 이동할 수 있습니다'
+        '드래그하여 패널 위치를 이동할 수 있습니다',
       );
     });
 
@@ -60,7 +60,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       expect(screen.getByText('수강생 리스트')).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const header = screen.getByTestId('students-panel-header');
@@ -98,7 +98,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const header = screen.getByTestId('students-panel-header');
@@ -116,7 +116,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const header = screen.getByTestId('students-panel-header');
@@ -134,7 +134,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const studentItem = screen.getByText('김요섭');
@@ -154,7 +154,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const panel = screen
@@ -175,7 +175,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       const panel = screen
@@ -197,7 +197,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       // 검색 기능
@@ -229,7 +229,7 @@ describe('StudentPanel - 드래그 기능 및 UX 테스트', () => {
           onStudentClick={mockHandlers.onStudentClick}
           onDragStart={mockHandlers.onDragStart}
           onSearchChange={mockHandlers.onSearchChange}
-        />
+        />,
       );
 
       expect(screen.getByText('김요섭')).toBeInTheDocument();

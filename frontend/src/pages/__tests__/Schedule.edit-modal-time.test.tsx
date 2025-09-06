@@ -86,7 +86,7 @@ describe('SchedulePage - 수업 편집 모달 시간 검증 테스트', () => {
 
     // 경고 메시지가 출력되었는지 확인
     expect(consoleSpy).toHaveBeenCalledWith(
-      '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.'
+      '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.',
     );
 
     consoleSpy.mockRestore();
@@ -116,7 +116,7 @@ describe('SchedulePage - 수업 편집 모달 시간 검증 테스트', () => {
 
     // 경고 메시지가 출력되었는지 확인
     expect(consoleSpy).toHaveBeenCalledWith(
-      '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.'
+      '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.',
     );
 
     consoleSpy.mockRestore();

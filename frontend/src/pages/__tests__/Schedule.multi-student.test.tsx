@@ -92,7 +92,7 @@ describe('SchedulePage - 다중 학생 그룹 수업 추가 테스트', () => {
     // 시뮬레이션: 각 학생에 대해 enrollment 생성
     const studentEnrollments = studentIds.map(studentId => {
       let enrollment = mockEnrollments.find(
-        e => e.studentId === studentId && e.subjectId === subjectId
+        e => e.studentId === studentId && e.subjectId === subjectId,
       );
 
       if (!enrollment) {

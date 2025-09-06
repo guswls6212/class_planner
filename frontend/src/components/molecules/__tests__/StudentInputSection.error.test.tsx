@@ -20,7 +20,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
         <StudentInputSection
           {...defaultProps}
           errorMessage={externalErrorMessage}
-        />
+        />,
       );
 
       expect(screen.getByText(externalErrorMessage)).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
         <StudentInputSection
           {...defaultProps}
           errorMessage={externalErrorMessage}
-        />
+        />,
       );
 
       // 빈 이름으로 추가 버튼 클릭 (내부 에러 메시지 발생)
@@ -52,7 +52,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
       // 외부 에러 메시지가 우선 표시되어야 함
       expect(screen.getByText(externalErrorMessage)).toBeInTheDocument();
       expect(
-        screen.queryByText('학생 이름을 입력해주세요.')
+        screen.queryByText('학생 이름을 입력해주세요.'),
       ).not.toBeInTheDocument();
     });
   });
@@ -73,7 +73,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
 
       // 내부 에러 메시지가 사라져야 함
       expect(
-        screen.queryByText('학생 이름을 입력해주세요.')
+        screen.queryByText('학생 이름을 입력해주세요.'),
       ).not.toBeInTheDocument();
     });
 
@@ -84,7 +84,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
           {...defaultProps}
           newStudentName="새로운 학생"
           onAddStudent={mockOnAddStudent}
-        />
+        />,
       );
 
       // 학생 이름이 있는 상태에서 추가 버튼 클릭
@@ -124,7 +124,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
           {...defaultProps}
           newStudentName="새로운 학생"
           onAddStudent={mockOnAddStudent}
-        />
+        />,
       );
 
       const addButton = screen.getByRole('button', { name: '추가' });
@@ -132,7 +132,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
 
       expect(mockOnAddStudent).toHaveBeenCalled();
       expect(
-        screen.queryByText('학생 이름을 입력해주세요.')
+        screen.queryByText('학생 이름을 입력해주세요.'),
       ).not.toBeInTheDocument();
     });
   });
@@ -146,7 +146,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
           {...defaultProps}
           newStudentName="새로운 학생"
           onAddStudent={mockOnAddStudent}
-        />
+        />,
       );
 
       // Enter 키 이벤트 대신 버튼 클릭으로 테스트
@@ -164,7 +164,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
           {...defaultProps}
           newStudentName="새로운 학생"
           onAddStudent={mockOnAddStudent}
-        />
+        />,
       );
 
       // Enter 키 이벤트 대신 버튼 클릭으로 테스트
@@ -178,7 +178,7 @@ describe('StudentInputSection - 에러 메시지 기능 테스트', () => {
   describe('스타일링', () => {
     it('에러 메시지가 올바른 스타일을 가진다', () => {
       render(
-        <StudentInputSection {...defaultProps} errorMessage="에러 메시지" />
+        <StudentInputSection {...defaultProps} errorMessage="에러 메시지" />,
       );
 
       const errorElement = screen.getByText('에러 메시지');

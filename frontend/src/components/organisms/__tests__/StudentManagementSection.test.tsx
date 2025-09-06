@@ -64,7 +64,7 @@ describe('StudentManagementSection', () => {
 
     expect(screen.getByText('학생 목록')).toBeInTheDocument();
     expect(
-      screen.getByPlaceholderText('학생 이름 (검색 가능)')
+      screen.getByPlaceholderText('학생 이름 (검색 가능)'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
   });
@@ -82,7 +82,7 @@ describe('StudentManagementSection', () => {
       <StudentManagementSection
         {...defaultProps}
         onNewStudentNameChange={mockOnChange}
-      />
+      />,
     );
 
     const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
@@ -100,7 +100,7 @@ describe('StudentManagementSection', () => {
         onAddStudent={mockOnAdd}
         onNewStudentNameChange={mockOnChange}
         newStudentName="새로운 학생"
-      />
+      />,
     );
 
     // 추가 버튼 클릭
@@ -123,7 +123,7 @@ describe('StudentManagementSection', () => {
       <StudentManagementSection
         {...defaultProps}
         onDeleteStudent={mockOnDelete}
-      />
+      />,
     );
 
     const deleteButtons = screen.getAllByRole('button', { name: /삭제/i });
@@ -134,7 +134,7 @@ describe('StudentManagementSection', () => {
 
   test('선택된 학생이 올바르게 표시된다', () => {
     render(
-      <StudentManagementSection {...defaultProps} selectedStudentId="1" />
+      <StudentManagementSection {...defaultProps} selectedStudentId="1" />,
     );
 
     const selectedStudent = screen.getByText('김요섭').closest('div');
@@ -147,7 +147,7 @@ describe('StudentManagementSection', () => {
       <StudentManagementSection
         {...defaultProps}
         onSelectStudent={mockOnSelect}
-      />
+      />,
     );
 
     const studentItem = screen.getByText('김요섭');

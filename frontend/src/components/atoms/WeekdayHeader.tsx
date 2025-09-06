@@ -16,7 +16,7 @@ export const WeekdayHeader: React.FC<WeekdayHeaderProps> = ({
   // 잘못된 요일 인덱스에 대한 에러 처리
   if (weekday < 0 || weekday >= weekdays.length) {
     throw new Error(
-      `Invalid weekday index: ${weekday}. Must be between 0 and 6.`
+      `Invalid weekday index: ${weekday}. Must be between 0 and 6.`,
     );
   }
 

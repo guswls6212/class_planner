@@ -69,7 +69,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // localStorage에 저장되었는지 확인
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('새과목')
+        expect.stringContaining('새과목'),
       );
     });
 
@@ -86,7 +86,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // 사용자에게 보이는 에러 메시지가 표시되는지 확인
       await waitFor(() => {
         expect(
-          screen.getByText('이미 존재하는 과목 이름입니다.')
+          screen.getByText('이미 존재하는 과목 이름입니다.'),
         ).toBeInTheDocument();
       });
 
@@ -96,7 +96,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // localStorage에 중복된 과목이 추가되지 않았는지 확인
       expect(localStorageMock.setItem).not.toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('중등수학')
+        expect.stringContaining('중등수학'),
       );
     });
 
@@ -121,7 +121,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // localStorage에서 삭제되었는지 확인
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.not.stringContaining('중등수학')
+        expect.not.stringContaining('중등수학'),
       );
     });
 
@@ -176,7 +176,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // localStorage에 저장되었는지 확인
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'subjects',
-        expect.stringContaining('수정된 수학')
+        expect.stringContaining('수정된 수학'),
       );
     });
   });
@@ -269,7 +269,7 @@ describe('SubjectsPage - 실제 사용자 시나리오 통합 테스트', () => 
       await waitFor(() => {
         expect(localStorageMock.setItem).toHaveBeenCalledWith(
           'subjects',
-          expect.any(String)
+          expect.any(String),
         );
       });
     });

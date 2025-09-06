@@ -17,7 +17,7 @@ describe('StudentInputSection', () => {
     render(<StudentInputSection {...defaultProps} />);
 
     expect(
-      screen.getByPlaceholderText('학생 이름 (검색 가능)')
+      screen.getByPlaceholderText('학생 이름 (검색 가능)'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
   });
@@ -32,7 +32,7 @@ describe('StudentInputSection', () => {
 
   test('입력값이 올바르게 표시된다', () => {
     render(
-      <StudentInputSection {...defaultProps} newStudentName="테스트 학생" />
+      <StudentInputSection {...defaultProps} newStudentName="테스트 학생" />,
     );
 
     const input = screen.getByDisplayValue('테스트 학생');
@@ -45,7 +45,7 @@ describe('StudentInputSection', () => {
       <StudentInputSection
         {...defaultProps}
         onNewStudentNameChange={mockOnChange}
-      />
+      />,
     );
 
     const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
@@ -61,7 +61,7 @@ describe('StudentInputSection', () => {
         {...defaultProps}
         onAddStudent={mockOnAdd}
         newStudentName="테스트 학생"
-      />
+      />,
     );
 
     const addButton = screen.getByRole('button', { name: '추가' });
@@ -77,7 +77,7 @@ describe('StudentInputSection', () => {
         {...defaultProps}
         onAddStudent={mockOnAdd}
         newStudentName="테스트 학생"
-      />
+      />,
     );
 
     const input = screen.getByPlaceholderText('학생 이름 (검색 가능)');
@@ -97,7 +97,7 @@ describe('StudentInputSection', () => {
   test('에러 메시지가 올바르게 표시된다', () => {
     const errorMessage = '학생 이름을 입력해주세요.';
     render(
-      <StudentInputSection {...defaultProps} errorMessage={errorMessage} />
+      <StudentInputSection {...defaultProps} errorMessage={errorMessage} />,
     );
 
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('StudentInputSection', () => {
     render(<StudentInputSection {...defaultProps} />);
 
     expect(
-      screen.queryByText('학생 이름을 입력해주세요.')
+      screen.queryByText('학생 이름을 입력해주세요.'),
     ).not.toBeInTheDocument();
   });
 

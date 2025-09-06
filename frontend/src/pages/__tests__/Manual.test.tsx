@@ -8,7 +8,7 @@ describe('ManualPage', () => {
 
     // 제목 확인
     expect(
-      screen.getByText('📚 클래스 플래너 사용자 매뉴얼')
+      screen.getByText('📚 클래스 플래너 사용자 매뉴얼'),
     ).toBeInTheDocument();
 
     // 주요 섹션들 확인
@@ -48,7 +48,7 @@ describe('ManualPage', () => {
     // 문제 해결 항목들 확인
     expect(screen.getByText('수업이 추가되지 않는 경우')).toBeInTheDocument();
     expect(
-      screen.getByText('드래그 앤 드롭이 작동하지 않는 경우')
+      screen.getByText('드래그 앤 드롭이 작동하지 않는 경우'),
     ).toBeInTheDocument();
     expect(screen.getByText('시간표가 표시되지 않는 경우')).toBeInTheDocument();
   });

@@ -84,7 +84,7 @@ describe('usePanelPosition - 패널 위치 관리 훅', () => {
       expect(result.current.position).toEqual(newPosition);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'ui:studentsPanelPos',
-        JSON.stringify(newPosition)
+        JSON.stringify(newPosition),
       );
     });
 
@@ -172,7 +172,7 @@ describe('usePanelPosition - 패널 위치 관리 훅', () => {
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'ui:studentsPanelPos',
-        JSON.stringify(newPosition)
+        JSON.stringify(newPosition),
       );
     });
 
@@ -183,7 +183,7 @@ describe('usePanelPosition - 패널 위치 관리 훅', () => {
       renderHook(() => usePanelPosition());
 
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        'ui:studentsPanelPos'
+        'ui:studentsPanelPos',
       );
     });
   });
