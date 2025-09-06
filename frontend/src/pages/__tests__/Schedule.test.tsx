@@ -52,6 +52,18 @@ describe('SchedulePage', () => {
     mockLocalStorage.getItem.mockReturnValue(null);
   });
 
+  it('Schedule 페이지에 로그인 버튼이 없어야 함', () => {
+    // Schedule 페이지에서 LoginButton 컴포넌트가 제거되었는지 확인
+    const schedulePageCode = SchedulePage.toString();
+
+    // LoginButton import가 없어야 함
+    expect(schedulePageCode).not.toContain('LoginButton');
+
+    // 로그인 버튼 관련 코드가 없어야 함
+    expect(schedulePageCode).not.toContain('로그인');
+    expect(schedulePageCode).not.toContain('loginButton');
+  });
+
   it('SchedulePage 컴포넌트가 올바르게 정의되어 있다', () => {
     expect(SchedulePage).toBeDefined();
     expect(typeof SchedulePage).toBe('function');

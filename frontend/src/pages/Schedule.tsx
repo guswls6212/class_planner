@@ -540,7 +540,9 @@ export default function SchedulePage() {
 
   return (
     <div className="timetable-container" style={{ padding: 16 }}>
-      <h2>주간 시간표</h2>
+      <div className={styles.pageHeader}>
+        <h2>주간 시간표</h2>
+      </div>
       {selectedStudentId ? (
         <p style={{ color: 'var(--color-gray-500)' }}>
           {students.find(s => s.id === selectedStudentId)?.name} 학생의

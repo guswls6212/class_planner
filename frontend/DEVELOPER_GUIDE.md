@@ -95,6 +95,7 @@ frontend/
 - 수업 편집 및 삭제
 - 학생별 필터링
 - PDF 다운로드
+- 로그인 기능 제거 (전역 네비게이션으로 이동)
 
 #### **Manual 페이지** (`/manual`)
 
@@ -118,6 +119,24 @@ frontend/
 - Supabase JSONB 데이터베이스 연동
 - CORS 헤더 자동 설정
 - 환경 변수 기반 설정
+
+#### **소셜 로그인 시스템**
+
+**파일 구조:**
+
+- `src/components/atoms/LoginButton.tsx` - 로그인 버튼 컴포넌트
+- `src/components/atoms/LoginButton.module.css` - 로그인 버튼 스타일
+- `src/utils/supabaseClient.ts` - Supabase 클라이언트 설정
+- `src/main.tsx` - 전역 네비게이션에 로그인 버튼 통합
+
+**주요 기능:**
+
+- Google OAuth 로그인
+- Kakao OAuth 로그인
+- 그라데이션 디자인 (네비게이션과 구분)
+- 로그인 아이콘 포함
+- 전역 네비게이션 통합
+- 프로필 이미지 표시 (로그인 후)
 
 #### **Supabase 데이터베이스**
 
@@ -422,6 +441,10 @@ npm run protection-check
 - [x] 학생/과목 네비게이션 디자인 일관성
 - [x] 카드 배경색 통일 (기본 배경색, 호버 시 연한 회색)
 - [x] 검색 기능 통합 (입력창에서 실시간 검색)
+- [x] 소셜 로그인 시스템 (Google, Kakao)
+- [x] 그라데이션 로그인 버튼 디자인
+- [x] 전역 네비게이션 통합
+- [x] 프로필 이미지 표시
 
 #### 사용성 기능
 
@@ -474,7 +497,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 90%
+**전체 진행률**: 95%
 
 ---
 

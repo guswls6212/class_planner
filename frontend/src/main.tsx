@@ -6,6 +6,7 @@ import {
   Outlet,
   RouterProvider,
 } from 'react-router-dom';
+import LoginButton from './components/atoms/LoginButton';
 import ThemeToggle from './components/atoms/ThemeToggle';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ManualPage from './pages/Manual';
@@ -82,7 +83,10 @@ function Layout() {
             사용법
           </NavLink>
         </div>
-        <ThemeToggle size="small" variant="both" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <ThemeToggle size="small" variant="both" />
+          <LoginButton />
+        </div>
       </nav>
       <Outlet />
     </div>

@@ -13,7 +13,10 @@ const setCorsHeaders: SetCorsHeaders = res => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
   // CORS 설정
   setCorsHeaders(res);
 
@@ -83,13 +86,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json(response);
   } catch (error: unknown) {
     // 에러 로깅
-    console.error('[실패] 학생 목록 조회 에러:', error instanceof Error ? error.message : '알 수 없는 오류');
+    console.error(
+      '[실패] 학생 목록 조회 에러:',
+      error instanceof Error ? error.message : '알 수 없는 오류',
+    );
 
     // 에러 응답
     const response: ApiResponse<null> = {
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : '서버 내부 오류가 발생했습니다.',
+      error:
+        error instanceof Error
+          ? error.message
+          : '서버 내부 오류가 발생했습니다.',
     };
 
     res.status(500).json(response);

@@ -9,15 +9,19 @@ import path from 'node:path';
 // import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default defineConfig(({ command: _command }) => ({
+ 
+export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: '/class_planner/',
+  base: command === 'serve' ? '/' : '/class_planner/',
   define: {
     // 빌드 시점의 환경 변수 정의
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(process.env.npm_package_version || '1.0.0'),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(
+      process.env.npm_package_version || '1.0.0',
+    ),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
-    'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(process.env.GIT_COMMIT_HASH || 'unknown'),
+    'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(
+      process.env.GIT_COMMIT_HASH || 'unknown',
+    ),
   },
   resolve: {
     alias: {
