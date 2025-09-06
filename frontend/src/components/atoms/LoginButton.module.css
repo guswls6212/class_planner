@@ -126,7 +126,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 12px;
   min-width: 200px;
-  z-index: 1000;
+  z-index: 10000;
   margin-top: 4px;
 }
 
@@ -157,7 +157,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 20px;
 }
 

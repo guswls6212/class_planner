@@ -9,7 +9,7 @@ import path from 'node:path';
 // import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
- 
+
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === 'serve' ? '/' : '/class_planner/',
