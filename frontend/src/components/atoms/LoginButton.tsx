@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useDataSync } from '../../hooks/useDataSync';
 import { supabase } from '../../utils/supabaseClient';
+import DataSyncModal from '../molecules/DataSyncModal';
 import styles from './LoginButton.module.css';
 
 interface LoginButtonProps {
@@ -18,6 +20,10 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // 데이터 동기화 훅
+  const { syncModal, isSyncing, checkSyncNeeded, closeSyncModal, executeSync } =
+    useDataSync();
 
   // Supabase 환경 변수 체크
   const isSupabaseConfigured =
@@ -45,10 +51,22 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     // 인증 상태 변화 감지
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
         setUser(session.user);
+
+        // 로그인 성공 시 데이터 동기화 확인
+        if (isSupabaseConfigured) {
+          try {
+            const scenario = await checkSyncNeeded();
+            if (scenario !== 'noData') {
+              // 동기화가 필요한 경우 모달이 자동으로 열림
+            }
+          } catch (error) {
+            console.warn('데이터 동기화 확인 실패:', error);
+          }
+        }
       } else {
         setIsLoggedIn(false);
         setUser(null);
@@ -56,7 +74,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [isSupabaseConfigured]);
+  }, [isSupabaseConfigured, checkSyncNeeded]);
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
@@ -226,6 +244,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
           </div>
         </div>
       )}
+
+      {/* 데이터 동기화 모달 */}
+      <DataSyncModal
+        modalState={syncModal}
+        isSyncing={isSyncing}
+        onClose={closeSyncModal}
+        onExecuteSync={executeSync}
+      />
     </>
   );
 };

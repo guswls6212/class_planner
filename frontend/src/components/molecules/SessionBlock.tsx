@@ -50,7 +50,7 @@ export const shouldShowSubjectName = (subjectName?: string): boolean => {
   return Boolean(subjectName);
 };
 
-export default function SessionBlock({
+function SessionBlock({
   session,
   subjects,
   enrollments,
@@ -224,3 +224,5 @@ export default function SessionBlock({
     </div>
   );
 }
+
+export default React.memo(SessionBlock);

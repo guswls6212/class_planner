@@ -5,17 +5,36 @@ import type {
   AddStudentFormData,
   StudentActions,
 } from '../types/studentsTypes';
+import { useDebouncedSave } from './useDebouncedSave';
+import { useFeatureGuard } from './useFeatureGuard';
 
 export const useStudentManagement = (
   students: Student[],
   setStudents: (students: Student[]) => void,
-  setNewStudentName: (name: string) => void
-): StudentActions & { formData: AddStudentFormData; errorMessage: string } => {
+  setNewStudentName: (name: string) => void,
+  subjects: Array<{ id: string; name: string; color: string }> = [],
+  sessions: Array<{
+    id: string;
+    enrollmentIds: string[];
+    weekday: number;
+    startsAt: string;
+    endsAt: string;
+    room?: string;
+  }> = [],
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }> = []
+): StudentActions & {
+  formData: AddStudentFormData;
+  errorMessage: string;
+  showUpgradeModal: () => void;
+} => {
   const [formData, setFormData] = useState<AddStudentFormData>({
     name: '',
     isValid: false,
   });
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const { guardFeature, showUpgradeModal } = useFeatureGuard();
+  const { saveData: debouncedSave } = useDebouncedSave();
 
   const validateStudentName = (name: string): AddStudentFormData => {
     const trimmedName = name.trim();
@@ -43,6 +62,14 @@ export const useStudentManagement = (
   };
 
   const addStudent = (name: string): boolean => {
+    // 기능 가드 체크 - 학생 수 제한 확인
+    guardFeature('addStudent', students.length, 10);
+
+    // 학생 수 제한 확인
+    if (students.length >= 10) {
+      return false;
+    }
+
     const validation = validateStudentName(name);
 
     if (!validation.isValid) {
@@ -51,15 +78,38 @@ export const useStudentManagement = (
     }
 
     const student: Student = { id: uid(), name: validation.name };
-    setStudents([...students, student]);
+    const newStudents = [...students, student];
+    setStudents(newStudents);
     setNewStudentName('');
     setFormData({ name: '', isValid: false });
     setErrorMessage(''); // 성공 시 에러 메시지 초기화
+
+    // Debounced 서버 저장
+    debouncedSave({
+      students: newStudents,
+      subjects,
+      sessions,
+      enrollments,
+      lastModified: new Date().toISOString(),
+      version: '1.0.0',
+    });
+
     return true;
   };
 
   const deleteStudent = (studentId: string) => {
-    setStudents(students.filter(x => x.id !== studentId));
+    const newStudents = students.filter(x => x.id !== studentId);
+    setStudents(newStudents);
+
+    // Debounced 서버 저장
+    debouncedSave({
+      students: newStudents,
+      subjects,
+      sessions,
+      enrollments,
+      lastModified: new Date().toISOString(),
+      version: '1.0.0',
+    });
   };
 
   const selectStudent = (studentId: string): string => {
@@ -75,6 +125,10 @@ export const useStudentManagement = (
     setFormData(validation);
   };
 
+  const handleShowUpgradeModal = () => {
+    showUpgradeModal('addStudent', students.length, 10);
+  };
+
   return {
     addStudent,
     deleteStudent,
@@ -82,5 +136,6 @@ export const useStudentManagement = (
     updateStudentName,
     formData,
     errorMessage,
+    showUpgradeModal: handleShowUpgradeModal,
   };
 };

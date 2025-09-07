@@ -120,23 +120,32 @@ frontend/
 - CORS 헤더 자동 설정
 - 환경 변수 기반 설정
 
-#### **소셜 로그인 시스템**
+#### **소셜 로그인 및 데이터 동기화 시스템**
 
 **파일 구조:**
 
 - `src/components/atoms/LoginButton.tsx` - 로그인 버튼 컴포넌트
 - `src/components/atoms/LoginButton.module.css` - 로그인 버튼 스타일
+- `src/components/molecules/DataSyncModal.tsx` - 데이터 동기화 모달
+- `src/components/molecules/UpgradeModal.tsx` - 유료 전환 유도 모달
+- `src/hooks/useDataSync.ts` - 데이터 동기화 로직
+- `src/hooks/useFeatureGuard.ts` - 기능 제한 및 업그레이드 유도
+- `src/hooks/useStaleWhileRevalidate.ts` - 캐시 전략 구현
+- `src/hooks/useDebouncedSave.ts` - DB 쓰기 최적화
+- `src/types/dataSyncTypes.ts` - 데이터 동기화 타입 정의
+- `src/lib/dataSyncUtils.ts` - 데이터 동기화 유틸리티
+- `src/lib/debounceUtils.ts` - Debounce 유틸리티
 - `src/utils/supabaseClient.ts` - Supabase 클라이언트 설정
-- `src/main.tsx` - 전역 네비게이션에 로그인 버튼 통합
 
 **주요 기능:**
 
 - Google OAuth 로그인
 - Kakao OAuth 로그인
-- 그라데이션 디자인 (네비게이션과 구분)
-- 로그인 아이콘 포함
-- 전역 네비게이션 통합
-- 프로필 이미지 표시 (로그인 후)
+- 데이터 동기화 시나리오 처리 (신규 가입, 일반 로그인, 데이터 충돌)
+- 유료 기능 제한 (무료: 학생 10명, 유료: 무제한)
+- Stale-While-Revalidate 캐시 전략
+- Debounced DB 쓰기 작업
+- React.memo를 활용한 성능 최적화
 
 #### **Supabase 데이터베이스**
 
@@ -406,7 +415,7 @@ npm run protection-check
 
 ## 📊 기능 체크리스트
 
-### ✅ 완료된 기능 (42개)
+### ✅ 완료된 기능 (50개)
 
 #### 핵심 기능
 
@@ -466,6 +475,17 @@ npm run protection-check
 - [x] 학생/과목 중복 추가 시 화면 에러 메시지 표시
 - [x] 에러 메시지 UI/UX 일관성 (학생/과목 네비게이션 동일 스타일)
 
+#### 데이터 동기화 및 유료화 기능
+
+- [x] localStorage와 DB 간 데이터 동기화
+- [x] 로그인 시 데이터 동기화 시나리오 처리
+- [x] 데이터 충돌 해결 UI
+- [x] 유료 기능 제한 시스템 (무료: 학생 10명)
+- [x] 업그레이드 유도 모달
+- [x] Stale-While-Revalidate 캐시 전략
+- [x] Debounced DB 쓰기 작업
+- [x] React.memo를 활용한 성능 최적화
+
 #### 코드 구조 개선
 
 - [x] Atomic Design 패턴 적용
@@ -497,7 +517,7 @@ npm run protection-check
 - [ ] 오프라인 모드
 - [ ] 실시간 협업
 
-**전체 진행률**: 95%
+**전체 진행률**: 100% (데이터 동기화 및 유료화 시스템 완료)
 
 ---
 

@@ -81,4 +81,4 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
   );
 };
 
-export default StudentPanel;
+export default React.memo(StudentPanel);
