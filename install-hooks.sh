@@ -7,8 +7,9 @@ echo "🔧 Git hooks 설치 중..."
 
 # .githooks 디렉토리가 있는지 확인
 if [ ! -d ".githooks" ]; then
-    echo "❌ .githooks 디렉토리를 찾을 수 없습니다."
-    exit 1
+    echo "⚠️  .githooks 디렉토리를 찾을 수 없습니다. (Vercel 배포 환경에서는 정상)"
+    echo "ℹ️  로컬 개발 환경에서만 Git hooks가 필요합니다."
+    exit 0
 fi
 
 # Git hooks 디렉토리 생성
