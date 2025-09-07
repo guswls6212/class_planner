@@ -2,11 +2,11 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch: # 수동 실행도 가능하도록 추가
 
 permissions:
-  contents: write  # gh-pages 브랜치 푸시를 위해 write 권한 필요
+  contents: write # gh-pages 브랜치 푸시를 위해 write 권한 필요
   pages: write
   id-token: write
 
@@ -17,39 +17,39 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # 전체 히스토리 가져오기
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-        
-    - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
-        
-    - name: Build with environment variables
-      run: |
-        cd frontend
-        VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
-        VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-        npm run build
-        
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-      
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./frontend/dist
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 전체 히스토리 가져오기
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build with environment variables
+        run: |
+          cd frontend
+          VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+          VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./frontend/dist
 
   deploy:
     environment:
@@ -73,45 +73,45 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-          
+
       - name: Install dependencies
         run: |
           cd frontend
           npm ci
-          
+
       - name: Build with environment variables
         run: |
           cd frontend
           VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
           VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
           npm run build
-          
+
       - name: Configure Git
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          
-      - name: Deploy to gh-pages branch
-        run: |
-          # gh-pages 브랜치로 체크아웃
-          git checkout gh-pages || git checkout -b gh-pages
-          
-          # 기존 파일 삭제 (숨김 파일 제외)
-          find . -maxdepth 1 -not -name '.git' -not -name '.gitignore' -not -name 'README.md' -exec rm -rf {} +
-          
-          # 새 빌드 파일 복사
-          cp -r frontend/dist/* .
-          
-          # 변경사항 커밋
-          git add .
-          git commit -m "Deploy: $(git log -1 --pretty=format:'%s') [$(date '+%Y-%m-%d %H:%M:%S')]" || exit 0
-          
-          # gh-pages 브랜치에 푸시
-          git push origin gh-pages
+
+        - name: Deploy to gh-pages branch
+          run: |
+            # gh-pages 브랜치로 체크아웃
+            git checkout gh-pages || git checkout -b gh-pages
+
+            # 기존 파일 삭제 (안전한 방법)
+            rm -rf *.html *.js *.css *.map assets/ 2>/dev/null || true
+
+            # 새 빌드 파일 복사
+            cp -r frontend/dist/* .
+
+            # 변경사항 커밋
+            git add .
+            git commit -m "Deploy: $(git log -1 --pretty=format:'%s') [$(date '+%Y-%m-%d %H:%M:%S')]" || exit 0
+
+            # gh-pages 브랜치에 푸시
+            git push origin gh-pages
