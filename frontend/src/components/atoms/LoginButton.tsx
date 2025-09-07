@@ -19,15 +19,24 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Supabase 환경 변수 체크
+  const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
+
   // 로그인 상태 확인
   React.useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
     const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setIsLoggedIn(true);
-        setUser(user);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          setIsLoggedIn(true);
+          setUser(user);
+        }
+      } catch (error) {
+        console.warn('Supabase 인증 확인 실패:', error);
       }
     };
     checkUser();
@@ -46,9 +55,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isSupabaseConfigured]);
 
   const handleGoogleLogin = async () => {
+    if (!isSupabaseConfigured) {
+      alert('로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.');
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -59,6 +73,11 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   };
 
   const handleKakaoLogin = async () => {
+    if (!isSupabaseConfigured) {
+      alert('로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.');
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'kakao',
       options: {
@@ -69,9 +88,16 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   };
 
   const handleLogout = async () => {
+    if (!isSupabaseConfigured) return;
+
     const { error } = await supabase.auth.signOut();
     if (error) console.error('로그아웃 에러:', error);
   };
+
+  // Supabase가 설정되지 않은 경우 로그인 버튼 숨기기
+  if (!isSupabaseConfigured) {
+    return null;
+  }
 
   if (isLoggedIn && user) {
     return (
