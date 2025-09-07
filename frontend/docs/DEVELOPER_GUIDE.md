@@ -25,11 +25,23 @@ frontend/
 │   └── utils/             # API 클라이언트 및 유틸리티 (apiClient)
 ├── api/                   # Vercel 서버리스 함수 (TypeScript)
 │   └── students/          # 학생 관리 API (add.ts, list.ts, delete.ts)
+├── automation/            # 자동화 테스트 시스템
+│   ├── auto-fix-test.js   # 완전 자동화 테스트
+│   ├── analyze-results.js # 테스트 결과 분석
+│   └── test-results/      # 테스트 결과 저장 폴더
+├── migration/             # 데이터베이스 Migration 관리
+│   ├── migrations/        # Migration SQL 파일들
+│   ├── run-migration.sh   # Migration 실행 스크립트
+│   ├── check-migration-status.sh # Migration 상태 확인
+│   └── MIGRATION_GUIDE.md # Migration 관리 가이드
+├── docs/                  # 프로젝트 문서
+│   ├── DEVELOPER_GUIDE.md # 개발자 가이드
+│   ├── SUPABASE_JSONB_GUIDE.md # Supabase 가이드
+│   └── ENVIRONMENT_SETUP.md # 환경 설정 가이드
 ├── scripts/               # 빌드 및 배포 스크립트
 ├── public/                # 정적 파일
 ├── vercel.json            # Vercel 배포 설정
-├── supabase-schema-simple.sql # Supabase 데이터베이스 스키마
-└── docs/                  # 문서 (통합됨)
+└── supabase-schema-simple.sql # Supabase 데이터베이스 스키마
 ```
 
 ### 🎯 주요 페이지 및 컴포넌트 구조
@@ -441,6 +453,23 @@ npm run analyze-results
 - 테스트 계정 정보는 환경변수로 관리
 - `.env.local` 파일은 Git에 커밋되지 않음
 
+#### **Migration 관리 시스템**
+
+**파일 구조:**
+
+- `migrations/` - Migration SQL 파일들
+- `run-migration.sh` - Migration 실행 스크립트
+- `check-migration-status.sh` - Migration 상태 확인 스크립트
+- `MIGRATION_GUIDE.md` - Migration 관리 가이드
+
+**주요 기능:**
+
+- **자동 로그 기록**: 모든 Migration 실행 시 `migration_log` 테이블에 자동 기록
+- **중복 실행 방지**: `ON CONFLICT DO NOTHING`으로 안전한 재실행
+- **일관된 관리**: 표준화된 Migration 실행 프로세스
+- **상태 추적**: 실행 시간, 상태, 설명 자동 기록
+- **롤백 지원**: Migration 롤백 기능 제공
+
 ### 자동화 테스트 환경변수 설정
 
 #### 📋 개요
@@ -523,7 +552,7 @@ echo $TEST_PASSWORD
 TEST_EMAIL=testuser123@gmail.com
 TEST_PASSWORD=TestPassword123!
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=test...
 ```
 
 ---

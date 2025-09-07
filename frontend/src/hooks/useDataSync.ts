@@ -31,11 +31,82 @@ export const useDataSync = (): UseDataSyncReturn => {
     scenario: 'noData',
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [realtimeChannel, setRealtimeChannel] = useState<ReturnType<
+    typeof supabase.channel
+  > | null>(null);
 
   // 모달 상태 변경 추적
   useEffect(() => {
     console.log('useDataSync: 모달 상태 변경됨:', syncModal);
   }, [syncModal]);
+
+  // Realtime 구독 설정
+  useEffect(() => {
+    const setupRealtimeSubscription = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 기존 채널 정리
+        if (realtimeChannel) {
+          await supabase.removeChannel(realtimeChannel);
+        }
+
+        // 새로운 Realtime 채널 생성
+        const channel = supabase
+          .channel('user_data_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'user_data',
+              filter: `user_id=eq.${user.id}`,
+            },
+            payload => {
+              console.log('🔄 Realtime 변경 감지:', payload);
+
+              if (payload.eventType === 'UPDATE' && payload.new) {
+                // 서버에서 데이터가 업데이트되었을 때 로컬 저장소도 업데이트
+                const serverData = payload.new.data as ClassPlannerData;
+                if (serverData && validateData(serverData)) {
+                  saveToLocalStorage(serverData);
+                  console.log('✅ Realtime으로 로컬 데이터 동기화 완료');
+
+                  // 페이지 새로고침을 통해 UI 업데이트
+                  window.location.reload();
+                }
+              } else if (payload.eventType === 'INSERT' && payload.new) {
+                // 새 데이터가 삽입되었을 때
+                const serverData = payload.new.data as ClassPlannerData;
+                if (serverData && validateData(serverData)) {
+                  saveToLocalStorage(serverData);
+                  console.log('✅ Realtime으로 새 데이터 동기화 완료');
+                  window.location.reload();
+                }
+              }
+            }
+          )
+          .subscribe();
+
+        setRealtimeChannel(channel);
+        console.log('🔔 Realtime 구독 설정 완료');
+      } catch (error) {
+        console.error('❌ Realtime 구독 설정 실패:', error);
+      }
+    };
+
+    setupRealtimeSubscription();
+
+    // 컴포넌트 언마운트 시 채널 정리
+    return () => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
+  }, [realtimeChannel]);
 
   /**
    * 데이터 요약 정보 생성
@@ -115,19 +186,24 @@ export const useDataSync = (): UseDataSyncReturn => {
           console.log('user_data 테이블 조회 시작');
           const { data, error } = await supabase
             .from('user_data')
-            .select('data')
-            .eq('user_id', user.id);
+            .select('data, updated_at')
+            .eq('user_id', user.id)
+            .single();
 
           console.log('서버 데이터 조회 결과:', { data, error });
 
-          if (!error && data && data.length > 0) {
+          if (!error && data) {
             hasServerData = true;
-            serverData = data[0].data;
+            serverData = data.data;
             console.log('서버 데이터 발견:', Object.keys(serverData));
+            console.log('서버 데이터 업데이트 시간:', data.updated_at);
+          } else if (error && error.code === 'PGRST116') {
+            // PGRST116: No rows found (정상적인 경우)
+            console.log('서버에 데이터 없음 (새 사용자)');
           } else if (error) {
-            console.log('서버 데이터 없음 또는 에러:', error.message);
+            console.log('서버 데이터 조회 오류:', error.message);
           } else {
-            console.log('서버에 데이터 없음 (빈 배열)');
+            console.log('서버에 데이터 없음');
           }
         } else {
           console.log('로그인된 사용자 없음');
@@ -241,11 +317,16 @@ export const useDataSync = (): UseDataSyncReturn => {
               throw new Error('유효하지 않은 로컬 데이터입니다.');
             }
 
-            const { error } = await supabase.from('user_data').upsert({
-              user_id: user.id,
-              data: localData,
-              updated_at: new Date().toISOString(),
-            });
+            const { error } = await supabase.from('user_data').upsert(
+              {
+                user_id: user.id,
+                data: localData,
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'user_id',
+              }
+            );
 
             if (error) throw error;
 
@@ -265,7 +346,7 @@ export const useDataSync = (): UseDataSyncReturn => {
             // 서버 데이터를 로컬에 다운로드
             const { data, error } = await supabase
               .from('user_data')
-              .select('data')
+              .select('data, updated_at')
               .eq('user_id', user.id)
               .single();
 
@@ -292,7 +373,7 @@ export const useDataSync = (): UseDataSyncReturn => {
             // 서버 데이터 유지 (로컬 데이터 무시)
             const { data, error } = await supabase
               .from('user_data')
-              .select('data')
+              .select('data, updated_at')
               .eq('user_id', user.id)
               .single();
 

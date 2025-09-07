@@ -32,8 +32,11 @@
     "setup-env": "./setup-env.sh",
     "dev:setup": "npm run setup-env && npm run dev",
     "install-hooks": "../install-hooks.sh",
-    "test:auto-fix": "node auto-fix-test.js",
-    "analyze-results": "node analyze-results.js"
+    "test:auto-fix": "node automation/auto-fix-test.js",
+    "analyze-results": "node automation/analyze-results.js",
+    "migration:run": "./migration/run-migration.sh",
+    "migration:status": "./migration/check-migration-status.sh",
+    "migration:show": "cat migration/migrations/"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",
