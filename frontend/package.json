@@ -28,7 +28,9 @@
     "protection-check": "chmod +x scripts/protection-check.sh && ./scripts/protection-check.sh",
     "prepare-commit": "npm run protection-check && npm run format",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "setup-env": "./setup-env.sh",
+    "dev:setup": "npm run setup-env && npm run dev"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",
