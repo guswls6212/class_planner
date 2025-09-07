@@ -36,9 +36,11 @@ jobs:
         cd frontend
         npm ci
         
-    - name: Build
+    - name: Build with environment variables
       run: |
         cd frontend
+        VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" \
+        VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
         npm run build
         
     - name: Setup Pages
