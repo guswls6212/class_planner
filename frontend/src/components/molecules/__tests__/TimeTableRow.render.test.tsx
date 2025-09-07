@@ -89,7 +89,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
     ]);
 
     render(
-      <TimeTableRow {...defaultProps} sessions={sessionsWithoutEnrollment} />,
+      <TimeTableRow {...defaultProps} sessions={sessionsWithoutEnrollment} />
     );
 
     // enrollment가 없으면 "과목 없음"을 표시
@@ -117,7 +117,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
         {...defaultProps}
         students={[]} // 빈 학생 배열
         sessions={sessionsWithoutStudent}
-      />,
+      />
     );
 
     // 학생 정보가 없으면 과목명만 표시
@@ -153,7 +153,7 @@ describe('TimeTableRow - 학생 정보 전달 테스트', () => {
     ]);
 
     render(
-      <TimeTableRow {...defaultProps} weekday={1} sessions={multiDaySessions} />,
+      <TimeTableRow {...defaultProps} weekday={1} sessions={multiDaySessions} />
     );
 
     // 화요일 세션만 표시되어야 함

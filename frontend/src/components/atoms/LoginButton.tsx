@@ -20,7 +20,8 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Supabase 환경 변수 체크
-  const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const isSupabaseConfigured =
+    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   // 로그인 상태 확인
   React.useEffect(() => {

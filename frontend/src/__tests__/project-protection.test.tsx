@@ -33,7 +33,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Students />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       const addButton = screen.getByRole('button', { name: /추가/i });
@@ -47,7 +47,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Students />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // Students 페이지는 더 이상 과목을 직접 관리하지 않음
@@ -66,7 +66,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Students />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // 학생 추가 후 선택 가능한지 확인
@@ -79,7 +79,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       // 학생이 추가되었는지 확인
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'students',
-        expect.stringContaining('테스트 학생'),
+        expect.stringContaining('테스트 학생')
       );
     });
   });
@@ -108,7 +108,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Schedule />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // 요일 헤더들이 표시되어야 함
@@ -144,7 +144,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Schedule />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // 시간 슬롯들이 표시되어야 함
@@ -176,7 +176,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Schedule />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // 시간표 그리드가 존재하는지 확인
@@ -196,7 +196,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Students />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       // 페이지가 정상 렌더링되는지 확인
@@ -217,11 +217,11 @@ describe('전체 프로젝트 보호 테스트', () => {
           const atomsPath = path.default.join(__dirname, '../components/atoms');
           const moleculesPath = path.default.join(
             __dirname,
-            '../components/molecules',
+            '../components/molecules'
           );
           const organismsPath = path.default.join(
             __dirname,
-            '../components/organisms',
+            '../components/organisms'
           );
           const pagesPath = path.default.join(__dirname, '../pages');
 
@@ -306,7 +306,7 @@ describe('전체 프로젝트 보호 테스트', () => {
       render(
         <BrowserRouter>
           <Schedule />
-        </BrowserRouter>,
+        </BrowserRouter>
       );
 
       const downloadButton = screen.getByRole('button', {

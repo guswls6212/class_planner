@@ -66,7 +66,7 @@ describe('네비게이션 레이아웃', () => {
     render(
       <TestWrapper>
         <LayoutComponent />
-      </TestWrapper>,
+      </TestWrapper>
     );
 
     const navLinks = screen.getAllByRole('link');
@@ -81,7 +81,7 @@ describe('네비게이션 레이아웃', () => {
     render(
       <TestWrapper>
         <LayoutComponent />
-      </TestWrapper>,
+      </TestWrapper>
     );
 
     const themeToggle = screen.getByTestId('theme-toggle');
@@ -100,7 +100,7 @@ describe('네비게이션 레이아웃', () => {
     render(
       <TestWrapper>
         <LayoutComponent />
-      </TestWrapper>,
+      </TestWrapper>
     );
 
     const nav = document.querySelector('nav');

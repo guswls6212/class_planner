@@ -30,7 +30,9 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
     "setup-env": "./setup-env.sh",
-    "dev:setup": "npm run setup-env && npm run dev"
+    "dev:setup": "npm run setup-env && npm run dev",
+    "install-hooks": "../install-hooks.sh",
+    "postinstall": "npm run install-hooks"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",

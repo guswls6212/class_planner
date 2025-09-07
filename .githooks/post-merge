@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Git post-merge hook
+# git pull 또는 merge 후 자동으로 .env.local 파일 생성
+
+echo "🔄 코드 병합 감지"
+
+# frontend 디렉토리로 이동
+cd frontend 2>/dev/null || {
+    echo "❌ frontend 디렉토리를 찾을 수 없습니다."
+    exit 1
+}
+
+# .env.local 파일이 없으면 생성
+if [ ! -f ".env.local" ]; then
+    if [ -f ".env.example" ]; then
+        cp .env.example .env.local
+        echo "✅ .env.local 파일이 자동으로 생성되었습니다."
+        echo "📝 Supabase 프로젝트 정보를 입력하세요:"
+        echo "   - VITE_SUPABASE_URL"
+        echo "   - VITE_SUPABASE_ANON_KEY"
+    else
+        echo "❌ .env.example 파일을 찾을 수 없습니다."
+    fi
+else
+    echo "ℹ️  .env.local 파일이 이미 존재합니다."
+fi
+
+# 원래 디렉토리로 돌아가기
+cd ..

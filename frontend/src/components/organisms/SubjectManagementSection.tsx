@@ -27,7 +27,7 @@ const SubjectManagementSection: React.FC<SubjectManagementSectionProps> = ({
   // 검색어에 따라 과목 필터링
   const filteredSubjects = searchQuery.trim()
     ? subjects.filter(subject =>
-        subject.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        subject.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : subjects;
 

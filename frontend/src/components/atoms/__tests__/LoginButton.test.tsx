@@ -63,7 +63,7 @@ describe('LoginButton', () => {
     fireEvent.click(loginButton);
 
     expect(
-      screen.getByText('소셜 계정으로 간편하게 로그인하세요'),
+      screen.getByText('소셜 계정으로 간편하게 로그인하세요')
     ).toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe('LoginButton', () => {
     fireEvent.click(closeButton);
 
     expect(
-      screen.queryByText('소셜 계정으로 간편하게 로그인하세요'),
+      screen.queryByText('소셜 계정으로 간편하게 로그인하세요')
     ).not.toBeInTheDocument();
   });
 
@@ -115,7 +115,7 @@ describe('LoginButton', () => {
     }
 
     expect(
-      screen.queryByText('소셜 계정으로 간편하게 로그인하세요'),
+      screen.queryByText('소셜 계정으로 간편하게 로그인하세요')
     ).not.toBeInTheDocument();
   });
 

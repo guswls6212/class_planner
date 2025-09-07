@@ -9,14 +9,14 @@ export default function StudentsPage() {
   const [newStudentName, setNewStudentName] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     'ui:selectedStudent',
-    '',
+    ''
   );
 
   // 커스텀 훅 사용
   const studentManagement = useStudentManagement(
     students,
     setStudents,
-    setNewStudentName,
+    setNewStudentName
   );
 
   // 학생 추가 핸들러

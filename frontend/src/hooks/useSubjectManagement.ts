@@ -8,7 +8,7 @@ import type {
 
 export const useSubjectManagement = (
   initialSubjects: Subject[],
-  initialSelectedId: string = '',
+  initialSelectedId: string = ''
 ): SubjectManagementData & SubjectActions => {
   const [subjects, setSubjects] = useState<Subject[]>(initialSubjects);
   const [selectedSubjectId, setSelectedSubjectId] =
@@ -24,7 +24,7 @@ export const useSubjectManagement = (
 
       // 중복 이름 체크
       const isDuplicate = subjects.some(
-        subject => subject.name.toLowerCase() === name.toLowerCase(),
+        subject => subject.name.toLowerCase() === name.toLowerCase()
       );
 
       if (isDuplicate) {
@@ -40,7 +40,7 @@ export const useSubjectManagement = (
 
       setSubjects(prev => [...prev, newSubject]);
     },
-    [subjects],
+    [subjects]
   );
 
   // 과목 삭제
@@ -53,7 +53,7 @@ export const useSubjectManagement = (
         setSelectedSubjectId('');
       }
     },
-    [selectedSubjectId],
+    [selectedSubjectId]
   );
 
   // 과목 선택
@@ -73,7 +73,7 @@ export const useSubjectManagement = (
       const isDuplicate = subjects.some(
         subject =>
           subject.id !== subjectId &&
-          subject.name.toLowerCase() === name.toLowerCase(),
+          subject.name.toLowerCase() === name.toLowerCase()
       );
 
       if (isDuplicate) {
@@ -85,11 +85,11 @@ export const useSubjectManagement = (
         prev.map(subject =>
           subject.id === subjectId
             ? { ...subject, name: name.trim(), color }
-            : subject,
-        ),
+            : subject
+        )
       );
     },
-    [subjects],
+    [subjects]
   );
 
   return {

@@ -74,7 +74,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
       await waitFor(() => {
         expect(localStorageMock.setItem).toHaveBeenCalledWith(
           'students',
-          expect.stringContaining('새학생'),
+          expect.stringContaining('새학생')
         );
       });
     });
@@ -92,7 +92,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
       // 화면에 에러 메시지가 표시되는지 확인 (중복 체크)
       await waitFor(() => {
         expect(
-          screen.getByText('이미 존재하는 학생 이름입니다.'),
+          screen.getByText('이미 존재하는 학생 이름입니다.')
         ).toBeInTheDocument();
       });
     });
@@ -113,7 +113,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
       await waitFor(() => {
         expect(localStorageMock.setItem).toHaveBeenCalledWith(
           'students',
-          expect.not.stringContaining('김요섭'),
+          expect.not.stringContaining('김요섭')
         );
       });
     });
@@ -134,7 +134,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
         await waitFor(() => {
           expect(localStorageMock.setItem).toHaveBeenCalledWith(
             'ui:selectedStudent',
-            '1',
+            '1'
           );
         });
       }
@@ -185,7 +185,7 @@ describe('StudentsPage - 실제 사용자 시나리오 통합 테스트', () => 
       expect(localStorageMock.getItem).toHaveBeenCalledWith('students');
       // Students 페이지는 더 이상 subjects나 enrollments를 직접 관리하지 않음
       expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        'ui:selectedStudent',
+        'ui:selectedStudent'
       );
     });
 

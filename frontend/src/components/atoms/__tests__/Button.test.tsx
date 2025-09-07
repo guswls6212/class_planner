@@ -12,7 +12,7 @@ describe('Button', () => {
     render(
       <Button onClick={() => {}} disabled>
         비활성화된 버튼
-      </Button>,
+      </Button>
     );
 
     const button = screen.getByText('비활성화된 버튼');
@@ -23,7 +23,7 @@ describe('Button', () => {
     render(
       <Button onClick={() => {}} disabled={false}>
         활성화된 버튼
-      </Button>,
+      </Button>
     );
 
     const button = screen.getByText('활성화된 버튼');
@@ -34,7 +34,7 @@ describe('Button', () => {
     render(
       <Button onClick={() => {}} variant="danger">
         위험 버튼
-      </Button>,
+      </Button>
     );
 
     const button = screen.getByText('위험 버튼');
@@ -45,7 +45,7 @@ describe('Button', () => {
     render(
       <Button onClick={() => {}} size="large">
         큰 버튼
-      </Button>,
+      </Button>
     );
 
     const button = screen.getByText('큰 버튼');

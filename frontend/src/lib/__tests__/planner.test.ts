@@ -147,7 +147,7 @@ describe('planner.ts', () => {
       };
 
       expect(
-        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments),
+        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments)
       ).toBe(true);
     });
 
@@ -166,7 +166,7 @@ describe('planner.ts', () => {
       };
 
       expect(
-        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments),
+        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments)
       ).toBe(false);
     });
 
@@ -185,7 +185,7 @@ describe('planner.ts', () => {
       };
 
       expect(
-        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments),
+        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments)
       ).toBe(false);
     });
 
@@ -204,7 +204,7 @@ describe('planner.ts', () => {
       };
 
       expect(
-        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments),
+        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments)
       ).toBe(false);
     });
 
@@ -223,7 +223,7 @@ describe('planner.ts', () => {
       };
 
       expect(
-        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments),
+        sessionsOverlapSameStudent(sessionA, sessionB, mockEnrollments)
       ).toBe(false);
     });
   });
@@ -275,7 +275,7 @@ describe('planner.ts', () => {
 
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
           'test-key',
-          JSON.stringify(testValue),
+          JSON.stringify(testValue)
         );
       });
 
@@ -287,19 +287,19 @@ describe('planner.ts', () => {
 
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
           'string-key',
-          '"test string"',
+          '"test string"'
         );
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
           'number-key',
-          '42',
+          '42'
         );
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
           'boolean-key',
-          'true',
+          'true'
         );
         expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
           'array-key',
-          '[1,2,3]',
+          '[1,2,3]'
         );
       });
     });
