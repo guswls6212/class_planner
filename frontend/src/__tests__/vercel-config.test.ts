@@ -19,7 +19,7 @@ describe('Vercel 배포 설정', () => {
 
     // API 라우트가 올바르게 설정되어 있는지 확인
     const apiRoute = config.routes.find(
-      (route: { src: string; dest: string }) => route.src === '/api/(.*)'
+      (route: { src: string; dest: string }) => route.src === '/api/(.*)',
     );
     expect(apiRoute).toBeDefined();
     expect(apiRoute.dest).toBe('/api/$1');

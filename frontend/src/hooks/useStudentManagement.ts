@@ -9,7 +9,7 @@ import type {
 export const useStudentManagement = (
   students: Student[],
   setStudents: (students: Student[]) => void,
-  setNewStudentName: (name: string) => void
+  setNewStudentName: (name: string) => void,
 ): StudentActions & { formData: AddStudentFormData; errorMessage: string } => {
   const [formData, setFormData] = useState<AddStudentFormData>({
     name: '',

@@ -39,12 +39,12 @@ export default function SchedulePage() {
   const { subjects } = useGlobalSubjects();
   const [enrollments, setEnrollments] = useLocal<Enrollment[]>(
     'enrollments',
-    []
+    [],
   );
   const [sessions, setSessions] = useLocal<Session[]>('sessions', []);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     'ui:selectedStudent',
-    ''
+    '',
   );
   const [students] = useLocal<Student[]>('students', []);
 
@@ -64,13 +64,13 @@ export default function SchedulePage() {
   const { sessions: displaySessions } = useDisplaySessions(
     sessions,
     enrollments,
-    selectedStudentId
+    selectedStudentId,
   );
 
   const studentPanelState = useStudentPanel(
     students,
     selectedStudentId,
-    setSelectedStudentId
+    setSelectedStudentId,
   );
 
   const { validateTimeRange, getNextHour } = useTimeValidation();
@@ -92,7 +92,7 @@ export default function SchedulePage() {
   const filteredStudentsForModal = useMemo(() => {
     if (!studentInputValue.trim()) return [];
     return students.filter(student =>
-      student.name.toLowerCase().includes(studentInputValue.toLowerCase())
+      student.name.toLowerCase().includes(studentInputValue.toLowerCase()),
     );
   }, [students, studentInputValue]);
 
@@ -118,7 +118,7 @@ export default function SchedulePage() {
       ) {
         // 경고 메시지 표시 (선택사항)
         console.warn(
-          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.'
+          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.',
         );
       }
 
@@ -142,7 +142,7 @@ export default function SchedulePage() {
       ) {
         // 경고 메시지 표시 (선택사항)
         console.warn(
-          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.'
+          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.',
         );
       }
 
@@ -158,7 +158,7 @@ export default function SchedulePage() {
     const targetStudentId =
       studentId ||
       students.find(
-        s => s.name.toLowerCase() === editStudentInputValue.toLowerCase()
+        s => s.name.toLowerCase() === editStudentInputValue.toLowerCase(),
       )?.id;
 
     if (!targetStudentId) {
@@ -184,10 +184,10 @@ export default function SchedulePage() {
         e.subjectId ===
           (() => {
             const firstEnrollment = enrollments.find(
-              e => e.id === editModalData?.enrollmentIds?.[0]
+              e => e.id === editModalData?.enrollmentIds?.[0],
             );
             return firstEnrollment?.subjectId || '';
-          })()
+          })(),
     );
 
     if (!enrollment) {
@@ -196,7 +196,7 @@ export default function SchedulePage() {
         studentId: targetStudentId,
         subjectId: (() => {
           const firstEnrollment = enrollments.find(
-            e => e.id === editModalData?.enrollmentIds?.[0]
+            e => e.id === editModalData?.enrollmentIds?.[0],
           );
           return firstEnrollment?.subjectId || '';
         })(),
@@ -222,7 +222,7 @@ export default function SchedulePage() {
               ...prev,
               enrollmentIds: [...(prev.enrollmentIds || []), enrollment!.id],
             }
-          : null
+          : null,
       );
       // 성공적으로 추가된 경우에만 입력창 초기화
       setEditStudentInputValue('');
@@ -314,7 +314,7 @@ export default function SchedulePage() {
 
     for (const studentId of data.studentIds) {
       let enrollment = enrollments.find(
-        e => e.studentId === studentId && e.subjectId === data.subjectId
+        e => e.studentId === studentId && e.subjectId === data.subjectId,
       );
 
       if (!enrollment) {
@@ -392,7 +392,7 @@ export default function SchedulePage() {
       ) {
         // 경고 메시지 표시 (선택사항)
         console.warn(
-          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.'
+          '시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.',
         );
       }
 
@@ -416,7 +416,7 @@ export default function SchedulePage() {
       ) {
         // 경고 메시지 표시 (선택사항)
         console.warn(
-          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.'
+          '종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.',
         );
       }
 
@@ -530,7 +530,7 @@ export default function SchedulePage() {
     } else {
       console.log(
         '🆕 드래그 시작 - 학생 ID 전달 (enrollment 없음):',
-        student.id
+        student.id,
       );
       // enrollment가 없으면 학생 ID를 직접 전달
       e.dataTransfer.setData('text/plain', `student:${student.id}`);
@@ -644,14 +644,14 @@ export default function SchedulePage() {
                         const filteredStudents =
                           filteredStudentsForModal.filter(
                             student =>
-                              !groupModalData.studentIds.includes(student.id)
+                              !groupModalData.studentIds.includes(student.id),
                           );
 
                         if (filteredStudents.length === 0) {
                           const studentExists = students.some(
                             s =>
                               s.name.toLowerCase() ===
-                              studentInputValue.toLowerCase()
+                              studentInputValue.toLowerCase(),
                           );
 
                           console.log('🔍 그룹 모달 학생 검색 디버깅:', {
@@ -821,11 +821,11 @@ export default function SchedulePage() {
                         editModalData.enrollmentIds
                           ?.map(enrollmentId => {
                             const enrollment = enrollments.find(
-                              e => e.id === enrollmentId
+                              e => e.id === enrollmentId,
                             );
                             if (!enrollment) return null;
                             const student = students.find(
-                              s => s.id === enrollment.studentId
+                              s => s.id === enrollment.studentId,
                             );
                             return student
                               ? { id: student.id, name: student.name }
@@ -848,13 +848,13 @@ export default function SchedulePage() {
                                     editModalData.enrollmentIds?.find(
                                       enrollmentId => {
                                         const enrollment = enrollments.find(
-                                          e => e.id === enrollmentId
+                                          e => e.id === enrollmentId,
                                         );
                                         return (
                                           enrollment?.studentId === student!.id
                                         );
-                                      }
-                                    )
+                                      },
+                                    ),
                                 );
                               setEditModalData(prev =>
                                 prev
@@ -862,7 +862,7 @@ export default function SchedulePage() {
                                       ...prev,
                                       enrollmentIds: updatedEnrollmentIds || [],
                                     }
-                                  : null
+                                  : null,
                               );
                             }}
                           >
@@ -909,10 +909,10 @@ export default function SchedulePage() {
                               .includes(editStudentInputValue.toLowerCase()) &&
                             !editModalData.enrollmentIds?.some(enrollmentId => {
                               const enrollment = enrollments.find(
-                                e => e.id === enrollmentId
+                                e => e.id === enrollmentId,
                               );
                               return enrollment?.studentId === student.id;
-                            })
+                            }),
                         );
 
                         if (filteredStudents.length === 0) {
@@ -922,7 +922,7 @@ export default function SchedulePage() {
                               {!students.some(
                                 s =>
                                   s.name.toLowerCase() ===
-                                  editStudentInputValue.toLowerCase()
+                                  editStudentInputValue.toLowerCase(),
                               ) && (
                                 <span className={styles.studentNotFound}>
                                   (존재하지 않는 학생입니다)
@@ -956,7 +956,7 @@ export default function SchedulePage() {
                     className="form-select"
                     value={(() => {
                       const enrollment = enrollments.find(
-                        e => e.id === editModalData.enrollmentIds?.[0]
+                        e => e.id === editModalData.enrollmentIds?.[0],
                       );
                       return enrollment?.subjectId || '';
                     })()}
@@ -969,13 +969,13 @@ export default function SchedulePage() {
                           enrollment => {
                             if (
                               editModalData.enrollmentIds?.includes(
-                                enrollment.id
+                                enrollment.id,
                               )
                             ) {
                               return { ...enrollment, subjectId };
                             }
                             return enrollment;
-                          }
+                          },
                         );
                         setEnrollments(updatedEnrollments);
                       }
@@ -1030,7 +1030,7 @@ export default function SchedulePage() {
                   onClick={() => {
                     if (confirm('정말로 이 수업을 삭제하시겠습니까?')) {
                       setSessions(prev =>
-                        prev.filter(s => s.id !== editModalData.id)
+                        prev.filter(s => s.id !== editModalData.id),
                       );
                       setShowEditModal(false);
                     }
@@ -1051,9 +1051,9 @@ export default function SchedulePage() {
                       const weekday = Number(
                         (
                           document.getElementById(
-                            'edit-modal-weekday'
+                            'edit-modal-weekday',
                           ) as HTMLSelectElement
-                        )?.value
+                        )?.value,
                       );
                       const startTime = editModalTimeData.startTime;
                       const endTime = editModalTimeData.endTime;
@@ -1078,14 +1078,14 @@ export default function SchedulePage() {
                                 enrollmentIds:
                                   editModalData.enrollmentIds || [], // 🆕 enrollmentIds 업데이트 추가
                               }
-                            : s
-                        )
+                            : s,
+                        ),
                       );
 
                       // enrollment 업데이트 (과목 변경 시)
                       const currentSubjectId = (() => {
                         const firstEnrollment = enrollments.find(
-                          e => e.id === editModalData.enrollmentIds?.[0]
+                          e => e.id === editModalData.enrollmentIds?.[0],
                         );
                         return firstEnrollment?.subjectId || '';
                       })();
@@ -1095,7 +1095,7 @@ export default function SchedulePage() {
                           enrollment => {
                             if (
                               editModalData.enrollmentIds?.includes(
-                                enrollment.id
+                                enrollment.id,
                               )
                             ) {
                               return {
@@ -1104,7 +1104,7 @@ export default function SchedulePage() {
                               };
                             }
                             return enrollment;
-                          }
+                          },
                         );
                         setEnrollments(updatedEnrollments);
                       }

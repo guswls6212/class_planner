@@ -8,7 +8,7 @@ vi.mock('html2canvas', () => ({
       toDataURL: () => 'data:image/png;base64,mock-data',
       width: 1000,
       height: 600,
-    })
+    }),
   ),
 }));
 

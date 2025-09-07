@@ -12,7 +12,7 @@ export interface WeekdayHeaderStyles {
 }
 
 export function getWeekdayHeaderStyles(
-  customStyle: Partial<WeekdayHeaderStyles> = {}
+  customStyle: Partial<WeekdayHeaderStyles> = {},
 ): WeekdayHeaderStyles {
   const baseStyles: WeekdayHeaderStyles = {
     backgroundColor: 'var(--color-background)',
@@ -32,7 +32,7 @@ export function getWeekdayHeaderStyles(
 
 export function getWeekdayHeaderClasses(
   baseClass: string,
-  customClass: string = ''
+  customClass: string = '',
 ): string {
   const classes = [baseClass];
   if (customClass) {
@@ -46,7 +46,7 @@ export function getWeekdayName(weekday: number): string {
 
   if (weekday < 0 || weekday >= weekdays.length) {
     throw new Error(
-      `Invalid weekday index: ${weekday}. Must be between 0 and 6.`
+      `Invalid weekday index: ${weekday}. Must be between 0 and 6.`,
     );
   }
 
@@ -63,7 +63,7 @@ export function getWeekdayIndex(weekdayName: string): number {
 
   if (index === -1) {
     throw new Error(
-      `Invalid weekday name: ${weekdayName}. Must be one of: ${weekdays.join(', ')}`
+      `Invalid weekday name: ${weekdayName}. Must be one of: ${weekdays.join(', ')}`,
     );
   }
 

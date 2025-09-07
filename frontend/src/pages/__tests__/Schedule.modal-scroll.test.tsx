@@ -95,17 +95,17 @@ describe('시간 유효성 검사 기능', () => {
 
       // 유효한 경우
       expect(validateTimeRange(validCase.startTime, validCase.endTime)).toBe(
-        validCase.expected
+        validCase.expected,
       );
 
       // 유효하지 않은 경우
       expect(
-        validateTimeRange(invalidCase.startTime, invalidCase.endTime)
+        validateTimeRange(invalidCase.startTime, invalidCase.endTime),
       ).toBe(invalidCase.expected);
 
       // 빈 값인 경우
       expect(validateTimeRange(emptyCase.startTime, emptyCase.endTime)).toBe(
-        emptyCase.expected
+        emptyCase.expected,
       );
     });
 
@@ -136,7 +136,7 @@ describe('시간 유효성 검사 기능', () => {
       // 시간 유효성 검사
       const isValid = validateTimeRange(
         mockEditData.startTime,
-        mockEditData.endTime
+        mockEditData.endTime,
       );
 
       expect(isValid).toBe(false);

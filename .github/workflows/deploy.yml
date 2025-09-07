@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
+  workflow_dispatch: # 수동 실행도 가능하도록 추가
 
 permissions:
   contents: read
@@ -20,6 +21,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # 전체 히스토리 가져오기
       
     - name: Setup Node.js
       uses: actions/setup-node@v4

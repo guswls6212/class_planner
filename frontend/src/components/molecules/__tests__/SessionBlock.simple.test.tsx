@@ -64,7 +64,7 @@ describe('SessionBlock', () => {
 
     expect(zIndexLogic.baseZIndex).toBe(1000);
     expect(zIndexLogic.calculatedZIndex).toBe(
-      zIndexLogic.baseZIndex + zIndexLogic.yOffset
+      zIndexLogic.baseZIndex + zIndexLogic.yOffset,
     );
   });
 

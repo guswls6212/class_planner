@@ -1,10 +1,36 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import LoginButton from '../LoginButton';
 
-// Supabase 모킹
-vi.mock('../../utils/supabaseClient', () => ({
-  supabase: {
+// Supabase 클라이언트 모킹 - 환경 변수 문제를 완전히 우회
+vi.mock('../../utils/supabaseClient', () => {
+  return {
+    supabase: {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+          error: null,
+        }),
+        onAuthStateChange: vi.fn(() => ({
+          data: { subscription: { unsubscribe: vi.fn() } },
+        })),
+        signInWithOAuth: vi.fn(),
+        signOut: vi.fn(),
+      },
+    },
+  };
+});
+
+// 환경 변수 모킹
+vi.mock('import.meta', () => ({
+  env: {
+    VITE_SUPABASE_URL: 'https://test.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+  },
+}));
+
+// Supabase 클라이언트 생성 함수 모킹
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
     auth: {
       getUser: vi.fn(),
       onAuthStateChange: vi.fn(() => ({
@@ -13,8 +39,10 @@ vi.mock('../../utils/supabaseClient', () => ({
       signInWithOAuth: vi.fn(),
       signOut: vi.fn(),
     },
-  },
+  })),
 }));
+
+import LoginButton from '../LoginButton';
 
 describe('LoginButton', () => {
   beforeEach(() => {
@@ -35,7 +63,7 @@ describe('LoginButton', () => {
     fireEvent.click(loginButton);
 
     expect(
-      screen.getByText('소셜 계정으로 간편하게 로그인하세요')
+      screen.getByText('소셜 계정으로 간편하게 로그인하세요'),
     ).toBeInTheDocument();
   });
 
@@ -69,7 +97,7 @@ describe('LoginButton', () => {
     fireEvent.click(closeButton);
 
     expect(
-      screen.queryByText('소셜 계정으로 간편하게 로그인하세요')
+      screen.queryByText('소셜 계정으로 간편하게 로그인하세요'),
     ).not.toBeInTheDocument();
   });
 
@@ -87,7 +115,7 @@ describe('LoginButton', () => {
     }
 
     expect(
-      screen.queryByText('소셜 계정으로 간편하게 로그인하세요')
+      screen.queryByText('소셜 계정으로 간편하게 로그인하세요'),
     ).not.toBeInTheDocument();
   });
 

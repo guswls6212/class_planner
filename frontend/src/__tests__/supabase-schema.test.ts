@@ -42,7 +42,7 @@ describe('Supabase 스키마', () => {
     const schema = fs.readFileSync(schemaPath, 'utf8');
 
     expect(schema).toContain(
-      'CREATE OR REPLACE FUNCTION update_updated_at_column'
+      'CREATE OR REPLACE FUNCTION update_updated_at_column',
     );
     expect(schema).toContain('CREATE TRIGGER update_user_data_updated_at');
   });

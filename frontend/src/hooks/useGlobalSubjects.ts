@@ -47,7 +47,7 @@ export const useGlobalSubjects = () => {
       localStorage.setItem(SUBJECTS_KEY, JSON.stringify(newSubjects));
       console.log(
         '💾 과목 목록을 저장했습니다:',
-        newSubjects.map(s => s.name)
+        newSubjects.map(s => s.name),
       );
     } catch (error) {
       console.error('❌ 과목 목록 저장 중 오류 발생:', error);
@@ -88,19 +88,19 @@ export const useGlobalSubjects = () => {
       console.log('✅ 과목 추가 완료');
       return true;
     },
-    [subjects, saveSubjects]
+    [subjects, saveSubjects],
   );
 
   // 과목 삭제
   const deleteSubject = useCallback(
     (subjectId: string) => {
       const updatedSubjects = subjects.filter(
-        subject => subject.id !== subjectId
+        subject => subject.id !== subjectId,
       );
       setSubjects(updatedSubjects);
       saveSubjects(updatedSubjects);
     },
-    [subjects, saveSubjects]
+    [subjects, saveSubjects],
   );
 
   // 과목 수정
@@ -115,7 +115,7 @@ export const useGlobalSubjects = () => {
       const isDuplicate = subjects.some(
         subject =>
           subject.id !== subjectId &&
-          subject.name.toLowerCase() === name.toLowerCase()
+          subject.name.toLowerCase() === name.toLowerCase(),
       );
 
       if (isDuplicate) {
@@ -126,13 +126,13 @@ export const useGlobalSubjects = () => {
       const updatedSubjects = subjects.map(subject =>
         subject.id === subjectId
           ? { ...subject, name: name.trim(), color }
-          : subject
+          : subject,
       );
 
       setSubjects(updatedSubjects);
       saveSubjects(updatedSubjects);
     },
-    [subjects, saveSubjects]
+    [subjects, saveSubjects],
   );
 
   // 초기화

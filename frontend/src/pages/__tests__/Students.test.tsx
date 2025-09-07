@@ -25,7 +25,7 @@ vi.mock('../../components/organisms/StudentManagementSection', () => ({
     // 디버깅을 위한 로그 추가
     console.log(
       'Mock StudentManagementSection - selectedStudentId:',
-      selectedStudentId
+      selectedStudentId,
     );
     console.log('Mock StudentManagementSection - students:', students);
 
@@ -44,7 +44,7 @@ vi.mock('../../components/organisms/StudentManagementSection', () => ({
           {students.map((student: Student) => {
             const isSelected = selectedStudentId === student.id;
             console.log(
-              `Student ${student.id} (${student.name}) - isSelected: ${isSelected}, fontWeight: ${isSelected ? 'bold' : 'normal'}`
+              `Student ${student.id} (${student.name}) - isSelected: ${isSelected}, fontWeight: ${isSelected ? 'bold' : 'normal'}`,
             );
 
             return (
@@ -112,7 +112,7 @@ describe('StudentsPage', () => {
     render(<StudentsPage />);
 
     expect(
-      screen.getByTestId('student-management-section')
+      screen.getByTestId('student-management-section'),
     ).toBeInTheDocument();
   });
 
@@ -216,7 +216,7 @@ describe('StudentsPage', () => {
     console.log('Selected student style:', selectedStudent.style);
     console.log(
       'Selected student fontWeight:',
-      selectedStudent.style.fontWeight
+      selectedStudent.style.fontWeight,
     );
 
     // toHaveStyle 대신, style 속성을 직접 확인합니다.

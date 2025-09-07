@@ -31,7 +31,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       style = {},
       selectedStudentId, // 🆕 선택된 학생 ID 추가
     },
-    ref
+    ref,
   ) => {
     // 🆕 30분 단위로 변경: 9:00 ~ 24:00 (30개 열)
     const timeSlots30Min = useMemo(() => {
@@ -51,7 +51,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         // 현재 요일의 실제 세션들을 시작 시간 기준으로 정렬 (O(n log n))
         const daySessions = sessions.get(weekday) || [];
         const sortedSessions = [...daySessions].sort(
-          (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
+          (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt),
         );
 
         if (sortedSessions.length === 0) {
@@ -93,7 +93,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
         return sessionYPositions;
       },
-      [sessions]
+      [sessions],
     );
 
     // 🆕 요일별 높이 계산: 기본 47px + 겹침당 47px
@@ -118,25 +118,25 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
         return finalHeight;
       },
-      [sessions, getSessionYPositions]
+      [sessions, getSessionYPositions],
     );
 
     // 요일별 높이를 useMemo로 최적화
     const weekdayHeights = useMemo(
       () => Array.from({ length: 7 }, (_, i) => getWeekdayHeight(i)),
-      [getWeekdayHeight]
+      [getWeekdayHeight],
     );
 
     // 그리드 템플릿 행을 useMemo로 최적화
     const gridTemplateRows = useMemo(
       () => `40px ${weekdayHeights.join('px ')}px`,
-      [weekdayHeights]
+      [weekdayHeights],
     );
 
     // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 100px (학생 이름 표시를 위해)
     const gridTemplateColumns = useMemo(
       () => `80px repeat(${timeCols}, 100px)`,
-      [timeCols]
+      [timeCols],
     );
 
     return (
@@ -168,7 +168,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                   startsAt: s.startsAt,
                   endsAt: s.endsAt,
                 })),
-              })
+              }),
             ),
           });
           return null;
@@ -229,7 +229,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         })}
       </div>
     );
-  }
+  },
 );
 
 export { TimeTableGrid };

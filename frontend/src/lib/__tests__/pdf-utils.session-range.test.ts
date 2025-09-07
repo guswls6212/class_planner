@@ -139,7 +139,7 @@ describe('PDF Utils - Session Range Functions', () => {
       const result = hideTimeHeadersOutsideSessionRange(
         mockElement,
         '14:00',
-        '16:00'
+        '16:00',
       );
 
       // 14:00 이전 헤더들 (09:00~13:30)이 숨겨져야 함
@@ -147,10 +147,10 @@ describe('PDF Utils - Session Range Functions', () => {
 
       const timeHeaders = extractTimeHeaders(mockElement);
       const visibleHeaders = timeHeaders.filter(
-        h => (h as HTMLElement).style.display !== 'none'
+        h => (h as HTMLElement).style.display !== 'none',
       );
       const hiddenHeaders = timeHeaders.filter(
-        h => (h as HTMLElement).style.display === 'none'
+        h => (h as HTMLElement).style.display === 'none',
       );
 
       // 14:00~16:00 범위의 헤더만 보여야 함
@@ -162,7 +162,7 @@ describe('PDF Utils - Session Range Functions', () => {
       const result = hideTimeHeadersOutsideSessionRange(
         mockElement,
         '09:00',
-        '09:00'
+        '09:00',
       );
 
       expect(result).toBe(0);
@@ -172,14 +172,14 @@ describe('PDF Utils - Session Range Functions', () => {
       const result = hideTimeHeadersOutsideSessionRange(
         mockElement,
         '09:00',
-        '24:00'
+        '24:00',
       );
 
       expect(result).toBe(0); // 숨겨진 헤더 없음
 
       const timeHeaders = extractTimeHeaders(mockElement);
       const hiddenHeaders = timeHeaders.filter(
-        h => (h as HTMLElement).style.display === 'none'
+        h => (h as HTMLElement).style.display === 'none',
       );
       expect(hiddenHeaders).toHaveLength(0);
     });
@@ -193,7 +193,7 @@ describe('PDF Utils - Session Range Functions', () => {
       // 숨겨진 헤더 확인
       const timeHeaders = extractTimeHeaders(mockElement);
       const hiddenBeforeRestore = timeHeaders.filter(
-        h => (h as HTMLElement).style.display === 'none'
+        h => (h as HTMLElement).style.display === 'none',
       );
       expect(hiddenBeforeRestore.length).toBeGreaterThan(0);
 
@@ -202,7 +202,7 @@ describe('PDF Utils - Session Range Functions', () => {
 
       // 모든 헤더가 복원되었는지 확인
       const hiddenAfterRestore = timeHeaders.filter(
-        h => (h as HTMLElement).style.display === 'none'
+        h => (h as HTMLElement).style.display === 'none',
       );
       expect(hiddenAfterRestore).toHaveLength(0);
     });
@@ -267,7 +267,7 @@ describe('PDF Utils - Session Range Functions', () => {
       const hiddenCount = hideTimeHeadersOutsideSessionRange(
         mockElement,
         sessionRange.startTime,
-        sessionRange.endTime
+        sessionRange.endTime,
       );
 
       // 3. 세션 위치 조정
@@ -284,7 +284,7 @@ describe('PDF Utils - Session Range Functions', () => {
       // 6. 복원 확인
       const timeHeaders = extractTimeHeaders(mockElement);
       const hiddenAfterRestore = timeHeaders.filter(
-        h => (h as HTMLElement).style.display === 'none'
+        h => (h as HTMLElement).style.display === 'none',
       );
       expect(hiddenAfterRestore).toHaveLength(0);
     });
