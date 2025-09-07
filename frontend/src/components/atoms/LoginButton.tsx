@@ -95,11 +95,6 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     if (error) console.error('로그아웃 에러:', error);
   };
 
-  // Supabase가 설정되지 않은 경우 로그인 버튼 숨기기
-  if (!isSupabaseConfigured) {
-    return null;
-  }
-
   if (isLoggedIn && user) {
     return (
       <div className={`${styles.userMenu} ${className || ''}`}>
