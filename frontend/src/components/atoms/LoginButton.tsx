@@ -51,30 +51,41 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     // 인증 상태 변화 감지
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('인증 상태 변화:', event, session?.user?.email);
+
       if (session?.user) {
         setIsLoggedIn(true);
         setUser(session.user);
 
-        // 로그인 성공 시 데이터 동기화 확인
-        if (isSupabaseConfigured) {
+        // 로그인 성공 시 데이터 동기화 확인 (모든 인증 이벤트에서 실행)
+        if (isSupabaseConfigured && session?.user) {
           try {
+            console.log('로그인 성공 - 데이터 동기화 확인 시작', {
+              event,
+              userEmail: session.user.email,
+            });
             const scenario = await checkSyncNeeded();
-            if (scenario !== 'noData') {
-              // 동기화가 필요한 경우 모달이 자동으로 열림
-            }
+            console.log('동기화 시나리오:', scenario);
+            console.log('모달 상태 (즉시):', syncModal);
+
+            // 상태 업데이트를 기다린 후 다시 확인
+            setTimeout(() => {
+              console.log('모달 상태 (1초 후):', syncModal);
+            }, 1000);
           } catch (error) {
             console.warn('데이터 동기화 확인 실패:', error);
           }
         }
       } else {
+        console.log('사용자 로그아웃됨, 상태 업데이트 중...');
         setIsLoggedIn(false);
         setUser(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [isSupabaseConfigured, checkSyncNeeded]);
+  }, [isSupabaseConfigured, checkSyncNeeded, syncModal]);
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
@@ -85,13 +96,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/schedule`,
+        redirectTo: `${window.location.origin}/class_planner/students`,
       },
     });
     if (error) console.error('Google 로그인 에러:', error);
   };
 
-  const handleKakaoLogin = async () => {
+  // 카카오 로그인 함수 - 일시적으로 비활성화
+  /* const handleKakaoLogin = async () => {
     if (!isSupabaseConfigured) {
       alert('로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.');
       return;
@@ -100,17 +112,54 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'kakao',
       options: {
-        redirectTo: `${window.location.origin}/schedule`,
+        redirectTo: `${window.location.origin}/class_planner/students`,
       },
     });
     if (error) console.error('카카오 로그인 에러:', error);
-  };
+  }; */
 
   const handleLogout = async () => {
-    if (!isSupabaseConfigured) return;
+    console.log('로그아웃 버튼 클릭됨');
 
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error('로그아웃 에러:', error);
+    if (!isSupabaseConfigured) {
+      console.log('Supabase가 설정되지 않음');
+      return;
+    }
+
+    try {
+      console.log('Supabase 로그아웃 시도 중...');
+
+      // 로컬 스토리지에서 세션 정보 직접 삭제
+      console.log('로컬 스토리지에서 세션 정보 삭제 중...');
+      localStorage.removeItem('sb-kcyqftasdxtqslrhbctv-auth-token');
+
+      // 로컬 상태 즉시 업데이트
+      console.log('로컬 상태 즉시 업데이트');
+      setIsLoggedIn(false);
+      setUser(null);
+
+      // 로그인 모달창 닫기
+      setShowLoginModal(false);
+
+      // Supabase 로그아웃 시도 (타임아웃 설정)
+      console.log('Supabase 서버 로그아웃 시도 중...');
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('로그아웃 타임아웃')), 3000);
+      });
+
+      const signOutPromise = supabase.auth.signOut();
+
+      try {
+        await Promise.race([signOutPromise, timeoutPromise]);
+        console.log('Supabase 서버 로그아웃 성공');
+      } catch {
+        console.log('Supabase 서버 로그아웃 타임아웃 - 로컬 로그아웃으로 완료');
+      }
+    } catch (error) {
+      console.error('로그아웃 처리 중 오류:', error);
+      // 에러가 있어도 로컬 상태는 이미 업데이트됨
+    }
   };
 
   if (isLoggedIn && user) {
@@ -223,7 +272,8 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
                   Google로 로그인
                 </button>
 
-                <button
+                {/* 카카오 로그인 버튼 - 일시적으로 비활성화 */}
+                {/* <button
                   className={`${styles.socialButton} ${styles.kakaoButton}`}
                   onClick={handleKakaoLogin}
                 >
@@ -238,7 +288,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
                     />
                   </svg>
                   카카오로 로그인
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

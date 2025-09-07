@@ -31,14 +31,18 @@
     "deploy": "gh-pages -d dist",
     "setup-env": "./setup-env.sh",
     "dev:setup": "npm run setup-env && npm run dev",
-    "install-hooks": "../install-hooks.sh"
+    "install-hooks": "../install-hooks.sh",
+    "test:auto-fix": "node auto-fix-test.js",
+    "analyze-results": "node analyze-results.js"
   },
   "dependencies": {
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.57.2",
+    "dotenv": "^16.6.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.2",
+    "puppeteer": "^24.19.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.8.1",

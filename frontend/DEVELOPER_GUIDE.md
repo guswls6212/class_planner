@@ -128,24 +128,25 @@ frontend/
 - `src/components/atoms/LoginButton.module.css` - 로그인 버튼 스타일
 - `src/components/molecules/DataSyncModal.tsx` - 데이터 동기화 모달
 - `src/components/molecules/UpgradeModal.tsx` - 유료 전환 유도 모달
-- `src/hooks/useDataSync.ts` - 데이터 동기화 로직
+- `src/hooks/useDataSync.ts` - 데이터 동기화 로직 (개선됨)
 - `src/hooks/useFeatureGuard.ts` - 기능 제한 및 업그레이드 유도
 - `src/hooks/useStaleWhileRevalidate.ts` - 캐시 전략 구현
 - `src/hooks/useDebouncedSave.ts` - DB 쓰기 최적화
 - `src/types/dataSyncTypes.ts` - 데이터 동기화 타입 정의
 - `src/lib/dataSyncUtils.ts` - 데이터 동기화 유틸리티
 - `src/lib/debounceUtils.ts` - Debounce 유틸리티
-- `src/utils/supabaseClient.ts` - Supabase 클라이언트 설정
+- `src/utils/supabaseClient.ts` - Supabase 클라이언트 설정 (개선됨)
 
 **주요 기능:**
 
-- Google OAuth 로그인
+- Google OAuth 로그인 (완전 자동화 지원)
 - Kakao OAuth 로그인
 - 데이터 동기화 시나리오 처리 (신규 가입, 일반 로그인, 데이터 충돌)
 - 유료 기능 제한 (무료: 학생 10명, 유료: 무제한)
 - Stale-While-Revalidate 캐시 전략
 - Debounced DB 쓰기 작업
 - React.memo를 활용한 성능 최적화
+- **자동화된 테스트 시스템** (`auto-fix-test.js`, `analyze-results.js`)
 
 #### **Supabase 데이터베이스**
 
@@ -409,6 +410,120 @@ npm run test:coverage
 
 # 보호 테스트 (기존 기능 보호)
 npm run protection-check
+
+# 자동화된 데이터 동기화 테스트 (완전 자동화)
+npm run test:auto-fix
+
+# 테스트 결과 분석
+npm run analyze-results
+```
+
+### 자동화된 테스트 시스템
+
+**파일 구조:**
+
+- `auto-fix-test.js` - 완전 자동화 테스트 (자동 로그인 + 문제 감지 + 해결 시도)
+- `analyze-results.js` - 테스트 결과 분석 및 진단
+- `test-results/` - 테스트 결과 저장 폴더 (최신 5건 유지)
+
+**주요 기능:**
+
+- Google OAuth 완전 자동 로그인 (패스키 우회 포함)
+- 실시간 콘솔 로그 및 네트워크 모니터링
+- 자동 문제 감지 및 해결 시도
+- 스크린샷 자동 촬영
+- 종합적인 테스트 결과 자동 생성
+- 브라우저 및 프로세스 자동 종료
+- **환경변수 기반 보안 설정** (`.env.local` 파일 사용)
+
+**보안 설정:**
+
+- 테스트 계정 정보는 환경변수로 관리
+- `.env.local` 파일은 Git에 커밋되지 않음
+
+### 자동화 테스트 환경변수 설정
+
+#### 📋 개요
+
+자동화 테스트를 실행하기 위해서는 테스트용 계정 정보가 필요합니다. 보안을 위해 이 정보들은 환경변수로 관리됩니다.
+
+#### 🔧 설정 방법
+
+**1. `.env.local` 파일 생성**
+
+프로젝트 루트 디렉토리에 `.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+
+```bash
+# 자동화 테스트용 계정 정보
+TEST_EMAIL=your-test-email@gmail.com
+TEST_PASSWORD=your-test-password
+
+# Supabase 설정 (이미 설정되어 있음)
+VITE_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+**2. 실제 계정 정보 입력**
+
+- `TEST_EMAIL`: 자동화 테스트에 사용할 Google 계정 이메일
+- `TEST_PASSWORD`: 해당 계정의 비밀번호
+
+**3. 파일 권한 설정**
+
+```bash
+chmod 600 .env.local
+```
+
+#### 🚀 사용법
+
+**자동화 테스트 실행**
+
+```bash
+npm run test:auto-fix
+```
+
+**환경변수 확인**
+
+```bash
+# 환경변수가 제대로 로드되었는지 확인
+echo $TEST_EMAIL
+echo $TEST_PASSWORD
+```
+
+#### ⚠️ 주의사항
+
+1. **`.env.local` 파일은 절대 Git에 커밋하지 마세요**
+2. **실제 계정 정보를 사용하지 말고 테스트 전용 계정을 만드세요**
+3. **`.env.local` 파일은 `.gitignore`에 포함되어 있습니다**
+
+#### 🔒 보안
+
+- `.env.local` 파일은 로컬에서만 사용됩니다
+- Git 저장소에는 절대 커밋되지 않습니다
+- 프로덕션 환경에서는 사용되지 않습니다
+
+#### 🛠️ 문제 해결
+
+**환경변수가 로드되지 않는 경우**
+
+1. `.env.local` 파일이 프로젝트 루트에 있는지 확인
+2. 파일 권한이 올바른지 확인 (`chmod 600 .env.local`)
+3. 파일 내용에 공백이나 특수문자가 없는지 확인
+
+**테스트 계정 관련 문제**
+
+1. Google 계정에서 2단계 인증이 비활성화되어 있는지 확인
+2. 테스트 계정이 Google OAuth를 허용하는지 확인
+3. 계정이 정상적으로 로그인되는지 수동으로 확인
+
+#### 📝 예시
+
+```bash
+# .env.local 파일 예시
+TEST_EMAIL=testuser123@gmail.com
+TEST_PASSWORD=TestPassword123!
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 ---
@@ -485,6 +600,10 @@ npm run protection-check
 - [x] Stale-While-Revalidate 캐시 전략
 - [x] Debounced DB 쓰기 작업
 - [x] React.memo를 활용한 성능 최적화
+- [x] **자동화된 테스트 시스템 구축**
+- [x] **Google OAuth 완전 자동 로그인**
+- [x] **실시간 문제 감지 및 해결 시도**
+- [x] **종합적인 테스트 결과 자동 생성**
 
 #### 코드 구조 개선
 

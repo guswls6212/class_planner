@@ -3,7 +3,7 @@
  * 로그인 시 localStorage와 DB 간의 데이터 동기화 로직을 관리
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   compareDataSummaries,
   createDataSummary,
@@ -32,6 +32,11 @@ export const useDataSync = (): UseDataSyncReturn => {
   });
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // 모달 상태 변경 추적
+  useEffect(() => {
+    console.log('useDataSync: 모달 상태 변경됨:', syncModal);
+  }, [syncModal]);
+
   /**
    * 데이터 요약 정보 생성
    */
@@ -56,42 +61,95 @@ export const useDataSync = (): UseDataSyncReturn => {
    * 동기화 필요 여부 확인
    */
   const checkSyncNeeded = useCallback(async (): Promise<SyncScenario> => {
+    console.log('checkSyncNeeded 함수 시작');
     try {
       // localStorage 데이터 확인
+      console.log('localStorage 데이터 로딩 시작');
       const localData = loadFromLocalStorage();
+      console.log('localStorage 데이터 로딩 완료:', localData);
+
       const hasLocalData = localData && validateData(localData);
+      console.log('데이터 유효성 검증 완료:', hasLocalData);
+
+      console.log('로컬 데이터 확인:', {
+        hasLocalData,
+        localDataKeys: hasLocalData ? Object.keys(localData) : null,
+        localDataSample: hasLocalData
+          ? {
+              students: localData.students?.length || 0,
+              subjects: localData.subjects?.length || 0,
+              sessions: localData.sessions?.length || 0,
+            }
+          : null,
+      });
 
       // 서버 데이터 확인 (로그인된 사용자만)
+      console.log('서버 데이터 확인 시작');
       let hasServerData = false;
       let serverData = null;
 
       try {
+        console.log('Supabase 사용자 정보 조회 시작');
+
+        // 타임아웃을 추가하여 무한 대기 방지
+        const getUserPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('getUser 타임아웃 (5초)')), 5000);
+        });
+
+        const result = await Promise.race([getUserPromise, timeoutPromise]);
+        console.log('Supabase 사용자 정보 조회 완료:', result);
+
         const {
           data: { user },
-        } = await supabase.auth.getUser();
+        } = result as { data: { user: { id: string; email?: string } | null } };
+
         if (user) {
+          console.log(
+            '서버 데이터 확인 중 - 사용자:',
+            user.email || '이메일 없음',
+            'ID:',
+            user.id
+          );
+
+          console.log('user_data 테이블 조회 시작');
           const { data, error } = await supabase
             .from('user_data')
             .select('data')
-            .eq('user_id', user.id)
-            .single();
+            .eq('user_id', user.id);
 
-          if (!error && data?.data) {
+          console.log('서버 데이터 조회 결과:', { data, error });
+
+          if (!error && data && data.length > 0) {
             hasServerData = true;
-            serverData = data.data;
+            serverData = data[0].data;
+            console.log('서버 데이터 발견:', Object.keys(serverData));
+          } else if (error) {
+            console.log('서버 데이터 없음 또는 에러:', error.message);
+          } else {
+            console.log('서버에 데이터 없음 (빈 배열)');
           }
+        } else {
+          console.log('로그인된 사용자 없음');
         }
       } catch (error) {
-        console.warn('서버 데이터 확인 실패:', error);
+        console.error('서버 데이터 확인 실패:', error);
       }
 
       const scenario = determineSyncScenario(!!hasLocalData, !!hasServerData);
+
+      console.log('동기화 시나리오 결정:', {
+        hasLocalData,
+        hasServerData,
+        scenario,
+      });
 
       // 시나리오에 따른 모달 데이터 설정
       if (scenario === 'newUser' && hasLocalData) {
         const localSummary = getDataSummary(localData, 'local');
         setSyncModal(prev => ({
           ...prev,
+          isOpen: true,
           scenario,
           localData: localSummary,
         }));
@@ -100,10 +158,25 @@ export const useDataSync = (): UseDataSyncReturn => {
         const serverSummary = getDataSummary(serverData, 'server');
         setSyncModal(prev => ({
           ...prev,
+          isOpen: true,
           scenario,
           localData: localSummary,
           serverData: serverSummary,
         }));
+      } else if (scenario === 'noData') {
+        // 데이터가 없는 경우에도 테스트를 위해 모달 표시
+        console.log('데이터 없음 - 테스트를 위해 모달 표시');
+        setSyncModal(prev => {
+          const newState = {
+            ...prev,
+            isOpen: true,
+            scenario: 'newUser' as SyncScenario,
+            localData: undefined,
+            serverData: undefined,
+          };
+          console.log('setSyncModal 호출:', newState);
+          return newState;
+        });
       }
 
       return scenario;

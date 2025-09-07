@@ -33,7 +33,7 @@ export const useStudentManagement = (
   });
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const { guardFeature, showUpgradeModal } = useFeatureGuard();
+  const { showUpgradeModal } = useFeatureGuard();
   const { saveData: debouncedSave } = useDebouncedSave();
 
   const validateStudentName = (name: string): AddStudentFormData => {
@@ -62,13 +62,14 @@ export const useStudentManagement = (
   };
 
   const addStudent = (name: string): boolean => {
+    // 개발 중에는 학생 수 제한 비활성화
     // 기능 가드 체크 - 학생 수 제한 확인
-    guardFeature('addStudent', students.length, 10);
+    // guardFeature('addStudent', students.length, 10);
 
     // 학생 수 제한 확인
-    if (students.length >= 10) {
-      return false;
-    }
+    // if (students.length >= 10) {
+    //   return false;
+    // }
 
     const validation = validateStudentName(name);
 

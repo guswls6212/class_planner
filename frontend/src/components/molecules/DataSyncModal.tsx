@@ -26,7 +26,21 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
 }) => {
   const { isOpen, scenario, localData, serverData } = modalState;
 
-  if (!isOpen) return null;
+  console.log('DataSyncModal 렌더링:', { isOpen, scenario, modalState });
+
+  if (!isOpen) {
+    console.log('DataSyncModal: 모달이 닫혀있음');
+    return null;
+  }
+
+  console.log('DataSyncModal: 모달 표시 중');
+  console.log('DataSyncModal: 모달 상태 상세:', {
+    isOpen,
+    scenario,
+    hasLocalData: !!localData,
+    hasServerData: !!serverData,
+    modalState,
+  });
 
   const handleAction = async (action: SyncAction) => {
     await onExecuteSync(action);
@@ -68,7 +82,7 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
               </button>
               <button
                 className={`${styles.button} ${styles.secondaryButton}`}
-                onClick={() => handleAction('cancelSync')}
+                onClick={onClose}
                 disabled={isSyncing}
               >
                 나중에 하기

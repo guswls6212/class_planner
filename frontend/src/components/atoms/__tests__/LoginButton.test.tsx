@@ -77,14 +77,15 @@ describe('LoginButton', () => {
     expect(googleButton).toBeInTheDocument();
   });
 
-  it('카카오 로그인 버튼이 있어야 함', () => {
+  it('카카오 로그인 버튼이 일시적으로 비활성화되어 있음', () => {
     render(<LoginButton />);
 
     const loginButton = screen.getByText('로그인');
     fireEvent.click(loginButton);
 
-    const kakaoButton = screen.getByText('카카오로 로그인');
-    expect(kakaoButton).toBeInTheDocument();
+    // 카카오 로그인 버튼이 현재 주석처리되어 있으므로 존재하지 않아야 함
+    const kakaoButton = screen.queryByText('카카오로 로그인');
+    expect(kakaoButton).not.toBeInTheDocument();
   });
 
   it('모달 닫기 버튼이 작동해야 함', () => {
