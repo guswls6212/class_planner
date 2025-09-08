@@ -457,18 +457,30 @@ npm run analyze-results
 
 **파일 구조:**
 
-- `migrations/` - Migration SQL 파일들
+- `migrations/` - Migration SQL 파일들 (002-009번까지 구현됨)
 - `run-migration.sh` - Migration 실행 스크립트
 - `check-migration-status.sh` - Migration 상태 확인 스크립트
 - `MIGRATION_GUIDE.md` - Migration 관리 가이드
 
 **주요 기능:**
 
+- **한국 시간대(KST) 설정**: 모든 timestamp 컬럼을 한국 시간으로 자동 변환
+- **자동 시간대 변환 트리거**: `set_korean_timezone` 함수로 INSERT/UPDATE 시 자동 변환
 - **자동 로그 기록**: 모든 Migration 실행 시 `migration_log` 테이블에 자동 기록
 - **중복 실행 방지**: `ON CONFLICT DO NOTHING`으로 안전한 재실행
 - **일관된 관리**: 표준화된 Migration 실행 프로세스
 - **상태 추적**: 실행 시간, 상태, 설명 자동 기록
 - **롤백 지원**: Migration 롤백 기능 제공
+
+**구현된 Migration:**
+
+- `002_user_management_tables.sql`: 사용자 관리 테이블 생성
+- `003_integrate_legacy_schema.sql`: 레거시 스키마 통합
+- `005_convert_timestamps_to_kst.sql`: 기존 데이터를 한국 시간으로 변환
+- `006_fix_korean_timezone_conversion.sql`: 시간대 변환 로직 수정
+- `007_cleanup_and_fix_timezone.sql`: 트리거 함수 재구성
+- `008_correct_korean_timezone.sql`: 시간대 변환 로직 정정
+- `009_safe_korean_timezone.sql`: 안전한 시간대 변환 구현
 
 ### 자동화 테스트 환경변수 설정
 
@@ -633,6 +645,7 @@ VITE_SUPABASE_ANON_KEY=test...
 - [x] **Google OAuth 완전 자동 로그인**
 - [x] **실시간 문제 감지 및 해결 시도**
 - [x] **종합적인 테스트 결과 자동 생성**
+- [x] **Playwright MCP 통합**: 브라우저 자동화 테스트 지원
 
 #### 코드 구조 개선
 

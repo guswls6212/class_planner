@@ -52,35 +52,45 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('인증 상태 변화:', event, session?.user?.email);
+      // console.log('인증 상태 변화:', event, session?.user?.email);
 
       if (session?.user) {
         setIsLoggedIn(true);
         setUser(session.user);
 
-        // 로그인 성공 시 데이터 동기화 확인 (모든 인증 이벤트에서 실행)
-        if (isSupabaseConfigured && session?.user) {
+        // 로그인 성공 시에만 데이터 동기화 확인
+        if (isSupabaseConfigured && session?.user && event === 'SIGNED_IN') {
           try {
-            console.log('로그인 성공 - 데이터 동기화 확인 시작', {
+            console.log('로그인 성공 - 사용자 프로필 생성 시작', {
               event,
               userEmail: session.user.email,
             });
+
+            // 사용자 ID를 localStorage에 저장 (테마 저장용)
+            localStorage.setItem('supabase_user_id', session.user.id);
+            console.log('✅ 사용자 ID 저장됨:', session.user.id);
+
+            // 사용자 프로필 자동 생성
+            // await ensureUserProfile(session.user);
+
+            console.log('로그인 성공 - 데이터 동기화 확인 시작');
             const scenario = await checkSyncNeeded();
             console.log('동기화 시나리오:', scenario);
-            console.log('모달 상태 (즉시):', syncModal);
-
-            // 상태 업데이트를 기다린 후 다시 확인
-            setTimeout(() => {
-              console.log('모달 상태 (1초 후):', syncModal);
-            }, 1000);
           } catch (error) {
             console.warn('데이터 동기화 확인 실패:', error);
           }
         }
       } else {
-        console.log('사용자 로그아웃됨, 상태 업데이트 중...');
+        // console.log('사용자 로그아웃됨, 상태 업데이트 중...');
         setIsLoggedIn(false);
         setUser(null);
+
+        // 로그아웃 시 사용자 ID 제거
+        localStorage.removeItem('supabase_user_id');
+        console.log('🗑️ 사용자 ID 제거됨');
+
+        // 로그아웃 시 모달 닫기
+        closeSyncModal();
       }
     });
 

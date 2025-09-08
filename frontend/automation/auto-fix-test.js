@@ -4,13 +4,65 @@ import path from 'path';
 import puppeteer from 'puppeteer';
 import { fileURLToPath } from 'url';
 
-// .env.local 파일 로드
+// .env.local 파일 로드 (상위 폴더에서)
 dotenv.config({
-  path: path.join(path.dirname(fileURLToPath(import.meta.url)), '.env.local'),
+  path: path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    '.env.local'
+  ),
 });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 오래된 결과 파일 정리 함수 (최신 5개만 유지)
+function cleanupOldResultFiles(resultsDir) {
+  try {
+    const files = fs
+      .readdirSync(resultsDir)
+      .filter(
+        file => file.startsWith('auto-fix-result-') && file.endsWith('.json')
+      )
+      .map(file => ({
+        name: file,
+        path: path.join(resultsDir, file),
+        stats: fs.statSync(path.join(resultsDir, file)),
+      }))
+      .sort((a, b) => b.stats.mtime.getTime() - a.stats.mtime.getTime()); // 최신순 정렬
+
+    // 최신 5개를 제외한 나머지 파일 삭제
+    if (files.length > 5) {
+      const filesToDelete = files.slice(5); // 6번째부터 끝까지
+
+      filesToDelete.forEach(file => {
+        try {
+          fs.unlinkSync(file.path);
+          console.log(`🗑️  오래된 결과 파일 삭제: ${file.name}`);
+        } catch (error) {
+          console.log(`❌ 파일 삭제 실패 (${file.name}): ${error.message}`);
+        }
+      });
+
+      console.log(
+        `🧹 정리 완료: ${filesToDelete.length}개 파일 삭제, ${files.length - filesToDelete.length}개 파일 유지`
+      );
+    } else {
+      console.log(`📁 현재 ${files.length}개 파일 (정리 불필요)`);
+    }
+  } catch (error) {
+    console.log(`❌ 파일 정리 중 오류: ${error.message}`);
+  }
+}
+
+// 환경 변수 로드 확인
+console.log('🔍 환경 변수 로드 확인:');
+console.log('TEST_EMAIL:', process.env.TEST_EMAIL);
+console.log(
+  'TEST_PASSWORD:',
+  process.env.TEST_PASSWORD ? '설정됨' : '설정되지 않음'
+);
+console.log('.env.local 파일 경로:', path.join(__dirname, '..', '.env.local'));
 
 // 자동 문제 해결 시스템
 class AutoProblemSolver {
@@ -506,6 +558,10 @@ async function runFullyAutomatedTest() {
                         }
 
                         console.log('✅ 자동 로그인 프로세스 완료!');
+
+                        // 사용자 프로필 생성 완료를 기다리기 위해 추가 대기
+                        console.log('⏳ 사용자 프로필 생성 완료 대기 중...');
+                        await new Promise(resolve => setTimeout(resolve, 5000)); // 5초 추가 대기
                       } else {
                         console.log('❌ 로그인 버튼을 찾을 수 없음');
                       }
@@ -646,6 +702,9 @@ async function runFullyAutomatedTest() {
 
     fs.writeFileSync(resultPath, JSON.stringify(testResult, null, 2));
     console.log(`📊 자동 문제 해결 결과 저장: ${resultPath}`);
+
+    // 오래된 결과 파일 정리 (최신 5개만 유지)
+    cleanupOldResultFiles(resultsDir);
 
     console.log('\n📈 최종 요약:');
     console.log(`   - 콘솔 로그: ${testResult.summary.totalConsoleLogs}개`);

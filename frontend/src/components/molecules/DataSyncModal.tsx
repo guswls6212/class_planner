@@ -26,21 +26,28 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
 }) => {
   const { isOpen, scenario, localData, serverData } = modalState;
 
-  console.log('DataSyncModal 렌더링:', { isOpen, scenario, modalState });
+  // 디버깅용 로그 (프로덕션에서는 제거)
+  // if (process.env.NODE_ENV === 'development') {
+  //   console.log('DataSyncModal 렌더링:', { isOpen, scenario, modalState });
+  // }
 
   if (!isOpen) {
-    console.log('DataSyncModal: 모달이 닫혀있음');
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('DataSyncModal: 모달이 닫혀있음');
+    // }
     return null;
   }
 
-  console.log('DataSyncModal: 모달 표시 중');
-  console.log('DataSyncModal: 모달 상태 상세:', {
-    isOpen,
-    scenario,
-    hasLocalData: !!localData,
-    hasServerData: !!serverData,
-    modalState,
-  });
+  // if (process.env.NODE_ENV === 'development') {
+  //   console.log('DataSyncModal: 모달 표시 중');
+  //   console.log('DataSyncModal: 모달 상태 상세:', {
+  //     isOpen,
+  //     scenario,
+  //     hasLocalData: !!localData,
+  //     hasServerData: !!serverData,
+  //     modalState,
+  //   });
+  // }
 
   const handleAction = async (action: SyncAction) => {
     await onExecuteSync(action);
