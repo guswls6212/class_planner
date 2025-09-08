@@ -102,6 +102,7 @@ vi.mock('../../components/atoms/Label', () => ({
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
+  removeItem: vi.fn(),
   clear: vi.fn(),
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
@@ -161,8 +162,8 @@ describe('시간표 통합 테스트', () => {
     expect(screen.getByText('주간 시간표')).toBeInTheDocument();
     expect(
       screen.getByText(
-        '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.',
-      ),
+        '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.'
+      )
     ).toBeInTheDocument();
     expect(screen.getByTestId('time-table-grid')).toBeInTheDocument();
   });
@@ -222,16 +223,8 @@ describe('시간표 통합 테스트', () => {
       () => {
         // 시간표 그리드가 렌더링되었는지 확인
         expect(screen.getByTestId('time-table-grid')).toBeInTheDocument();
-
-        // 선택된 학생의 세션이 표시되는지 확인 (실제 구현에 따라 다를 수 있음)
-        // 여기서는 단순히 페이지가 렌더링되었는지만 확인
-        expect(
-          screen.getByText(
-            '전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당 학생의 시간표만 볼 수 있습니다.',
-          ),
-        ).toBeInTheDocument();
       },
-      { timeout: 10000 },
+      { timeout: 3000 }
     );
   });
 

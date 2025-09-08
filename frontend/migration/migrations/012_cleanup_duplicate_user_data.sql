@@ -36,3 +36,4 @@ VALUES (
   '중복된 user_data 행 정리 완료 - 같은 user_id를 가진 중복 행들을 최신 것만 남기고 삭제'
 )
 ON CONFLICT (migration_name) DO NOTHING;
+

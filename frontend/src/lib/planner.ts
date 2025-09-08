@@ -60,7 +60,7 @@ export function snapToSlot(mins: number): number {
 export function canFormGroupSession(
   candidate: SessionCandidate,
   existingSessions: Session[],
-  enrollments: Enrollment[],
+  enrollments: Enrollment[]
 ): { canForm: boolean; existingSessionId?: string } {
   // 같은 요일, 시간대, 과목인 기존 세션이 있는지 확인
   const matchingSession = existingSessions.find(
@@ -72,7 +72,7 @@ export function canFormGroupSession(
       session.enrollmentIds.some(enrollmentId => {
         const enrollment = enrollments.find(e => e.id === enrollmentId);
         return enrollment?.subjectId === candidate.subjectId;
-      }),
+      })
   );
 
   if (matchingSession) {
@@ -86,12 +86,12 @@ export function canFormGroupSession(
 export function mergeIntoGroupSession(
   candidate: SessionCandidate,
   existingSession: Session,
-  enrollments: Enrollment[],
+  enrollments: Enrollment[]
 ): Session {
   // 기존 세션에 새로운 학생의 enrollment 추가
   const newEnrollment = enrollments.find(
     e =>
-      e.studentId === candidate.studentId && e.subjectId === candidate.subjectId,
+      e.studentId === candidate.studentId && e.subjectId === candidate.subjectId
   );
 
   if (!newEnrollment) {
@@ -112,11 +112,11 @@ export function mergeIntoGroupSession(
 // 🆕 새로운 그룹 세션 생성 함수
 export function createGroupSession(
   candidate: SessionCandidate,
-  enrollments: Enrollment[],
+  enrollments: Enrollment[]
 ): Session {
   const enrollment = enrollments.find(
     e =>
-      e.studentId === candidate.studentId && e.subjectId === candidate.subjectId,
+      e.studentId === candidate.studentId && e.subjectId === candidate.subjectId
   );
 
   if (!enrollment) {
@@ -146,7 +146,7 @@ export function sessionsOverlapSameStudent(
     startsAt: string;
     endsAt: string;
   },
-  enrolls: Enrollment[],
+  enrolls: Enrollment[]
 ) {
   if (a.weekday !== b.weekday) return false;
 
@@ -161,7 +161,7 @@ export function sessionsOverlapSameStudent(
 
   // 🆕 같은 학생이 있는지 확인 (겹치는 학생이 있으면 겹침으로 판단)
   const hasCommonStudent = aStudentIds.some(studentId =>
-    bStudentIds.includes(studentId),
+    bStudentIds.includes(studentId)
   );
 
   if (!hasCommonStudent) return false;

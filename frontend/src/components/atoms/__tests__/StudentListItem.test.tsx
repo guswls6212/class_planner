@@ -67,7 +67,7 @@ describe('StudentListItem', () => {
       <StudentListItem
         {...defaultProps}
         student={{ id: '2', name: '이현진' }}
-      />,
+      />
     );
     expect(screen.getByText('이현진')).toBeInTheDocument();
   });

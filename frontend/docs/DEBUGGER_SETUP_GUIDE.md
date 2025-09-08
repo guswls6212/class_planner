@@ -152,3 +152,4 @@ export default defineConfig({
 **이제 정말로 Chrome과 Cursor가 하나가 되었습니다!** 🎯
 
 
+

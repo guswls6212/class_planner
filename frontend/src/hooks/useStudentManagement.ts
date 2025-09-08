@@ -21,7 +21,7 @@ export const useStudentManagement = (
     endsAt: string;
     room?: string;
   }> = [],
-  enrollments: Array<{ id: string; studentId: string; subjectId: string }> = [],
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }> = []
 ): StudentActions & {
   formData: AddStudentFormData;
   errorMessage: string;

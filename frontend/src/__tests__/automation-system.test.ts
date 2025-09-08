@@ -8,7 +8,7 @@ describe('자동화 테스트 시스템', () => {
     const autoFixTestPath = join(
       process.cwd(),
       'automation',
-      'auto-fix-test.js',
+      'auto-fix-test.js'
     );
     expect(existsSync(autoFixTestPath)).toBe(true);
   });
@@ -18,7 +18,7 @@ describe('자동화 테스트 시스템', () => {
     const analyzeResultsPath = join(
       process.cwd(),
       'automation',
-      'analyze-results.js',
+      'analyze-results.js'
     );
     expect(existsSync(analyzeResultsPath)).toBe(true);
   });

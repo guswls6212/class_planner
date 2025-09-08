@@ -28,7 +28,7 @@ export const useStaleWhileRevalidate = (
     useStaleWhileRevalidate: true,
     cacheExpiry: 5 * 60 * 1000, // 5분
     backgroundRefresh: true,
-  },
+  }
 ): UseStaleWhileRevalidateReturn => {
   const [data, setData] = useState<ClassPlannerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +50,7 @@ export const useStaleWhileRevalidate = (
 
       return age < strategy.cacheExpiry;
     },
-    [strategy.cacheExpiry],
+    [strategy.cacheExpiry]
   );
 
   /**
@@ -137,7 +137,7 @@ export const useStaleWhileRevalidate = (
         throw error;
       }
     },
-    [cacheKey],
+    [cacheKey]
   );
 
   /**
@@ -175,7 +175,7 @@ export const useStaleWhileRevalidate = (
               ) {
                 setData(serverData);
                 setLastUpdated(
-                  serverData.lastModified || new Date().toISOString(),
+                  serverData.lastModified || new Date().toISOString()
                 );
                 saveToLocalStorage(serverData, cacheKey);
               }

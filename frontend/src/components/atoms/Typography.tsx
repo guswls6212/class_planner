@@ -37,7 +37,7 @@ export const getTypographyClasses = (
   weight: string,
   transform: string,
   decoration: string,
-  className?: string,
+  className?: string
 ): string => {
   return [
     'typography',
@@ -123,7 +123,7 @@ export default function Typography({
     weight,
     transform,
     decoration,
-    className,
+    className
   );
   const Component = getTypographyComponent(variant);
 

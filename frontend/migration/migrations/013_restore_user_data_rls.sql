@@ -34,3 +34,4 @@ VALUES (
   'user_data 테이블 RLS 복구 완료 - Row Level Security 활성화'
 )
 ON CONFLICT (migration_name) DO NOTHING;
+

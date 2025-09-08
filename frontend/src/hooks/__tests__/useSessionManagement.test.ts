@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { supabase } from '../../utils/supabaseClient';
-import type { Student, Subject } from '../lib/planner';
+import type { Student, Subject } from '../../lib/planner';
 import { useSessionManagement } from '../useSessionManagement';
 
 // Supabase 모킹
@@ -9,7 +9,7 @@ vi.mock('../../utils/supabaseClient', () => ({
   supabase: {
     auth: {
       getUser: vi.fn(),
-      getSession: vi.fn(), // 🆕 getSession 함수 추가
+      getSession: vi.fn(),
     },
     from: vi.fn(() => ({
       select: vi.fn(() => ({
@@ -38,8 +38,16 @@ describe('useSessionManagement', () => {
   });
 
   it('초기 상태가 올바르게 설정되어야 함', async () => {
+    const mockSupabase = vi.mocked(supabase);
+
+    // getSession을 성공적으로 모킹 (로그아웃 상태)
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     // 초기 로딩이 완료될 때까지 기다림
@@ -57,17 +65,18 @@ describe('useSessionManagement', () => {
     const mockUser = { id: 'user123' };
     const mockSupabase = vi.mocked(supabase);
 
-    mockSupabase.auth.getUser.mockResolvedValue({
+    // getSession을 먼저 모킹 (로그아웃 상태로 시작)
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: mockUser },
       error: null,
     });
 
-    mockSupabase.auth.getSession.mockResolvedValue({
-      data: { session: { user: mockUser } },
-      error: null,
-    });
-
-    mockSupabase.from.mockReturnValue({
+    (mockSupabase.from as any).mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockResolvedValue({
@@ -89,7 +98,7 @@ describe('useSessionManagement', () => {
     } as unknown);
 
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     await act(async () => {
@@ -114,12 +123,12 @@ describe('useSessionManagement', () => {
     const mockUser = { id: 'user123' };
     const mockSupabase = vi.mocked(supabase);
 
-    mockSupabase.auth.getUser.mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: mockUser },
       error: null,
     });
 
-    mockSupabase.auth.getSession.mockResolvedValue({
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
       data: { session: { user: mockUser } },
       error: null,
     });
@@ -133,7 +142,7 @@ describe('useSessionManagement', () => {
       room: 'A101',
     };
 
-    mockSupabase.from.mockReturnValue({
+    (mockSupabase.from as any).mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockResolvedValue({
@@ -157,7 +166,7 @@ describe('useSessionManagement', () => {
     } as unknown);
 
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     // 초기 로딩 완료 대기
@@ -187,12 +196,12 @@ describe('useSessionManagement', () => {
     const mockUser = { id: 'user123' };
     const mockSupabase = vi.mocked(supabase);
 
-    mockSupabase.auth.getUser.mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: mockUser },
       error: null,
     });
 
-    mockSupabase.auth.getSession.mockResolvedValue({
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
       data: { session: { user: mockUser } },
       error: null,
     });
@@ -206,7 +215,7 @@ describe('useSessionManagement', () => {
       room: 'A101',
     };
 
-    mockSupabase.from.mockReturnValue({
+    (mockSupabase.from as any).mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockResolvedValue({
@@ -230,7 +239,7 @@ describe('useSessionManagement', () => {
     } as unknown);
 
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     // 초기 로딩 완료 대기
@@ -248,18 +257,18 @@ describe('useSessionManagement', () => {
   it('로그인되지 않은 사용자의 경우 서버 저장을 건너뛰어야 함', async () => {
     const mockSupabase = vi.mocked(supabase);
 
-    mockSupabase.auth.getUser.mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: null },
       error: null,
     });
 
-    mockSupabase.auth.getSession.mockResolvedValue({
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
       data: { session: null },
       error: null,
     });
 
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     await act(async () => {
@@ -280,17 +289,17 @@ describe('useSessionManagement', () => {
   it('에러 발생 시 적절한 에러 메시지를 표시해야 함', async () => {
     const mockSupabase = vi.mocked(supabase);
 
-    mockSupabase.auth.getUser.mockResolvedValue({
+    (mockSupabase.auth.getUser as any).mockResolvedValue({
       data: { user: { id: 'user123' } },
       error: null,
     });
 
-    mockSupabase.auth.getSession.mockResolvedValue({
+    (mockSupabase.auth.getSession as any).mockResolvedValue({
       data: { session: { user: { id: 'user123' } } },
       error: null,
     });
 
-    mockSupabase.from.mockReturnValue({
+    (mockSupabase.from as any).mockReturnValue({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockResolvedValue({
@@ -303,7 +312,7 @@ describe('useSessionManagement', () => {
     } as unknown);
 
     const { result } = renderHook(() =>
-      useSessionManagement(mockStudents, mockSubjects),
+      useSessionManagement(mockStudents, mockSubjects)
     );
 
     await act(async () => {
@@ -321,7 +330,7 @@ describe('useSessionManagement', () => {
     });
 
     expect(result.current.error).toBe(
-      '서버에서 데이터를 불러오는데 실패했습니다. 로컬 데이터를 사용합니다.',
+      '서버에서 데이터를 불러오는데 실패했습니다. 로컬 데이터를 사용합니다.'
     );
   });
 });

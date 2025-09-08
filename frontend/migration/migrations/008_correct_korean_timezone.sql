@@ -108,3 +108,4 @@ VALUES (
     'completed',
     '올바른 방법으로 한국시간 변환 - AT TIME ZONE Asia/Seoul 사용'
 ) ON CONFLICT DO NOTHING;
+

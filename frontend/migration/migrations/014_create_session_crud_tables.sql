@@ -87,3 +87,4 @@ VALUES (
   '세션 CRUD 테이블 생성 완료 - sessions, enrollments 테이블 및 RLS 정책 설정'
 )
 ON CONFLICT (migration_name) DO NOTHING;
+

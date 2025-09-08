@@ -148,3 +148,4 @@ VALUES (
     'completed',
     '안전한 한국시간 설정 트리거 함수 - 필드 존재 여부 확인'
 ) ON CONFLICT DO NOTHING;
+

@@ -54,8 +54,8 @@ export default tseslint.config(
         '**/__tests__/**/*.{ts,tsx}',
       ],
       rules: {
-        // 테스트 파일에서는 더 엄격한 규칙 적용
-        '@typescript-eslint/no-explicit-any': 'error',
+        // 테스트 파일에서는 모킹을 위해 any 타입 허용
+        '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-unused-vars': 'error',
       },
     },

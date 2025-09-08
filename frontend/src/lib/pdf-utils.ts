@@ -39,7 +39,7 @@ export function calculateSessionTimeRange(element: HTMLElement): {
 } {
   // 세션 블록들을 찾기
   const sessionBlocks = element.querySelectorAll(
-    '[data-session-id], .session-block, .SessionBlock',
+    '[data-session-id], .session-block, .SessionBlock'
   );
 
   if (sessionBlocks.length === 0) {
@@ -102,7 +102,7 @@ export function calculateSessionTimeRange(element: HTMLElement): {
 export function extractTimeHeaders(element: HTMLElement): Element[] {
   // 실제 시간 헤더들 확인 (sticky 포함) - 요일 헤더는 제외
   const allHeaders = element.querySelectorAll(
-    'div[style*="text-align: center"][style*="height: 40px"]',
+    'div[style*="text-align: center"][style*="height: 40px"]'
   );
   const timeHeaders = Array.from(allHeaders).filter((header: Element) => {
     const text = header.textContent?.trim();
@@ -128,7 +128,7 @@ export function extractTimeHeaders(element: HTMLElement): Element[] {
 export function hideTimeHeadersOutsideSessionRange(
   element: HTMLElement,
   startTime: string,
-  endTime: string,
+  endTime: string
 ): number {
   // 시간 헤더만 추출 (요일 헤더 제외)
   const timeHeaders = extractTimeHeaders(element);
@@ -157,7 +157,7 @@ export function hideTimeHeadersOutsideSessionRange(
         }
 
         console.log(
-          `🆕 시간 헤더 숨김: ${time} (세션 범위: ${startTime} ~ ${endTime})`,
+          `🆕 시간 헤더 숨김: ${time} (세션 범위: ${startTime} ~ ${endTime})`
         );
       }
     }
@@ -179,7 +179,7 @@ export function restoreHiddenTimeHeaders(element: HTMLElement): void {
     if (headerElement.style.display === 'none') {
       headerElement.style.display = ''; // 원래 display 값으로 복원
       console.log(
-        `🆕 시간 헤더 복원: ${headerElement.textContent?.trim()} (display: none → '')`,
+        `🆕 시간 헤더 복원: ${headerElement.textContent?.trim()} (display: none → '')`
       );
     }
   });
@@ -189,11 +189,11 @@ export function restoreHiddenTimeHeaders(element: HTMLElement): void {
  */
 export function adjustSessionPositions(
   element: HTMLElement,
-  headersHiddenBeforeStartTime: number,
+  headersHiddenBeforeStartTime: number
 ): void {
   // 🆕 세션셀들의 위치 조정 (세션 시작 시간보다 앞선 시간 헤더만큼 앞당기기)
   const sessionBlocks = element.querySelectorAll(
-    '[data-session-id], .session-block, .SessionBlock',
+    '[data-session-id], .session-block, .SessionBlock'
   );
 
   sessionBlocks.forEach(block => {
@@ -204,12 +204,12 @@ export function adjustSessionPositions(
     // 세션 시작 시간보다 앞선 시간 헤더 개수만큼 앞당기기 (30분당 100px)
     const newLeftValue = Math.max(
       0,
-      currentLeftValue - headersHiddenBeforeStartTime * 100,
+      currentLeftValue - headersHiddenBeforeStartTime * 100
     );
     sessionElement.style.left = `${newLeftValue}px`;
 
     console.log(
-      `🆕 세션셀 위치 조정: ${currentLeft} → ${newLeftValue}px (세션 시작 시간보다 앞선 시간 헤더: ${headersHiddenBeforeStartTime}개)`,
+      `🆕 세션셀 위치 조정: ${currentLeft} → ${newLeftValue}px (세션 시작 시간보다 앞선 시간 헤더: ${headersHiddenBeforeStartTime}개)`
     );
   });
 }
@@ -235,7 +235,7 @@ export async function captureElement(
     quality?: number;
     backgroundColor?: string;
     sessionRange?: boolean;
-  } = {},
+  } = {}
 ): Promise<HTMLCanvasElement> {
   const {
     backgroundColor = '#ffffff',
@@ -427,12 +427,12 @@ export async function captureElement(
     if (sessionRange && sessionTimeRange.hasSessions) {
       console.log(
         '세션 범위 필터링 시작:',
-        JSON.stringify(sessionTimeRange, null, 2),
+        JSON.stringify(sessionTimeRange, null, 2)
       );
 
       // 🆕 원본 세션셀 위치 백업
       const originalSessionBlocks = element.querySelectorAll(
-        '[data-session-id], .session-block, .SessionBlock',
+        '[data-session-id], .session-block, .SessionBlock'
       );
 
       originalSessionBlocks.forEach(block => {
@@ -447,7 +447,7 @@ export async function captureElement(
       const headersHiddenBeforeStartTime = hideTimeHeadersOutsideSessionRange(
         element,
         sessionTimeRange.startTime,
-        sessionTimeRange.endTime,
+        sessionTimeRange.endTime
       );
 
       // 🆕 세션셀 위치 조정
@@ -614,7 +614,7 @@ export async function captureElement(
  */
 export function downloadCanvasAsPDF(
   canvas: HTMLCanvasElement,
-  options: PDFDownloadOptions = {},
+  options: PDFDownloadOptions = {}
 ): void {
   const {
     filename = 'timetable.pdf',
@@ -659,7 +659,7 @@ export function downloadCanvasAsPDF(
 export async function downloadElementAsPDF(
   element: HTMLElement,
   options: PDFDownloadOptions = {},
-  captureOptions: { sessionRange?: boolean } = {},
+  captureOptions: { sessionRange?: boolean } = {}
 ): Promise<void> {
   try {
     // 1. HTML 요소를 캔버스로 변환
@@ -686,7 +686,7 @@ export async function downloadElementAsPDF(
  */
 export async function downloadTimetableAsPDF(
   element: HTMLElement,
-  studentName?: string,
+  studentName?: string
 ): Promise<void> {
   const filename = studentName
     ? `${studentName}_시간표.pdf`
@@ -701,7 +701,7 @@ export async function downloadTimetableAsPDF(
     },
     {
       sessionRange: true, // 🆕 세션 범위 기반 캡처 활성화
-    },
+    }
   );
 }
 
@@ -712,7 +712,7 @@ export async function downloadTimetableAsPDF(
 function adjustColorForLightTheme(color: string): string {
   // RGB 색상을 파싱
   const rgbMatch = color.match(
-    /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/,
+    /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/
   );
   if (rgbMatch) {
     const r = parseInt(rgbMatch[1]);

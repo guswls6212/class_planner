@@ -144,3 +144,4 @@ VALUES (
     'completed',
     '기존 트리거 함수 완전 삭제 후 올바른 한국시간 설정 트리거 재생성'
 ) ON CONFLICT DO NOTHING;
+

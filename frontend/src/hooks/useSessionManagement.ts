@@ -35,7 +35,7 @@ export const useSessionManagement = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _students: Student[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _subjects: Subject[],
+  _subjects: Subject[]
 ): UseSessionManagementReturn => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -83,7 +83,7 @@ export const useSessionManagement = (
 
       const getSessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('getSession 타임아웃 (5초)')), 5000),
+        setTimeout(() => reject(new Error('getSession 타임아웃 (5초)')), 5000)
       );
 
       try {
@@ -105,7 +105,7 @@ export const useSessionManagement = (
         const user = session?.user;
         console.log(
           '✅ 사용자 인증 확인 완료:',
-          user ? '로그인됨' : '로그아웃됨',
+          user ? '로그인됨' : '로그아웃됨'
         );
 
         if (!user) {
@@ -133,7 +133,7 @@ export const useSessionManagement = (
             return;
           }
           setError(
-            '서버에서 데이터를 불러오는데 실패했습니다. 로컬 데이터를 사용합니다.',
+            '서버에서 데이터를 불러오는데 실패했습니다. 로컬 데이터를 사용합니다.'
           );
           // 에러가 있어도 로컬 데이터는 이미 로드했으므로 계속 진행
           return;
@@ -157,7 +157,7 @@ export const useSessionManagement = (
       } catch (timeoutError) {
         console.warn(
           '⚠️ Supabase 인증 타임아웃 - 로컬 데이터 사용:',
-          timeoutError,
+          timeoutError
         );
         setError('서버 연결이 지연되고 있습니다. 로컬 데이터를 사용합니다.');
         // 타임아웃이 발생해도 로컬 데이터는 이미 로드했으므로 계속 진행
@@ -184,7 +184,7 @@ export const useSessionManagement = (
         // 타임아웃을 추가한 getUser 호출
         const getUserPromise = supabase.auth.getUser();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('getUser 타임아웃 (5초)')), 5000),
+          setTimeout(() => reject(new Error('getUser 타임아웃 (5초)')), 5000)
         );
 
         const {
@@ -195,7 +195,7 @@ export const useSessionManagement = (
 
         if (!user) {
           console.log(
-            '❌ 로그인되지 않은 사용자 - 서버 저장 건너뜀 (로컬 데이터는 정상 추가됨)',
+            '❌ 로그인되지 않은 사용자 - 서버 저장 건너뜀 (로컬 데이터는 정상 추가됨)'
           );
           return; // 로그인하지 않은 상태에서는 서버 저장만 건너뛰고 성공으로 처리
         }
@@ -239,7 +239,7 @@ export const useSessionManagement = (
           },
           {
             onConflict: 'user_id',
-          },
+          }
         );
 
         if (error) {
@@ -253,7 +253,7 @@ export const useSessionManagement = (
         throw err;
       }
     },
-    [],
+    []
   );
 
   /**
@@ -284,7 +284,7 @@ export const useSessionManagement = (
           // 기존 수강신청 확인
           const existingEnrollment = enrollments.find(
             e =>
-              e.studentId === studentId && e.subjectId === sessionData.subjectId,
+              e.studentId === studentId && e.subjectId === sessionData.subjectId
           );
 
           if (existingEnrollment) {
@@ -330,7 +330,7 @@ export const useSessionManagement = (
           localStorage.setItem('sessions', JSON.stringify(updatedSessions));
           localStorage.setItem(
             'enrollments',
-            JSON.stringify(updatedEnrollments),
+            JSON.stringify(updatedEnrollments)
           );
           console.log('✅ 로컬 스토리지 저장 완료');
         } catch (storageError) {
@@ -345,7 +345,7 @@ export const useSessionManagement = (
         } catch (serverError) {
           console.warn(
             '⚠️ 서버 저장 실패 (로컬 데이터는 정상 추가됨):',
-            serverError,
+            serverError
           );
           // 서버 저장 실패해도 로컬 데이터는 정상적으로 추가되었으므로 에러로 처리하지 않음
         }
@@ -363,7 +363,7 @@ export const useSessionManagement = (
         console.log('✅ 로딩 상태 해제 완료');
       }
     },
-    [sessions, enrollments, saveToServer],
+    [sessions, enrollments, saveToServer]
   );
 
   /**
@@ -379,7 +379,7 @@ export const useSessionManagement = (
         startTime: string;
         endTime: string;
         room?: string;
-      },
+      }
     ) => {
       try {
         setIsLoading(true);
@@ -399,7 +399,7 @@ export const useSessionManagement = (
           // 기존 수강신청 확인
           const existingEnrollment = enrollments.find(
             e =>
-              e.studentId === studentId && e.subjectId === sessionData.subjectId,
+              e.studentId === studentId && e.subjectId === sessionData.subjectId
           );
 
           if (existingEnrollment) {
@@ -428,7 +428,7 @@ export const useSessionManagement = (
         // 상태 업데이트
         const updatedEnrollments = [...enrollments, ...newEnrollments];
         const updatedSessions = sessions.map(s =>
-          s.id === sessionId ? updatedSession : s,
+          s.id === sessionId ? updatedSession : s
         );
 
         setEnrollments(updatedEnrollments);
@@ -439,7 +439,7 @@ export const useSessionManagement = (
           localStorage.setItem('sessions', JSON.stringify(updatedSessions));
           localStorage.setItem(
             'enrollments',
-            JSON.stringify(updatedEnrollments),
+            JSON.stringify(updatedEnrollments)
           );
         } catch (storageError) {
           console.error('❌ 로컬 스토리지 저장 실패:', storageError);
@@ -460,7 +460,7 @@ export const useSessionManagement = (
         setIsLoading(false);
       }
     },
-    [sessions, enrollments, saveToServer],
+    [sessions, enrollments, saveToServer]
   );
 
   /**
@@ -495,7 +495,7 @@ export const useSessionManagement = (
         setIsLoading(false);
       }
     },
-    [sessions, enrollments, saveToServer],
+    [sessions, enrollments, saveToServer]
   );
 
   // 초기 데이터 로드

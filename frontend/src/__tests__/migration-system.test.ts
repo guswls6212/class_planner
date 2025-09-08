@@ -29,7 +29,7 @@ describe('Migration 시스템', () => {
     const scriptPath = join(
       process.cwd(),
       'migration',
-      'check-migration-status.sh',
+      'check-migration-status.sh'
     );
     expect(existsSync(scriptPath)).toBe(true);
   });
@@ -44,7 +44,7 @@ describe('Migration 시스템', () => {
       process.cwd(),
       'migration',
       'migrations',
-      '009_safe_korean_timezone.sql',
+      '009_safe_korean_timezone.sql'
     );
     expect(existsSync(kstMigrationPath)).toBe(true);
   });

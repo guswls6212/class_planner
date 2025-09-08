@@ -176,7 +176,7 @@ describe('TimeTableGrid', () => {
 
   it('겹치는 세션이 있는 경우 순차적으로 Y축으로 분리되어 렌더링된다', () => {
     render(
-      <TimeTableGrid {...defaultProps} sessions={mockOverlappingSessions} />,
+      <TimeTableGrid {...defaultProps} sessions={mockOverlappingSessions} />
     );
 
     // 겹치는 세션들이 순차적으로 Y축으로 분리되어야 함
@@ -217,7 +217,7 @@ describe('TimeTableGrid', () => {
     ]);
 
     render(
-      <TimeTableGrid {...defaultProps} sessions={partialOverlapSessions} />,
+      <TimeTableGrid {...defaultProps} sessions={partialOverlapSessions} />
     );
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32
@@ -324,7 +324,7 @@ describe('TimeTableGrid', () => {
 
     // 시간별 세로 구분선이 더 이상 렌더링되지 않아야 함
     const timeBorders = document.querySelectorAll(
-      '[data-testid^="time-border-"]',
+      '[data-testid^="time-border-"]'
     );
     expect(timeBorders).toHaveLength(0);
   });
@@ -334,7 +334,7 @@ describe('TimeTableGrid', () => {
 
     // 30분 구분선이 더 이상 렌더링되지 않아야 함
     const halfHourBorders = document.querySelectorAll(
-      '[data-testid^="half-hour-border-"]',
+      '[data-testid^="half-hour-border-"]'
     );
     expect(halfHourBorders).toHaveLength(0);
   });

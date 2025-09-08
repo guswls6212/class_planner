@@ -5,7 +5,7 @@ import type { DisplaySessions } from '../types/scheduleTypes';
 export const useDisplaySessions = (
   sessions: Session[],
   enrollments: Enrollment[],
-  selectedStudentId: string,
+  selectedStudentId: string
 ): DisplaySessions => {
   const displaySessions = useMemo(() => {
     if (selectedStudentId) {
@@ -16,7 +16,7 @@ export const useDisplaySessions = (
             s.enrollmentIds.some(enrollmentId => {
               const enrollment = enrollments.find(e => e.id === enrollmentId);
               return enrollment?.studentId === selectedStudentId;
-            }),
+            })
           )
           .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
           .reduce((acc, s) => {
@@ -24,7 +24,7 @@ export const useDisplaySessions = (
             list.push(s);
             acc.set(s.weekday, list);
             return acc;
-          }, new Map<number, Session[]>()),
+          }, new Map<number, Session[]>())
       );
     } else {
       // 전체 학생의 세션 표시
@@ -36,7 +36,7 @@ export const useDisplaySessions = (
             list.push(s);
             acc.set(s.weekday, list);
             return acc;
-          }, new Map<number, Session[]>()),
+          }, new Map<number, Session[]>())
       );
     }
   }, [sessions, enrollments, selectedStudentId]);

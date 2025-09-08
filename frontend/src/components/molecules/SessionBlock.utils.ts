@@ -21,7 +21,7 @@ export const getGroupStudentNames = (
   session: Session,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
   students: Array<{ id: string; name: string }>,
-  selectedStudentId?: string, // 🆕 선택된 학생 ID 추가
+  selectedStudentId?: string // 🆕 선택된 학생 ID 추가
 ): string[] => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
@@ -34,12 +34,12 @@ export const getGroupStudentNames = (
       enrollmentId => {
         const enrollment = enrollments?.find(e => e.id === enrollmentId);
         return enrollment?.studentId === selectedStudentId;
-      },
+      }
     );
 
     if (selectedStudentEnrollment) {
       const enrollment = enrollments?.find(
-        e => e.id === selectedStudentEnrollment,
+        e => e.id === selectedStudentEnrollment
       );
       const student = students?.find(s => s.id === enrollment?.studentId);
       return student?.name ? [student.name] : [];
@@ -63,7 +63,7 @@ export const getGroupStudentNames = (
 export const getSessionSubject = (
   session: Session,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
-  subjects: Subject[],
+  subjects: Subject[]
 ): Subject | null => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
@@ -73,7 +73,7 @@ export const getSessionSubject = (
 
   // 첫 번째 enrollment에서 과목 정보 가져오기
   const firstEnrollment = enrollments?.find(
-    e => e.id === session.enrollmentIds[0],
+    e => e.id === session.enrollmentIds[0]
   );
   if (!firstEnrollment) {
     console.warn('🔍 SessionBlock: enrollment를 찾을 수 없음', {
@@ -121,7 +121,7 @@ export const getSessionBlockStyles = (
   left: number,
   width: number,
   yOffset: number,
-  subjectColor?: string,
+  subjectColor?: string
 ): CSSProperties => {
   return {
     position: 'absolute',

@@ -16,7 +16,7 @@ import type {
 
 export const createDataSummary = (
   data: ClassPlannerData,
-  source: DataSource,
+  source: DataSource
 ): DataSummary => {
   const students = data?.students?.length || 0;
   const subjects = data?.subjects?.length || 0;
@@ -50,7 +50,7 @@ export const formatDataSummary = (summary: DataSummary): string => {
  */
 export const compareDataSummaries = (
   local: DataSummary,
-  server: DataSummary,
+  server: DataSummary
 ): string => {
   const localStr = formatDataSummary(local);
   const serverStr = formatDataSummary(server);
@@ -84,7 +84,7 @@ export const getTimeAgo = (date: Date): string => {
  */
 export const determineSyncScenario = (
   hasLocalData: boolean,
-  hasServerData: boolean,
+  hasServerData: boolean
 ): SyncScenario => {
   if (hasLocalData && !hasServerData) {
     return 'newUser';
@@ -101,7 +101,7 @@ export const determineSyncScenario = (
  * localStorage에서 데이터 로드
  */
 export const loadFromLocalStorage = (
-  key: string = 'classPlannerData',
+  key: string = 'classPlannerData'
 ): ClassPlannerData | null => {
   try {
     const data = localStorage.getItem(key);
@@ -117,7 +117,7 @@ export const loadFromLocalStorage = (
  */
 export const saveToLocalStorage = (
   data: ClassPlannerData,
-  key: string = 'classPlannerData',
+  key: string = 'classPlannerData'
 ): boolean => {
   try {
     const dataWithTimestamp = {
@@ -137,7 +137,7 @@ export const saveToLocalStorage = (
  * localStorage에서 데이터 삭제
  */
 export const removeFromLocalStorage = (
-  key: string = 'classPlannerData',
+  key: string = 'classPlannerData'
 ): boolean => {
   try {
     localStorage.removeItem(key);
@@ -173,7 +173,7 @@ export const validateData = (data: unknown): data is ClassPlannerData => {
 export const mergeData = (
   localData: ClassPlannerData,
   serverData: ClassPlannerData,
-  strategy: 'local' | 'server' | 'merge',
+  strategy: 'local' | 'server' | 'merge'
 ): ClassPlannerData => {
   if (strategy === 'local') {
     return localData;
@@ -196,7 +196,7 @@ export const mergeData = (
  * 데이터 크기 확인 (localStorage 제한 체크)
  */
 export const checkDataSize = (
-  data: ClassPlannerData,
+  data: ClassPlannerData
 ): { isValid: boolean; size: number; limit: number } => {
   const jsonString = JSON.stringify(data);
   const size = jsonString.length;
@@ -226,7 +226,7 @@ export const createDataBackup = (data: ClassPlannerData): string => {
  * 데이터 백업 복원
  */
 export const restoreDataBackup = (
-  backupString: string,
+  backupString: string
 ): ClassPlannerData | null => {
   try {
     const backup = JSON.parse(backupString);

@@ -31,7 +31,7 @@ describe('SubjectsPage', () => {
     render(<SubjectsPage />);
 
     expect(
-      screen.getByPlaceholderText('과목 이름 (검색 가능)'),
+      screen.getByPlaceholderText('과목 이름 (검색 가능)')
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '추가' })).toBeInTheDocument();
     expect(screen.getByTitle('과목 색상 선택')).toBeInTheDocument();

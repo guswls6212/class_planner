@@ -38,7 +38,7 @@ export const useSessionManagement = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _students: Student[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _subjects: Subject[],
+  _subjects: Subject[]
 ): UseSessionManagementReturn => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -97,7 +97,7 @@ export const useSessionManagement = (
           startsAt: session.starts_at,
           endsAt: session.ends_at,
           room: session.room,
-        }),
+        })
       );
 
       const convertedEnrollments: Enrollment[] = (enrollmentsData || []).map(
@@ -105,7 +105,7 @@ export const useSessionManagement = (
           id: enrollment.id,
           studentId: enrollment.student_id,
           subjectId: enrollment.subject_id,
-        }),
+        })
       );
 
       setSessions(convertedSessions);
@@ -156,7 +156,7 @@ export const useSessionManagement = (
           // 기존 수강신청 확인
           const existingEnrollment = enrollments.find(
             e =>
-              e.studentId === studentId && e.subjectId === sessionData.subjectId,
+              e.studentId === studentId && e.subjectId === sessionData.subjectId
           );
 
           if (existingEnrollment) {
@@ -226,7 +226,7 @@ export const useSessionManagement = (
         setIsLoading(false);
       }
     },
-    [enrollments],
+    [enrollments]
   );
 
   /**
@@ -242,7 +242,7 @@ export const useSessionManagement = (
         startTime: string;
         endTime: string;
         room?: string;
-      },
+      }
     ) => {
       try {
         setIsLoading(true);
@@ -261,7 +261,7 @@ export const useSessionManagement = (
         for (const studentId of sessionData.studentIds) {
           const existingEnrollment = enrollments.find(
             e =>
-              e.studentId === studentId && e.subjectId === sessionData.subjectId,
+              e.studentId === studentId && e.subjectId === sessionData.subjectId
           );
 
           if (existingEnrollment) {
@@ -315,8 +315,8 @@ export const useSessionManagement = (
                   endsAt: sessionData.endTime,
                   room: sessionData.room,
                 }
-              : s,
-          ),
+              : s
+          )
         );
 
         console.log('세션 업데이트 완료:', { sessionId });
@@ -328,7 +328,7 @@ export const useSessionManagement = (
         setIsLoading(false);
       }
     },
-    [enrollments],
+    [enrollments]
   );
 
   /**
