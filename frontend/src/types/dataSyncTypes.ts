@@ -43,17 +43,17 @@ export type DataSource = 'local' | 'server';
 
 // 데이터 동기화 시나리오
 export type SyncScenario =
-  | 'newUser' // 신규 가입 (localStorage 있음, DB 없음)
+  | 'localOnlyFirstLogin' // 로컬 데이터만 있음, 첫 로그인 (localStorage 있음, DB 없음)
+  | 'localAndServerConflict' // 로컬과 서버 데이터 모두 있음, 충돌 (localStorage 있음, DB 있음)
   | 'normalLogin' // 일반 로그인 (localStorage 없음, DB 있음)
-  | 'dataConflict' // 데이터 충돌 (localStorage 있음, DB 있음)
   | 'noData'; // 데이터 없음 (localStorage 없음, DB 없음)
 
 // 데이터 동기화 액션
 export type SyncAction =
-  | 'uploadLocal' // 로컬 데이터를 DB에 업로드
-  | 'downloadServer' // 서버 데이터를 로컬에 다운로드
-  | 'keepServer' // 서버 데이터 유지 (로컬 데이터 무시)
-  | 'keepLocal' // 로컬 데이터 유지 (서버 데이터 덮어쓰기)
+  | 'importData' // 로컬 데이터를 서버에 업로드하고 로컬 데이터 삭제
+  | 'startFresh' // 로컬 데이터 삭제하고 서버의 빈 데이터로 시작
+  | 'useDeviceData' // 로컬 데이터를 서버에 업로드하고 로컬 데이터 삭제
+  | 'useServerData' // 서버 데이터를 로컬에 다운로드하고 로컬 데이터 삭제
   | 'cancelSync'; // 동기화 취소
 
 // 데이터 요약 정보

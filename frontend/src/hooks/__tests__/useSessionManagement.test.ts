@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { supabase } from '../../utils/supabaseClient';
 import type { Student, Subject } from '../../lib/planner';
+import { supabase } from '../../utils/supabaseClient';
 import { useSessionManagement } from '../useSessionManagement';
 
 // Supabase 모킹

@@ -55,7 +55,7 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
 
   const renderScenarioContent = () => {
     switch (scenario) {
-      case 'newUser':
+      case 'localOnlyFirstLogin':
         return (
           <div className={styles.scenarioContent}>
             <div className={styles.icon}>📤</div>
@@ -82,18 +82,21 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
             <div className={styles.buttonGroup}>
               <button
                 className={`${styles.button} ${styles.primaryButton}`}
-                onClick={() => handleAction('uploadLocal')}
+                onClick={() => handleAction('importData')}
                 disabled={isSyncing}
               >
-                {isSyncing ? '업로드 중...' : '계정에 저장하기'}
+                {isSyncing ? '업로드 중...' : 'Import data'}
               </button>
               <button
                 className={`${styles.button} ${styles.secondaryButton}`}
-                onClick={onClose}
+                onClick={() => handleAction('startFresh')}
                 disabled={isSyncing}
               >
-                나중에 하기
+                {isSyncing ? '처리 중...' : 'Start fresh'}
               </button>
+            </div>
+            <div className={styles.warning}>
+              ⚠️ "Start fresh"를 선택하면 로컬 데이터가 영구적으로 삭제됩니다.
             </div>
           </div>
         );
@@ -140,7 +143,7 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
           </div>
         );
 
-      case 'dataConflict':
+      case 'localAndServerConflict':
         return (
           <div className={styles.scenarioContent}>
             <div className={styles.icon}>⚠️</div>
@@ -153,7 +156,7 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
               {localData && (
                 <div className={styles.dataCard}>
                   <div className={styles.cardHeader}>
-                    <span className={styles.cardTitle}>로컬 데이터</span>
+                    <span className={styles.cardTitle}>Device data</span>
                     <span className={styles.cardBadge}>현재 기기</span>
                   </div>
                   <div className={styles.dataSummary}>
@@ -169,7 +172,7 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
               {serverData && (
                 <div className={styles.dataCard}>
                   <div className={styles.cardHeader}>
-                    <span className={styles.cardTitle}>서버 데이터</span>
+                    <span className={styles.cardTitle}>Server data</span>
                     <span className={styles.cardBadge}>계정</span>
                   </div>
                   <div className={styles.dataSummary}>
@@ -186,29 +189,21 @@ const DataSyncModal: React.FC<DataSyncModalProps> = ({
             <div className={styles.buttonGroup}>
               <button
                 className={`${styles.button} ${styles.primaryButton}`}
-                onClick={() => handleAction('keepServer')}
+                onClick={() => handleAction('useServerData')}
                 disabled={isSyncing}
               >
-                {isSyncing ? '동기화 중...' : '서버 데이터 사용 (권장)'}
+                {isSyncing ? '동기화 중...' : 'Server data'}
               </button>
               <button
                 className={`${styles.button} ${styles.warningButton}`}
-                onClick={() => handleAction('keepLocal')}
+                onClick={() => handleAction('useDeviceData')}
                 disabled={isSyncing}
               >
-                {isSyncing ? '동기화 중...' : '로컬 데이터로 덮어쓰기'}
-              </button>
-              <button
-                className={`${styles.button} ${styles.secondaryButton}`}
-                onClick={() => handleAction('cancelSync')}
-                disabled={isSyncing}
-              >
-                취소
+                {isSyncing ? '동기화 중...' : 'Device data'}
               </button>
             </div>
             <div className={styles.warning}>
-              ⚠️ 로컬 데이터로 덮어쓰기를 선택하면 서버의 데이터가 영구적으로
-              삭제됩니다.
+              ⚠️ 선택하지 않은 데이터는 영구적으로 삭제됩니다.
             </div>
           </div>
         );

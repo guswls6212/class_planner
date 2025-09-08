@@ -87,11 +87,11 @@ export const determineSyncScenario = (
   hasServerData: boolean
 ): SyncScenario => {
   if (hasLocalData && !hasServerData) {
-    return 'newUser';
+    return 'localOnlyFirstLogin';
   } else if (!hasLocalData && hasServerData) {
     return 'normalLogin';
   } else if (hasLocalData && hasServerData) {
-    return 'dataConflict';
+    return 'localAndServerConflict';
   } else {
     return 'noData';
   }
@@ -104,8 +104,31 @@ export const loadFromLocalStorage = (
   key: string = 'classPlannerData'
 ): ClassPlannerData | null => {
   try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
+    // 먼저 통합된 데이터 키로 시도
+    const unifiedData = localStorage.getItem(key);
+    if (unifiedData) {
+      return JSON.parse(unifiedData);
+    }
+
+    // 통합된 데이터가 없으면 개별 키들에서 데이터 수집
+    const sessions = localStorage.getItem('sessions');
+    const enrollments = localStorage.getItem('enrollments');
+    const students = localStorage.getItem('students');
+    const subjects = localStorage.getItem('subjects');
+
+    if (sessions || enrollments || students || subjects) {
+      const data: ClassPlannerData = {
+        students: students ? JSON.parse(students) : [],
+        subjects: subjects ? JSON.parse(subjects) : [],
+        sessions: sessions ? JSON.parse(sessions) : [],
+        enrollments: enrollments ? JSON.parse(enrollments) : [],
+        lastModified: new Date().toISOString(),
+        version: '1.0',
+      };
+      return data;
+    }
+
+    return null;
   } catch (error) {
     console.error('localStorage에서 데이터 로드 실패:', error);
     return null;
@@ -140,7 +163,15 @@ export const removeFromLocalStorage = (
   key: string = 'classPlannerData'
 ): boolean => {
   try {
+    // 통합된 데이터 키 삭제
     localStorage.removeItem(key);
+
+    // 개별 키들도 삭제
+    localStorage.removeItem('sessions');
+    localStorage.removeItem('enrollments');
+    localStorage.removeItem('students');
+    localStorage.removeItem('subjects');
+
     return true;
   } catch (error) {
     console.error('localStorage에서 데이터 삭제 실패:', error);

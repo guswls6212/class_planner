@@ -185,32 +185,52 @@ export const useDataSync = (): UseDataSyncReturn => {
 
       try {
         console.log('user_data 테이블 조회 시작');
-        const { data, error } = await supabase
-          .from('user_data')
-          .select('data')
-          .eq('user_id', user.id)
-          .single();
 
-        console.log('서버 데이터 조회 결과:', { data, error });
-
-        if (!error && data) {
-          hasServerData = true;
-          serverData = data.data;
-          console.log('서버 데이터 발견:', Object.keys(serverData));
-          console.log(
-            '서버 데이터 업데이트 시간:',
-            (data as { updated_at?: string }).updated_at
+        // getSession 타임아웃 설정
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(
+            () => reject(new Error('getSession 타임아웃 (5초)')),
+            5000
           );
-        } else if (error && error.code === 'PGRST116') {
-          // PGRST116: No rows found (정상적인 경우)
-          console.log('서버에 데이터 없음 (새 사용자)');
-        } else if (error) {
-          console.log('서버 데이터 조회 오류:', error.message);
+        });
+
+        const sessionResult = await Promise.race([
+          sessionPromise,
+          timeoutPromise,
+        ]);
+
+        if (sessionResult && (sessionResult as any).data?.session?.user) {
+          const { data, error } = await supabase
+            .from('user_data')
+            .select('data')
+            .eq('user_id', (sessionResult as any).data.session.user.id)
+            .single();
+
+          console.log('서버 데이터 조회 결과:', { data, error });
+
+          if (!error && data) {
+            hasServerData = true;
+            serverData = data.data;
+            console.log('서버 데이터 발견:', Object.keys(serverData));
+            console.log(
+              '서버 데이터 업데이트 시간:',
+              (data as { updated_at?: string }).updated_at
+            );
+          } else if (error && error.code === 'PGRST116') {
+            // PGRST116: No rows found (정상적인 경우)
+            console.log('서버에 데이터 없음 (새 사용자)');
+          } else if (error) {
+            console.log('서버 데이터 조회 오류:', error.message);
+          } else {
+            console.log('서버에 데이터 없음');
+          }
         } else {
-          console.log('서버에 데이터 없음');
+          console.log('세션이 없음 - 서버 데이터 조회 건너뜀');
         }
       } catch (error) {
         console.error('서버 데이터 확인 실패:', error);
+        // 타임아웃이 발생해도 계속 진행
       }
 
       const scenario = determineSyncScenario(!!hasLocalData, !!hasServerData);
@@ -222,7 +242,7 @@ export const useDataSync = (): UseDataSyncReturn => {
       });
 
       // 시나리오에 따른 모달 데이터 설정
-      if (scenario === 'newUser' && hasLocalData) {
+      if (scenario === 'localOnlyFirstLogin' && hasLocalData) {
         const localSummary = getDataSummary(localData, 'local');
         setSyncModal(prev => ({
           ...prev,
@@ -230,7 +250,11 @@ export const useDataSync = (): UseDataSyncReturn => {
           scenario,
           localData: localSummary,
         }));
-      } else if (scenario === 'dataConflict' && hasLocalData && hasServerData) {
+      } else if (
+        scenario === 'localAndServerConflict' &&
+        hasLocalData &&
+        hasServerData
+      ) {
         const localSummary = getDataSummary(localData, 'local');
         const serverSummary = getDataSummary(serverData, 'server');
         setSyncModal(prev => ({
@@ -247,7 +271,7 @@ export const useDataSync = (): UseDataSyncReturn => {
           const newState = {
             ...prev,
             isOpen: true,
-            scenario: 'newUser' as SyncScenario,
+            scenario: 'localOnlyFirstLogin' as SyncScenario,
             localData: undefined,
             serverData: undefined,
           };
@@ -311,8 +335,8 @@ export const useDataSync = (): UseDataSyncReturn => {
         let result: SyncResult;
 
         switch (action) {
-          case 'uploadLocal': {
-            // 로컬 데이터를 서버에 업로드
+          case 'importData': {
+            // 로컬 데이터를 서버에 업로드하고 로컬 데이터 삭제
             const localData = loadFromLocalStorage();
             if (!localData || !validateData(localData)) {
               throw new Error('유효하지 않은 로컬 데이터입니다.');
@@ -331,7 +355,7 @@ export const useDataSync = (): UseDataSyncReturn => {
 
             if (error) throw error;
 
-            // 로컬 데이터 삭제
+            // 로컬 데이터 삭제 (사용자 선택 후)
             removeFromLocalStorage();
 
             result = {
@@ -343,81 +367,100 @@ export const useDataSync = (): UseDataSyncReturn => {
             break;
           }
 
-          case 'downloadServer': {
-            // 서버 데이터를 로컬에 다운로드
-            const { data, error } = await supabase
-              .from('user_data')
-              .select('data, updated_at')
-              .eq('user_id', user.id)
-              .single();
+          case 'startFresh': {
+            // 로컬 데이터 삭제하고 서버의 빈 데이터로 시작
+            removeFromLocalStorage();
+
+            // 서버에 빈 데이터 저장
+            const emptyData = {
+              students: [],
+              subjects: [],
+              sessions: [],
+              enrollments: [],
+              lastModified: new Date().toISOString(),
+              version: '1.0',
+            };
+
+            const { error } = await supabase.from('user_data').upsert(
+              {
+                user_id: user.id,
+                data: emptyData,
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'user_id',
+              }
+            );
 
             if (error) throw error;
-            if (!data?.data) {
-              throw new Error('서버에 저장된 데이터가 없습니다.');
-            }
-
-            const success = saveToLocalStorage(data.data);
-            if (!success) {
-              throw new Error('로컬 저장소에 데이터 저장에 실패했습니다.');
-            }
 
             result = {
               success: true,
               action,
-              message: '서버 데이터가 로컬에 성공적으로 저장되었습니다.',
-              data: data.data,
+              message: '새로운 시작으로 설정되었습니다.',
+              data: emptyData,
             };
             break;
           }
 
-          case 'keepServer': {
-            // 서버 데이터 유지 (로컬 데이터 무시)
-            const { data, error } = await supabase
-              .from('user_data')
-              .select('data, updated_at')
-              .eq('user_id', user.id)
-              .single();
-
-            if (error) throw error;
-            if (!data?.data) {
-              throw new Error('서버에 저장된 데이터가 없습니다.');
-            }
-
-            const success = saveToLocalStorage(data.data);
-            if (!success) {
-              throw new Error('로컬 저장소에 데이터 저장에 실패했습니다.');
-            }
-
-            result = {
-              success: true,
-              action,
-              message:
-                '서버 데이터를 사용합니다. 로컬 데이터는 무시되었습니다.',
-              data: data.data,
-            };
-            break;
-          }
-
-          case 'keepLocal': {
-            // 로컬 데이터 유지 (서버 데이터 덮어쓰기)
+          case 'useDeviceData': {
+            // 로컬 데이터를 서버에 업로드하고 로컬 데이터 삭제
             const localData = loadFromLocalStorage();
             if (!localData || !validateData(localData)) {
               throw new Error('유효하지 않은 로컬 데이터입니다.');
             }
 
-            const { error } = await supabase.from('user_data').upsert({
-              user_id: user.id,
-              data: localData,
-              updated_at: new Date().toISOString(),
-            });
+            const { error } = await supabase.from('user_data').upsert(
+              {
+                user_id: user.id,
+                data: localData,
+                updated_at: new Date().toISOString(),
+              },
+              {
+                onConflict: 'user_id',
+              }
+            );
 
             if (error) throw error;
+
+            // 로컬 데이터 삭제 (사용자 선택 후)
+            removeFromLocalStorage();
 
             result = {
               success: true,
               action,
-              message: '로컬 데이터로 서버를 덮어썼습니다.',
+              message: '기기 데이터로 서버를 덮어썼습니다.',
               data: localData,
+            };
+            break;
+          }
+
+          case 'useServerData': {
+            // 서버 데이터를 로컬에 다운로드하고 로컬 데이터 삭제
+            const { data, error } = await supabase
+              .from('user_data')
+              .select('data, updated_at')
+              .eq('user_id', user.id)
+              .single();
+
+            if (error) throw error;
+            if (!data?.data) {
+              throw new Error('서버에 저장된 데이터가 없습니다.');
+            }
+
+            // 로컬 데이터 삭제 (사용자 선택 후)
+            removeFromLocalStorage();
+
+            const success = saveToLocalStorage(data.data);
+            if (!success) {
+              throw new Error('로컬 저장소에 데이터 저장에 실패했습니다.');
+            }
+
+            result = {
+              success: true,
+              action,
+              message: '서버 데이터를 사용합니다.',
+              data: data.data,
             };
             break;
           }

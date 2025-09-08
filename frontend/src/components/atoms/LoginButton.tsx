@@ -76,6 +76,16 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
             console.log('로그인 성공 - 데이터 동기화 확인 시작');
             const scenario = await checkSyncNeeded();
             console.log('동기화 시나리오:', scenario);
+
+            // 로컬 데이터가 있는 경우에만 모달 표시
+            if (
+              scenario === 'localOnlyFirstLogin' ||
+              scenario === 'localAndServerConflict'
+            ) {
+              console.log('로컬 데이터 발견 - 동기화 모달 표시');
+            } else {
+              console.log('로컬 데이터 없음 - 일반 로그인 진행');
+            }
           } catch (error) {
             console.warn('데이터 동기화 확인 실패:', error);
           }
