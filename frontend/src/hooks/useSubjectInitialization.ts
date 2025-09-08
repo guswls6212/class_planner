@@ -19,7 +19,7 @@ const DEFAULT_SUBJECTS: Subject[] = [
 
 export const useSubjectInitialization = (
   setSubjects: (subjects: Subject[]) => void,
-  setSelectedSubjectId: (id: string) => void
+  setSelectedSubjectId: (id: string) => void,
 ) => {
   useEffect(() => {
     console.log('🔄 과목 목록을 초기화합니다...');
@@ -33,7 +33,7 @@ export const useSubjectInitialization = (
         const parsedSubjects = JSON.parse(savedSubjects) as Subject[];
         console.log(
           '✅ 저장된 과목 목록을 불러왔습니다:',
-          parsedSubjects.map(s => s.name)
+          parsedSubjects.map(s => s.name),
         );
         setSubjects(parsedSubjects);
 
@@ -43,7 +43,7 @@ export const useSubjectInitialization = (
       } else {
         console.log(
           '🆕 기본 과목 목록을 생성합니다:',
-          DEFAULT_SUBJECTS.map(s => s.name)
+          DEFAULT_SUBJECTS.map(s => s.name),
         );
         setSubjects(DEFAULT_SUBJECTS);
         // 기본 과목을 localStorage에 저장

@@ -98,7 +98,7 @@ export const useFeatureGuard = (): UseFeatureGuardReturn => {
         return currentCount < limits.freeLimit;
       }
     },
-    [isLoggedIn, isPremium]
+    [isLoggedIn, isPremium],
   );
 
   /**
@@ -113,7 +113,7 @@ export const useFeatureGuard = (): UseFeatureGuardReturn => {
         limit,
       });
     },
-    []
+    [],
   );
 
   /**
@@ -141,7 +141,7 @@ export const useFeatureGuard = (): UseFeatureGuardReturn => {
 
       return true;
     },
-    [checkFeatureAccess, showUpgradeModal]
+    [checkFeatureAccess, showUpgradeModal],
   );
 
   return {

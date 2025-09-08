@@ -6,7 +6,7 @@ import { usePanelPosition } from './usePanelPosition';
 export const useStudentPanel = (
   students: Student[],
   selectedStudentId: string,
-  setSelectedStudentId: (id: string) => void
+  setSelectedStudentId: (id: string) => void,
 ): StudentPanelState & {
   setSearchQuery: (query: string) => void;
   handleMouseDown: (e: React.MouseEvent) => void;
@@ -23,7 +23,7 @@ export const useStudentPanel = (
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return students;
     return students.filter(student =>
-      student.name.toLowerCase().includes(searchQuery.toLowerCase())
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [students, searchQuery]);
 

@@ -17,7 +17,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -31,7 +31,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -55,7 +55,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -80,7 +80,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -105,7 +105,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -129,7 +129,7 @@ describe('DropZone 렌더링 테스트', () => {
           onDrop={mockOnDrop}
           onEmptySpaceClick={mockOnEmptySpaceClick}
         />
-      </div>
+      </div>,
     );
 
     const firstDropZone = screen.getByTestId('dropzone-0-09:00');
@@ -155,7 +155,7 @@ describe('DropZone 렌더링 테스트', () => {
         time="09:00"
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');
@@ -170,7 +170,7 @@ describe('DropZone 렌더링 테스트', () => {
         onDrop={mockOnDrop}
         onEmptySpaceClick={mockOnEmptySpaceClick}
         style={{ zIndex: 5 }}
-      />
+      />,
     );
 
     const dropZone = screen.getByTestId('dropzone-0-09:00');

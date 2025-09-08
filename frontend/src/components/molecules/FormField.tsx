@@ -32,7 +32,7 @@ export const getLabelProps = (
   name: string,
   required: boolean,
   size: 'small' | 'medium' | 'large',
-  disabled: boolean
+  disabled: boolean,
 ) => {
   return {
     htmlFor: name,
@@ -50,7 +50,7 @@ export const getInputProps = (
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
   disabled: boolean,
   size: 'small' | 'medium' | 'large',
-  error: string | undefined
+  error: string | undefined,
 ) => {
   return {
     type,
@@ -108,7 +108,7 @@ export default function FormField({
     onChange,
     disabled,
     size,
-    error
+    error,
   );
 
   return (

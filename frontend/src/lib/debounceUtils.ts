@@ -19,7 +19,7 @@ type DebouncedFunction<T extends (...args: unknown[]) => unknown> = (
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  config: DebounceConfig
+  config: DebounceConfig,
 ): DebouncedFunction<T> {
   const { delay, maxWait, leading, trailing } = config;
 
@@ -155,7 +155,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  */
 export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  delay: number
+  delay: number,
 ): DebouncedFunction<T> {
   return debounce(func, {
     delay,
@@ -170,7 +170,7 @@ export function simpleDebounce<T extends (...args: unknown[]) => unknown>(
  */
 export function leadingDebounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  delay: number
+  delay: number,
 ): DebouncedFunction<T> {
   return debounce(func, {
     delay,
@@ -185,7 +185,7 @@ export function leadingDebounce<T extends (...args: unknown[]) => unknown>(
  */
 export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
-  delay: number
+  delay: number,
 ): DebouncedFunction<T> {
   return debounce(func, {
     delay,
@@ -200,7 +200,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
  */
 export function useDebounce<T extends (...args: unknown[]) => unknown>(
   func: T,
-  config: DebounceConfig
+  config: DebounceConfig,
 ): DebouncedFunction<T> {
   const debouncedFunc = debounce(func, config);
 

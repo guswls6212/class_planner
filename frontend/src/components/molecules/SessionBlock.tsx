@@ -40,7 +40,7 @@ interface SessionBlockProps {
 export const validateSessionBlockProps = (
   left: number,
   width: number,
-  yOffset: number
+  yOffset: number,
 ): boolean => {
   return left >= 0 && width > 0 && yOffset >= 0;
 };
@@ -81,7 +81,7 @@ function SessionBlock({
     session,
     enrollments,
     students,
-    selectedStudentId
+    selectedStudentId,
   );
 
   // 🆕 디버깅: 과목 및 학생 정보 확인

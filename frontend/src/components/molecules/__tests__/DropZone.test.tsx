@@ -47,7 +47,7 @@ describe('DropZone', () => {
     expect(defaultProps.onDrop).toHaveBeenCalledWith(
       0,
       '09:00',
-      'test-enrollment-id'
+      'test-enrollment-id',
     );
   });
 
@@ -135,7 +135,7 @@ describe('DropZone', () => {
     expect(defaultProps.onDrop).toHaveBeenCalledWith(
       0,
       '09:00',
-      'test-enrollment-id'
+      'test-enrollment-id',
     );
   });
 
@@ -153,7 +153,7 @@ describe('DropZone', () => {
           time={time}
           onDrop={vi.fn()}
           onEmptySpaceClick={vi.fn()}
-        />
+        />,
       );
 
       const dropZone = screen.getByTestId(expectedTestId);

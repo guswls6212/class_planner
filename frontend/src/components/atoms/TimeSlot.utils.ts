@@ -11,7 +11,7 @@ export interface TimeSlotStyles {
 }
 
 export function getTimeSlotStyles(
-  customStyle: Partial<TimeSlotStyles> = {}
+  customStyle: Partial<TimeSlotStyles> = {},
 ): TimeSlotStyles {
   const baseStyles: TimeSlotStyles = {
     backgroundColor: 'var(--color-background)',
@@ -30,7 +30,7 @@ export function getTimeSlotStyles(
 
 export function getTimeSlotClasses(
   baseClass: string,
-  customClass: string = ''
+  customClass: string = '',
 ): string {
   const classes = [baseClass];
   if (customClass) {
@@ -54,7 +54,7 @@ export function getTimeSlotText(time: string): string {
 // 🆕 30분 단위 시간 생성 함수
 export function generateTimeSlots30Min(
   startHour: number = 9,
-  endHour: number = 24
+  endHour: number = 24,
 ): string[] {
   const timeSlots: string[] = [];
 

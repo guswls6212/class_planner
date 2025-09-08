@@ -35,19 +35,30 @@ export const useDataSync = (): UseDataSyncReturn => {
     typeof supabase.channel
   > | null>(null);
 
-  // 모달 상태 변경 추적
+  // 모달 상태 변경 추적 (디버깅용 - 무한루프 방지)
   useEffect(() => {
-    console.log('useDataSync: 모달 상태 변경됨:', syncModal);
+    if (syncModal.isOpen) {
+      console.log('useDataSync: 모달 상태 변경됨:', syncModal);
+    }
   }, [syncModal]);
 
   // Realtime 구독 설정
   useEffect(() => {
+    let mounted = true;
+
     const setupRealtimeSubscription = async () => {
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (!user) return;
+
+        // 로그아웃 상태이거나 컴포넌트가 언마운트된 경우 종료
+        if (!user || !mounted) {
+          console.log(
+            '🔔 Realtime 구독 건너뜀 - 로그아웃 상태 또는 언마운트됨'
+          );
+          return;
+        }
 
         // 기존 채널 정리
         if (realtimeChannel) {
@@ -91,8 +102,10 @@ export const useDataSync = (): UseDataSyncReturn => {
           )
           .subscribe();
 
-        setRealtimeChannel(channel);
-        console.log('🔔 Realtime 구독 설정 완료');
+        if (mounted) {
+          setRealtimeChannel(channel);
+          console.log('🔔 Realtime 구독 설정 완료');
+        }
       } catch (error) {
         console.error('❌ Realtime 구독 설정 실패:', error);
       }
@@ -102,11 +115,12 @@ export const useDataSync = (): UseDataSyncReturn => {
 
     // 컴포넌트 언마운트 시 채널 정리
     return () => {
+      mounted = false;
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
     };
-  }, [realtimeChannel]);
+  }, [realtimeChannel]); // 컴포넌트 마운트 시에만 실행
 
   /**
    * 데이터 요약 정보 생성
@@ -134,6 +148,16 @@ export const useDataSync = (): UseDataSyncReturn => {
   const checkSyncNeeded = useCallback(async (): Promise<SyncScenario> => {
     console.log('checkSyncNeeded 함수 시작');
     try {
+      // 먼저 로그인 상태 확인
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.log('로그아웃 상태 - 동기화 건너뜀');
+        return 'noData';
+      }
+
       // localStorage 데이터 확인
       console.log('localStorage 데이터 로딩 시작');
       const localData = loadFromLocalStorage();
@@ -160,53 +184,30 @@ export const useDataSync = (): UseDataSyncReturn => {
       let serverData = null;
 
       try {
-        console.log('Supabase 사용자 정보 조회 시작');
+        console.log('user_data 테이블 조회 시작');
+        const { data, error } = await supabase
+          .from('user_data')
+          .select('data')
+          .eq('user_id', user.id)
+          .single();
 
-        // 타임아웃을 추가하여 무한 대기 방지
-        const getUserPromise = supabase.auth.getUser();
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('getUser 타임아웃 (5초)')), 5000);
-        });
+        console.log('서버 데이터 조회 결과:', { data, error });
 
-        const result = await Promise.race([getUserPromise, timeoutPromise]);
-        console.log('Supabase 사용자 정보 조회 완료:', result);
-
-        const {
-          data: { user },
-        } = result as { data: { user: { id: string; email?: string } | null } };
-
-        if (user) {
+        if (!error && data) {
+          hasServerData = true;
+          serverData = data.data;
+          console.log('서버 데이터 발견:', Object.keys(serverData));
           console.log(
-            '서버 데이터 확인 중 - 사용자:',
-            user.email || '이메일 없음',
-            'ID:',
-            user.id
+            '서버 데이터 업데이트 시간:',
+            (data as { updated_at?: string }).updated_at
           );
-
-          console.log('user_data 테이블 조회 시작');
-          const { data, error } = await supabase
-            .from('user_data')
-            .select('data, updated_at')
-            .eq('user_id', user.id)
-            .single();
-
-          console.log('서버 데이터 조회 결과:', { data, error });
-
-          if (!error && data) {
-            hasServerData = true;
-            serverData = data.data;
-            console.log('서버 데이터 발견:', Object.keys(serverData));
-            console.log('서버 데이터 업데이트 시간:', data.updated_at);
-          } else if (error && error.code === 'PGRST116') {
-            // PGRST116: No rows found (정상적인 경우)
-            console.log('서버에 데이터 없음 (새 사용자)');
-          } else if (error) {
-            console.log('서버 데이터 조회 오류:', error.message);
-          } else {
-            console.log('서버에 데이터 없음');
-          }
+        } else if (error && error.code === 'PGRST116') {
+          // PGRST116: No rows found (정상적인 경우)
+          console.log('서버에 데이터 없음 (새 사용자)');
+        } else if (error) {
+          console.log('서버 데이터 조회 오류:', error.message);
         } else {
-          console.log('로그인된 사용자 없음');
+          console.log('서버에 데이터 없음');
         }
       } catch (error) {
         console.error('서버 데이터 확인 실패:', error);

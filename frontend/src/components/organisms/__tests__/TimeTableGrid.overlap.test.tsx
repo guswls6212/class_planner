@@ -94,7 +94,7 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
         onEmptySpaceClick={vi.fn()}
-      />
+      />,
     );
 
     // 월요일 세션들이 순차적으로 배치되어야 함
@@ -141,7 +141,7 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
         onEmptySpaceClick={vi.fn()}
-      />
+      />,
     );
 
     // 겹치지 않는 세션들은 모두 yPosition: 0에 배치되어야 함
@@ -188,7 +188,7 @@ describe('TimeTableGrid 겹침 판단 및 Y축 배치 로직', () => {
         onSessionClick={vi.fn()}
         onDrop={vi.fn()}
         onEmptySpaceClick={vi.fn()}
-      />
+      />,
     );
 
     // 09:00-10:00과 09:30-10:30은 겹침 → yPosition: 0, 32

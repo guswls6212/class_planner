@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://kcyqftasdxtqslrhbctv.supabase.co';
+const supabaseAnonKey =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeXFmdGFzZHh0cXNscmhiY3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzI2MjQsImV4cCI6MjA3MjU0ODYyNH0.3-ljC5L9rcl8D-eV4BcGh-jdgiVgq2MG6O_RJdshyOQ';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
@@ -14,6 +15,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+// 디버깅을 위해 window 객체에 노출
+if (typeof window !== 'undefined') {
+  (window as { supabase?: typeof supabase }).supabase = supabase;
+  console.log('🔧 Supabase 클라이언트가 window 객체에 노출됨');
+}
 
 // 타입 정의
 export interface Database {

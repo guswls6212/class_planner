@@ -3,7 +3,7 @@ import { timeToMinutes } from '../../../lib/planner';
 // 겹침 판단 함수 (TimeTableGrid에서 사용하는 로직과 동일)
 const sessionsOverlap = (
   a: { startsAt: string; endsAt: string },
-  b: { startsAt: string; endsAt: string }
+  b: { startsAt: string; endsAt: string },
 ): boolean => {
   return (
     timeToMinutes(a.startsAt) < timeToMinutes(b.endsAt) &&

@@ -87,7 +87,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
         // 로그아웃 시 사용자 ID 제거
         localStorage.removeItem('supabase_user_id');
-        console.log('🗑️ 사용자 ID 제거됨');
+        // console.log('🗑️ 사용자 ID 제거됨'); // 무한루프 방지를 위해 주석 처리
 
         // 로그아웃 시 모달 닫기
         closeSyncModal();
@@ -95,7 +95,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [isSupabaseConfigured, checkSyncNeeded, syncModal]);
+  }, [isSupabaseConfigured, checkSyncNeeded, closeSyncModal]);
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {

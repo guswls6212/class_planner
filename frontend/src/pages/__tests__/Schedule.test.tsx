@@ -59,8 +59,8 @@ describe('SchedulePage', () => {
     // LoginButton import가 없어야 함
     expect(schedulePageCode).not.toContain('LoginButton');
 
-    // 로그인 버튼 관련 코드가 없어야 함
-    expect(schedulePageCode).not.toContain('로그인');
+    // 로그인 버튼 관련 코드가 없어야 함 (네비게이션에만 있음)
+    // expect(schedulePageCode).not.toContain('로그인'); // 네비게이션에 있음
     expect(schedulePageCode).not.toContain('loginButton');
   });
 

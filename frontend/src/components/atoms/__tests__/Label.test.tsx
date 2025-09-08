@@ -30,7 +30,7 @@ describe('Label 컴포넌트', () => {
           false,
           false,
           false,
-          false
+          false,
         );
         expect(result).toBe('label medium default');
       });
@@ -42,7 +42,7 @@ describe('Label 컴포넌트', () => {
           true,
           false,
           false,
-          false
+          false,
         );
         expect(result).toBe('label medium default error');
       });
@@ -54,7 +54,7 @@ describe('Label 컴포넌트', () => {
           false,
           true,
           false,
-          false
+          false,
         );
         expect(result).toBe('label medium default success');
       });
@@ -66,7 +66,7 @@ describe('Label 컴포넌트', () => {
           false,
           false,
           true,
-          false
+          false,
         );
         expect(result).toBe('label medium default warning');
       });
@@ -78,7 +78,7 @@ describe('Label 컴포넌트', () => {
           false,
           false,
           false,
-          true
+          true,
         );
         expect(result).toBe('label medium default disabled');
       });
@@ -90,10 +90,10 @@ describe('Label 컴포넌트', () => {
           true,
           true,
           true,
-          true
+          true,
         );
         expect(result).toBe(
-          'label large checkbox error success warning disabled'
+          'label large checkbox error success warning disabled',
         );
       });
     });
@@ -208,7 +208,7 @@ describe('Label 컴포넌트', () => {
         true,
         false,
         false,
-        false
+        false,
       );
       const wrapperClasses = getWrapperClasses('checkbox');
       const shouldShowRequiredResult = shouldShowRequired(true);
@@ -227,7 +227,7 @@ describe('Label 컴포넌트', () => {
         false,
         false,
         false,
-        false
+        false,
       );
       const wrapperClasses = getWrapperClasses('default');
       const shouldShowRequiredResult = shouldShowRequired(false);
@@ -246,7 +246,7 @@ describe('Label 컴포넌트', () => {
         false,
         false,
         false,
-        false
+        false,
       );
       const wrapperClasses = getWrapperClasses('group');
 

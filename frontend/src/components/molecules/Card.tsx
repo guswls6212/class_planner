@@ -55,7 +55,7 @@ export const getBaseStyles = (onClick?: () => void): React.CSSProperties => {
 // eslint-disable-next-line react-refresh/only-export-components
 export const getHoverStyles = (
   onClick?: () => void,
-  variant?: string
+  variant?: string,
 ): React.CSSProperties => {
   if (!onClick) return {};
 

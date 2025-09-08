@@ -12,7 +12,7 @@ import path from 'node:path';
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
-  base: command === 'serve' ? '/class_planner/' : '/class_planner/',
+  base: command === 'serve' ? '/' : '/class_planner/',
   define: {
     // 빌드 시점의 환경 변수 정의
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(

@@ -158,7 +158,7 @@ describe('TimeSlot Utils', () => {
       const invalidTime = '9:00';
 
       expect(() => getTimeSlotText(invalidTime)).toThrow(
-        `Invalid time format: ${invalidTime}. Expected format: HH:MM`
+        `Invalid time format: ${invalidTime}. Expected format: HH:MM`,
       );
     });
   });

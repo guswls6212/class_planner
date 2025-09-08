@@ -27,7 +27,7 @@ export const shouldShowModal = (isOpen: boolean): boolean => {
 // eslint-disable-next-line react-refresh/only-export-components
 export const shouldShowDeleteButton = (
   isEdit: boolean,
-  onDelete?: () => void
+  onDelete?: () => void,
 ): boolean => {
   return isEdit && Boolean(onDelete);
 };
@@ -60,7 +60,7 @@ export const getEndTimeInputId = (isEdit: boolean): string => {
 // eslint-disable-next-line react-refresh/only-export-components
 export const validateModalData = (data: SessionModalProps['data']): boolean => {
   return Boolean(
-    data.studentId && data.weekday >= 0 && data.startTime && data.endTime
+    data.studentId && data.weekday >= 0 && data.startTime && data.endTime,
   );
 };
 
