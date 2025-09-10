@@ -1,0 +1,87 @@
+"use client";
+
+import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import LoginButton from "../components/atoms/LoginButton";
+import ThemeToggle from "../components/atoms/ThemeToggle";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+function Navigation() {
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: "/students", label: "학생" },
+    { href: "/subjects", label: "과목" },
+    { href: "/schedule", label: "시간표" },
+    { href: "/manual", label: "사용법" },
+  ];
+
+  return (
+    <nav
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 12,
+        borderBottom: "1px solid var(--color-border)",
+        background: "var(--color-bg-secondary)",
+      }}
+    >
+      <div style={{ display: "flex", gap: 12 }}>
+        {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{
+              fontWeight: pathname === item.href ? 600 : 400,
+              textDecoration: "none",
+              padding: "4px 8px",
+              borderRadius: "4px",
+              background:
+                pathname === item.href ? "var(--color-primary)" : "transparent",
+              color:
+                pathname === item.href ? "white" : "var(--color-text-primary)",
+            }}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <ThemeToggle size="small" variant="both" />
+        <LoginButton />
+      </div>
+    </nav>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="ko">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ThemeProvider>
+          <Navigation />
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
