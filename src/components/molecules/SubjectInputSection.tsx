@@ -52,6 +52,11 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
       setSubjectName('');
       setSubjectColor('#f59e0b'); // Reset color to default after adding
       setInternalErrorMessage('');
+      
+      // 검색어도 초기화하여 새로 추가된 과목이 보이도록 함
+      if (onSearchChange) {
+        onSearchChange('');
+      }
     }
   };
 
