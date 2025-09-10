@@ -71,19 +71,52 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("삭제 버튼을 클릭하면 학생이 삭제되어야 한다", async () => {
+  it("삭제 버튼을 클릭하면 확인 모달이 나타나고, 확인을 클릭하면 학생이 삭제되어야 한다", async () => {
     // Arrange
     render(<StudentsPageLayout {...mockProps} />);
     const deleteButtons = screen.getAllByRole("button", { name: /삭제/ });
     const firstDeleteButton = deleteButtons[0];
 
-    // Act
+    // Act - 삭제 버튼 클릭 (확인 모달 표시)
     fireEvent.click(firstDeleteButton);
 
-    // Assert
+    // Assert - 확인 모달이 나타나는지 확인
+    await waitFor(() => {
+      expect(screen.getByText("학생 삭제")).toBeInTheDocument();
+      expect(screen.getByText("'김철수' 학생을 삭제하시겠습니까?")).toBeInTheDocument();
+    });
+
+    // Act - 확인 모달에서 삭제 버튼 클릭
+    const confirmDeleteButton = screen.getByRole("dialog").querySelector('button[class*="_confirmButton_"]');
+    fireEvent.click(confirmDeleteButton!);
+
+    // Assert - 실제 삭제 함수가 호출되는지 확인
     await waitFor(() => {
       expect(mockProps.onDeleteStudent).toHaveBeenCalledWith("1");
     });
+  });
+
+  it("삭제 버튼을 클릭하고 취소를 클릭하면 학생이 삭제되지 않아야 한다", async () => {
+    // Arrange
+    render(<StudentsPageLayout {...mockProps} />);
+    const deleteButtons = screen.getAllByRole("button", { name: /삭제/ });
+    const firstDeleteButton = deleteButtons[0];
+
+    // Act - 삭제 버튼 클릭 (확인 모달 표시)
+    fireEvent.click(firstDeleteButton);
+
+    // Assert - 확인 모달이 나타나는지 확인
+    await waitFor(() => {
+      expect(screen.getByText("학생 삭제")).toBeInTheDocument();
+      expect(screen.getByText("'김철수' 학생을 삭제하시겠습니까?")).toBeInTheDocument();
+    });
+
+    // Act - 확인 모달에서 취소 버튼 클릭
+    const cancelButton = screen.getByRole("button", { name: "취소" });
+    fireEvent.click(cancelButton);
+
+    // Assert - 삭제 함수가 호출되지 않았는지 확인
+    expect(mockProps.onDeleteStudent).not.toHaveBeenCalled();
   });
 
   it("학생이 없을 때 빈 상태 메시지가 표시되어야 한다", () => {

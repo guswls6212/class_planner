@@ -1,6 +1,7 @@
 import type { Subject } from "@/shared/types/DomainTypes";
 import React, { useState } from "react";
 import Button from "./Button";
+import ConfirmModal from "../molecules/ConfirmModal";
 import styles from "./SubjectListItem.module.css";
 
 interface SubjectListItemProps {
@@ -21,6 +22,7 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(subject.name);
   const [editColor, setEditColor] = useState(subject.color);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -49,83 +51,109 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
     }
   };
 
-  return (
-    <div
-      className={`${styles.container} ${isSelected ? styles.selected : ""}`}
-      data-testid={`subject-item-${subject.id}`}
-    >
-      <div className={styles.content}>
-        <div
-          className={styles.colorIndicator}
-          style={{ backgroundColor: subject.color }}
-        />
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
 
-        {isEditing ? (
-          <div className={styles.editForm}>
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={styles.editInput}
-              autoFocus
-            />
-            <input
-              type="color"
-              value={editColor}
-              onChange={(e) => setEditColor(e.target.value)}
-              className={styles.colorInput}
-              title="색상 변경"
-            />
-            <button
-              onClick={handleSave}
-              className={styles.saveButton}
-              title="저장"
+  const handleConfirmDelete = () => {
+    onDelete(subject.id);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+  };
+
+  return (
+    <>
+      <div
+        className={`${styles.container} ${isSelected ? styles.selected : ""}`}
+        data-testid={`subject-item-${subject.id}`}
+      >
+        <div className={styles.content}>
+          <div
+            className={styles.colorIndicator}
+            style={{ backgroundColor: subject.color }}
+          />
+
+          {isEditing ? (
+            <div className={styles.editForm}>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={styles.editInput}
+                autoFocus
+              />
+              <input
+                type="color"
+                value={editColor}
+                onChange={(e) => setEditColor(e.target.value)}
+                className={styles.colorInput}
+                title="색상 변경"
+              />
+              <button
+                onClick={handleSave}
+                className={styles.saveButton}
+                title="저장"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancel}
+                className={styles.cancelButton}
+                title="취소"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <span
+              className={`${styles.name} ${
+                isSelected ? styles.selectedName : ""
+              }`}
+              onClick={() => onSelect(subject.id)}
+              data-testid={`subject-name-${subject.id}`}
             >
-              ✓
-            </button>
-            <button
-              onClick={handleCancel}
-              className={styles.cancelButton}
-              title="취소"
+              {subject.name}
+            </span>
+          )}
+        </div>
+
+        {!isEditing && (
+          <div className={styles.actions}>
+            <Button
+              onClick={handleEdit}
+              variant="transparent"
+              size="small"
+              className={styles.editButton}
             >
-              ✕
-            </button>
+              편집
+            </Button>
+            <Button
+              onClick={handleDeleteClick}
+              variant="danger"
+              size="small"
+              className={styles.deleteButton}
+            >
+              삭제
+            </Button>
           </div>
-        ) : (
-          <span
-            className={`${styles.name} ${
-              isSelected ? styles.selectedName : ""
-            }`}
-            onClick={() => onSelect(subject.id)}
-            data-testid={`subject-name-${subject.id}`}
-          >
-            {subject.name}
-          </span>
         )}
       </div>
 
-      {!isEditing && (
-        <div className={styles.actions}>
-          <Button
-            onClick={handleEdit}
-            variant="transparent"
-            size="small"
-            className={styles.editButton}
-          >
-            편집
-          </Button>
-          <Button
-            onClick={() => onDelete(subject.id)}
-            variant="danger"
-            size="small"
-            className={styles.deleteButton}
-          >
-            삭제
-          </Button>
-        </div>
-      )}
-    </div>
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="과목 삭제"
+        message={`'${subject.name}' 과목을 삭제하시겠습니까?`}
+        confirmText="삭제"
+        cancelText="취소"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        variant="danger"
+      />
+    </>
   );
 };
 

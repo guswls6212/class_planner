@@ -1308,6 +1308,16 @@ npm run lint:fix
 
 ## 📅 문서 업데이트 이력
 
+- **2024-12-XX**: TypeScript 및 테스트 시스템 완전 개선
+
+  - **TypeScript 구조적 문제 해결**: Domain 엔티티와 Application 계층 간 타입 호환성 개선
+  - **ESLint 설정 최적화**: TypeScript 지원 강화 및 코드 품질 규칙 적용
+  - **테스트 데이터 표준화**: 모든 테스트에서 유효한 UUID 사용으로 일관성 확보
+  - **Repository Mock 전략**: API Routes 테스트에서 Repository Factory 직접 Mock
+  - **테스트 안정성 향상**: 일관된 Mock 데이터와 예측 가능한 테스트 결과
+  - **Pre-commit 훅 강화**: TypeScript, ESLint, 테스트 검증 자동화
+  - **Clean Architecture 강화**: Domain Value Objects와 Application Plain Objects 명확한 구분
+
 - **2024-12-XX**: Next.js + Clean Architecture 구조로 완전 전환
 
   - Vite + React Router → Next.js App Router 전환
