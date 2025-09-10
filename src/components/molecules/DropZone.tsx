@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface DropZoneProps {
   weekday: number;
@@ -35,34 +35,36 @@ export default function DropZone({
     e.preventDefault();
     setIsDragOver(false);
 
-    console.log('🆕 DropZone handleDrop 호출됨:', { weekday, time });
-    console.log('🆕 dataTransfer types:', e.dataTransfer.types);
+    console.log("🆕 DropZone handleDrop 호출됨:", { weekday, time });
+    console.log("🆕 dataTransfer types:", e.dataTransfer?.types);
 
-    const enrollmentId = e.dataTransfer.getData('text/plain');
-    console.log('🆕 가져온 enrollmentId:', enrollmentId);
+    const enrollmentId = e.dataTransfer?.getData("text/plain");
+    console.log("🆕 가져온 enrollmentId:", enrollmentId);
 
-    if (enrollmentId) {
-      console.log('🆕 onDrop 호출:', { weekday, time, enrollmentId });
+    if (enrollmentId && onDrop) {
+      console.log("🆕 onDrop 호출:", { weekday, time, enrollmentId });
       onDrop(weekday, time, enrollmentId);
     } else {
-      console.log('🆕 enrollmentId가 없음');
+      console.log("🆕 enrollmentId가 없거나 onDrop이 정의되지 않음");
     }
   };
 
   const handleClick = () => {
-    onEmptySpaceClick(weekday, time);
+    if (onEmptySpaceClick) {
+      onEmptySpaceClick(weekday, time);
+    }
   };
 
   const styles = {
     ...style,
     border: isDragOver
-      ? '2px dashed var(--color-primary)'
-      : '1px dashed transparent',
+      ? "2px dashed var(--color-primary)"
+      : "1px dashed transparent",
     backgroundColor: isDragOver
-      ? 'rgba(var(--color-primary-rgb), 0.1)'
-      : style?.backgroundColor || 'transparent',
-    cursor: 'pointer',
-    pointerEvents: 'auto' as const, // 클릭 이벤트가 제대로 작동하도록 설정
+      ? "rgba(var(--color-primary-rgb), 0.1)"
+      : style?.backgroundColor || "transparent",
+    cursor: "pointer",
+    pointerEvents: "auto" as const, // 클릭 이벤트가 제대로 작동하도록 설정
   };
 
   return (

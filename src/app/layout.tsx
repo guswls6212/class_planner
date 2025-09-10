@@ -74,6 +74,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        <title>Class Planner</title>
+        <meta
+          name="description"
+          content="클래스 플래너 - 학생과 과목을 관리하고 시간표를 만드는 도구"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

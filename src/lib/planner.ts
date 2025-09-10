@@ -31,21 +31,25 @@ export function uid() {
   return crypto.randomUUID();
 }
 
-export const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+export const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
 export const SLOT_MIN = 15;
 export const DAY_START_MIN = 9 * 60;
 export const DAY_END_MIN = 24 * 60;
 export const SLOT_PX = 16;
 
 export function timeToMinutes(t: string): number {
-  const [h, m] = t.split(':').map(Number);
+  if (!t || typeof t !== "string") {
+    console.warn("Invalid time format:", t);
+    return 0;
+  }
+  const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
 
 export function minutesToTime(m: number): string {
   const hh = Math.floor(m / 60);
   const mm = m % 60;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
 export function clamp(n: number, min: number, max: number): number {
@@ -64,13 +68,13 @@ export function canFormGroupSession(
 ): { canForm: boolean; existingSessionId?: string } {
   // 같은 요일, 시간대, 과목인 기존 세션이 있는지 확인
   const matchingSession = existingSessions.find(
-    session =>
+    (session) =>
       session.weekday === candidate.weekday &&
       session.startsAt === candidate.startsAt &&
       session.endsAt === candidate.endsAt &&
       // 과목이 같은지 확인 (enrollmentIds를 통해)
-      session.enrollmentIds.some(enrollmentId => {
-        const enrollment = enrollments.find(e => e.id === enrollmentId);
+      session.enrollmentIds.some((enrollmentId) => {
+        const enrollment = enrollments.find((e) => e.id === enrollmentId);
         return enrollment?.subjectId === candidate.subjectId;
       })
   );
@@ -90,12 +94,12 @@ export function mergeIntoGroupSession(
 ): Session {
   // 기존 세션에 새로운 학생의 enrollment 추가
   const newEnrollment = enrollments.find(
-    e =>
+    (e) =>
       e.studentId === candidate.studentId && e.subjectId === candidate.subjectId
   );
 
   if (!newEnrollment) {
-    throw new Error('Enrollment not found');
+    throw new Error("Enrollment not found");
   }
 
   // 중복 enrollment 방지
@@ -115,12 +119,12 @@ export function createGroupSession(
   enrollments: Enrollment[]
 ): Session {
   const enrollment = enrollments.find(
-    e =>
+    (e) =>
       e.studentId === candidate.studentId && e.subjectId === candidate.subjectId
   );
 
   if (!enrollment) {
-    throw new Error('Enrollment not found');
+    throw new Error("Enrollment not found");
   }
 
   return {
@@ -152,15 +156,19 @@ export function sessionsOverlapSameStudent(
 
   // 🆕 여러 enrollment에서 학생 ID들을 추출
   const aStudentIds = a.enrollmentIds
-    .map(enrollmentId => enrolls.find(e => e.id === enrollmentId)?.studentId)
+    .map(
+      (enrollmentId) => enrolls.find((e) => e.id === enrollmentId)?.studentId
+    )
     .filter(Boolean) as string[];
 
   const bStudentIds = b.enrollmentIds
-    .map(enrollmentId => enrolls.find(e => e.id === enrollmentId)?.studentId)
+    .map(
+      (enrollmentId) => enrolls.find((e) => e.id === enrollmentId)?.studentId
+    )
     .filter(Boolean) as string[];
 
   // 🆕 같은 학생이 있는지 확인 (겹치는 학생이 있으면 겹침으로 판단)
-  const hasCommonStudent = aStudentIds.some(studentId =>
+  const hasCommonStudent = aStudentIds.some((studentId) =>
     bStudentIds.includes(studentId)
   );
 

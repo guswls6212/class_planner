@@ -19,12 +19,12 @@ interface SessionModalProps {
 }
 
 // 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowModal = (isOpen: boolean): boolean => {
   return isOpen;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowDeleteButton = (
   isEdit: boolean,
   onDelete?: () => void
@@ -32,44 +32,44 @@ export const shouldShowDeleteButton = (
   return isEdit && Boolean(onDelete);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getSubmitButtonText = (isEdit: boolean): string => {
   return isEdit ? '저장' : '추가';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getSubjectSelectId = (isEdit: boolean): string => {
   return isEdit ? 'edit-modal-subject' : 'modal-subject';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getWeekdaySelectId = (isEdit: boolean): string => {
   return isEdit ? 'edit-modal-weekday' : 'modal-weekday';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getStartTimeInputId = (isEdit: boolean): string => {
   return isEdit ? 'edit-modal-start-time' : 'modal-start-time';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getEndTimeInputId = (isEdit: boolean): string => {
   return isEdit ? 'edit-modal-end-time' : 'modal-end-time';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateModalData = (data: SessionModalProps['data']): boolean => {
   return Boolean(
     data.studentId && data.weekday >= 0 && data.startTime && data.endTime
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const hasSubjects = (subjects: Subject[]): boolean => {
   return subjects.length > 0;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const hasWeekdays = (weekdays: string[]): boolean => {
   return weekdays.length > 0;
 };

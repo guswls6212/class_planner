@@ -2,13 +2,14 @@ import { SubjectApplicationServiceImpl } from "@/application/services/SubjectApp
 import { createSubjectRepository } from "@/infrastructure/RepositoryFactory";
 import { NextRequest, NextResponse } from "next/server";
 
-const subjectService = new SubjectApplicationServiceImpl(
-  createSubjectRepository()
-);
+// Create a function to get the subject service (for testing purposes)
+export function getSubjectService() {
+  return new SubjectApplicationServiceImpl(createSubjectRepository());
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const subjects = await subjectService.getAllSubjects();
+    const subjects = await getSubjectService().getAllSubjects();
     return NextResponse.json({ success: true, data: subjects });
   } catch (error) {
     console.error("Error fetching subjects:", error);
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newSubject = await subjectService.addSubject({ name, color });
+    const newSubject = await getSubjectService().addSubject({ name, color });
     return NextResponse.json(
       { success: true, data: newSubject },
       { status: 201 }
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updatedSubject = await subjectService.updateSubject(id, {
+    const updatedSubject = await getSubjectService().updateSubject(id, {
       name,
       color,
     });
@@ -83,7 +84,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await subjectService.deleteSubject(id);
+    await getSubjectService().deleteSubject(id);
     return NextResponse.json({
       success: true,
       message: "Subject deleted successfully",

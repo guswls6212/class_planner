@@ -136,8 +136,7 @@ const SchedulePageLayout: React.FC<SchedulePageLayoutProps> = ({
               >
                 <div>
                   과목:{" "}
-                  {subjects.find((s) => s.id === session.subjectId)?.name ||
-                    "Unknown"}
+                  {session.enrollmentIds.length > 0 ? "그룹 수업" : "Unknown"}
                 </div>
                 <div>
                   시간: {session.startsAt} - {session.endsAt}

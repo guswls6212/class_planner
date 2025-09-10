@@ -1,11 +1,11 @@
-import React from 'react';
-import type { Subject } from '../../types/subjectsTypes';
-import SubjectManagementSection from './SubjectManagementSection';
+import type { Subject } from "@/shared/types/DomainTypes";
+import React from "react";
+import SubjectManagementSection from "./SubjectManagementSection";
 
 interface SubjectsPageLayoutProps {
   subjects: Subject[];
   selectedSubjectId: string;
-  onAddSubject: (name: string, color: string) => boolean;
+  onAddSubject: (name: string, color: string) => Promise<boolean>;
   onDeleteSubject: (subjectId: string) => void;
   onSelectSubject: (subjectId: string) => void;
   onUpdateSubject: (subjectId: string, name: string, color: string) => void;
@@ -26,7 +26,7 @@ const SubjectsPageLayout: React.FC<SubjectsPageLayoutProps> = ({
       data-testid="subjects-page"
       className="grid"
       style={{
-        gridTemplateColumns: '340px 1fr', // 좌측 340px 고정 너비 (학생 페이지와 동일)
+        gridTemplateColumns: "340px 1fr", // 좌측 340px 고정 너비 (학생 페이지와 동일)
         gap: 16,
         padding: 16,
       }}

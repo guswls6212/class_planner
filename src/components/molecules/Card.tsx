@@ -12,7 +12,7 @@ interface CardProps {
 }
 
 // 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getVariantStyles = (variant: string): React.CSSProperties => {
   const variantStyles: Record<string, React.CSSProperties> = {
     default: {
@@ -33,7 +33,7 @@ export const getVariantStyles = (variant: string): React.CSSProperties => {
   return variantStyles[variant] || variantStyles.default;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getPaddingStyles = (padding: string): React.CSSProperties => {
   const paddingStyles: Record<string, React.CSSProperties> = {
     small: { padding: '12px' },
@@ -43,7 +43,7 @@ export const getPaddingStyles = (padding: string): React.CSSProperties => {
   return paddingStyles[padding] || paddingStyles.medium;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getBaseStyles = (onClick?: () => void): React.CSSProperties => {
   return {
     borderRadius: '8px',
@@ -52,7 +52,7 @@ export const getBaseStyles = (onClick?: () => void): React.CSSProperties => {
   };
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getHoverStyles = (
   onClick?: () => void,
   variant?: string
@@ -68,23 +68,23 @@ export const getHoverStyles = (
   };
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowTitle = (title?: string): boolean => {
   return Boolean(title);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const isClickable = (onClick?: () => void): boolean => {
   return Boolean(onClick);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateCardVariant = (variant: string): boolean => {
   const validVariants = ['default', 'elevated', 'outlined'];
   return validVariants.includes(variant);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateCardPadding = (padding: string): boolean => {
   const validPaddings = ['small', 'medium', 'large'];
   return validPaddings.includes(padding);

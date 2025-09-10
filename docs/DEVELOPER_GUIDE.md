@@ -2,46 +2,64 @@
 
 ## 📋 개요
 
-이 문서는 클래스 플래너 프로젝트의 개발자를 위한 종합 가이드입니다. 프로젝트 구조, 개발 프로세스, 에러 방지 방법 등을 포함합니다.
+이 문서는 클래스 플래너 프로젝트의 개발자를 위한 종합 가이드입니다. **Next.js + Atomic Design + Clean Architecture** 구조를 기반으로 한 프로젝트 구조, 개발 프로세스, 에러 방지 방법 등을 포함합니다.
 
 ---
 
 ## 🏗️ 프로젝트 구조
 
-### 📁 디렉토리 구조 (Atomic Design 패턴)
+### 📁 디렉토리 구조 (Next.js + Atomic Design + Clean Architecture)
 
 ```
-frontend/
+class-planner/
 ├── src/
-│   ├── components/
-│   │   ├── atoms/          # 원자 컴포넌트 (Button, Input, Label 등)
-│   │   ├── molecules/     # 분자 컴포넌트 (FormField, SessionBlock 등)
-│   │   └── organisms/     # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
-│   ├── pages/             # 페이지 컴포넌트 (Schedule, Students, Manual)
-│   ├── hooks/             # 커스텀 훅 (useStudentManagement, useDisplaySessions 등)
-│   ├── types/             # 타입 정의 파일 (scheduleTypes, studentsTypes, apiTypes)
-│   ├── lib/               # 유틸리티 함수 (planner, pdf-utils, build-info)
-│   ├── contexts/          # React Context (ThemeContext)
-│   └── utils/             # API 클라이언트 및 유틸리티 (apiClient)
-├── api/                   # Vercel 서버리스 함수 (TypeScript)
-│   └── students/          # 학생 관리 API (add.ts, list.ts, delete.ts)
-├── automation/            # 자동화 테스트 시스템
-│   ├── auto-fix-test.js   # 완전 자동화 테스트
-│   ├── analyze-results.js # 테스트 결과 분석
-│   └── test-results/      # 테스트 결과 저장 폴더
-├── migration/             # 데이터베이스 Migration 관리
-│   ├── migrations/        # Migration SQL 파일들
-│   ├── run-migration.sh   # Migration 실행 스크립트
-│   ├── check-migration-status.sh # Migration 상태 확인
-│   └── MIGRATION_GUIDE.md # Migration 관리 가이드
-├── docs/                  # 프로젝트 문서
-│   ├── DEVELOPER_GUIDE.md # 개발자 가이드
+│   ├── app/                    # Next.js App Router
+│   │   ├── api/               # API 라우트 (Clean Architecture 통합)
+│   │   │   ├── students/      # 학생 관리 API
+│   │   │   ├── subjects/      # 과목 관리 API
+│   │   │   └── sessions/      # 세션 관리 API
+│   │   ├── students/          # 학생 페이지
+│   │   ├── subjects/          # 과목 페이지
+│   │   ├── schedule/          # 시간표 페이지
+│   │   ├── manual/            # 매뉴얼 페이지
+│   │   ├── layout.tsx         # 루트 레이아웃 (네비게이션 포함)
+│   │   ├── page.tsx           # 홈페이지
+│   │   └── globals.css        # 전역 스타일
+│   ├── components/            # Atomic Design 컴포넌트
+│   │   ├── atoms/            # 원자 컴포넌트 (Button, Input, Label 등)
+│   │   ├── molecules/        # 분자 컴포넌트 (FormField, SessionBlock 등)
+│   │   └── organisms/        # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
+│   ├── domain/               # Clean Architecture - Domain 계층
+│   │   ├── entities/         # 도메인 엔티티 (Student, Subject, Session)
+│   │   ├── value-objects/    # 값 객체 (StudentId, SubjectId, Color)
+│   │   ├── repositories/     # 리포지토리 인터페이스
+│   │   ├── services/         # 도메인 서비스
+│   │   └── events/           # 도메인 이벤트
+│   ├── application/          # Clean Architecture - Application 계층
+│   │   ├── services/         # 애플리케이션 서비스
+│   │   ├── use-cases/        # 유스케이스
+│   │   ├── mappers/          # 데이터 매퍼
+│   │   └── repositories/     # 리포지토리 인터페이스
+│   ├── infrastructure/       # Clean Architecture - Infrastructure 계층
+│   │   ├── repositories/     # Supabase 리포지토리 구현
+│   │   ├── interfaces.ts     # 인터페이스 정의
+│   │   └── RepositoryFactory.ts # 리포지토리 팩토리
+│   ├── shared/               # 공유 타입 및 유틸리티
+│   │   └── types/           # 공통 타입 정의
+│   ├── hooks/                # 커스텀 훅 (레거시 호환)
+│   ├── contexts/             # React Context (ThemeContext)
+│   ├── lib/                  # 유틸리티 함수
+│   └── utils/                # API 클라이언트 및 유틸리티
+├── docs/                     # 프로젝트 문서
+│   ├── DEVELOPER_GUIDE.md    # 개발자 가이드
 │   ├── SUPABASE_JSONB_GUIDE.md # Supabase 가이드
-│   └── ENVIRONMENT_SETUP.md # 환경 설정 가이드
-├── scripts/               # 빌드 및 배포 스크립트
-├── public/                # 정적 파일
-├── vercel.json            # Vercel 배포 설정
-└── supabase-schema-simple.sql # Supabase 데이터베이스 스키마
+│   └── ENVIRONMENT_SETUP.md  # 환경 설정 가이드
+├── public/                   # 정적 파일
+├── .env.local               # 환경 변수 (Next.js 방식)
+├── next.config.ts           # Next.js 설정
+├── package.json             # 프로젝트 의존성
+├── tsconfig.json            # TypeScript 설정
+└── vitest.config.ts         # 테스트 설정
 ```
 
 ### 🎯 주요 페이지 및 컴포넌트 구조
@@ -50,13 +68,16 @@ frontend/
 
 **파일 구조:**
 
-- `src/pages/Students.tsx` - 메인 페이지 컴포넌트
-- `src/hooks/useStudentManagement.ts` - 학생 CRUD 로직
+- `src/app/students/page.tsx` - Next.js App Router 페이지 컴포넌트
+- `src/hooks/useStudentManagement.ts` - 학생 CRUD 로직 (레거시 호환)
+- `src/hooks/useStudentManagementClean.ts` - Clean Architecture 기반 학생 관리
 - `src/hooks/useSubjectInitialization.ts` - 과목 초기화 로직
 - `src/hooks/useLocal.ts` - localStorage 관리
-- `src/types/studentsTypes.ts` - 학생 관련 타입 정의
+- `src/shared/types/studentsTypes.ts` - 학생 관련 타입 정의
 - `src/components/organisms/StudentsPageLayout.tsx` - 페이지 레이아웃
 - `src/components/organisms/StudentManagementSection.tsx` - 학생 관리 섹션
+- `src/application/services/StudentApplicationService.ts` - 애플리케이션 서비스
+- `src/domain/entities/Student.ts` - 도메인 엔티티
 
 **주요 기능:**
 
@@ -65,20 +86,24 @@ frontend/
 - localStorage 데이터 저장/복원
 - 학생 목록 카드 배경색 통일 (과목 네비게이션과 일치)
 - 학생 이름 입력창 검색 기능 통합
+- Clean Architecture 패턴 적용
 
 #### **Subjects 페이지** (`/subjects`)
 
 **파일 구조:**
 
-- `src/pages/Subjects.tsx` - 메인 페이지 컴포넌트
-- `src/hooks/useSubjectManagement.ts` - 과목 CRUD 로직
+- `src/app/subjects/page.tsx` - Next.js App Router 페이지 컴포넌트
+- `src/hooks/useSubjectManagement.ts` - 과목 CRUD 로직 (레거시 호환)
+- `src/hooks/useSubjectManagementClean.ts` - Clean Architecture 기반 과목 관리
 - `src/hooks/useGlobalSubjects.ts` - 전역 과목 상태 관리
-- `src/types/subjectsTypes.ts` - 과목 관련 타입 정의
+- `src/shared/types/subjectsTypes.ts` - 과목 관련 타입 정의
 - `src/components/organisms/SubjectsPageLayout.tsx` - 페이지 레이아웃
 - `src/components/organisms/SubjectManagementSection.tsx` - 과목 관리 섹션
 - `src/components/molecules/SubjectInputSection.tsx` - 과목 입력 섹션
 - `src/components/molecules/SubjectList.tsx` - 과목 목록
 - `src/components/atoms/SubjectListItem.tsx` - 과목 아이템
+- `src/application/services/SubjectApplicationService.ts` - 애플리케이션 서비스
+- `src/domain/entities/Subject.ts` - 도메인 엔티티
 
 **주요 기능:**
 
@@ -87,18 +112,22 @@ frontend/
 - 실시간 검색 기능
 - localStorage 데이터 저장/복원
 - 학생 네비게이션과 일치하는 디자인
+- Clean Architecture 패턴 적용
 
 #### **Schedule 페이지** (`/schedule`)
 
 **파일 구조:**
 
-- `src/pages/Schedule.tsx` - 메인 페이지 컴포넌트
+- `src/app/schedule/page.tsx` - Next.js App Router 페이지 컴포넌트
+- `src/app/schedule/Schedule.module.css` - 페이지 전용 스타일
 - `src/hooks/useDisplaySessions.ts` - 세션 표시 로직
 - `src/hooks/useStudentPanel.ts` - 학생 패널 상태 관리
 - `src/hooks/useTimeValidation.ts` - 시간 검증 로직
-- `src/types/scheduleTypes.ts` - 스케줄 관련 타입 정의
+- `src/shared/types/scheduleTypes.ts` - 스케줄 관련 타입 정의
 - `src/components/organisms/StudentPanel.tsx` - 학생 패널 컴포넌트
 - `src/components/molecules/PDFDownloadButton.tsx` - PDF 다운로드 버튼
+- `src/application/services/SessionApplicationService.ts` - 애플리케이션 서비스
+- `src/domain/entities/Session.ts` - 도메인 엔티티
 
 **주요 기능:**
 
@@ -108,29 +137,34 @@ frontend/
 - 학생별 필터링
 - PDF 다운로드
 - 로그인 기능 제거 (전역 네비게이션으로 이동)
+- Clean Architecture 패턴 적용
 
 #### **Manual 페이지** (`/manual`)
 
+- `src/app/manual/page.tsx` - Next.js App Router 페이지 컴포넌트
 - 사용자 매뉴얼 표시
 - 배포 상태 확인
 
 ### 🔧 백엔드 및 배포 구조
 
-#### **Vercel 서버리스 함수** (`/api`)
+#### **Next.js API Routes** (`src/app/api/`)
 
 **파일 구조:**
 
-- `api/students/add.ts` - 학생 추가 API
-- `api/students/list.ts` - 학생 목록 조회 API
-- `api/students/delete.ts` - 학생 삭제 API
-- `vercel.json` - Vercel 배포 설정
+- `src/app/api/students/route.ts` - 학생 관리 API (GET, POST, DELETE)
+- `src/app/api/subjects/route.ts` - 과목 관리 API (GET, POST, DELETE)
+- `src/app/api/sessions/route.ts` - 세션 관리 API (GET, POST, DELETE)
+- `src/infrastructure/RepositoryFactory.ts` - 리포지토리 팩토리
+- `src/application/services/` - 애플리케이션 서비스 계층
 
 **주요 기능:**
 
-- TypeScript 기반 서버리스 함수
+- Next.js App Router API Routes
+- Clean Architecture 패턴 적용
 - Supabase JSONB 데이터베이스 연동
-- CORS 헤더 자동 설정
-- 환경 변수 기반 설정
+- TypeScript 기반 타입 안정성
+- 환경 변수 기반 설정 (`process.env.NEXT_PUBLIC_`)
+- 의존성 주입을 통한 테스트 가능한 구조
 
 #### **소셜 로그인 및 데이터 동기화 시스템**
 
@@ -345,6 +379,178 @@ npm run build
 - `useDisplaySessions.ts` - 세션 표시 로직
 - `useLocal.ts` - localStorage 관리
 - `useTimeValidation.ts` - 시간 검증 로직
+- `useDataMigration.ts` - 데이터 마이그레이션 로직
+
+### 🔧 훅 사용 가이드라인
+
+#### **세션 관리 훅**
+
+**1. `useSessionManagement` (레거시, deprecated)**
+
+- **위치**: `src/hooks/useSessionManagement.ts`
+- **용도**: 로컬 스토리지 기반 세션 데이터 관리 (레거시)
+- **사용 시점**: 더 이상 사용하지 않음 (Supabase 통합으로 인해)
+- **특징**:
+  - localStorage에 세션 데이터 저장
+  - Supabase와 연동되지 않음
+  - 인증 상태와 무관하게 동작
+
+**2. `useSessionManagementImproved` (권장)**
+
+- **위치**: `src/hooks/useSessionManagementImproved.ts`
+- **용도**: Supabase 기반 세션 데이터 관리 (현재 표준)
+- **사용 시점**: Schedule 페이지 등 세션 데이터가 필요한 모든 곳
+- **특징**:
+  - Supabase 데이터베이스와 연동
+  - 인증된 사용자만 세션 생성/수정 가능
+  - 로그인되지 않은 사용자는 에러 발생
+  - `addSession`, `updateSession`, `deleteSession` 제공
+  - `setEnrollments` 제공하지 않음 (별도 관리)
+
+**3. `useDataMigration` (데이터 마이그레이션)**
+
+- **위치**: `src/hooks/useDataMigration.ts`
+- **용도**: localStorage에서 Supabase로 데이터 마이그레이션
+- **사용 시점**: 로그인 성공 시 자동 실행
+- **특징**:
+  - localStorage 데이터를 Supabase로 마이그레이션
+  - 마이그레이션 완료 후 localStorage 데이터 삭제
+  - 학생, 과목, 세션, 수강신청 데이터 모두 처리
+  - 에러 처리 및 롤백 지원
+
+**4. `useLocal` (일반적 localStorage)**
+
+- **위치**: `src/hooks/useLocal.ts`
+- **용도**: UI 상태 및 캐시 데이터 관리 (세션 데이터 제외)
+- **사용 시점**: 학생 선택 상태, 패널 위치, 테마 설정 등
+- **특징**:
+  - SSR 안전성 보장 (`isHydrated` 상태 사용)
+  - 범용적인 localStorage 관리
+  - 세션 데이터와는 별도로 관리
+
+#### **사용 시나리오별 훅 선택**
+
+**Schedule 페이지에서:**
+
+```typescript
+// ✅ 올바른 사용법
+import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
+import { useLocal } from "../../hooks/useLocal";
+
+// 세션 데이터 관리 (Supabase 기반)
+const { sessions, addSession, updateSession, deleteSession } =
+  useSessionManagement(students, subjects);
+
+// UI 상태 관리 (localStorage 기반)
+const [selectedStudentId, setSelectedStudentId] = useLocal(
+  "selectedStudentId",
+  ""
+);
+const [panelPosition, setPanelPosition] = useLocal("panelPosition", {
+  x: 0,
+  y: 0,
+});
+```
+
+**❌ 잘못된 사용법:**
+
+```typescript
+// 레거시 훅 사용 (Supabase와 연동되지 않음)
+import { useSessionManagement } from "../../hooks/useSessionManagement";
+
+// 이렇게 사용하면 세션이 Supabase에 저장되지 않음
+const { sessions, addSession } = useSessionManagement(students, subjects);
+```
+
+#### **인증 상태별 동작**
+
+**로그인 전:**
+
+- `useLocal`: 정상 동작 (UI 상태 저장/복원)
+- `useStudentManagement`: localStorage에서 학생 데이터 CRUD
+- `useGlobalSubjects`: localStorage에서 과목 데이터 CRUD
+- `useSessionManagementImproved`: localStorage에서 세션 데이터 CRUD
+
+**로그인 후:**
+
+- `useLocal`: 정상 동작 (UI 상태 저장/복원)
+- `useStudentManagement`: Supabase에서 학생 데이터 CRUD
+- `useGlobalSubjects`: Supabase에서 과목 데이터 CRUD
+- `useSessionManagementImproved`: Supabase에서 세션 데이터 CRUD
+
+**로그인 시 마이그레이션:**
+
+1. localStorage 데이터 확인
+2. 데이터가 있으면 Supabase로 마이그레이션
+3. 마이그레이션 완료 후 localStorage 데이터 삭제
+4. 페이지 새로고침으로 Supabase 데이터 반영
+
+**로그아웃 시:**
+
+1. 모든 데이터 초기화
+2. 페이지 새로고침으로 빈 상태 표시
+3. localStorage 데이터는 삭제된 상태 유지
+
+#### **데이터 흐름**
+
+**로그인 전 (localStorage 기반):**
+
+```
+1. 사용자가 데이터 추가 시도
+2. 각 훅에서 localStorage에 저장
+3. 화면에 즉시 반영
+```
+
+**로그인 후 (Supabase 기반):**
+
+```
+1. 사용자가 데이터 추가 시도
+2. 각 훅에서 Supabase에 저장
+3. 성공 시 로컬 상태 업데이트
+4. 화면에 반영
+```
+
+**로그인 시 마이그레이션:**
+
+```
+1. 로그인 성공 감지
+2. localStorage 데이터 확인
+3. 데이터가 있으면 Supabase로 마이그레이션
+4. 마이그레이션 완료 후 localStorage 삭제
+5. 페이지 새로고침으로 Supabase 데이터 반영
+```
+
+**로그아웃 시:**
+
+```
+1. 로그아웃 감지
+2. 모든 데이터 초기화
+3. 페이지 새로고침으로 빈 상태 표시
+```
+
+#### **마이그레이션 가이드**
+
+**기존 코드에서 `useSessionManagement` 사용 시:**
+
+```typescript
+// Before (레거시)
+import { useSessionManagement } from "../../hooks/useSessionManagement";
+const { sessions, addSession, setEnrollments } = useSessionManagement(
+  students,
+  subjects
+);
+
+// After (권장)
+import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
+const { sessions, addSession } = useSessionManagement(students, subjects);
+// setEnrollments는 별도 관리 필요
+```
+
+**주의사항:**
+
+- `setEnrollments`는 `useSessionManagementImproved`에서 제공하지 않음
+- 인증된 사용자만 세션 생성 가능
+- 로그인되지 않은 사용자는 에러 처리 필요
 
 ### 📝 Types (타입 정의)
 
@@ -403,38 +609,131 @@ npm run build
 
 ---
 
-## 🧪 테스트 전략
+## 🧪 테스트 전략 (Next.js + Clean Architecture)
 
-### 테스트 유형
+### 🎯 계층별 테스트 전략
 
-- **단위 테스트**: 개별 컴포넌트/함수 테스트
-- **통합 테스트**: 페이지 전체 기능 테스트
-- **E2E 테스트**: 사용자 시나리오 테스트
-- **성능 테스트**: 알고리즘 성능 검증
-- **시간 검증 테스트**: 수업 추가/편집 모달의 시간 입력 검증
-- **겹침 처리 테스트**: 동일 시간대 세션들의 개별 표시 테스트
+**Next.js + Atomic Design + Clean Architecture** 조합에서 테스트 코드를 작성하는 방법을 각 계층별로 명확하게 구분하여 테스트합니다.
+
+#### **1. Domain 계층 테스트: 순수한 단위 테스트**
+
+**목표**: 엔티티(`Student.ts`, `Subject.ts` 등)의 핵심 비즈니스 로직이 외부 의존성 없이 정확하게 동작하는지 확인합니다.
+
+**위치**: `src/domain/entities/`, `src/domain/value-objects/`
+
+**도구**: `Vitest` 또는 `Jest`
+
+**예시 파일**:
+
+- `src/domain/entities/__tests__/Student.test.ts`
+- `src/domain/entities/__tests__/Subject.test.ts`
+- `src/domain/value-objects/__tests__/StudentId.test.ts`
+
+#### **2. Application 계층 테스트: Mock을 사용한 통합 테스트**
+
+**목표**: Use Case가 외부 의존성(Repository)과 올바르게 상호작용하며 애플리케이션 로직을 수행하는지 확인합니다.
+
+**위치**: `src/application/use-cases/`, `src/application/services/`
+
+**도구**: `Vitest` 또는 `Jest` (Mocking 기능 사용)
+
+**예시 파일**:
+
+- `src/application/use-cases/__tests__/AddStudentUseCase.test.ts`
+- `src/application/services/__tests__/StudentApplicationService.test.ts`
+
+#### **3. Infrastructure 계층 테스트: 실제 외부 의존성 테스트**
+
+**목표**: Supabase 리포지토리가 실제 데이터베이스와 올바르게 상호작용하는지 확인합니다.
+
+**위치**: `src/infrastructure/repositories/`
+
+**도구**: `Vitest` + 실제 Supabase 연결 (테스트 환경)
+
+**예시 파일**:
+
+- `src/infrastructure/repositories/__tests__/SupabaseStudentRepository.test.ts`
+
+#### **4. Presentation 계층 테스트: 컴포넌트 & E2E 테스트**
+
+**목표**: UI 컴포넌트가 올바르게 렌더링되고, 사용자의 행동에 따라 예상대로 반응하는지 확인합니다.
+
+**위치**: `src/components/`, `src/app/`
+
+**도구**: `React Testing Library`, `Playwright`
+
+**예시 파일**:
+
+- `src/components/atoms/__tests__/Button.test.tsx`
+- `src/components/molecules/__tests__/StudentInputSection.test.tsx`
+- `src/app/students/__tests__/page.test.tsx`
+
+#### **5. API Routes 테스트: Next.js API 테스트**
+
+**목표**: Next.js API Routes가 올바른 HTTP 응답을 반환하는지 확인합니다.
+
+**위치**: `src/app/api/`
+
+**도구**: `Vitest` + `@testing-library/jest-dom`
+
+**예시 파일**:
+
+- `src/app/api/students/__tests__/route.test.ts`
+- `src/app/api/subjects/__tests__/route.test.ts`
 
 ### 테스트 실행 명령어
 
 ```bash
 # 전체 테스트 실행
-npm run test:run
+npm run test
 
 # 특정 테스트 실행
-npm run test:run -- Schedule.test.tsx
+npm run test -- Student.test.ts
 
 # 테스트 커버리지
 npm run test:coverage
 
-# 보호 테스트 (기존 기능 보호)
-npm run protection-check
+# 개발 모드로 테스트 실행 (watch 모드)
+npm run test:watch
 
-# 자동화된 데이터 동기화 테스트 (완전 자동화)
-npm run test:auto-fix
+# 테스트 UI 실행
+npm run test:ui
 
-# 테스트 결과 분석
-npm run analyze-results
+# Domain 계층 테스트만 실행
+npm run test -- src/domain/
+
+# Application 계층 테스트만 실행
+npm run test -- src/application/
+
+# Infrastructure 계층 테스트만 실행
+npm run test -- src/infrastructure/
+
+# Presentation 계층 테스트만 실행
+npm run test -- src/components/
+
+# API Routes 테스트만 실행
+npm run test -- src/app/api/
+
+# E2E 테스트 실행 (Playwright)
+npm run test:e2e
+
+# E2E 테스트 UI 실행
+npm run test:e2e:ui
+
+# 헤드리스 모드로 E2E 테스트 실행
+npm run test:e2e:headed
+
+# 특정 페이지 E2E 테스트
+npm run test:e2e -- students.spec.ts
 ```
+
+### 테스트 커버리지 목표
+
+- **Domain 계층**: 100% (비즈니스 로직의 핵심)
+- **Application 계층**: 90%+ (애플리케이션 로직의 핵심)
+- **Infrastructure 계층**: 80%+ (외부 의존성으로 인한 제약)
+- **Presentation 계층**: 70%+ (UI 변경이 빈번함)
+- **API Routes**: 90%+ (API 계약의 안정성)
 
 ### 자동화된 테스트 시스템
 
@@ -505,9 +804,9 @@ npm run analyze-results
 TEST_EMAIL=your-test-email@gmail.com
 TEST_PASSWORD=your-test-password
 
-# Supabase 설정 (이미 설정되어 있음)
-VITE_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+# Supabase 설정 (Next.js 방식)
+NEXT_PUBLIC_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 **2. 실제 계정 정보 입력**
@@ -671,6 +970,18 @@ VITE_SUPABASE_ANON_KEY=test...
 - [x] 전역 과목 상태 관리 (useGlobalSubjects)
 - [x] 과목 관리 전용 컴포넌트 구조
 
+#### 테스트 시스템
+
+- [x] **포괄적인 컴포넌트 단위 테스트 시스템 구축**
+- [x] **엣지 케이스 테스트 추가** (null, undefined, 빈 값, 잘못된 형식 등)
+- [x] **Atoms 컴포넌트 테스트**: Button, Input, Label 등 기본 UI 컴포넌트
+- [x] **Molecules 컴포넌트 테스트**: SessionBlock, DropZone, TimeTableRow 등 복합 컴포넌트
+- [x] **Organisms 컴포넌트 테스트**: TimeTableGrid, StudentPanel 등 페이지 레벨 컴포넌트
+- [x] **안전성 검증**: 모든 컴포넌트가 예외 상황에서도 안전하게 동작
+- [x] **사용자 경험 보장**: 잘못된 입력이나 예상치 못한 상황에서도 앱이 크래시하지 않음
+- [x] **실제 클라이언트 테스트 시스템**: 실제 Supabase 연결, 네트워크 지연, 브라우저 호환성 테스트
+- [x] **실제 사용자 시나리오 E2E 테스트**: 복잡한 사용자 플로우와 다양한 환경에서의 동작 검증
+
 ### 🚀 향후 개선 사항 (12개)
 
 #### 높은 우선순위
@@ -800,19 +1111,23 @@ VITE_SUPABASE_ANON_KEY=test...
 
 ### 빌드 관련 명령어
 
-| 명령어            | 영향 범위     | 주의사항                      |
-| ----------------- | ------------- | ----------------------------- |
-| `npm run build`   | 전체 프로젝트 | TypeScript 컴파일 + Vite 빌드 |
-| `npm run dev`     | 개발 환경     | 핫 리로드 지원                |
-| `npm run preview` | 빌드 결과물   | 배포 전 확인용                |
+| 명령어             | 영향 범위     | 주의사항                       |
+| ------------------ | ------------- | ------------------------------ |
+| `npm run build`    | 전체 프로젝트 | Next.js 빌드 (SSR + 정적 생성) |
+| `npm run dev`      | 개발 환경     | Next.js 개발 서버 (핫 리로드)  |
+| `npm run start`    | 프로덕션      | 빌드된 앱 실행                 |
+| `npm run lint`     | 코드 품질     | ESLint 검사                    |
+| `npm run lint:fix` | 코드 품질     | ESLint 자동 수정               |
 
 ### 테스트 관련 명령어
 
-| 명령어                     | 영향 범위   | 주의사항             |
-| -------------------------- | ----------- | -------------------- |
-| `npm run test:run`         | 전체 테스트 | 모든 테스트 실행     |
-| `npm run protection-check` | 보호 테스트 | 기존 기능 보호       |
-| `npm run test:coverage`    | 커버리지    | 테스트 커버리지 측정 |
+| 명령어                  | 영향 범위   | 주의사항             |
+| ----------------------- | ----------- | -------------------- |
+| `npm run test`          | 전체 테스트 | Vitest 실행          |
+| `npm run test:watch`    | 개발 테스트 | Watch 모드로 테스트  |
+| `npm run test:coverage` | 커버리지    | 테스트 커버리지 측정 |
+| `npm run test:e2e`      | E2E 테스트  | Playwright 실행      |
+| `npm run test:ui`       | 테스트 UI   | Vitest UI 실행       |
 
 ### 코드 품질 관련 명령어
 
@@ -943,12 +1258,12 @@ npm run lint:fix
 
    ```javascript
    // 브라우저 콘솔에서 실행
-   console.log('로컬 데이터:', localStorage.getItem('classPlannerData'));
-   console.log('개별 키들:', {
-     sessions: localStorage.getItem('sessions'),
-     students: localStorage.getItem('students'),
-     subjects: localStorage.getItem('subjects'),
-     enrollments: localStorage.getItem('enrollments'),
+   console.log("로컬 데이터:", localStorage.getItem("classPlannerData"));
+   console.log("개별 키들:", {
+     sessions: localStorage.getItem("sessions"),
+     students: localStorage.getItem("students"),
+     subjects: localStorage.getItem("subjects"),
+     enrollments: localStorage.getItem("enrollments"),
    });
    ```
 
@@ -956,7 +1271,7 @@ npm run lint:fix
 
    ```javascript
    // 브라우저 콘솔에서 실행
-   console.log('Supabase 클라이언트:', window.supabase);
+   console.log("Supabase 클라이언트:", window.supabase);
    ```
 
 3. **동기화 모달 상태 확인**
@@ -992,6 +1307,27 @@ npm run lint:fix
 ---
 
 ## 📅 문서 업데이트 이력
+
+- **2024-12-XX**: Next.js + Clean Architecture 구조로 완전 전환
+
+  - Vite + React Router → Next.js App Router 전환
+  - Clean Architecture 패턴 적용 (Domain, Application, Infrastructure 계층)
+  - Atomic Design 구조 유지 및 개선
+  - API Routes를 Next.js 방식으로 변경
+  - 환경 변수 처리 Next.js 방식으로 변경 (`process.env.NEXT_PUBLIC_`)
+  - 테스트 전략을 계층별로 구분하여 명확화
+  - 문서 구조를 새로운 아키텍처에 맞게 완전 업데이트
+
+- **2024-12-XX**: 포괄적인 테스트 시스템 구축 완료
+
+  - **Domain 계층 테스트**: 엔티티 및 값 객체의 순수한 단위 테스트
+  - **Application 계층 테스트**: Mock을 사용한 유스케이스 및 서비스 테스트
+  - **Infrastructure 계층 테스트**: Supabase 리포지토리 통합 테스트
+  - **Presentation 계층 테스트**: React 컴포넌트 단위 테스트
+  - **API Routes 테스트**: Next.js API Routes HTTP 테스트
+  - **E2E 테스트**: Playwright를 사용한 사용자 시나리오 테스트
+  - **통합 테스트**: 전체 플로우 테스트 및 에러 처리 검증
+  - 테스트 커버리지 목표 설정 및 자동화된 테스트 실행 환경 구축
 
 - **2024-01-XX**: 사용자 중심 데이터 동기화 로직 구현 완료
   - 새로운 동기화 시나리오 추가 (`localOnlyFirstLogin`, `localAndServerConflict`)

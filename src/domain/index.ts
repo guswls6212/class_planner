@@ -5,16 +5,16 @@
  */
 
 // ===== Entities =====
-export { Student } from './entities/Student';
-export { Subject } from './entities/Subject';
+export { Student } from "./entities/Student";
+export { Subject } from "./entities/Subject";
 
 // ===== Value Objects =====
-export { Color } from './value-objects/Color';
-export { StudentId } from './value-objects/StudentId';
-export { SubjectId } from './value-objects/SubjectId';
+export { Color } from "./value-objects/Color";
+export { StudentId } from "./value-objects/StudentId";
+export { SubjectId } from "./value-objects/SubjectId";
 
 // ===== Domain Services =====
-export { StudentDomainService } from './services/StudentDomainService';
+export { StudentDomainService } from "./services/StudentDomainService";
 
 // ===== Repository Interfaces =====
 export type {
@@ -22,10 +22,10 @@ export type {
   ISessionRepository,
   IStudentRepository,
   ISubjectRepository,
-} from './repositories/index';
+} from "./repositories/index";
 
 // ===== Domain Events =====
-export {
+export type {
   DomainEvent,
   DomainEventBus,
   DomainEventHandler,
@@ -36,22 +36,19 @@ export {
   SubjectCreatedEvent,
   SubjectDeletedEvent,
   SubjectUpdatedEvent,
-} from './events/DomainEvents';
+} from "./events/DomainEvents";
 
 // ===== 타입 재export =====
 export type {
   StudentDto,
   StudentJson,
-  StudentStatistics,
-  SubjectDto,
-  SubjectJson,
   ValidationError,
   ValidationResult,
-} from './entities/Student';
+} from "./entities/Student";
 
 export type {
-  SubjectDto as SubjectDtoType,
-  SubjectJson as SubjectJsonType,
+  SubjectDto,
+  SubjectJson,
   ValidationError as SubjectValidationError,
   ValidationResult as SubjectValidationResult,
-} from './entities/Subject';
+} from "./entities/Subject";

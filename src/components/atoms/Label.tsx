@@ -1,12 +1,12 @@
-import React from 'react';
+import React from "react";
 
 interface LabelProps {
   children: React.ReactNode;
   htmlFor?: string;
   required?: boolean;
-  size?: 'small' | 'medium' | 'large';
+  size?: "small" | "medium" | "large";
   disabled?: boolean;
-  variant?: 'default' | 'checkbox' | 'inline' | 'group';
+  variant?: "default" | "checkbox" | "inline" | "group";
   helpText?: string;
   error?: boolean;
   success?: boolean;
@@ -14,7 +14,7 @@ interface LabelProps {
 }
 
 // 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getLabelClasses = (
   size: string,
   variant: string,
@@ -24,42 +24,42 @@ export const getLabelClasses = (
   disabled: boolean
 ): string => {
   return [
-    'label',
+    "label",
     size,
     variant,
-    error && 'error',
-    success && 'success',
-    warning && 'warning',
-    disabled && 'disabled',
+    error && "error",
+    success && "success",
+    warning && "warning",
+    disabled && "disabled",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getWrapperClasses = (variant: string): string => {
-  return [variant === 'group' && 'labelGroup'].filter(Boolean).join(' ');
+  return [variant === "group" && "labelGroup"].filter(Boolean).join(" ");
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowRequired = (required: boolean): boolean => {
   return Boolean(required);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowHelpText = (helpText: string | undefined): boolean => {
   return Boolean(helpText);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateLabelSize = (size: string): boolean => {
-  const validSizes = ['small', 'medium', 'large'];
+  const validSizes = ["small", "medium", "large"];
   return validSizes.includes(size);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateLabelVariant = (variant: string): boolean => {
-  const validVariants = ['default', 'checkbox', 'inline', 'group'];
+  const validVariants = ["default", "checkbox", "inline", "group"];
   return validVariants.includes(variant);
 };
 
@@ -67,9 +67,9 @@ export default function Label({
   children,
   htmlFor,
   required = false,
-  size = 'medium',
+  size = "medium",
   disabled = false,
-  variant = 'default',
+  variant = "default",
   helpText,
   error = false,
   success = false,
@@ -87,7 +87,7 @@ export default function Label({
 
   return (
     <div className={wrapperClasses}>
-      <label htmlFor={htmlFor} className={labelClasses}>
+      <label htmlFor={htmlFor} className={labelClasses} data-testid="label">
         {children}
         {shouldShowRequired(required) && <span className="required">*</span>}
       </label>

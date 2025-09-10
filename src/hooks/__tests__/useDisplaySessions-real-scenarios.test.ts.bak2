@@ -1,0 +1,604 @@
+import { renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import type { Enrollment, Session } from "../../lib/planner";
+import { useDisplaySessions } from "../useDisplaySessions";
+
+describe("useDisplaySessions Hook - 실제 에러 시나리오 테스트", () => {
+  it("enrollmentIds가 undefined인 세션을 안전하게 처리해야 한다", () => {
+    // Arrange - enrollmentIds가 undefined인 세션 데이터
+    const sessionsWithUndefinedEnrollmentIds: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: undefined as any, // 실제 에러 상황 시뮬레이션
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-2"], // 정상적인 세션
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      {
+        id: "enrollment-2",
+        studentId: "student-1",
+        subjectId: "subject-2",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const selectedStudentId = "student-1";
+
+    // Act - 훅 실행 (에러가 발생하지 않아야 함)
+    const { result } = renderHook(() =>
+      useDisplaySessions(
+        sessionsWithUndefinedEnrollmentIds,
+        enrollments,
+        selectedStudentId
+      )
+    );
+
+    // Assert - 에러 없이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+    expect(result.current.selectedStudentId).toBe(selectedStudentId);
+
+    // enrollmentIds가 undefined인 세션은 필터링되어야 함
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toBeDefined();
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션만 포함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-2");
+  });
+
+  it("enrollmentIds가 null인 세션을 안전하게 처리해야 한다", () => {
+    // Arrange - enrollmentIds가 null인 세션 데이터
+    const sessionsWithNullEnrollmentIds: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: null as any, // 실제 에러 상황 시뮬레이션
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-2"], // 정상적인 세션
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      {
+        id: "enrollment-2",
+        studentId: "student-1",
+        subjectId: "subject-2",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const selectedStudentId = "student-1";
+
+    // Act - 훅 실행 (에러가 발생하지 않아야 함)
+    const { result } = renderHook(() =>
+      useDisplaySessions(
+        sessionsWithNullEnrollmentIds,
+        enrollments,
+        selectedStudentId
+      )
+    );
+
+    // Assert - 에러 없이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+    expect(result.current.selectedStudentId).toBe(selectedStudentId);
+
+    // enrollmentIds가 null인 세션은 필터링되어야 함
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toBeDefined();
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션만 포함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-2");
+  });
+
+  it("enrollmentIds가 빈 배열인 세션을 안전하게 처리해야 한다", () => {
+    // Arrange - enrollmentIds가 빈 배열인 세션 데이터
+    const sessionsWithEmptyEnrollmentIds: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: [], // 빈 배열
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-2"], // 정상적인 세션
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      {
+        id: "enrollment-2",
+        studentId: "student-1",
+        subjectId: "subject-2",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const selectedStudentId = "student-1";
+
+    // Act - 훅 실행 (에러가 발생하지 않아야 함)
+    const { result } = renderHook(() =>
+      useDisplaySessions(
+        sessionsWithEmptyEnrollmentIds,
+        enrollments,
+        selectedStudentId
+      )
+    );
+
+    // Assert - 에러 없이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+    expect(result.current.selectedStudentId).toBe(selectedStudentId);
+
+    // enrollmentIds가 빈 배열인 세션은 필터링되어야 함
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toBeDefined();
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션만 포함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-2");
+  });
+
+  it("전체 세션 표시 시에도 enrollmentIds가 undefined인 세션을 안전하게 처리해야 한다", () => {
+    // Arrange - selectedStudentId가 없는 상황 (전체 세션 표시)
+    const sessionsWithUndefinedEnrollmentIds: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: undefined as any, // 실제 에러 상황 시뮬레이션
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-2"], // 정상적인 세션
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      {
+        id: "enrollment-2",
+        studentId: "student-1",
+        subjectId: "subject-2",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const selectedStudentId = ""; // 선택된 학생 없음
+
+    // Act - 훅 실행 (에러가 발생하지 않아야 함)
+    const { result } = renderHook(() =>
+      useDisplaySessions(
+        sessionsWithUndefinedEnrollmentIds,
+        enrollments,
+        selectedStudentId
+      )
+    );
+
+    // Assert - 에러 없이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+    expect(result.current.selectedStudentId).toBeNull();
+
+    // 전체 세션 표시 시에도 enrollmentIds가 undefined인 세션은 필터링되어야 함
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toBeDefined();
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션만 포함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-2");
+  });
+
+  it("실제 사용자 시나리오: 세션 추가 중간 상태를 안전하게 처리해야 한다", () => {
+    // Arrange - 실제 사용자가 세션을 추가하는 중간 상태 시뮬레이션
+    const sessionsInProgress: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: undefined as any, // 드래그 앤 드롭 중간 상태
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: null as any, // 다른 중간 상태
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-3",
+        subjectId: "subject-3",
+        startsAt: "12:00",
+        endsAt: "13:00",
+        weekday: 1,
+        enrollmentIds: [], // 빈 배열 상태
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [];
+    const selectedStudentId = "student-1";
+
+    // Act - 훅 실행 (에러가 발생하지 않아야 함)
+    const { result } = renderHook(() =>
+      useDisplaySessions(sessionsInProgress, enrollments, selectedStudentId)
+    );
+
+    // Assert - 에러 없이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    // 모든 중간 상태의 세션들이 필터링되어야 함
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    // 필터링 결과가 빈 배열이므로 Map에서 해당 키가 없을 수 있음
+    if (sessionsForWeekday1) {
+      expect(sessionsForWeekday1).toHaveLength(0); // 필터링 결과 빈 배열
+    } else {
+      // Map에 해당 키가 없는 경우도 정상 (빈 결과)
+      expect(sessionsForWeekday1).toBeUndefined();
+    }
+  });
+
+  it("불완전한 세션 필터링: 필수 속성이 누락된 세션을 제거해야 한다", () => {
+    // Arrange - 필수 속성이 누락된 불완전한 세션들
+    const incompleteSessions: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: undefined as any, // 필수 속성 누락
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-1"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "10:00",
+        endsAt: undefined as any, // 필수 속성 누락
+        weekday: 1,
+        enrollmentIds: ["enrollment-2"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-3",
+        subjectId: "subject-3",
+        startsAt: "12:00",
+        endsAt: "13:00",
+        weekday: undefined as any, // 필수 속성 누락
+        enrollmentIds: ["enrollment-3"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-4", // 정상적인 세션
+        subjectId: "subject-4",
+        startsAt: "14:00",
+        endsAt: "15:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-4"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-1", studentId: "student-1", subjectId: "subject-1" },
+      { id: "enrollment-2", studentId: "student-2", subjectId: "subject-2" },
+      { id: "enrollment-3", studentId: "student-3", subjectId: "subject-3" },
+      { id: "enrollment-4", studentId: "student-4", subjectId: "subject-4" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(incompleteSessions, enrollments, "")
+    );
+
+    // Assert - 불완전한 세션들이 필터링되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션 1개만 남아야 함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-4");
+  });
+
+  it("불완전한 세션 필터링: enrollmentIds가 누락된 세션을 제거해야 한다", () => {
+    // Arrange - enrollmentIds가 누락된 불완전한 세션들
+    const incompleteSessions: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: undefined as any, // enrollmentIds 누락
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: null as any, // enrollmentIds 누락
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-3",
+        subjectId: "subject-3",
+        startsAt: "12:00",
+        endsAt: "13:00",
+        weekday: 1,
+        enrollmentIds: [], // 빈 배열
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-4", // 정상적인 세션
+        subjectId: "subject-4",
+        startsAt: "14:00",
+        endsAt: "15:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-4"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-4", studentId: "student-4", subjectId: "subject-4" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(incompleteSessions, enrollments, "")
+    );
+
+    // Assert - 불완전한 세션들이 필터링되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toHaveLength(1); // 정상적인 세션 1개만 남아야 함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-4");
+  });
+
+  it("불완전한 세션 필터링: 존재하지 않는 enrollment를 참조하는 세션을 제거해야 한다", () => {
+    // Arrange - 존재하지 않는 enrollment를 참조하는 세션들
+    const incompleteSessions: Session[] = [
+      {
+        id: "session-1",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: ["non-existent-enrollment-1"], // 존재하지 않는 enrollment
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-2",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: ["non-existent-enrollment-2", "enrollment-1"], // 일부만 존재
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-3", // 정상적인 세션
+        subjectId: "subject-3",
+        startsAt: "12:00",
+        endsAt: "13:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-1"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-1", studentId: "student-1", subjectId: "subject-1" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(incompleteSessions, enrollments, "")
+    );
+
+    // Assert - 불완전한 세션들이 필터링되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toHaveLength(2); // session-2와 session-3이 남아야 함 (session-2는 유효한 enrollment가 하나 있음)
+    expect(sessionsForWeekday1?.map((s) => s.id)).toContain("session-2");
+    expect(sessionsForWeekday1?.map((s) => s.id)).toContain("session-3");
+  });
+
+  it("불완전한 세션 필터링: 실제 사용자 시나리오를 안전하게 처리해야 한다", () => {
+    // Arrange - 실제 사용자가 세션을 추가하는 과정에서 발생할 수 있는 다양한 불완전한 상태
+    const realWorldIncompleteSessions: Session[] = [
+      // 드래그 앤 드롭 시작 직후 상태
+      {
+        id: "session-drag-start",
+        subjectId: "subject-1",
+        startsAt: "09:00",
+        endsAt: "10:00",
+        weekday: 1,
+        enrollmentIds: undefined as any, // 아직 설정되지 않음
+        createdAt: new Date().toISOString(),
+      },
+      // 모달에서 과목을 선택하기 전 상태
+      {
+        id: "session-before-subject-selection",
+        subjectId: "",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 1,
+        enrollmentIds: [], // 빈 배열 상태
+        createdAt: new Date().toISOString(),
+      },
+      // 네트워크 오류로 인한 불완전한 저장 상태
+      {
+        id: "session-network-error",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1,
+        enrollmentIds: null as any, // 네트워크 오류로 저장 실패
+        createdAt: new Date().toISOString(),
+      },
+      // 정상적으로 완성된 세션
+      {
+        id: "session-complete",
+        subjectId: "subject-3",
+        startsAt: "14:00",
+        endsAt: "15:00",
+        weekday: 1,
+        enrollmentIds: ["enrollment-1"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-1", studentId: "student-1", subjectId: "subject-3" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(realWorldIncompleteSessions, enrollments, "")
+    );
+
+    // Assert - 불완전한 세션들이 모두 필터링되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForWeekday1 = result.current.sessions.get(1);
+    expect(sessionsForWeekday1).toHaveLength(1); // 완성된 세션 1개만 남아야 함
+    expect(sessionsForWeekday1?.[0].id).toBe("session-complete");
+  });
+
+  it("weekday가 0인 세션(일요일)을 정상적으로 처리해야 한다", () => {
+    // Arrange - weekday가 0인 세션 (일요일)
+    const sessionsWithSunday: Session[] = [
+      {
+        id: "session-sunday",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: 0, // 일요일 (유효한 값)
+        enrollmentIds: ["enrollment-1"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-monday",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 1, // 월요일
+        enrollmentIds: ["enrollment-2"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-1", studentId: "student-1", subjectId: "subject-1" },
+      { id: "enrollment-2", studentId: "student-2", subjectId: "subject-2" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(sessionsWithSunday, enrollments, "")
+    );
+
+    // Assert - weekday가 0인 세션이 정상적으로 처리되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForSunday = result.current.sessions.get(0);
+    const sessionsForMonday = result.current.sessions.get(1);
+
+    expect(sessionsForSunday).toHaveLength(1);
+    expect(sessionsForSunday?.[0].id).toBe("session-sunday");
+    expect(sessionsForMonday).toHaveLength(1);
+    expect(sessionsForMonday?.[0].id).toBe("session-monday");
+  });
+
+  it("weekday가 undefined인 세션을 필터링해야 한다", () => {
+    // Arrange - weekday가 undefined인 세션
+    const sessionsWithUndefinedWeekday: Session[] = [
+      {
+        id: "session-invalid",
+        subjectId: "subject-1",
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekday: undefined as any, // 유효하지 않은 값
+        enrollmentIds: ["enrollment-1"],
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "session-valid",
+        subjectId: "subject-2",
+        startsAt: "11:00",
+        endsAt: "12:00",
+        weekday: 0, // 유효한 값 (일요일)
+        enrollmentIds: ["enrollment-2"],
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const enrollments: Enrollment[] = [
+      { id: "enrollment-1", studentId: "student-1", subjectId: "subject-1" },
+      { id: "enrollment-2", studentId: "student-2", subjectId: "subject-2" },
+    ];
+
+    // Act - 훅 실행
+    const { result } = renderHook(() =>
+      useDisplaySessions(sessionsWithUndefinedWeekday, enrollments, "")
+    );
+
+    // Assert - weekday가 undefined인 세션은 필터링되어야 함
+    expect(result.current).toBeDefined();
+    expect(result.current.sessions).toBeDefined();
+
+    const sessionsForSunday = result.current.sessions.get(0);
+    expect(sessionsForSunday).toHaveLength(1);
+    expect(sessionsForSunday?.[0].id).toBe("session-valid");
+  });
+});

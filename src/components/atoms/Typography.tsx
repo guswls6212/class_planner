@@ -29,7 +29,7 @@ interface TypographyProps {
 }
 
 // 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getTypographyClasses = (
   variant: string,
   color: string,
@@ -53,17 +53,17 @@ export const getTypographyClasses = (
     .join(' ');
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getTypographyComponent = (variant: string): React.ElementType => {
   return variant.startsWith('h') ? (variant as React.ElementType) : 'span';
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const capitalizeFirstLetter = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateTypographyVariant = (variant: string): boolean => {
   const validVariants = [
     'h1',
@@ -79,7 +79,7 @@ export const validateTypographyVariant = (variant: string): boolean => {
   return validVariants.includes(variant);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateTypographyColor = (color: string): boolean => {
   const validColors = [
     'primary',
@@ -93,13 +93,13 @@ export const validateTypographyColor = (color: string): boolean => {
   return validColors.includes(color);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateTypographyAlign = (align: string): boolean => {
   const validAligns = ['left', 'center', 'right', 'justify'];
   return validAligns.includes(align);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateTypographyWeight = (weight: string): boolean => {
   const validWeights = ['normal', 'medium', 'semibold', 'bold'];
   return validWeights.includes(weight);

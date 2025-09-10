@@ -1,4 +1,4 @@
-import type { Session, Student } from '../lib/planner';
+import type { Session, Student } from "@lib/planner";
 
 // 그룹 수업을 위한 타입
 export interface GroupSessionData {
@@ -59,4 +59,5 @@ export interface StudentPanelState {
   dragOffset: DragOffset;
   searchQuery: string;
   filteredStudents: Student[];
+  isVisible: boolean;
 }

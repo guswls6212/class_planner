@@ -54,6 +54,7 @@ export type SyncAction =
   | "startFresh" // 로컬 데이터 삭제하고 서버의 빈 데이터로 시작
   | "useDeviceData" // 로컬 데이터를 서버에 업로드하고 로컬 데이터 삭제
   | "useServerData" // 서버 데이터를 로컬에 다운로드하고 로컬 데이터 삭제
+  | "downloadServer" // 서버 데이터를 로컬에 다운로드
   | "cancelSync"; // 동기화 취소
 
 // 데이터 요약 정보

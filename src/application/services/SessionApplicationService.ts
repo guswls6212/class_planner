@@ -17,6 +17,7 @@ export class SessionApplicationServiceImpl {
     startsAt: Date;
     endsAt: Date;
     enrollmentIds: string[];
+    weekday: number;
   }): Promise<Session> {
     return this.sessionRepository.create(sessionData);
   }
@@ -28,6 +29,7 @@ export class SessionApplicationServiceImpl {
       startsAt: Date;
       endsAt: Date;
       enrollmentIds: string[];
+      weekday: number;
     }
   ): Promise<Session> {
     return this.sessionRepository.update(id, sessionData);

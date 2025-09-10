@@ -20,12 +20,21 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
   onDragStart,
   onSearchChange,
 }) => {
+  // null/undefined 안전 처리
+  if (!panelState) {
+    return null;
+  }
+
+  const safePosition = panelState.position || { x: 0, y: 0 };
+  const safeFilteredStudents = panelState.filteredStudents || [];
+  const safeSearchQuery = panelState.searchQuery || "";
+
   return (
     <div
       className={`${styles.floatingPanel} position-fixed overflow-auto`}
       style={{
-        left: panelState.position.x,
-        top: panelState.position.y,
+        left: safePosition.x,
+        top: safePosition.y,
         width: 280,
         maxHeight: "400px",
         padding: 16,
@@ -48,14 +57,14 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
         <input
           type="text"
           placeholder="학생 이름 검색..."
-          value={panelState.searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
+          value={safeSearchQuery}
+          onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
           className={styles.searchInput}
         />
       </div>
 
       <div className={styles.studentList} role="list">
-        {panelState.filteredStudents.map((s) => (
+        {safeFilteredStudents.map((s) => (
           <div key={s.id} role="listitem">
             <div
               draggable
@@ -63,19 +72,19 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
                 selectedStudentId === s.id ? styles.selected : ""
               }`}
               data-testid={`student-item-${s.id}`}
-              onDragStart={(e) => onDragStart(e, s)}
-              onMouseDown={() => onStudentClick(s.id)}
+              onDragStart={(e) => onDragStart && onDragStart(e, s)}
+              onMouseDown={() => onStudentClick && onStudentClick(s.id)}
             >
               {s.name}
             </div>
           </div>
         ))}
-        {panelState.filteredStudents.length === 0 && (
+        {safeFilteredStudents.length === 0 && (
           <div
             style={{ color: "var(--color-gray-400)", padding: "8px 12px" }}
             role="listitem"
           >
-            {panelState.searchQuery.trim()
+            {safeSearchQuery.trim()
               ? "검색 결과가 없습니다"
               : "학생 페이지에서 학생을 추가하세요"}
           </div>

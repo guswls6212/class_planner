@@ -1,6 +1,10 @@
-# Supabase API 키 설정 가이드
+# 환경 설정 가이드 (Next.js + Supabase)
 
-## 🔑 API 키 확인 방법
+## 📋 개요
+
+이 가이드는 **Next.js + Supabase** 환경에서 Class Planner 프로젝트를 설정하는 방법을 설명합니다.
+
+## 🔑 Supabase API 키 확인 방법
 
 ### 1. Supabase 대시보드 접속
 
@@ -24,16 +28,21 @@ https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
 1. **프로젝트 루트에 .env.local 파일 생성**
 
    ```bash
-   # frontend 디렉토리에서
+   # 프로젝트 루트 디렉토리에서
    touch .env.local
    ```
 
 2. **환경 변수 추가**
+
    ```bash
-   # Supabase 설정
+   # Supabase 설정 (Next.js 방식)
    NEXT_PUBLIC_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
    SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+   # 테스트용 계정 정보 (선택사항)
+   TEST_EMAIL=your-test-email@gmail.com
+   TEST_PASSWORD=your-test-password
    ```
 
 ### Vercel 배포 환경
@@ -45,9 +54,11 @@ https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
    ```
 
 2. **프로젝트 선택**
+
    - class-planner 프로젝트 클릭
 
 3. **Settings > Environment Variables**
+
    - Settings 탭 클릭
    - "Environment Variables" 섹션 찾기
 
@@ -118,6 +129,43 @@ console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
 환경 변수 설정 완료 후:
 
-1. **로컬 API 테스트**
-2. **Vercel 배포**
-3. **프로덕션 환경 테스트**
+1. **로컬 개발 서버 실행**
+
+   ```bash
+   npm run dev
+   ```
+
+2. **테스트 실행**
+
+   ```bash
+   npm run test
+   npm run test:e2e
+   ```
+
+3. **Vercel 배포**
+
+   ```bash
+   vercel --prod
+   ```
+
+4. **프로덕션 환경 테스트**
+
+## 🔧 Next.js 환경 변수 특징
+
+### NEXT*PUBLIC* 접두사
+
+- `NEXT_PUBLIC_` 접두사가 있는 변수는 클라이언트 사이드에서 접근 가능
+- 브라우저에서 `process.env.NEXT_PUBLIC_SUPABASE_URL`로 접근 가능
+- 보안에 민감한 정보는 이 접두사를 사용하지 않음
+
+### 서버 사이드 전용 변수
+
+- `SUPABASE_SERVICE_ROLE_KEY`는 서버 사이드에서만 사용
+- API Routes (`src/app/api/`)에서만 접근 가능
+- 클라이언트 사이드에서는 절대 노출되지 않음
+
+## 📚 관련 문서
+
+- [Next.js 환경 변수 문서](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables)
+- [Supabase 클라이언트 설정](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
+- [Vercel 환경 변수 설정](https://vercel.com/docs/projects/environment-variables)

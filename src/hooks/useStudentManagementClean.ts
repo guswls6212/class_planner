@@ -6,7 +6,7 @@
  */
 
 import { StudentApplicationServiceImpl } from "@/application/services/StudentApplicationService";
-import { repositoryFactory } from "@/infrastructure";
+import { createStudentRepository } from "@/infrastructure/RepositoryFactory";
 import type { StudentDto } from "@/shared/types/ApplicationTypes";
 import { useCallback, useEffect, useState } from "react";
 
@@ -46,7 +46,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
   // 애플리케이션 서비스 인스턴스 (싱글톤)
   const [studentService] = useState(() => {
-    const studentRepository = repositoryFactory.createStudentRepository();
+    const studentRepository = createStudentRepository();
     return new StudentApplicationServiceImpl(studentRepository);
   });
 
@@ -57,15 +57,12 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
       setLoading(true);
       setError(null);
 
-      const result = await studentService.getAllStudents({
-        sortBy: "createdAt",
-        sortOrder: "desc",
-      });
+      const result = await studentService.getAllStudents();
 
-      if (result.success && result.students) {
-        setStudents(result.students);
+      if (Array.isArray(result)) {
+        setStudents(result.map((student) => student.toDto()));
       } else {
-        setError(result.error || "학생 목록을 불러오는데 실패했습니다.");
+        setError("학생 목록을 불러오는데 실패했습니다.");
       }
     } catch (err) {
       setError(
@@ -84,14 +81,17 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        const result = await studentService.addStudent({ name, gender });
+        const result = await studentService.addStudent({
+          name,
+          gender: (gender as "male" | "female") || "male",
+        });
 
-        if (result.success && result.student) {
+        if (result) {
           // 성공 시 목록 새로고침
           await refreshStudents();
           return true;
         } else {
-          setError(result.error || "학생 추가에 실패했습니다.");
+          setError("학생 추가에 실패했습니다.");
           return false;
         }
       } catch (err) {
@@ -117,14 +117,17 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        const result = await studentService.updateStudent({ id, ...updates });
+        const result = await studentService.updateStudent(id, {
+          name: updates.name || "",
+          gender: (updates.gender as "male" | "female") || "male",
+        });
 
-        if (result.success && result.student) {
+        if (result) {
           // 성공 시 목록 새로고침
           await refreshStudents();
           return true;
         } else {
-          setError(result.error || "학생 수정에 실패했습니다.");
+          setError("학생 수정에 실패했습니다.");
           return false;
         }
       } catch (err) {
@@ -147,16 +150,11 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        const result = await studentService.deleteStudent({ id });
+        await studentService.deleteStudent(id);
 
-        if (result.success) {
-          // 성공 시 목록 새로고침
-          await refreshStudents();
-          return true;
-        } else {
-          setError(result.error || "학생 삭제에 실패했습니다.");
-          return false;
-        }
+        // 성공 시 목록 새로고침
+        await refreshStudents();
+        return true;
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다."
@@ -174,12 +172,12 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
   const getStudent = useCallback(
     async (id: string): Promise<StudentDto | null> => {
       try {
-        const result = await studentService.getStudent({ id });
+        const result = await studentService.getStudentById(id);
 
-        if (result.success && result.student) {
-          return result.student;
+        if (result) {
+          return result.toDto();
         } else {
-          setError(result.error || "학생 조회에 실패했습니다.");
+          setError("학생 조회에 실패했습니다.");
           return null;
         }
       } catch (err) {
@@ -196,14 +194,14 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
   const getStudentStatistics = useCallback(async () => {
     try {
-      const result = await studentService.getStudentStatistics();
-
-      if (result.success && result.statistics) {
-        return result.statistics;
-      } else {
-        setError(result.error || "학생 통계 조회에 실패했습니다.");
-        return null;
-      }
+      // 간단한 통계 계산
+      const students = await studentService.getAllStudents();
+      const statistics = {
+        total: students.length,
+        male: students.filter((s) => s.gender === "male").length,
+        female: students.filter((s) => s.gender === "female").length,
+      };
+      return statistics;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다."

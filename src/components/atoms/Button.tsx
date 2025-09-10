@@ -6,9 +6,14 @@ interface ButtonProps {
   variant?: "primary" | "secondary" | "danger" | "transparent";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
+  loading?: boolean;
   onClick?: () => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   className?: string;
   style?: React.CSSProperties;
+  "aria-label"?: string;
+  "aria-describedby"?: string;
+  "data-testid"?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -16,14 +21,20 @@ export const Button: React.FC<ButtonProps> = ({
   variant = "primary",
   size = "medium",
   disabled = false,
+  loading = false,
   onClick,
+  onKeyDown,
   className = "",
   style = {},
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
+  "data-testid": dataTestId,
 }) => {
   const buttonClasses = [
     styles.button,
     styles[variant],
     styles[size],
+    loading ? styles.loading : "",
     className,
   ]
     .filter(Boolean)
@@ -33,9 +44,14 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       className={buttonClasses}
       onClick={onClick}
-      disabled={disabled}
+      onKeyDown={onKeyDown}
+      disabled={disabled || loading}
       style={style}
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      data-testid={dataTestId}
     >
+      {loading && <span data-testid="spinner">⏳</span>}
       {children}
     </button>
   );

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useDataMigration } from "../../hooks/useDataMigration";
 import { useDataSync } from "../../hooks/useDataSync";
 import { supabase } from "../../utils/supabaseClient";
 import DataSyncModal from "../molecules/DataSyncModal";
@@ -24,6 +25,9 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   // 데이터 동기화 훅
   const { syncModal, isSyncing, checkSyncNeeded, closeSyncModal, executeSync } =
     useDataSync();
+
+  // 데이터 마이그레이션 훅
+  const { executeMigration, loadFromLocalStorage } = useDataMigration();
 
   // Supabase 환경 변수 체크
   const isSupabaseConfigured =
@@ -59,10 +63,10 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         setIsLoggedIn(true);
         setUser(session.user);
 
-        // 로그인 성공 시에만 데이터 동기화 확인
+        // 로그인 성공 시에만 데이터 마이그레이션 실행
         if (isSupabaseConfigured && session?.user && event === "SIGNED_IN") {
           try {
-            console.log("로그인 성공 - 사용자 프로필 생성 시작", {
+            console.log("로그인 성공 - 데이터 마이그레이션 시작", {
               event,
               userEmail: session.user.email,
             });
@@ -71,24 +75,30 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
             localStorage.setItem("supabase_user_id", session.user.id);
             console.log("✅ 사용자 ID 저장됨:", session.user.id);
 
-            // 사용자 프로필 자동 생성
-            // await ensureUserProfile(session.user);
+            // localStorage 데이터 확인
+            const localData = loadFromLocalStorage();
 
-            console.log("로그인 성공 - 데이터 동기화 확인 시작");
-            const scenario = await checkSyncNeeded();
-            console.log("동기화 시나리오:", scenario);
-
-            // 로컬 데이터가 있는 경우에만 모달 표시
             if (
-              scenario === "localOnlyFirstLogin" ||
-              scenario === "localAndServerConflict"
+              localData &&
+              (localData.students.length > 0 ||
+                localData.subjects.length > 0 ||
+                localData.sessions.length > 0)
             ) {
-              console.log("로컬 데이터 발견 - 동기화 모달 표시");
+              console.log("🔄 localStorage 데이터 발견 - 마이그레이션 실행");
+              const migrationSuccess = await executeMigration();
+
+              if (migrationSuccess) {
+                console.log("✅ 데이터 마이그레이션 완료");
+                // 페이지 새로고침으로 데이터 반영
+                window.location.reload();
+              } else {
+                console.error("❌ 데이터 마이그레이션 실패");
+              }
             } else {
               console.log("로컬 데이터 없음 - 일반 로그인 진행");
             }
           } catch (error) {
-            console.warn("데이터 동기화 확인 실패:", error);
+            console.warn("데이터 마이그레이션 실패:", error);
           }
         }
       } else {
@@ -102,6 +112,12 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
         // 로그아웃 시 모달 닫기
         closeSyncModal();
+
+        // 로그아웃 시 페이지 새로고침으로 빈 상태로 초기화
+        if (event === "SIGNED_OUT") {
+          console.log("로그아웃 감지 - 페이지 새로고침으로 빈 상태 초기화");
+          window.location.reload();
+        }
       }
     });
 

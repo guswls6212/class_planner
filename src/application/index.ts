@@ -5,41 +5,30 @@
  */
 
 // ===== Use Cases =====
-export { AddStudentUseCase } from './use-cases/AddStudentUseCase';
-export { DeleteStudentUseCase } from './use-cases/DeleteStudentUseCase';
-export { GetStudentUseCase } from './use-cases/GetStudentUseCase';
-export { UpdateStudentUseCase } from './use-cases/UpdateStudentUseCase';
+export { AddStudentUseCase } from "./use-cases/AddStudentUseCase";
+export { DeleteStudentUseCase } from "./use-cases/DeleteStudentUseCase";
+export { GetStudentUseCase } from "./use-cases/GetStudentUseCase";
+export { UpdateStudentUseCase } from "./use-cases/UpdateStudentUseCase";
 
 export {
   AddSubjectUseCase,
   DeleteSubjectUseCase,
   GetSubjectUseCase,
   UpdateSubjectUseCase,
-} from './use-cases/SubjectUseCases';
+} from "./use-cases/SubjectUseCases";
 
 // ===== Application Services =====
-export {
-  StudentApplicationService,
-  StudentApplicationServiceImpl,
-} from './services/StudentApplicationService';
+export { StudentApplicationServiceImpl } from "./services/StudentApplicationService";
 
 // ===== Mappers =====
-export { StudentMapper } from './mappers/StudentMapper';
-export { SubjectMapper } from './mappers/SubjectMapper';
+export { StudentMapper } from "./mappers/StudentMapper";
+export { SubjectMapper } from "./mappers/SubjectMapper";
 
 // ===== 타입 재export =====
 export type {
   AddStudentRequest,
   AddStudentResponse,
-  DeleteStudentRequest,
-  DeleteStudentResponse,
-  GetAllStudentsRequest,
-  GetAllStudentsResponse,
-  GetStudentRequest,
-  GetStudentResponse,
-  UpdateStudentRequest,
-  UpdateStudentResponse,
-} from './use-cases/AddStudentUseCase';
+} from "./use-cases/AddStudentUseCase";
 
 export type {
   AddSubjectRequest,
@@ -52,4 +41,4 @@ export type {
   GetSubjectResponse,
   UpdateSubjectRequest,
   UpdateSubjectResponse,
-} from './use-cases/SubjectUseCases';
+} from "./use-cases/SubjectUseCases";

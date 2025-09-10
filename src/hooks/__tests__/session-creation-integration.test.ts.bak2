@@ -1,0 +1,167 @@
+/**
+ * 세션 생성 통합 테스트
+ * 실제 세션 생성 플로우에서 발생할 수 있는 문제들을 테스트
+ */
+
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Student, Subject } from "../../lib/planner";
+import { useSessionManagement } from "../useSessionManagementImproved";
+
+// Mock Supabase
+vi.mock("../../utils/supabaseClient", () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn(),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          order: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          })),
+        })),
+      })),
+      insert: vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      })),
+      update: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null })),
+        })),
+      })),
+      delete: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null })),
+        })),
+      })),
+    })),
+  },
+}));
+
+describe("세션 생성 통합 테스트", () => {
+  const mockStudents: Student[] = [
+    { id: "student-1", name: "학생1" },
+    { id: "student-2", name: "학생2" },
+  ];
+
+  const mockSubjects: Subject[] = [
+    { id: "subject-1", name: "수학" },
+    { id: "subject-2", name: "영어" },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("유효한 세션 데이터로 세션 생성이 성공해야 함", async () => {
+    const mockSessionData = {
+      id: "session-1",
+      enrollment_ids: ["enrollment-1"],
+      weekday: 1,
+      starts_at: "09:00",
+      ends_at: "10:00",
+      room: "A101",
+    };
+
+    const mockEnrollmentData = {
+      id: "enrollment-1",
+      student_id: "student-1",
+      subject_id: "subject-1",
+    };
+
+    // Mock user
+    const { supabase } = await import("../../utils/supabaseClient");
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: { id: "user-1", email: "test@example.com" } },
+    });
+
+    // Mock Supabase responses
+    vi.mocked(supabase.from).mockImplementation((table: string) => {
+      if (table === "sessions") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => ({
+                order: vi.fn(() => Promise.resolve({ data: [], error: null })),
+              })),
+            })),
+          })),
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(() =>
+                Promise.resolve({ data: mockSessionData, error: null })
+              ),
+            })),
+          })),
+        } as any;
+      }
+      if (table === "enrollments") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          })),
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(() =>
+                Promise.resolve({ data: mockEnrollmentData, error: null })
+              ),
+            })),
+          })),
+        } as any;
+      }
+      return {} as any;
+    });
+
+    const { result } = renderHook(() =>
+      useSessionManagement(mockStudents, mockSubjects)
+    );
+
+    await act(async () => {
+      await result.current.addSession({
+        studentIds: ["student-1"],
+        subjectId: "subject-1",
+        weekday: 1,
+        startTime: "09:00",
+        endTime: "10:00",
+        room: "A101",
+      });
+    });
+
+    expect(result.current.sessions).toHaveLength(1);
+    expect(result.current.sessions[0]).toEqual({
+      id: "session-1",
+      enrollmentIds: ["enrollment-1"],
+      weekday: 1,
+      startsAt: "09:00",
+      endsAt: "10:00",
+      room: "A101",
+    });
+  });
+
+  it("로그인되지 않은 사용자의 경우 에러가 발생해야 함", async () => {
+    // Mock no user
+    const { supabase } = await import("../../utils/supabaseClient");
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: null },
+    });
+
+    const { result } = renderHook(() =>
+      useSessionManagement(mockStudents, mockSubjects)
+    );
+
+    await expect(
+      act(async () => {
+        await result.current.addSession({
+          studentIds: ["student-1"],
+          subjectId: "subject-1",
+          weekday: 1,
+          startTime: "09:00",
+          endTime: "10:00",
+        });
+      })
+    ).rejects.toThrow("로그인이 필요합니다.");
+  });
+});

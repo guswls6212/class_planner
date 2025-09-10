@@ -2,13 +2,14 @@ import { StudentApplicationServiceImpl } from "@/application/services/StudentApp
 import { createStudentRepository } from "@/infrastructure/RepositoryFactory";
 import { NextRequest, NextResponse } from "next/server";
 
-const studentService = new StudentApplicationServiceImpl(
-  createStudentRepository()
-);
+// Create a function to get the student service (for testing purposes)
+export function getStudentService() {
+  return new StudentApplicationServiceImpl(createStudentRepository());
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const students = await studentService.getAllStudents();
+    const students = await getStudentService().getAllStudents();
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
     console.error("Error fetching students:", error);
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newStudent = await studentService.addStudent({ name, gender });
+    const newStudent = await getStudentService().addStudent({ name, gender });
     return NextResponse.json(
       { success: true, data: newStudent },
       { status: 201 }
@@ -57,7 +58,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updatedStudent = await studentService.updateStudent(id, {
+    const updatedStudent = await getStudentService().updateStudent(id, {
       name,
       gender,
     });
@@ -83,7 +84,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await studentService.deleteStudent(id);
+    await getStudentService().deleteStudent(id);
     return NextResponse.json({
       success: true,
       message: "Student deleted successfully",

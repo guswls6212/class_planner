@@ -1,4 +1,4 @@
-import type { Student, Subject } from '../lib/planner';
+import type { Student, Subject } from "../lib/planner";
 
 // 학생 관리 관련 타입
 export interface StudentManagementData {
@@ -31,10 +31,11 @@ export interface LocalStorageData {
 
 // 학생 관리 액션 타입
 export interface StudentActions {
-  addStudent: (name: string) => void;
-  deleteStudent: (studentId: string) => void;
+  addStudent: (name: string) => Promise<boolean>;
+  deleteStudent: (studentId: string) => Promise<boolean>;
   selectStudent: (studentId: string) => string;
   updateStudentName: (name: string) => void;
+  loadStudents: () => Promise<Student[]>;
 }
 
 // 과목 초기화 관련 타입

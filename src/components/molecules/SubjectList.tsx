@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import type { Subject } from '../../types/subjectsTypes';
-import SubjectListItem from '../atoms/SubjectListItem';
-import styles from './SubjectList.module.css';
+import type { Subject } from "@/shared/types/DomainTypes";
+import React, { useEffect, useRef, useState } from "react";
+import SubjectListItem from "../atoms/SubjectListItem";
+import styles from "./SubjectList.module.css";
 
 interface SubjectListProps {
   subjects: Subject[];
@@ -19,7 +19,7 @@ const SubjectList: React.FC<SubjectListProps> = ({
   onSelectSubject,
   onDeleteSubject,
   onUpdateSubject,
-  className = '',
+  className = "",
   style = {},
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,10 +36,10 @@ const SubjectList: React.FC<SubjectListProps> = ({
     checkScrollable();
 
     // 리사이즈 이벤트 리스너 추가
-    window.addEventListener('resize', checkScrollable);
+    window.addEventListener("resize", checkScrollable);
 
     return () => {
-      window.removeEventListener('resize', checkScrollable);
+      window.removeEventListener("resize", checkScrollable);
     };
   }, [subjects]);
 
@@ -47,7 +47,7 @@ const SubjectList: React.FC<SubjectListProps> = ({
     <div className={className} style={style}>
       {/* 과목 목록 */}
       <div ref={containerRef} className={styles.container} role="list">
-        {subjects.map(subject => (
+        {subjects.map((subject) => (
           <SubjectListItem
             key={subject.id}
             subject={subject}

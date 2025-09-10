@@ -20,6 +20,7 @@ export interface Session {
   startsAt: Date;
   endsAt: Date;
   enrollmentIds: string[];
+  weekday: number;
   createdAt: Date;
   updatedAt: Date;
 }

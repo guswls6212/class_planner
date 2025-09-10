@@ -1,7 +1,7 @@
-import React, { forwardRef, useCallback, useMemo } from 'react';
-import type { Session, Subject } from '../../lib/planner';
-import { timeToMinutes } from '../../lib/planner';
-import TimeTableRow from '../molecules/TimeTableRow';
+import React, { forwardRef, useCallback, useMemo } from "react";
+import type { Session, Subject } from "../../lib/planner";
+import { timeToMinutes } from "../../lib/planner";
+import TimeTableRow from "../molecules/TimeTableRow";
 
 interface TimeTableGridProps {
   sessions: Map<number, Session[]>;
@@ -27,7 +27,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onSessionClick,
       onDrop,
       onEmptySpaceClick,
-      className = '',
+      className = "",
       style = {},
       selectedStudentId, // 🆕 선택된 학생 ID 추가
     },
@@ -37,8 +37,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const timeSlots30Min = useMemo(() => {
       const slots: string[] = [];
       for (let hour = 9; hour < 24; hour++) {
-        slots.push(`${hour.toString().padStart(2, '0')}:00`);
-        slots.push(`${hour.toString().padStart(2, '0')}:30`);
+        slots.push(`${hour.toString().padStart(2, "0")}:00`);
+        slots.push(`${hour.toString().padStart(2, "0")}:30`);
       }
       return slots;
     }, []);
@@ -49,7 +49,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const getSessionYPositions = useCallback(
       (weekday: number): Map<string, number> => {
         // 현재 요일의 실제 세션들을 시작 시간 기준으로 정렬 (O(n log n))
-        const daySessions = sessions.get(weekday) || [];
+        const daySessions = sessions?.get(weekday) || [];
         const sortedSessions = [...daySessions].sort(
           (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
         );
@@ -100,7 +100,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const getWeekdayHeight = useCallback(
       (weekday: number): number => {
         const sessionYPositions = getSessionYPositions(weekday);
-        const daySessions = sessions.get(weekday) || [];
+        const daySessions = sessions?.get(weekday) || [];
 
         if (daySessions.length === 0) {
           return 49; // 🆕 기본 높이를 49px로 증가 (위아래 1px 여백을 위한 높이)
@@ -129,7 +129,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 그리드 템플릿 행을 useMemo로 최적화
     const gridTemplateRows = useMemo(
-      () => `40px ${weekdayHeights.join('px ')}px`,
+      () => `40px ${weekdayHeights.join("px ")}px`,
       [weekdayHeights]
     );
 
@@ -145,18 +145,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         className={`time-table-grid ${className}`}
         data-testid="time-table-grid"
         style={{
-          display: 'grid',
+          display: "grid",
           gridTemplateColumns,
           gridTemplateRows,
-          backgroundColor: 'var(--color-background)',
-          border: '1px solid var(--color-border-grid)',
-          borderRadius: '8px',
-          overflow: 'auto',
+          backgroundColor: "var(--color-background)",
+          border: "1px solid var(--color-border-grid)",
+          borderRadius: "8px",
+          overflow: "auto",
           ...style,
         }}
       >
         {/* 좌상단 빈칸 */}
-        <div style={{ backgroundColor: 'var(--color-background)' }} />
+        <div style={{ backgroundColor: "var(--color-background)" }} />
 
         {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
         {timeSlots30Min.map((timeString, index) => {
@@ -165,20 +165,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             <div
               key={timeString}
               style={{
-                backgroundColor: 'var(--color-background)',
-                padding: '4px', // 🆕 패딩을 줄여서 30분 단위에 맞춤
-                textAlign: 'center',
-                fontSize: '11px', // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
-                color: 'var(--color-text-secondary)',
-                border: '1px solid var(--color-border)',
+                backgroundColor: "var(--color-background)",
+                padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
+                textAlign: "center",
+                fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
+                color: "var(--color-text-secondary)",
+                border: "1px solid var(--color-border)",
                 borderRight: isLastTime
-                  ? '1px solid var(--color-border)'
-                  : '1px solid var(--color-border-grid)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '40px',
-                position: 'sticky',
+                  ? "1px solid var(--color-border)"
+                  : "1px solid var(--color-border-grid)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "40px",
+                position: "sticky",
                 top: 0,
                 zIndex: 10,
               }}

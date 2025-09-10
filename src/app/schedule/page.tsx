@@ -8,24 +8,31 @@ import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useGlobalSubjects } from "../../hooks/useGlobalSubjects";
-import { useSessionManagement } from "../../hooks/useSessionManagement";
+import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
-import type { Session, Student } from "../../lib/planner";
+import type { Enrollment, Session, Student } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./Schedule.module.css";
 
 function useLocal<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(() => {
+  const [value, setValue] = useState<T>(initial); // 초기값을 항상 사용
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // 클라이언트에서만 localStorage 접근
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initial;
+      if (stored) {
+        setValue(JSON.parse(stored));
+      }
     } catch {
-      return initial;
+      // localStorage 접근 실패 시 초기값 유지
     }
-  });
+    setIsHydrated(true);
+  }, [key]);
 
   const setValueWithStorage = (newValue: T | ((prev: T) => T)) => {
     const finalValue =
@@ -33,7 +40,15 @@ function useLocal<T>(key: string, initial: T) {
         ? (newValue as (prev: T) => T)(value)
         : newValue;
     setValue(finalValue);
-    localStorage.setItem(key, JSON.stringify(finalValue));
+
+    // 클라이언트에서만 localStorage에 저장
+    if (isHydrated) {
+      try {
+        localStorage.setItem(key, JSON.stringify(finalValue));
+      } catch {
+        // localStorage 저장 실패 시 무시
+      }
+    }
   };
 
   return [value, setValueWithStorage] as const;
@@ -51,7 +66,6 @@ export default function SchedulePage() {
   const {
     sessions,
     enrollments,
-    setEnrollments,
     addSession,
     updateSession,
     deleteSession,
@@ -62,10 +76,17 @@ export default function SchedulePage() {
   // 🆕 데이터 로딩 완료 후 selectedStudentId 복원
   useEffect(() => {
     if (!sessionLoading && students.length > 0) {
-      const savedStudentId = localStorage.getItem("ui:selectedStudent");
-      if (savedStudentId && students.some((s) => s.id === savedStudentId)) {
-        console.log("🔄 저장된 학생 선택 복원:", savedStudentId);
-        setSelectedStudentId(savedStudentId);
+      // 클라이언트에서만 localStorage 접근
+      if (typeof window !== "undefined") {
+        try {
+          const savedStudentId = localStorage.getItem("ui:selectedStudent");
+          if (savedStudentId && students.some((s) => s.id === savedStudentId)) {
+            console.log("🔄 저장된 학생 선택 복원:", savedStudentId);
+            setSelectedStudentId(savedStudentId);
+          }
+        } catch {
+          // localStorage 접근 실패 시 무시
+        }
       }
     }
   }, [sessionLoading, students, setSelectedStudentId]);
@@ -83,10 +104,17 @@ export default function SchedulePage() {
   // 🆕 selectedStudentId 변경 감지 및 저장
   useEffect(() => {
     console.log("🆕 selectedStudentId 변경됨:", selectedStudentId);
-    if (selectedStudentId) {
-      localStorage.setItem("ui:selectedStudent", selectedStudentId);
-    } else {
-      localStorage.removeItem("ui:selectedStudent");
+    // 클라이언트에서만 localStorage 접근
+    if (typeof window !== "undefined") {
+      try {
+        if (selectedStudentId) {
+          localStorage.setItem("ui:selectedStudent", selectedStudentId);
+        } else {
+          localStorage.removeItem("ui:selectedStudent");
+        }
+      } catch {
+        // localStorage 접근 실패 시 무시
+      }
     }
   }, [selectedStudentId]);
 
@@ -216,6 +244,7 @@ export default function SchedulePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editModalData, setEditModalData] = useState<Session | null>(null);
   const [tempSubjectId, setTempSubjectId] = useState<string>(""); // 🆕 임시 과목 ID
+  const [tempEnrollments, setTempEnrollments] = useState<Enrollment[]>([]); // 🆕 임시 enrollment 관리
 
   // 🆕 학생 입력값 변경 핸들러 최적화
   const handleEditStudentInputChange = useCallback(
@@ -277,6 +306,7 @@ export default function SchedulePage() {
       );
 
       if (!enrollment) {
+        // 🆕 임시 enrollment 객체를 생성하여 tempEnrollments에 추가
         enrollment = {
           id: crypto.randomUUID(),
           studentId: targetStudentId,
@@ -287,7 +317,9 @@ export default function SchedulePage() {
             return firstEnrollment?.subjectId || "";
           })(),
         };
-        setEnrollments((prev) => [...prev, enrollment!]);
+
+        // 🆕 임시 enrollment를 tempEnrollments에 추가
+        setTempEnrollments((prev) => [...prev, enrollment!]);
       }
 
       // enrollmentIds에 추가 (최대 14명 제한)
@@ -302,6 +334,7 @@ export default function SchedulePage() {
           return;
         }
 
+        // 🆕 모달 상태만 업데이트 (실제 세션 데이터는 저장 버튼에서 업데이트)
         setEditModalData((prev: Session | null) =>
           prev
             ? {
@@ -314,13 +347,7 @@ export default function SchedulePage() {
         setEditStudentInputValue("");
       }
     },
-    [
-      editStudentInputValue,
-      students,
-      enrollments,
-      editModalData,
-      setEnrollments,
-    ]
+    [editStudentInputValue, students, enrollments, editModalData]
   );
 
   // 🆕 학생 추가 핸들러 최적화
@@ -586,6 +613,7 @@ export default function SchedulePage() {
       (e) => e.id === session.enrollmentIds?.[0]
     );
     setTempSubjectId(firstEnrollment?.subjectId || "");
+    setTempEnrollments([]); // 🆕 임시 enrollment 초기화
     setShowEditModal(true);
   };
 
@@ -916,10 +944,16 @@ export default function SchedulePage() {
                   <div className={styles.studentTagsContainer}>
                     {/* 선택된 학생들을 태그로 표시 */}
                     {(() => {
+                      // 🆕 기존 enrollments와 tempEnrollments를 합쳐서 모든 enrollment를 가져옴
+                      const allEnrollments = [
+                        ...enrollments,
+                        ...tempEnrollments,
+                      ];
+
                       const selectedStudents =
                         editModalData.enrollmentIds
                           ?.map((enrollmentId) => {
-                            const enrollment = enrollments.find(
+                            const enrollment = allEnrollments.find(
                               (e) => e.id === enrollmentId
                             );
                             if (!enrollment) return null;
@@ -939,14 +973,19 @@ export default function SchedulePage() {
                             type="button"
                             className={styles.removeStudentBtn}
                             onClick={() => {
-                              // 학생 제거 로직
+                              // 🆕 학생 제거 로직 (tempEnrollments도 고려)
+                              const allEnrollments = [
+                                ...enrollments,
+                                ...tempEnrollments,
+                              ];
+
                               const updatedEnrollmentIds =
                                 editModalData.enrollmentIds?.filter(
                                   (id) =>
                                     id !==
                                     editModalData.enrollmentIds?.find(
                                       (enrollmentId) => {
-                                        const enrollment = enrollments.find(
+                                        const enrollment = allEnrollments.find(
                                           (e) => e.id === enrollmentId
                                         );
                                         return (
@@ -955,6 +994,14 @@ export default function SchedulePage() {
                                       }
                                     )
                                 );
+                              // 🆕 tempEnrollments에서도 해당 학생 제거
+                              setTempEnrollments((prev) =>
+                                prev.filter(
+                                  (enrollment) =>
+                                    enrollment.studentId !== student!.id
+                                )
+                              );
+
                               setEditModalData((prev) =>
                                 prev
                                   ? {
@@ -1169,11 +1216,15 @@ export default function SchedulePage() {
                       }
 
                       try {
-                        // 현재 세션의 학생 ID들을 가져오기
+                        // 현재 세션의 학생 ID들을 가져오기 (기존 enrollment + 임시 enrollment)
+                        const allEnrollments = [
+                          ...enrollments,
+                          ...tempEnrollments,
+                        ];
                         const currentStudentIds =
                           (editModalData.enrollmentIds
                             ?.map((enrollmentId) => {
-                              const enrollment = enrollments.find(
+                              const enrollment = allEnrollments.find(
                                 (e) => e.id === enrollmentId
                               );
                               return enrollment?.studentId;
@@ -1194,6 +1245,7 @@ export default function SchedulePage() {
 
                         setShowEditModal(false);
                         setTempSubjectId(""); // 🆕 임시 상태 초기화
+                        setTempEnrollments([]); // 🆕 임시 enrollment 초기화
                         console.log("✅ 세션 업데이트 완료");
                       } catch (error) {
                         console.error("세션 업데이트 실패:", error);

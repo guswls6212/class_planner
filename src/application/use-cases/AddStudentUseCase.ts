@@ -4,8 +4,8 @@
  * 학생 추가 유스케이스입니다. 학생 추가와 관련된 모든 비즈니스 로직을 처리합니다.
  */
 
-import { Student } from '@entities/Student';
-import type { IStudentRepository } from '@repositories';
+import { Student } from "@/domain/entities/Student";
+import type { IStudentRepository } from "@/domain/repositories";
 
 export interface AddStudentRequest {
   name: string;
@@ -31,7 +31,7 @@ export class AddStudentUseCase {
       if (!validation.isValid) {
         return {
           success: false,
-          error: validation.errors.map(e => e.message).join(', '),
+          error: validation.errors.map((e) => e.message).join(", "),
         };
       }
 
@@ -46,7 +46,7 @@ export class AddStudentUseCase {
       if (isDuplicate) {
         return {
           success: false,
-          error: '이미 존재하는 학생 이름입니다.',
+          error: "이미 존재하는 학생 이름입니다.",
         };
       }
 
@@ -66,7 +66,7 @@ export class AddStudentUseCase {
         error:
           error instanceof Error
             ? error.message
-            : '알 수 없는 오류가 발생했습니다.',
+            : "알 수 없는 오류가 발생했습니다.",
       };
     }
   }

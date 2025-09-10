@@ -4,9 +4,9 @@
  * 기존 훅 인터페이스와 새로운 Clean Architecture 훅 간의 호환성을 제공하는 어댑터입니다.
  */
 
-import { useStudentManagementClean } from '@hooks/useStudentManagementClean';
-import { useSubjectManagementClean } from '@hooks/useSubjectManagementClean';
-import type { Student } from '@lib/planner';
+import { useStudentManagementClean } from "@hooks/useStudentManagementClean";
+import { useSubjectManagementClean } from "@hooks/useSubjectManagementClean";
+import type { Student } from "@lib/planner";
 
 // ===== 학생 관리 어댑터 =====
 
@@ -31,7 +31,7 @@ export const useStudentManagementAdapter = (
   const addStudent = async (name: string): Promise<boolean> => {
     const success = await cleanHook.addStudent(name);
     if (success) {
-      setNewStudentName('');
+      setNewStudentName("");
     }
     return success;
   };
@@ -47,15 +47,15 @@ export const useStudentManagementAdapter = (
       return {
         name: trimmedName,
         isValid: false,
-        errorMessage: '학생 이름을 입력해주세요.',
+        errorMessage: "학생 이름을 입력해주세요.",
       };
     }
 
-    if (cleanHook.students.some(s => s.name === trimmedName)) {
+    if (cleanHook.students.some((s) => s.name === trimmedName)) {
       return {
         name: trimmedName,
         isValid: false,
-        errorMessage: '이미 존재하는 학생 이름입니다.',
+        errorMessage: "이미 존재하는 학생 이름입니다.",
       };
     }
 
@@ -66,16 +66,16 @@ export const useStudentManagementAdapter = (
   };
 
   return {
-    // 기존 인터페이스 호환
+    // 새로운 기능들
+    ...cleanHook,
+
+    // 기존 인터페이스 호환 (새로운 기능들 위에 덮어쓰기)
     addStudent,
     deleteStudent,
     validateStudentName,
 
-    // 새로운 기능들
-    ...cleanHook,
-
     // 기존 상태와 호환
-    formData: { name: '', isValid: false },
+    formData: { name: "", isValid: false },
     errorMessage: cleanHook.error,
     showUpgradeModal: () => {}, // 기능 가드는 별도 처리
   };
@@ -97,8 +97,8 @@ export const useSubjectManagementAdapter = (
   const addSubject = async (name: string, color: string): Promise<boolean> => {
     const success = await cleanHook.addSubject(name, color);
     if (success) {
-      setNewSubjectName('');
-      setNewSubjectColor('#3b82f6'); // 기본 색상으로 리셋
+      setNewSubjectName("");
+      setNewSubjectColor("#3b82f6"); // 기본 색상으로 리셋
     }
     return success;
   };
@@ -121,15 +121,15 @@ export const useSubjectManagementAdapter = (
       return {
         name: trimmedName,
         isValid: false,
-        errorMessage: '과목 이름을 입력해주세요.',
+        errorMessage: "과목 이름을 입력해주세요.",
       };
     }
 
-    if (cleanHook.subjects.some(s => s.name === trimmedName)) {
+    if (cleanHook.subjects.some((s) => s.name === trimmedName)) {
       return {
         name: trimmedName,
         isValid: false,
-        errorMessage: '이미 존재하는 과목 이름입니다.',
+        errorMessage: "이미 존재하는 과목 이름입니다.",
       };
     }
 
@@ -140,17 +140,17 @@ export const useSubjectManagementAdapter = (
   };
 
   return {
-    // 기존 인터페이스 호환
+    // 새로운 기능들
+    ...cleanHook,
+
+    // 기존 인터페이스 호환 (새로운 기능들 위에 덮어쓰기)
     addSubject,
     deleteSubject,
     updateSubject,
     validateSubjectName,
 
-    // 새로운 기능들
-    ...cleanHook,
-
     // 기존 상태와 호환
-    formData: { name: '', color: '#3b82f6', isValid: false },
+    formData: { name: "", color: "#3b82f6", isValid: false },
     errorMessage: cleanHook.error,
   };
 };

@@ -5,7 +5,7 @@
  * 애플리케이션 서비스와 도메인 엔티티를 활용합니다.
  */
 
-import { repositoryFactory } from "@/infrastructure";
+import { createSubjectRepository } from "@/infrastructure/RepositoryFactory";
 import type { SubjectDto } from "@/shared/types/ApplicationTypes";
 import { useCallback, useEffect, useState } from "react";
 
@@ -15,7 +15,7 @@ class SubjectApplicationService {
   private subjectRepository: any;
 
   constructor() {
-    this.subjectRepository = repositoryFactory.createSubjectRepository();
+    this.subjectRepository = createSubjectRepository();
   }
 
   async getAllSubjects(options?: { sortBy?: string; sortOrder?: string }) {

@@ -1,0 +1,290 @@
+import { StudentApplicationServiceImpl } from "@/application/services/StudentApplicationService";
+import { SubjectApplicationServiceImpl } from "@/application/services/SubjectApplicationService";
+import { Student } from "@/domain/entities/Student";
+import { Subject } from "@/domain/entities/Subject";
+import { StudentId } from "@/domain/value-objects/StudentId";
+import { SubjectId } from "@/domain/value-objects/SubjectId";
+import {
+  createStudentRepository,
+  createSubjectRepository,
+} from "@/infrastructure/RepositoryFactory";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock RepositoryFactory functions
+vi.mock("@/infrastructure/RepositoryFactory", () => ({
+  createStudentRepository: vi.fn(),
+  createSubjectRepository: vi.fn(),
+}));
+
+describe("Integration Tests - 전체 플로우", () => {
+  let studentService: StudentApplicationServiceImpl;
+  let subjectService: SubjectApplicationServiceImpl;
+  let mockStudentRepository: any;
+  let mockSubjectRepository: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Mock repositories
+    mockStudentRepository = {
+      getAll: vi.fn(),
+      getById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    mockSubjectRepository = {
+      getAll: vi.fn(),
+      getById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    // Mock RepositoryFactory functions
+    vi.mocked(createStudentRepository).mockReturnValue(mockStudentRepository);
+    vi.mocked(createSubjectRepository).mockReturnValue(mockSubjectRepository);
+
+    // Create services
+    studentService = new StudentApplicationServiceImpl(mockStudentRepository);
+    subjectService = new SubjectApplicationServiceImpl(mockSubjectRepository);
+  });
+
+  describe("학생-과목 통합 플로우", () => {
+    it("학생과 과목을 추가하고 조회하는 전체 플로우가 작동해야 한다", async () => {
+      // Arrange
+      const student = Student.create("김철수", "male");
+      const subject = Subject.create("수학", "#FF0000");
+
+      mockStudentRepository.getAll.mockResolvedValue([]);
+      mockStudentRepository.create.mockResolvedValue(student);
+      mockSubjectRepository.getAll.mockResolvedValue([]);
+      mockSubjectRepository.create.mockResolvedValue(subject);
+
+      // Act - 학생 추가
+      const addStudentResult = await studentService.addStudent({
+        name: "김철수",
+        gender: "male",
+      });
+
+      // Act - 과목 추가
+      const addSubjectResult = await subjectService.addSubject({
+        name: "수학",
+        color: "#FF0000",
+      });
+
+      // Act - 학생 조회
+      mockStudentRepository.getAll.mockResolvedValue([student]);
+      const getStudentsResult = await studentService.getAllStudents();
+
+      // Act - 과목 조회
+      mockSubjectRepository.getAll.mockResolvedValue([subject]);
+      const getSubjectsResult = await subjectService.getAllSubjects();
+
+      // Assert
+      expect(addStudentResult).toBeDefined();
+      expect(addStudentResult.name).toBe("김철수");
+
+      expect(addSubjectResult).toBeDefined();
+      expect(addSubjectResult.name).toBe("수학");
+
+      expect(getStudentsResult).toBeDefined();
+      expect(getStudentsResult).toHaveLength(1);
+      expect(getStudentsResult[0].name).toBe("김철수");
+
+      expect(getSubjectsResult).toBeDefined();
+      expect(getSubjectsResult).toHaveLength(1);
+      expect(getSubjectsResult[0].name).toBe("수학");
+    });
+
+    it("중복된 학생과 과목 추가 시 에러가 발생해야 한다", async () => {
+      // Arrange
+      const existingStudent = Student.create("김철수", "male");
+      const existingSubject = Subject.create("수학", "#FF0000");
+
+      mockStudentRepository.getAll.mockResolvedValue([existingStudent]);
+      mockSubjectRepository.getAll.mockResolvedValue([existingSubject]);
+
+      // Act & Assert - 학생 중복 추가 시 에러 발생
+      await expect(
+        studentService.addStudent({
+          name: "김철수",
+          gender: "male",
+        })
+      ).rejects.toThrow("이미 존재하는 학생 이름입니다.");
+
+      // Act & Assert - 과목 중복 추가 시 에러 발생
+      await expect(
+        subjectService.addSubject({
+          name: "수학",
+          color: "#FF0000",
+        })
+      ).rejects.toThrow("이미 존재하는 과목 이름입니다.");
+    });
+  });
+
+  describe("데이터 일관성 테스트", () => {
+    it("학생 삭제 후 조회 시 해당 학생이 없어야 한다", async () => {
+      // Arrange
+      const studentId = StudentId.generate();
+      const student = Student.create("삭제될학생", "male");
+
+      mockStudentRepository.getById.mockResolvedValue(student);
+      mockStudentRepository.delete.mockResolvedValue();
+
+      // Act - 학생 삭제
+      const deleteResult = await studentService.deleteStudent(studentId);
+
+      // Act - 학생 조회 (삭제 후)
+      mockStudentRepository.getAll.mockResolvedValue([]);
+      const getStudentsResult = await studentService.getAllStudents();
+
+      // Assert
+      expect(deleteResult).toBeUndefined(); // void 반환
+      expect(getStudentsResult).toBeDefined();
+      expect(getStudentsResult).toHaveLength(0);
+    });
+
+    it("과목 삭제 후 조회 시 해당 과목이 없어야 한다", async () => {
+      // Arrange
+      const subjectId = SubjectId.generate();
+      const subject = Subject.create("삭제될과목", "#FF0000");
+
+      mockSubjectRepository.getById.mockResolvedValue(subject);
+      mockSubjectRepository.delete.mockResolvedValue();
+
+      // Act - 과목 삭제
+      const deleteResult = await subjectService.deleteSubject(subjectId);
+
+      // Act - 과목 조회 (삭제 후)
+      mockSubjectRepository.getAll.mockResolvedValue([]);
+      const getSubjectsResult = await subjectService.getAllSubjects();
+
+      // Assert
+      expect(deleteResult).toBeUndefined(); // void 반환
+      expect(getSubjectsResult).toBeDefined();
+      expect(getSubjectsResult).toHaveLength(0);
+    });
+  });
+
+  describe("에러 처리 통합 테스트", () => {
+    it("리포지토리 에러가 발생할 때 적절한 에러 처리가 되어야 한다", async () => {
+      // Arrange
+      const error = new Error("Database connection failed");
+      mockStudentRepository.getAll.mockRejectedValue(error);
+      mockSubjectRepository.getAll.mockRejectedValue(error);
+
+      // Act
+      const getStudentsResult = await studentService.getAllStudents();
+      const getSubjectsResult = await subjectService.getAllSubjects();
+
+      // Assert
+      expect(getStudentsResult).toBeDefined();
+      expect(getStudentsResult).toHaveLength(0);
+
+      expect(getSubjectsResult).toBeDefined();
+      expect(getSubjectsResult).toHaveLength(0);
+    });
+
+    it("존재하지 않는 ID로 조회 시 적절한 에러가 발생해야 한다", async () => {
+      // Arrange
+      const nonExistentStudentId = StudentId.generate();
+      const nonExistentSubjectId = SubjectId.generate();
+
+      mockStudentRepository.getById.mockResolvedValue(null);
+      mockSubjectRepository.getById.mockResolvedValue(null);
+
+      // Act
+      const getStudentResult = await studentService.getStudentById(
+        nonExistentStudentId
+      );
+      const getSubjectResult = await subjectService.getSubjectById(
+        nonExistentSubjectId
+      );
+
+      // Assert
+      expect(getStudentResult).toBeNull();
+      expect(getSubjectResult).toBeNull();
+    });
+  });
+
+  describe("업데이트 플로우 테스트", () => {
+    it("학생과 과목 업데이트가 올바르게 작동해야 한다", async () => {
+      // Arrange
+      const studentId = StudentId.generate();
+      const subjectId = SubjectId.generate();
+      const originalStudent = Student.create("김철수", "male");
+      const originalSubject = Subject.create("수학", "#FF0000");
+      const updatedStudent = Student.create("김철수", "female");
+      const updatedSubject = Subject.create("수학", "#00FF00");
+
+      // Mock 설정: 기존 학생/과목 조회 시 원본 반환
+      mockStudentRepository.getById.mockResolvedValue(originalStudent);
+      mockSubjectRepository.getById.mockResolvedValue(originalSubject);
+
+      // Mock 설정: 전체 조회 시 빈 배열 반환 (중복 체크 우회)
+      mockStudentRepository.getAll.mockResolvedValue([]);
+      mockSubjectRepository.getAll.mockResolvedValue([]);
+
+      // Mock 설정: 업데이트 시 업데이트된 객체 반환
+      mockStudentRepository.update.mockResolvedValue(updatedStudent);
+      mockSubjectRepository.update.mockResolvedValue(updatedSubject);
+
+      // Act
+      const updateStudentResult = await studentService.updateStudent(
+        studentId,
+        {
+          name: "김철수",
+          gender: "female",
+        }
+      );
+
+      const updateSubjectResult = await subjectService.updateSubject(
+        subjectId,
+        {
+          name: "수학",
+          color: "#00FF00",
+        }
+      );
+
+      // Assert
+      expect(updateStudentResult).toBeDefined();
+      expect(updateStudentResult.gender).toBe("female");
+
+      expect(updateSubjectResult).toBeDefined();
+      expect(updateSubjectResult.color.value).toBe("#00FF00");
+    });
+  });
+
+  describe("성능 테스트", () => {
+    it("대량의 데이터 처리 시 성능이 적절해야 한다", async () => {
+      // Arrange
+      const students = Array.from({ length: 100 }, (_, i) =>
+        Student.create(`학생${i}`, i % 2 === 0 ? "male" : "female")
+      );
+      const subjects = Array.from({ length: 50 }, (_, i) =>
+        Subject.create(`과목${i}`, `#${i.toString(16).padStart(6, "0")}`)
+      );
+
+      mockStudentRepository.getAll.mockResolvedValue(students);
+      mockSubjectRepository.getAll.mockResolvedValue(subjects);
+
+      // Act
+      const startTime = Date.now();
+      const getStudentsResult = await studentService.getAllStudents();
+      const getSubjectsResult = await subjectService.getAllSubjects();
+      const endTime = Date.now();
+
+      // Assert
+      expect(getStudentsResult).toBeDefined();
+      expect(getStudentsResult).toHaveLength(100);
+
+      expect(getSubjectsResult).toBeDefined();
+      expect(getSubjectsResult).toHaveLength(50);
+
+      // 성능 검증 (1초 이내)
+      expect(endTime - startTime).toBeLessThan(1000);
+    });
+  });
+});

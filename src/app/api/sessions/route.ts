@@ -2,13 +2,14 @@ import { SessionApplicationServiceImpl } from "@/application/services/SessionApp
 import { createSessionRepository } from "@/infrastructure/RepositoryFactory";
 import { NextRequest, NextResponse } from "next/server";
 
-const sessionService = new SessionApplicationServiceImpl(
-  createSessionRepository()
-);
+// Create a function to get the session service (for testing purposes)
+export function getSessionService() {
+  return new SessionApplicationServiceImpl(createSessionRepository());
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const sessions = await sessionService.getAllSessions();
+    const sessions = await getSessionService().getAllSessions();
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
     console.error("Error fetching sessions:", error);
@@ -22,20 +23,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { subjectId, startsAt, endsAt, enrollmentIds } = body;
+    const { subjectId, startsAt, endsAt, enrollmentIds, weekday } = body;
 
-    if (!subjectId || !startsAt || !endsAt || !Array.isArray(enrollmentIds)) {
+    if (
+      !subjectId ||
+      !startsAt ||
+      !endsAt ||
+      !Array.isArray(enrollmentIds) ||
+      weekday === undefined
+    ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields for session" },
         { status: 400 }
       );
     }
 
-    const newSession = await sessionService.addSession({
+    const newSession = await getSessionService().addSession({
       subjectId,
       startsAt: new Date(startsAt),
       endsAt: new Date(endsAt),
       enrollmentIds,
+      weekday: Number(weekday),
     });
     return NextResponse.json(
       { success: true, data: newSession },
@@ -53,14 +61,15 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, subjectId, startsAt, endsAt, enrollmentIds } = body;
+    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday } = body;
 
     if (
       !id ||
       !subjectId ||
       !startsAt ||
       !endsAt ||
-      !Array.isArray(enrollmentIds)
+      !Array.isArray(enrollmentIds) ||
+      weekday === undefined
     ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields for session" },
@@ -68,11 +77,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const updatedSession = await sessionService.updateSession(id, {
+    const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
       startsAt: new Date(startsAt),
       endsAt: new Date(endsAt),
       enrollmentIds,
+      weekday: Number(weekday),
     });
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
@@ -96,7 +106,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await sessionService.deleteSession(id);
+    await getSessionService().deleteSession(id);
     return NextResponse.json({
       success: true,
       message: "Session deleted successfully",

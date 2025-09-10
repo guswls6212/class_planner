@@ -1,4 +1,4 @@
-import type { Student, Subject } from '../lib/planner';
+import type { Student, Subject } from "@lib/planner";
 
 // 학생 관리 관련 타입
 export interface StudentManagementData {

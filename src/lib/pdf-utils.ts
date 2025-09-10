@@ -1,5 +1,5 @@
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 /**
  * HTML 요소를 PDF로 변환하여 다운로드하는 유틸리티 함수들
@@ -7,8 +7,8 @@ import jsPDF from 'jspdf';
 
 export interface PDFDownloadOptions {
   filename?: string;
-  format?: 'a4' | 'letter';
-  orientation?: 'portrait' | 'landscape';
+  format?: "a4" | "letter";
+  orientation?: "portrait" | "landscape";
   quality?: number; // 🎯 이미지 품질 (0.1~2.0, 기본값: 2.0 = 인쇄용 고품질)
 }
 
@@ -16,7 +16,11 @@ export interface PDFDownloadOptions {
  * 시간을 분으로 변환하는 함수
  */
 export function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number);
+  if (!time || typeof time !== "string") {
+    console.warn("Invalid time format:", time);
+    return 0;
+  }
+  const [hours, minutes] = time.split(":").map(Number);
   return hours * 60 + minutes;
 }
 
@@ -26,7 +30,9 @@ export function timeToMinutes(time: string): number {
 export function minutesToTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  return `${hours.toString().padStart(2, "0")}:${mins
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 /**
@@ -39,23 +45,23 @@ export function calculateSessionTimeRange(element: HTMLElement): {
 } {
   // 세션 블록들을 찾기
   const sessionBlocks = element.querySelectorAll(
-    '[data-session-id], .session-block, .SessionBlock'
+    "[data-session-id], .session-block, .SessionBlock"
   );
 
   if (sessionBlocks.length === 0) {
     return {
-      startTime: '09:00',
-      endTime: '24:00',
+      startTime: "09:00",
+      endTime: "24:00",
       hasSessions: false,
     };
   }
 
   // 모든 세션의 시작/종료 시간을 수집
   const allTimes: number[] = [];
-  sessionBlocks.forEach(block => {
+  sessionBlocks.forEach((block) => {
     const sessionElement = block as HTMLElement;
-    const startsAt = sessionElement.getAttribute('data-starts-at');
-    const endsAt = sessionElement.getAttribute('data-ends-at');
+    const startsAt = sessionElement.getAttribute("data-starts-at");
+    const endsAt = sessionElement.getAttribute("data-ends-at");
 
     if (startsAt) {
       allTimes.push(timeToMinutes(startsAt));
@@ -67,8 +73,8 @@ export function calculateSessionTimeRange(element: HTMLElement): {
 
   if (allTimes.length === 0) {
     return {
-      startTime: '09:00',
-      endTime: '24:00',
+      startTime: "09:00",
+      endTime: "24:00",
       hasSessions: false,
     };
   }
@@ -81,7 +87,7 @@ export function calculateSessionTimeRange(element: HTMLElement): {
   const startTime = earliestStart;
   const endTime = latestEnd;
 
-  console.log('📊 PDF 세션 시간 범위 계산:', {
+  console.log("📊 PDF 세션 시간 범위 계산:", {
     originalEarliest: earliestStart,
     originalLatest: latestEnd,
     finalStart: startTime,
@@ -109,8 +115,8 @@ export function extractTimeHeaders(element: HTMLElement): Element[] {
     // 🆕 요일 헤더는 제외 (월, 화, 수, 목, 금, 토, 일)
     // 🆕 추가로 요일 라벨이 시간 헤더로 인식되는 것을 방지
     return (
-      !['월', '화', '수', '목', '금', '토', '일'].includes(text || '') &&
-      !header.closest('.time-table-row')
+      !["월", "화", "수", "목", "금", "토", "일"].includes(text || "") &&
+      !header.closest(".time-table-row")
     ); // 🆕 TimeTableRow 내부의 요소는 제외
   });
 
@@ -136,7 +142,7 @@ export function hideTimeHeadersOutsideSessionRange(
   // 세션 범위에 맞지 않는 시간 헤더들을 숨기기
   let headersHiddenBeforeStartTime = 0; // 세션 시작 시간보다 앞선 시간 헤더 개수 (세션셀 위치 조정용)
 
-  timeHeaders.forEach(header => {
+  timeHeaders.forEach((header) => {
     const headerElement = header as HTMLElement;
     const timeText = headerElement.textContent?.trim();
     const timeMatch = timeText?.match(/(\d{1,2}:\d{2})/);
@@ -149,7 +155,7 @@ export function hideTimeHeadersOutsideSessionRange(
 
       // 세션 범위 밖의 시간 헤더는 숨기기
       if (timeMinutes < startMinutes || timeMinutes > endMinutes) {
-        headerElement.style.display = 'none';
+        headerElement.style.display = "none";
 
         // 세션 시작 시간보다 앞선 시간 헤더 개수 계산
         if (timeMinutes < startMinutes) {
@@ -174,10 +180,10 @@ export function restoreHiddenTimeHeaders(element: HTMLElement): void {
   const timeHeaders = extractTimeHeaders(element);
 
   // 숨겨진 시간 헤더들을 다시 표시
-  timeHeaders.forEach(header => {
+  timeHeaders.forEach((header) => {
     const headerElement = header as HTMLElement;
-    if (headerElement.style.display === 'none') {
-      headerElement.style.display = ''; // 원래 display 값으로 복원
+    if (headerElement.style.display === "none") {
+      headerElement.style.display = ""; // 원래 display 값으로 복원
       console.log(
         `🆕 시간 헤더 복원: ${headerElement.textContent?.trim()} (display: none → '')`
       );
@@ -193,10 +199,10 @@ export function adjustSessionPositions(
 ): void {
   // 🆕 세션셀들의 위치 조정 (세션 시작 시간보다 앞선 시간 헤더만큼 앞당기기)
   const sessionBlocks = element.querySelectorAll(
-    '[data-session-id], .session-block, .SessionBlock'
+    "[data-session-id], .session-block, .SessionBlock"
   );
 
-  sessionBlocks.forEach(block => {
+  sessionBlocks.forEach((block) => {
     const sessionElement = block as HTMLElement;
     const currentLeft = sessionElement.style.left;
     const currentLeftValue = parseInt(currentLeft) || 0;
@@ -238,7 +244,7 @@ export async function captureElement(
   } = {}
 ): Promise<HTMLCanvasElement> {
   const {
-    backgroundColor = '#ffffff',
+    backgroundColor = "#ffffff",
     sessionRange = false,
     quality = 2, // 🎯 고품질 설정 (0.1~2.0, 2.0은 인쇄용 최고 품질)
   } = options;
@@ -270,8 +276,8 @@ export async function captureElement(
 
   // 세션 범위 계산
   let sessionTimeRange = {
-    startTime: '09:00',
-    endTime: '18:00',
+    startTime: "09:00",
+    endTime: "18:00",
     hasSessions: false,
   };
   if (sessionRange) {
@@ -284,17 +290,17 @@ export async function captureElement(
   try {
     // 라이트 테마 CSS 변수들로 강제 변경
     const lightThemeVars = {
-      '--color-background': '#ffffff',
-      '--color-text': '#1f2937',
-      '--color-text-secondary': '#6b7280',
-      '--color-border': '#d1d5db',
-      '--color-border-grid': '#e5e7eb',
-      '--color-border-grid-light': '#f3f4f6',
-      '--color-primary': '#3b82f6',
-      '--color-secondary': '#6b7280',
-      '--color-danger': '#ef4444',
-      '--color-success': '#10b981',
-      '--color-warning': '#f59e0b',
+      "--color-background": "#ffffff",
+      "--color-text": "#1f2937",
+      "--color-text-secondary": "#6b7280",
+      "--color-border": "#d1d5db",
+      "--color-border-grid": "#e5e7eb",
+      "--color-border-grid-light": "#f3f4f6",
+      "--color-primary": "#3b82f6",
+      "--color-secondary": "#6b7280",
+      "--color-danger": "#ef4444",
+      "--color-success": "#10b981",
+      "--color-warning": "#f59e0b",
     };
 
     // CSS 변수들을 라이트 테마로 변경
@@ -308,16 +314,16 @@ export async function captureElement(
     });
 
     // 세션 셀의 스타일을 보존하면서 라이트 테마로 변환
-    const elementsToStyle = element.querySelectorAll('*');
-    elementsToStyle.forEach(el => {
+    const elementsToStyle = element.querySelectorAll("*");
+    elementsToStyle.forEach((el) => {
       const computedStyle = getComputedStyle(el);
       const style = (el as HTMLElement).style;
 
       // 세션 블록인지 확인 (data-session-id 속성이나 특정 클래스로 판단)
       const isSessionBlock =
-        el.hasAttribute('data-session-id') ||
-        el.className.includes('session-block') ||
-        el.className.includes('SessionBlock');
+        el.hasAttribute("data-session-id") ||
+        el.className.includes("session-block") ||
+        el.className.includes("SessionBlock");
 
       if (isSessionBlock) {
         // 세션 블록의 경우 배경색과 테두리를 보존하되 라이트 테마에 맞게 조정
@@ -329,9 +335,9 @@ export async function captureElement(
         }
         const elementStyles = originalStyles.get(el as HTMLElement)!;
 
-        if (currentBgColor && currentBgColor !== 'rgba(0, 0, 0, 0)') {
+        if (currentBgColor && currentBgColor !== "rgba(0, 0, 0, 0)") {
           // 원본 색상을 보존하되 밝기 조정
-          elementStyles.set('backgroundColor', style.backgroundColor);
+          elementStyles.set("backgroundColor", style.backgroundColor);
 
           // 백업에도 저장
           if (!styleBackup.has(el as HTMLElement)) {
@@ -346,8 +352,8 @@ export async function captureElement(
         }
 
         // 세션 블록에 테두리 추가 (라이트 테마용)
-        if (!computedStyle.border || computedStyle.border === 'none') {
-          elementStyles.set('border', style.border);
+        if (!computedStyle.border || computedStyle.border === "none") {
+          elementStyles.set("border", style.border);
 
           // 백업에도 저장
           if (!styleBackup.has(el as HTMLElement)) {
@@ -355,11 +361,11 @@ export async function captureElement(
           }
           styleBackup.get(el as HTMLElement)!.border = style.border;
 
-          style.border = '1px solid #d1d5db';
+          style.border = "1px solid #d1d5db";
         }
 
         // 텍스트 색상을 어두운 색으로 설정하여 가독성 향상
-        elementStyles.set('color', style.color);
+        elementStyles.set("color", style.color);
 
         // 백업에도 저장
         if (!styleBackup.has(el as HTMLElement)) {
@@ -367,10 +373,10 @@ export async function captureElement(
         }
         styleBackup.get(el as HTMLElement)!.color = style.color;
 
-        style.color = '#1f2937';
+        style.color = "#1f2937";
 
         // 시간 정보를 더 명확하게 표시하기 위한 스타일 추가
-        elementStyles.set('fontWeight', style.fontWeight);
+        elementStyles.set("fontWeight", style.fontWeight);
 
         // 백업에도 저장
         if (!styleBackup.has(el as HTMLElement)) {
@@ -378,12 +384,12 @@ export async function captureElement(
         }
         styleBackup.get(el as HTMLElement)!.fontWeight = style.fontWeight;
 
-        style.fontWeight = '600';
+        style.fontWeight = "600";
       } else {
         // 일반 요소의 경우 기존 로직 적용
         if (
           computedStyle.backgroundColor &&
-          computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+          computedStyle.backgroundColor !== "rgba(0, 0, 0, 0)"
         ) {
           // 이 요소의 원본 스타일을 저장할 Map 생성
           if (!originalStyles.has(el as HTMLElement)) {
@@ -391,7 +397,7 @@ export async function captureElement(
           }
           const elementStyles = originalStyles.get(el as HTMLElement)!;
 
-          elementStyles.set('backgroundColor', style.backgroundColor);
+          elementStyles.set("backgroundColor", style.backgroundColor);
 
           // 백업에도 저장
           if (!styleBackup.has(el as HTMLElement)) {
@@ -400,17 +406,17 @@ export async function captureElement(
           styleBackup.get(el as HTMLElement)!.backgroundColor =
             style.backgroundColor;
 
-          style.backgroundColor = '#ffffff';
+          style.backgroundColor = "#ffffff";
         }
 
-        if (computedStyle.color && computedStyle.color !== 'rgba(0, 0, 0, 0)') {
+        if (computedStyle.color && computedStyle.color !== "rgba(0, 0, 0, 0)") {
           // 이 요소의 원본 스타일을 저장할 Map 생성
           if (!originalStyles.has(el as HTMLElement)) {
             originalStyles.set(el as HTMLElement, new Map());
           }
           const elementStyles = originalStyles.get(el as HTMLElement)!;
 
-          elementStyles.set('color', style.color);
+          elementStyles.set("color", style.color);
 
           // 백업에도 저장
           if (!styleBackup.has(el as HTMLElement)) {
@@ -418,7 +424,7 @@ export async function captureElement(
           }
           styleBackup.get(el as HTMLElement)!.color = style.color;
 
-          style.color = '#1f2937';
+          style.color = "#1f2937";
         }
       }
     });
@@ -426,16 +432,16 @@ export async function captureElement(
     // 🆕 세션 범위에 맞는 시간 헤더 필터링 및 세션셀 위치 조정
     if (sessionRange && sessionTimeRange.hasSessions) {
       console.log(
-        '세션 범위 필터링 시작:',
+        "세션 범위 필터링 시작:",
         JSON.stringify(sessionTimeRange, null, 2)
       );
 
       // 🆕 원본 세션셀 위치 백업
       const originalSessionBlocks = element.querySelectorAll(
-        '[data-session-id], .session-block, .SessionBlock'
+        "[data-session-id], .session-block, .SessionBlock"
       );
 
-      originalSessionBlocks.forEach(block => {
+      originalSessionBlocks.forEach((block) => {
         const sessionElement = block as HTMLElement;
         originalSessionPositions.push({
           element: sessionElement,
@@ -456,7 +462,7 @@ export async function captureElement(
       // 🆕 시간 헤더 필터링 결과 로깅
       const timeHeaders = extractTimeHeaders(element);
 
-      console.log('🆕 시간 헤더 필터링 결과:', {
+      console.log("🆕 시간 헤더 필터링 결과:", {
         totalHeaders: timeHeaders.length,
         filteredCount: headersHiddenBeforeStartTime,
         remainingHeaders: timeHeaders.length - headersHiddenBeforeStartTime,
@@ -472,23 +478,23 @@ export async function captureElement(
     element.scrollTop = 0;
 
     // 캡처를 위해 요소 스타일 임시 변경 - 전체 내용이 보이도록 설정
-    element.style.overflow = 'visible';
-    element.style.maxWidth = 'none';
-    element.style.maxHeight = 'none';
-    element.style.position = 'absolute';
-    element.style.top = '0';
-    element.style.left = '0';
-    element.style.zIndex = '9999';
+    element.style.overflow = "visible";
+    element.style.maxWidth = "none";
+    element.style.maxHeight = "none";
+    element.style.position = "absolute";
+    element.style.top = "0";
+    element.style.left = "0";
+    element.style.zIndex = "9999";
 
     // 스크롤 위치를 0으로 설정
     element.scrollLeft = 0;
     element.scrollTop = 0;
 
     // 잠시 대기하여 스타일 변경이 적용되도록 함
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     // 스타일 변경이 완전히 적용되었는지 확인
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       requestAnimationFrame(() => {
         requestAnimationFrame(resolve);
       });
@@ -505,7 +511,7 @@ export async function captureElement(
       const weekdayHeaderWidth = 80; // 요일 헤더 너비
       captureWidth = weekdayHeaderWidth + timeRangeWidth;
 
-      console.log('🆕 세션 범위 캡처 너비 계산:', {
+      console.log("🆕 세션 범위 캡처 너비 계산:", {
         startTime: sessionTimeRange.startTime,
         endTime: sessionTimeRange.endTime,
         timeRangeSlots,
@@ -532,8 +538,8 @@ export async function captureElement(
       ignoreElements: (element: Element) => {
         // 스크롤바나 불필요한 요소 제외
         return (
-          element.classList.contains('scrollbar') ||
-          (element as HTMLElement).style.position === 'fixed'
+          element.classList.contains("scrollbar") ||
+          (element as HTMLElement).style.position === "fixed"
         );
       },
     } as Parameters<typeof html2canvas>[1]);
@@ -617,19 +623,19 @@ export function downloadCanvasAsPDF(
   options: PDFDownloadOptions = {}
 ): void {
   const {
-    filename = 'timetable.pdf',
-    format = 'a4',
-    orientation = 'landscape',
+    filename = "timetable.pdf",
+    format = "a4",
+    orientation = "landscape",
   } = options;
 
   const pdf = new jsPDF({
     orientation,
-    unit: 'mm',
+    unit: "mm",
     format,
   });
 
   // A4 가로 크기 (297mm x 210mm)
-  const pageWidth = orientation === 'landscape' ? 297 : 210;
+  const pageWidth = orientation === "landscape" ? 297 : 210;
 
   // 캔버스 크기
   const canvasWidth = canvas.width;
@@ -640,8 +646,8 @@ export function downloadCanvasAsPDF(
   const imgHeight = (canvasHeight * imgWidth) / canvasWidth;
 
   // PDF에 이미지 추가
-  const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+  const imgData = canvas.toDataURL("image/png");
+  pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
   // 다운로드
   pdf.save(filename);
@@ -665,14 +671,14 @@ export async function downloadElementAsPDF(
     // 1. HTML 요소를 캔버스로 변환
     const canvas = await captureElement(element, {
       quality: 2, // 🎯 인쇄용 고품질 설정 (2.0 = 최고 품질, 텍스트와 색상이 매우 선명함)
-      backgroundColor: '#ffffff', // 라이트 테마 배경색
+      backgroundColor: "#ffffff", // 라이트 테마 배경색
       sessionRange: captureOptions.sessionRange,
     });
 
     // 2. 캔버스를 PDF로 변환하여 다운로드
     downloadCanvasAsPDF(canvas, options);
   } catch (error) {
-    console.error('PDF 다운로드 중 오류 발생:', error);
+    console.error("PDF 다운로드 중 오류 발생:", error);
     throw error;
   }
 }
@@ -690,14 +696,14 @@ export async function downloadTimetableAsPDF(
 ): Promise<void> {
   const filename = studentName
     ? `${studentName}_시간표.pdf`
-    : '전체_시간표.pdf';
+    : "전체_시간표.pdf";
 
   await downloadElementAsPDF(
     element,
     {
       filename,
-      format: 'a4',
-      orientation: 'landscape', // A4 가로
+      format: "a4",
+      orientation: "landscape", // A4 가로
     },
     {
       sessionRange: true, // 🆕 세션 범위 기반 캡처 활성화

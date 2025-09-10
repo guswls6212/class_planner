@@ -73,17 +73,6 @@ export interface AddSubjectRequest {
 
 export interface UpdateSubjectRequest {
   id: string;
-  name: string;
-  color: string;
-}
-
-export interface DeleteStudentRequest {
-  studentId: string;
-  userId: string;
-}
-
-export interface UpdateSubjectRequest {
-  id: string;
   name?: string;
   color?: string;
 }

@@ -6,7 +6,7 @@ interface ThemeToggleProps {
 }
 
 // 유틸리티 함수들 (테스트 가능)
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getSizeStyles = (size: string) => {
   const sizeStyles = {
     small: { padding: "6px 8px", fontSize: "12px" },
@@ -16,7 +16,7 @@ export const getSizeStyles = (size: string) => {
   return sizeStyles[size as keyof typeof sizeStyles] || sizeStyles.medium;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getIconStyles = (size: string) => {
   const iconStyles = {
     small: { fontSize: "14px" },
@@ -26,38 +26,38 @@ export const getIconStyles = (size: string) => {
   return iconStyles[size as keyof typeof iconStyles] || iconStyles.medium;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowIcon = (variant: string): boolean => {
   return variant !== "text";
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const shouldShowText = (variant: string): boolean => {
   return variant !== "icon";
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getThemeIcon = (theme: string): string => {
   return theme === "dark" ? "🌙" : "☀️";
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getThemeText = (theme: string): string => {
   return theme === "dark" ? "라이트" : "다크";
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const getThemeTitle = (theme: string): string => {
   return `현재 테마: ${theme === "dark" ? "다크" : "라이트"}`;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateThemeToggleSize = (size: string): boolean => {
   const validSizes = ["small", "medium", "large"];
   return validSizes.includes(size);
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
+
 export const validateThemeToggleVariant = (variant: string): boolean => {
   const validVariants = ["icon", "text", "both"];
   return validVariants.includes(variant);
