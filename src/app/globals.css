@@ -73,7 +73,7 @@
 }
 
 /* 라이트모드 테마 */
-[data-theme='light'] {
+[data-theme="light"] {
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f9fafb;
   --color-bg-tertiary: #f3f4f6;
@@ -90,7 +90,7 @@
 }
 
 /* 다크모드 테마 */
-[data-theme='dark'] {
+[data-theme="dark"] {
   --color-bg-primary: #1f2937;
   --color-bg-secondary: #374151;
   --color-bg-tertiary: #4b5563;
@@ -113,19 +113,37 @@
 
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    sans-serif;
   line-height: 1.5;
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
-  transition:
-    background-color var(--transition-normal),
+  transition: background-color var(--transition-normal),
     color var(--transition-normal);
 }
 
 /* 공통 유틸리티 클래스 */
 .flex {
   display: flex;
+}
+
+/* 커스텀 스크롤바 스타일 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
 }
 
 .flex-col {

@@ -1,7 +1,7 @@
-import React from 'react';
-import type { Student } from '../../lib/planner';
-import StudentInputSection from '../molecules/StudentInputSection';
-import StudentList from '../molecules/StudentList';
+import React from "react";
+import type { Student } from "../../lib/planner";
+import StudentInputSection from "../molecules/StudentInputSection";
+import StudentList from "../molecules/StudentList";
 
 interface StudentManagementSectionProps {
   students: Student[];
@@ -12,6 +12,7 @@ interface StudentManagementSectionProps {
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
   errorMessage?: string;
+  isLoading?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -27,7 +28,8 @@ export const StudentManagementSection: React.FC<
   onSelectStudent,
   onDeleteStudent,
   errorMessage,
-  className = '',
+  isLoading = false,
+  className = "",
   style = {},
 }) => {
   return (
@@ -50,12 +52,14 @@ export const StudentManagementSection: React.FC<
         selectedStudentId={selectedStudentId}
         onSelectStudent={onSelectStudent}
         onDeleteStudent={onDeleteStudent}
+        isLoading={isLoading}
       />
 
       {selectedStudentId && (
         <div style={{ marginTop: 16 }}>
           <h3>
-            선택된 학생: {students.find(s => s.id === selectedStudentId)?.name}
+            선택된 학생:{" "}
+            {students.find((s) => s.id === selectedStudentId)?.name}
           </h3>
         </div>
       )}

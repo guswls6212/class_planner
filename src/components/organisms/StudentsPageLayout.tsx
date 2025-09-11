@@ -1,6 +1,6 @@
-import React from 'react';
-import type { Student } from '../../lib/planner';
-import StudentManagementSection from '../organisms/StudentManagementSection';
+import React from "react";
+import type { Student } from "../../lib/planner";
+import StudentManagementSection from "../organisms/StudentManagementSection";
 
 interface StudentsPageLayoutProps {
   students: Student[];
@@ -11,6 +11,7 @@ interface StudentsPageLayoutProps {
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
   errorMessage?: string;
+  isLoading?: boolean;
 }
 
 const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
@@ -22,13 +23,14 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
   onSelectStudent,
   onDeleteStudent,
   errorMessage,
+  isLoading = false,
 }) => {
   return (
     <div
       data-testid="students-page"
       className="grid"
       style={{
-        gridTemplateColumns: '340px 1fr', // ⚠️ 중요: 좌측 340px 고정 너비
+        gridTemplateColumns: "340px 1fr", // ⚠️ 중요: 좌측 340px 고정 너비
         gap: 16,
         padding: 16,
       }}
@@ -42,6 +44,7 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
         onSelectStudent={onSelectStudent}
         onDeleteStudent={onDeleteStudent}
         errorMessage={errorMessage}
+        isLoading={isLoading}
       />
     </div>
   );

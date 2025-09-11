@@ -71,12 +71,17 @@ function Footer() {
   return (
     <footer
       style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         padding: 12,
         borderTop: "1px solid var(--color-border)",
         background: "var(--color-bg-secondary)",
+        zIndex: 1000,
       }}
     >
       <div style={{ display: "flex", gap: 12 }}>
@@ -112,7 +117,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <Navigation />
-          {children}
+          <main style={{ paddingBottom: "60px" }}>{children}</main>
           <Footer />
         </ThemeProvider>
       </body>

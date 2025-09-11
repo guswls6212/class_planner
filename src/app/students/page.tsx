@@ -19,6 +19,7 @@ export default function StudentsPage() {
 function StudentsPageContent() {
   const [students, setStudents] = useState<Student[]>([]);
   const [newStudentName, setNewStudentName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
@@ -28,6 +29,7 @@ function StudentsPageContent() {
   useEffect(() => {
     const loadStudents = async () => {
       try {
+        setIsLoading(true);
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -61,6 +63,8 @@ function StudentsPageContent() {
       } catch (error) {
         console.error("학생 로드 중 오류:", error);
         setStudents([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -103,6 +107,7 @@ function StudentsPageContent() {
       onAddStudent={handleAddStudent}
       onSelectStudent={handleSelectStudent}
       onDeleteStudent={handleDeleteStudent}
+      isLoading={isLoading}
     />
   );
 }
