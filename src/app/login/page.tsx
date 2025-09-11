@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Button from "../../components/atoms/Button";
 import { supabase } from "../../utils/supabaseClient";
-import styles from "./Login.module.css";
 
 const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -122,30 +121,139 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.loginCard}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>클래스 플래너</h1>
-          <p className={styles.subtitle}>
+    <div
+      className="min-h-screen flex items-center justify-center p-5"
+      style={{
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      }}
+    >
+      <div
+        className="bg-white w-full text-center"
+        style={{
+          backgroundColor: "white",
+          borderRadius: "16px",
+          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
+          padding: "40px",
+          maxWidth: "400px",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="mb-8"
+          style={{
+            marginBottom: "32px",
+          }}
+        >
+          <h1
+            className="font-bold mb-2"
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              color: "#1f2937",
+              margin: "0 0 8px 0",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            클래스 플래너
+          </h1>
+          <p
+            className="text-base leading-relaxed"
+            style={{
+              color: "#6b7280",
+              fontSize: "1rem",
+              margin: "0",
+              lineHeight: "1.5",
+            }}
+          >
             수업 시간표를 쉽고 빠르게 관리하세요
           </p>
         </div>
 
-        <div className={styles.loginSection}>
-          <h2 className={styles.loginTitle}>로그인</h2>
+        {/* Login Section */}
+        <div
+          className="mb-8"
+          style={{
+            marginBottom: "32px",
+          }}
+        >
+          <h2
+            className="font-semibold mb-6"
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "600",
+              color: "#1f2937",
+              margin: "0 0 24px 0",
+            }}
+          >
+            로그인
+          </h2>
 
-          {error && <div className={styles.errorMessage}>{error}</div>}
+          {error && (
+            <div
+              className="rounded-lg mb-5 text-sm"
+              style={{
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#dc2626",
+                padding: "12px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                fontSize: "0.875rem",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
-          <div className={styles.socialButtons}>
+          {/* Social Buttons */}
+          <div
+            className="flex flex-col gap-3 mb-6"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              marginBottom: "24px",
+            }}
+          >
             <Button
               onClick={handleGoogleLogin}
               disabled={isLoading}
               variant="transparent"
-              className={styles.googleButton}
+              className="w-full py-3 px-4 border transition-all duration-200"
+              style={{
+                backgroundColor: "white",
+                border: "1px solid #d1d5db",
+                color: "#374151",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#f9fafb";
+                e.currentTarget.style.borderColor = "#9ca3af";
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(0, 0, 0, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "white";
+                e.currentTarget.style.borderColor = "#d1d5db";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
             >
-              <div className={styles.buttonContent}>
+              <div
+                className="flex items-center justify-center gap-3"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "12px",
+                }}
+              >
                 <svg
-                  className={styles.googleIcon}
+                  className="flex-shrink-0"
                   viewBox="0 0 24 24"
                   width="20"
                   height="20"
@@ -175,11 +283,38 @@ const LoginPage: React.FC = () => {
               onClick={handleKakaoLogin}
               disabled={isLoading}
               variant="transparent"
-              className={styles.kakaoButton}
+              className="w-full py-3 px-4 border transition-all duration-200"
+              style={{
+                backgroundColor: "#fee500",
+                border: "1px solid #fee500",
+                color: "#3c1e1e",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#fdd835";
+                e.currentTarget.style.borderColor = "#fdd835";
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(0, 0, 0, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#fee500";
+                e.currentTarget.style.borderColor = "#fee500";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
             >
-              <div className={styles.buttonContent}>
+              <div
+                className="flex items-center justify-center gap-3"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "12px",
+                }}
+              >
                 <svg
-                  className={styles.kakaoIcon}
+                  className="flex-shrink-0"
                   viewBox="0 0 24 24"
                   width="20"
                   height="20"
@@ -194,24 +329,100 @@ const LoginPage: React.FC = () => {
             </Button>
           </div>
 
-          <div className={styles.divider}>
-            <span>또는</span>
+          {/* Divider - 원본 CSS와 정확히 일치하도록 수정 */}
+          <div
+            className="relative"
+            style={{
+              position: "relative",
+              margin: "24px 0",
+            }}
+          >
+            {/* 원본 CSS의 ::before 가상 요소를 정확히 재현 */}
+            <div
+              className="absolute inset-0 flex items-center"
+              style={{
+                content: '""',
+                position: "absolute",
+                top: "50%",
+                left: "0",
+                right: "0",
+                height: "1px",
+                background: "#e5e7eb",
+              }}
+            >
+              <div
+                className="w-full h-px"
+                style={{
+                  height: "1px",
+                  background: "#e5e7eb",
+                }}
+              ></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span
+                className="bg-white text-sm"
+                style={{
+                  background: "white",
+                  padding: "0 16px",
+                  color: "#6b7280",
+                  fontSize: "0.875rem",
+                }}
+              >
+                또는
+              </span>
+            </div>
           </div>
 
-          <div className={styles.emailSection}>
-            <p className={styles.emailNote}>이메일 로그인은 준비 중입니다</p>
+          {/* Email Section */}
+          <div
+            className="mt-6"
+            style={{
+              marginTop: "24px",
+            }}
+          >
+            <p
+              className="text-sm mb-3"
+              style={{
+                color: "#6b7280",
+                fontSize: "0.875rem",
+                margin: "0 0 12px 0",
+              }}
+            >
+              이메일 로그인은 준비 중입니다
+            </p>
             <Button
               disabled={true}
               variant="transparent"
-              className={styles.emailButton}
+              className="w-full py-3 px-4 border cursor-not-allowed"
+              style={{
+                backgroundColor: "#f3f4f6",
+                border: "1px solid #d1d5db",
+                color: "#9ca3af",
+                cursor: "not-allowed",
+              }}
             >
               이메일로 로그인 (준비 중)
             </Button>
           </div>
         </div>
 
-        <div className={styles.footer}>
-          <p className={styles.footerText}>
+        {/* Footer */}
+        <div
+          className="pt-6"
+          style={{
+            borderTop: "1px solid #e5e7eb",
+            paddingTop: "24px",
+          }}
+        >
+          <p
+            className="text-sm leading-relaxed"
+            style={{
+              color: "#6b7280",
+              fontSize: "0.875rem",
+              margin: "0",
+              lineHeight: "1.5",
+            }}
+          >
             로그인하면 수업 시간표를 저장하고 관리할 수 있습니다
           </p>
         </div>
