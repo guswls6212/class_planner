@@ -1,84 +1,20 @@
-import { Student } from "@/domain/entities/Student";
-import { Subject } from "@/domain/entities/Subject";
 import {
   EnrollmentRepository,
   SessionRepository,
   StudentRepository,
   SubjectRepository,
 } from "@/infrastructure/interfaces";
+import { SupabaseStudentRepository } from "./repositories/SupabaseStudentRepository";
+import { SupabaseSubjectRepository } from "./repositories/SupabaseSubjectRepository";
 
 export function createStudentRepository(): StudentRepository {
-  // 테스트를 위한 Mock 구현
-  return {
-    getAll: async () => [
-      Student.restore("550e8400-e29b-41d4-a716-446655440001", "김철수", "male"),
-      Student.restore(
-        "550e8400-e29b-41d4-a716-446655440002",
-        "김영희",
-        "female"
-      ),
-    ],
-    getById: async (id: string) => {
-      if (id === "550e8400-e29b-41d4-a716-446655440001") {
-        return Student.restore(
-          "550e8400-e29b-41d4-a716-446655440001",
-          "김철수",
-          "male"
-        );
-      }
-      return null;
-    },
-    create: async (data) => Student.create(data.name, data.gender),
-    update: async (id, data) => {
-      const existing = Student.restore(id, data.name || "", data.gender);
-      return existing.changeName(data.name || existing.name);
-    },
-    delete: async () => {},
-  };
+  // 실제 Supabase 구현 사용
+  return new SupabaseStudentRepository();
 }
 
 export function createSubjectRepository(): SubjectRepository {
-  // 테스트를 위한 Mock 구현
-  return {
-    getAll: async () => [
-      Subject.restore(
-        "550e8400-e29b-41d4-a716-446655440101",
-        "수학",
-        "#FF0000"
-      ),
-      Subject.restore(
-        "550e8400-e29b-41d4-a716-446655440102",
-        "영어",
-        "#0000FF"
-      ),
-    ],
-    getById: async (id: string) => {
-      if (id === "550e8400-e29b-41d4-a716-446655440101") {
-        return Subject.restore(
-          "550e8400-e29b-41d4-a716-446655440101",
-          "수학",
-          "#FF0000"
-        );
-      }
-      return null;
-    },
-    create: async (data) => {
-      const colorValue =
-        typeof data.color === "string"
-          ? data.color
-          : (data.color as any)?.value || "#000000";
-      return Subject.create(data.name, colorValue);
-    },
-    update: async (id, data) => {
-      const colorValue =
-        typeof data.color === "string"
-          ? data.color
-          : (data.color as any)?.value || "#000000";
-      const existing = Subject.restore(id, data.name || "", colorValue);
-      return existing.changeName(data.name || existing.name);
-    },
-    delete: async () => {},
-  };
+  // 실제 Supabase 구현 사용
+  return new SupabaseSubjectRepository();
 }
 
 export function createSessionRepository(): SessionRepository {

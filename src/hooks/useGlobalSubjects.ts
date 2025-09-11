@@ -20,23 +20,42 @@ const DEFAULT_SUBJECTS: Subject[] = [
 
 export const useGlobalSubjects = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   // 과목 목록 불러오기 (로그인 상태에 따라 분기)
-  const loadSubjects = useCallback(async () => {
+  const loadSubjects = async () => {
+    console.log("🔄 useGlobalSubjects - loadSubjects 시작");
     try {
+      // 세션 상태를 정확히 확인
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (user) {
-        // 로그인된 사용자: Supabase에서 로드
+      console.log("🔍 세션 상태:", { session: !!session, sessionError });
+
+      if (sessionError) {
+        console.log("과목 로드 - 세션 확인 중 오류:", sessionError);
+        // 세션 오류 시 모든 Supabase 관련 로컬 스토리지 정리
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("sb-") || key.includes("supabase")) {
+            localStorage.removeItem(key);
+            console.log("만료된 세션 정보 제거:", key);
+          }
+        });
+      }
+
+      if (session && !sessionError) {
+        console.log(
+          "🔍 로그인된 사용자 - Supabase에서 과목 로드:",
+          session.user.email
+        );
+        // 로그인된 사용자: user_data JSONB에서 로드
         const { data, error } = await supabase
-          .from("subjects")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true });
+          .from("user_data")
+          .select("data")
+          .eq("user_id", session.user.id)
+          .single();
 
         if (error) {
           console.error("Supabase 과목 로드 실패:", error);
@@ -44,51 +63,74 @@ export const useGlobalSubjects = () => {
           return;
         }
 
-        const subjects = (data || []).map((subject) => ({
-          id: subject.id,
-          name: subject.name,
-          color: subject.color,
-        }));
+        const userData = data?.data || {};
+        const subjects = userData.subjects || [];
 
         if (subjects.length === 0) {
           // 기본 과목이 없으면 생성
-          await createDefaultSubjects(user.id);
+          await createDefaultSubjects(session.user.id);
           setSubjects(DEFAULT_SUBJECTS);
         } else {
           setSubjects(subjects);
         }
       } else {
-        // 로그인 안된 사용자: localStorage에서 로드
-        const savedSubjects = localStorage.getItem(SUBJECTS_KEY);
-
-        if (savedSubjects) {
-          const parsedSubjects = JSON.parse(savedSubjects) as Subject[];
-          setSubjects(parsedSubjects);
-        } else {
-          setSubjects(DEFAULT_SUBJECTS);
-          localStorage.setItem(SUBJECTS_KEY, JSON.stringify(DEFAULT_SUBJECTS));
-        }
+        // 로그인 안된 사용자: 기본 과목만 표시
+        console.log(
+          "🔍 로그인 안됨 - 기본 과목만 표시 (세션:",
+          !!session,
+          "에러:",
+          !!sessionError,
+          ")"
+        );
+        setSubjects(DEFAULT_SUBJECTS);
       }
+      console.log("✅ loadSubjects 완료");
     } catch (error) {
       console.error("❌ 과목 목록 로드 중 오류 발생:", error);
       setSubjects(DEFAULT_SUBJECTS);
-      localStorage.setItem(SUBJECTS_KEY, JSON.stringify(DEFAULT_SUBJECTS));
     }
-  }, []);
+  };
 
-  // 기본 과목들을 Supabase에 생성
+  // 기본 과목들을 user_data JSONB에 생성
   const createDefaultSubjects = useCallback(async (userId: string) => {
     try {
-      const subjectsToInsert = DEFAULT_SUBJECTS.map((subject) => ({
-        user_id: userId,
-        name: subject.name,
-        color: subject.color,
-        created_at: new Date().toISOString(),
-      }));
+      const { data: existingData, error: fetchError } = await supabase
+        .from("user_data")
+        .select("data")
+        .eq("user_id", userId)
+        .single();
 
-      const { error } = await supabase
-        .from("subjects")
-        .insert(subjectsToInsert);
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error("기존 데이터 조회 실패:", fetchError);
+        return;
+      }
+
+      const userData = existingData?.data || {};
+
+      let error;
+      if (existingData) {
+        // 기존 데이터가 있으면 UPDATE
+        const { error: updateError } = await supabase
+          .from("user_data")
+          .update({
+            data: {
+              ...userData,
+              subjects: DEFAULT_SUBJECTS,
+            },
+          })
+          .eq("user_id", userId);
+        error = updateError;
+      } else {
+        // 기존 데이터가 없으면 INSERT
+        const { error: insertError } = await supabase.from("user_data").insert({
+          user_id: userId,
+          data: {
+            ...userData,
+            subjects: DEFAULT_SUBJECTS,
+          },
+        });
+        error = insertError;
+      }
 
       if (error) {
         console.error("기본 과목 생성 실패:", error);
@@ -130,17 +172,52 @@ export const useGlobalSubjects = () => {
 
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (user) {
-          // 로그인된 사용자: Supabase에 저장
-          const { error } = await supabase.from("subjects").insert({
-            user_id: user.id,
-            name: newSubject.name,
-            color: newSubject.color,
-            created_at: new Date().toISOString(),
-          });
+        if (session) {
+          // 로그인된 사용자: user_data JSONB에 저장
+          const { data: existingData, error: fetchError } = await supabase
+            .from("user_data")
+            .select("data")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("기존 데이터 조회 실패:", fetchError);
+            setSubjects(subjects);
+            setErrorMessage("과목 추가에 실패했습니다.");
+            return false;
+          }
+
+          const userData = existingData?.data || {};
+
+          let error;
+          if (existingData) {
+            // 기존 데이터가 있으면 UPDATE
+            const { error: updateError } = await supabase
+              .from("user_data")
+              .update({
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              })
+              .eq("user_id", session.user.id);
+            error = updateError;
+          } else {
+            // 기존 데이터가 없으면 INSERT
+            const { error: insertError } = await supabase
+              .from("user_data")
+              .insert({
+                user_id: session.user.id,
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              });
+            error = insertError;
+          }
 
           if (error) {
             console.error("Supabase 과목 추가 실패:", error);
@@ -150,8 +227,8 @@ export const useGlobalSubjects = () => {
             return false;
           }
         } else {
-          // 로그인 안된 사용자: localStorage에 저장
-          localStorage.setItem(SUBJECTS_KEY, JSON.stringify(updatedSubjects));
+          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
+          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
         }
 
         console.log("✅ 과목 추가 완료");
@@ -177,16 +254,51 @@ export const useGlobalSubjects = () => {
 
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (user) {
-          // 로그인된 사용자: Supabase에서 삭제
-          const { error } = await supabase
-            .from("subjects")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("id", subjectId);
+        if (session) {
+          // 로그인된 사용자: user_data JSONB에서 삭제
+          const { data: existingData, error: fetchError } = await supabase
+            .from("user_data")
+            .select("data")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("기존 데이터 조회 실패:", fetchError);
+            setSubjects(subjects);
+            return false;
+          }
+
+          const userData = existingData?.data || {};
+
+          let error;
+          if (existingData) {
+            // 기존 데이터가 있으면 UPDATE
+            const { error: updateError } = await supabase
+              .from("user_data")
+              .update({
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              })
+              .eq("user_id", session.user.id);
+            error = updateError;
+          } else {
+            // 기존 데이터가 없으면 INSERT (빈 과목 목록)
+            const { error: insertError } = await supabase
+              .from("user_data")
+              .insert({
+                user_id: session.user.id,
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              });
+            error = insertError;
+          }
 
           if (error) {
             console.error("Supabase 과목 삭제 실패:", error);
@@ -195,8 +307,8 @@ export const useGlobalSubjects = () => {
             return false;
           }
         } else {
-          // 로그인 안된 사용자: localStorage에서 삭제
-          localStorage.setItem(SUBJECTS_KEY, JSON.stringify(updatedSubjects));
+          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
+          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
         }
 
         return true;
@@ -244,20 +356,51 @@ export const useGlobalSubjects = () => {
 
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (user) {
-          // 로그인된 사용자: Supabase에서 수정
-          const { error } = await supabase
-            .from("subjects")
-            .update({
-              name: name.trim(),
-              color,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", user.id)
-            .eq("id", subjectId);
+        if (session) {
+          // 로그인된 사용자: user_data JSONB에서 수정
+          const { data: existingData, error: fetchError } = await supabase
+            .from("user_data")
+            .select("data")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("기존 데이터 조회 실패:", fetchError);
+            setSubjects(subjects);
+            return false;
+          }
+
+          const userData = existingData?.data || {};
+
+          let error;
+          if (existingData) {
+            // 기존 데이터가 있으면 UPDATE
+            const { error: updateError } = await supabase
+              .from("user_data")
+              .update({
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              })
+              .eq("user_id", session.user.id);
+            error = updateError;
+          } else {
+            // 기존 데이터가 없으면 INSERT
+            const { error: insertError } = await supabase
+              .from("user_data")
+              .insert({
+                user_id: session.user.id,
+                data: {
+                  ...userData,
+                  subjects: updatedSubjects,
+                },
+              });
+            error = insertError;
+          }
 
           if (error) {
             console.error("Supabase 과목 수정 실패:", error);
@@ -266,8 +409,8 @@ export const useGlobalSubjects = () => {
             return false;
           }
         } else {
-          // 로그인 안된 사용자: localStorage에서 수정
-          localStorage.setItem(SUBJECTS_KEY, JSON.stringify(updatedSubjects));
+          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
+          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
         }
 
         return true;
@@ -281,17 +424,21 @@ export const useGlobalSubjects = () => {
     [subjects]
   );
 
-  // 초기화
+  // 초기화 - 컴포넌트 마운트 시 한 번만 실행
   useEffect(() => {
-    if (!isInitialized) {
-      loadSubjects();
-      setIsInitialized(true);
-    }
-  }, [isInitialized, loadSubjects]);
+    const initializeSubjects = async () => {
+      console.log("🔄 useGlobalSubjects - 초기화 시작");
+
+      // 로그인하지 않은 사용자는 기본 과목만 표시
+      console.log("🔍 로그인하지 않은 사용자 - 기본 과목만 표시");
+      setSubjects(DEFAULT_SUBJECTS);
+    };
+
+    initializeSubjects();
+  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
 
   return {
     subjects,
-    isInitialized,
     errorMessage,
     addSubject,
     deleteSubject,

@@ -1,18 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import AuthGuard from "../../components/atoms/AuthGuard";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagement } from "../../hooks/useStudentManagement";
 import type { Student } from "../../lib/planner";
+import { supabase } from "../../utils/supabaseClient";
 
 export default function StudentsPage() {
-  const [students, setStudents] = useLocal<Student[]>("students", []);
+  return (
+    <AuthGuard requireAuth={true}>
+      <StudentsPageContent />
+    </AuthGuard>
+  );
+}
+
+function StudentsPageContent() {
+  const [students, setStudents] = useState<Student[]>([]);
   const [newStudentName, setNewStudentName] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
   );
+
+  // 학생 데이터 로드
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          // 로그인된 사용자: user_data JSONB에서 로드
+          const { data, error } = await supabase
+            .from("user_data")
+            .select("data")
+            .eq("user_id", user.id)
+            .single();
+
+          if (error) {
+            console.error("Supabase 학생 로드 실패:", error);
+            return;
+          }
+
+          const userData = data?.data || {};
+          const loadedStudents = (userData.students || []).map(
+            (student: any) => ({
+              id: student.id,
+              name: student.name,
+            })
+          );
+
+          setStudents(loadedStudents);
+        } else {
+          // 로그인 안된 사용자: 빈 배열
+          setStudents([]);
+        }
+      } catch (error) {
+        console.error("학생 로드 중 오류:", error);
+        setStudents([]);
+      }
+    };
+
+    loadStudents();
+  }, []);
 
   // 커스텀 훅 사용
   const studentManagement = useStudentManagement(

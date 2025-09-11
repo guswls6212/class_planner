@@ -1,46 +1,38 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = 'https://kcyqftasdxtqslrhbctv.supabase.co';
+const supabaseUrl = "https://kcyqftasdxtqslrhbctv.supabase.co";
 const supabaseAnonKey =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeXFmdGFzZHh0cXNscmhiY3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzI2MjQsImV4cCI6MjA3MjU0ODYyNH0.3-ljC5L9rcl8D-eV4BcGh-jdgiVgq2MG6O_RJdshyOQ';
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjeXFmdGFzZHh0cXNscmhiY3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5NzI2MjQsImV4cCI6MjA3MjU0ODYyNH0.3-ljC5L9rcl8D-eV4BcGh-jdgiVgq2MG6O_RJdshyOQ";
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error("Missing Supabase environment variables");
 }
 
-// 싱글톤 패턴을 위한 클래스
-class SupabaseSingleton {
-  private static instance: SupabaseClient | null = null;
-
-  public static getInstance(): SupabaseClient {
-    if (!SupabaseSingleton.instance) {
-      console.log('🔧 Supabase 클라이언트 인스턴스 생성 중...');
-      SupabaseSingleton.instance = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
-        },
-      });
-      console.log('✅ Supabase 클라이언트 인스턴스 생성 완료');
-    }
-    return SupabaseSingleton.instance;
-  }
-
-  public static resetInstance(): void {
-    console.log('🔄 Supabase 클라이언트 인스턴스 리셋');
-    SupabaseSingleton.instance = null;
-  }
-}
-
-// 싱글톤 클래스와 인스턴스 export
-export { SupabaseSingleton };
-export const supabase = SupabaseSingleton.getInstance();
+// 싱글톤 패턴 제거 - 매번 새로운 인스턴스 생성
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
 
 // 디버깅을 위해 window 객체에 노출
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as { supabase?: typeof supabase }).supabase = supabase;
-  console.log('🔧 Supabase 클라이언트가 window 객체에 노출됨');
+  console.log("🔧 Supabase 클라이언트가 window 객체에 노출됨");
+
+  // 인증 상태 변화 감지
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log("🔧 Supabase 클라이언트 - 인증 상태 변화:", event, !!session);
+    if (event === "SIGNED_IN" && session) {
+      console.log("🔧 Supabase 클라이언트 - 로그인 성공, 토큰 저장 확인");
+      console.log(
+        "🔧 Supabase 클라이언트 - localStorage 키들:",
+        Object.keys(localStorage).filter((key) => key.startsWith("sb-"))
+      );
+    }
+  });
 }
 
 // 타입 정의
@@ -186,7 +178,7 @@ export const supabaseUtils = {
   ) {
     const client = SupabaseSingleton.getInstance();
     const { data, error } = await client
-      .from('user_profiles')
+      .from("user_profiles")
       .insert({
         user_id: userId,
         email,
@@ -197,7 +189,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error('사용자 프로필 생성 실패:', error);
+      console.error("사용자 프로필 생성 실패:", error);
       throw error;
     }
 
@@ -208,13 +200,13 @@ export const supabaseUtils = {
   async getUserProfile(userId: string) {
     const client = SupabaseSingleton.getInstance();
     const { data, error } = await client
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('사용자 프로필 조회 실패:', error);
+    if (error && error.code !== "PGRST116") {
+      console.error("사용자 프로필 조회 실패:", error);
       throw error;
     }
 
@@ -225,7 +217,7 @@ export const supabaseUtils = {
   async saveUserData(userId: string, data: unknown) {
     const client = SupabaseSingleton.getInstance();
     const { data: result, error } = await client
-      .from('user_data')
+      .from("user_data")
       .upsert({
         user_id: userId,
         data,
@@ -235,7 +227,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error('사용자 데이터 저장 실패:', error);
+      console.error("사용자 데이터 저장 실패:", error);
       throw error;
     }
 
@@ -246,13 +238,13 @@ export const supabaseUtils = {
   async getUserData(userId: string) {
     const client = SupabaseSingleton.getInstance();
     const { data, error } = await client
-      .from('user_data')
-      .select('*')
-      .eq('user_id', userId)
+      .from("user_data")
+      .select("*")
+      .eq("user_id", userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('사용자 데이터 조회 실패:', error);
+    if (error && error.code !== "PGRST116") {
+      console.error("사용자 데이터 조회 실패:", error);
       throw error;
     }
 
@@ -266,14 +258,14 @@ export const supabaseUtils = {
     activityData: unknown
   ) {
     const client = SupabaseSingleton.getInstance();
-    const { data, error } = await client.from('user_activity_logs').insert({
+    const { data, error } = await client.from("user_activity_logs").insert({
       user_id: userId,
       activity_type: activityType,
       activity_data: activityData,
     });
 
     if (error) {
-      console.error('활동 로그 기록 실패:', error);
+      console.error("활동 로그 기록 실패:", error);
       // 로그 기록 실패는 앱 동작에 영향을 주지 않도록 에러를 던지지 않음
     }
 

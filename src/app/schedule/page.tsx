@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AuthGuard from "../../components/atoms/AuthGuard";
 import Button from "../../components/atoms/Button";
 import Label from "../../components/atoms/Label";
 import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
@@ -55,6 +56,14 @@ function useLocal<T>(key: string, initial: T) {
 }
 
 export default function SchedulePage() {
+  return (
+    <AuthGuard requireAuth={true}>
+      <SchedulePageContent />
+    </AuthGuard>
+  );
+}
+
+function SchedulePageContent() {
   const { subjects } = useGlobalSubjects();
   const [students] = useLocal<Student[]>("students", []);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
@@ -647,7 +656,9 @@ export default function SchedulePage() {
         <h2>주간 시간표</h2>
         {sessionLoading && (
           <div style={{ color: "var(--color-blue-500)", fontSize: "14px" }}>
-            세션 데이터를 동기화 중...
+            {sessionError
+              ? "데이터 로드 중 오류가 발생했습니다."
+              : "세션 데이터를 로드 중..."}
           </div>
         )}
         {sessionError && (

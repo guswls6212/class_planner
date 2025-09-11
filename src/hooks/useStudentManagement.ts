@@ -33,26 +33,26 @@ export const useStudentManagement = (
       } = await supabase.auth.getUser();
 
       if (user) {
-        // 로그인된 사용자: Supabase에서 로드
+        // 로그인된 사용자: user_data JSONB에서 로드
         const { data, error } = await supabase
-          .from("students")
-          .select("*")
+          .from("user_data")
+          .select("data")
           .eq("user_id", user.id)
-          .order("created_at", { ascending: true });
+          .single();
 
         if (error) {
           console.error("Supabase 학생 로드 실패:", error);
           return [];
         }
 
-        return (data || []).map((student) => ({
+        const userData = data?.data || {};
+        return (userData.students || []).map((student: any) => ({
           id: student.id,
           name: student.name,
         }));
       } else {
-        // 로그인 안된 사용자: localStorage에서 로드
-        const localStudents = localStorage.getItem("students");
-        return localStudents ? JSON.parse(localStudents) : [];
+        // 로그인 안된 사용자: 빈 배열 반환
+        return [];
       }
     } catch (error) {
       console.error("학생 로드 중 오류:", error);
@@ -108,12 +108,49 @@ export const useStudentManagement = (
         } = await supabase.auth.getUser();
 
         if (user) {
-          // 로그인된 사용자: Supabase에 저장
-          const { error } = await supabase.from("students").insert({
-            user_id: user.id,
-            name: student.name,
-            created_at: new Date().toISOString(),
-          });
+          // 로그인된 사용자: user_data JSONB에 저장
+          const { data: existingData, error: fetchError } = await supabase
+            .from("user_data")
+            .select("data")
+            .eq("user_id", user.id)
+            .single();
+
+          if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("기존 데이터 조회 실패:", fetchError);
+            setStudents(students);
+            setErrorMessage("학생 추가에 실패했습니다.");
+            return false;
+          }
+
+          const userData = existingData?.data || {};
+          const updatedStudents = [...(userData.students || []), student];
+
+          let error;
+          if (existingData) {
+            // 기존 데이터가 있으면 UPDATE
+            const { error: updateError } = await supabase
+              .from("user_data")
+              .update({
+                data: {
+                  ...userData,
+                  students: updatedStudents,
+                },
+              })
+              .eq("user_id", user.id);
+            error = updateError;
+          } else {
+            // 기존 데이터가 없으면 INSERT
+            const { error: insertError } = await supabase
+              .from("user_data")
+              .insert({
+                user_id: user.id,
+                data: {
+                  ...userData,
+                  students: updatedStudents,
+                },
+              });
+            error = insertError;
+          }
 
           if (error) {
             console.error("Supabase 학생 추가 실패:", error);
@@ -123,8 +160,8 @@ export const useStudentManagement = (
             return false;
           }
         } else {
-          // 로그인 안된 사용자: localStorage에 저장
-          localStorage.setItem("students", JSON.stringify(newStudents));
+          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
+          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
         }
 
         return true;
@@ -151,12 +188,50 @@ export const useStudentManagement = (
         } = await supabase.auth.getUser();
 
         if (user) {
-          // 로그인된 사용자: Supabase에서 삭제
-          const { error } = await supabase
-            .from("students")
-            .delete()
+          // 로그인된 사용자: user_data JSONB에서 삭제
+          const { data: existingData, error: fetchError } = await supabase
+            .from("user_data")
+            .select("data")
             .eq("user_id", user.id)
-            .eq("id", studentId);
+            .single();
+
+          if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("기존 데이터 조회 실패:", fetchError);
+            setStudents(students);
+            return false;
+          }
+
+          const userData = existingData?.data || {};
+          const updatedStudents = (userData.students || []).filter(
+            (s: any) => s.id !== studentId
+          );
+
+          let error;
+          if (existingData) {
+            // 기존 데이터가 있으면 UPDATE
+            const { error: updateError } = await supabase
+              .from("user_data")
+              .update({
+                data: {
+                  ...userData,
+                  students: updatedStudents,
+                },
+              })
+              .eq("user_id", user.id);
+            error = updateError;
+          } else {
+            // 기존 데이터가 없으면 INSERT (빈 학생 목록)
+            const { error: insertError } = await supabase
+              .from("user_data")
+              .insert({
+                user_id: user.id,
+                data: {
+                  ...userData,
+                  students: updatedStudents,
+                },
+              });
+            error = insertError;
+          }
 
           if (error) {
             console.error("Supabase 학생 삭제 실패:", error);
@@ -165,8 +240,8 @@ export const useStudentManagement = (
             return false;
           }
         } else {
-          // 로그인 안된 사용자: localStorage에서 삭제
-          localStorage.setItem("students", JSON.stringify(newStudents));
+          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
+          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
         }
 
         return true;

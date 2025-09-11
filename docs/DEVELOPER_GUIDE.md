@@ -166,11 +166,14 @@ class-planner/
 - 환경 변수 기반 설정 (`process.env.NEXT_PUBLIC_`)
 - 의존성 주입을 통한 테스트 가능한 구조
 
-#### **소셜 로그인 및 데이터 동기화 시스템**
+#### **인증 및 로그인 시스템**
 
 **파일 구조:**
 
-- `src/components/atoms/LoginButton.tsx` - 로그인 버튼 컴포넌트
+- `src/app/login/page.tsx` - 전용 로그인 페이지
+- `src/app/login/Login.module.css` - 로그인 페이지 스타일
+- `src/components/atoms/AuthGuard.tsx` - 인증 가드 컴포넌트
+- `src/components/atoms/LoginButton.tsx` - 로그인 버튼 컴포넌트 (레거시)
 - `src/components/atoms/LoginButton.module.css` - 로그인 버튼 스타일
 - `src/components/molecules/DataSyncModal.tsx` - 데이터 동기화 모달 (사용자 중심 로직)
 - `src/components/molecules/UpgradeModal.tsx` - 유료 전환 유도 모달
@@ -185,8 +188,12 @@ class-planner/
 
 **주요 기능:**
 
-- Google OAuth 로그인 (완전 자동화 지원)
-- Kakao OAuth 로그인
+- **전용 로그인 페이지** (`/login`)
+- **페이지별 인증 가드**: 메인페이지만 로그인 없이 접근 가능
+- **소셜 로그인 지원**:
+  - Google OAuth 로그인 (완전 자동화 지원)
+  - Kakao OAuth 로그인 (준비됨)
+  - **향후 확장 계획**: 이메일 인증코드 로그인
 - **사용자 중심 데이터 동기화 시나리오 처리**:
   - `localOnlyFirstLogin`: 로컬 데이터만 있는 첫 로그인 (Import data vs Start fresh)
   - `localAndServerConflict`: 로컬과 서버 데이터 충돌 (Device data vs Server data)
@@ -982,10 +989,18 @@ VITE_SUPABASE_ANON_KEY=test...
 - [x] **실제 클라이언트 테스트 시스템**: 실제 Supabase 연결, 네트워크 지연, 브라우저 호환성 테스트
 - [x] **실제 사용자 시나리오 E2E 테스트**: 복잡한 사용자 플로우와 다양한 환경에서의 동작 검증
 
-### 🚀 향후 개선 사항 (12개)
+### 🚀 향후 개선 사항 (15개)
 
 #### 높은 우선순위
 
+- [ ] **이메일 인증코드 로그인 시스템**
+  - 이메일 입력 → 인증코드 발송 → 코드 입력 → 로그인
+  - Supabase Auth의 이메일 인증 기능 활용
+  - 사용자 친화적인 UI/UX 구현
+- [ ] **추가 소셜 로그인 지원**
+  - 네이버 로그인
+  - Apple 로그인
+  - GitHub 로그인 (개발자용)
 - [ ] 다중 교사 지원
 - [ ] 수업 템플릿 기능
 - [ ] 알림 시스템

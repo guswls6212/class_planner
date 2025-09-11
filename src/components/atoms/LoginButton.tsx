@@ -1,8 +1,5 @@
 import React, { useState } from "react";
-import { useDataMigration } from "../../hooks/useDataMigration";
-import { useDataSync } from "../../hooks/useDataSync";
 import { supabase } from "../../utils/supabaseClient";
-import DataSyncModal from "../molecules/DataSyncModal";
 import styles from "./LoginButton.module.css";
 
 interface LoginButtonProps {
@@ -22,12 +19,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // 데이터 동기화 훅
-  const { syncModal, isSyncing, checkSyncNeeded, closeSyncModal, executeSync } =
-    useDataSync();
-
-  // 데이터 마이그레이션 훅
-  const { executeMigration, loadFromLocalStorage } = useDataMigration();
+  // 데이터 마이그레이션 로직 제거됨 - 이제 Supabase 데이터만 사용
 
   // Supabase 환경 변수 체크
   const isSupabaseConfigured =
@@ -63,43 +55,16 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         setIsLoggedIn(true);
         setUser(session.user);
 
-        // 로그인 성공 시에만 데이터 마이그레이션 실행
+        // 로그인 성공 시 사용자 ID만 저장 (테마 저장용)
         if (isSupabaseConfigured && session?.user && event === "SIGNED_IN") {
-          try {
-            console.log("로그인 성공 - 데이터 마이그레이션 시작", {
-              event,
-              userEmail: session.user.email,
-            });
+          console.log("로그인 성공", {
+            event,
+            userEmail: session.user.email,
+          });
 
-            // 사용자 ID를 localStorage에 저장 (테마 저장용)
-            localStorage.setItem("supabase_user_id", session.user.id);
-            console.log("✅ 사용자 ID 저장됨:", session.user.id);
-
-            // localStorage 데이터 확인
-            const localData = loadFromLocalStorage();
-
-            if (
-              localData &&
-              (localData.students.length > 0 ||
-                localData.subjects.length > 0 ||
-                localData.sessions.length > 0)
-            ) {
-              console.log("🔄 localStorage 데이터 발견 - 마이그레이션 실행");
-              const migrationSuccess = await executeMigration();
-
-              if (migrationSuccess) {
-                console.log("✅ 데이터 마이그레이션 완료");
-                // 페이지 새로고침으로 데이터 반영
-                window.location.reload();
-              } else {
-                console.error("❌ 데이터 마이그레이션 실패");
-              }
-            } else {
-              console.log("로컬 데이터 없음 - 일반 로그인 진행");
-            }
-          } catch (error) {
-            console.warn("데이터 마이그레이션 실패:", error);
-          }
+          // 사용자 ID를 localStorage에 저장 (테마 저장용)
+          localStorage.setItem("supabase_user_id", session.user.id);
+          console.log("✅ 사용자 ID 저장됨:", session.user.id);
         }
       } else {
         // console.log('사용자 로그아웃됨, 상태 업데이트 중...');
@@ -110,19 +75,17 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         localStorage.removeItem("supabase_user_id");
         // console.log('🗑️ 사용자 ID 제거됨'); // 무한루프 방지를 위해 주석 처리
 
-        // 로그아웃 시 모달 닫기
-        closeSyncModal();
-
-        // 로그아웃 시 페이지 새로고침으로 빈 상태로 초기화
+        // 로그아웃 시 이벤트 발생으로 상태 초기화
         if (event === "SIGNED_OUT") {
-          console.log("로그아웃 감지 - 페이지 새로고침으로 빈 상태 초기화");
-          window.location.reload();
+          console.log("로그아웃 감지 - 상태 초기화");
+          // 로그아웃 이벤트 발생으로 데이터 초기화
+          window.dispatchEvent(new CustomEvent("userLoggedOut"));
         }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [isSupabaseConfigured, checkSyncNeeded, closeSyncModal]);
+  }, [isSupabaseConfigured]);
 
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
@@ -133,7 +96,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/class_planner/students`,
+        redirectTo: `${window.location.origin}/students`,
       },
     });
     if (error) console.error("Google 로그인 에러:", error);
@@ -149,7 +112,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const { error } = await supabase.auth.signInWithOAuth({                                               
       provider: 'kakao',
       options: {
-        redirectTo: `${window.location.origin}/class_planner/students`,                                   
+        redirectTo: `${window.location.origin}/students`,                                   
       },
     });
     if (error) console.error('카카오 로그인 에러:', error);                                               
@@ -166,9 +129,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     try {
       console.log("Supabase 로그아웃 시도 중...");
 
-      // 로컬 스토리지에서 세션 정보 직접 삭제
-      console.log("로컬 스토리지에서 세션 정보 삭제 중...");
-      localStorage.removeItem("sb-kcyqftasdxtqslrhbctv-auth-token");
+      // 로컬 스토리지에서 모든 Supabase 관련 토큰만 삭제
+      console.log("로컬 스토리지에서 Supabase 토큰만 삭제 중...");
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith("sb-") || key.includes("supabase")) {
+          localStorage.removeItem(key);
+          console.log("Supabase 토큰 제거됨:", key);
+        }
+      });
 
       // 로컬 상태 즉시 업데이트
       console.log("로컬 상태 즉시 업데이트");
@@ -178,21 +146,13 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
       // 로그인 모달창 닫기
       setShowLoginModal(false);
 
-      // Supabase 로그아웃 시도 (타임아웃 설정)
-      console.log("Supabase 서버 로그아웃 시도 중...");
+      // 페이지 새로고침으로 모든 상태 초기화
+      console.log("페이지 새로고침으로 상태 초기화");
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("로그아웃 타임아웃")), 3000);
-      });
-
-      const signOutPromise = supabase.auth.signOut();
-
-      try {
-        await Promise.race([signOutPromise, timeoutPromise]);
-        console.log("Supabase 서버 로그아웃 성공");
-      } catch {
-        console.log("Supabase 서버 로그아웃 타임아웃 - 로컬 로그아웃으로 완료");
-      }
+      console.log("✅ 로컬 로그아웃 완료");
     } catch (error) {
       console.error("로그아웃 처리 중 오류:", error);
       // 에러가 있어도 로컬 상태는 이미 업데이트됨
@@ -335,13 +295,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         </div>
       )}
 
-      {/* 데이터 동기화 모달 */}
-      <DataSyncModal
-        modalState={syncModal}
-        isSyncing={isSyncing}
-        onClose={closeSyncModal}
-        onExecuteSync={executeSync}
-      />
+      {/* 데이터 동기화 모달 제거됨 - 이제 Supabase 데이터만 사용 */}
     </>
   );
 };

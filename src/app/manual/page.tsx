@@ -1,7 +1,12 @@
 "use client";
 
 import { ManualPageLayout } from "@/components/organisms/ManualPageLayout";
+import AuthGuard from "../../components/atoms/AuthGuard";
 
 export default function ManualPage() {
-  return <ManualPageLayout />;
+  return (
+    <AuthGuard requireAuth={true}>
+      <ManualPageLayout />
+    </AuthGuard>
+  );
 }

@@ -17,13 +17,8 @@ export const useGlobalStudents = (): UseGlobalStudentsReturn => {
       setLoading(true);
       setError(null);
 
-      // 로컬 스토리지에서 학생 데이터 로드
-      const localStudents = localStorage.getItem("students");
-
-      if (localStudents) {
-        const studentsData = JSON.parse(localStudents);
-        setStudents(studentsData);
-      }
+      // 로그인하지 않은 사용자는 빈 배열
+      setStudents([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "학생 데이터 로드 실패");
     } finally {

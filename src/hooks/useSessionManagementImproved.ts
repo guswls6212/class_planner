@@ -53,12 +53,25 @@ export const useSessionManagement = (
       setIsLoading(true);
       setError(null);
 
+      // 먼저 현재 세션 상태를 정확히 확인
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (!user) {
-        console.log("로그인되지 않은 사용자 - localStorage 데이터 사용");
+      if (sessionError) {
+        console.log("세션 확인 중 오류:", sessionError);
+        // 세션 오류 시 모든 Supabase 관련 로컬 스토리지 정리
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("sb-") || key.includes("supabase")) {
+            localStorage.removeItem(key);
+            console.log("만료된 세션 정보 제거:", key);
+          }
+        });
+      }
+
+      if (!session || sessionError) {
+        console.log("유효한 세션이 없음 - localStorage 데이터 사용");
         // localStorage에서 데이터 로드
         const localSessions = localStorage.getItem("sessions");
         const localEnrollments = localStorage.getItem("enrollments");
@@ -66,14 +79,24 @@ export const useSessionManagement = (
         if (localSessions) {
           const sessionsData = JSON.parse(localSessions);
           setSessions(sessionsData);
+          console.log("로컬 세션 데이터 로드됨:", sessionsData.length, "개");
         }
 
         if (localEnrollments) {
           const enrollmentsData = JSON.parse(localEnrollments);
           setEnrollments(enrollmentsData);
+          console.log(
+            "로컬 수강신청 데이터 로드됨:",
+            enrollmentsData.length,
+            "개"
+          );
         }
+
+        console.log("✅ 로컬 데이터 로드 완료");
         return;
       }
+
+      console.log("유효한 세션 확인됨:", session.user.email);
 
       console.log("🔄 Supabase 세션 데이터 로드 시작");
 
@@ -81,7 +104,7 @@ export const useSessionManagement = (
       const { data: sessionsData, error: sessionsError } = await supabase
         .from("sessions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("weekday", { ascending: true })
         .order("starts_at", { ascending: true });
 
@@ -94,7 +117,7 @@ export const useSessionManagement = (
       const { data: enrollmentsData, error: enrollmentsError } = await supabase
         .from("enrollments")
         .select("*")
-        .eq("user_id", user.id);
+        .eq("user_id", session.user.id);
 
       if (enrollmentsError) {
         console.error("수강신청 데이터 로드 실패:", enrollmentsError);
@@ -466,10 +489,130 @@ export const useSessionManagement = (
     }
   }, []);
 
-  // 초기 데이터 로드
+  // 초기 데이터 로드 - 컴포넌트 마운트 시 한 번만 실행
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    const initializeSessions = async () => {
+      console.log("🔄 useSessionManagement - 초기화 시작");
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // localStorage에 Supabase 토큰이 있는지 먼저 확인
+        const hasAuthToken = Object.keys(localStorage).some(
+          (key) => key.startsWith("sb-") && key.includes("auth-token")
+        );
+
+        console.log("🔍 인증 토큰 존재 여부:", hasAuthToken);
+
+        if (!hasAuthToken) {
+          console.log("🔍 인증 토큰 없음 - 로그인이 필요합니다");
+          // 로그인하지 않은 사용자는 데이터 없음
+          setSessions([]);
+          setEnrollments([]);
+          setIsLoading(false);
+          return;
+        } else {
+          console.log("🔍 인증 토큰 있음 - Supabase 세션 확인 후 데이터 로드");
+
+          // 인증 토큰이 있으면 Supabase 세션 확인
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("getSession 타임아웃 (5초)")),
+              5000
+            )
+          );
+
+          const {
+            data: { session },
+            error: sessionError,
+          } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
+
+          if (sessionError) {
+            console.log("세션 확인 중 오류:", sessionError);
+            // 세션 오류 시 모든 Supabase 관련 로컬 스토리지 정리
+            Object.keys(localStorage).forEach((key) => {
+              if (key.startsWith("sb-") || key.includes("supabase")) {
+                localStorage.removeItem(key);
+                console.log("만료된 세션 정보 제거:", key);
+              }
+            });
+          }
+
+          if (!session || sessionError) {
+            console.log("유효한 세션이 없음 - 로그인이 필요합니다");
+            // 세션이 없으면 데이터 없음
+            setSessions([]);
+            setEnrollments([]);
+            setIsLoading(false);
+            return;
+          }
+
+          console.log("유효한 세션 확인됨:", session.user.email);
+          console.log("🔄 Supabase 세션 데이터 로드 시작");
+
+          // 세션 데이터 로드
+          const { data: sessionsData, error: sessionsError } = await supabase
+            .from("sessions")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .order("weekday", { ascending: true })
+            .order("starts_at", { ascending: true });
+
+          if (sessionsError) {
+            console.error("Supabase 세션 로드 실패:", sessionsError);
+            setError("세션 데이터를 불러오는데 실패했습니다.");
+            return;
+          }
+
+          // 수강신청 데이터 로드
+          const { data: enrollmentsData, error: enrollmentsError } =
+            await supabase
+              .from("enrollments")
+              .select("*")
+              .eq("user_id", session.user.id);
+
+          if (enrollmentsError) {
+            console.error("Supabase 수강신청 로드 실패:", enrollmentsError);
+            setError("수강신청 데이터를 불러오는데 실패했습니다.");
+            return;
+          }
+
+          // 데이터 변환
+          const sessions = (sessionsData || []).map((session) => ({
+            id: session.id,
+            enrollmentIds: session.enrollment_ids || [],
+            weekday: session.weekday,
+            startsAt: session.starts_at,
+            endsAt: session.ends_at,
+            room: session.room,
+          }));
+
+          const enrollments = (enrollmentsData || []).map((enrollment) => ({
+            id: enrollment.id,
+            studentId: enrollment.student_id,
+            subjectId: enrollment.subject_id,
+          }));
+
+          setSessions(sessions);
+          setEnrollments(enrollments);
+
+          console.log("✅ Supabase 데이터 로드 완료:", {
+            sessions: sessions.length,
+            enrollments: enrollments.length,
+          });
+        }
+      } catch (err) {
+        console.error("❌ 데이터 로드 중 오류 발생:", err);
+        setError("데이터를 불러오는데 실패했습니다.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeSessions();
+  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
 
   return {
     sessions,

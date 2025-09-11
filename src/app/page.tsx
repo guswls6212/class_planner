@@ -1,8 +1,61 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import AuthGuard from "../components/atoms/AuthGuard";
+import { supabase } from "../utils/supabaseClient";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // 인증 상태 변화 감지하여 리다이렉트 처리
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        // 로그인 성공 시 저장된 리다이렉트 URL로 이동
+        const redirectUrl = localStorage.getItem("redirectAfterLogin");
+        if (redirectUrl && redirectUrl !== "/login" && redirectUrl !== "/") {
+          console.log("🔍 HomePage - 저장된 URL로 리다이렉트:", redirectUrl);
+          localStorage.removeItem("redirectAfterLogin");
+          router.push(redirectUrl);
+        }
+      }
+    });
+
+    // 컴포넌트 마운트 시에도 확인 (이미 로그인된 상태)
+    const checkExistingSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        const redirectUrl = localStorage.getItem("redirectAfterLogin");
+        if (redirectUrl && redirectUrl !== "/login" && redirectUrl !== "/") {
+          console.log(
+            "🔍 HomePage - 기존 세션으로 저장된 URL 리다이렉트:",
+            redirectUrl
+          );
+          localStorage.removeItem("redirectAfterLogin");
+          router.push(redirectUrl);
+        }
+      }
+    };
+
+    checkExistingSession();
+    return () => subscription.unsubscribe();
+  }, [router]);
+
+  return (
+    <AuthGuard requireAuth={false}>
+      <HomeContent />
+    </AuthGuard>
+  );
+}
+
+function HomeContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-4xl mx-auto px-6 py-12 text-center">
@@ -68,6 +121,18 @@ export default function Home() {
         </div>
 
         <div className="mt-12">
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            시작하려면 로그인해주세요
+          </p>
+          <Link
+            href="/login"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+          >
+            로그인하기
+          </Link>
+        </div>
+
+        <div className="mt-8">
           <p className="text-gray-500 dark:text-gray-400">
             Next.js + Clean Architecture + Atomic Design으로 구축된 현대적인 웹
             애플리케이션

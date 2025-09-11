@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// 실제 Supabase 연결 테스트 (개발 중 일시적으로 비활성화)
-describe.skip("실제 Supabase 연결 통합 테스트", () => {
+// 실제 Supabase 연결 테스트 (로컬 환경에서 테스트 가능)
+describe("실제 Supabase 연결 통합 테스트", () => {
   let supabase: any;
   const TEST_USER_ID = "test-user-real-client";
 
@@ -11,9 +11,9 @@ describe.skip("실제 Supabase 연결 통합 테스트", () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseKey || supabaseKey.includes("PLACEHOLDER")) {
       console.warn(
-        "Supabase 환경 변수가 설정되지 않았습니다. 테스트를 건너뜁니다."
+        "Supabase 환경 변수가 설정되지 않았거나 플레이스홀더입니다. 테스트를 건너뜁니다."
       );
       return;
     }
@@ -21,7 +21,11 @@ describe.skip("실제 Supabase 연결 통합 테스트", () => {
     supabase = createClient(supabaseUrl, supabaseKey);
 
     // 테스트 데이터 정리
-    await supabase.from("user_data").delete().eq("user_id", TEST_USER_ID);
+    try {
+      await supabase.from("user_data").delete().eq("user_id", TEST_USER_ID);
+    } catch (error) {
+      console.warn("테스트 데이터 정리 실패:", error);
+    }
   });
 
   afterEach(async () => {
