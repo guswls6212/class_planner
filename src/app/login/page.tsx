@@ -125,6 +125,10 @@ const LoginPage: React.FC = () => {
       className="min-h-screen flex items-center justify-center p-5"
       style={{
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        minHeight: "calc(100vh - 120px)", // nav와 footer 높이 제외
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <div

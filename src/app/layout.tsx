@@ -67,6 +67,32 @@ function Navigation() {
   );
 }
 
+function Footer() {
+  return (
+    <footer
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 12,
+        borderTop: "1px solid var(--color-border)",
+        background: "var(--color-bg-secondary)",
+      }}
+    >
+      <div style={{ display: "flex", gap: 12 }}>
+        <span style={{ color: "var(--color-text-primary)", fontSize: "14px" }}>
+          © 2024 클래스 플래너
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ color: "var(--color-text-primary)", fontSize: "14px" }}>
+          교육을 더 쉽게 만들어갑니다
+        </span>
+      </div>
+    </footer>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -87,6 +113,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Navigation />
           {children}
+          <Footer />
         </ThemeProvider>
       </body>
     </html>
