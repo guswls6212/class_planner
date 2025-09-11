@@ -426,15 +426,8 @@ export const useGlobalSubjects = () => {
 
   // 초기화 - 컴포넌트 마운트 시 한 번만 실행
   useEffect(() => {
-    const initializeSubjects = async () => {
-      console.log("🔄 useGlobalSubjects - 초기화 시작");
-
-      // 로그인하지 않은 사용자는 기본 과목만 표시
-      console.log("🔍 로그인하지 않은 사용자 - 기본 과목만 표시");
-      setSubjects(DEFAULT_SUBJECTS);
-    };
-
-    initializeSubjects();
+    console.log("🔄 useGlobalSubjects - 초기화 시작");
+    loadSubjects();
   }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
 
   return {

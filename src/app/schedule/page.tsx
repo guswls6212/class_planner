@@ -10,6 +10,7 @@ import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useGlobalSubjects } from "../../hooks/useGlobalSubjects";
 import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
+import { useStudentManagementClean } from "../../hooks/useStudentManagementClean";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import type { Enrollment, Session, Student } from "../../lib/planner";
@@ -65,7 +66,7 @@ export default function SchedulePage() {
 
 function SchedulePageContent() {
   const { subjects } = useGlobalSubjects();
-  const [students] = useLocal<Student[]>("students", []);
+  const { students = [] } = useStudentManagementClean();
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""

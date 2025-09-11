@@ -231,61 +231,83 @@ export const useSessionManagement = (
           if (existingEnrollment) {
             enrollmentIds.push(existingEnrollment.id);
           } else {
-            // 새로운 수강신청 생성
-            const { data: newEnrollment, error: enrollmentError } =
-              await supabase
-                .from("enrollments")
-                .insert({
-                  user_id: user.id,
-                  student_id: studentId,
-                  subject_id: sessionData.subjectId,
-                })
-                .select()
-                .single();
-
-            if (enrollmentError) {
-              throw enrollmentError;
-            }
-
-            enrollmentIds.push(newEnrollment.id);
+            // 새로운 수강신청 ID 생성 (로컬에서 관리)
+            const newEnrollmentId = `${studentId}-${sessionData.subjectId}`;
+            enrollmentIds.push(newEnrollmentId);
           }
         }
 
         console.log("🔄 세션 생성 시작");
 
-        // 세션 생성
-        const { data: newSession, error: sessionError } = await supabase
-          .from("sessions")
-          .insert({
-            user_id: user.id,
-            enrollment_ids: enrollmentIds,
-            weekday: sessionData.weekday,
-            starts_at: sessionData.startTime,
-            ends_at: sessionData.endTime,
-            room: sessionData.room,
+        // 새로운 세션 객체 생성
+        const newSession: Session = {
+          id: crypto.randomUUID(),
+          enrollmentIds,
+          weekday: sessionData.weekday,
+          startsAt: sessionData.startTime,
+          endsAt: sessionData.endTime,
+          room: sessionData.room,
+        };
+
+        // 새로운 수강신청들 생성
+        const newEnrollments: Enrollment[] = sessionData.studentIds.map(
+          (studentId) => ({
+            id: `${studentId}-${sessionData.subjectId}`,
+            studentId,
+            subjectId: sessionData.subjectId,
           })
-          .select()
+        );
+
+        // user_data 테이블 업데이트
+        const { data: existingData, error: selectError } = await supabase
+          .from("user_data")
+          .select("data")
+          .eq("user_id", user.id)
           .single();
 
-        if (sessionError) {
-          throw sessionError;
+        if (selectError && selectError.code !== "PGRST116") {
+          throw selectError;
+        }
+
+        const userData = (existingData?.data as any) || {};
+        const updatedSessions = [...(userData.sessions || []), newSession];
+        const updatedEnrollments = [
+          ...(userData.enrollments || []),
+          ...newEnrollments.filter(
+            (newEnrollment) =>
+              !(userData.enrollments || []).some(
+                (existing: any) => existing.id === newEnrollment.id
+              )
+          ),
+        ];
+
+        const { error: updateError } = await supabase.from("user_data").upsert({
+          user_id: user.id,
+          data: {
+            ...userData,
+            sessions: updatedSessions,
+            enrollments: updatedEnrollments,
+            lastModified: new Date().toISOString(),
+          },
+        });
+
+        if (updateError) {
+          throw updateError;
         }
 
         // 로컬 상태 업데이트
-        const convertedSession: Session = {
-          id: newSession.id,
-          enrollmentIds: newSession.enrollment_ids || [],
-          weekday: newSession.weekday,
-          startsAt: newSession.starts_at,
-          endsAt: newSession.ends_at,
-          room: newSession.room,
-        };
-
-        setSessions((prev) => [...prev, convertedSession]);
+        setSessions((prev) => [...prev, newSession]);
+        setEnrollments((prev) => [
+          ...prev,
+          ...newEnrollments.filter(
+            (newEnrollment) =>
+              !prev.some((existing) => existing.id === newEnrollment.id)
+          ),
+        ]);
 
         console.log("✅ 세션 추가 완료:", {
-          sessionId: convertedSession.id,
-          enrollmentIds: convertedSession.enrollmentIds,
+          sessionId: newSession.id,
+          enrollmentIds: newSession.enrollmentIds,
         });
       } catch (err) {
         console.error("세션 추가 실패:", err);
@@ -373,57 +395,78 @@ export const useSessionManagement = (
           if (existingEnrollment) {
             enrollmentIds.push(existingEnrollment.id);
           } else {
-            const { data: newEnrollment, error: enrollmentError } =
-              await supabase
-                .from("enrollments")
-                .insert({
-                  user_id: user.id,
-                  student_id: studentId,
-                  subject_id: sessionData.subjectId,
-                })
-                .select()
-                .single();
-
-            if (enrollmentError) {
-              throw enrollmentError;
-            }
-
-            enrollmentIds.push(newEnrollment.id);
+            // 새로운 수강신청 ID 생성 (로컬에서 관리)
+            const newEnrollmentId = `${studentId}-${sessionData.subjectId}`;
+            enrollmentIds.push(newEnrollmentId);
           }
         }
 
-        // 세션 업데이트
-        const { error: sessionError } = await supabase
-          .from("sessions")
-          .update({
-            enrollment_ids: enrollmentIds,
-            weekday: sessionData.weekday,
-            starts_at: sessionData.startTime,
-            ends_at: sessionData.endTime,
-            room: sessionData.room,
+        // 새로운 수강신청들 생성
+        const newEnrollments: Enrollment[] = sessionData.studentIds.map(
+          (studentId) => ({
+            id: `${studentId}-${sessionData.subjectId}`,
+            studentId,
+            subjectId: sessionData.subjectId,
           })
-          .eq("id", sessionId)
-          .eq("user_id", user.id);
+        );
 
-        if (sessionError) {
-          throw sessionError;
+        // user_data 테이블 업데이트
+        const { data: existingData, error: selectError } = await supabase
+          .from("user_data")
+          .select("data")
+          .eq("user_id", user.id)
+          .single();
+
+        if (selectError && selectError.code !== "PGRST116") {
+          throw selectError;
+        }
+
+        const userData = (existingData?.data as any) || {};
+
+        // 세션 업데이트
+        const updatedSessions = (userData.sessions || []).map((session: any) =>
+          session.id === sessionId
+            ? {
+                ...session,
+                enrollmentIds,
+                weekday: sessionData.weekday,
+                startsAt: sessionData.startTime,
+                endsAt: sessionData.endTime,
+                room: sessionData.room,
+              }
+            : session
+        );
+
+        // 수강신청 업데이트 (기존 세션 관련 수강신청 제거 후 새로 추가)
+        const updatedEnrollments = [
+          ...(userData.enrollments || []).filter(
+            (enrollment: any) => !enrollment.id.startsWith(sessionId)
+          ),
+          ...newEnrollments.filter(
+            (newEnrollment) =>
+              !(userData.enrollments || []).some(
+                (existing: any) => existing.id === newEnrollment.id
+              )
+          ),
+        ];
+
+        const { error: updateError } = await supabase.from("user_data").upsert({
+          user_id: user.id,
+          data: {
+            ...userData,
+            sessions: updatedSessions,
+            enrollments: updatedEnrollments,
+            lastModified: new Date().toISOString(),
+          },
+        });
+
+        if (updateError) {
+          throw updateError;
         }
 
         // 로컬 상태 업데이트
-        setSessions((prev) =>
-          prev.map((s) =>
-            s.id === sessionId
-              ? {
-                  ...s,
-                  enrollmentIds,
-                  weekday: sessionData.weekday,
-                  startsAt: sessionData.startTime,
-                  endsAt: sessionData.endTime,
-                  room: sessionData.room,
-                }
-              : s
-          )
-        );
+        setSessions(updatedSessions);
+        setEnrollments(updatedEnrollments);
 
         console.log("세션 업데이트 완료:", { sessionId });
       } catch (err) {
@@ -467,17 +510,46 @@ export const useSessionManagement = (
         return;
       }
 
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .eq("id", sessionId)
-        .eq("user_id", user.id);
+      // user_data 테이블에서 세션 삭제
+      const { data: existingData, error: selectError } = await supabase
+        .from("user_data")
+        .select("data")
+        .eq("user_id", user.id)
+        .single();
 
-      if (error) {
-        throw error;
+      if (selectError && selectError.code !== "PGRST116") {
+        throw selectError;
       }
 
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      const userData = (existingData?.data as any) || {};
+
+      // 세션 삭제
+      const updatedSessions = (userData.sessions || []).filter(
+        (session: any) => session.id !== sessionId
+      );
+
+      // 관련 수강신청도 삭제
+      const updatedEnrollments = (userData.enrollments || []).filter(
+        (enrollment: any) => !enrollment.id.startsWith(sessionId)
+      );
+
+      const { error: updateError } = await supabase.from("user_data").upsert({
+        user_id: user.id,
+        data: {
+          ...userData,
+          sessions: updatedSessions,
+          enrollments: updatedEnrollments,
+          lastModified: new Date().toISOString(),
+        },
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // 로컬 상태 업데이트
+      setSessions(updatedSessions);
+      setEnrollments(updatedEnrollments);
 
       console.log("세션 삭제 완료:", { sessionId });
     } catch (err) {
@@ -552,48 +624,28 @@ export const useSessionManagement = (
           console.log("유효한 세션 확인됨:", session.user.email);
           console.log("🔄 Supabase 세션 데이터 로드 시작");
 
-          // 세션 데이터 로드
-          const { data: sessionsData, error: sessionsError } = await supabase
-            .from("sessions")
-            .select("*")
+          // user_data 테이블에서 JSONB 데이터 로드
+          const { data: userData, error: userDataError } = await supabase
+            .from("user_data")
+            .select("data")
             .eq("user_id", session.user.id)
-            .order("weekday", { ascending: true })
-            .order("starts_at", { ascending: true });
+            .single();
 
-          if (sessionsError) {
-            console.error("Supabase 세션 로드 실패:", sessionsError);
-            setError("세션 데이터를 불러오는데 실패했습니다.");
+          if (userDataError) {
+            console.error("Supabase 사용자 데이터 로드 실패:", userDataError);
+            setError("사용자 데이터를 불러오는데 실패했습니다.");
             return;
           }
 
-          // 수강신청 데이터 로드
-          const { data: enrollmentsData, error: enrollmentsError } =
-            await supabase
-              .from("enrollments")
-              .select("*")
-              .eq("user_id", session.user.id);
+          // JSONB 데이터에서 세션과 수강신청 추출
+          const data = userData?.data || {};
+          const sessions = data.sessions || [];
+          const enrollments = data.enrollments || [];
 
-          if (enrollmentsError) {
-            console.error("Supabase 수강신청 로드 실패:", enrollmentsError);
-            setError("수강신청 데이터를 불러오는데 실패했습니다.");
-            return;
-          }
-
-          // 데이터 변환
-          const sessions = (sessionsData || []).map((session) => ({
-            id: session.id,
-            enrollmentIds: session.enrollment_ids || [],
-            weekday: session.weekday,
-            startsAt: session.starts_at,
-            endsAt: session.ends_at,
-            room: session.room,
-          }));
-
-          const enrollments = (enrollmentsData || []).map((enrollment) => ({
-            id: enrollment.id,
-            studentId: enrollment.student_id,
-            subjectId: enrollment.subject_id,
-          }));
+          console.log("📊 로드된 데이터:", {
+            sessions: sessions.length,
+            enrollments: enrollments.length,
+          });
 
           setSessions(sessions);
           setEnrollments(enrollments);
