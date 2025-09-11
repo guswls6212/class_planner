@@ -317,6 +317,124 @@ npm run build
 
 ---
 
+## 🎨 TailwindCSS 스타일링 가이드
+
+### 📋 핵심 원칙
+
+#### **1. 인라인 스타일 사용 금지**
+- ❌ **인라인 스타일 사용 금지**: `style={{...}}` 사용을 피해야 합니다
+- ✅ **TailwindCSS 클래스 사용**: 모든 스타일은 `className`에서 TailwindCSS 유틸리티 클래스로 관리
+- ✅ **CSS 변수 활용**: 커스텀 값들은 `tailwind.config.ts`에 등록하여 의미 있는 클래스명으로 사용
+
+#### **2. CSS 우선순위 이해**
+웹 브라우저의 CSS 우선순위는 다음과 같습니다:
+
+1. **`!important` (최상위)**: 다른 모든 것을 무시
+2. **인라인 스타일 (높음)**: `style={{...}}`로 직접 적용
+3. **ID 선택자**: `#id`로 지정한 스타일
+4. **클래스 선택자 (중간)**: `.class`로 지정한 스타일 (**TailwindCSS가 여기에 해당**)
+5. **태그 선택자 (낮음)**: `div`, `p` 등 태그 이름으로 지정
+
+#### **3. 인라인 스타일의 문제점**
+- **재사용성 불가**: 특정 태그에 고정되어 다른 곳에서 재사용 불가
+- **유지보수 어려움**: 디자인 시스템 변경 시 모든 인라인 스타일을 일일이 수정해야 함
+- **반응형/상태 대응 불가**: `:hover`, `md:` 등 TailwindCSS의 강력한 기능 사용 불가
+- **일관성 저해**: 디자인 시스템을 무시하고 독자적인 스타일 생성
+
+### 🔧 올바른 TailwindCSS 사용법
+
+#### **수정 전 (인라인 스타일)**
+```jsx
+<div
+  className="relative custom-scrollbar"
+  style={{
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+    maxHeight: "400px",
+    overflow: "auto",
+    background: "var(--color-bg-primary)",
+    borderRadius: "var(--border-radius-md)",
+    border: "1px solid var(--color-border)",
+  }}
+/>
+```
+
+#### **수정 후 (TailwindCSS 클래스)**
+```jsx
+<div
+  className="relative custom-scrollbar list-none m-0 p-0 max-h-[400px] overflow-auto bg-bg-primary rounded-md border border-border"
+/>
+```
+
+### 🎯 커스텀 값 설정 방법
+
+#### **1. tailwind.config.ts 설정**
+```typescript
+theme: {
+  extend: {
+    colors: {
+      bg: {
+        primary: "var(--color-bg-primary)",
+        secondary: "var(--color-bg-secondary)",
+      },
+      text: {
+        primary: "var(--color-text-primary)",
+        muted: "var(--color-text-muted)",
+      },
+      border: {
+        DEFAULT: "var(--color-border)",
+        light: "var(--color-border-light)",
+      },
+    },
+    spacing: {
+      xs: "4px",
+      sm: "8px",
+      md: "16px",
+      lg: "24px",
+    },
+    borderRadius: {
+      sm: "4px",
+      md: "6px",
+      lg: "8px",
+    },
+  },
+}
+```
+
+#### **2. 사용 예시**
+```jsx
+// ✅ 올바른 사용법
+<div className="bg-bg-primary text-text-muted p-md rounded-md border border-border-light">
+
+// ❌ 잘못된 사용법
+<div 
+  className="bg-white"
+  style={{
+    backgroundColor: "var(--color-bg-primary)",
+    color: "var(--color-text-muted)",
+    padding: "var(--spacing-md)",
+  }}
+>
+```
+
+### 📝 스타일링 체크리스트
+
+#### **코드 작성 시**
+- [ ] 인라인 스타일 사용하지 않음
+- [ ] 모든 스타일이 `className`에 TailwindCSS 클래스로 작성됨
+- [ ] 커스텀 값들은 `tailwind.config.ts`에 등록됨
+- [ ] 반응형 클래스 (`md:`, `lg:` 등) 적절히 사용됨
+- [ ] 상태 클래스 (`hover:`, `focus:` 등) 적절히 사용됨
+
+#### **리뷰 시**
+- [ ] 인라인 스타일이 없는지 확인
+- [ ] TailwindCSS 클래스가 의미 있게 사용되었는지 확인
+- [ ] 디자인 시스템과 일관성 있는지 확인
+- [ ] 반응형 및 상태 대응이 적절한지 확인
+
+---
+
 ## 🏛️ Atomic Design 패턴 가이드
 
 ### 📦 Atoms (원자 컴포넌트)
@@ -587,6 +705,8 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 5. **백업 생성 후 작업**
 6. **수정 전후 상태 검증**
 7. **사용자 요청 범위 준수**
+8. **인라인 스타일 사용 금지**
+9. **TailwindCSS 우선 사용**
 
 ### 반복 작업 방지 체크리스트
 
@@ -597,6 +717,8 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 - [ ] 변경 계획 수립
 - [ ] 백업 생성 (`git stash`)
 - [ ] 사용자 요청 범위 확인
+- [ ] 인라인 스타일 사용 여부 확인
+- [ ] TailwindCSS 클래스로 변환 가능한지 검토
 
 #### 수정 중
 
@@ -605,6 +727,8 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 - [ ] 각 변경 후 즉시 검증
 - [ ] 의존성 관계 확인
 - [ ] 요청받은 작업만 수행
+- [ ] 인라인 스타일을 TailwindCSS 클래스로 변환
+- [ ] 커스텀 값은 tailwind.config.ts에 등록
 
 #### 수정 후
 
@@ -613,6 +737,8 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 - [ ] 전체 테스트 스위트 실행
 - [ ] 브라우저에서 동작 확인
 - [ ] 사용자에게 결과 보고
+- [ ] 인라인 스타일이 모두 제거되었는지 확인
+- [ ] TailwindCSS 클래스가 올바르게 적용되었는지 확인
 
 ---
 
