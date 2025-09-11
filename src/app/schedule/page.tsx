@@ -590,10 +590,10 @@ function SchedulePageContent() {
       endTime: getNextHour(time),
     });
 
-    // 🆕 그룹 수업 모달 열기
+    // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
     setGroupModalData({
       studentIds: [enrollment.studentId], // 배열로 변경
-      subjectId: enrollment.subjectId,
+      subjectId: "", // 과목은 선택되지 않은 상태로 초기화
       weekday,
       startTime: time,
       endTime: getNextHour(time),
