@@ -602,6 +602,27 @@ function SchedulePageContent() {
     console.log("🆕 showGroupModal을 true로 설정");
     setShowGroupModal(true);
 
+    // 🆕 드래그 상태 강제 해제
+    setTimeout(() => {
+      // 모든 드래그 이벤트 강제 종료
+      const dragEndEvent = new DragEvent("dragend", {
+        bubbles: true,
+        cancelable: true,
+      });
+      document.dispatchEvent(dragEndEvent);
+
+      // 마우스 업 이벤트 강제 발생
+      const mouseUpEvent = new MouseEvent("mouseup", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 0,
+        clientY: 0,
+      });
+      document.dispatchEvent(mouseUpEvent);
+
+      console.log("🆕 드래그 상태 강제 해제 완료");
+    }, 100);
+
     console.log("🆕 handleDrop 완료");
   };
 
