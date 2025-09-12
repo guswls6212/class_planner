@@ -32,10 +32,11 @@ interface SessionBlockProps {
   width: number;
   yOffset: number;
   onClick: () => void;
+  onDragStart?: (e: React.DragEvent, session: Session) => void; // 🆕 드래그 시작 핸들러
+  onDragEnd?: (e: React.DragEvent) => void; // 🆕 드래그 종료 핸들러
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
 }
-
 
 export const validateSessionBlockProps = (
   left: number,
@@ -44,7 +45,6 @@ export const validateSessionBlockProps = (
 ): boolean => {
   return left >= 0 && width > 0 && yOffset >= 0;
 };
-
 
 export const shouldShowSubjectName = (subjectName?: string): boolean => {
   return Boolean(subjectName);
@@ -59,6 +59,8 @@ function SessionBlock({
   width,
   yOffset,
   onClick,
+  onDragStart, // 🆕 드래그 시작 핸들러
+  onDragEnd, // 🆕 드래그 종료 핸들러
   selectedStudentId, // 🆕 선택된 학생 ID 추가
 }: SessionBlockProps) {
   // null/undefined 안전 처리
@@ -140,10 +142,52 @@ function SessionBlock({
     }
   };
 
+  // 🆕 드래그 시작 핸들러
+  const handleDragStart = (e: React.DragEvent) => {
+    console.log("🔄 SessionBlock 드래그 시작:", {
+      sessionId: session.id,
+      subjectName: subject?.name,
+      studentNames,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+    });
+
+    // 드래그 데이터 설정
+    e.dataTransfer.setData("text/plain", `session:${session.id}`);
+    e.dataTransfer.effectAllowed = "move";
+
+    // 드래그 이미지 설정 (선택사항)
+    e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+
+    // 부모 컴포넌트에 드래그 시작 알림
+    if (onDragStart) {
+      onDragStart(e, session);
+    }
+  };
+
+  // 🆕 드래그 종료 핸들러
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log("🔄 SessionBlock 드래그 종료:", {
+      sessionId: session.id,
+      dropEffect: e.dataTransfer.dropEffect,
+    });
+
+    // 부모 컴포넌트에 드래그 종료 알림
+    if (onDragEnd) {
+      onDragEnd(e);
+    }
+  };
+
   return (
     <div
-      style={styles}
+      style={{
+        ...styles,
+        cursor: "move", // 🆕 드래그 가능함을 나타내는 커서
+      }}
       onClick={handleClick}
+      draggable={true} // 🆕 드래그 가능하도록 설정
+      onDragStart={handleDragStart} // 🆕 드래그 시작 이벤트
+      onDragEnd={handleDragEnd} // 🆕 드래그 종료 이벤트
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
       data-starts-at={session.startsAt}

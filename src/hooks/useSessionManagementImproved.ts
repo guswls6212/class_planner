@@ -7,6 +7,15 @@ import { useCallback, useEffect, useState } from "react";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { supabase } from "../utils/supabaseClient";
 
+// 🆕 다음 시간 계산 헬퍼 함수
+const getNextHour = (time: string): string => {
+  const [hours, minutes] = time.split(":").map(Number);
+  const nextHour = hours + 1;
+  return `${nextHour.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}`;
+};
+
 export interface UseSessionManagementReturn {
   sessions: Session[];
   enrollments: Enrollment[];
@@ -29,6 +38,12 @@ export interface UseSessionManagementReturn {
       room?: string;
     }
   ) => Promise<void>;
+  updateSessionPosition: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => Promise<void>; // 🆕 세션 위치 업데이트 함수
   deleteSession: (sessionId: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -481,6 +496,109 @@ export const useSessionManagement = (
   );
 
   /**
+   * 🆕 세션 위치 업데이트 (드래그 앤 드롭으로 이동 - 시간은 유지)
+   */
+  const updateSessionPosition = useCallback(
+    async (
+      sessionId: string,
+      weekday: number,
+      time: string, // 드롭된 시간 (참고용, 실제로는 사용하지 않음)
+      yPosition: number
+    ) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          // 로그인 안된 사용자: localStorage에서 업데이트
+          console.log("🔄 localStorage에서 세션 위치 업데이트");
+          const updatedSessions = sessions.map((session) => {
+            if (session.id === sessionId) {
+              return {
+                ...session,
+                weekday,
+                // 🆕 시간은 유지하고 yPosition만 변경
+                yPosition: Math.round(yPosition / 47) * 47, // 47px 단위로 정렬
+              };
+            }
+            return session;
+          });
+          setSessions(updatedSessions);
+          return;
+        }
+
+        // 로그인된 사용자: Supabase에서 업데이트
+        console.log("🔄 Supabase에서 세션 위치 업데이트 (시간 유지):", {
+          sessionId,
+          weekday,
+          yPosition,
+        });
+
+        // user_data 테이블에서 현재 데이터 가져오기
+        const { data: userData, error: userDataError } = await supabase
+          .from("user_data")
+          .select("data")
+          .eq("user_id", user.id)
+          .single();
+
+        if (userDataError) {
+          throw userDataError;
+        }
+
+        const data = userData?.data || {};
+        const currentSessions = data.sessions || [];
+
+        // 세션 위치 업데이트 (시간은 유지하고 위치만 변경)
+        const updatedSessions = currentSessions.map((session: any) => {
+          if (session.id === sessionId) {
+            return {
+              ...session,
+              weekday,
+              // 🆕 시간은 유지하고 yPosition만 변경
+              yPosition: Math.round(yPosition / 47) * 47, // 47px 단위로 정렬
+            };
+          }
+          return session;
+        });
+
+        // Supabase에 업데이트된 데이터 저장
+        const { error: updateError } = await supabase.from("user_data").upsert({
+          user_id: user.id,
+          data: {
+            ...data,
+            sessions: updatedSessions,
+            lastModified: new Date().toISOString(),
+          },
+        });
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // 로컬 상태 업데이트
+        setSessions(updatedSessions);
+
+        console.log("세션 위치 업데이트 완료 (시간 유지):", {
+          sessionId,
+          weekday,
+          yPosition,
+        });
+      } catch (err) {
+        console.error("세션 위치 업데이트 실패:", err);
+        setError("세션 위치 업데이트에 실패했습니다.");
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sessions]
+  );
+
+  /**
    * 세션 삭제
    */
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -671,6 +789,7 @@ export const useSessionManagement = (
     enrollments,
     addSession,
     updateSession,
+    updateSessionPosition, // 🆕 세션 위치 업데이트 함수 추가
     deleteSession,
     isLoading,
     error,

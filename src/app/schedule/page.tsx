@@ -78,6 +78,7 @@ function SchedulePageContent() {
     enrollments,
     addSession,
     updateSession,
+    updateSessionPosition, // 🆕 세션 위치 업데이트 함수 추가
     deleteSession,
     isLoading: sessionLoading,
     error: sessionError,
@@ -626,6 +627,30 @@ function SchedulePageContent() {
     console.log("🆕 handleDrop 완료");
   };
 
+  // 🆕 세션 드롭 핸들러 (드래그 앤 드롭으로 세션 이동)
+  const handleSessionDrop = async (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => {
+    console.log("🔄 세션 드롭 처리:", {
+      sessionId,
+      weekday,
+      time,
+      yPosition,
+    });
+
+    try {
+      // 세션 위치 업데이트
+      await updateSessionPosition(sessionId, weekday, time, yPosition);
+      console.log("✅ 세션 위치 업데이트 완료");
+    } catch (error) {
+      console.error("❌ 세션 위치 업데이트 실패:", error);
+      alert("세션 이동에 실패했습니다.");
+    }
+  };
+
   // 🆕 빈 공간 클릭 처리
   const handleEmptySpaceClick = (weekday: number, time: string) => {
     console.log("🆕 빈 공간 클릭됨:", { weekday, time });
@@ -734,6 +759,7 @@ function SchedulePageContent() {
           students={students}
           onSessionClick={handleSessionClick}
           onDrop={handleDrop}
+          onSessionDrop={handleSessionDrop} // 🆕 세션 드롭 핸들러 전달
           onEmptySpaceClick={handleEmptySpaceClick}
           selectedStudentId={selectedStudentId} // 🆕 선택된 학생 ID 전달
         />

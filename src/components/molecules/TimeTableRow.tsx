@@ -4,6 +4,16 @@ import type { Session, Subject } from "../../lib/planner";
 import DropZone from "./DropZone";
 import SessionBlock from "./SessionBlock";
 
+// 🆕 드래그 미리보기 상태 타입 (TimeTableGrid와 동일)
+interface DragPreviewState {
+  draggedSession: Session | null;
+  targetWeekday: number | null;
+  targetTime: string | null;
+  targetYPosition: number | null;
+  previewPositions: Map<string, number>;
+  conflictSessions: Session[];
+}
+
 interface TimeTableRowProps {
   weekday: number;
   height: number;
@@ -14,10 +24,21 @@ interface TimeTableRowProps {
   sessionYPositions: Map<string, number>;
   onSessionClick: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  onSessionDrop?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => void; // 🆕 세션 드롭 핸들러
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
+  // 🆕 드래그 핸들러들
+  onDragStart?: (session: Session) => void;
+  onDragOver?: (weekday: number, time: string, yPosition: number) => void;
+  onDragEnd?: () => void;
+  dragPreview?: DragPreviewState;
 }
 
 export const TimeTableRow: React.FC<TimeTableRowProps> = ({
@@ -30,10 +51,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   sessionYPositions,
   onSessionClick,
   onDrop,
+  onSessionDrop, // 🆕 세션 드롭 핸들러
   onEmptySpaceClick,
   className = "",
   style = {},
   selectedStudentId, // 🆕 선택된 학생 ID 추가
+  // 🆕 드래그 핸들러들
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  dragPreview,
 }) => {
   // 🆕 시간을 분으로 변환하는 헬퍼 함수
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -167,7 +194,17 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               weekday={weekday}
               time={timeString}
               onDrop={onDrop}
+              onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
               onEmptySpaceClick={onEmptySpaceClick}
+              onDragOver={onDragOver} // 🆕 드래그 오버 핸들러 전달
+              draggedSessionTimeRange={
+                dragPreview?.draggedSession
+                  ? {
+                      startsAt: dragPreview.draggedSession.startsAt,
+                      endsAt: dragPreview.draggedSession.endsAt,
+                    }
+                  : null
+              } // 🆕 드래그 중인 세션의 시간 범위 전달
               style={{
                 position: "absolute",
                 top: 0,
@@ -196,6 +233,21 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             width={session.width}
             yOffset={session.yOffset}
             onClick={() => onSessionClick(session.session)}
+            onDragStart={(e, session) => {
+              console.log("🔄 TimeTableRow에서 세션 드래그 시작:", session.id);
+              if (onDragStart) {
+                onDragStart(session);
+              }
+            }}
+            onDragEnd={(e) => {
+              console.log(
+                "🔄 TimeTableRow에서 세션 드래그 종료:",
+                e.dataTransfer.dropEffect
+              );
+              if (onDragEnd) {
+                onDragEnd();
+              }
+            }}
             selectedStudentId={selectedStudentId}
           />
         ))}
