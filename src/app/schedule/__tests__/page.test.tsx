@@ -168,3 +168,4 @@ describe("Schedule Page", () => {
     expect(screen.getByTestId("auth-guard")).toBeInTheDocument();
   });
 });
+
