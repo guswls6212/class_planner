@@ -1,10 +1,10 @@
-import { SubjectApplicationServiceImpl } from "@/application/services/SubjectApplicationService";
-import { createSubjectRepository } from "@/infrastructure/RepositoryFactory";
+import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the subject service (for testing purposes)
 export function getSubjectService() {
-  return new SubjectApplicationServiceImpl(createSubjectRepository());
+  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
+  return ServiceFactory.createSubjectService();
 }
 
 export async function GET(request: NextRequest) {

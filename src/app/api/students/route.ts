@@ -1,10 +1,10 @@
-import { StudentApplicationServiceImpl } from "@/application/services/StudentApplicationService";
-import { createStudentRepository } from "@/infrastructure/RepositoryFactory";
+import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the student service (for testing purposes)
 export function getStudentService() {
-  return new StudentApplicationServiceImpl(createStudentRepository());
+  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
+  return ServiceFactory.createStudentService();
 }
 
 export async function GET(request: NextRequest) {

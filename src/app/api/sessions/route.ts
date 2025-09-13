@@ -1,10 +1,10 @@
-import { SessionApplicationServiceImpl } from "@/application/services/SessionApplicationService";
-import { createSessionRepository } from "@/infrastructure/RepositoryFactory";
+import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the session service (for testing purposes)
 export function getSessionService() {
-  return new SessionApplicationServiceImpl(createSessionRepository());
+  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
+  return ServiceFactory.createSessionService();
 }
 
 export async function GET(request: NextRequest) {

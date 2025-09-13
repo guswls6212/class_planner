@@ -6,7 +6,7 @@
  */
 
 import { StudentApplicationServiceImpl } from "@/application/services/StudentApplicationService";
-import { createStudentRepository } from "@/infrastructure/RepositoryFactory";
+import { RepositoryRegistry } from "@/infrastructure";
 import type { StudentDto } from "@/shared/types/ApplicationTypes";
 import { useCallback, useEffect, useState } from "react";
 
@@ -46,8 +46,17 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
   // 애플리케이션 서비스 인스턴스 (싱글톤)
   const [studentService] = useState(() => {
-    const studentRepository = createStudentRepository();
-    return new StudentApplicationServiceImpl(studentRepository);
+    try {
+      // 새로운 RepositoryRegistry 사용 (자동 초기화됨)
+      const studentRepository = RepositoryRegistry.getStudentRepository();
+      return new StudentApplicationServiceImpl(studentRepository);
+    } catch (error) {
+      console.error("❌ Repository 초기화 실패:", error);
+      // 초기화 실패 시 기본값 반환 (하위 호환성)
+      throw new Error(
+        "Repository가 초기화되지 않았습니다. 페이지를 새로고침해주세요."
+      );
+    }
   });
 
   // ===== 학생 목록 조회 =====
