@@ -4,7 +4,7 @@ import type { Subject as DomainSubject } from "@/shared/types/DomainTypes";
 import React, { useEffect, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
-import { useGlobalSubjects } from "../../hooks/useGlobalSubjects";
+import { useSubjectManagement } from "../../hooks/useSubjectManagement";
 
 const SELECTED_SUBJECT_KEY = "selectedSubjectId";
 
@@ -19,7 +19,7 @@ const SubjectsPage: React.FC = () => {
 const SubjectsPageContent: React.FC = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const { subjects, addSubject, deleteSubject, updateSubject, errorMessage } =
-    useGlobalSubjects();
+    useSubjectManagement();
 
   // 디버깅용 로그
   console.log("🔍 SubjectsPage - subjects:", subjects);

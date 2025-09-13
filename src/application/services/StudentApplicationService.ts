@@ -4,9 +4,9 @@ import { StudentRepository } from "@/infrastructure/interfaces";
 export class StudentApplicationServiceImpl {
   constructor(private studentRepository: StudentRepository) {}
 
-  async getAllStudents(): Promise<Student[]> {
+  async getAllStudents(userId: string): Promise<Student[]> {
     try {
-      return await this.studentRepository.getAll();
+      return await this.studentRepository.getAll(userId);
     } catch (error) {
       console.error("학생 목록 조회 중 에러 발생:", error);
       return [];
@@ -22,13 +22,13 @@ export class StudentApplicationServiceImpl {
     }
   }
 
-  async addStudent(studentData: {
-    name: string;
-    gender: "male" | "female";
-  }): Promise<Student> {
+  async addStudent(
+    studentData: { name: string },
+    userId: string
+  ): Promise<Student> {
     try {
       // 중복 체크
-      const existingStudents = await this.studentRepository.getAll();
+      const existingStudents = await this.studentRepository.getAll(userId);
       const isDuplicate = existingStudents.some(
         (student) => student.name === studentData.name
       );
@@ -37,7 +37,7 @@ export class StudentApplicationServiceImpl {
         throw new Error("이미 존재하는 학생 이름입니다.");
       }
 
-      return await this.studentRepository.create(studentData);
+      return await this.studentRepository.create(studentData, userId);
     } catch (error) {
       console.error("학생 추가 중 에러 발생:", error);
       throw error;
@@ -46,7 +46,7 @@ export class StudentApplicationServiceImpl {
 
   async updateStudent(
     id: string,
-    studentData: { name: string; gender: "male" | "female" }
+    studentData: { name: string }
   ): Promise<Student> {
     try {
       // 기존 학생 조회

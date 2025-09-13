@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
-import { useStudentManagement } from "../../hooks/useStudentManagement";
-import type { Student } from "../../lib/planner";
-import { supabase } from "../../utils/supabaseClient";
+import { useStudentManagementClean } from "../../hooks/useStudentManagement";
 
 export default function StudentsPage() {
   return (
@@ -17,84 +15,54 @@ export default function StudentsPage() {
 }
 
 function StudentsPageContent() {
-  const [students, setStudents] = useState<Student[]>([]);
   const [newStudentName, setNewStudentName] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
   );
 
-  // 학생 데이터 로드
-  useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setIsLoading(true);
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user) {
-          // 로그인된 사용자: user_data JSONB에서 로드
-          const { data, error } = await supabase
-            .from("user_data")
-            .select("data")
-            .eq("user_id", user.id)
-            .single();
-
-          if (error) {
-            console.error("Supabase 학생 로드 실패:", error);
-            return;
-          }
-
-          const userData = data?.data || {};
-          const loadedStudents = (userData.students || []).map(
-            (student: any) => ({
-              id: student.id,
-              name: student.name,
-            })
-          );
-
-          setStudents(loadedStudents);
-        } else {
-          // 로그인 안된 사용자: 빈 배열
-          setStudents([]);
-        }
-      } catch (error) {
-        console.error("학생 로드 중 오류:", error);
-        setStudents([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStudents();
-  }, []);
-
-  // 커스텀 훅 사용
-  const studentManagement = useStudentManagement(
+  // Clean Architecture 훅 사용
+  const {
     students,
-    setStudents,
-    setNewStudentName
-  );
+    loading: isLoading,
+    error,
+    addStudent,
+    deleteStudent,
+    refreshStudents,
+    clearError,
+  } = useStudentManagementClean();
 
   // 학생 추가 핸들러
-  const handleAddStudent = (name: string) => {
-    studentManagement.addStudent(name);
+  const handleAddStudent = async (name: string) => {
+    try {
+      const success = await addStudent(name);
+      if (success) {
+        setNewStudentName(""); // 입력창 초기화
+        await refreshStudents(); // 학생 목록 새로고침
+      }
+    } catch (error) {
+      console.error("학생 추가 실패:", error);
+    }
   };
 
   // 학생 선택 핸들러
   const handleSelectStudent = (studentId: string) => {
-    const newSelectedId = studentManagement.selectStudent(studentId);
-    setSelectedStudentId(newSelectedId);
+    setSelectedStudentId(studentId);
   };
 
   // 학생 삭제 핸들러
-  const handleDeleteStudent = (studentId: string) => {
-    studentManagement.deleteStudent(studentId);
-    // 선택된 학생이 삭제되면 선택 해제
-    if (selectedStudentId === studentId) {
-      setSelectedStudentId("");
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      const success = await deleteStudent(studentId);
+      if (success) {
+        // 선택된 학생이 삭제되면 선택 해제
+        if (selectedStudentId === studentId) {
+          setSelectedStudentId("");
+        }
+        await refreshStudents(); // 학생 목록 새로고침
+      }
+    } catch (error) {
+      console.error("학생 삭제 실패:", error);
     }
   };
 
@@ -108,6 +76,8 @@ function StudentsPageContent() {
       onSelectStudent={handleSelectStudent}
       onDeleteStudent={handleDeleteStudent}
       isLoading={isLoading}
+      error={error}
+      onClearError={clearError}
     />
   );
 }

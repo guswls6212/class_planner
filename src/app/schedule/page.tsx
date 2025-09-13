@@ -8,13 +8,11 @@ import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
-import { useGlobalSubjects } from "../../hooks/useGlobalSubjects";
-import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
-import { useStudentManagementClean } from "../../hooks/useStudentManagementClean";
+import { useIntegratedData } from "../../hooks/useIntegratedData";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import type { Enrollment, Session, Student } from "../../lib/planner";
-import { weekdays } from "../../lib/planner";
+import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./Schedule.module.css";
@@ -65,28 +63,183 @@ export default function SchedulePage() {
 }
 
 function SchedulePageContent() {
-  const { subjects } = useGlobalSubjects();
-  const { students = [] } = useStudentManagementClean();
+  // 🚀 통합 데이터 훅 사용 (JSONB 기반 효율적 데이터 관리)
+  const {
+    data: { students, subjects, sessions, enrollments },
+    loading: dataLoading,
+    error,
+    updateData,
+  } = useIntegratedData();
+
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
   );
 
-  // 🆕 세션 관리 훅 사용
-  const {
-    sessions,
-    enrollments,
-    addSession,
-    updateSession,
-    updateSessionPosition, // 🆕 세션 위치 업데이트 함수 추가
-    deleteSession,
-    isLoading: sessionLoading,
-    error: sessionError,
-  } = useSessionManagement(students, subjects);
+  // 🆕 세션 관리 함수들 (통합 데이터 업데이트 방식)
+  const addSession = useCallback(
+    async (sessionData: any) => {
+      console.log("🔍 addSession 시작:", sessionData);
+
+      // 1단계: 각 학생에 대해 enrollment 생성/확인
+      const enrollmentIds = [];
+      const newEnrollments = [];
+
+      for (const studentId of sessionData.studentIds) {
+        // 기존 enrollment가 있는지 확인
+        let enrollment = enrollments.find(
+          (e) =>
+            e.studentId === studentId && e.subjectId === sessionData.subjectId
+        );
+
+        if (!enrollment) {
+          // 새로운 enrollment 생성
+          enrollment = {
+            id: crypto.randomUUID(),
+            studentId: studentId,
+            subjectId: sessionData.subjectId,
+          };
+          newEnrollments.push(enrollment);
+          console.log("🆕 새로운 enrollment 생성:", enrollment);
+        } else {
+          console.log("✅ 기존 enrollment 사용:", enrollment);
+        }
+
+        enrollmentIds.push(enrollment.id);
+      }
+
+      // 2단계: 세션 생성
+      const newSession = {
+        id: crypto.randomUUID(),
+        subjectId: sessionData.subjectId,
+        studentIds: sessionData.studentIds,
+        weekday: sessionData.weekday,
+        startsAt: sessionData.startTime,
+        endsAt: sessionData.endTime,
+        room: sessionData.room || "",
+        enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
+      };
+
+      console.log("🆕 새로운 세션 생성:", newSession);
+
+      // 3단계: enrollment와 session을 한 번에 업데이트
+      const updateDataPayload: any = {
+        sessions: [...sessions, newSession],
+      };
+
+      if (newEnrollments.length > 0) {
+        console.log(
+          "💾 새로운 enrollments와 세션을 함께 저장:",
+          newEnrollments
+        );
+        updateDataPayload.enrollments = [...enrollments, ...newEnrollments];
+      }
+
+      await updateData(updateDataPayload);
+
+      console.log("✅ 세션 추가 완료");
+    },
+    [sessions, enrollments, updateData]
+  );
+
+  const updateSession = useCallback(
+    async (sessionId: string, sessionData: any) => {
+      console.log("🔄 updateSession 시작:", { sessionId, sessionData });
+
+      const newSessions = sessions.map((s) => {
+        if (s.id === sessionId) {
+          const updatedSession = {
+            ...s,
+            ...sessionData,
+            // 시간 필드명 변환 (startTime/endTime → startsAt/endsAt)
+            startsAt: sessionData.startTime || s.startsAt,
+            endsAt: sessionData.endTime || s.endsAt,
+          };
+
+          // 불필요한 필드 제거
+          delete updatedSession.startTime;
+          delete updatedSession.endTime;
+
+          console.log("🔄 세션 업데이트:", {
+            original: { startsAt: s.startsAt, endsAt: s.endsAt },
+            updated: {
+              startsAt: updatedSession.startsAt,
+              endsAt: updatedSession.endsAt,
+            },
+          });
+
+          return updatedSession;
+        }
+        return s;
+      });
+
+      await updateData({ sessions: newSessions });
+      console.log("✅ updateSession 완료");
+    },
+    [sessions, updateData]
+  );
+
+  const updateSessionPosition = useCallback(
+    async (
+      sessionId: string,
+      weekday: number,
+      time: string,
+      yPosition: number
+    ) => {
+      // 기존 세션의 지속 시간 계산
+      const existingSession = sessions.find((s) => s.id === sessionId);
+      if (!existingSession) {
+        console.error("세션을 찾을 수 없습니다:", sessionId);
+        return;
+      }
+
+      const startMinutes = timeToMinutes(existingSession.startsAt);
+      const endMinutes = timeToMinutes(existingSession.endsAt);
+      const durationMinutes = endMinutes - startMinutes;
+
+      // 새로운 종료 시간 계산
+      const newStartMinutes = timeToMinutes(time);
+      const newEndMinutes = newStartMinutes + durationMinutes;
+      const newEndTime = minutesToTime(newEndMinutes);
+
+      // 픽셀 위치를 논리적 위치로 변환 (1, 2, 3...)
+      const logicalPosition = Math.round(yPosition / 47) + 1; // 0px = 1번째, 47px = 2번째, 94px = 3번째
+
+      console.log("🔄 세션 위치 업데이트:", {
+        sessionId,
+        originalTime: `${existingSession.startsAt}-${existingSession.endsAt}`,
+        newTime: `${time}-${newEndTime}`,
+        durationMinutes,
+        logicalPosition,
+      });
+
+      const newSessions = sessions.map((s) =>
+        s.id === sessionId
+          ? {
+              ...s,
+              weekday,
+              startsAt: time,
+              endsAt: newEndTime,
+              yPosition: logicalPosition,
+            }
+          : s
+      );
+      await updateData({ sessions: newSessions });
+    },
+    [sessions, updateData]
+  );
+
+  const deleteSession = useCallback(
+    async (sessionId: string) => {
+      const newSessions = sessions.filter((s) => s.id !== sessionId);
+      await updateData({ sessions: newSessions });
+    },
+    [sessions, updateData]
+  );
 
   // 🆕 데이터 로딩 완료 후 selectedStudentId 복원
   useEffect(() => {
-    if (!sessionLoading && students.length > 0) {
+    if (!dataLoading && students.length > 0) {
       // 클라이언트에서만 localStorage 접근
       if (typeof window !== "undefined") {
         try {
@@ -100,7 +253,7 @@ function SchedulePageContent() {
         }
       }
     }
-  }, [sessionLoading, students, setSelectedStudentId]);
+  }, [dataLoading, students, setSelectedStudentId]);
 
   // 🆕 학생 데이터 디버깅
   useEffect(() => {
@@ -659,6 +812,13 @@ function SchedulePageContent() {
 
   // 🆕 세션 클릭 처리
   const handleSessionClick = (session: Session) => {
+    console.log("🖱️ 세션 클릭됨:", {
+      sessionId: session.id,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+      enrollmentIds: session.enrollmentIds,
+    });
+
     setEditModalData(session);
     setEditModalTimeData({
       startTime: session.startsAt,
@@ -671,6 +831,15 @@ function SchedulePageContent() {
     setTempSubjectId(firstEnrollment?.subjectId || "");
     setTempEnrollments([]); // 🆕 임시 enrollment 초기화
     setShowEditModal(true);
+
+    console.log("🔄 편집 모달 열림:", {
+      editModalData: session,
+      editModalTimeData: {
+        startTime: session.startsAt,
+        endTime: session.endsAt,
+      },
+      tempSubjectId: firstEnrollment?.subjectId || "",
+    });
   };
 
   // 🆕 PDF 다운로드 처리
@@ -701,14 +870,14 @@ function SchedulePageContent() {
     <div className="timetable-container" style={{ padding: 16 }}>
       <div className={styles.pageHeader}>
         <h2>주간 시간표</h2>
-        {sessionLoading && (
+        {dataLoading && (
           <div style={{ color: "var(--color-blue-500)", fontSize: "14px" }}>
-            {sessionError
+            {error
               ? "데이터 로드 중 오류가 발생했습니다."
               : "세션 데이터를 로드 중..."}
           </div>
         )}
-        {sessionError && (
+        {error && (
           <div
             style={{
               color: "var(--color-red-500)",
@@ -720,7 +889,7 @@ function SchedulePageContent() {
               marginTop: "8px",
             }}
           >
-            ⚠️ {sessionError}
+            ⚠️ {error}
             <br />
             <small style={{ color: "var(--color-gray-600)" }}>
               로컬 데이터로 계속 작업할 수 있습니다.
@@ -1292,6 +1461,15 @@ function SchedulePageContent() {
 
                         // 🆕 임시 과목 ID 사용
                         const currentSubjectId = tempSubjectId;
+
+                        console.log("💾 세션 저장 시작:", {
+                          sessionId: editModalData.id,
+                          originalTime: `${editModalData.startsAt}-${editModalData.endsAt}`,
+                          newTime: `${startTime}-${endTime}`,
+                          weekday,
+                          currentStudentIds,
+                          currentSubjectId,
+                        });
 
                         await updateSession(editModalData.id, {
                           studentIds: currentStudentIds,

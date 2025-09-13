@@ -77,6 +77,47 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return sessions?.get(weekday) || [];
   }, [sessions, weekday]);
 
+  // 🆕 해당 요일의 최대 yPosition 계산
+  const maxYPosition = React.useMemo(() => {
+    // 드래그 중일 때는 더 많은 드롭존을 표시하기 위해 최대값을 증가
+    if (dragPreview?.draggedSession) {
+      return Math.max(
+        5, // 최소 5개 드롭존 보장
+        Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1)
+      );
+    }
+    const maxPos = Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1);
+    return maxPos;
+  }, [weekdaySessions, dragPreview?.draggedSession]);
+
+  // 🆕 드래그 중인지 여부 확인 (시간 범위와 겹치는지도 확인)
+  const isDragging = React.useMemo(() => {
+    if (!dragPreview?.draggedSession) {
+      return false;
+    }
+
+    const draggedSession = dragPreview.draggedSession;
+    const draggedStartMinutes = timeToMinutes(draggedSession.startsAt);
+    const draggedEndMinutes = timeToMinutes(draggedSession.endsAt);
+
+    // 드래그된 세션의 요일과 현재 요일이 일치할 때만 콘솔로그 출력
+    if (draggedSession.weekday === weekday) {
+      console.log("🔍 TimeTableRow 드래그 상태 (드래그된 세션의 요일):", {
+        weekday,
+        weekdayName: ["월", "화", "수", "목", "금", "토", "일"][weekday],
+        draggedSession: draggedSession.id,
+        draggedSessionWeekday: draggedSession.weekday,
+        draggedSessionWeekdayName: ["월", "화", "수", "목", "금", "토", "일"][
+          draggedSession.weekday
+        ],
+        draggedTimeRange: `${draggedSession.startsAt}-${draggedSession.endsAt}`,
+        maxYPosition,
+      });
+    }
+
+    return true; // 드래그 중이면 true, 시간 범위 체크는 DropZone에서 처리
+  }, [dragPreview, weekday, maxYPosition, timeToMinutes]);
+
   // 🆕 시간대별로 세션을 그룹화 (그룹 수업 고려)
   const sessionsByTime = React.useMemo(() => {
     const timeMap = new Map<string, Session[]>();
@@ -186,35 +227,43 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           gridColumn: "2 / -1", // 🆕 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
       >
-        {/* 🆕 드롭 존들 - 30분 단위로 30개 */}
-        {timeSlots30Min.map((timeString, index) => {
-          return (
-            <DropZone
-              key={timeString}
-              weekday={weekday}
-              time={timeString}
-              onDrop={onDrop}
-              onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
-              onEmptySpaceClick={onEmptySpaceClick}
-              onDragOver={onDragOver} // 🆕 드래그 오버 핸들러 전달
-              draggedSessionTimeRange={
-                dragPreview?.draggedSession
-                  ? {
-                      startsAt: dragPreview.draggedSession.startsAt,
-                      endsAt: dragPreview.draggedSession.endsAt,
-                    }
-                  : null
-              } // 🆕 드래그 중인 세션의 시간 범위 전달
-              style={{
-                position: "absolute",
-                top: 0,
-                left: `${index * 100}px`, // 🆕 30분당 100px
-                width: "100px", // 🆕 30분 단위 너비
-                height: `${height}px`,
-                zIndex: 1,
-              }}
-            />
-          );
+        {/* 🆕 드롭 존들 - 30분 단위 × maxYPosition 개의 개별 DropZone */}
+        {timeSlots30Min.map((timeString, timeIndex) => {
+          return Array.from({ length: maxYPosition }, (_, yIndex) => {
+            const yPosition = yIndex + 1;
+            const top = yIndex * 47;
+
+            return (
+              <DropZone
+                key={`${timeString}-${yPosition}`}
+                weekday={weekday}
+                time={timeString}
+                yPosition={yPosition} // 🆕 yPosition 정보 추가
+                onDrop={onDrop}
+                onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
+                onEmptySpaceClick={onEmptySpaceClick}
+                onDragOver={onDragOver} // 🆕 드래그 오버 핸들러 전달
+                draggedSessionTimeRange={
+                  dragPreview?.draggedSession
+                    ? {
+                        startsAt: dragPreview.draggedSession.startsAt,
+                        endsAt: dragPreview.draggedSession.endsAt,
+                      }
+                    : null
+                } // 🆕 드래그 중인 세션의 시간 범위 전달
+                isDragging={isDragging} // 🆕 드래그 상태 전달
+                dragPreview={dragPreview} // 🆕 드래그 프리뷰 정보 전달
+                style={{
+                  position: "absolute",
+                  top: `${top}px`, // 🆕 yPosition별 위치
+                  left: `${timeIndex * 100}px`, // 🆕 30분당 100px
+                  width: "100px", // 🆕 30분 단위 너비
+                  height: "47px", // 🆕 각각 47px 높이
+                  zIndex: 1,
+                }}
+              />
+            );
+          });
         })}
 
         {/* 세션 블록들 */}

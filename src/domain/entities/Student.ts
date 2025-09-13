@@ -5,25 +5,22 @@
  * 불변성과 캡슐화를 통해 데이터 무결성을 보장합니다.
  */
 
-import { StudentId } from '../value-objects/StudentId';
+import { StudentId } from "../value-objects/StudentId";
 
 export class Student {
   private readonly _id: StudentId;
   private readonly _name: string;
-  private readonly _gender?: string;
   private readonly _createdAt: Date;
   private readonly _updatedAt: Date;
 
   private constructor(
     id: StudentId,
     name: string,
-    gender?: string,
     createdAt: Date = new Date(),
     updatedAt: Date = new Date()
   ) {
     this._id = id;
     this._name = name;
-    this._gender = gender;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
     this.validate();
@@ -34,11 +31,11 @@ export class Student {
   /**
    * 새로운 학생을 생성합니다.
    */
-  static create(name: string, gender?: string): Student {
+  static create(name: string): Student {
     const trimmedName = name.trim();
     const studentId = StudentId.generate();
 
-    return new Student(studentId, trimmedName, gender);
+    return new Student(studentId, trimmedName);
   }
 
   /**
@@ -47,7 +44,6 @@ export class Student {
   static restore(
     id: string,
     name: string,
-    gender?: string,
     createdAt?: Date,
     updatedAt?: Date
   ): Student {
@@ -55,7 +51,7 @@ export class Student {
     const created = createdAt || new Date();
     const updated = updatedAt || new Date();
 
-    return new Student(studentId, name, gender, created, updated);
+    return new Student(studentId, name, created, updated);
   }
 
   // ===== 비즈니스 로직 =====
@@ -73,24 +69,6 @@ export class Student {
     return new Student(
       this._id,
       trimmedName,
-      this._gender,
-      this._createdAt,
-      new Date() // updatedAt 업데이트
-    );
-  }
-
-  /**
-   * 학생 성별을 변경합니다.
-   */
-  changeGender(newGender?: string): Student {
-    if (newGender === this._gender) {
-      return this; // 변경사항이 없으면 현재 인스턴스 반환
-    }
-
-    return new Student(
-      this._id,
-      this._name,
-      newGender,
       this._createdAt,
       new Date() // updatedAt 업데이트
     );
@@ -107,9 +85,9 @@ export class Student {
         isValid: false,
         errors: [
           {
-            field: 'name',
-            message: '학생 이름을 입력해주세요.',
-            code: 'NAME_REQUIRED',
+            field: "name",
+            message: "학생 이름을 입력해주세요.",
+            code: "NAME_REQUIRED",
           },
         ],
       };
@@ -120,9 +98,9 @@ export class Student {
         isValid: false,
         errors: [
           {
-            field: 'name',
-            message: '학생 이름은 2글자 이상이어야 합니다.',
-            code: 'NAME_TOO_SHORT',
+            field: "name",
+            message: "학생 이름은 2글자 이상이어야 합니다.",
+            code: "NAME_TOO_SHORT",
           },
         ],
       };
@@ -133,9 +111,9 @@ export class Student {
         isValid: false,
         errors: [
           {
-            field: 'name',
-            message: '학생 이름은 20글자 이하여야 합니다.',
-            code: 'NAME_TOO_LONG',
+            field: "name",
+            message: "학생 이름은 20글자 이하여야 합니다.",
+            code: "NAME_TOO_LONG",
           },
         ],
       };
@@ -148,9 +126,9 @@ export class Student {
         isValid: false,
         errors: [
           {
-            field: 'name',
-            message: '학생 이름에는 특수문자를 사용할 수 없습니다.',
-            code: 'NAME_INVALID_CHARACTERS',
+            field: "name",
+            message: "학생 이름에는 특수문자를 사용할 수 없습니다.",
+            code: "NAME_INVALID_CHARACTERS",
           },
         ],
       };
@@ -165,7 +143,7 @@ export class Student {
   static isNameDuplicate(name: string, existingStudents: Student[]): boolean {
     const trimmedName = name.trim().toLowerCase();
     return existingStudents.some(
-      student => student.name.toLowerCase() === trimmedName
+      (student) => student.name.toLowerCase() === trimmedName
     );
   }
 
@@ -175,7 +153,7 @@ export class Student {
     const validation = Student.validateName(this._name);
     if (!validation.isValid) {
       throw new Error(
-        `Invalid student: ${validation.errors.map(e => e.message).join(', ')}`
+        `Invalid student: ${validation.errors.map((e) => e.message).join(", ")}`
       );
     }
   }
@@ -188,10 +166,6 @@ export class Student {
 
   get name(): string {
     return this._name;
-  }
-
-  get gender(): string | undefined {
-    return this._gender;
   }
 
   get createdAt(): Date {
@@ -211,7 +185,6 @@ export class Student {
     return {
       id: this._id.value,
       name: this._name,
-      gender: this._gender,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -224,7 +197,6 @@ export class Student {
     return {
       id: this._id.value,
       name: this._name,
-      gender: this._gender,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -237,7 +209,6 @@ export class Student {
     return Student.restore(
       json.id,
       json.name,
-      json.gender,
       new Date(json.createdAt),
       new Date(json.updatedAt)
     );
@@ -270,7 +241,6 @@ export interface ValidationError {
 export interface StudentDto {
   id: string;
   name: string;
-  gender?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -278,7 +248,6 @@ export interface StudentDto {
 export interface StudentJson {
   id: string;
   name: string;
-  gender?: string;
   createdAt: string;
   updatedAt: string;
 }

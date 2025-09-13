@@ -15,7 +15,7 @@ export type Session = {
   startsAt: string; // 시작 시간 (HH:MM 형식)
   endsAt: string; // 종료 시간 (HH:MM 형식)
   room?: string; // 강의실 (선택적)
-  yPosition?: number; // 🆕 사용자 정의 Y축 위치 (픽셀 단위)
+  yPosition?: number; // 🆕 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입

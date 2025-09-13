@@ -3,6 +3,7 @@ import React, { useState } from "react";
 interface DropZoneProps {
   weekday: number;
   time: string;
+  yPosition?: number; // 🆕 현재 DropZone의 yPosition (1, 2, 3...)
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onSessionDrop?: (
     sessionId: string,
@@ -16,17 +17,23 @@ interface DropZoneProps {
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   // 🆕 드래그 중인 세션의 시간 범위 (드롭 영역 표시용)
   draggedSessionTimeRange?: { startsAt: string; endsAt: string } | null;
+  isDragging?: boolean; // 드래그 중인지 여부
+  // 🆕 드래그 프리뷰 정보
+  dragPreview?: { draggedSession: any } | null;
 }
 
 export default function DropZone({
   weekday,
   time,
+  yPosition = 1, // 🆕 기본값 1
   onDrop,
   onSessionDrop, // 🆕 세션 드롭 핸들러
   onEmptySpaceClick,
   style,
   onDragOver, // 🆕 드래그 오버 핸들러
   draggedSessionTimeRange, // 🆕 드래그 중인 세션의 시간 범위
+  isDragging = false, // 🆕 기본값 false
+  dragPreview = null, // 🆕 드래그 프리뷰 정보
 }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -42,12 +49,13 @@ export default function DropZone({
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragOver(true);
 
     // 🆕 실시간 미리보기를 위한 드래그 오버 처리
     if (onDragOver) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const yPosition = Math.max(0, e.clientY - rect.top);
-      onDragOver(weekday, time, yPosition);
+      // 현재 DropZone의 yPosition을 픽셀 위치로 변환
+      const pixelYPosition = (yPosition - 1) * 47;
+      onDragOver(weekday, time, pixelYPosition);
     }
   };
 
@@ -62,12 +70,11 @@ export default function DropZone({
       if (data.startsWith("session:")) {
         const sessionId = data.replace("session:", "");
 
-        // Y축 위치 계산 (드롭 위치 기반)
-        const rect = e.currentTarget.getBoundingClientRect();
-        const yPosition = Math.max(0, e.clientY - rect.top);
+        // 현재 DropZone의 yPosition을 픽셀 위치로 변환
+        const pixelYPosition = (yPosition - 1) * 47;
 
         if (onSessionDrop) {
-          onSessionDrop(sessionId, weekday, time, yPosition);
+          onSessionDrop(sessionId, weekday, time, pixelYPosition);
         }
       }
       // 🆕 기존 enrollment 드롭 처리
@@ -118,7 +125,9 @@ export default function DropZone({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
-      data-testid={`dropzone-${weekday}-${time}`}
-    />
+      data-testid={`dropzone-${weekday}-${time}-${yPosition}`}
+    >
+      {/* 🆕 개별 DropZone으로 단순화 - 분할 렌더링 제거 */}
+    </div>
   );
 }

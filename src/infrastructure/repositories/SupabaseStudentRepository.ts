@@ -1,20 +1,35 @@
 import { Student } from "@/domain/entities/Student";
 import type { StudentRepository } from "@/infrastructure/interfaces";
-import { supabase } from "@/utils/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
 
 export class SupabaseStudentRepository implements StudentRepository {
-  async getAll(): Promise<Student[]> {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
-        // 로그인되지 않은 경우 빈 배열 반환
-        return [];
-      }
+  // Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
+  private createServiceRoleClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-      const { data, error } = await supabase
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error(
+        "Supabase URL 또는 Service Role Key가 설정되지 않았습니다."
+      );
+    }
+
+    return createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
+
+  async getAll(userId: string): Promise<Student[]> {
+    try {
+      const serviceRoleClient = this.createServiceRoleClient();
+
+      const { data, error } = await serviceRoleClient
         .from("user_data")
         .select("data")
-        .eq("user_id", sessionData.session.user.id)
+        .eq("user_id", userId)
         .single();
 
       if (error) {
@@ -32,7 +47,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       }
 
       return userData.students.map((studentData: any) =>
-        Student.restore(studentData.id, studentData.name, studentData.gender)
+        Student.restore(studentData.id, studentData.name)
       );
     } catch (error) {
       console.error("학생 데이터 조회 중 오류:", error);
@@ -50,20 +65,17 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  async create(data: { name: string; gender?: string }): Promise<Student> {
+  async create(data: { name: string }, userId: string): Promise<Student> {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
-        throw new Error("로그인이 필요합니다.");
-      }
+      const serviceRoleClient = this.createServiceRoleClient();
 
-      const newStudent = Student.create(data.name, data.gender);
+      const newStudent = Student.create(data.name);
 
       // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await supabase
+      const { data: existingData, error: fetchError } = await serviceRoleClient
         .from("user_data")
         .select("data")
-        .eq("user_id", sessionData.session.user.id)
+        .eq("user_id", userId)
         .single();
 
       let userData: any = {
@@ -81,12 +93,11 @@ export class SupabaseStudentRepository implements StudentRepository {
       userData.students.push({
         id: newStudent.id.value,
         name: newStudent.name,
-        gender: newStudent.gender,
       });
 
       // 데이터 저장
-      const { error } = await supabase.from("user_data").upsert({
-        user_id: sessionData.session.user.id,
+      const { error } = await serviceRoleClient.from("user_data").upsert({
+        user_id: userId,
         data: userData,
         updated_at: new Date().toISOString(),
       });
@@ -103,21 +114,25 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  async update(
-    id: string,
-    data: { name?: string; gender?: string }
-  ): Promise<Student> {
+  async update(id: string, data: { name?: string }): Promise<Student> {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
-        throw new Error("로그인이 필요합니다.");
+      const serviceRoleClient = this.createServiceRoleClient();
+
+      // 현재 사용자 ID 가져오기 (localStorage에서)
+      const userId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("supabase_user_id")
+          : null;
+
+      if (!userId) {
+        throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
       }
 
       // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await supabase
+      const { data: existingData, error: fetchError } = await serviceRoleClient
         .from("user_data")
         .select("data")
-        .eq("user_id", sessionData.session.user.id)
+        .eq("user_id", userId)
         .single();
 
       if (fetchError || !existingData?.data) {
@@ -133,11 +148,10 @@ export class SupabaseStudentRepository implements StudentRepository {
 
       // 학생 정보 업데이트
       if (data.name) userData.students[studentIndex].name = data.name;
-      if (data.gender) userData.students[studentIndex].gender = data.gender;
 
       // 데이터 저장
-      const { error } = await supabase.from("user_data").upsert({
-        user_id: sessionData.session.user.id,
+      const { error } = await serviceRoleClient.from("user_data").upsert({
+        user_id: userId,
         data: userData,
         updated_at: new Date().toISOString(),
       });
@@ -147,11 +161,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         throw error;
       }
 
-      return Student.restore(
-        id,
-        userData.students[studentIndex].name,
-        userData.students[studentIndex].gender
-      );
+      return Student.restore(id, userData.students[studentIndex].name);
     } catch (error) {
       console.error("학생 업데이트 중 오류:", error);
       throw error;
@@ -160,16 +170,23 @@ export class SupabaseStudentRepository implements StudentRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session?.user) {
-        throw new Error("로그인이 필요합니다.");
+      const serviceRoleClient = this.createServiceRoleClient();
+
+      // 현재 사용자 ID 가져오기 (localStorage에서)
+      const userId =
+        typeof window !== "undefined"
+          ? localStorage.getItem("supabase_user_id")
+          : null;
+
+      if (!userId) {
+        throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
       }
 
       // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await supabase
+      const { data: existingData, error: fetchError } = await serviceRoleClient
         .from("user_data")
         .select("data")
-        .eq("user_id", sessionData.session.user.id)
+        .eq("user_id", userId)
         .single();
 
       if (fetchError || !existingData?.data) {
@@ -196,8 +213,8 @@ export class SupabaseStudentRepository implements StudentRepository {
       );
 
       // 데이터 저장
-      const { error } = await supabase.from("user_data").upsert({
-        user_id: sessionData.session.user.id,
+      const { error } = await serviceRoleClient.from("user_data").upsert({
+        user_id: userId,
         data: userData,
         updated_at: new Date().toISOString(),
       });
@@ -212,4 +229,3 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 }
-

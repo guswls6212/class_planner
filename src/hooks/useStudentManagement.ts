@@ -1,285 +1,242 @@
-import { useCallback, useState } from "react";
-import type { Student } from "../lib/planner";
-import { uid } from "../lib/planner";
-import type {
-  AddStudentFormData,
-  StudentActions,
-} from "../types/studentsTypes";
-import { supabase } from "../utils/supabaseClient";
-import { useFeatureGuard } from "./useFeatureGuard";
+/**
+ * 🎣 Custom Hook - useStudentManagement (API Routes 기반)
+ *
+ * API Routes를 통해 학생 데이터를 관리하는 훅입니다.
+ * Clean Architecture 패턴을 유지하면서 클라이언트-서버 분리를 구현합니다.
+ */
 
-export const useStudentManagement = (
-  students: Student[],
-  setStudents: (students: Student[]) => void,
-  setNewStudentName: (name: string) => void
-): StudentActions & {
-  formData: AddStudentFormData;
-  errorMessage: string;
-  showUpgradeModal: () => void;
-} => {
-  const [formData, setFormData] = useState<AddStudentFormData>({
-    name: "",
-    isValid: false,
-  });
-  const [errorMessage, setErrorMessage] = useState<string>("");
+import { useCallback, useEffect, useState } from "react";
 
-  const { showUpgradeModal } = useFeatureGuard();
+// ===== 타입 정의 =====
 
-  // 학생 데이터 로드 (로그인 상태에 따라 분기)
-  const loadStudents = useCallback(async (): Promise<Student[]> => {
+export interface Student {
+  id: string;
+  name: string;
+  gender?: string;
+}
+
+export interface UseStudentManagementReturn {
+  // 상태
+  students: Student[];
+  loading: boolean;
+  error: string | null;
+
+  // 액션
+  addStudent: (name: string, gender?: string) => Promise<boolean>;
+  updateStudent: (
+    id: string,
+    updates: { name?: string; gender?: string }
+  ) => Promise<boolean>;
+  deleteStudent: (id: string) => Promise<boolean>;
+  getStudent: (id: string) => Promise<Student | null>;
+
+  // 유틸리티
+  refreshStudents: () => Promise<void>;
+  clearError: () => void;
+
+  // 통계
+  studentCount: number;
+}
+
+// ===== 훅 구현 =====
+
+export const useStudentManagementClean = (): UseStudentManagementReturn => {
+  // 상태
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // API 호출 헬퍼 함수
+  const apiCall = async (url: string, options: RequestInit = {}) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+        ...options,
+      });
 
-      if (user) {
-        // 로그인된 사용자: user_data JSONB에서 로드
-        const { data, error } = await supabase
-          .from("user_data")
-          .select("data")
-          .eq("user_id", user.id)
-          .single();
+      const data = await response.json();
 
-        if (error) {
-          console.error("Supabase 학생 로드 실패:", error);
-          return [];
-        }
-
-        const userData = data?.data || {};
-        return (userData.students || []).map((student: any) => ({
-          id: student.id,
-          name: student.name,
-        }));
-      } else {
-        // 로그인 안된 사용자: 빈 배열 반환
-        return [];
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || `HTTP ${response.status}`);
       }
+
+      return data;
     } catch (error) {
-      console.error("학생 로드 중 오류:", error);
-      return [];
+      console.error("API 호출 실패:", error);
+      throw error;
+    }
+  };
+
+  // ===== 학생 목록 조회 =====
+
+  const refreshStudents = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 사용자 ID 가져오기
+      const userId =
+        localStorage.getItem("supabase_user_id") || "default-user-id";
+
+      const data = await apiCall(`/api/students?userId=${userId}`);
+      setStudents(data.data || []);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "학생 목록 조회 실패";
+      setError(errorMessage);
+      console.error("학생 목록 조회 실패:", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const validateStudentName = (name: string): AddStudentFormData => {
-    const trimmedName = name.trim();
-
-    if (!trimmedName) {
-      return {
-        name: trimmedName,
-        isValid: false,
-        errorMessage: "학생 이름을 입력해주세요.",
-      };
-    }
-
-    if (students.some((s) => s.name === trimmedName)) {
-      return {
-        name: trimmedName,
-        isValid: false,
-        errorMessage: "이미 존재하는 학생 이름입니다.",
-      };
-    }
-
-    return {
-      name: trimmedName,
-      isValid: true,
-    };
-  };
+  // ===== 학생 추가 =====
 
   const addStudent = useCallback(
-    async (name: string): Promise<boolean> => {
-      const validation = validateStudentName(name);
-
-      if (!validation.isValid) {
-        setErrorMessage(validation.errorMessage || "");
-        return false;
-      }
-
-      const student: Student = { id: uid(), name: validation.name };
-      const newStudents = [...students, student];
-      setStudents(newStudents);
-      setNewStudentName("");
-      setFormData({ name: "", isValid: false });
-      setErrorMessage(""); // 성공 시 에러 메시지 초기화
-
+    async (name: string, gender?: string): Promise<boolean> => {
       try {
-        // 로그인 상태 확인
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        setLoading(true);
+        setError(null);
 
-        if (user) {
-          // 로그인된 사용자: user_data JSONB에 저장
-          const { data: existingData, error: fetchError } = await supabase
-            .from("user_data")
-            .select("data")
-            .eq("user_id", user.id)
-            .single();
-
-          if (fetchError && fetchError.code !== "PGRST116") {
-            console.error("기존 데이터 조회 실패:", fetchError);
-            setStudents(students);
-            setErrorMessage("학생 추가에 실패했습니다.");
-            return false;
-          }
-
-          const userData = existingData?.data || {};
-          const updatedStudents = [...(userData.students || []), student];
-
-          let error;
-          if (existingData) {
-            // 기존 데이터가 있으면 UPDATE
-            const { error: updateError } = await supabase
-              .from("user_data")
-              .update({
-                data: {
-                  ...userData,
-                  students: updatedStudents,
-                },
-              })
-              .eq("user_id", user.id);
-            error = updateError;
-          } else {
-            // 기존 데이터가 없으면 INSERT
-            const { error: insertError } = await supabase
-              .from("user_data")
-              .insert({
-                user_id: user.id,
-                data: {
-                  ...userData,
-                  students: updatedStudents,
-                },
-              });
-            error = insertError;
-          }
-
-          if (error) {
-            console.error("Supabase 학생 추가 실패:", error);
-            // 롤백
-            setStudents(students);
-            setErrorMessage("학생 추가에 실패했습니다.");
-            return false;
-          }
-        } else {
-          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
-          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
 
+        const data = await apiCall(`/api/students?userId=${userId}`, {
+          method: "POST",
+          body: JSON.stringify({ name }),
+        });
+
+        // 성공 시 목록 새로고침
+        await refreshStudents();
         return true;
-      } catch (error) {
-        console.error("학생 추가 중 오류:", error);
-        // 롤백
-        setStudents(students);
-        setErrorMessage("학생 추가에 실패했습니다.");
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "학생 추가 실패";
+        setError(errorMessage);
+        console.error("학생 추가 실패:", err);
         return false;
+      } finally {
+        setLoading(false);
       }
     },
-    [students, setStudents, setNewStudentName]
+    [refreshStudents]
   );
+
+  // ===== 학생 수정 =====
+
+  const updateStudent = useCallback(
+    async (
+      id: string,
+      updates: { name?: string; gender?: string }
+    ): Promise<boolean> => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const data = await apiCall(`/api/students/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(updates),
+        });
+
+        // 성공 시 목록 새로고침
+        await refreshStudents();
+        return true;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "학생 수정 실패";
+        setError(errorMessage);
+        console.error("학생 수정 실패:", err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refreshStudents]
+  );
+
+  // ===== 학생 삭제 =====
 
   const deleteStudent = useCallback(
-    async (studentId: string): Promise<boolean> => {
-      const newStudents = students.filter((x) => x.id !== studentId);
-      setStudents(newStudents);
-
+    async (id: string): Promise<boolean> => {
       try {
-        // 로그인 상태 확인
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        setLoading(true);
+        setError(null);
 
-        if (user) {
-          // 로그인된 사용자: user_data JSONB에서 삭제
-          const { data: existingData, error: fetchError } = await supabase
-            .from("user_data")
-            .select("data")
-            .eq("user_id", user.id)
-            .single();
+        const data = await apiCall(`/api/students/${id}`, {
+          method: "DELETE",
+        });
 
-          if (fetchError && fetchError.code !== "PGRST116") {
-            console.error("기존 데이터 조회 실패:", fetchError);
-            setStudents(students);
-            return false;
-          }
-
-          const userData = existingData?.data || {};
-          const updatedStudents = (userData.students || []).filter(
-            (s: any) => s.id !== studentId
-          );
-
-          let error;
-          if (existingData) {
-            // 기존 데이터가 있으면 UPDATE
-            const { error: updateError } = await supabase
-              .from("user_data")
-              .update({
-                data: {
-                  ...userData,
-                  students: updatedStudents,
-                },
-              })
-              .eq("user_id", user.id);
-            error = updateError;
-          } else {
-            // 기존 데이터가 없으면 INSERT (빈 학생 목록)
-            const { error: insertError } = await supabase
-              .from("user_data")
-              .insert({
-                user_id: user.id,
-                data: {
-                  ...userData,
-                  students: updatedStudents,
-                },
-              });
-            error = insertError;
-          }
-
-          if (error) {
-            console.error("Supabase 학생 삭제 실패:", error);
-            // 롤백
-            setStudents(students);
-            return false;
-          }
-        } else {
-          // 로그인 안된 사용자: 로컬 상태만 업데이트 (저장 안함)
-          console.log("로그인하지 않은 사용자 - 로컬 상태만 업데이트");
-        }
-
+        // 성공 시 목록 새로고침
+        await refreshStudents();
         return true;
-      } catch (error) {
-        console.error("학생 삭제 중 오류:", error);
-        // 롤백
-        setStudents(students);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "학생 삭제 실패";
+        setError(errorMessage);
+        console.error("학생 삭제 실패:", err);
         return false;
+      } finally {
+        setLoading(false);
       }
     },
-    [students, setStudents]
+    [refreshStudents]
   );
 
-  const selectStudent = (studentId: string): string => {
-    // 선택된 학생이 이미 선택된 상태라면 선택 해제
-    const newSelectedId = students.find((s) => s.id === studentId)
-      ? studentId
-      : "";
-    return newSelectedId;
-  };
+  // ===== 학생 조회 =====
 
-  const updateStudentName = (name: string) => {
-    const validation = validateStudentName(name);
-    setFormData(validation);
-  };
+  const getStudent = useCallback(
+    async (id: string): Promise<Student | null> => {
+      try {
+        const data = await apiCall(`/api/students/${id}`);
+        return data.data || null;
+      } catch (err) {
+        console.error("학생 조회 실패:", err);
+        return null;
+      }
+    },
+    []
+  );
 
-  const handleShowUpgradeModal = () => {
-    showUpgradeModal("addStudent", students.length, 10);
-  };
+  // ===== 에러 초기화 =====
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
+  // ===== 초기 데이터 로드 =====
+
+  useEffect(() => {
+    refreshStudents();
+  }, [refreshStudents]);
+
+  // ===== 통계 =====
+
+  const studentCount = students.length;
+
+  // ===== 반환값 =====
 
   return {
+    // 상태
+    students,
+    loading,
+    error,
+
+    // 액션
     addStudent,
+    updateStudent,
     deleteStudent,
-    selectStudent,
-    updateStudentName,
-    loadStudents,
-    formData,
-    errorMessage,
-    showUpgradeModal: handleShowUpgradeModal,
+    getStudent,
+
+    // 유틸리티
+    refreshStudents,
+    clearError,
+
+    // 통계
+    studentCount,
   };
 };

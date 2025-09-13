@@ -5,12 +5,12 @@ import TimeTableRow from "../molecules/TimeTableRow";
 
 // 🆕 드래그 미리보기 상태 타입 정의
 interface DragPreviewState {
-  draggedSession: Session | null;
-  targetWeekday: number | null;
-  targetTime: string | null;
-  targetYPosition: number | null;
-  previewPositions: Map<string, number>; // 세션 ID -> Y축 위치
-  conflictSessions: Session[]; // 충돌하는 세션들
+  draggedSession: Session | null; // 현재 드래그 중인 세션 객체 (드래그 시작 시 설정)
+  targetWeekday: number | null; // 드래그 대상 요일 (0=월요일, 1=화요일, ..., 6=일요일)
+  targetTime: string | null; // 드래그 대상 시간 (예: "09:00", "10:30")
+  targetYPosition: number | null; // 드래그 대상 Y축 위치 (픽셀 단위, 0부터 시작)
+  previewPositions: Map<string, number>; // 모든 세션의 미리보기 Y축 위치 (세션 ID -> 픽셀 위치)
+  conflictSessions: Session[]; // 드래그된 세션과 시간이 겹치는 충돌 세션들의 배열
 }
 
 interface TimeTableGridProps {
@@ -186,14 +186,17 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         for (let i = 0; i < sortedSessions.length; i++) {
           const currentSession = sortedSessions[i];
 
-          // 🆕 사용자가 설정한 yPosition이 있으면 우선 사용
-          let targetYPosition = currentSession.yPosition || 0;
+          // 🆕 논리적 위치를 픽셀 위치로 변환
+          let targetYPosition = 0;
 
-          // 🆕 사용자 정의 yPosition이 없거나 겹치는 경우에만 자동 계산
-          if (
-            currentSession.yPosition === undefined ||
-            currentSession.yPosition === null
-          ) {
+          if (currentSession.yPosition && currentSession.yPosition > 0) {
+            // 논리적 위치(1, 2, 3...)를 픽셀 위치로 변환
+            // 1번째 자리 = 0px, 2번째 자리 = 47px, 3번째 자리 = 94px
+            targetYPosition = (currentSession.yPosition - 1) * sessionHeight;
+          }
+
+          // 🆕 사용자 정의 yPosition이 없으면 자동 계산
+          if (!currentSession.yPosition || currentSession.yPosition <= 0) {
             targetYPosition = 0;
             while (targetYPosition <= maxYPosition) {
               const conflictingSessions =

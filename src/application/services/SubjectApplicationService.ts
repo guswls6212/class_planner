@@ -4,9 +4,9 @@ import { SubjectRepository } from "@/infrastructure/interfaces";
 export class SubjectApplicationServiceImpl {
   constructor(private subjectRepository: SubjectRepository) {}
 
-  async getAllSubjects(): Promise<Subject[]> {
+  async getAllSubjects(userId: string): Promise<Subject[]> {
     try {
-      return await this.subjectRepository.getAll();
+      return await this.subjectRepository.getAll(userId);
     } catch (error) {
       console.error("과목 목록 조회 중 에러 발생:", error);
       return [];
@@ -22,13 +22,16 @@ export class SubjectApplicationServiceImpl {
     }
   }
 
-  async addSubject(subjectData: {
-    name: string;
-    color: string;
-  }): Promise<Subject> {
+  async addSubject(
+    subjectData: {
+      name: string;
+      color: string;
+    },
+    userId: string
+  ): Promise<Subject> {
     try {
       // 중복 체크
-      const existingSubjects = await this.subjectRepository.getAll();
+      const existingSubjects = await this.subjectRepository.getAll(userId);
       const isDuplicate = existingSubjects.some(
         (subject) => subject.name === subjectData.name
       );
@@ -37,7 +40,8 @@ export class SubjectApplicationServiceImpl {
         throw new Error("이미 존재하는 과목 이름입니다.");
       }
 
-      return await this.subjectRepository.create(subjectData);
+      const newSubject = Subject.create(subjectData.name, subjectData.color);
+      return await this.subjectRepository.create(newSubject, userId);
     } catch (error) {
       console.error("과목 추가 중 에러 발생:", error);
       throw error;

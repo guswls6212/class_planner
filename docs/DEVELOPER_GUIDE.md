@@ -15,9 +15,10 @@ class-planner/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/               # API 라우트 (Clean Architecture 통합)
-│   │   │   ├── students/      # 학생 관리 API
-│   │   │   ├── subjects/      # 과목 관리 API
-│   │   │   └── sessions/      # 세션 관리 API
+│   │   │   ├── data/          # 🆕 통합 데이터 관리 API (JSONB 기반)
+│   │   │   ├── students/      # 학생 관리 API (개별 CRUD)
+│   │   │   ├── subjects/      # 과목 관리 API (개별 CRUD)
+│   │   │   └── sessions/      # 세션 관리 API (개별 CRUD)
 │   │   ├── students/          # 학생 페이지
 │   │   ├── subjects/          # 과목 페이지
 │   │   ├── schedule/          # 시간표 페이지
@@ -151,9 +152,10 @@ class-planner/
 
 **파일 구조:**
 
-- `src/app/api/students/route.ts` - 학생 관리 API (GET, POST, DELETE)
-- `src/app/api/subjects/route.ts` - 과목 관리 API (GET, POST, DELETE)
-- `src/app/api/sessions/route.ts` - 세션 관리 API (GET, POST, DELETE)
+- `src/app/api/data/route.ts` - 🆕 통합 데이터 관리 API (JSONB 기반)
+- `src/app/api/students/route.ts` - 학생 관리 API (GET, POST, PUT, DELETE)
+- `src/app/api/subjects/route.ts` - 과목 관리 API (GET, POST, PUT, DELETE)
+- `src/app/api/sessions/route.ts` - 세션 관리 API (GET, POST, PUT, DELETE)
 - `src/infrastructure/RepositoryFactory.ts` - 리포지토리 팩토리
 - `src/application/services/` - 애플리케이션 서비스 계층
 
@@ -165,6 +167,77 @@ class-planner/
 - TypeScript 기반 타입 안정성
 - 환경 변수 기반 설정 (`process.env.NEXT_PUBLIC_`)
 - 의존성 주입을 통한 테스트 가능한 구조
+- **JSONB 기반 통합 데이터 관리** (성능 최적화)
+
+#### **🚀 JSONB 기반 통합 데이터 관리 시스템**
+
+**개요:**
+Schedule 페이지에서 students, subjects, sessions 정보가 모두 필요한 경우, 개별 API 호출 대신 JSONB 구조를 활용한 통합 데이터 관리로 성능을 최적화했습니다.
+
+**파일 구조:**
+
+- `src/app/api/data/route.ts` - 통합 데이터 API Routes (GET, PUT)
+- `src/application/services/DataApplicationService.ts` - 통합 데이터 애플리케이션 서비스
+- `src/hooks/useIntegratedData.ts` - 통합 데이터 관리 훅
+
+**JSONB 데이터 구조:**
+
+```json
+{
+  "version": "1.0",
+  "students": [
+    { "id": "student-1", "name": "김철수" },
+    { "id": "student-2", "name": "이영희" }
+  ],
+  "subjects": [
+    { "id": "subject-1", "name": "수학", "color": "#ff0000" },
+    { "id": "subject-2", "name": "영어", "color": "#0000ff" }
+  ],
+  "sessions": [
+    { "id": "session-1", "startsAt": "09:00", "endsAt": "10:00", "weekday": 0 }
+  ],
+  "enrollments": [
+    { "id": "enrollment-1", "studentId": "student-1", "subjectId": "subject-1" }
+  ],
+  "lastModified": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**성능 개선 효과:**
+
+- **API 호출 수**: 3회 → 1회 (66% 감소)
+- **네트워크 요청**: 3번 → 1번 (66% 감소)
+- **데이터 일관성**: 각각 다른 시점 → 동일한 시점 (100% 보장)
+- **응답 시간**: 개별 호출 합계 → 단일 호출 (단축)
+
+**사용법:**
+
+```typescript
+// Schedule 페이지에서 통합 데이터 훅 사용
+const {
+  data: { students, subjects, sessions, enrollments },
+  loading,
+  error,
+  updateData,
+} = useIntegratedData();
+
+// 세션 추가 (통합 데이터 업데이트 방식)
+const addSession = useCallback(
+  async (sessionData: any) => {
+    const newSessions = [
+      ...sessions,
+      { ...sessionData, id: crypto.randomUUID() },
+    ];
+    await updateData({ sessions: newSessions });
+  },
+  [sessions, updateData]
+);
+```
+
+**API Routes:**
+
+- `GET /api/data` - 전체 사용자 데이터 조회
+- `PUT /api/data` - 전체 사용자 데이터 업데이트
 
 #### **인증 및 로그인 시스템**
 
@@ -322,11 +395,13 @@ npm run build
 ### 📋 핵심 원칙
 
 #### **1. 인라인 스타일 사용 금지**
+
 - ❌ **인라인 스타일 사용 금지**: `style={{...}}` 사용을 피해야 합니다
 - ✅ **TailwindCSS 클래스 사용**: 모든 스타일은 `className`에서 TailwindCSS 유틸리티 클래스로 관리
 - ✅ **CSS 변수 활용**: 커스텀 값들은 `tailwind.config.ts`에 등록하여 의미 있는 클래스명으로 사용
 
 #### **2. CSS 우선순위 이해**
+
 웹 브라우저의 CSS 우선순위는 다음과 같습니다:
 
 1. **`!important` (최상위)**: 다른 모든 것을 무시
@@ -336,6 +411,7 @@ npm run build
 5. **태그 선택자 (낮음)**: `div`, `p` 등 태그 이름으로 지정
 
 #### **3. 인라인 스타일의 문제점**
+
 - **재사용성 불가**: 특정 태그에 고정되어 다른 곳에서 재사용 불가
 - **유지보수 어려움**: 디자인 시스템 변경 시 모든 인라인 스타일을 일일이 수정해야 함
 - **반응형/상태 대응 불가**: `:hover`, `md:` 등 TailwindCSS의 강력한 기능 사용 불가
@@ -344,6 +420,7 @@ npm run build
 ### 🔧 올바른 TailwindCSS 사용법
 
 #### **수정 전 (인라인 스타일)**
+
 ```jsx
 <div
   className="relative custom-scrollbar"
@@ -361,15 +438,15 @@ npm run build
 ```
 
 #### **수정 후 (TailwindCSS 클래스)**
+
 ```jsx
-<div
-  className="relative custom-scrollbar list-none m-0 p-0 max-h-[400px] overflow-auto bg-bg-primary rounded-md border border-border"
-/>
+<div className="relative custom-scrollbar list-none m-0 p-0 max-h-[400px] overflow-auto bg-bg-primary rounded-md border border-border" />
 ```
 
 ### 🎯 커스텀 값 설정 방법
 
 #### **1. tailwind.config.ts 설정**
+
 ```typescript
 theme: {
   extend: {
@@ -403,12 +480,13 @@ theme: {
 ```
 
 #### **2. 사용 예시**
+
 ```jsx
 // ✅ 올바른 사용법
 <div className="bg-bg-primary text-text-muted p-md rounded-md border border-border-light">
 
 // ❌ 잘못된 사용법
-<div 
+<div
   className="bg-white"
   style={{
     backgroundColor: "var(--color-bg-primary)",
@@ -421,6 +499,7 @@ theme: {
 ### 📝 스타일링 체크리스트
 
 #### **코드 작성 시**
+
 - [ ] 인라인 스타일 사용하지 않음
 - [ ] 모든 스타일이 `className`에 TailwindCSS 클래스로 작성됨
 - [ ] 커스텀 값들은 `tailwind.config.ts`에 등록됨
@@ -428,6 +507,7 @@ theme: {
 - [ ] 상태 클래스 (`hover:`, `focus:` 등) 적절히 사용됨
 
 #### **리뷰 시**
+
 - [ ] 인라인 스타일이 없는지 확인
 - [ ] TailwindCSS 클래스가 의미 있게 사용되었는지 확인
 - [ ] 디자인 시스템과 일관성 있는지 확인
@@ -500,7 +580,10 @@ theme: {
 
 **예시:**
 
-- `useStudentManagement.ts` - 학생 관리 로직
+- `useIntegratedData.ts` - 🆕 JSONB 기반 통합 데이터 관리
+- `useStudentManagement.ts` - 학생 관리 로직 (API Routes 기반)
+- `useSubjectManagement.ts` - 과목 관리 로직 (API Routes 기반)
+- `useSessionManagement.ts` - 세션 관리 로직 (API Routes 기반)
 - `useDisplaySessions.ts` - 세션 표시 로직
 - `useLocal.ts` - localStorage 관리
 - `useTimeValidation.ts` - 시간 검증 로직
@@ -508,9 +591,77 @@ theme: {
 
 ### 🔧 훅 사용 가이드라인
 
-#### **세션 관리 훅**
+#### **🚀 통합 데이터 관리 훅 (권장)**
 
-**1. `useSessionManagement` (레거시, deprecated)**
+**1. `useIntegratedData` (JSONB 기반 통합 데이터 관리)**
+
+- **위치**: `src/hooks/useIntegratedData.ts`
+- **용도**: JSONB 구조를 활용한 효율적인 통합 데이터 관리
+- **사용 시점**: Schedule 페이지 등 여러 데이터가 동시에 필요한 곳
+- **특징**:
+  - 한 번의 API 호출로 students, subjects, sessions, enrollments 모두 조회
+  - 네트워크 요청 66% 감소 (3회 → 1회)
+  - 데이터 일관성 100% 보장 (동일한 시점의 데이터)
+  - 통합 업데이트 기능 제공
+
+**사용 예시:**
+
+```typescript
+const {
+  data: { students, subjects, sessions, enrollments },
+  loading,
+  error,
+  updateData,
+} = useIntegratedData();
+
+// 세션 추가
+const addSession = useCallback(
+  async (sessionData: any) => {
+    const newSessions = [
+      ...sessions,
+      { ...sessionData, id: crypto.randomUUID() },
+    ];
+    await updateData({ sessions: newSessions });
+  },
+  [sessions, updateData]
+);
+```
+
+#### **개별 데이터 관리 훅**
+
+**2. `useStudentManagement` (API Routes 기반)**
+
+- **위치**: `src/hooks/useStudentManagement.ts`
+- **용도**: 학생 데이터 CRUD (API Routes 기반)
+- **사용 시점**: 학생 관리 페이지 등 개별 데이터 관리가 필요한 곳
+- **특징**:
+  - `/api/students` API Routes 사용
+  - Clean Architecture 패턴 적용
+  - 에러 처리 및 로딩 상태 관리
+
+**3. `useSubjectManagement` (API Routes 기반)**
+
+- **위치**: `src/hooks/useSubjectManagement.ts`
+- **용도**: 과목 데이터 CRUD (API Routes 기반)
+- **사용 시점**: 과목 관리 페이지 등 개별 데이터 관리가 필요한 곳
+- **특징**:
+  - `/api/subjects` API Routes 사용
+  - 기본 과목과 사용자 과목 통합 관리
+  - 색상 선택 기능 포함
+
+**4. `useSessionManagement` (API Routes 기반)**
+
+- **위치**: `src/hooks/useSessionManagement.ts`
+- **용도**: 세션 데이터 CRUD (API Routes 기반)
+- **사용 시점**: 세션 관리가 필요한 곳
+- **특징**:
+  - `/api/sessions` API Routes 사용
+  - 드래그 앤 드롭 위치 업데이트 지원
+  - 세션 위치 및 시간 관리
+
+#### **레거시 훅 (Deprecated)**
+
+**5. `useSessionManagement` (레거시, deprecated)**
 
 - **위치**: `src/hooks/useSessionManagement.ts`
 - **용도**: 로컬 스토리지 기반 세션 데이터 관리 (레거시)

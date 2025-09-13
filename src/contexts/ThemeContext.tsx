@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../utils/supabaseClient";
+import { useUserSettings } from "../hooks/useUserSettings";
 
 type Theme = "light" | "dark";
 
@@ -10,7 +10,6 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -25,19 +24,27 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>("dark"); // 기본값으로 다크 테마 설정
+  const [theme, setTheme] = useState<Theme>("light"); // 기본값을 light로 변경
   const [isClient, setIsClient] = useState(false);
+
+  // user_settings에서 테마 설정 가져오기
+  const { settings, updateTheme } = useUserSettings();
 
   // 클라이언트 사이드에서만 localStorage 접근
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== "undefined") {
+
+    // user_settings에서 테마 설정이 있으면 우선 사용
+    if (settings.theme && settings.theme !== theme) {
+      setTheme(settings.theme);
+    } else if (typeof window !== "undefined" && !settings.theme) {
+      // user_settings에 테마가 없으면 localStorage에서 가져오기
       const savedTheme = localStorage.getItem("theme") as Theme;
-      if (savedTheme) {
+      if (savedTheme && savedTheme !== theme) {
         setTheme(savedTheme);
       }
     }
-  }, []);
+  }, [settings.theme, theme]);
 
   // 인증 상태 캐싱은 현재 사용하지 않음 (향후 확장을 위해 주석으로 유지)
 
@@ -54,42 +61,25 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     if (typeof document !== "undefined" && document.body) {
       document.body.setAttribute("data-theme", theme);
     }
-
-    // Supabase에 테마 설정 저장 (로그인된 사용자에게만)
-    const saveThemeToSupabase = async () => {
-      // localStorage에서 사용자 ID 가져오기
-      if (typeof window === "undefined") return;
-
-      const userId = localStorage.getItem("supabase_user_id");
-
-      if (!userId) {
-        return; // 사용자 ID가 없으면 조용히 건너뜀
-      }
-
-      try {
-        const { error } = await supabase
-          .from("user_settings")
-          .update({
-            theme: theme,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId)
-          .select();
-
-        if (error) {
-          console.error("❌ 테마 설정 저장 실패:", error);
-        }
-        // 성공 시에는 로그를 출력하지 않음 (불필요한 스팸 방지)
-      } catch (error) {
-        console.error("❌ 테마 저장 중 오류:", error);
-      }
-    };
-
-    saveThemeToSupabase();
   }, [theme, isClient]);
 
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
+  const toggleTheme = async () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+
+    // user_settings에 테마 설정 저장 (로그인된 사용자에게만)
+    if (typeof window !== "undefined") {
+      const userId = localStorage.getItem("supabase_user_id");
+
+      if (userId && updateTheme) {
+        try {
+          await updateTheme(newTheme);
+          console.log("✅ 테마 설정 저장 완료:", newTheme);
+        } catch (error) {
+          console.error("❌ 테마 저장 중 오류:", error);
+        }
+      }
+    }
   };
 
   return (

@@ -4,6 +4,7 @@
  */
 
 import { RepositoryRegistry } from "@/infrastructure";
+import { DataApplicationServiceImpl } from "./DataApplicationService";
 import { SessionApplicationServiceImpl } from "./SessionApplicationService";
 import { StudentApplicationServiceImpl } from "./StudentApplicationService";
 import { SubjectApplicationServiceImpl } from "./SubjectApplicationService";
@@ -41,6 +42,14 @@ export class ServiceFactory {
   }
 
   /**
+   * DataApplicationService 인스턴스를 생성합니다.
+   * @returns DataApplicationService 인스턴스
+   */
+  static createDataService(): DataApplicationServiceImpl {
+    return new DataApplicationServiceImpl();
+  }
+
+  /**
    * 모든 Application Services를 생성합니다.
    * @returns 모든 서비스 인스턴스
    */
@@ -49,6 +58,7 @@ export class ServiceFactory {
       studentService: this.createStudentService(),
       subjectService: this.createSubjectService(),
       sessionService: this.createSessionService(),
+      dataService: this.createDataService(),
     };
   }
 }
@@ -77,5 +87,3 @@ export function createSessionService(): SessionApplicationServiceImpl {
   );
   return ServiceFactory.createSessionService();
 }
-
-
