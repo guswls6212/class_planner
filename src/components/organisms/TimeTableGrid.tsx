@@ -92,15 +92,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         const finalYPosition =
           Math.round(targetYPosition / sessionHeight) * sessionHeight;
 
-        console.log("🆕 calculateSmartPosition:", {
-          draggedSessionId: draggedSession.id,
-          targetWeekday,
-          targetTime,
-          targetYPosition,
-          finalYPosition,
-          sessionHeight,
-        });
-
         // 겹침 판단 함수
         const sessionsOverlap = (a: Session, b: Session): boolean => {
           return (
@@ -158,13 +149,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           // 충돌하는 세션을 드래그된 세션 아래로 이동
           const newY = finalYPosition + sessionHeight;
           previewPositions.set(conflictSession.id, newY);
-
-          console.log("🆕 충돌 세션 이동:", {
-            conflictSessionId: conflictSession.id,
-            originalY: currentY,
-            newY: newY,
-            draggedSessionY: finalYPosition,
-          });
         }
 
         return { previewPositions, conflictSessions };
@@ -273,14 +257,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           occupiedPositions.get(targetYPosition)!.push(currentSession);
 
           sessionYPositions.set(currentSession.id, targetYPosition);
-
-          console.log("🆕 getSessionYPositions 세션 배치:", {
-            sessionId: currentSession.id,
-            userYPosition: currentSession.yPosition,
-            finalYPosition: targetYPosition,
-            startsAt: currentSession.startsAt,
-            endsAt: currentSession.endsAt,
-          });
         }
 
         return sessionYPositions;
@@ -333,7 +309,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 🆕 드래그 시작 핸들러
     const handleDragStart = useCallback((session: Session) => {
-      console.log("🆕 드래그 시작:", session);
       setDragPreview({
         draggedSession: session,
         targetWeekday: null,
@@ -348,8 +323,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
         if (!dragPreview.draggedSession) return;
-
-        console.log("🆕 드래그 오버:", { weekday, time, yPosition });
 
         // 🆕 스마트 위치 계산 (자동 충돌 해결)
         const { previewPositions, conflictSessions } = calculateSmartPosition(
@@ -374,8 +347,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 🆕 드래그 종료 핸들러
     const handleDragEnd = useCallback(() => {
-      console.log("🆕 드래그 종료");
-
       // 🆕 드롭 완료 시 미리보기 상태를 실제 데이터에 적용
       if (
         dragPreview.draggedSession &&
@@ -383,23 +354,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         dragPreview.targetTime &&
         dragPreview.targetYPosition !== null
       ) {
-        console.log("🆕 드롭 완료 - 최종 적용:", {
-          sessionId: dragPreview.draggedSession.id,
-          weekday: dragPreview.targetWeekday,
-          time: dragPreview.targetTime,
-          yPosition: dragPreview.targetYPosition,
-        });
-
         // 🆕 세션 위치 업데이트 호출 (드래그된 세션 + 충돌하는 세션들)
         if (onSessionDrop) {
           // 드래그된 세션 업데이트
           const draggedFinalYPosition =
             dragPreview.previewPositions.get(dragPreview.draggedSession.id) ||
             0;
-          console.log("🆕 드래그된 세션 최종 적용:", {
-            sessionId: dragPreview.draggedSession.id,
-            finalYPosition: draggedFinalYPosition,
-          });
 
           onSessionDrop(
             dragPreview.draggedSession.id,
@@ -412,11 +372,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           for (const conflictSession of dragPreview.conflictSessions) {
             const conflictFinalYPosition =
               dragPreview.previewPositions.get(conflictSession.id) || 0;
-
-            console.log("🆕 충돌 세션 최종 적용:", {
-              sessionId: conflictSession.id,
-              finalYPosition: conflictFinalYPosition,
-            });
 
             onSessionDrop(
               conflictSession.id,

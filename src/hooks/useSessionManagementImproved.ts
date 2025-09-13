@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
+import { minutesToTime, timeToMinutes } from "../lib/planner";
 import { supabase } from "../utils/supabaseClient";
 
 // 🆕 다음 시간 계산 헬퍼 함수
@@ -496,13 +497,13 @@ export const useSessionManagement = (
   );
 
   /**
-   * 🆕 세션 위치 업데이트 (드래그 앤 드롭으로 이동 - 시간은 유지)
+   * 🆕 세션 위치 업데이트 (드래그 앤 드롭으로 이동 - 시간도 함께 변경)
    */
   const updateSessionPosition = useCallback(
     async (
       sessionId: string,
       weekday: number,
-      time: string, // 드롭된 시간 (참고용, 실제로는 사용하지 않음)
+      time: string, // 드롭된 시간 (새로운 시작 시간)
       yPosition: number
     ) => {
       try {
@@ -515,14 +516,27 @@ export const useSessionManagement = (
 
         if (!user) {
           // 로그인 안된 사용자: localStorage에서 업데이트
-          console.log("🔄 localStorage에서 세션 위치 업데이트");
+          console.log(
+            "🔄 localStorage에서 세션 위치 업데이트 (시간 변경 포함)"
+          );
           const updatedSessions = sessions.map((session) => {
             if (session.id === sessionId) {
+              // 🆕 기존 세션의 지속 시간 계산
+              const startMinutes = timeToMinutes(session.startsAt);
+              const endMinutes = timeToMinutes(session.endsAt);
+              const durationMinutes = endMinutes - startMinutes;
+
+              // 🆕 새로운 종료 시간 계산
+              const newStartMinutes = timeToMinutes(time);
+              const newEndMinutes = newStartMinutes + durationMinutes;
+              const newEndTime = minutesToTime(newEndMinutes);
+
               return {
                 ...session,
                 weekday,
-                // 🆕 시간은 유지하고 yPosition만 변경
-                yPosition: Math.round(yPosition / 47) * 47, // 47px 단위로 정렬
+                startsAt: time, // 🆕 새로운 시작 시간
+                endsAt: newEndTime, // 🆕 새로운 종료 시간
+                yPosition: Math.round(yPosition / 51) * 51, // 51px 단위로 정렬
               };
             }
             return session;
@@ -532,9 +546,10 @@ export const useSessionManagement = (
         }
 
         // 로그인된 사용자: Supabase에서 업데이트
-        console.log("🔄 Supabase에서 세션 위치 업데이트 (시간 유지):", {
+        console.log("🔄 Supabase에서 세션 위치 업데이트 (시간 변경 포함):", {
           sessionId,
           weekday,
+          time,
           yPosition,
         });
 
@@ -552,14 +567,25 @@ export const useSessionManagement = (
         const data = userData?.data || {};
         const currentSessions = data.sessions || [];
 
-        // 세션 위치 업데이트 (시간은 유지하고 위치만 변경)
+        // 세션 위치 업데이트 (시간도 함께 변경)
         const updatedSessions = currentSessions.map((session: any) => {
           if (session.id === sessionId) {
+            // 🆕 기존 세션의 지속 시간 계산
+            const startMinutes = timeToMinutes(session.startsAt);
+            const endMinutes = timeToMinutes(session.endsAt);
+            const durationMinutes = endMinutes - startMinutes;
+
+            // 🆕 새로운 종료 시간 계산
+            const newStartMinutes = timeToMinutes(time);
+            const newEndMinutes = newStartMinutes + durationMinutes;
+            const newEndTime = minutesToTime(newEndMinutes);
+
             return {
               ...session,
               weekday,
-              // 🆕 시간은 유지하고 yPosition만 변경
-              yPosition: Math.round(yPosition / 47) * 47, // 47px 단위로 정렬
+              startsAt: time, // 🆕 새로운 시작 시간
+              endsAt: newEndTime, // 🆕 새로운 종료 시간
+              yPosition: Math.round(yPosition / 51) * 51, // 51px 단위로 정렬
             };
           }
           return session;
@@ -582,9 +608,10 @@ export const useSessionManagement = (
         // 로컬 상태 업데이트
         setSessions(updatedSessions);
 
-        console.log("세션 위치 업데이트 완료 (시간 유지):", {
+        console.log("세션 위치 업데이트 완료 (시간 변경 포함):", {
           sessionId,
           weekday,
+          time,
           yPosition,
         });
       } catch (err) {
