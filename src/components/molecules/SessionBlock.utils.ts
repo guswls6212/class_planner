@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
+import type { CSSProperties } from "react";
 
 // 타입을 직접 정의하여 import 의존성 제거
 type Session = {
@@ -31,17 +32,17 @@ export const getGroupStudentNames = (
   // 🆕 필터링된 상태에서는 선택된 학생의 이름만 반환
   if (selectedStudentId) {
     const selectedStudentEnrollment = session.enrollmentIds.find(
-      enrollmentId => {
-        const enrollment = enrollments?.find(e => e.id === enrollmentId);
+      (enrollmentId) => {
+        const enrollment = enrollments?.find((e) => e.id === enrollmentId);
         return enrollment?.studentId === selectedStudentId;
       }
     );
 
     if (selectedStudentEnrollment) {
       const enrollment = enrollments?.find(
-        e => e.id === selectedStudentEnrollment
+        (e) => e.id === selectedStudentEnrollment
       );
-      const student = students?.find(s => s.id === enrollment?.studentId);
+      const student = students?.find((s) => s.id === enrollment?.studentId);
       return student?.name ? [student.name] : [];
     }
     return [];
@@ -49,11 +50,11 @@ export const getGroupStudentNames = (
 
   // 전체 학생 이름 반환 (기존 로직)
   return session.enrollmentIds
-    .map(enrollmentId => {
-      const enrollment = enrollments?.find(e => e.id === enrollmentId);
+    .map((enrollmentId) => {
+      const enrollment = enrollments?.find((e) => e.id === enrollmentId);
       if (!enrollment) return null;
 
-      const student = students?.find(s => s.id === enrollment.studentId);
+      const student = students?.find((s) => s.id === enrollment.studentId);
       return student?.name;
     })
     .filter(Boolean) as string[];
@@ -67,35 +68,35 @@ export const getSessionSubject = (
 ): Subject | null => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
-    console.warn('🔍 SessionBlock: enrollmentIds가 비어있음', session.id);
+    console.warn("🔍 SessionBlock: enrollmentIds가 비어있음", session.id);
     return null;
   }
 
   // 첫 번째 enrollment에서 과목 정보 가져오기
   const firstEnrollment = enrollments?.find(
-    e => e.id === session.enrollmentIds[0]
+    (e) => e.id === session.enrollmentIds[0]
   );
   if (!firstEnrollment) {
-    console.warn('🔍 SessionBlock: enrollment를 찾을 수 없음', {
+    console.warn("🔍 SessionBlock: enrollment를 찾을 수 없음", {
       sessionId: session.id,
       enrollmentId: session.enrollmentIds[0],
-      availableEnrollments: enrollments?.map(e => e.id),
+      availableEnrollments: enrollments?.map((e) => e.id),
     });
     return null;
   }
 
-  const subject = subjects?.find(s => s.id === firstEnrollment.subjectId);
+  const subject = subjects?.find((s) => s.id === firstEnrollment.subjectId);
   if (!subject) {
-    console.warn('🔍 SessionBlock: 과목을 찾을 수 없음', {
+    console.warn("🔍 SessionBlock: 과목을 찾을 수 없음", {
       sessionId: session.id,
       enrollmentId: firstEnrollment.id,
       subjectId: firstEnrollment.subjectId,
-      availableSubjects: subjects?.map(s => ({ id: s.id, name: s.name })),
+      availableSubjects: subjects?.map((s) => ({ id: s.id, name: s.name })),
     });
 
     // 🆕 과목을 찾을 수 없을 때 기본 과목 반환 (Unknown 대신)
     if (subjects && subjects.length > 0) {
-      console.log('🔍 SessionBlock: 기본 과목 사용', subjects[0]);
+      console.log("🔍 SessionBlock: 기본 과목 사용", subjects[0]);
       return subjects[0];
     }
     return null;
@@ -106,14 +107,16 @@ export const getSessionSubject = (
 
 // 🆕 그룹 학생 이름을 표시하는 함수 (최대 5명까지 표시)
 export const getGroupStudentDisplayText = (studentNames: string[]): string => {
-  if (studentNames.length === 0) return '';
+  if (studentNames.length === 0) return "";
   if (studentNames.length === 1) return studentNames[0];
-  if (studentNames.length === 2) return studentNames.join(', ');
-  if (studentNames.length === 3) return studentNames.join(', ');
-  if (studentNames.length === 4) return studentNames.join(', ');
-  if (studentNames.length === 5) return studentNames.join(', ');
+  if (studentNames.length === 2) return studentNames.join(", ");
+  if (studentNames.length === 3) return studentNames.join(", ");
+  if (studentNames.length === 4) return studentNames.join(", ");
+  if (studentNames.length === 5) return studentNames.join(", ");
   // 6명 이상인 경우: 첫 5명 + 외 N명
-  return `${studentNames.slice(0, 5).join(', ')} 외 ${studentNames.length - 5}명`;
+  return `${studentNames.slice(0, 5).join(", ")} 외 ${
+    studentNames.length - 5
+  }명`;
 };
 
 // 🆕 세션 셀 높이를 동적으로 조정하는 스타일
@@ -124,22 +127,22 @@ export const getSessionBlockStyles = (
   subjectColor?: string
 ): CSSProperties => {
   return {
-    position: 'absolute',
+    position: "absolute",
     left,
     top: yOffset + 1, // 🆕 요일 경계선과 겹치지 않도록 1px 여백 추가
-    height: '47px', // 🆕 과목 이름이 잘리지 않도록 높이 증가
+    height: `${SESSION_CELL_HEIGHT}px`, // 🆕 과목 이름이 잘리지 않도록 높이 증가
     width,
-    background: subjectColor ?? '#888',
-    color: '#fff',
+    background: subjectColor ?? "#888",
+    color: "#fff",
     borderRadius: 4,
-    padding: '0px', // 🆕 padding을 완전히 제거
+    padding: "0px", // 🆕 padding을 완전히 제거
     fontSize: 12,
-    display: 'flex',
-    alignItems: 'center',
-    overflow: 'hidden',
+    display: "flex",
+    alignItems: "center",
+    overflow: "hidden",
     zIndex: 1000 + yOffset,
-    border: '1px solid rgba(255,255,255,0.2)',
-    cursor: 'pointer',
+    border: "1px solid rgba(255,255,255,0.2)",
+    cursor: "pointer",
   };
 };
 
@@ -152,5 +155,5 @@ export const calculateZIndex = (yOffset: number): number => {
 };
 
 export const getSubjectColor = (subjectColor?: string): string => {
-  return subjectColor && subjectColor.trim() !== '' ? subjectColor : '#888';
+  return subjectColor && subjectColor.trim() !== "" ? subjectColor : "#888";
 };

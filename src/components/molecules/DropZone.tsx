@@ -1,3 +1,4 @@
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import React, { useState } from "react";
 
 interface DropZoneProps {
@@ -54,7 +55,7 @@ export default function DropZone({
     // 🆕 실시간 미리보기를 위한 드래그 오버 처리
     if (onDragOver) {
       // 현재 DropZone의 yPosition을 픽셀 위치로 변환
-      const pixelYPosition = (yPosition - 1) * 47;
+      const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
       onDragOver(weekday, time, pixelYPosition);
     }
   };
@@ -71,7 +72,7 @@ export default function DropZone({
         const sessionId = data.replace("session:", "");
 
         // 현재 DropZone의 yPosition을 픽셀 위치로 변환
-        const pixelYPosition = (yPosition - 1) * 47;
+        const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
 
         if (onSessionDrop) {
           onSessionDrop(sessionId, weekday, time, pixelYPosition);

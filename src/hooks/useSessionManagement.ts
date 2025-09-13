@@ -5,6 +5,7 @@
  * Clean Architecture 패턴을 유지하면서 클라이언트-서버 분리를 구현합니다.
  */
 
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useState } from "react";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { minutesToTime, timeToMinutes } from "../lib/planner";
@@ -205,7 +206,7 @@ export const useSessionManagement = (
         const newEndTime = minutesToTime(newEndMinutes);
 
         // 픽셀 위치를 논리적 위치로 변환 (1, 2, 3...)
-        const logicalPosition = Math.round(yPosition / 47) + 1; // 0px = 1번째, 47px = 2번째, 94px = 3번째
+        const logicalPosition = Math.round(yPosition / SESSION_CELL_HEIGHT) + 1; // 0px = 1번째, SESSION_CELL_HEIGHT px = 2번째, SESSION_CELL_HEIGHT * 2 px = 3번째
 
         const data = await apiCall(`/api/sessions/${sessionId}/position`, {
           method: "PUT",

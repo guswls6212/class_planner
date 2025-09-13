@@ -1,3 +1,4 @@
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
 import type { Session, Subject } from "../../lib/planner";
 import { timeToMinutes } from "../../lib/planner";
@@ -85,10 +86,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         conflictSessions: Session[];
       } => {
         const daySessions = sessions?.get(targetWeekday) || [];
-        const sessionHeight = 47;
+        const sessionHeight = SESSION_CELL_HEIGHT;
 
         // 🆕 사용자가 드래그한 위치를 기반으로 yPosition 계산
-        // targetYPosition은 드롭존 내에서의 상대적 위치 (0~47px)
+        // targetYPosition은 드롭존 내에서의 상대적 위치 (0~SESSION_CELL_HEIGHT px)
         const finalYPosition =
           Math.round(targetYPosition / sessionHeight) * sessionHeight;
 
@@ -156,140 +157,44 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions, timeSlots30Min]
     );
 
-    // 🚀 Phase 1: 개선된 세션 Y축 위치 계산 알고리즘 (필터링된 세션에 최적화)
+    // 🚀 간단한 세션 Y축 위치 계산: 논리적 위치(1,2,3...)를 픽셀 위치로 변환
     const getSessionYPositions = useCallback(
       (weekday: number): Map<string, number> => {
-        // 현재 요일의 실제 세션들을 시작 시간 기준으로 정렬 (O(n log n))
         const daySessions = sessions?.get(weekday) || [];
-        const sortedSessions = [...daySessions].sort(
-          (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
-        );
-
-        if (sortedSessions.length === 0) {
-          return new Map();
-        }
-
-        // 겹침 판단 함수: 일부라도 겹치면 겹치는 것으로 판단
-        const sessionsOverlap = (a: Session, b: Session): boolean => {
-          return (
-            timeToMinutes(a.startsAt) < timeToMinutes(b.endsAt) &&
-            timeToMinutes(b.startsAt) < timeToMinutes(a.endsAt)
-          );
-        };
-
-        // 각 세션의 Y축 위치를 계산
         const sessionYPositions = new Map<string, number>();
-        const occupiedPositions = new Map<number, Session[]>(); // 🆕 각 Y축 위치별 세션 추적
-        const sessionHeight = 47; // 세션 셀 높이
-        const maxYPosition = 500; // 🆕 최대 Y축 위치 제한 (UI 깨짐 방지)
 
-        for (let i = 0; i < sortedSessions.length; i++) {
-          const currentSession = sortedSessions[i];
-
-          // 🆕 논리적 위치를 픽셀 위치로 변환
-          let targetYPosition = 0;
-
-          if (currentSession.yPosition && currentSession.yPosition > 0) {
-            // 논리적 위치(1, 2, 3...)를 픽셀 위치로 변환
-            // 1번째 자리 = 0px, 2번째 자리 = 47px, 3번째 자리 = 94px
-            targetYPosition = (currentSession.yPosition - 1) * sessionHeight;
-          }
-
-          // 🆕 사용자 정의 yPosition이 없으면 자동 계산
-          if (!currentSession.yPosition || currentSession.yPosition <= 0) {
-            targetYPosition = 0;
-            while (targetYPosition <= maxYPosition) {
-              const conflictingSessions =
-                occupiedPositions.get(targetYPosition) || [];
-
-              // 현재 Y축 위치에서 겹치는 세션이 있는지 확인
-              const hasConflict = conflictingSessions.some((existingSession) =>
-                sessionsOverlap(currentSession, existingSession)
-              );
-
-              if (!hasConflict) {
-                // 겹치지 않으면 이 위치 사용
-                break;
-              }
-
-              // 겹치면 다음 위치로 이동
-              targetYPosition += sessionHeight;
-            }
-
-            // 최대 높이를 초과하면 첫 번째 위치에 강제 배치
-            if (targetYPosition > maxYPosition) {
-              targetYPosition = 0;
-            }
-          } else {
-            // 🆕 사용자가 설정한 yPosition이 있어도 겹치는지 확인하고 조정
-            const conflictingSessions =
-              occupiedPositions.get(targetYPosition) || [];
-
-            const hasConflict = conflictingSessions.some((existingSession) =>
-              sessionsOverlap(currentSession, existingSession)
-            );
-
-            if (hasConflict) {
-              // 겹치면 다음 위치로 이동
-              while (targetYPosition <= maxYPosition) {
-                const nextConflictingSessions =
-                  occupiedPositions.get(targetYPosition) || [];
-
-                const nextHasConflict = nextConflictingSessions.some(
-                  (existingSession) =>
-                    sessionsOverlap(currentSession, existingSession)
-                );
-
-                if (!nextHasConflict) {
-                  break;
-                }
-                targetYPosition += sessionHeight;
-              }
-
-              // 최대 높이를 초과하면 첫 번째 위치에 강제 배치
-              if (targetYPosition > maxYPosition) {
-                targetYPosition = 0;
-              }
-            }
-          }
-
-          // 🆕 선택된 위치에 현재 세션 추가
-          if (!occupiedPositions.has(targetYPosition)) {
-            occupiedPositions.set(targetYPosition, []);
-          }
-          occupiedPositions.get(targetYPosition)!.push(currentSession);
-
-          sessionYPositions.set(currentSession.id, targetYPosition);
-        }
+        // 각 세션의 논리적 위치를 픽셀 위치로 변환
+        daySessions.forEach((session) => {
+          const logicalPosition = session.yPosition || 1; // 기본값: 1
+          const pixelPosition = (logicalPosition - 1) * SESSION_CELL_HEIGHT;
+          sessionYPositions.set(session.id, pixelPosition);
+        });
 
         return sessionYPositions;
       },
       [sessions]
     );
 
-    // 🆕 요일별 높이 계산: 기본 47px + 겹침당 47px
+    // 🚀 간단한 요일별 높이 계산: 데이터베이스의 maxYPosition 사용
     const getWeekdayHeight = useCallback(
       (weekday: number): number => {
-        const sessionYPositions = getSessionYPositions(weekday);
         const daySessions = sessions?.get(weekday) || [];
 
         if (daySessions.length === 0) {
-          return 49; // 🆕 기본 높이를 49px로 증가 (위아래 1px 여백을 위한 높이)
+          return 49; // 기본 높이
         }
 
-        // 최대 yPosition을 찾아서 필요한 높이 계산
-        let maxYPosition = 0;
-        for (const yPos of sessionYPositions.values()) {
-          maxYPosition = Math.max(maxYPosition, yPos);
-        }
+        // 데이터베이스에서 저장된 maxYPosition 찾기
+        const maxYPosition = Math.max(
+          ...daySessions.map((session) => session.yPosition || 1)
+        );
 
-        // 🆕 기본 높이 49px + 최대 yPosition + 세션 셀 높이 47px
-        const requiredHeight = Math.max(49, maxYPosition + 47);
-        const finalHeight = Math.max(requiredHeight, 49);
+        // 논리적 위치를 픽셀 높이로 변환
+        const height = maxYPosition * SESSION_CELL_HEIGHT;
 
-        return finalHeight;
+        return Math.max(49, height); // 최소 높이 49px 보장
       },
-      [sessions, getSessionYPositions]
+      [sessions]
     );
 
     // 요일별 높이를 useMemo로 최적화
@@ -300,7 +205,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 그리드 템플릿 행을 useMemo로 최적화
     const gridTemplateRows = useMemo(
-      () => `40px ${weekdayHeights.join("px ")}px`,
+      () => `40px ${weekdayHeights.map((h) => `${h}px`).join(" ")}`,
       [weekdayHeights]
     );
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import Button from "../../components/atoms/Button";
@@ -203,7 +204,7 @@ function SchedulePageContent() {
       const newEndTime = minutesToTime(newEndMinutes);
 
       // 픽셀 위치를 논리적 위치로 변환 (1, 2, 3...)
-      const logicalPosition = Math.round(yPosition / 47) + 1; // 0px = 1번째, 47px = 2번째, 94px = 3번째
+      const logicalPosition = Math.round(yPosition / SESSION_CELL_HEIGHT) + 1; // 0px = 1번째, SESSION_CELL_HEIGHT px = 2번째, SESSION_CELL_HEIGHT * 2 px = 3번째
 
       console.log("🔄 세션 위치 업데이트:", {
         sessionId,

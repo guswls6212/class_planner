@@ -1,6 +1,7 @@
 import React from "react";
 import type { Session, Subject } from "../../lib/planner";
 
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import DropZone from "./DropZone";
 import SessionBlock from "./SessionBlock";
 
@@ -222,7 +223,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         style={{
           position: "relative",
           backgroundColor: "var(--color-background)",
-          minHeight: `${height}px`,
+          height: `${height}px`,
           border: "1px solid var(--color-border-grid)",
           gridColumn: "2 / -1", // 🆕 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
         }}
@@ -231,7 +232,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         {timeSlots30Min.map((timeString, timeIndex) => {
           return Array.from({ length: maxYPosition }, (_, yIndex) => {
             const yPosition = yIndex + 1;
-            const top = yIndex * 47;
+            const top = yIndex * SESSION_CELL_HEIGHT;
 
             return (
               <DropZone
@@ -258,7 +259,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                   top: `${top}px`, // 🆕 yPosition별 위치
                   left: `${timeIndex * 100}px`, // 🆕 30분당 100px
                   width: "100px", // 🆕 30분 단위 너비
-                  height: "47px", // 🆕 각각 47px 높이
+                  height: `${SESSION_CELL_HEIGHT}px`, // 🆕 세션 셀 높이 상수 사용
                   zIndex: 1,
                 }}
               />

@@ -2,6 +2,7 @@
  * yPosition 마이그레이션 유틸리티
  * 기존 픽셀 값(0, 51, 102...)을 논리적 위치(1, 2, 3...)로 변환
  */
+import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 
 import type { Session } from "./planner";
 
@@ -12,7 +13,7 @@ import type { Session } from "./planner";
  */
 export function pixelToLogicalPosition(pixelPosition: number): number {
   if (pixelPosition < 0) return 1; // 음수는 1번째 자리로
-  return Math.round(pixelPosition / 47) + 1; // 0px = 1번째, 47px = 2번째, 94px = 3번째
+  return Math.round(pixelPosition / SESSION_CELL_HEIGHT) + 1; // 0px = 1번째, SESSION_CELL_HEIGHT px = 2번째, SESSION_CELL_HEIGHT * 2 px = 3번째
 }
 
 /**
@@ -22,7 +23,7 @@ export function pixelToLogicalPosition(pixelPosition: number): number {
  */
 export function logicalToPixelPosition(logicalPosition: number): number {
   if (logicalPosition < 1) return 0; // 1 미만은 0px로
-  return (logicalPosition - 1) * 47; // 1번째 = 0px, 2번째 = 47px, 3번째 = 94px
+  return (logicalPosition - 1) * SESSION_CELL_HEIGHT; // 1번째 = 0px, 2번째 = SESSION_CELL_HEIGHT px, 3번째 = SESSION_CELL_HEIGHT * 2 px
 }
 
 /**
