@@ -8,6 +8,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
+    watch: false, // Watch 모드 비활성화 (자동 종료)
     exclude: [
       "node_modules/",
       "dist/",

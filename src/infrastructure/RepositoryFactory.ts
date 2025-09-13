@@ -1,115 +1,108 @@
+import { RepositoryRegistry } from "./container/RepositoryRegistry";
 import {
   EnrollmentRepository,
   SessionRepository,
   StudentRepository,
   SubjectRepository,
-} from "@/infrastructure/interfaces";
-import { SupabaseStudentRepository } from "./repositories/SupabaseStudentRepository";
-import { SupabaseSubjectRepository } from "./repositories/SupabaseSubjectRepository";
+} from "./interfaces";
 
+/**
+ * 새로운 RepositoryFactory
+ * 의존성 주입 컨테이너를 사용하여 Repository를 생성합니다.
+ *
+ * @deprecated 이 파일은 하위 호환성을 위해 유지됩니다.
+ * 새로운 코드에서는 RepositoryRegistry를 직접 사용하세요.
+ */
+export class RepositoryFactory {
+  /**
+   * StudentRepository를 생성합니다.
+   * @returns StudentRepository 인스턴스
+   * @deprecated RepositoryRegistry.getStudentRepository()를 사용하세요.
+   */
+  static createStudentRepository(): StudentRepository {
+    console.warn(
+      "⚠️ RepositoryFactory.createStudentRepository()는 deprecated입니다. RepositoryRegistry.getStudentRepository()를 사용하세요."
+    );
+
+    // Repository가 등록되지 않은 경우 자동으로 등록
+    if (!RepositoryRegistry.isRegistered()) {
+      RepositoryRegistry.registerAll();
+    }
+
+    return RepositoryRegistry.getStudentRepository() as StudentRepository;
+  }
+
+  /**
+   * SubjectRepository를 생성합니다.
+   * @returns SubjectRepository 인스턴스
+   * @deprecated RepositoryRegistry.getSubjectRepository()를 사용하세요.
+   */
+  static createSubjectRepository(): SubjectRepository {
+    console.warn(
+      "⚠️ RepositoryFactory.createSubjectRepository()는 deprecated입니다. RepositoryRegistry.getSubjectRepository()를 사용하세요."
+    );
+
+    // Repository가 등록되지 않은 경우 자동으로 등록
+    if (!RepositoryRegistry.isRegistered()) {
+      RepositoryRegistry.registerAll();
+    }
+
+    return RepositoryRegistry.getSubjectRepository() as SubjectRepository;
+  }
+
+  /**
+   * SessionRepository를 생성합니다.
+   * @returns SessionRepository 인스턴스
+   * @deprecated RepositoryRegistry.getSessionRepository()를 사용하세요.
+   */
+  static createSessionRepository(): SessionRepository {
+    console.warn(
+      "⚠️ RepositoryFactory.createSessionRepository()는 deprecated입니다. RepositoryRegistry.getSessionRepository()를 사용하세요."
+    );
+
+    // Repository가 등록되지 않은 경우 자동으로 등록
+    if (!RepositoryRegistry.isRegistered()) {
+      RepositoryRegistry.registerAll();
+    }
+
+    return RepositoryRegistry.getSessionRepository() as SessionRepository;
+  }
+
+  /**
+   * EnrollmentRepository를 생성합니다.
+   * @returns EnrollmentRepository 인스턴스
+   * @deprecated RepositoryRegistry.getEnrollmentRepository()를 사용하세요.
+   */
+  static createEnrollmentRepository(): EnrollmentRepository {
+    console.warn(
+      "⚠️ RepositoryFactory.createEnrollmentRepository()는 deprecated입니다. RepositoryRegistry.getEnrollmentRepository()를 사용하세요."
+    );
+
+    // Repository가 등록되지 않은 경우 자동으로 등록
+    if (!RepositoryRegistry.isRegistered()) {
+      RepositoryRegistry.registerAll();
+    }
+
+    return RepositoryRegistry.getEnrollmentRepository() as EnrollmentRepository;
+  }
+}
+
+/**
+ * 하위 호환성을 위한 함수형 인터페이스
+ * @deprecated RepositoryFactory 클래스를 사용하세요.
+ */
 export function createStudentRepository(): StudentRepository {
-  // 실제 Supabase 구현 사용
-  return new SupabaseStudentRepository();
+  return RepositoryFactory.createStudentRepository();
 }
 
 export function createSubjectRepository(): SubjectRepository {
-  // 실제 Supabase 구현 사용
-  return new SupabaseSubjectRepository();
+  return RepositoryFactory.createSubjectRepository();
 }
 
 export function createSessionRepository(): SessionRepository {
-  // 테스트를 위한 Mock 구현
-  return {
-    getAll: async () => [
-      {
-        id: "550e8400-e29b-41d4-a716-446655440201",
-        subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: new Date("2024-01-01T09:00:00"),
-        endsAt: new Date("2024-01-01T10:00:00"),
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-        weekday: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "550e8400-e29b-41d4-a716-446655440202",
-        subjectId: "550e8400-e29b-41d4-a716-446655440102",
-        startsAt: new Date("2024-01-01T10:00:00"),
-        endsAt: new Date("2024-01-01T11:00:00"),
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
-        weekday: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-    getById: async (id: string) => {
-      if (id === "550e8400-e29b-41d4-a716-446655440201") {
-        return {
-          id: "550e8400-e29b-41d4-a716-446655440201",
-          subjectId: "550e8400-e29b-41d4-a716-446655440101",
-          startsAt: new Date("2024-01-01T09:00:00"),
-          endsAt: new Date("2024-01-01T10:00:00"),
-          enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-          weekday: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      }
-      return null;
-    },
-    create: async (data) =>
-      ({
-        ...data,
-        id: "new-session-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any),
-    update: async (id, data) =>
-      ({ ...data, id, createdAt: new Date(), updatedAt: new Date() } as any),
-    delete: async () => {},
-  };
+  return RepositoryFactory.createSessionRepository();
 }
 
 export function createEnrollmentRepository(): EnrollmentRepository {
-  // 테스트를 위한 Mock 구현
-  return {
-    getAll: async () => [
-      {
-        id: "550e8400-e29b-41d4-a716-446655440301",
-        studentId: "550e8400-e29b-41d4-a716-446655440001",
-        sessionId: "550e8400-e29b-41d4-a716-446655440201",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "550e8400-e29b-41d4-a716-446655440302",
-        studentId: "550e8400-e29b-41d4-a716-446655440002",
-        sessionId: "550e8400-e29b-41d4-a716-446655440202",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ],
-    getById: async (id: string) => {
-      if (id === "550e8400-e29b-41d4-a716-446655440301") {
-        return {
-          id: "550e8400-e29b-41d4-a716-446655440301",
-          studentId: "550e8400-e29b-41d4-a716-446655440001",
-          sessionId: "550e8400-e29b-41d4-a716-446655440201",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-      }
-      return null;
-    },
-    create: async (data) =>
-      ({
-        ...data,
-        id: "new-enrollment-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any),
-    update: async (id, data) =>
-      ({ ...data, id, createdAt: new Date(), updatedAt: new Date() } as any),
-    delete: async () => {},
-  };
+  return RepositoryFactory.createEnrollmentRepository();
 }
