@@ -39,7 +39,6 @@ export default function DropZone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragEnter = (e: React.DragEvent) => {
-    console.log("🎯 DropZone 드래그 엔터:", { weekday, time, yPosition });
     e.preventDefault();
     setIsDragOver(true);
 
@@ -53,7 +52,6 @@ export default function DropZone({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    console.log("🎯 DropZone 드래그 오버:", { weekday, time, yPosition });
     e.preventDefault();
     setIsDragOver(true);
 

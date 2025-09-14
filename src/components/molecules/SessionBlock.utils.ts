@@ -130,11 +130,13 @@ export const getSessionBlockStyles = (
 ): CSSProperties => {
   // 🆕 투명도 계산 로직
   let opacity = 1.0; // 기본 투명도
+  let visibility: "visible" | "hidden" = "visible"; // 기본 표시
 
   if (isDragging) {
     if (isDraggedSession) {
-      // 드래그된 세션: 조금 더 진하게 (0.7)
-      opacity = 0.7;
+      // 드래그된 세션: 보이지 않게 하지만 공간은 유지 (드래그 이벤트는 정상 처리)
+      opacity = 0;
+      visibility = "hidden";
     } else {
       // 다른 세션들: 투명하게 (0.3)
       opacity = 0.3;
@@ -152,18 +154,24 @@ export const getSessionBlockStyles = (
     borderRadius: 4,
     padding: "0px", // 🆕 padding을 완전히 제거
     fontSize: 12,
-    display: "flex",
+    display: "flex", // 항상 flex로 유지
     alignItems: "center",
     overflow: "hidden",
     zIndex: isDragging && !isDraggedSession ? 0 : 1000 + yOffset, // 🆕 드래그 중일 때 다른 세션들의 z-index를 낮춤
     border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity, // 🆕 투명도 적용
-    transition: "opacity 0.2s ease-in-out", // 🆕 부드러운 투명도 전환
+    visibility, // 🆕 드래그 중인 세션은 숨김
+    transition: "opacity 0.2s ease-in-out, visibility 0.2s ease-in-out", // 🆕 부드러운 투명도 및 표시 전환
     // 🆕 드래그 중일 때 다른 세션들은 드래그 이벤트를 차단하지 않도록 설정
     ...(isDragging &&
       !isDraggedSession && {
         pointerEvents: "none",
+      }),
+    // 🆕 드래그 중인 세션은 드래그 이벤트는 받되 다른 마우스 이벤트는 차단
+    ...(isDragging &&
+      isDraggedSession && {
+        pointerEvents: "auto", // 드래그 이벤트는 받음
       }),
   };
 };

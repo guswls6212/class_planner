@@ -121,19 +121,11 @@ function SessionBlock({
 
   // 🆕 드래그 시작 핸들러
   const handleDragStart = (e: React.DragEvent) => {
-    console.log("🔄 SessionBlock 드래그 시작:", {
-      sessionId: session.id,
-      subjectName: subject?.name,
-      studentNames,
-      startsAt: session.startsAt,
-      endsAt: session.endsAt,
-    });
 
     // 드래그 데이터 설정
     try {
       e.dataTransfer.setData("text/plain", `session:${session.id}`);
       e.dataTransfer.effectAllowed = "move";
-      console.log("✅ 드래그 데이터 설정 완료:", `session:${session.id}`);
     } catch (error) {
       console.error("❌ 드래그 데이터 설정 실패:", error);
     }
@@ -160,11 +152,20 @@ function SessionBlock({
     }
   };
 
+  // 🆕 드래그 중인 세션인지 확인
+  const isDraggedSession = session.id === draggedSessionId;
+
+
   return (
     <div
       style={{
         ...styles,
         cursor: "move", // 🆕 드래그 가능함을 나타내는 커서
+        // 🆕 드래그 중인 세션에 직접 투명도 적용
+        ...(isDragging &&
+          isDraggedSession && {
+            opacity: 0.5,
+          }),
       }}
       onClick={handleClick}
       draggable={true} // 🆕 드래그 가능하도록 설정

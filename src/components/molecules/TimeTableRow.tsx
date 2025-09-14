@@ -99,20 +99,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     const draggedStartMinutes = timeToMinutes(draggedSession.startsAt);
     const draggedEndMinutes = timeToMinutes(draggedSession.endsAt);
 
-    // 드래그된 세션의 요일과 현재 요일이 일치할 때만 콘솔로그 출력
-    if (draggedSession.weekday === weekday) {
-      console.log("🔍 TimeTableRow 드래그 상태 (드래그된 세션의 요일):", {
-        weekday,
-        weekdayName: ["월", "화", "수", "목", "금", "토", "일"][weekday],
-        draggedSession: draggedSession.id,
-        draggedSessionWeekday: draggedSession.weekday,
-        draggedSessionWeekdayName: ["월", "화", "수", "목", "금", "토", "일"][
-          draggedSession.weekday
-        ],
-        draggedTimeRange: `${draggedSession.startsAt}-${draggedSession.endsAt}`,
-        maxYPosition,
-      });
-    }
 
     return true; // 드래그 중이면 true, 시간 범위 체크는 DropZone에서 처리
   }, [dragPreview, weekday, maxYPosition, timeToMinutes]);
@@ -282,16 +268,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             yOffset={session.yOffset}
             onClick={() => onSessionClick(session.session)}
             onDragStart={(e, session) => {
-              console.log("🔄 TimeTableRow에서 세션 드래그 시작:", session.id);
               if (onDragStart) {
                 onDragStart(session);
               }
             }}
             onDragEnd={(e) => {
-              console.log(
-                "🔄 TimeTableRow에서 세션 드래그 종료:",
-                e.dataTransfer.dropEffect
-              );
               if (onDragEnd) {
                 onDragEnd();
               }
