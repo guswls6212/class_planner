@@ -299,6 +299,9 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               }
             }}
             selectedStudentId={selectedStudentId}
+            // 🆕 드래그 상태 전달
+            isDragging={dragPreview?.draggedSession !== null}
+            draggedSessionId={dragPreview?.draggedSession?.id}
           />
         ))}
       </div>

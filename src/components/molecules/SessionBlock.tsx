@@ -36,6 +36,9 @@ interface SessionBlockProps {
   onDragEnd?: (e: React.DragEvent) => void; // 🆕 드래그 종료 핸들러
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
+  // 🆕 드래그 상태 props
+  isDragging?: boolean; // 드래그 중인지 여부
+  draggedSessionId?: string; // 드래그된 세션 ID
 }
 
 export const validateSessionBlockProps = (
@@ -62,6 +65,8 @@ function SessionBlock({
   onDragStart, // 🆕 드래그 시작 핸들러
   onDragEnd, // 🆕 드래그 종료 핸들러
   selectedStudentId, // 🆕 선택된 학생 ID 추가
+  isDragging = false, // 🆕 드래그 상태
+  draggedSessionId, // 🆕 드래그된 세션 ID
 }: SessionBlockProps) {
   // null/undefined 안전 처리
   if (!session) {
@@ -88,7 +93,14 @@ function SessionBlock({
     });
   }
 
-  const styles = getSessionBlockStyles(left, width, yOffset, subject?.color);
+  const styles = getSessionBlockStyles(
+    left,
+    width,
+    yOffset,
+    subject?.color,
+    isDragging, // 🆕 드래그 상태 전달
+    session.id === draggedSessionId // 🆕 현재 세션이 드래그된 세션인지
+  );
 
   const handleClick = (e: React.MouseEvent) => {
     console.log("🖱️ SessionBlock clicked!", {

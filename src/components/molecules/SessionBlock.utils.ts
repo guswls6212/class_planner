@@ -124,8 +124,23 @@ export const getSessionBlockStyles = (
   left: number,
   width: number,
   yOffset: number,
-  subjectColor?: string
+  subjectColor?: string,
+  isDragging?: boolean, // 🆕 드래그 상태
+  isDraggedSession?: boolean // 🆕 현재 세션이 드래그된 세션인지
 ): CSSProperties => {
+  // 🆕 투명도 계산 로직
+  let opacity = 1.0; // 기본 투명도
+
+  if (isDragging) {
+    if (isDraggedSession) {
+      // 드래그된 세션: 조금 더 진하게 (0.7)
+      opacity = 0.7;
+    } else {
+      // 다른 세션들: 투명하게 (0.3)
+      opacity = 0.3;
+    }
+  }
+
   return {
     position: "absolute",
     left,
@@ -143,6 +158,8 @@ export const getSessionBlockStyles = (
     zIndex: 1000 + yOffset,
     border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
+    opacity, // 🆕 투명도 적용
+    transition: "opacity 0.2s ease-in-out", // 🆕 부드러운 투명도 전환
   };
 };
 
