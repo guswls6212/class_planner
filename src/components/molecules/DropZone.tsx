@@ -39,8 +39,12 @@ export default function DropZone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragEnter = (e: React.DragEvent) => {
+    console.log("🎯 DropZone 드래그 엔터:", { weekday, time, yPosition });
     e.preventDefault();
     setIsDragOver(true);
+
+    // 🆕 드롭 효과 설정 (드롭 허용)
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -49,8 +53,12 @@ export default function DropZone({
   };
 
   const handleDragOver = (e: React.DragEvent) => {
+    console.log("🎯 DropZone 드래그 오버:", { weekday, time, yPosition });
     e.preventDefault();
     setIsDragOver(true);
+
+    // 🆕 드롭 효과 설정 (드롭 허용)
+    e.dataTransfer.dropEffect = "move";
 
     // 🆕 실시간 미리보기를 위한 드래그 오버 처리
     if (onDragOver) {
@@ -116,6 +124,11 @@ export default function DropZone({
       : style?.backgroundColor || "transparent",
     cursor: "pointer",
     pointerEvents: "auto" as const, // 클릭 이벤트가 제대로 작동하도록 설정
+    // 🆕 드래그 중일 때 드롭존이 더 잘 보이도록 미세한 배경색 추가
+    ...(isDragging &&
+      !showBorder && {
+        backgroundColor: "rgba(var(--color-primary-rgb), 0.02)",
+      }),
   };
 
   return (

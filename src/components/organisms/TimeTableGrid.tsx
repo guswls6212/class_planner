@@ -1,17 +1,14 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
 import type { Session, Subject } from "../../lib/planner";
-import { timeToMinutes } from "../../lib/planner";
 import TimeTableRow from "../molecules/TimeTableRow";
 
-// 🆕 드래그 미리보기 상태 타입 정의
+// 🆕 드래그 상태 타입 정의 (간소화)
 interface DragPreviewState {
   draggedSession: Session | null; // 현재 드래그 중인 세션 객체 (드래그 시작 시 설정)
   targetWeekday: number | null; // 드래그 대상 요일 (0=월요일, 1=화요일, ..., 6=일요일)
   targetTime: string | null; // 드래그 대상 시간 (예: "09:00", "10:30")
   targetYPosition: number | null; // 드래그 대상 Y축 위치 (픽셀 단위, 0부터 시작)
-  previewPositions: Map<string, number>; // 모든 세션의 미리보기 Y축 위치 (세션 ID -> 픽셀 위치)
-  conflictSessions: Session[]; // 드래그된 세션과 시간이 겹치는 충돌 세션들의 배열
 }
 
 interface TimeTableGridProps {
@@ -51,14 +48,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     },
     ref
   ) => {
-    // 🆕 드래그 미리보기 상태 관리
+    // 🆕 드래그 상태 관리 (간소화)
     const [dragPreview, setDragPreview] = useState<DragPreviewState>({
       draggedSession: null,
       targetWeekday: null,
       targetTime: null,
       targetYPosition: null,
-      previewPositions: new Map(),
-      conflictSessions: [],
     });
 
     // 🆕 30분 단위로 변경: 9:00 ~ 24:00 (30개 열)
@@ -72,90 +67,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, []);
 
     const timeCols = timeSlots30Min.length; // 30개 열
-
-    // 🆕 스마트 위치 계산 함수 (혼합 방식: 시간 + Y 좌표)
-    const calculateSmartPosition = useCallback(
-      (
-        draggedSession: Session,
-        targetWeekday: number,
-        targetTime: string,
-        targetYPosition: number,
-        conflictResolution: "auto" = "auto" // 🆕 자동 충돌 해결만 지원
-      ): {
-        previewPositions: Map<string, number>;
-        conflictSessions: Session[];
-      } => {
-        const daySessions = sessions?.get(targetWeekday) || [];
-        const sessionHeight = SESSION_CELL_HEIGHT;
-
-        // 🆕 사용자가 드래그한 위치를 기반으로 yPosition 계산
-        // targetYPosition은 드롭존 내에서의 상대적 위치 (0~SESSION_CELL_HEIGHT px)
-        const finalYPosition =
-          Math.round(targetYPosition / sessionHeight) * sessionHeight;
-
-        // 겹침 판단 함수
-        const sessionsOverlap = (a: Session, b: Session): boolean => {
-          return (
-            timeToMinutes(a.startsAt) < timeToMinutes(b.endsAt) &&
-            timeToMinutes(b.startsAt) < timeToMinutes(a.endsAt)
-          );
-        };
-
-        // 충돌하는 세션들 찾기
-        const conflictSessions = daySessions.filter(
-          (session) =>
-            session.id !== draggedSession.id &&
-            sessionsOverlap(draggedSession, session)
-        );
-
-        // 미리보기 위치 계산
-        const previewPositions = new Map<string, number>();
-        const occupiedPositions = new Map<number, Session[]>();
-
-        // 기존 세션들의 위치 계산 (드래그된 세션 제외)
-        const otherSessions = daySessions.filter(
-          (s) => s.id !== draggedSession.id
-        );
-        const sortedSessions = [...otherSessions].sort(
-          (a, b) => timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt)
-        );
-
-        // 기존 세션들 배치
-        for (const session of sortedSessions) {
-          let targetY = 0;
-          while (targetY <= 500) {
-            const conflictingSessions = occupiedPositions.get(targetY) || [];
-            const hasConflict = conflictingSessions.some((existingSession) =>
-              sessionsOverlap(session, existingSession)
-            );
-
-            if (!hasConflict) break;
-            targetY += sessionHeight;
-          }
-
-          if (!occupiedPositions.has(targetY)) {
-            occupiedPositions.set(targetY, []);
-          }
-          occupiedPositions.get(targetY)!.push(session);
-          previewPositions.set(session.id, targetY);
-        }
-
-        // 🆕 드래그된 세션을 사용자가 지정한 위치에 배치
-        previewPositions.set(draggedSession.id, finalYPosition);
-
-        // 🆕 충돌하는 세션들을 아래로 밀어내기
-        for (const conflictSession of conflictSessions) {
-          const currentY = previewPositions.get(conflictSession.id) || 0;
-
-          // 충돌하는 세션을 드래그된 세션 아래로 이동
-          const newY = finalYPosition + sessionHeight;
-          previewPositions.set(conflictSession.id, newY);
-        }
-
-        return { previewPositions, conflictSessions };
-      },
-      [sessions, timeSlots30Min]
-    );
 
     // 🚀 간단한 세션 Y축 위치 계산: 논리적 위치(1,2,3...)를 픽셀 위치로 변환
     const getSessionYPositions = useCallback(
@@ -215,79 +126,47 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [timeCols]
     );
 
-    // 🆕 드래그 시작 핸들러
+    // 🆕 드래그 시작 핸들러 (간소화)
     const handleDragStart = useCallback((session: Session) => {
       setDragPreview({
         draggedSession: session,
         targetWeekday: null,
         targetTime: null,
         targetYPosition: null,
-        previewPositions: new Map(),
-        conflictSessions: [],
       });
     }, []);
 
-    // 🆕 드래그 오버 핸들러 (실시간 미리보기)
+    // 🆕 드래그 오버 핸들러 (간소화)
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
         if (!dragPreview.draggedSession) return;
-
-        // 🆕 스마트 위치 계산 (자동 충돌 해결)
-        const { previewPositions, conflictSessions } = calculateSmartPosition(
-          dragPreview.draggedSession,
-          weekday,
-          time,
-          yPosition,
-          "auto" // 🆕 자동 충돌 해결
-        );
 
         setDragPreview((prev) => ({
           ...prev,
           targetWeekday: weekday,
           targetTime: time,
           targetYPosition: yPosition,
-          previewPositions,
-          conflictSessions,
         }));
       },
-      [dragPreview.draggedSession, calculateSmartPosition]
+      [dragPreview.draggedSession]
     );
 
-    // 🆕 드래그 종료 핸들러
+    // 🆕 드래그 종료 핸들러 (간소화)
     const handleDragEnd = useCallback(() => {
-      // 🆕 드롭 완료 시 미리보기 상태를 실제 데이터에 적용
+      // 드롭 완료 시 기본 세션 업데이트만 수행
       if (
         dragPreview.draggedSession &&
         dragPreview.targetWeekday !== null &&
         dragPreview.targetTime &&
         dragPreview.targetYPosition !== null
       ) {
-        // 🆕 세션 위치 업데이트 호출 (드래그된 세션 + 충돌하는 세션들)
         if (onSessionDrop) {
-          // 드래그된 세션 업데이트
-          const draggedFinalYPosition =
-            dragPreview.previewPositions.get(dragPreview.draggedSession.id) ||
-            0;
-
           onSessionDrop(
             dragPreview.draggedSession.id,
             dragPreview.targetWeekday,
             dragPreview.targetTime,
-            draggedFinalYPosition
+            dragPreview.targetYPosition
           );
-
-          // 🆕 충돌하는 세션들도 함께 업데이트
-          for (const conflictSession of dragPreview.conflictSessions) {
-            const conflictFinalYPosition =
-              dragPreview.previewPositions.get(conflictSession.id) || 0;
-
-            onSessionDrop(
-              conflictSession.id,
-              conflictSession.weekday,
-              conflictSession.startsAt, // 충돌 세션은 시간 변경 없이 위치만 변경
-              conflictFinalYPosition
-            );
-          }
         }
       }
 
@@ -296,8 +175,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetWeekday: null,
         targetTime: null,
         targetYPosition: null,
-        previewPositions: new Map(),
-        conflictSessions: [],
       });
     }, [dragPreview, onSessionDrop]);
 
@@ -352,13 +229,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
         {/* 요일별 행 (Y축 왼쪽) */}
         {Array.from({ length: 7 }, (_, weekday) => {
-          // 🆕 미리보기 상태가 있으면 미리보기 위치 사용, 없으면 기본 위치 사용
-          const sessionYPositions =
-            dragPreview.targetWeekday === weekday &&
-            dragPreview.previewPositions.size > 0
-              ? dragPreview.previewPositions
-              : getSessionYPositions(weekday);
-
           return (
             <TimeTableRow
               key={weekday}
@@ -368,7 +238,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               subjects={subjects}
               enrollments={enrollments}
               students={students}
-              sessionYPositions={sessionYPositions}
+              sessionYPositions={getSessionYPositions(weekday)}
               onSessionClick={onSessionClick}
               onDrop={onDrop}
               onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달

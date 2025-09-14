@@ -5,14 +5,12 @@ import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import DropZone from "./DropZone";
 import SessionBlock from "./SessionBlock";
 
-// 🆕 드래그 미리보기 상태 타입 (TimeTableGrid와 동일)
+// 🆕 드래그 상태 타입 (TimeTableGrid와 동일, 간소화)
 interface DragPreviewState {
   draggedSession: Session | null;
   targetWeekday: number | null;
   targetTime: string | null;
   targetYPosition: number | null;
-  previewPositions: Map<string, number>;
-  conflictSessions: Session[];
 }
 
 interface TimeTableRowProps {
@@ -260,7 +258,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                   left: `${timeIndex * 100}px`, // 🆕 30분당 100px
                   width: "100px", // 🆕 30분 단위 너비
                   height: `${SESSION_CELL_HEIGHT}px`, // 🆕 세션 셀 높이 상수 사용
-                  zIndex: 1,
+                  zIndex: isDragging ? 10 : 1, // 🆕 드래그 중일 때만 z-index를 조금 높임
                 }}
               />
             );

@@ -155,11 +155,16 @@ export const getSessionBlockStyles = (
     display: "flex",
     alignItems: "center",
     overflow: "hidden",
-    zIndex: 1000 + yOffset,
+    zIndex: isDragging && !isDraggedSession ? 0 : 1000 + yOffset, // 🆕 드래그 중일 때 다른 세션들의 z-index를 낮춤
     border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity, // 🆕 투명도 적용
     transition: "opacity 0.2s ease-in-out", // 🆕 부드러운 투명도 전환
+    // 🆕 드래그 중일 때 다른 세션들은 드래그 이벤트를 차단하지 않도록 설정
+    ...(isDragging &&
+      !isDraggedSession && {
+        pointerEvents: "none",
+      }),
   };
 };
 

@@ -130,8 +130,13 @@ function SessionBlock({
     });
 
     // 드래그 데이터 설정
-    e.dataTransfer.setData("text/plain", `session:${session.id}`);
-    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", `session:${session.id}`);
+      e.dataTransfer.effectAllowed = "move";
+      console.log("✅ 드래그 데이터 설정 완료:", `session:${session.id}`);
+    } catch (error) {
+      console.error("❌ 드래그 데이터 설정 실패:", error);
+    }
 
     // 드래그 이미지 설정 (선택사항)
     e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
