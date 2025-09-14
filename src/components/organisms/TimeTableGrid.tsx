@@ -153,22 +153,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 🆕 드래그 종료 핸들러 (간소화)
     const handleDragEnd = useCallback(() => {
-      // 드롭 완료 시 기본 세션 업데이트만 수행
-      if (
-        dragPreview.draggedSession &&
-        dragPreview.targetWeekday !== null &&
-        dragPreview.targetTime &&
-        dragPreview.targetYPosition !== null
-      ) {
-        if (onSessionDrop) {
-          onSessionDrop(
-            dragPreview.draggedSession.id,
-            dragPreview.targetWeekday,
-            dragPreview.targetTime,
-            dragPreview.targetYPosition
-          );
-        }
-      }
+      // DropZone에서 이미 드롭 처리를 했으므로 여기서는 상태만 초기화
+      // 중복 호출 방지를 위해 onSessionDrop 호출 제거
+      console.log("🔄 TimeTableGrid 드래그 종료 - 상태 초기화만 수행");
 
       setDragPreview({
         draggedSession: null,
@@ -176,7 +163,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetTime: null,
         targetYPosition: null,
       });
-    }, [dragPreview, onSessionDrop]);
+    }, []);
 
     return (
       <div

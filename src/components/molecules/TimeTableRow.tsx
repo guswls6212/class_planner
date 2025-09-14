@@ -99,7 +99,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     const draggedStartMinutes = timeToMinutes(draggedSession.startsAt);
     const draggedEndMinutes = timeToMinutes(draggedSession.endsAt);
 
-
     return true; // 드래그 중이면 true, 시간 범위 체크는 DropZone에서 처리
   }, [dragPreview, weekday, maxYPosition, timeToMinutes]);
 

@@ -58,6 +58,7 @@ function SessionBlock({
   subjects,
   enrollments,
   students,
+  yPosition,
   left,
   width,
   yOffset,
@@ -121,11 +122,21 @@ function SessionBlock({
 
   // 🆕 드래그 시작 핸들러
   const handleDragStart = (e: React.DragEvent) => {
+    const actualYPosition = yPosition || 1; // 기본값 1 설정
+    console.log("🔄 SessionBlock 드래그 시작:", {
+      sessionId: session.id,
+      sessionName:
+        getSessionSubject(session, enrollments, subjects)?.name || "Unknown",
+      yPosition: actualYPosition,
+      startsAt: session.startsAt,
+      endsAt: session.endsAt,
+    });
 
     // 드래그 데이터 설정
     try {
       e.dataTransfer.setData("text/plain", `session:${session.id}`);
       e.dataTransfer.effectAllowed = "move";
+      console.log("✅ 드래그 데이터 설정 완료:", session.id);
     } catch (error) {
       console.error("❌ 드래그 데이터 설정 실패:", error);
     }
@@ -154,7 +165,6 @@ function SessionBlock({
 
   // 🆕 드래그 중인 세션인지 확인
   const isDraggedSession = session.id === draggedSessionId;
-
 
   return (
     <div

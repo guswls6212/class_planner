@@ -71,25 +71,56 @@ export default function DropZone({
     setIsDragOver(false);
 
     const data = e.dataTransfer?.getData("text/plain");
+    console.log("🎯 DropZone 드롭 이벤트 발생:", {
+      weekday,
+      time,
+      yPosition,
+      data,
+    });
 
     if (data) {
       // 🆕 세션 드롭 처리
       if (data.startsWith("session:")) {
         const sessionId = data.replace("session:", "");
+        console.log("🎯 DropZone 세션 드롭 처리:", {
+          sessionId,
+          weekday,
+          time,
+          yPosition,
+        });
 
         // 현재 DropZone의 yPosition을 픽셀 위치로 변환
         const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
+        console.log("🎯 DropZone 픽셀 위치 변환:", {
+          yPosition,
+          pixelYPosition,
+        });
 
         if (onSessionDrop) {
+          console.log("🎯 DropZone onSessionDrop 호출:", {
+            sessionId,
+            weekday,
+            time,
+            pixelYPosition,
+          });
           onSessionDrop(sessionId, weekday, time, pixelYPosition);
+        } else {
+          console.log("❌ DropZone onSessionDrop 핸들러가 없음");
         }
       }
       // 🆕 기존 enrollment 드롭 처리
       else {
+        console.log("🎯 DropZone enrollment 드롭 처리:", {
+          weekday,
+          time,
+          data,
+        });
         if (onDrop) {
           onDrop(weekday, time, data);
         }
       }
+    } else {
+      console.log("❌ DropZone 드롭 데이터가 없음");
     }
   };
 

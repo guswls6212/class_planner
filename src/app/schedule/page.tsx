@@ -180,6 +180,235 @@ function SchedulePageContent() {
     [sessions, updateData]
   );
 
+  // 🆕 시간 충돌 감지 함수
+  const isTimeOverlapping = useCallback(
+    (start1: string, end1: string, start2: string, end2: string): boolean => {
+      const start1Minutes = timeToMinutes(start1);
+      const end1Minutes = timeToMinutes(end1);
+      const start2Minutes = timeToMinutes(start2);
+      const end2Minutes = timeToMinutes(end2);
+
+      // 두 시간 범위가 겹치는지 확인
+      return start1Minutes < end2Minutes && start2Minutes < end1Minutes;
+    },
+    []
+  );
+
+  // 🆕 특정 요일과 시간대에서 충돌하는 세션들 찾기
+  const findCollidingSessions = useCallback(
+    (
+      weekday: number,
+      startTime: string,
+      endTime: string,
+      excludeSessionId?: string
+    ): Session[] => {
+      return sessions.filter((session) => {
+        // 같은 요일이고, 제외할 세션이 아니며, 시간이 겹치는 세션들
+        return (
+          session.weekday === weekday &&
+          session.id !== excludeSessionId &&
+          isTimeOverlapping(
+            startTime,
+            endTime,
+            session.startsAt,
+            session.endsAt
+          )
+        );
+      });
+    },
+    [sessions, isTimeOverlapping]
+  );
+
+  // 🆕 세션 이동 후 전체 빈 공간 채우기 로직
+  const fillGapsAfterMove = useCallback(
+    (
+      sessions: Session[],
+      targetWeekday: number,
+      movingSessionId: string
+    ): Session[] => {
+      // 해당 요일의 모든 세션들 (이동한 세션 포함)
+      const allSessionsInWeekday = sessions.filter(
+        (session) => session.weekday === targetWeekday
+      );
+
+      // 시간대별로 세션들을 그룹화
+      const sessionsByTimeSlot = new Map<string, Session[]>();
+
+      allSessionsInWeekday.forEach((session) => {
+        const timeKey = `${session.startsAt}-${session.endsAt}`;
+        if (!sessionsByTimeSlot.has(timeKey)) {
+          sessionsByTimeSlot.set(timeKey, []);
+        }
+        sessionsByTimeSlot.get(timeKey)!.push(session);
+      });
+
+      // 각 시간대별로 빈 공간 채우기 수행
+      const repositionedSessions = new Map<string, Session>();
+
+      sessionsByTimeSlot.forEach((sessionsInTimeSlot, timeKey) => {
+        // yPosition별로 그룹화
+        const sessionsByYPosition = new Map<number, Session[]>();
+        sessionsInTimeSlot.forEach((session) => {
+          const yPos = session.yPosition || 1;
+          if (!sessionsByYPosition.has(yPos)) {
+            sessionsByYPosition.set(yPos, []);
+          }
+          sessionsByYPosition.get(yPos)!.push(session);
+        });
+
+        // 사용 중인 yPosition들을 정렬
+        const usedYPositions = Array.from(sessionsByYPosition.keys()).sort(
+          (a, b) => a - b
+        );
+
+        // 빈 공간 채우기: 가장 낮은 yPosition부터 순차적으로 배치
+        let currentYPosition = 1;
+
+        usedYPositions.forEach((yPos) => {
+          const sessionsAtYPos = sessionsByYPosition.get(yPos)!;
+
+          sessionsAtYPos.forEach((session) => {
+            // 이동한 세션은 건드리지 않음 (이미 repositionSessions에서 처리됨)
+            if (session.id === movingSessionId) {
+              console.log(
+                `⏭️ 이동한 세션 건너뛰기: ${session.id} (시간대: ${timeKey})`
+              );
+              return; // 이동한 세션은 건너뛰기
+            }
+
+            if (currentYPosition !== yPos) {
+              repositionedSessions.set(session.id, {
+                ...session,
+                yPosition: currentYPosition,
+              });
+              console.log(
+                `🔄 빈 공간 채우기: ${session.id} 세션을 yPosition ${yPos} → ${currentYPosition}으로 이동 (시간대: ${timeKey})`
+              );
+            }
+            currentYPosition++;
+          });
+        });
+      });
+
+      // 재배치된 세션들을 적용
+      return sessions.map((session) => {
+        if (repositionedSessions.has(session.id)) {
+          return repositionedSessions.get(session.id)!;
+        }
+        return session;
+      });
+    },
+    []
+  );
+
+  // 🆕 세션 재배치 로직 (시나리오별 처리)
+  const repositionSessions = useCallback(
+    (
+      sessions: Session[],
+      targetWeekday: number,
+      targetStartTime: string,
+      targetEndTime: string,
+      targetYPosition: number,
+      movingSessionId: string
+    ): Session[] => {
+      // 충돌하는 세션들 찾기 (이동할 세션 제외)
+      const collidingSessions = findCollidingSessions(
+        targetWeekday,
+        targetStartTime,
+        targetEndTime,
+        movingSessionId
+      );
+
+      console.log("🔍 충돌하는 세션들:", collidingSessions);
+
+      // 충돌하는 세션들을 yPosition별로 그룹화
+      const sessionsByYPosition = new Map<number, Session[]>();
+      collidingSessions.forEach((session) => {
+        const yPos = session.yPosition || 1;
+        if (!sessionsByYPosition.has(yPos)) {
+          sessionsByYPosition.set(yPos, []);
+        }
+        sessionsByYPosition.get(yPos)!.push(session);
+      });
+
+      console.log(
+        "📊 yPosition별 세션 그룹:",
+        Object.fromEntries(sessionsByYPosition)
+      );
+
+      // 재배치된 세션들을 저장할 맵
+      const repositionedSessions = new Map<string, Session>();
+
+      // 🆕 스마트한 재배치 로직: 빈 공간을 채우면서 효율적으로 배치
+
+      // 1단계: 이동할 세션을 targetYPosition에 배치
+      // 2단계: 충돌하는 세션들을 효율적으로 재배치 (빈 공간 우선 채우기)
+
+      // 사용 중인 yPosition들을 정렬
+      const usedYPositions = Array.from(sessionsByYPosition.keys()).sort(
+        (a, b) => a - b
+      );
+
+      // 이동할 세션을 제외한 세션들을 효율적으로 재배치
+      const availablePositions = new Set<number>();
+
+      // 1부터 최대 yPosition까지 모든 위치를 사용 가능한 위치로 초기화
+      const maxYPosition = Math.max(...usedYPositions, targetYPosition);
+      for (let i = 1; i <= maxYPosition + 1; i++) {
+        availablePositions.add(i);
+      }
+
+      // targetYPosition은 이동할 세션이 사용하므로 제외
+      availablePositions.delete(targetYPosition);
+
+      // 충돌하는 세션들을 효율적으로 재배치
+      usedYPositions.forEach((yPos) => {
+        const sessionsAtYPos = sessionsByYPosition.get(yPos)!;
+
+        sessionsAtYPos.forEach((session) => {
+          // 가장 낮은 사용 가능한 yPosition 찾기
+          const newYPosition = Math.min(...Array.from(availablePositions));
+
+          repositionedSessions.set(session.id, {
+            ...session,
+            yPosition: newYPosition,
+          });
+
+          // 사용한 위치를 제거
+          availablePositions.delete(newYPosition);
+
+          console.log(
+            `🔄 스마트 재배치: ${session.id} 세션을 yPosition ${yPos} → ${newYPosition}으로 이동`
+          );
+        });
+      });
+
+      // 1단계: 기본 재배치 적용
+      let newSessions = sessions.map((session) => {
+        if (session.id === movingSessionId) {
+          // 이동할 세션은 새로운 위치에 배치
+          return {
+            ...session,
+            weekday: targetWeekday,
+            startsAt: targetStartTime,
+            endsAt: targetEndTime,
+            yPosition: targetYPosition,
+          };
+        } else if (repositionedSessions.has(session.id)) {
+          // 재배치된 세션들
+          return repositionedSessions.get(session.id)!;
+        } else {
+          // 변경되지 않은 세션들
+          return session;
+        }
+      });
+
+      // 🆕 자리 바꾸기 로직만 적용 (fillGapsAfterMove 제거)
+      return newSessions;
+    },
+    [findCollidingSessions]
+  );
+
   const updateSessionPosition = useCallback(
     async (
       sessionId: string,
@@ -212,22 +441,29 @@ function SchedulePageContent() {
         newTime: `${time}-${newEndTime}`,
         durationMinutes,
         logicalPosition,
+        originalYPosition: existingSession.yPosition,
       });
 
-      const newSessions = sessions.map((s) =>
-        s.id === sessionId
-          ? {
-              ...s,
-              weekday,
-              startsAt: time,
-              endsAt: newEndTime,
-              yPosition: logicalPosition,
-            }
-          : s
+      // 🆕 충돌 방지 로직 적용
+      console.log("🔄 repositionSessions 호출 시작");
+      const newSessions = repositionSessions(
+        sessions,
+        weekday,
+        time,
+        newEndTime,
+        logicalPosition,
+        sessionId
       );
+      console.log(
+        "🔄 repositionSessions 완료, 새로운 세션 수:",
+        newSessions.length
+      );
+
+      console.log("🔄 updateData 호출 시작");
       await updateData({ sessions: newSessions });
+      console.log("✅ updateData 완료");
     },
-    [sessions, updateData]
+    [sessions, updateData, repositionSessions]
   );
 
   const deleteSession = useCallback(
@@ -788,7 +1024,7 @@ function SchedulePageContent() {
     time: string,
     yPosition: number
   ) => {
-    console.log("🔄 세션 드롭 처리:", {
+    console.log("🔄 Schedule 페이지 세션 드롭 처리:", {
       sessionId,
       weekday,
       time,
@@ -797,6 +1033,7 @@ function SchedulePageContent() {
 
     try {
       // 세션 위치 업데이트
+      console.log("🔄 updateSessionPosition 호출 시작");
       await updateSessionPosition(sessionId, weekday, time, yPosition);
       console.log("✅ 세션 위치 업데이트 완료");
     } catch (error) {
