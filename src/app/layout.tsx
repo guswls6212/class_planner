@@ -86,7 +86,7 @@ function Footer() {
     >
       <div style={{ display: "flex", gap: 12 }}>
         <span style={{ color: "var(--color-text-primary)", fontSize: "14px" }}>
-          © 2024 클래스 플래너
+          클래스 플래너
         </span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -111,6 +111,13 @@ export default function RootLayout({
           name="description"
           content="클래스 플래너 - 학생과 과목을 관리하고 시간표를 만드는 도구"
         />
+        <meta
+          name="copyright"
+          content="© 2024 클래스 플래너. 모든 권리 보유."
+        />
+        <meta name="author" content="클래스 플래너 개발팀" />
+        <meta name="robots" content="index, follow" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

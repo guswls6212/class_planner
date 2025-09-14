@@ -45,7 +45,7 @@ function Footer() {
   return (
     <footer className="fixed bottom-0 left-0 right-0 flex justify-between items-center p-3 border-t border-border bg-bg-secondary z-[1000]">
       <div className="flex gap-3">
-        <span className="text-text-primary text-sm">© 2024 클래스 플래너</span>
+        <span className="text-text-primary text-sm">클래스 플래너</span>
       </div>
       <div className="flex items-center gap-3">
         <span className="text-text-primary text-sm">
