@@ -580,20 +580,55 @@ theme: {
 
 **예시:**
 
+- `useGlobalSubjectInitialization.ts` - 🌍 전역 기본 과목 초기화 (보안 강화)
 - `useIntegratedData.ts` - 🆕 JSONB 기반 통합 데이터 관리
 - `useStudentManagement.ts` - 학생 관리 로직 (API Routes 기반)
 - `useSubjectManagement.ts` - 과목 관리 로직 (API Routes 기반)
 - `useSessionManagement.ts` - 세션 관리 로직 (API Routes 기반)
 - `useDisplaySessions.ts` - 세션 표시 로직
-- `useLocal.ts` - localStorage 관리
+- `useStudentPanel.ts` - 학생 패널 관리
 - `useTimeValidation.ts` - 시간 검증 로직
-- `useDataMigration.ts` - 데이터 마이그레이션 로직
+- `useLocal.ts` - localStorage 관리
 
 ### 🔧 훅 사용 가이드라인
 
+#### **🌍 전역 기본 과목 초기화 훅 (보안 강화)**
+
+**1. `useGlobalSubjectInitialization` (전역 기본 과목 초기화)**
+
+- **위치**: `src/hooks/useGlobalSubjectInitialization.ts`
+- **용도**: 로그인한 사용자가 처음 접속할 때 기본 과목들을 자동으로 생성
+- **사용 시점**: RootLayout에서 전역적으로 실행
+- **특징**:
+  - 어느 페이지에서든 로그인 후 자동으로 기본 과목 생성
+  - 브라우저 독립적 동작 (Chrome, Firefox, Safari 등 모든 브라우저에서 동일)
+  - 서버 기반 중복 방지 (Supabase 데이터베이스 기준)
+  - Supabase Auth 보안 강화 (토큰 탈취 공격 방지)
+  - 초기화 중 로딩 표시
+
+**사용 예시:**
+
+```typescript
+// RootLayout에서 사용
+function AppContent({ children }: { children: React.ReactNode }) {
+  const { isInitialized, isInitializing } = useGlobalSubjectInitialization();
+
+  return (
+    <>
+      <Navigation />
+      <main>
+        {isInitializing && <div>기본 과목을 초기화하는 중...</div>}
+        {children}
+      </main>
+      <Footer />
+    </>
+  );
+}
+```
+
 #### **🚀 통합 데이터 관리 훅 (권장)**
 
-**1. `useIntegratedData` (JSONB 기반 통합 데이터 관리)**
+**2. `useIntegratedData` (JSONB 기반 통합 데이터 관리)**
 
 - **위치**: `src/hooks/useIntegratedData.ts`
 - **용도**: JSONB 구조를 활용한 효율적인 통합 데이터 관리
@@ -629,7 +664,7 @@ const addSession = useCallback(
 
 #### **개별 데이터 관리 훅**
 
-**2. `useStudentManagement` (API Routes 기반)**
+**3. `useStudentManagement` (API Routes 기반)**
 
 - **위치**: `src/hooks/useStudentManagement.ts`
 - **용도**: 학생 데이터 CRUD (API Routes 기반)
@@ -639,7 +674,7 @@ const addSession = useCallback(
   - Clean Architecture 패턴 적용
   - 에러 처리 및 로딩 상태 관리
 
-**3. `useSubjectManagement` (API Routes 기반)**
+**4. `useSubjectManagement` (API Routes 기반)**
 
 - **위치**: `src/hooks/useSubjectManagement.ts`
 - **용도**: 과목 데이터 CRUD (API Routes 기반)
@@ -649,7 +684,7 @@ const addSession = useCallback(
   - 기본 과목과 사용자 과목 통합 관리
   - 색상 선택 기능 포함
 
-**4. `useSessionManagement` (API Routes 기반)**
+**5. `useSessionManagement` (API Routes 기반)**
 
 - **위치**: `src/hooks/useSessionManagement.ts`
 - **용도**: 세션 데이터 CRUD (API Routes 기반)
@@ -659,83 +694,109 @@ const addSession = useCallback(
   - 드래그 앤 드롭 위치 업데이트 지원
   - 세션 위치 및 시간 관리
 
-#### **레거시 훅 (Deprecated)**
-
-**5. `useSessionManagement` (레거시, deprecated)**
+**6. `useSessionManagement` (API Routes 기반)**
 
 - **위치**: `src/hooks/useSessionManagement.ts`
-- **용도**: 로컬 스토리지 기반 세션 데이터 관리 (레거시)
-- **사용 시점**: 더 이상 사용하지 않음 (Supabase 통합으로 인해)
+- **용도**: API Routes를 통한 세션 데이터 CRUD 관리
+- **사용 시점**: 개별 세션 관리가 필요한 곳
 - **특징**:
-  - localStorage에 세션 데이터 저장
-  - Supabase와 연동되지 않음
-  - 인증 상태와 무관하게 동작
+  - `/api/sessions` API Routes 사용
+  - Clean Architecture 패턴 적용
+  - 드래그 앤 드롭 위치 업데이트 지원
+  - 세션 위치 및 시간 관리
+  - 에러 처리 및 로딩 상태 관리
 
-**2. `useSessionManagementImproved` (권장)**
+**7. `useDisplaySessions` (세션 표시 로직)**
 
-- **위치**: `src/hooks/useSessionManagementImproved.ts`
-- **용도**: Supabase 기반 세션 데이터 관리 (현재 표준)
-- **사용 시점**: Schedule 페이지 등 세션 데이터가 필요한 모든 곳
+- **위치**: `src/hooks/useDisplaySessions.ts`
+- **용도**: 세션 데이터를 화면에 표시하기 위한 필터링 및 정렬
+- **사용 시점**: Schedule 페이지에서 세션 목록 표시
 - **특징**:
-  - Supabase 데이터베이스와 연동
-  - 인증된 사용자만 세션 생성/수정 가능
-  - 로그인되지 않은 사용자는 에러 발생
-  - `addSession`, `updateSession`, `deleteSession` 제공
-  - `setEnrollments` 제공하지 않음 (별도 관리)
+  - 학생별 필터링 기능
+  - 시간순 정렬
+  - 유효한 enrollment 검증
+  - 불완전한 세션 필터링
 
-**3. `useDataMigration` (데이터 마이그레이션)**
+**8. `useStudentPanel` (학생 패널 관리)**
 
-- **위치**: `src/hooks/useDataMigration.ts`
-- **용도**: localStorage에서 Supabase로 데이터 마이그레이션
-- **사용 시점**: 로그인 성공 시 자동 실행
+- **위치**: `src/hooks/useStudentPanel.ts`
+- **용도**: 학생 패널의 상태 및 상호작용 관리
+- **사용 시점**: Schedule 페이지의 학생 패널
 - **특징**:
-  - localStorage 데이터를 Supabase로 마이그레이션
-  - 마이그레이션 완료 후 localStorage 데이터 삭제
-  - 학생, 과목, 세션, 수강신청 데이터 모두 처리
-  - 에러 처리 및 롤백 지원
+  - 학생 선택 상태 관리
+  - 검색 기능
+  - 패널 위치 관리
+  - 드래그 앤 드롭 지원
 
-**4. `useLocal` (일반적 localStorage)**
+**9. `useTimeValidation` (시간 검증)**
+
+- **위치**: `src/hooks/useTimeValidation.ts`
+- **용도**: 시간 입력 검증 및 유틸리티 함수
+- **사용 시점**: 세션 생성/편집 시 시간 검증
+- **특징**:
+  - 시간 범위 검증
+  - 다음 시간 계산
+  - 시간 형식 검증
+
+**10. `useLocal` (일반적 localStorage)**
 
 - **위치**: `src/hooks/useLocal.ts`
-- **용도**: UI 상태 및 캐시 데이터 관리 (세션 데이터 제외)
+- **용도**: UI 상태 및 캐시 데이터 관리
 - **사용 시점**: 학생 선택 상태, 패널 위치, 테마 설정 등
 - **특징**:
   - SSR 안전성 보장 (`isHydrated` 상태 사용)
   - 범용적인 localStorage 관리
-  - 세션 데이터와는 별도로 관리
+  - 타입 안전한 상태 관리
 
 #### **사용 시나리오별 훅 선택**
 
-**Schedule 페이지에서:**
+**Schedule 페이지에서 (권장 - 통합 데이터 사용):**
 
 ```typescript
-// ✅ 올바른 사용법
-import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
+// ✅ 권장 사용법 - 통합 데이터 관리
+import { useIntegratedData } from "../../hooks/useIntegratedData";
+import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useLocal } from "../../hooks/useLocal";
 
-// 세션 데이터 관리 (Supabase 기반)
-const { sessions, addSession, updateSession, deleteSession } =
-  useSessionManagement(students, subjects);
+// 통합 데이터 관리 (JSONB 기반)
+const {
+  data: { students, subjects, sessions, enrollments },
+  loading,
+  error,
+  updateData,
+} = useIntegratedData();
+
+// 세션 표시 로직
+const { sessions: displaySessions } = useDisplaySessions(
+  sessions,
+  enrollments,
+  selectedStudentId
+);
+
+// 학생 패널 관리
+const studentPanelState = useStudentPanel(
+  students,
+  selectedStudentId,
+  setSelectedStudentId
+);
 
 // UI 상태 관리 (localStorage 기반)
 const [selectedStudentId, setSelectedStudentId] = useLocal(
-  "selectedStudentId",
+  "ui:selectedStudent",
   ""
 );
-const [panelPosition, setPanelPosition] = useLocal("panelPosition", {
-  x: 0,
-  y: 0,
-});
 ```
 
-**❌ 잘못된 사용법:**
+**개별 세션 관리가 필요한 경우:**
 
 ```typescript
-// 레거시 훅 사용 (Supabase와 연동되지 않음)
+// ✅ 개별 세션 관리
 import { useSessionManagement } from "../../hooks/useSessionManagement";
 
-// 이렇게 사용하면 세션이 Supabase에 저장되지 않음
-const { sessions, addSession } = useSessionManagement(students, subjects);
+// API Routes 기반 세션 관리
+const { sessions, addSession, updateSession, deleteSession, isLoading } =
+  useSessionManagement(students, subjects);
 ```
 
 #### **인증 상태별 동작**
@@ -743,57 +804,73 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 **로그인 전:**
 
 - `useLocal`: 정상 동작 (UI 상태 저장/복원)
-- `useStudentManagement`: localStorage에서 학생 데이터 CRUD
-- `useGlobalSubjects`: localStorage에서 과목 데이터 CRUD
-- `useSessionManagementImproved`: localStorage에서 세션 데이터 CRUD
+- `useGlobalSubjectInitialization`: 초기화 건너뜀 (로그인 필요)
+- `useIntegratedData`: 빈 데이터 반환
+- `useStudentManagement`: API 호출 실패 (인증 필요)
+- `useSubjectManagement`: API 호출 실패 (인증 필요)
+- `useSessionManagement`: API 호출 실패 (인증 필요)
 
 **로그인 후:**
 
 - `useLocal`: 정상 동작 (UI 상태 저장/복원)
+- `useGlobalSubjectInitialization`: 기본 과목 자동 생성 (한 번만)
+- `useIntegratedData`: Supabase에서 통합 데이터 조회
 - `useStudentManagement`: Supabase에서 학생 데이터 CRUD
-- `useGlobalSubjects`: Supabase에서 과목 데이터 CRUD
-- `useSessionManagementImproved`: Supabase에서 세션 데이터 CRUD
+- `useSubjectManagement`: Supabase에서 과목 데이터 CRUD
+- `useSessionManagement`: Supabase에서 세션 데이터 CRUD
 
-**로그인 시 마이그레이션:**
+**기본 과목 초기화:**
 
-1. localStorage 데이터 확인
-2. 데이터가 있으면 Supabase로 마이그레이션
-3. 마이그레이션 완료 후 localStorage 데이터 삭제
-4. 페이지 새로고침으로 Supabase 데이터 반영
+1. 로그인 성공 감지
+2. `useGlobalSubjectInitialization` 훅 실행
+3. Supabase에서 사용자 데이터 조회
+4. subjects가 비어있으면 기본 과목들 생성
+5. 기본 과목들을 Supabase에 저장
+6. 모든 페이지에서 과목 데이터 사용 가능
 
 **로그아웃 시:**
 
 1. 모든 데이터 초기화
 2. 페이지 새로고침으로 빈 상태 표시
-3. localStorage 데이터는 삭제된 상태 유지
+3. localStorage UI 상태는 유지 (사용자 편의성)
 
 #### **데이터 흐름**
 
-**로그인 전 (localStorage 기반):**
+**로그인 전:**
 
 ```
-1. 사용자가 데이터 추가 시도
-2. 각 훅에서 localStorage에 저장
-3. 화면에 즉시 반영
+1. 사용자가 페이지 접속
+2. 인증되지 않은 상태로 빈 데이터 표시
+3. 로그인 버튼 클릭 유도
 ```
 
 **로그인 후 (Supabase 기반):**
 
 ```
-1. 사용자가 데이터 추가 시도
-2. 각 훅에서 Supabase에 저장
-3. 성공 시 로컬 상태 업데이트
-4. 화면에 반영
-```
-
-**로그인 시 마이그레이션:**
-
-```
 1. 로그인 성공 감지
-2. localStorage 데이터 확인
-3. 데이터가 있으면 Supabase로 마이그레이션
-4. 마이그레이션 완료 후 localStorage 삭제
-5. 페이지 새로고침으로 Supabase 데이터 반영
+2. useGlobalSubjectInitialization 훅 실행
+3. 기본 과목 자동 생성 (필요시)
+4. useIntegratedData 훅으로 통합 데이터 조회
+5. 화면에 데이터 표시
+```
+
+**데이터 추가/수정 시:**
+
+```
+1. 사용자가 데이터 추가/수정 시도
+2. 해당 훅에서 Supabase API 호출
+3. 성공 시 로컬 상태 업데이트
+4. 화면에 즉시 반영
+```
+
+**통합 데이터 업데이트 시 (Schedule 페이지):**
+
+```
+1. 세션 추가/수정 시도
+2. useIntegratedData의 updateData 호출
+3. 전체 데이터를 Supabase에 저장
+4. 로컬 상태 업데이트
+5. 화면에 반영
 ```
 
 **로그아웃 시:**
@@ -802,31 +879,57 @@ const { sessions, addSession } = useSessionManagement(students, subjects);
 1. 로그아웃 감지
 2. 모든 데이터 초기화
 3. 페이지 새로고침으로 빈 상태 표시
+4. UI 상태는 localStorage에 유지
 ```
 
-#### **마이그레이션 가이드**
+#### **훅 선택 가이드**
 
-**기존 코드에서 `useSessionManagement` 사용 시:**
+**Schedule 페이지에서 권장하는 방식:**
 
 ```typescript
-// Before (레거시)
-import { useSessionManagement } from "../../hooks/useSessionManagement";
-const { sessions, addSession, setEnrollments } = useSessionManagement(
-  students,
-  subjects
+// ✅ 권장: 통합 데이터 관리 (JSONB 기반)
+import { useIntegratedData } from "../../hooks/useIntegratedData";
+import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+
+const {
+  data: { students, subjects, sessions, enrollments },
+  updateData,
+} = useIntegratedData();
+
+const { sessions: displaySessions } = useDisplaySessions(
+  sessions,
+  enrollments,
+  selectedStudentId
 );
 
-// After (권장)
-import { useSessionManagement } from "../../hooks/useSessionManagementImproved";
+// 세션 추가
+const addSession = useCallback(
+  async (sessionData: any) => {
+    const newSessions = [...sessions, sessionData];
+    await updateData({ sessions: newSessions });
+  },
+  [sessions, updateData]
+);
+```
+
+**개별 데이터 관리가 필요한 경우:**
+
+```typescript
+// ✅ 개별 관리: API Routes 기반
+import { useStudentManagement } from "../../hooks/useStudentManagement";
+import { useSubjectManagement } from "../../hooks/useSubjectManagement";
+import { useSessionManagement } from "../../hooks/useSessionManagement";
+
+const { students, addStudent } = useStudentManagement();
+const { subjects, addSubject } = useSubjectManagement();
 const { sessions, addSession } = useSessionManagement(students, subjects);
-// setEnrollments는 별도 관리 필요
 ```
 
 **주의사항:**
 
-- `setEnrollments`는 `useSessionManagementImproved`에서 제공하지 않음
-- 인증된 사용자만 세션 생성 가능
-- 로그인되지 않은 사용자는 에러 처리 필요
+- Schedule 페이지에서는 `useIntegratedData` 사용 권장 (성능 최적화)
+- 개별 페이지에서는 해당 관리 훅 사용
+- 모든 훅은 Supabase 기반으로 동작 (인증 필요)
 
 ### 📝 Types (타입 정의)
 
@@ -1602,6 +1705,16 @@ npm run lint:fix
 ---
 
 ## 📅 문서 업데이트 이력
+
+- **2024-12-XX**: 전역 기본 과목 초기화 시스템 및 보안 강화 구현
+
+  - **전역 기본 과목 초기화 시스템**: `useGlobalSubjectInitialization` 훅을 통한 어느 페이지에서든 기본 과목 자동 생성
+  - **브라우저 독립적 동작**: Chrome, Firefox, Safari 등 모든 브라우저에서 동일하게 동작
+  - **서버 기반 중복 방지**: localStorage 대신 Supabase 데이터베이스를 기준으로 중복 실행 방지
+  - **보안 강화**: Supabase Auth의 `getSession()`을 사용한 토큰 유효성 검증으로 토큰 탈취 공격 방지
+  - **사용자 경험 개선**: 초기화 중 로딩 표시 및 자동 실행으로 사용자 개입 없이 기본 과목 생성
+  - **일관성 보장**: 모든 페이지에서 동일한 기본 과목 목록 사용 (초등수학, 중등수학, 중등영어, 중등국어, 중등과학, 중등사회, 고등수학, 고등영어, 고등국어)
+  - **RootLayout 통합**: App Layout에서 전역적으로 기본 과목 초기화 관리
 
 - **2024-12-XX**: 드래그 앤 드롭 충돌 해결 로직 개선
 
