@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
+import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the session service (for testing purposes)
@@ -45,7 +47,7 @@ export async function PUT(
       message: "Session position updated successfully",
     });
   } catch (error) {
-    console.error("Error updating session position:", error);
+    logger.error("Error updating session position:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update session position" },
       { status: 500 }

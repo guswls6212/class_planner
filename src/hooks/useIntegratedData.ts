@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "../lib/logger";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { migrateSessionsToLogicalPosition } from "../lib/yPositionMigration";
 
@@ -89,7 +90,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
 
       return responseData;
     } catch (error) {
-      console.error("API 호출 실패:", error);
+      logger.error("API 호출 실패:", undefined, error);
       throw error;
     }
   };
@@ -104,12 +105,12 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
       // 사용자 ID 가져오기
       const userId =
         localStorage.getItem("supabase_user_id") || "default-user-id";
-      console.log("🔍 useIntegratedData - 사용자 ID:", userId);
+      logger.debug("useIntegratedData - 사용자 ID:", { userId });
 
       const responseData = await apiCall(`/api/data?userId=${userId}`);
       const apiData = responseData.data || {};
 
-      console.log("🔍 useIntegratedData - API 응답:", apiData);
+      logger.debug("useIntegratedData - API 응답:", { apiData });
 
       // 세션 데이터 마이그레이션 (픽셀 → 논리적 위치)
       const migratedSessions = migrateSessionsToLogicalPosition(
@@ -128,7 +129,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "통합 데이터 조회 실패";
       setError(errorMessage);
-      console.error("통합 데이터 조회 실패:", err);
+      logger.error("통합 데이터 조회 실패:", undefined, err);
     } finally {
       setLoading(false);
     }
@@ -172,7 +173,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "통합 데이터 업데이트 실패";
         setError(errorMessage);
-        console.error("통합 데이터 업데이트 실패:", err);
+        logger.error("통합 데이터 업데이트 실패:", undefined, err);
         return false;
       } finally {
         setLoading(false);

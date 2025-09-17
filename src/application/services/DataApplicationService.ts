@@ -4,6 +4,7 @@
  * JSONB 기반 통합 데이터 관리를 위한 애플리케이션 서비스
  */
 
+import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 
 export interface UserData {
@@ -23,17 +24,17 @@ export class DataApplicationServiceImpl {
    */
   async getAllUserData(userId: string): Promise<UserData | null> {
     try {
-      console.log("🔍 DataApplicationService - 사용자 ID:", userId);
+      logger.debug("DataApplicationService - 사용자 ID:", { userId });
 
       // Supabase에서 사용자 데이터 조회
-      console.log("🔍 Supabase 쿼리 시작 - user_id:", userId);
+      logger.debug("Supabase 쿼리 시작 - user_id:", { userId });
 
       // 현재 인증 상태 확인
       const {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
-      console.log("🔍 현재 인증된 사용자:", user?.id, "에러:", authError);
+      logger.debug("현재 인증된 사용자", { userId: user?.id, authError });
 
       const { data, error } = await supabase
         .from("user_data")
@@ -41,13 +42,13 @@ export class DataApplicationServiceImpl {
         .eq("user_id", userId)
         .single();
 
-      console.log("🔍 Supabase 쿼리 결과 - data:", data, "error:", error);
+      logger.debug("Supabase 쿼리 결과", { data, error });
 
       if (error) {
-        console.error("Supabase 데이터 조회 실패:", error);
+        logger.error("Supabase 데이터 조회 실패:", undefined, error);
         // 데이터가 없는 경우 빈 데이터 반환
         if (error.code === "PGRST116") {
-          console.log("🔍 사용자 데이터가 없음, 빈 데이터 반환");
+          logger.debug("사용자 데이터가 없음, 빈 데이터 반환");
           return {
             students: [],
             subjects: [],
@@ -60,7 +61,7 @@ export class DataApplicationServiceImpl {
         throw error;
       }
 
-      console.log("🔍 Supabase에서 조회된 데이터:", data);
+      logger.debug("Supabase에서 조회된 데이터:", { data });
 
       // JSONB 데이터 파싱
       const userData = data?.data || {};
@@ -74,7 +75,7 @@ export class DataApplicationServiceImpl {
         lastModified: userData.lastModified || new Date().toISOString(),
       };
     } catch (error) {
-      console.error("전체 사용자 데이터 조회 실패:", error);
+      logger.error("전체 사용자 데이터 조회 실패:", undefined, error);
       throw error;
     }
   }
@@ -84,7 +85,10 @@ export class DataApplicationServiceImpl {
    */
   async updateAllUserData(userId: string, data: UserData): Promise<UserData> {
     try {
-      console.log("🔍 DataApplicationService - 데이터 업데이트:", userId, data);
+      logger.debug("DataApplicationService - 데이터 업데이트:", {
+        userId,
+        data,
+      });
 
       // Supabase에 데이터 저장/업데이트
       const { data: result, error } = await supabase
@@ -98,14 +102,14 @@ export class DataApplicationServiceImpl {
         .single();
 
       if (error) {
-        console.error("Supabase 데이터 저장 실패:", error);
+        logger.error("Supabase 데이터 저장 실패:", undefined, error);
         throw error;
       }
 
-      console.log("🔍 Supabase에 저장 완료:", result);
+      logger.debug("Supabase에 저장 완료:", { result });
       return data;
     } catch (error) {
-      console.error("전체 사용자 데이터 업데이트 실패:", error);
+      logger.error("전체 사용자 데이터 업데이트 실패:", undefined, error);
       throw error;
     }
   }

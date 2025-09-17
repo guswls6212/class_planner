@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "../lib/logger";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -18,7 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // 디버깅을 위해 window 객체에 노출
 if (typeof window !== "undefined") {
   (window as { supabase?: typeof supabase }).supabase = supabase;
-  console.log("🔧 Supabase 클라이언트가 window 객체에 노출됨");
+  logger.info("🔧 Supabase 클라이언트가 window 객체에 노출됨");
 }
 
 // 타입 정의
@@ -174,7 +175,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error("사용자 프로필 생성 실패:", error);
+      logger.error("사용자 프로필 생성 실패:", undefined, error);
       throw error;
     }
 
@@ -190,7 +191,7 @@ export const supabaseUtils = {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      console.error("사용자 프로필 조회 실패:", error);
+      logger.error("사용자 프로필 조회 실패:", undefined, error);
       throw error;
     }
 
@@ -210,7 +211,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error("사용자 데이터 저장 실패:", error);
+      logger.error("사용자 데이터 저장 실패:", undefined, error);
       throw error;
     }
 
@@ -226,7 +227,7 @@ export const supabaseUtils = {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      console.error("사용자 데이터 조회 실패:", error);
+      logger.error("사용자 데이터 조회 실패:", undefined, error);
       throw error;
     }
 
@@ -246,7 +247,7 @@ export const supabaseUtils = {
     });
 
     if (error) {
-      console.error("활동 로그 기록 실패:", error);
+      logger.error("활동 로그 기록 실패:", undefined, error);
       // 로그 기록 실패는 앱 동작에 영향을 주지 않도록 에러를 던지지 않음
     }
 

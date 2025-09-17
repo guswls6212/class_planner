@@ -1,4 +1,5 @@
 import { Subject } from "@/domain/entities/Subject";
+import { logger } from "../../lib/logger";
 import type { SubjectRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 
@@ -37,7 +38,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
           // 데이터가 없는 경우 빈 배열 반환
           return [];
         }
-        console.error("과목 데이터 조회 실패:", error);
+        logger.error("과목 데이터 조회 실패:", undefined, error);
         return [];
       }
 
@@ -57,7 +58,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
           Subject.restore(subjectData.id, subjectData.name, subjectData.color)
         );
     } catch (error) {
-      console.error("과목 데이터 조회 중 오류:", error);
+      logger.error("과목 데이터 조회 중 오류:", undefined, error);
       return [];
     }
   }
@@ -67,7 +68,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
       const subjects = await this.getAll();
       return subjects.find((subject) => subject.id.value === id) || null;
     } catch (error) {
-      console.error("과목 조회 중 오류:", error);
+      logger.error("과목 조회 중 오류:", undefined, error);
       return null;
     }
   }
@@ -117,7 +118,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
 
       return subject;
     } catch (error) {
-      console.error("과목 생성 중 오류:", error);
+      logger.error("과목 생성 중 오류:", undefined, error);
       throw error;
     }
   }
@@ -176,7 +177,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
 
       return subject;
     } catch (error) {
-      console.error("과목 수정 중 오류:", error);
+      logger.error("과목 수정 중 오류:", undefined, error);
       throw error;
     }
   }
@@ -224,7 +225,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
         throw new Error(`과목 삭제 실패: ${updateError.message}`);
       }
     } catch (error) {
-      console.error("과목 삭제 중 오류:", error);
+      logger.error("과목 삭제 중 오류:", undefined, error);
       throw error;
     }
   }

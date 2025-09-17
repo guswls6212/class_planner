@@ -6,6 +6,7 @@
  */
 
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
+import { logger } from "../lib/logger";
 import { useCallback, useEffect, useState } from "react";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { minutesToTime, timeToMinutes } from "../lib/planner";
@@ -76,7 +77,7 @@ export const useSessionManagement = (
 
       return data;
     } catch (error) {
-      console.error("API 호출 실패:", error);
+      logger.error("API 호출 실패:", undefined, error);
       throw error;
     }
   };
@@ -98,7 +99,7 @@ export const useSessionManagement = (
       const errorMessage =
         err instanceof Error ? err.message : "세션 목록 조회 실패";
       setError(errorMessage);
-      console.error("세션 목록 조회 실패:", err);
+      logger.error("세션 목록 조회 실패:", undefined, err);
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +131,7 @@ export const useSessionManagement = (
         const errorMessage =
           err instanceof Error ? err.message : "세션 추가 실패";
         setError(errorMessage);
-        console.error("세션 추가 실패:", err);
+        logger.error("세션 추가 실패:", undefined, err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -168,7 +169,7 @@ export const useSessionManagement = (
         const errorMessage =
           err instanceof Error ? err.message : "세션 수정 실패";
         setError(errorMessage);
-        console.error("세션 수정 실패:", err);
+        logger.error("세션 수정 실패:", undefined, err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -224,7 +225,7 @@ export const useSessionManagement = (
         const errorMessage =
           err instanceof Error ? err.message : "세션 위치 업데이트 실패";
         setError(errorMessage);
-        console.error("세션 위치 업데이트 실패:", err);
+        logger.error("세션 위치 업데이트 실패:", undefined, err);
         throw err;
       } finally {
         setIsLoading(false);
@@ -251,7 +252,7 @@ export const useSessionManagement = (
         const errorMessage =
           err instanceof Error ? err.message : "세션 삭제 실패";
         setError(errorMessage);
-        console.error("세션 삭제 실패:", err);
+        logger.error("세션 삭제 실패:", undefined, err);
         throw err;
       } finally {
         setIsLoading(false);

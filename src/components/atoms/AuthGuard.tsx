@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
+import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 
 interface AuthGuardProps {
@@ -20,14 +21,14 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("🔍 AuthGuard - 인증 확인 시작");
+        logger.debug("AuthGuard - 인증 확인 시작");
 
         // 먼저 localStorage에서 토큰 확인 (Supabase 기본 키 패턴)
         const hasAuthToken = Object.keys(localStorage).some(
           (key) => key.startsWith("sb-") || key.includes("supabase")
         );
 
-        console.log("🔍 AuthGuard - localStorage 토큰 존재:", hasAuthToken);
+        logger.debug("AuthGuard - localStorage 토큰 존재:", { hasAuthToken });
         console.log(
           "🔍 AuthGuard - localStorage 모든 키들:",
           Object.keys(localStorage)
@@ -40,12 +41,12 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         );
 
         if (!hasAuthToken) {
-          console.log("🔍 AuthGuard - 토큰 없음, 인증 안됨으로 설정");
+          logger.debug("AuthGuard - 토큰 없음, 인증 안됨으로 설정");
 
           // 인증이 필요한 페이지에서 로그인 페이지로 리다이렉트할 때 현재 URL 저장
           if (requireAuth) {
             const currentPath = window.location.pathname;
-            console.log("🔍 AuthGuard - 리다이렉트 URL 저장:", currentPath);
+            logger.debug("AuthGuard - 리다이렉트 URL 저장:", { currentPath });
             localStorage.setItem("redirectAfterLogin", currentPath);
           }
 
@@ -67,14 +68,14 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
 
         if (error) {
-          console.error("세션 확인 중 오류:", error);
+          logger.error("세션 확인 중 오류:", undefined, error);
           setIsAuthenticated(false);
         } else {
           setIsAuthenticated(!!session);
-          console.log("🔍 AuthGuard - 인증 상태:", !!session);
+          logger.debug("AuthGuard - 인증 상태", { isAuthenticated: !!session });
         }
       } catch (err) {
-        console.error("인증 확인 중 오류:", err);
+        logger.error("인증 확인 중 오류:", undefined, err);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -87,7 +88,10 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("🔍 AuthGuard - 인증 상태 변화:", event, !!session);
+      logger.debug("AuthGuard - 인증 상태 변화", {
+        event,
+        hasSession: !!session,
+      });
       console.log(
         "🔍 AuthGuard - localStorage 토큰들:",
         Object.keys(localStorage).filter((key) => key.startsWith("sb-"))

@@ -1,4 +1,5 @@
 import React from "react";
+import { logger } from "../../lib/logger";
 import {
   getGroupStudentDisplayText,
   getGroupStudentNames,
@@ -39,6 +40,7 @@ interface SessionBlockProps {
   // 🆕 드래그 상태 props
   isDragging?: boolean; // 드래그 중인지 여부
   draggedSessionId?: string; // 드래그된 세션 ID
+  isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
 }
 
 export const validateSessionBlockProps = (
@@ -68,6 +70,7 @@ function SessionBlock({
   selectedStudentId, // 🆕 선택된 학생 ID 추가
   isDragging = false, // 🆕 드래그 상태
   draggedSessionId, // 🆕 드래그된 세션 ID
+  isAnyDragging = false, // 🆕 전역 드래그 상태 추가
 }: SessionBlockProps) {
   // null/undefined 안전 처리
   if (!session) {
@@ -100,11 +103,12 @@ function SessionBlock({
     yOffset,
     subject?.color,
     isDragging, // 🆕 드래그 상태 전달
-    session.id === draggedSessionId // 🆕 현재 세션이 드래그된 세션인지
+    session.id === draggedSessionId, // 🆕 현재 세션이 드래그된 세션인지
+    isAnyDragging // 🆕 전역 드래그 상태 전달
   );
 
   const handleClick = (e: React.MouseEvent) => {
-    console.log("🖱️ SessionBlock clicked!", {
+    logger.info("🖱️ SessionBlock clicked!", {
       sessionId: session.id,
       subjectName: subject?.name,
       studentNames,
@@ -123,22 +127,14 @@ function SessionBlock({
   // 🆕 드래그 시작 핸들러
   const handleDragStart = (e: React.DragEvent) => {
     const actualYPosition = yPosition || 1; // 기본값 1 설정
-    console.log("🔄 SessionBlock 드래그 시작:", {
-      sessionId: session.id,
-      sessionName:
-        getSessionSubject(session, enrollments, subjects)?.name || "Unknown",
-      yPosition: actualYPosition,
-      startsAt: session.startsAt,
-      endsAt: session.endsAt,
-    });
 
     // 드래그 데이터 설정
     try {
       e.dataTransfer.setData("text/plain", `session:${session.id}`);
       e.dataTransfer.effectAllowed = "move";
-      console.log("✅ 드래그 데이터 설정 완료:", session.id);
+      logger.info("✅ 드래그 데이터 설정 완료", { sessionId: session.id });
     } catch (error) {
-      console.error("❌ 드래그 데이터 설정 실패:", error);
+      logger.error("❌ 드래그 데이터 설정 실패:", undefined, error);
     }
 
     // 드래그 이미지 설정 (선택사항)
@@ -152,7 +148,7 @@ function SessionBlock({
 
   // 🆕 드래그 종료 핸들러
   const handleDragEnd = (e: React.DragEvent) => {
-    console.log("🔄 SessionBlock 드래그 종료:", {
+    logger.info("🔄 SessionBlock 드래그 종료", {
       sessionId: session.id,
       dropEffect: e.dataTransfer.dropEffect,
     });

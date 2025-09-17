@@ -1,4 +1,5 @@
 import { Subject } from "@/domain/entities/Subject";
+import { logger } from "../../lib/logger";
 import { SubjectRepository } from "@/infrastructure/interfaces";
 
 export class SubjectApplicationServiceImpl {
@@ -8,7 +9,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.getAll(userId);
     } catch (error) {
-      console.error("과목 목록 조회 중 에러 발생:", error);
+      logger.error("과목 목록 조회 중 에러 발생:", undefined, error);
       return [];
     }
   }
@@ -17,7 +18,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.getById(id);
     } catch (error) {
-      console.error("과목 조회 중 에러 발생:", error);
+      logger.error("과목 조회 중 에러 발생:", undefined, error);
       return null;
     }
   }
@@ -43,7 +44,7 @@ export class SubjectApplicationServiceImpl {
       const newSubject = Subject.create(subjectData.name, subjectData.color);
       return await this.subjectRepository.create(newSubject, userId);
     } catch (error) {
-      console.error("과목 추가 중 에러 발생:", error);
+      logger.error("과목 추가 중 에러 발생:", undefined, error);
       throw error;
     }
   }
@@ -72,7 +73,7 @@ export class SubjectApplicationServiceImpl {
 
       return await this.subjectRepository.update(id, subjectData);
     } catch (error) {
-      console.error("과목 업데이트 중 에러 발생:", error);
+      logger.error("과목 업데이트 중 에러 발생:", undefined, error);
       throw error;
     }
   }
@@ -81,7 +82,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.delete(id);
     } catch (error) {
-      console.error("과목 삭제 중 에러 발생:", error);
+      logger.error("과목 삭제 중 에러 발생:", undefined, error);
       throw error;
     }
   }

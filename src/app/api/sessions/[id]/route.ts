@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
+import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the session service (for testing purposes)
@@ -32,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: session });
   } catch (error) {
-    console.error("Error fetching session:", error);
+    logger.error("Error fetching session:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch session" },
       { status: 500 }
@@ -85,7 +87,7 @@ export async function PUT(
       message: "Session updated successfully",
     });
   } catch (error) {
-    console.error("Error updating session:", error);
+    logger.error("Error updating session:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update session" },
       { status: 500 }
@@ -113,7 +115,7 @@ export async function DELETE(
       message: "Session deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting session:", error);
+    logger.error("Error deleting session:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to delete session" },
       { status: 500 }

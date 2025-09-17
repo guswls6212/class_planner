@@ -1,4 +1,5 @@
 import { Student } from "@/domain/entities/Student";
+import { logger } from "../../lib/logger";
 import type { StudentRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 
@@ -37,7 +38,7 @@ export class SupabaseStudentRepository implements StudentRepository {
           // 데이터가 없는 경우 빈 배열 반환
           return [];
         }
-        console.error("학생 데이터 조회 실패:", error);
+        logger.error("학생 데이터 조회 실패:", undefined, error);
         return [];
       }
 
@@ -50,7 +51,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         Student.restore(studentData.id, studentData.name)
       );
     } catch (error) {
-      console.error("학생 데이터 조회 중 오류:", error);
+      logger.error("학생 데이터 조회 중 오류:", undefined, error);
       return [];
     }
   }
@@ -60,7 +61,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       const students = await this.getAll();
       return students.find((student) => student.id.value === id) || null;
     } catch (error) {
-      console.error("학생 조회 중 오류:", error);
+      logger.error("학생 조회 중 오류:", undefined, error);
       return null;
     }
   }
@@ -103,13 +104,13 @@ export class SupabaseStudentRepository implements StudentRepository {
       });
 
       if (error) {
-        console.error("학생 생성 실패:", error);
+        logger.error("학생 생성 실패:", undefined, error);
         throw error;
       }
 
       return newStudent;
     } catch (error) {
-      console.error("학생 생성 중 오류:", error);
+      logger.error("학생 생성 중 오류:", undefined, error);
       throw error;
     }
   }
@@ -157,13 +158,13 @@ export class SupabaseStudentRepository implements StudentRepository {
       });
 
       if (error) {
-        console.error("학생 업데이트 실패:", error);
+        logger.error("학생 업데이트 실패:", undefined, error);
         throw error;
       }
 
       return Student.restore(id, userData.students[studentIndex].name);
     } catch (error) {
-      console.error("학생 업데이트 중 오류:", error);
+      logger.error("학생 업데이트 중 오류:", undefined, error);
       throw error;
     }
   }
@@ -220,11 +221,11 @@ export class SupabaseStudentRepository implements StudentRepository {
       });
 
       if (error) {
-        console.error("학생 삭제 실패:", error);
+        logger.error("학생 삭제 실패:", undefined, error);
         throw error;
       }
     } catch (error) {
-      console.error("학생 삭제 중 오류:", error);
+      logger.error("학생 삭제 중 오류:", undefined, error);
       throw error;
     }
   }

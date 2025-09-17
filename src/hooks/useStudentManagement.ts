@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "../lib/logger";
 
 // ===== 타입 정의 =====
 
@@ -65,7 +66,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
       return data;
     } catch (error) {
-      console.error("API 호출 실패:", error);
+      logger.error("API 호출 실패:", undefined, error);
       throw error;
     }
   };
@@ -87,7 +88,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "학생 목록 조회 실패";
       setError(errorMessage);
-      console.error("학생 목록 조회 실패:", err);
+      logger.error("학생 목록 조회 실패:", undefined, err);
     } finally {
       setLoading(false);
     }
@@ -118,7 +119,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 추가 실패";
         setError(errorMessage);
-        console.error("학생 추가 실패:", err);
+        logger.error("학생 추가 실패:", undefined, err);
         return false;
       } finally {
         setLoading(false);
@@ -150,7 +151,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 수정 실패";
         setError(errorMessage);
-        console.error("학생 수정 실패:", err);
+        logger.error("학생 수정 실패:", undefined, err);
         return false;
       } finally {
         setLoading(false);
@@ -178,7 +179,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 삭제 실패";
         setError(errorMessage);
-        console.error("학생 삭제 실패:", err);
+        logger.error("학생 삭제 실패:", undefined, err);
         return false;
       } finally {
         setLoading(false);
@@ -195,7 +196,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const data = await apiCall(`/api/students/${id}`);
         return data.data || null;
       } catch (err) {
-        console.error("학생 조회 실패:", err);
+        logger.error("학생 조회 실패:", undefined, err);
         return null;
       }
     },

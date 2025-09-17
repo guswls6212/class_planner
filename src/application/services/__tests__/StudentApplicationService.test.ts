@@ -54,8 +54,8 @@ describe("StudentApplicationService", () => {
   describe("addStudent", () => {
     it("새로운 학생을 성공적으로 추가해야 한다", async () => {
       // Arrange
-      const input = { name: "박민수", gender: "male" as const };
-      const mockStudent = Student.create(input.name, input.gender);
+      const input = { name: "박민수" };
+      const mockStudent = Student.create(input.name);
 
       vi.spyOn(mockStudentRepository, "create").mockResolvedValue(mockStudent);
 
@@ -64,7 +64,6 @@ describe("StudentApplicationService", () => {
 
       // Assert
       expect(result.name).toBe("박민수");
-      expect(result.gender).toBe("male");
       expect(mockStudentRepository.create).toHaveBeenCalledWith(input);
     });
   });
@@ -120,7 +119,6 @@ describe("StudentApplicationService", () => {
 
       // Assert
       expect(result.name).toBe("김영희");
-      expect(result.gender).toBe("female");
       expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId);
       expect(mockStudentRepository.update).toHaveBeenCalledWith(
         studentId,

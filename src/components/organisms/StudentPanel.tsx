@@ -9,6 +9,7 @@ interface StudentPanelProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onStudentClick: (studentId: string) => void;
   onDragStart: (e: React.DragEvent, student: Student) => void;
+  onDragEnd: (e: React.DragEvent) => void; // 🆕 드래그 종료 핸들러 추가
   onSearchChange: (query: string) => void;
 }
 
@@ -18,6 +19,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
   onMouseDown,
   onStudentClick,
   onDragStart,
+  onDragEnd, // 🆕 드래그 종료 핸들러 추가
   onSearchChange,
 }) => {
   // null/undefined 안전 처리
@@ -73,7 +75,8 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
               }`}
               data-testid={`student-item-${s.id}`}
               onDragStart={(e) => onDragStart && onDragStart(e, s)}
-              onMouseDown={() => onStudentClick && onStudentClick(s.id)}
+              onDragEnd={(e) => onDragEnd && onDragEnd(e)} // 🆕 드래그 종료 이벤트 추가
+              onClick={() => onStudentClick && onStudentClick(s.id)}
             >
               {s.name}
             </div>

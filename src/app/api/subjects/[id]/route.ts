@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
+import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the subject service (for testing purposes)
@@ -32,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: subject });
   } catch (error) {
-    console.error("Error fetching subject:", error);
+    logger.error("Error fetching subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subject" },
       { status: 500 }
@@ -75,7 +77,7 @@ export async function PUT(
       message: "Subject updated successfully",
     });
   } catch (error) {
-    console.error("Error updating subject:", error);
+    logger.error("Error updating subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update subject" },
       { status: 500 }
@@ -103,7 +105,7 @@ export async function DELETE(
       message: "Subject deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting subject:", error);
+    logger.error("Error deleting subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to delete subject" },
       { status: 500 }

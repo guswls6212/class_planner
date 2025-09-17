@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./LoginButton.module.css";
 
@@ -57,14 +58,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
         // 로그인 성공 시 사용자 ID만 저장 (테마 저장용)
         if (isSupabaseConfigured && session?.user && event === "SIGNED_IN") {
-          console.log("로그인 성공", {
+          logger.info("로그인 성공", {
             event,
             userEmail: session.user.email,
           });
 
           // 사용자 ID를 localStorage에 저장 (테마 저장용)
           localStorage.setItem("supabase_user_id", session.user.id);
-          console.log("✅ 사용자 ID 저장됨:", session.user.id);
+          logger.info("✅ 사용자 ID 저장됨", { userId: session.user.id });
         }
       } else {
         // console.log('사용자 로그아웃됨, 상태 업데이트 중...');
@@ -77,7 +78,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
         // 로그아웃 시 이벤트 발생으로 상태 초기화
         if (event === "SIGNED_OUT") {
-          console.log("로그아웃 감지 - 상태 초기화");
+          logger.info("로그아웃 감지 - 상태 초기화");
           // 로그아웃 이벤트 발생으로 데이터 초기화
           window.dispatchEvent(new CustomEvent("userLoggedOut"));
         }
@@ -99,7 +100,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         redirectTo: `${window.location.origin}/students`,
       },
     });
-    if (error) console.error("Google 로그인 에러:", error);
+    if (error) logger.error("Google 로그인 에러:", undefined, error);
   };
 
   // 카카오 로그인 함수 - 일시적으로 비활성화
@@ -119,27 +120,27 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   }; */
 
   const handleLogout = async () => {
-    console.log("로그아웃 버튼 클릭됨");
+    logger.info("로그아웃 버튼 클릭됨");
 
     if (!isSupabaseConfigured) {
-      console.log("Supabase가 설정되지 않음");
+      logger.info("Supabase가 설정되지 않음");
       return;
     }
 
     try {
-      console.log("Supabase 로그아웃 시도 중...");
+      logger.info("Supabase 로그아웃 시도 중...");
 
       // 로컬 스토리지에서 모든 Supabase 관련 토큰만 삭제
-      console.log("로컬 스토리지에서 Supabase 토큰만 삭제 중...");
+      logger.info("로컬 스토리지에서 Supabase 토큰만 삭제 중...");
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("sb-") || key.includes("supabase")) {
           localStorage.removeItem(key);
-          console.log("Supabase 토큰 제거됨:", key);
+          logger.info("Supabase 토큰 제거됨:", { key });
         }
       });
 
       // 로컬 상태 즉시 업데이트
-      console.log("로컬 상태 즉시 업데이트");
+      logger.info("로컬 상태 즉시 업데이트");
       setIsLoggedIn(false);
       setUser(null);
 
@@ -147,14 +148,14 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
       setShowLoginModal(false);
 
       // 페이지 새로고침으로 모든 상태 초기화
-      console.log("페이지 새로고침으로 상태 초기화");
+      logger.info("페이지 새로고침으로 상태 초기화");
       setTimeout(() => {
         window.location.reload();
       }, 500);
 
-      console.log("✅ 로컬 로그아웃 완료");
+      logger.info("✅ 로컬 로그아웃 완료");
     } catch (error) {
-      console.error("로그아웃 처리 중 오류:", error);
+      logger.error("로그아웃 처리 중 오류:", undefined, error);
       // 에러가 있어도 로컬 상태는 이미 업데이트됨
     }
   };

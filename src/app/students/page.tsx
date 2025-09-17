@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from "../../lib/logger";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
@@ -41,7 +42,7 @@ function StudentsPageContent() {
         await refreshStudents(); // 학생 목록 새로고침
       }
     } catch (error) {
-      console.error("학생 추가 실패:", error);
+      logger.error("학생 추가 실패:", undefined, error);
     }
   };
 
@@ -62,7 +63,7 @@ function StudentsPageContent() {
         await refreshStudents(); // 학생 목록 새로고침
       }
     } catch (error) {
-      console.error("학생 삭제 실패:", error);
+      logger.error("학생 삭제 실패:", undefined, error);
     }
   };
 

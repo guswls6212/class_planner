@@ -11,9 +11,41 @@ const mockSubjectRepository = {
   delete: vi.fn(),
 };
 
+// Mock the ServiceFactory
+const mockSubjectService = {
+  getAllSubjects: vi.fn(),
+  getSubjectById: vi.fn(),
+  addSubject: vi.fn(),
+  updateSubject: vi.fn(),
+  deleteSubject: vi.fn(),
+};
+
 vi.mock("@/infrastructure/RepositoryFactory", () => ({
   createSubjectRepository: vi.fn(() => mockSubjectRepository),
 }));
+
+vi.mock("@/application/services/ServiceFactory", () => ({
+  ServiceFactory: {
+    createSubjectService: vi.fn(() => mockSubjectService),
+  },
+}));
+
+// Mock environment variables
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(),
+        })),
+      })),
+    })),
+  })),
+}));
+
+// Mock environment variables for tests
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
 describe("/api/subjects API Routes", () => {
   beforeEach(async () => {
@@ -25,6 +57,12 @@ describe("/api/subjects API Routes", () => {
     mockSubjectRepository.create.mockReset();
     mockSubjectRepository.update.mockReset();
     mockSubjectRepository.delete.mockReset();
+
+    mockSubjectService.getAllSubjects.mockReset();
+    mockSubjectService.getSubjectById.mockReset();
+    mockSubjectService.addSubject.mockReset();
+    mockSubjectService.updateSubject.mockReset();
+    mockSubjectService.deleteSubject.mockReset();
   });
 
   describe("GET /api/subjects", () => {
@@ -46,7 +84,7 @@ describe("/api/subjects API Routes", () => {
         },
       ];
 
-      mockSubjectRepository.getAll.mockResolvedValue(mockSubjects);
+      mockSubjectService.getAllSubjects.mockResolvedValue(mockSubjects);
 
       const request = new NextRequest("http://localhost:3000/api/subjects");
       const response = await GET(request);
@@ -60,7 +98,7 @@ describe("/api/subjects API Routes", () => {
     });
 
     it("과목이 없을 때 빈 배열을 반환해야 한다", async () => {
-      mockSubjectRepository.getAll.mockResolvedValue([]);
+      mockSubjectService.getAllSubjects.mockResolvedValue([]);
 
       const request = new NextRequest("http://localhost:3000/api/subjects");
       const response = await GET(request);
@@ -97,7 +135,7 @@ describe("/api/subjects API Routes", () => {
       };
 
       // 중복 체크를 위해 빈 배열 반환 (중복 없음)
-      mockSubjectRepository.getAll.mockResolvedValue([]);
+      mockSubjectService.getAllSubjects.mockResolvedValue([]);
       mockSubjectRepository.create.mockResolvedValue(newSubject);
 
       const request = new NextRequest("http://localhost:3000/api/subjects", {

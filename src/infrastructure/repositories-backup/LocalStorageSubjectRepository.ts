@@ -5,6 +5,7 @@
  */
 
 import { SubjectMapper } from '../../application/mappers/SubjectMapper';
+import { logger } from "../../lib/logger";
 import { Subject } from '../../domain/entities/Subject';
 import type { ISubjectRepository } from '../../domain/repositories';
 import { SubjectId } from '../../domain/value-objects/SubjectId';

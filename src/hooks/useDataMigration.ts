@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { logger } from "../lib/logger";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { supabase } from "../utils/supabaseClient";
 
@@ -45,7 +46,7 @@ export const useDataMigration = () => {
 
       return null;
     } catch (error) {
-      console.error("localStorage에서 데이터 로드 실패:", error);
+      logger.error("localStorage에서 데이터 로드 실패:", undefined, error);
       return null;
     }
   }, []);
@@ -60,21 +61,21 @@ export const useDataMigration = () => {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        console.error("로그인되지 않은 사용자 - 마이그레이션 불가");
+        logger.error("로그인되지 않은 사용자 - 마이그레이션 불가");
         return false;
       }
 
       const localData = loadFromLocalStorage();
 
       if (!localData) {
-        console.log("마이그레이션할 localStorage 데이터가 없음");
+        logger.info("마이그레이션할 localStorage 데이터가 없음");
         return true;
       }
 
-      console.log("🔄 localStorage → Supabase 마이그레이션 시작");
+      logger.info("🔄 localStorage → Supabase 마이그레이션 시작");
 
       // 통합 데이터 마이그레이션 (JSONB 방식)
-      console.log("🔄 통합 데이터 마이그레이션 시작");
+      logger.info("🔄 통합 데이터 마이그레이션 시작");
 
       const { error: dataError } = await supabase.from("user_data").upsert({
         user_id: user.id,
@@ -83,16 +84,16 @@ export const useDataMigration = () => {
       });
 
       if (dataError) {
-        console.error("데이터 마이그레이션 실패:", dataError);
+        logger.error("데이터 마이그레이션 실패:", undefined, dataError);
         return false;
       }
 
-      console.log("✅ 통합 데이터 마이그레이션 완료");
+      logger.info("✅ 통합 데이터 마이그레이션 완료");
 
-      console.log("✅ localStorage → Supabase 마이그레이션 완료");
+      logger.info("✅ localStorage → Supabase 마이그레이션 완료");
       return true;
     } catch (error) {
-      console.error("마이그레이션 중 오류:", error);
+      logger.error("마이그레이션 중 오류:", undefined, error);
       return false;
     }
   }, [loadFromLocalStorage]);
@@ -102,7 +103,7 @@ export const useDataMigration = () => {
    */
   const clearLocalStorage = useCallback(() => {
     try {
-      console.log("🗑️ localStorage 데이터 삭제 시작");
+      logger.info("🗑️ localStorage 데이터 삭제 시작");
 
       // 개별 키들 삭제
       localStorage.removeItem("students");
@@ -113,9 +114,9 @@ export const useDataMigration = () => {
       // 통합 키 삭제
       localStorage.removeItem("classPlannerData");
 
-      console.log("✅ localStorage 데이터 삭제 완료");
+      logger.info("✅ localStorage 데이터 삭제 완료");
     } catch (error) {
-      console.error("localStorage 데이터 삭제 실패:", error);
+      logger.error("localStorage 데이터 삭제 실패:", undefined, error);
     }
   }, []);
 
@@ -133,7 +134,7 @@ export const useDataMigration = () => {
 
       return false;
     } catch (error) {
-      console.error("마이그레이션 프로세스 실패:", error);
+      logger.error("마이그레이션 프로세스 실패:", undefined, error);
       return false;
     }
   }, [migrateToSupabase, clearLocalStorage]);

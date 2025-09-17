@@ -1,4 +1,5 @@
 import React from 'react';
+import { logger } from "../../lib/logger";
 import { downloadTimetableAsPDF } from '../../lib/pdf-utils';
 import type { Student } from '../../lib/planner';
 import Button from '../atoms/Button';

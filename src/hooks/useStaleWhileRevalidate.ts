@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { logger } from "../lib/logger";
 import {
   loadFromLocalStorage,
   saveToLocalStorage,

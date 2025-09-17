@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "/logger";
 
 const supabaseUrl = "https://kcyqftasdxtqslrhbctv.supabase.co";
 const supabaseAnonKey =
@@ -20,13 +21,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // 디버깅을 위해 window 객체에 노출
 if (typeof window !== "undefined") {
   (window as { supabase?: typeof supabase }).supabase = supabase;
-  console.log("🔧 Supabase 클라이언트가 window 객체에 노출됨");
+  logger.info("🔧 Supabase 클라이언트가 window 객체에 노출됨");
 
   // 인증 상태 변화 감지
   supabase.auth.onAuthStateChange((event, session) => {
-    console.log("🔧 Supabase 클라이언트 - 인증 상태 변화:", event, !!session);
+    logger.info("🔧 Supabase 클라이언트 - 인증 상태 변화:", { event, !!session });
     if (event === "SIGNED_IN" && session) {
-      console.log("🔧 Supabase 클라이언트 - 로그인 성공, 토큰 저장 확인");
+      logger.info("🔧 Supabase 클라이언트 - 로그인 성공, 토큰 저장 확인");
       console.log(
         "🔧 Supabase 클라이언트 - localStorage 키들:",
         Object.keys(localStorage).filter((key) => key.startsWith("sb-"))
@@ -189,7 +190,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error("사용자 프로필 생성 실패:", error);
+      logger.error("사용자 프로필 생성 실패:", undefined, error);
       throw error;
     }
 
@@ -206,7 +207,7 @@ export const supabaseUtils = {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      console.error("사용자 프로필 조회 실패:", error);
+      logger.error("사용자 프로필 조회 실패:", undefined, error);
       throw error;
     }
 
@@ -227,7 +228,7 @@ export const supabaseUtils = {
       .single();
 
     if (error) {
-      console.error("사용자 데이터 저장 실패:", error);
+      logger.error("사용자 데이터 저장 실패:", undefined, error);
       throw error;
     }
 
@@ -244,7 +245,7 @@ export const supabaseUtils = {
       .single();
 
     if (error && error.code !== "PGRST116") {
-      console.error("사용자 데이터 조회 실패:", error);
+      logger.error("사용자 데이터 조회 실패:", undefined, error);
       throw error;
     }
 
@@ -265,7 +266,7 @@ export const supabaseUtils = {
     });
 
     if (error) {
-      console.error("활동 로그 기록 실패:", error);
+      logger.error("활동 로그 기록 실패:", undefined, error);
       // 로그 기록 실패는 앱 동작에 영향을 주지 않도록 에러를 던지지 않음
     }
 

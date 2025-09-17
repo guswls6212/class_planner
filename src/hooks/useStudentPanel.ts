@@ -1,20 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { Student } from '../lib/planner';
-import type { DragOffset, StudentPanelState } from '../types/scheduleTypes';
-import { usePanelPosition } from './usePanelPosition';
+import { useEffect, useMemo, useState } from "react";
+import type { Student } from "../lib/planner";
+import type { DragOffset, StudentPanelState } from "../types/scheduleTypes";
+import { usePanelPosition } from "./usePanelPosition";
 
 export const useStudentPanel = (
   students: Student[],
   selectedStudentId: string,
-  setSelectedStudentId: (id: string) => void
+  setSelectedStudentId: (id: string) => void,
+  onDragEnd?: () => void // 🆕 드래그 종료 콜백 추가
 ): StudentPanelState & {
   setSearchQuery: (query: string) => void;
   handleMouseDown: (e: React.MouseEvent) => void;
   handleStudentClick: (studentId: string) => void;
+  resetDragState: () => void;
+  setIsDragStarting: (value: boolean) => void;
 } => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<DragOffset>({ x: 0, y: 0 });
+  const [isDragStarting, setIsDragStarting] = useState(false); // 🆕 드래그 시작 플래그
 
   // 패널 위치 관리
   const { position, updatePosition } = usePanelPosition();
@@ -22,7 +26,7 @@ export const useStudentPanel = (
   // 검색어에 따라 필터링된 학생 목록
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return students;
-    return students.filter(student =>
+    return students.filter((student) =>
       student.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [students, searchQuery]);
@@ -36,13 +40,21 @@ export const useStudentPanel = (
   };
 
   const handleStudentClick = (studentId: string) => {
-    if (!isDragging) {
+    // 🆕 드래그 중이거나 드래그 시작 중일 때는 학생 선택 방지
+    if (!isDragging && !isDragStarting) {
       if (selectedStudentId === studentId) {
-        setSelectedStudentId('');
+        setSelectedStudentId("");
       } else {
         setSelectedStudentId(studentId);
       }
     }
+  };
+
+  // 🆕 드래그 상태 강제 리셋 함수
+  const resetDragState = () => {
+    setIsDragging(false);
+    setIsDragStarting(false);
+    setDragOffset({ x: 0, y: 0 });
   };
 
   // 드래그 이벤트 처리
@@ -65,16 +77,22 @@ export const useStudentPanel = (
 
     function onUp() {
       setIsDragging(false);
+      setIsDragStarting(false); // 🆕 드래그 시작 플래그도 리셋
+
+      // 🆕 드래그 종료 콜백 호출 (전역 드래그 상태 리셋)
+      if (onDragEnd) {
+        onDragEnd();
+      }
     }
 
     if (isDragging) {
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
     }
 
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     };
   }, [isDragging, dragOffset, updatePosition]);
 
@@ -87,5 +105,7 @@ export const useStudentPanel = (
     setSearchQuery,
     handleMouseDown,
     handleStudentClick,
+    resetDragState,
+    setIsDragStarting,
   };
 };

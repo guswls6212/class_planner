@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { logger } from "../../lib/logger";
 import Button from "../atoms/Button";
 import Input from "../atoms/Input";
 import styles from "./SubjectInputSection.module.css";
@@ -48,7 +49,7 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
     const success = await onAddSubject(name, subjectColor);
 
     if (success) {
-      console.log("✅ 과목 추가 성공 - 입력창 초기화");
+      logger.info("✅ 과목 추가 성공 - 입력창 초기화");
       setSubjectName("");
       setSubjectColor("#f59e0b"); // Reset color to default after adding
       setInternalErrorMessage("");

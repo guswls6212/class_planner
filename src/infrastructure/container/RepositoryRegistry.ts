@@ -1,3 +1,4 @@
+import { logger } from "../../lib/logger";
 import { RepositoryConfigFactory } from "../config/RepositoryConfig";
 import { DIContainer } from "./DIContainer";
 
@@ -22,7 +23,7 @@ export class RepositoryRegistry {
    * 모든 Repository를 DIContainer에 등록합니다.
    */
   static registerAll(): void {
-    console.log("📋 Repository 등록 시작...");
+    logger.info("📋 Repository 등록 시작...");
 
     const config = RepositoryConfigFactory.create();
 
@@ -51,7 +52,7 @@ export class RepositoryRegistry {
       true
     );
 
-    console.log("✅ 모든 Repository 등록 완료");
+    logger.info("✅ 모든 Repository 등록 완료");
     this.container.logStatus();
   }
 
@@ -59,7 +60,7 @@ export class RepositoryRegistry {
    * 테스트용 Repository를 등록합니다.
    */
   static registerForTest(): void {
-    console.log("🧪 테스트용 Repository 등록 시작...");
+    logger.info("🧪 테스트용 Repository 등록 시작...");
 
     const config = RepositoryConfigFactory.createForTest();
 
@@ -88,7 +89,7 @@ export class RepositoryRegistry {
       true
     );
 
-    console.log("✅ 테스트용 Repository 등록 완료");
+    logger.info("✅ 테스트용 Repository 등록 완료");
     this.container.logStatus();
   }
 
@@ -108,7 +109,7 @@ export class RepositoryRegistry {
   static getStudentRepository() {
     // Repository가 등록되지 않은 경우 자동 등록
     if (!this.isRegistered()) {
-      console.log("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
+      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
       this.registerAll();
     }
     return this.getRepository(REPOSITORY_KEYS.STUDENT_REPOSITORY);
@@ -121,7 +122,7 @@ export class RepositoryRegistry {
   static getSubjectRepository() {
     // Repository가 등록되지 않은 경우 자동 등록
     if (!this.isRegistered()) {
-      console.log("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
+      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
       this.registerAll();
     }
     return this.getRepository(REPOSITORY_KEYS.SUBJECT_REPOSITORY);
@@ -134,7 +135,7 @@ export class RepositoryRegistry {
   static getSessionRepository() {
     // Repository가 등록되지 않은 경우 자동 등록
     if (!this.isRegistered()) {
-      console.log("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
+      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
       this.registerAll();
     }
     return this.getRepository(REPOSITORY_KEYS.SESSION_REPOSITORY);
@@ -147,7 +148,7 @@ export class RepositoryRegistry {
   static getEnrollmentRepository() {
     // Repository가 등록되지 않은 경우 자동 등록
     if (!this.isRegistered()) {
-      console.log("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
+      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
       this.registerAll();
     }
     return this.getRepository(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY);
@@ -179,7 +180,7 @@ export class RepositoryRegistry {
    */
   static clear(): void {
     this.container.clear();
-    console.log("🧹 Repository 등록 초기화 완료");
+    logger.info("🧹 Repository 등록 초기화 완료");
   }
 
   /**
@@ -188,7 +189,7 @@ export class RepositoryRegistry {
   static logEnvironmentInfo(): void {
     const environment =
       process.env.NODE_ENV === "production" ? "production" : "development";
-    console.log("🌍 환경 정보:", {
+    logger.info("🌍 환경 정보", {
       environment,
       nodeEnv: process.env.NODE_ENV,
       isClient: typeof window !== "undefined",

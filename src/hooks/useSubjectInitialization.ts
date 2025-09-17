@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { logger } from "../lib/logger";
 import type { Subject } from '../types/subjectsTypes';
 
 const SUBJECTS_KEY = 'subjects';

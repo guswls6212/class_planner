@@ -65,7 +65,13 @@ describe("SubjectApplicationService", () => {
       // Assert
       expect(result.name).toBe("과학");
       expect(result.color.value).toBe("#0000FF");
-      expect(mockSubjectRepository.create).toHaveBeenCalledWith(input);
+      expect(mockSubjectRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "과학",
+          color: expect.objectContaining({ value: "#0000FF" }),
+        }),
+        undefined
+      );
     });
   });
 

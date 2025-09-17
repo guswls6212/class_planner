@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
 import { useSubjectManagement } from "../../hooks/useSubjectManagement";
+import { logger } from "../../lib/logger";
 
 const SELECTED_SUBJECT_KEY = "selectedSubjectId";
 
@@ -22,8 +23,10 @@ const SubjectsPageContent: React.FC = () => {
     useSubjectManagement();
 
   // 디버깅용 로그
-  console.log("🔍 SubjectsPage - subjects:", subjects);
-  console.log("🔍 SubjectsPage - subjects.length:", subjects.length);
+  logger.debug("SubjectsPage - subjects:", { subjects });
+  logger.debug("SubjectsPage - subjects.length", {
+    subjectsLength: subjects.length,
+  });
 
   // subjectsTypes의 Subject를 DomainTypes의 Subject로 변환
   const domainSubjects: DomainSubject[] = subjects.map((subject) => ({

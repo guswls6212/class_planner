@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
+import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the student service (for testing purposes)
@@ -32,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: student });
   } catch (error) {
-    console.error("Error fetching student:", error);
+    logger.error("Error fetching student:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch student" },
       { status: 500 }
@@ -75,7 +77,7 @@ export async function PUT(
       message: "Student updated successfully",
     });
   } catch (error) {
-    console.error("Error updating student:", error);
+    logger.error("Error updating student:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update student" },
       { status: 500 }
@@ -103,7 +105,7 @@ export async function DELETE(
       message: "Student deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting student:", error);
+    logger.error("Error deleting student:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to delete student" },
       { status: 500 }

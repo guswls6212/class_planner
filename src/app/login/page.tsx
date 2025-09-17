@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Button from "../../components/atoms/Button";
+import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 
 const LoginPage: React.FC = () => {
@@ -18,13 +19,15 @@ const LoginPage: React.FC = () => {
           data: { session },
         } = await supabase.auth.getSession();
 
-        console.log("🔍 LoginPage - 세션 확인:", !!session);
+        logger.debug("LoginPage - 세션 확인", { hasSession: !!session });
 
         if (session) {
-          console.log("🔍 LoginPage - 이미 로그인됨");
+          logger.debug("LoginPage - 이미 로그인됨");
           const redirectUrl = localStorage.getItem("redirectAfterLogin");
           if (redirectUrl && redirectUrl !== "/login") {
-            console.log("🔍 LoginPage - 저장된 URL로 리다이렉트:", redirectUrl);
+            logger.debug("LoginPage - 저장된 URL로 리다이렉트:", {
+              redirectUrl,
+            });
             localStorage.removeItem("redirectAfterLogin");
             router.push(redirectUrl);
           } else {
@@ -32,7 +35,7 @@ const LoginPage: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error("로그인 페이지 인증 확인 오류:", error);
+        logger.error("로그인 페이지 인증 확인 오류:", undefined, error);
       }
     };
 
@@ -42,10 +45,13 @@ const LoginPage: React.FC = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔍 LoginPage - 인증 상태 변화:", event, !!session);
+      logger.debug("LoginPage - 인증 상태 변화", {
+        event,
+        hasSession: !!session,
+      });
 
       if (event === "SIGNED_IN" && session) {
-        console.log("🔍 LoginPage - 로그인 성공, 토큰 저장 확인");
+        logger.debug("LoginPage - 로그인 성공, 토큰 저장 확인");
         console.log(
           "🔍 LoginPage - localStorage 토큰들:",
           Object.keys(localStorage).filter((key) => key.startsWith("sb-"))
@@ -59,7 +65,9 @@ const LoginPage: React.FC = () => {
         setTimeout(() => {
           const redirectUrl = localStorage.getItem("redirectAfterLogin");
           if (redirectUrl && redirectUrl !== "/login") {
-            console.log("🔍 LoginPage - 저장된 URL로 리다이렉트:", redirectUrl);
+            logger.debug("LoginPage - 저장된 URL로 리다이렉트:", {
+              redirectUrl,
+            });
             localStorage.removeItem("redirectAfterLogin");
             router.push(redirectUrl);
           } else {
@@ -85,11 +93,11 @@ const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        console.error("Google 로그인 에러:", error);
+        logger.error("Google 로그인 에러:", undefined, error);
         setError("로그인에 실패했습니다. 다시 시도해주세요.");
       }
     } catch (err) {
-      console.error("로그인 처리 중 오류:", err);
+      logger.error("로그인 처리 중 오류:", undefined, err);
       setError("로그인 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
@@ -109,11 +117,11 @@ const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        console.error("Kakao 로그인 에러:", error);
+        logger.error("Kakao 로그인 에러:", undefined, error);
         setError("로그인에 실패했습니다. 다시 시도해주세요.");
       }
     } catch (err) {
-      console.error("로그인 처리 중 오류:", err);
+      logger.error("로그인 처리 중 오류:", undefined, err);
       setError("로그인 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);

@@ -28,14 +28,14 @@ describe("DropZone Component", () => {
   it("기본 렌더링이 올바르게 되어야 한다", () => {
     render(<DropZone {...defaultProps} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("드래그 오버 상태가 올바르게 표시되어야 한다", () => {
     render(<DropZone {...defaultProps} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // 드래그 시작
     fireEvent.dragEnter(dropzone);
@@ -50,7 +50,7 @@ describe("DropZone Component", () => {
     const mockOnDrop = vi.fn();
     render(<DropZone {...defaultProps} onDrop={mockOnDrop} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // 드롭 이벤트 시뮬레이션
     const dropEvent = new Event("drop", { bubbles: true });
@@ -73,7 +73,7 @@ describe("DropZone Component", () => {
       <DropZone {...defaultProps} onEmptySpaceClick={mockOnEmptySpaceClick} />
     );
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
     fireEvent.click(dropzone);
 
     expect(mockOnEmptySpaceClick).toHaveBeenCalledTimes(1);
@@ -84,7 +84,7 @@ describe("DropZone Component", () => {
     const customStyle = { backgroundColor: "red", width: "100px" };
     render(<DropZone {...defaultProps} style={customStyle} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
     expect(dropzone).toHaveStyle("background-color: rgb(255, 0, 0)");
     expect(dropzone).toHaveStyle("width: 100px");
   });
@@ -92,7 +92,7 @@ describe("DropZone Component", () => {
   it("드래그 오버 시 배경색이 변경되어야 한다", () => {
     render(<DropZone {...defaultProps} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     fireEvent.dragEnter(dropzone);
     expect(dropzone).toHaveStyle(
@@ -106,7 +106,7 @@ describe("DropZone Component", () => {
   it("드래그 이벤트들이 기본 동작을 방지해야 한다", () => {
     render(<DropZone {...defaultProps} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // preventDefault가 호출되는지 확인하기 위해 spy 설정
     const preventDefaultSpy = vi.fn();
@@ -135,7 +135,7 @@ describe("DropZone Component", () => {
     const mockOnDrop = vi.fn();
     render(<DropZone {...defaultProps} onDrop={mockOnDrop} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // 빈 enrollmentId로 드롭 이벤트 시뮬레이션
     const dropEvent = new Event("drop", { bubbles: true });
@@ -155,7 +155,7 @@ describe("DropZone Component", () => {
     const mockOnDrop = vi.fn();
     render(<DropZone {...defaultProps} onDrop={mockOnDrop} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // null enrollmentId로 드롭 이벤트 시뮬레이션
     const dropEvent = new Event("drop", { bubbles: true });
@@ -174,42 +174,42 @@ describe("DropZone Component", () => {
   it("weekday가 음수일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} weekday={-1} />);
 
-    const dropzone = screen.getByTestId("dropzone--1-09:00");
+    const dropzone = screen.getByTestId("dropzone--1-09:00-1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("weekday가 매우 큰 값일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} weekday={1000} />);
 
-    const dropzone = screen.getByTestId("dropzone-1000-09:00");
+    const dropzone = screen.getByTestId("dropzone-1000-09:00-1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("time이 빈 문자열일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} time="" />);
 
-    const dropzone = screen.getByTestId("dropzone-0-");
+    const dropzone = screen.getByTestId("dropzone-0--1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("time이 null일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} time={null as any} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-null");
+    const dropzone = screen.getByTestId("dropzone-0-null-1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("time이 undefined일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} time={undefined as any} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-undefined");
+    const dropzone = screen.getByTestId("dropzone-0-undefined-1");
     expect(dropzone).toBeInTheDocument();
   });
 
   it("onDrop이 undefined일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} onDrop={undefined as any} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
     expect(dropzone).toBeInTheDocument();
 
     // onDrop이 undefined여도 크래시하지 않아야 함
@@ -228,7 +228,7 @@ describe("DropZone Component", () => {
   it("onEmptySpaceClick이 undefined일 때 안전하게 처리되어야 한다", () => {
     render(<DropZone {...defaultProps} onEmptySpaceClick={undefined as any} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
     expect(dropzone).toBeInTheDocument();
 
     // onEmptySpaceClick이 undefined여도 크래시하지 않아야 함
@@ -240,7 +240,7 @@ describe("DropZone Component", () => {
     const mockOnDrop = vi.fn();
     render(<DropZone {...defaultProps} onDrop={mockOnDrop} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     const longEnrollmentId = "a".repeat(1000);
     const dropEvent = new Event("drop", { bubbles: true });
@@ -261,7 +261,7 @@ describe("DropZone Component", () => {
     const mockOnDrop = vi.fn();
     render(<DropZone {...defaultProps} onDrop={mockOnDrop} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     const specialEnrollmentId = "!@#$%^&*()_+-=[]{}|;':\",./<>?";
     const dropEvent = new Event("drop", { bubbles: true });
@@ -281,7 +281,7 @@ describe("DropZone Component", () => {
   it("연속된 드래그 이벤트를 안전하게 처리해야 한다", () => {
     render(<DropZone {...defaultProps} />);
 
-    const dropzone = screen.getByTestId("dropzone-0-09:00");
+    const dropzone = screen.getByTestId("dropzone-0-09:00-1");
 
     // 연속된 드래그 이벤트
     fireEvent.dragEnter(dropzone);
@@ -305,7 +305,7 @@ describe("DropZone Component", () => {
       />
     );
 
-    const dropzone = screen.getByTestId("dropzone-2-14:30");
+    const dropzone = screen.getByTestId("dropzone-2-14:30-1");
     expect(dropzone).toBeInTheDocument();
     expect(dropzone).toHaveStyle("background-color: rgb(0, 0, 255)");
     expect(dropzone).toHaveStyle("height: 50px");

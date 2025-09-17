@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { logger } from "../lib/logger";
 import { DATA_SAVE_DEBOUNCE_CONFIG, debounce } from '../lib/debounceUtils';
 import type { ClassPlannerData } from '../types/dataSyncTypes';
 import { supabase } from '../utils/supabaseClient';

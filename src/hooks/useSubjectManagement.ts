@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "../lib/logger";
 
 // ===== 타입 정의 =====
 
@@ -77,7 +78,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
 
       return data;
     } catch (error) {
-      console.error("API 호출 실패:", error);
+      logger.error("API 호출 실패:", undefined, error);
       throw error;
     }
   };
@@ -105,7 +106,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "과목 목록 조회 실패";
       setErrorMessage(errorMessage);
-      console.error("과목 목록 조회 실패:", err);
+      logger.error("과목 목록 조회 실패:", undefined, err);
 
       // API 호출 실패 시 기본 과목 사용
       setSubjects(DEFAULT_SUBJECTS);
@@ -136,7 +137,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 추가 실패";
         setErrorMessage(errorMessage);
-        console.error("과목 추가 실패:", err);
+        logger.error("과목 추가 실패:", undefined, err);
         return false;
       }
     },
@@ -165,7 +166,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 수정 실패";
         setErrorMessage(errorMessage);
-        console.error("과목 수정 실패:", err);
+        logger.error("과목 수정 실패:", undefined, err);
         return false;
       }
     },
@@ -190,7 +191,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 삭제 실패";
         setErrorMessage(errorMessage);
-        console.error("과목 삭제 실패:", err);
+        logger.error("과목 삭제 실패:", undefined, err);
         return false;
       }
     },
@@ -205,7 +206,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const data = await apiCall(`/api/subjects/${id}`);
         return data.data || null;
       } catch (err) {
-        console.error("과목 조회 실패:", err);
+        logger.error("과목 조회 실패:", undefined, err);
         return null;
       }
     },

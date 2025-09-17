@@ -33,6 +33,7 @@ interface TimeTableRowProps {
   className?: string;
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
+  isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   // 🆕 드래그 핸들러들
   onDragStart?: (session: Session) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
@@ -55,6 +56,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   className = "",
   style = {},
   selectedStudentId, // 🆕 선택된 학생 ID 추가
+  isAnyDragging = false, // 🆕 전역 드래그 상태 추가
   // 🆕 드래그 핸들러들
   onDragStart,
   onDragOver,
@@ -80,12 +82,21 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const maxYPosition = React.useMemo(() => {
     // 드래그 중일 때는 더 많은 드롭존을 표시하기 위해 최대값을 증가
     if (dragPreview?.draggedSession) {
-      return Math.max(
-        5, // 최소 5개 드롭존 보장
-        Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1)
+      const maxPos = Math.max(
+        ...weekdaySessions.map((s) => s.yPosition || 1),
+        1
       );
+      // Infinity나 NaN 체크
+      if (!isFinite(maxPos) || isNaN(maxPos)) {
+        return 5; // 기본값 반환
+      }
+      return Math.max(5, maxPos); // 최소 5개 드롭존 보장
     }
     const maxPos = Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1);
+    // Infinity나 NaN 체크
+    if (!isFinite(maxPos) || isNaN(maxPos)) {
+      return 1; // 기본값 반환
+    }
     return maxPos;
   }, [weekdaySessions, dragPreview?.draggedSession]);
 
@@ -235,6 +246,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                       }
                     : null
                 } // 🆕 드래그 중인 세션의 시간 범위 전달
+                isAnyDragging={isAnyDragging} // 🆕 전역 드래그 상태 전달
                 isDragging={isDragging} // 🆕 드래그 상태 전달
                 dragPreview={dragPreview} // 🆕 드래그 프리뷰 정보 전달
                 style={{
@@ -280,6 +292,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             // 🆕 드래그 상태 전달
             isDragging={dragPreview?.draggedSession !== null}
             draggedSessionId={dragPreview?.draggedSession?.id}
+            isAnyDragging={isAnyDragging} // 🆕 전역 드래그 상태 전달
           />
         ))}
       </div>

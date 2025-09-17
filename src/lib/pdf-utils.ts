@@ -1,5 +1,6 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { logger } from "./logger";
 
 /**
  * HTML 요소를 PDF로 변환하여 다운로드하는 유틸리티 함수들
@@ -87,7 +88,7 @@ export function calculateSessionTimeRange(element: HTMLElement): {
   const startTime = earliestStart;
   const endTime = latestEnd;
 
-  console.log("📊 PDF 세션 시간 범위 계산:", {
+  logger.info("📊 PDF 세션 시간 범위 계산:", {
     originalEarliest: earliestStart,
     originalLatest: latestEnd,
     finalStart: startTime,
@@ -511,7 +512,7 @@ export async function captureElement(
       const weekdayHeaderWidth = 80; // 요일 헤더 너비
       captureWidth = weekdayHeaderWidth + timeRangeWidth;
 
-      console.log("🆕 세션 범위 캡처 너비 계산:", {
+      logger.info("🆕 세션 범위 캡처 너비 계산:", {
         startTime: sessionTimeRange.startTime,
         endTime: sessionTimeRange.endTime,
         timeRangeSlots,
@@ -678,7 +679,7 @@ export async function downloadElementAsPDF(
     // 2. 캔버스를 PDF로 변환하여 다운로드
     downloadCanvasAsPDF(canvas, options);
   } catch (error) {
-    console.error("PDF 다운로드 중 오류 발생:", error);
+    logger.error("PDF 다운로드 중 오류 발생:", undefined, error);
     throw error;
   }
 }

@@ -83,8 +83,8 @@ function SchedulePageContent() {
       console.log("🔍 addSession 시작:", sessionData);
 
       // 1단계: 각 학생에 대해 enrollment 생성/확인
-      const enrollmentIds = [];
-      const newEnrollments = [];
+      const enrollmentIds: string[] = [];
+      const newEnrollments: any[] = [];
 
       for (const studentId of sessionData.studentIds) {
         // 기존 enrollment가 있는지 확인
@@ -119,6 +119,7 @@ function SchedulePageContent() {
         endsAt: sessionData.endTime,
         room: sessionData.room || "",
         enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
+        yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
       };
 
       console.log("🆕 새로운 세션 생성:", newSession);
@@ -139,6 +140,46 @@ function SchedulePageContent() {
       await updateData(updateDataPayload);
 
       console.log("✅ 세션 추가 완료");
+
+      // 🆕 충돌 해결을 위해 다음 렌더링 사이클에서 실행
+      setTimeout(async () => {
+        try {
+          console.log("🔍 충돌 해결 시작 (비동기)");
+
+          // 현재 세션 목록으로 충돌 해결 (새로 생성된 enrollment 포함)
+          const updatedSessions = [...sessions, newSession];
+          const updatedEnrollments =
+            newEnrollments.length > 0
+              ? [...enrollments, ...newEnrollments]
+              : enrollments;
+
+          const repositionedSessions = repositionSessions(
+            updatedSessions,
+            sessionData.weekday,
+            sessionData.startTime,
+            sessionData.endTime,
+            sessionData.yPosition || 1,
+            newSession.id
+          );
+
+          console.log(
+            "✅ 충돌 해결 완료 - 최종 세션 수:",
+            repositionedSessions.length
+          );
+
+          // 충돌 해결된 세션들과 enrollment를 함께 업데이트
+          const updatePayload: any = { sessions: repositionedSessions };
+          if (newEnrollments.length > 0) {
+            updatePayload.enrollments = updatedEnrollments;
+          }
+
+          await updateData(updatePayload);
+
+          console.log("✅ 충돌 해결 업데이트 완료");
+        } catch (error) {
+          console.error("❌ 충돌 해결 실패:", error);
+        }
+      }, 0);
     },
     [sessions, enrollments, updateData]
   );
@@ -219,89 +260,56 @@ function SchedulePageContent() {
     [sessions, isTimeOverlapping]
   );
 
-  // 🆕 세션 이동 후 전체 빈 공간 채우기 로직
-  const fillGapsAfterMove = useCallback(
+  // 🆕 임시 우선순위 레벨을 가진 세션 타입
+  interface SessionWithPriority extends Session {
+    priorityLevel?: number; // 임시로만 사용
+  }
+
+  // 🆕 특정 yPosition에서 충돌 확인 함수
+  const checkCollisionsAtYPosition = useCallback(
     (
-      sessions: Session[],
-      targetWeekday: number,
-      movingSessionId: string
-    ): Session[] => {
-      // 해당 요일의 모든 세션들 (이동한 세션 포함)
-      const allSessionsInWeekday = sessions.filter(
-        (session) => session.weekday === targetWeekday
-      );
+      targetDaySessions: Map<number, SessionWithPriority[]>,
+      yPosition: number,
+      targetStartTime: string,
+      targetEndTime: string,
+      checkWithPriorityLevel1: boolean = false // 🆕 우선순위 레벨 1 세션들과 충돌 확인 여부
+    ): boolean => {
+      const sessionsAtYPosition = targetDaySessions.get(yPosition) || [];
 
-      // 시간대별로 세션들을 그룹화
-      const sessionsByTimeSlot = new Map<string, Session[]>();
-
-      allSessionsInWeekday.forEach((session) => {
-        const timeKey = `${session.startsAt}-${session.endsAt}`;
-        if (!sessionsByTimeSlot.has(timeKey)) {
-          sessionsByTimeSlot.set(timeKey, []);
-        }
-        sessionsByTimeSlot.get(timeKey)!.push(session);
-      });
-
-      // 각 시간대별로 빈 공간 채우기 수행
-      const repositionedSessions = new Map<string, Session>();
-
-      sessionsByTimeSlot.forEach((sessionsInTimeSlot, timeKey) => {
-        // yPosition별로 그룹화
-        const sessionsByYPosition = new Map<number, Session[]>();
-        sessionsInTimeSlot.forEach((session) => {
-          const yPos = session.yPosition || 1;
-          if (!sessionsByYPosition.has(yPos)) {
-            sessionsByYPosition.set(yPos, []);
-          }
-          sessionsByYPosition.get(yPos)!.push(session);
-        });
-
-        // 사용 중인 yPosition들을 정렬
-        const usedYPositions = Array.from(sessionsByYPosition.keys()).sort(
-          (a, b) => a - b
+      if (checkWithPriorityLevel1) {
+        // 🆕 우선순위 레벨 1인 세션들과 충돌 확인
+        const priorityLevel1Sessions = sessionsAtYPosition.filter(
+          (session) => session.priorityLevel === 1
         );
 
-        // 빈 공간 채우기: 가장 낮은 yPosition부터 순차적으로 배치
-        let currentYPosition = 1;
-
-        usedYPositions.forEach((yPos) => {
-          const sessionsAtYPos = sessionsByYPosition.get(yPos)!;
-
-          sessionsAtYPos.forEach((session) => {
-            // 이동한 세션은 건드리지 않음 (이미 repositionSessions에서 처리됨)
-            if (session.id === movingSessionId) {
-              console.log(
-                `⏭️ 이동한 세션 건너뛰기: ${session.id} (시간대: ${timeKey})`
-              );
-              return; // 이동한 세션은 건너뛰기
-            }
-
-            if (currentYPosition !== yPos) {
-              repositionedSessions.set(session.id, {
-                ...session,
-                yPosition: currentYPosition,
-              });
-              console.log(
-                `🔄 빈 공간 채우기: ${session.id} 세션을 yPosition ${yPos} → ${currentYPosition}으로 이동 (시간대: ${timeKey})`
-              );
-            }
-            currentYPosition++;
-          });
-        });
-      });
-
-      // 재배치된 세션들을 적용
-      return sessions.map((session) => {
-        if (repositionedSessions.has(session.id)) {
-          return repositionedSessions.get(session.id)!;
-        }
-        return session;
-      });
+        return priorityLevel1Sessions.some((prioritySession) =>
+          sessionsAtYPosition.some(
+            (session) =>
+              session.priorityLevel === 0 && // 우선순위 레벨 0인 세션만 확인
+              isTimeOverlapping(
+                session.startsAt,
+                session.endsAt,
+                prioritySession.startsAt,
+                prioritySession.endsAt
+              )
+          )
+        );
+      } else {
+        // 기존 로직: 이동하려는 세션의 시간과 충돌 확인
+        return sessionsAtYPosition.some((session) =>
+          isTimeOverlapping(
+            session.startsAt,
+            session.endsAt,
+            targetStartTime,
+            targetEndTime
+          )
+        );
+      }
     },
-    []
+    [isTimeOverlapping]
   );
 
-  // 🆕 세션 재배치 로직 (시나리오별 처리)
+  // 🆕 우선순위 기반 충돌 해결 로직
   const repositionSessions = useCallback(
     (
       sessions: Session[],
@@ -311,82 +319,313 @@ function SchedulePageContent() {
       targetYPosition: number,
       movingSessionId: string
     ): Session[] => {
-      // 충돌하는 세션들 찾기 (이동할 세션 제외)
-      const collidingSessions = findCollidingSessions(
+      console.log("🔄 우선순위 기반 충돌 해결 시작:", {
         targetWeekday,
         targetStartTime,
         targetEndTime,
-        movingSessionId
-      );
-
-      console.log("🔍 충돌하는 세션들:", collidingSessions);
-
-      // 충돌하는 세션들을 yPosition별로 그룹화
-      const sessionsByYPosition = new Map<number, Session[]>();
-      collidingSessions.forEach((session) => {
-        const yPos = session.yPosition || 1;
-        if (!sessionsByYPosition.has(yPos)) {
-          sessionsByYPosition.set(yPos, []);
-        }
-        sessionsByYPosition.get(yPos)!.push(session);
+        targetYPosition,
+        movingSessionId,
       });
 
-      console.log(
-        "📊 yPosition별 세션 그룹:",
-        Object.fromEntries(sessionsByYPosition)
-      );
-
-      // 재배치된 세션들을 저장할 맵
-      const repositionedSessions = new Map<string, Session>();
-
-      // 🆕 스마트한 재배치 로직: 빈 공간을 채우면서 효율적으로 배치
-
-      // 1단계: 이동할 세션을 targetYPosition에 배치
-      // 2단계: 충돌하는 세션들을 효율적으로 재배치 (빈 공간 우선 채우기)
-
-      // 사용 중인 yPosition들을 정렬
-      const usedYPositions = Array.from(sessionsByYPosition.keys()).sort(
-        (a, b) => a - b
-      );
-
-      // 이동할 세션을 제외한 세션들을 효율적으로 재배치
-      const availablePositions = new Set<number>();
-
-      // 1부터 최대 yPosition까지 모든 위치를 사용 가능한 위치로 초기화
-      const maxYPosition = Math.max(...usedYPositions, targetYPosition);
-      for (let i = 1; i <= maxYPosition + 1; i++) {
-        availablePositions.add(i);
+      // 임시 우선순위 레벨을 가진 세션 타입
+      interface SessionWithPriority extends Session {
+        priorityLevel?: number;
       }
 
-      // targetYPosition은 이동할 세션이 사용하므로 제외
-      availablePositions.delete(targetYPosition);
+      // 1. targetDaySessions = Map<yPosition, SessionWithPriority[]>
+      const targetDaySessions = new Map<number, SessionWithPriority[]>();
 
-      // 충돌하는 세션들을 효율적으로 재배치
-      usedYPositions.forEach((yPos) => {
-        const sessionsAtYPos = sessionsByYPosition.get(yPos)!;
+      // 해당 요일의 모든 세션들을 yPosition별로 그룹화 (우선순위 레벨 0으로 초기화)
+      sessions
+        .filter((s) => s.weekday === targetWeekday)
+        .forEach((session) => {
+          const yPos = session.yPosition || 1;
+          if (!targetDaySessions.has(yPos)) {
+            targetDaySessions.set(yPos, []);
+          }
+          targetDaySessions.get(yPos)!.push({ ...session, priorityLevel: 0 });
+        });
 
-        sessionsAtYPos.forEach((session) => {
-          // 가장 낮은 사용 가능한 yPosition 찾기
-          const newYPosition = Math.min(...Array.from(availablePositions));
+      console.log(
+        "📊 초기 targetDaySessions:",
+        Object.fromEntries(
+          Array.from(targetDaySessions.entries()).map(([yPos, sessions]) => [
+            yPos,
+            sessions.map((s) => ({ id: s.id, priorityLevel: s.priorityLevel })),
+          ])
+        )
+      );
 
-          repositionedSessions.set(session.id, {
-            ...session,
-            yPosition: newYPosition,
+      // 2. 충돌 해결 로직 (재귀적 처리)
+      let currentYPosition = targetYPosition;
+
+      // 해당 요일의 실제 최대 yPosition 계산
+      // const actualMaxYPosition = Math.max(
+      //   ...sessions
+      //     .filter((s) => s.weekday === targetWeekday)
+      //     .map((s) => s.yPosition || 1),
+      //   targetYPosition
+      // );
+      // const maxYPosition = actualMaxYPosition + 1; // 실제 최대값 + 1
+
+      // console.log(
+      //   `📊 해당 요일의 최대 yPosition: ${actualMaxYPosition}, 충돌 해결 최대값: ${maxYPosition}`
+      // );
+
+      // 초기 충돌 확인
+      let hasCollisions = checkCollisionsAtYPosition(
+        targetDaySessions,
+        currentYPosition,
+        targetStartTime,
+        targetEndTime
+      );
+
+      let loopCount = 0; // 루프 카운터 추가
+
+      while (
+        hasCollisions
+        // && currentYPosition <= maxYPosition
+      ) {
+        loopCount++;
+        const sessionsAtCurrentPos =
+          targetDaySessions.get(currentYPosition) || [];
+
+        let collidingSessions: SessionWithPriority[] = [];
+
+        if (loopCount === 1) {
+          // 첫 번째 루프: 이동할 세션과 시간이 겹치는 세션들 찾기
+          collidingSessions = sessionsAtCurrentPos.filter(
+            (session) =>
+              session.id !== movingSessionId &&
+              isTimeOverlapping(
+                targetStartTime,
+                targetEndTime,
+                session.startsAt,
+                session.endsAt
+              )
+          );
+        } else {
+          // 두 번째 루프부터: 우선순위 레벨 1인 세션들과 시간이 겹치는 세션들 찾기
+          const highPrioritySessions = sessionsAtCurrentPos.filter(
+            (session) => (session.priorityLevel || 0) >= 1
+          );
+
+          collidingSessions = sessionsAtCurrentPos.filter(
+            (session) =>
+              session.id !== movingSessionId &&
+              highPrioritySessions.some((highPrioritySession) =>
+                isTimeOverlapping(
+                  highPrioritySession.startsAt,
+                  highPrioritySession.endsAt,
+                  session.startsAt,
+                  session.endsAt
+                )
+              )
+          );
+        }
+
+        if (loopCount === 1) {
+          console.log(
+            `🔍 첫 번째 루프: 이동할 세션과 시간이 겹치는 세션들 (yPosition ${currentYPosition}):`,
+            collidingSessions.map((s) => {
+              // enrollmentIds를 통해 과목 정보 찾기
+              const enrollment = enrollments.find((e) =>
+                s.enrollmentIds?.includes(e.id)
+              );
+              const subject = enrollment
+                ? subjects.find((sub) => sub.id === enrollment.subjectId)
+                : null;
+              return {
+                id: s.id,
+                subject: subject?.name || "알 수 없음",
+                time: `${s.startsAt} - ${s.endsAt}`,
+                priorityLevel: s.priorityLevel,
+              };
+            })
+          );
+        } else {
+          console.log(
+            `🔍 ${loopCount}번째 루프: 우선순위 레벨 1 세션들과 시간이 겹치는 세션들 (yPosition ${currentYPosition}):`,
+            collidingSessions.map((s) => {
+              // enrollmentIds를 통해 과목 정보 찾기
+              const enrollment = enrollments.find((e) =>
+                s.enrollmentIds?.includes(e.id)
+              );
+              const subject = enrollment
+                ? subjects.find((sub) => sub.id === enrollment.subjectId)
+                : null;
+              return {
+                id: s.id,
+                subject: subject?.name || "알 수 없음",
+                time: `${s.startsAt} - ${s.endsAt}`,
+                priorityLevel: s.priorityLevel,
+              };
+            })
+          );
+        }
+
+        if (collidingSessions.length === 0) {
+          console.log(`✅ yPosition ${currentYPosition}에서 충돌 없음, 종료`);
+          break; // 루프 바로 종료
+        }
+
+        // 첫 번째 루프에서는 우선순위 체크하지 않고 모든 충돌 세션 이동
+        if (loopCount === 1) {
+          console.log(`🔄 첫 번째 루프: 모든 충돌 세션을 다음 위치로 이동`);
+
+          const nextYPosition = currentYPosition + 1;
+
+          collidingSessions.forEach((session) => {
+            // 기존 위치에서 제거
+            const currentSessions =
+              targetDaySessions.get(currentYPosition) || [];
+            targetDaySessions.set(
+              currentYPosition,
+              currentSessions.filter((s) => s.id !== session.id)
+            );
+
+            // 새 위치에 추가 (우선순위 레벨 +1)
+            if (!targetDaySessions.has(nextYPosition)) {
+              targetDaySessions.set(nextYPosition, []);
+            }
+            targetDaySessions.get(nextYPosition)!.push({
+              ...session,
+              yPosition: nextYPosition,
+              priorityLevel: (session.priorityLevel || 0) + 1,
+            });
+
+            // enrollmentIds를 통해 과목 정보 찾기
+            const enrollment = enrollments.find((e) =>
+              session.enrollmentIds?.includes(e.id)
+            );
+            const subject = enrollment
+              ? subjects.find((sub) => sub.id === enrollment.subjectId)
+              : null;
+
+            console.log(
+              `🔄 세션 ${session.id} (${subject?.name || "알 수 없음"}, ${
+                session.startsAt
+              } - ${
+                session.endsAt
+              }) 이동: yPosition ${currentYPosition} → ${nextYPosition}, 우선순위 레벨 ${
+                session.priorityLevel || 0
+              } → ${(session.priorityLevel || 0) + 1}`
+            );
           });
 
-          // 사용한 위치를 제거
-          availablePositions.delete(newYPosition);
+          currentYPosition = nextYPosition;
+        } else {
+          // 두 번째 루프부터는 우선순위 레벨 기반 처리
+          console.log(`🔄 ${loopCount}번째 루프: 우선순위 레벨 기반 처리`);
+
+          // 우선순위 레벨 1인 세션들은 현재 위치에 유지
+          const highPrioritySessions = collidingSessions.filter(
+            (session) => (session.priorityLevel || 0) >= 1
+          );
+
+          // 우선순위 레벨 0인 세션들만 다음 위치로 이동
+          const lowPrioritySessions = collidingSessions.filter(
+            (session) => (session.priorityLevel || 0) === 0
+          );
 
           console.log(
-            `🔄 스마트 재배치: ${session.id} 세션을 yPosition ${yPos} → ${newYPosition}으로 이동`
+            `📊 우선순위 레벨 1 세션들 (현재 위치 유지):`,
+            highPrioritySessions.map((s) => {
+              const enrollment = enrollments.find((e) =>
+                s.enrollmentIds?.includes(e.id)
+              );
+              const subject = enrollment
+                ? subjects.find((sub) => sub.id === enrollment.subjectId)
+                : null;
+              return {
+                id: s.id,
+                subject: subject?.name || "알 수 없음",
+                time: `${s.startsAt} - ${s.endsAt}`,
+                priorityLevel: s.priorityLevel,
+              };
+            })
           );
-        });
-      });
+          console.log(
+            `📊 우선순위 레벨 0 세션들 (다음 위치로 이동):`,
+            lowPrioritySessions.map((s) => {
+              const enrollment = enrollments.find((e) =>
+                s.enrollmentIds?.includes(e.id)
+              );
+              const subject = enrollment
+                ? subjects.find((sub) => sub.id === enrollment.subjectId)
+                : null;
+              return {
+                id: s.id,
+                subject: subject?.name || "알 수 없음",
+                time: `${s.startsAt} - ${s.endsAt}`,
+                priorityLevel: s.priorityLevel,
+              };
+            })
+          );
 
-      // 1단계: 기본 재배치 적용
-      let newSessions = sessions.map((session) => {
+          if (lowPrioritySessions.length === 0) {
+            console.log(`✅ 이동할 우선순위 레벨 0 세션이 없음, 종료`);
+            break; // 루프 바로 종료
+          }
+
+          const nextYPosition = currentYPosition + 1;
+
+          lowPrioritySessions.forEach((session) => {
+            // 기존 위치에서 제거
+            const currentSessions =
+              targetDaySessions.get(currentYPosition) || [];
+            targetDaySessions.set(
+              currentYPosition,
+              currentSessions.filter((s) => s.id !== session.id)
+            );
+
+            // 새 위치에 추가 (우선순위 레벨 +1)
+            if (!targetDaySessions.has(nextYPosition)) {
+              targetDaySessions.set(nextYPosition, []);
+            }
+            targetDaySessions.get(nextYPosition)!.push({
+              ...session,
+              yPosition: nextYPosition,
+              priorityLevel: (session.priorityLevel || 0) + 1,
+            });
+
+            // enrollmentIds를 통해 과목 정보 찾기
+            const enrollment = enrollments.find((e) =>
+              session.enrollmentIds?.includes(e.id)
+            );
+            const subject = enrollment
+              ? subjects.find((sub) => sub.id === enrollment.subjectId)
+              : null;
+
+            console.log(
+              `🔄 세션 ${session.id} (${subject?.name || "알 수 없음"}, ${
+                session.startsAt
+              } - ${
+                session.endsAt
+              }) 이동: yPosition ${currentYPosition} → ${nextYPosition}, 우선순위 레벨 ${
+                session.priorityLevel || 0
+              } → ${(session.priorityLevel || 0) + 1}`
+            );
+          });
+
+          currentYPosition = nextYPosition;
+        }
+
+        // 다음 yPosition에서 충돌 확인
+        // 두 번째 루프부터는 우선순위 레벨 1인 세션들과의 충돌 확인
+        hasCollisions = checkCollisionsAtYPosition(
+          targetDaySessions,
+          currentYPosition,
+          targetStartTime,
+          targetEndTime,
+          loopCount > 1 // 🆕 두 번째 루프부터 우선순위 레벨 1 세션들과 충돌 확인
+        );
+      }
+
+      // 3. 최종 결과 반환 (우선순위 레벨 제거)
+      const finalSessions = sessions.map((session) => {
+        // 이동할 세션 처리
         if (session.id === movingSessionId) {
-          // 이동할 세션은 새로운 위치에 배치
           return {
             ...session,
             weekday: targetWeekday,
@@ -394,19 +633,24 @@ function SchedulePageContent() {
             endsAt: targetEndTime,
             yPosition: targetYPosition,
           };
-        } else if (repositionedSessions.has(session.id)) {
-          // 재배치된 세션들
-          return repositionedSessions.get(session.id)!;
-        } else {
-          // 변경되지 않은 세션들
-          return session;
         }
+
+        // 다른 세션들 처리 (업데이트된 버전으로 교체)
+        for (const [yPos, sessionsAtPos] of targetDaySessions) {
+          const updatedSession = sessionsAtPos.find((s) => s.id === session.id);
+          if (updatedSession) {
+            const { priorityLevel, ...sessionWithoutPriority } = updatedSession;
+            return sessionWithoutPriority;
+          }
+        }
+
+        return session;
       });
 
-      // 🆕 자리 바꾸기 로직만 적용 (fillGapsAfterMove 제거)
-      return newSessions;
+      console.log("✅ 우선순위 기반 충돌 해결 완료");
+      return finalSessions;
     },
-    [findCollidingSessions]
+    [isTimeOverlapping]
   );
 
   const updateSessionPosition = useCallback(
@@ -565,6 +809,7 @@ function SchedulePageContent() {
     weekday: 0,
     startTime: "",
     endTime: "",
+    yPosition: 1, // 🆕 기본값 1
   });
 
   // 🆕 학생 입력 관련 상태
@@ -853,6 +1098,7 @@ function SchedulePageContent() {
         startTime: data.startTime,
         endTime: data.endTime,
         room: data.room,
+        yPosition: data.yPosition || 1, // 🆕 yPosition 추가
       });
       console.log("✅ addSession 함수 완료");
 
@@ -866,14 +1112,19 @@ function SchedulePageContent() {
   };
 
   // 🆕 그룹 수업 모달 열기
-  const openGroupModal = (weekday: number, time: string) => {
-    console.log("🆕 그룹 수업 모달 열기:", { weekday, time });
+  const openGroupModal = (
+    weekday: number,
+    time: string,
+    yPosition?: number
+  ) => {
+    console.log("🆕 그룹 수업 모달 열기:", { weekday, time, yPosition });
     setGroupModalData({
       studentIds: [], // 빈 배열로 초기화
       subjectId: "",
       weekday,
       startTime: time,
       endTime: getNextHour(time),
+      yPosition: yPosition || 1, // 🆕 yPosition 추가
     });
     setShowGroupModal(true);
     console.log("🆕 모달 상태 설정 완료:", { showGroupModal: true });
@@ -928,8 +1179,21 @@ function SchedulePageContent() {
   };
 
   // 🆕 드래그 앤 드롭 처리
-  const handleDrop = (weekday: number, time: string, enrollmentId: string) => {
-    console.log("🆕 handleDrop 호출됨:", { weekday, time, enrollmentId });
+  const handleDrop = (
+    weekday: number,
+    time: string,
+    enrollmentId: string,
+    yPosition?: number
+  ) => {
+    console.log("🆕 handleDrop 호출됨:", {
+      weekday,
+      time,
+      enrollmentId,
+      yPosition,
+    });
+
+    // 🆕 학생 드래그 상태 리셋 (드롭 시)
+    setIsStudentDragging(false);
 
     // 학생 ID인지 확인 (enrollment가 없는 경우)
     if (enrollmentId.startsWith("student:")) {
@@ -948,6 +1212,7 @@ function SchedulePageContent() {
         weekday,
         startTime: time,
         endTime: getNextHour(time),
+        yPosition: yPosition || 1, // 🆕 yPosition 추가
       });
 
       // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
@@ -957,10 +1222,26 @@ function SchedulePageContent() {
         weekday,
         startTime: time,
         endTime: getNextHour(time),
+        yPosition: yPosition || 1, // 🆕 yPosition 추가
       });
 
       console.log("🆕 showGroupModal을 true로 설정");
       setShowGroupModal(true);
+
+      // 디버깅을 위한 상태 확인
+      setTimeout(() => {
+        console.log("🆕 모달 상태 확인:", {
+          showGroupModal: true,
+          groupModalData: {
+            studentIds: [studentId],
+            subjectId: "",
+            weekday,
+            startTime: time,
+            endTime: getNextHour(time),
+          },
+        });
+      }, 100);
+
       return;
     }
 
@@ -979,6 +1260,7 @@ function SchedulePageContent() {
       weekday,
       startTime: time,
       endTime: getNextHour(time),
+      yPosition: yPosition || 1, // 🆕 yPosition 추가
     });
 
     // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
@@ -988,6 +1270,7 @@ function SchedulePageContent() {
       weekday,
       startTime: time,
       endTime: getNextHour(time),
+      yPosition: yPosition || 1, // 🆕 yPosition 추가
     });
 
     console.log("🆕 showGroupModal을 true로 설정");
@@ -1043,9 +1326,13 @@ function SchedulePageContent() {
   };
 
   // 🆕 빈 공간 클릭 처리
-  const handleEmptySpaceClick = (weekday: number, time: string) => {
-    console.log("🆕 빈 공간 클릭됨:", { weekday, time });
-    openGroupModal(weekday, time);
+  const handleEmptySpaceClick = (
+    weekday: number,
+    time: string,
+    yPosition?: number
+  ) => {
+    console.log("🆕 빈 공간 클릭됨:", { weekday, time, yPosition });
+    openGroupModal(weekday, time, yPosition);
   };
 
   // 🆕 세션 클릭 처리
@@ -1084,11 +1371,19 @@ function SchedulePageContent() {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // 🆕 학생 드래그 상태 관리
+  const [isStudentDragging, setIsStudentDragging] = useState(false);
+
   // 드래그 시작 처리
   const handleDragStart = (e: React.DragEvent, student: Student) => {
+    console.log("🆕 학생 드래그 시작:", student.name);
+
+    // 🆕 학생 드래그 상태 설정
+    setIsStudentDragging(true);
+
     // 해당 학생의 첫 번째 enrollment ID를 찾아서 전달
     const studentEnrollment = enrollments.find(
-      (e) => e.studentId === student.id
+      (enrollment) => enrollment.studentId === student.id
     );
     if (studentEnrollment) {
       console.log("🆕 드래그 시작 - enrollment ID 전달:", studentEnrollment.id);
@@ -1101,7 +1396,21 @@ function SchedulePageContent() {
       // enrollment가 없으면 학생 ID를 직접 전달
       e.dataTransfer.setData("text/plain", `student:${student.id}`);
     }
-    e.dataTransfer.effectAllowed = "copy";
+    e.dataTransfer.effectAllowed = "copy"; // 🆕 이미 "copy"로 설정되어 있음
+
+    // 🆕 학생 패널의 드래그 상태 리셋 (학생 드래그 시 패널 드래그 방지)
+    studentPanelState.resetDragState();
+  };
+
+  // 🆕 드래그 종료 처리
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log("🆕 학생 드래그 종료:", e.dataTransfer.dropEffect);
+
+    // 🆕 학생 드래그 상태 리셋
+    setIsStudentDragging(false);
+
+    // 🆕 학생 패널의 드래그 상태 리셋 (드래그 종료 시 패널 드래그 상태 정리)
+    studentPanelState.resetDragState();
   };
 
   return (
@@ -1169,6 +1478,7 @@ function SchedulePageContent() {
           onSessionDrop={handleSessionDrop} // 🆕 세션 드롭 핸들러 전달
           onEmptySpaceClick={handleEmptySpaceClick}
           selectedStudentId={selectedStudentId} // 🆕 선택된 학생 ID 전달
+          isStudentDragging={isStudentDragging} // 🆕 학생 드래그 상태 전달
         />
       </div>
 
@@ -1179,221 +1489,230 @@ function SchedulePageContent() {
         onMouseDown={studentPanelState.handleMouseDown}
         onStudentClick={studentPanelState.handleStudentClick}
         onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd} // 🆕 드래그 종료 핸들러 추가
         onSearchChange={studentPanelState.setSearchQuery}
       />
 
       {/* 그룹 수업 추가 모달 */}
       {showGroupModal && (
-        <div className="modal-backdrop">
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-              <h4 className={styles.modalTitle}>수업 추가</h4>
-              <div className={styles.modalForm}>
-                <div className="form-group">
-                  <Label htmlFor="modal-student" required>
-                    학생
-                  </Label>
-                  <div className={styles.studentTagsContainer}>
-                    {/* 선택된 학생 태그들 */}
-                    {groupModalData.studentIds.map((studentId) => {
-                      const student = students.find((s) => s.id === studentId);
-                      return student ? (
-                        <span key={studentId} className={styles.studentTag}>
-                          {student.name}
-                          <button
-                            type="button"
-                            className={styles.removeStudentBtn}
-                            onClick={() => removeStudent(studentId)}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                  <div className={styles.studentInputContainer}>
-                    <input
-                      id="modal-student-input"
-                      type="text"
-                      className="form-input"
-                      placeholder="학생 이름을 입력하세요"
-                      value={studentInputValue}
-                      onChange={(e) => setStudentInputValue(e.target.value)}
-                      onKeyDown={handleStudentInputKeyDown}
-                    />
-                    <button
-                      type="button"
-                      className={styles.addStudentBtn}
-                      onClick={addStudentFromInput}
-                      disabled={!studentInputValue.trim()}
-                    >
-                      추가
-                    </button>
-                  </div>
-                  {/* 학생 검색 결과 */}
-                  {studentInputValue && (
-                    <div className={styles.studentSearchResults}>
-                      {(() => {
-                        const filteredStudents =
-                          filteredStudentsForModal.filter(
-                            (student) =>
-                              !groupModalData.studentIds.includes(student.id)
-                          );
-
-                        if (filteredStudents.length === 0) {
-                          const studentExists = students.some(
-                            (s) =>
-                              s.name.toLowerCase() ===
-                              studentInputValue.toLowerCase()
-                          );
-
-                          console.log("🔍 그룹 모달 학생 검색 디버깅:", {
-                            studentInputValue,
-                            filteredStudentsLength: filteredStudents.length,
-                            studentExists,
-                            totalStudents: students.length,
-                          });
-
-                          return (
-                            <div className={styles.noSearchResults}>
-                              <span>검색 결과가 없습니다</span>
-                              {!studentExists && (
-                                <span className={styles.studentNotFound}>
-                                  (존재하지 않는 학생입니다)
-                                </span>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return filteredStudents.map((student) => (
-                          <div
-                            key={student.id}
-                            className={styles.studentSearchItem}
-                            onClick={() => addStudent(student.id)}
-                          >
+        <>
+          {console.log("🆕 모달 렌더링 중:", {
+            showGroupModal,
+            groupModalData,
+          })}
+          <div className="modal-backdrop">
+            <div className={styles.modalOverlay}>
+              <div className={styles.modalContent}>
+                <h4 className={styles.modalTitle}>수업 추가</h4>
+                <div className={styles.modalForm}>
+                  <div className="form-group">
+                    <Label htmlFor="modal-student" required>
+                      학생
+                    </Label>
+                    <div className={styles.studentTagsContainer}>
+                      {/* 선택된 학생 태그들 */}
+                      {groupModalData.studentIds.map((studentId) => {
+                        const student = students.find(
+                          (s) => s.id === studentId
+                        );
+                        return student ? (
+                          <span key={studentId} className={styles.studentTag}>
                             {student.name}
-                          </div>
-                        ));
-                      })()}
+                            <button
+                              type="button"
+                              className={styles.removeStudentBtn}
+                              onClick={() => removeStudent(studentId)}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ) : null;
+                      })}
                     </div>
-                  )}
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="modal-subject" required>
-                    과목
-                  </Label>
-                  <select
-                    id="modal-subject"
-                    className="form-select"
-                    value={groupModalData.subjectId}
-                    onChange={(e) =>
-                      setGroupModalData((prev) => ({
-                        ...prev,
-                        subjectId: e.target.value,
-                      }))
-                    }
-                    disabled={groupModalData.studentIds.length === 0}
-                  >
-                    <option value="">
-                      {groupModalData.studentIds.length === 0
-                        ? "먼저 학생을 선택하세요"
-                        : "과목을 선택하세요"}
-                    </option>
-                    {groupModalData.studentIds.length > 0 &&
-                      subjects.map((subject) => (
-                        <option key={subject.id} value={subject.id}>
-                          {subject.name}
+                    <div className={styles.studentInputContainer}>
+                      <input
+                        id="modal-student-input"
+                        type="text"
+                        className="form-input"
+                        placeholder="학생 이름을 입력하세요"
+                        value={studentInputValue}
+                        onChange={(e) => setStudentInputValue(e.target.value)}
+                        onKeyDown={handleStudentInputKeyDown}
+                      />
+                      <button
+                        type="button"
+                        className={styles.addStudentBtn}
+                        onClick={addStudentFromInput}
+                        disabled={!studentInputValue.trim()}
+                      >
+                        추가
+                      </button>
+                    </div>
+                    {/* 학생 검색 결과 */}
+                    {studentInputValue && (
+                      <div className={styles.studentSearchResults}>
+                        {(() => {
+                          const filteredStudents =
+                            filteredStudentsForModal.filter(
+                              (student) =>
+                                !groupModalData.studentIds.includes(student.id)
+                            );
+
+                          if (filteredStudents.length === 0) {
+                            const studentExists = students.some(
+                              (s) =>
+                                s.name.toLowerCase() ===
+                                studentInputValue.toLowerCase()
+                            );
+
+                            console.log("🔍 그룹 모달 학생 검색 디버깅:", {
+                              studentInputValue,
+                              filteredStudentsLength: filteredStudents.length,
+                              studentExists,
+                              totalStudents: students.length,
+                            });
+
+                            return (
+                              <div className={styles.noSearchResults}>
+                                <span>검색 결과가 없습니다</span>
+                                {!studentExists && (
+                                  <span className={styles.studentNotFound}>
+                                    (존재하지 않는 학생입니다)
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          return filteredStudents.map((student) => (
+                            <div
+                              key={student.id}
+                              className={styles.studentSearchItem}
+                              onClick={() => addStudent(student.id)}
+                            >
+                              {student.name}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="modal-subject" required>
+                      과목
+                    </Label>
+                    <select
+                      id="modal-subject"
+                      className="form-select"
+                      value={groupModalData.subjectId}
+                      onChange={(e) =>
+                        setGroupModalData((prev) => ({
+                          ...prev,
+                          subjectId: e.target.value,
+                        }))
+                      }
+                      disabled={groupModalData.studentIds.length === 0}
+                    >
+                      <option value="">
+                        {groupModalData.studentIds.length === 0
+                          ? "먼저 학생을 선택하세요"
+                          : "과목을 선택하세요"}
+                      </option>
+                      {groupModalData.studentIds.length > 0 &&
+                        subjects.map((subject) => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="modal-weekday" required>
+                      요일
+                    </Label>
+                    <select
+                      id="modal-weekday"
+                      className="form-select"
+                      value={groupModalData.weekday}
+                      onChange={(e) =>
+                        setGroupModalData((prev) => ({
+                          ...prev,
+                          weekday: Number(e.target.value),
+                        }))
+                      }
+                    >
+                      {weekdays.map((w, idx) => (
+                        <option key={idx} value={idx}>
+                          {w}
                         </option>
                       ))}
-                  </select>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="modal-start-time" required>
+                      시작 시간
+                    </Label>
+                    <input
+                      id="modal-start-time"
+                      type="time"
+                      className="form-input"
+                      value={groupModalData.startTime}
+                      onChange={(e) => handleStartTimeChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="modal-end-time" required>
+                      종료 시간
+                    </Label>
+                    <input
+                      id="modal-end-time"
+                      type="time"
+                      className="form-input"
+                      value={groupModalData.endTime}
+                      onChange={(e) => handleEndTimeChange(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <Label htmlFor="modal-room">강의실</Label>
+                    <input
+                      id="modal-room"
+                      type="text"
+                      className="form-input"
+                      placeholder="강의실 (선택사항)"
+                      value={groupModalData.room || ""}
+                      onChange={(e) =>
+                        setGroupModalData((prev) => ({
+                          ...prev,
+                          room: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <Label htmlFor="modal-weekday" required>
-                    요일
-                  </Label>
-                  <select
-                    id="modal-weekday"
-                    className="form-select"
-                    value={groupModalData.weekday}
-                    onChange={(e) =>
-                      setGroupModalData((prev) => ({
-                        ...prev,
-                        weekday: Number(e.target.value),
-                      }))
+                <div className={styles.modalActions}>
+                  <Button
+                    variant="transparent"
+                    onClick={() => setShowGroupModal(false)}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => addGroupSession(groupModalData)}
+                    disabled={
+                      groupModalData.studentIds.length === 0 ||
+                      !groupModalData.subjectId ||
+                      !groupModalData.startTime ||
+                      !groupModalData.endTime
                     }
                   >
-                    {weekdays.map((w, idx) => (
-                      <option key={idx} value={idx}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
+                    추가
+                  </Button>
                 </div>
-                <div className="form-group">
-                  <Label htmlFor="modal-start-time" required>
-                    시작 시간
-                  </Label>
-                  <input
-                    id="modal-start-time"
-                    type="time"
-                    className="form-input"
-                    value={groupModalData.startTime}
-                    onChange={(e) => handleStartTimeChange(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="modal-end-time" required>
-                    종료 시간
-                  </Label>
-                  <input
-                    id="modal-end-time"
-                    type="time"
-                    className="form-input"
-                    value={groupModalData.endTime}
-                    onChange={(e) => handleEndTimeChange(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="modal-room">강의실</Label>
-                  <input
-                    id="modal-room"
-                    type="text"
-                    className="form-input"
-                    placeholder="강의실 (선택사항)"
-                    value={groupModalData.room || ""}
-                    onChange={(e) =>
-                      setGroupModalData((prev) => ({
-                        ...prev,
-                        room: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className={styles.modalActions}>
-                <Button
-                  variant="transparent"
-                  onClick={() => setShowGroupModal(false)}
-                >
-                  취소
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => addGroupSession(groupModalData)}
-                  disabled={
-                    groupModalData.studentIds.length === 0 ||
-                    !groupModalData.subjectId ||
-                    !groupModalData.startTime ||
-                    !groupModalData.endTime
-                  }
-                >
-                  추가
-                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* 세션 편집 모달 */}

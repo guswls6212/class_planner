@@ -1,5 +1,6 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import React, { forwardRef, useCallback, useMemo, useState } from "react";
+import { logger } from "../../lib/logger";
 import type { Session, Subject } from "../../lib/planner";
 import TimeTableRow from "../molecules/TimeTableRow";
 
@@ -29,6 +30,8 @@ interface TimeTableGridProps {
   style?: React.CSSProperties;
   ref?: React.Ref<HTMLDivElement>;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
+  isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
+  isStudentDragging?: boolean; // 🆕 학생 드래그 상태 추가
 }
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
@@ -45,6 +48,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       className = "",
       style = {},
       selectedStudentId, // 🆕 선택된 학생 ID 추가
+      isAnyDragging = false, // 🆕 전역 드래그 상태 추가
+      isStudentDragging = false, // 🆕 학생 드래그 상태 추가
     },
     ref
   ) => {
@@ -155,7 +160,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const handleDragEnd = useCallback(() => {
       // DropZone에서 이미 드롭 처리를 했으므로 여기서는 상태만 초기화
       // 중복 호출 방지를 위해 onSessionDrop 호출 제거
-      console.log("🔄 TimeTableGrid 드래그 종료 - 상태 초기화만 수행");
+      logger.info("🔄 TimeTableGrid 드래그 종료 - 상태 초기화만 수행");
 
       setDragPreview({
         draggedSession: null,
@@ -231,6 +236,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
               onEmptySpaceClick={onEmptySpaceClick}
               selectedStudentId={selectedStudentId}
+              isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
               // 🆕 드래그 핸들러들 전달
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}

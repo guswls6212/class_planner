@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { logger } from "../../lib/logger";
 import type {
   SyncAction,
   SyncModalState,

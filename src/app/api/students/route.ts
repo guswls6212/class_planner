@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,7 +14,7 @@ function createServiceRoleClient() {
     );
   }
 
-  console.log("🔍 Service Role 클라이언트 생성 중...");
+  logger.debug("Service Role 클라이언트 생성 중");
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -30,39 +31,15 @@ export function getStudentService() {
 
 export async function GET(request: NextRequest) {
   try {
-    // Service Role 클라이언트 생성 (RLS 우회)
-    const serviceRoleClient = createServiceRoleClient();
-
-    // URL에서 사용자 ID 가져오기
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId") || "default-user-id";
 
-    console.log("🔍 API GET - 사용자 ID:", userId);
+    logger.debug("API GET - 사용자 ID:", { userId });
 
-    // Service Role 클라이언트로 직접 데이터 조회
-    const { data, error } = await serviceRoleClient
-      .from("user_data")
-      .select("data")
-      .eq("user_id", userId)
-      .single();
-
-    console.log("🔍 Service Role 쿼리 결과 - data:", data, "error:", error);
-
-    if (error) {
-      console.error("Service Role 데이터 조회 실패:", error);
-      if (error.code === "PGRST116") {
-        console.log("🔍 사용자 데이터가 없음, 빈 학생 목록 반환");
-        return NextResponse.json({ success: true, data: [] });
-      }
-      throw error;
-    }
-
-    const userData = data?.data;
-    const students = userData?.students || [];
-
+    const students = await getStudentService().getAllStudents(userId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
-    console.error("Error fetching students:", error);
+    logger.error("Error fetching students:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch students" },
       { status: 500 }
@@ -97,7 +74,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error adding student:", error);
+    logger.error("Error adding student:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to add student" },
       { status: 500 }
@@ -122,9 +99,35 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
-    console.error("Error updating student:", error);
+    logger.error("Error updating student:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update student" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Student ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await getStudentService().deleteStudent(id);
+    return NextResponse.json({
+      success: true,
+      message: "Student deleted successfully",
+    });
+  } catch (error) {
+    logger.error("Error deleting student:", undefined, error);
+    return NextResponse.json(
+      { success: false, error: "Failed to delete student" },
       { status: 500 }
     );
   }

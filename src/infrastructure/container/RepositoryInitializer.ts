@@ -1,3 +1,4 @@
+import { logger } from "../../lib/logger";
 import { RepositoryRegistry } from "./RepositoryRegistry";
 
 /**
@@ -33,7 +34,7 @@ export class RepositoryInitializer {
    */
   private static logEnvironmentInfo(): void {
     const environment = this.getCurrentEnvironment();
-    console.log("🌍 환경 정보:", {
+    logger.info("🌍 환경 정보", {
       environment,
       nodeEnv: process.env.NODE_ENV,
       isClient: typeof window !== "undefined",
@@ -48,12 +49,12 @@ export class RepositoryInitializer {
   static async initialize(): Promise<void> {
     // 이미 초기화되었거나 초기화 중인 경우 기존 Promise 반환
     if (this.isInitialized) {
-      console.log("♻️ Repository가 이미 초기화되었습니다.");
+      logger.info("♻️ Repository가 이미 초기화되었습니다.");
       return;
     }
 
     if (this.initializationPromise) {
-      console.log("⏳ Repository 초기화 중... 기존 Promise 대기");
+      logger.info("⏳ Repository 초기화 중... 기존 Promise 대기");
       return this.initializationPromise;
     }
 
@@ -63,9 +64,9 @@ export class RepositoryInitializer {
     try {
       await this.initializationPromise;
       this.isInitialized = true;
-      console.log("✅ Repository 초기화 완료");
+      logger.info("✅ Repository 초기화 완료");
     } catch (error) {
-      console.error("❌ Repository 초기화 실패:", error);
+      logger.error("❌ Repository 초기화 실패:", undefined, error);
       this.initializationPromise = null; // 실패 시 재시도 가능하도록
       throw error;
     }
@@ -75,7 +76,7 @@ export class RepositoryInitializer {
    * 실제 초기화 작업을 수행합니다.
    */
   private static async performInitialization(): Promise<void> {
-    console.log("🚀 Repository 초기화 시작...");
+    logger.info("🚀 Repository 초기화 시작...");
 
     // 환경 정보 출력
     this.logEnvironmentInfo();
@@ -85,28 +86,28 @@ export class RepositoryInitializer {
 
     switch (environment) {
       case "test":
-        console.log("🧪 테스트 환경: Mock Repository 등록");
+        logger.info("🧪 테스트 환경: Mock Repository 등록");
         RepositoryRegistry.registerForTest();
         break;
 
       case "development":
-        console.log("🛠️ 개발 환경: Supabase + Mock Repository 등록");
+        logger.info("🛠️ 개발 환경: Supabase + Mock Repository 등록");
         RepositoryRegistry.registerAll();
         break;
 
       case "production":
-        console.log("🚀 프로덕션 환경: Supabase + Mock Repository 등록");
+        logger.info("🚀 프로덕션 환경: Supabase + Mock Repository 등록");
         RepositoryRegistry.registerAll();
         break;
 
       default:
-        console.log("⚠️ 알 수 없는 환경, 기본 설정 사용");
+        logger.info("⚠️ 알 수 없는 환경, 기본 설정 사용");
         RepositoryRegistry.registerAll();
         break;
     }
 
     // 초기화 완료 로그
-    console.log("🎉 Repository 초기화 성공!");
+    logger.info("🎉 Repository 초기화 성공!");
   }
 
   /**
@@ -123,7 +124,7 @@ export class RepositoryInitializer {
     this.isInitialized = false;
     this.initializationPromise = null;
     RepositoryRegistry.clear();
-    console.log("🔄 Repository 초기화 상태 리셋");
+    logger.info("🔄 Repository 초기화 상태 리셋");
   }
 
   /**

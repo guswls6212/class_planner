@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { logger } from "../lib/logger";
 import type { Subject } from "../lib/planner";
 import { supabase } from "../utils/supabaseClient";
 
@@ -30,7 +31,7 @@ export const useGlobalSubjectInitialization = () => {
     const initializeSubjects = async () => {
       try {
         // 로그인 상태 확인 (Supabase Auth 사용)
-        console.log("🔍 사용자 인증 상태를 확인합니다...");
+        logger.debug("사용자 인증 상태를 확인합니다");
 
         try {
           const {
@@ -39,22 +40,22 @@ export const useGlobalSubjectInitialization = () => {
           } = await supabase.auth.getSession();
 
           if (error) {
-            console.error("❌ 세션 확인 중 오류 발생:", error);
+            logger.error("세션 확인 중 오류 발생", undefined, error);
             return;
           }
 
           if (!session || !session.user) {
-            console.log("🔍 로그인되지 않은 사용자 - 기본 과목 초기화 건너뜀");
+            logger.debug("로그인되지 않은 사용자 - 기본 과목 초기화 건너뜀");
             return;
           }
 
-          console.log("✅ 인증된 사용자 확인:", session.user.email);
+          logger.info("인증된 사용자 확인", { email: session.user.email });
         } catch (error) {
-          console.error("❌ 인증 확인 중 오류 발생:", error);
+          logger.error("인증 확인 중 오류 발생", undefined, error);
           return;
         }
 
-        console.log("🔄 기본 과목 초기화를 시작합니다...");
+        logger.info("기본 과목 초기화를 시작합니다");
         setIsInitializing(true);
 
         // 사용자 ID 가져오기 (세션에서)
@@ -64,7 +65,7 @@ export const useGlobalSubjectInitialization = () => {
         const userId = session?.user?.id;
 
         if (!userId) {
-          console.error("❌ 사용자 ID를 가져올 수 없습니다.");
+          logger.error("사용자 ID를 가져올 수 없습니다");
           setIsInitializing(false);
           return;
         }
@@ -83,20 +84,20 @@ export const useGlobalSubjectInitialization = () => {
         // subjects가 이미 있는지 확인 (서버 기반 중복 방지)
         const existingSubjects = currentData.subjects || [];
         if (existingSubjects.length > 0) {
-          console.log(
-            "✅ 이미 과목이 존재합니다:",
-            existingSubjects.map((s: Subject) => s.name)
-          );
+          logger.info("이미 과목이 존재합니다", {
+            subjectCount: existingSubjects.length,
+            subjectNames: existingSubjects.map((s: Subject) => s.name),
+          });
           setIsInitialized(true);
           setIsInitializing(false);
           return;
         }
 
         // 기본 과목들 생성
-        console.log(
-          "🆕 기본 과목들을 생성합니다:",
-          DEFAULT_SUBJECTS.map((s) => s.name)
-        );
+        logger.info("기본 과목들을 생성합니다", {
+          subjectCount: DEFAULT_SUBJECTS.length,
+          subjectNames: DEFAULT_SUBJECTS.map((s) => s.name),
+        });
 
         const updatedData = {
           ...currentData,
@@ -115,13 +116,13 @@ export const useGlobalSubjectInitialization = () => {
         });
 
         if (saveResponse.ok) {
-          console.log("✅ 기본 과목들이 성공적으로 저장되었습니다.");
+          logger.info("기본 과목들이 성공적으로 저장되었습니다");
           setIsInitialized(true);
         } else {
-          console.error("❌ 기본 과목 저장 실패");
+          logger.error("기본 과목 저장 실패");
         }
       } catch (error) {
-        console.error("❌ 기본 과목 초기화 중 오류 발생:", error);
+        logger.error("기본 과목 초기화 중 오류 발생", undefined, error);
       } finally {
         setIsInitializing(false);
       }

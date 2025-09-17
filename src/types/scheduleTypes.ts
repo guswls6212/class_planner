@@ -1,4 +1,4 @@
-import type { Session, Student } from '../lib/planner';
+import type { Session, Student } from "../lib/planner";
 
 // 그룹 수업을 위한 타입
 export interface GroupSessionData {
@@ -8,6 +8,7 @@ export interface GroupSessionData {
   startTime: string;
   endTime: string;
   room?: string;
+  yPosition?: number; // 🆕 세션의 yPosition (1, 2, 3...)
 }
 
 // 수업 편집 모달용 시간 데이터

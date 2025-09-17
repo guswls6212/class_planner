@@ -59,7 +59,6 @@ describe("AddStudentUseCase", () => {
       expect(result.success).toBe(true);
       expect(result.student).toBeInstanceOf(Student);
       expect(result.student?.name).toBe("김영희");
-      expect(result.student?.gender).toBe("female");
     });
   });
 

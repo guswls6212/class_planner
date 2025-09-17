@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "../lib/logger";
 
 // ===== 타입 정의 =====
 
@@ -91,7 +92,7 @@ export const useUserSettings = (): UseUserSettingsReturn => {
 
         return data;
       } catch (error) {
-        console.error("API 호출 실패:", error);
+        logger.error("API 호출 실패:", undefined, error);
         throw error;
       }
     },
@@ -106,8 +107,12 @@ export const useUserSettings = (): UseUserSettingsReturn => {
       setError(null);
 
       // 사용자 ID 가져오기
-      const userId =
-        localStorage.getItem("supabase_user_id") || "default-user-id";
+      const userId = localStorage.getItem("supabase_user_id");
+
+      if (!userId) {
+        logger.warn("사용자 ID가 없어 설정 조회를 건너뜁니다");
+        return;
+      }
 
       const data = await apiCall(`/api/user-settings?userId=${userId}`);
       setSettings(data.data || DEFAULT_SETTINGS);
@@ -115,7 +120,7 @@ export const useUserSettings = (): UseUserSettingsReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "설정 조회 실패";
       setError(errorMessage);
-      console.error("설정 조회 실패:", err);
+      logger.error("설정 조회 실패:", undefined, err);
 
       // API 호출 실패 시 기본 설정 사용
       setSettings(DEFAULT_SETTINGS);
@@ -147,7 +152,7 @@ export const useUserSettings = (): UseUserSettingsReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "설정 업데이트 실패";
         setError(errorMessage);
-        console.error("설정 업데이트 실패:", err);
+        logger.error("설정 업데이트 실패:", undefined, err);
         return false;
       } finally {
         setLoading(false);

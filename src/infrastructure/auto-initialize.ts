@@ -3,6 +3,7 @@
  * Next.js 앱 시작 시 RepositoryRegistry를 자동으로 초기화합니다.
  */
 
+import { logger } from "@/lib/logger";
 import { RepositoryInitializer } from "./container/RepositoryInitializer";
 
 /**
@@ -13,7 +14,7 @@ export async function initializeRepositories(): Promise<void> {
   try {
     await RepositoryInitializer.initialize();
   } catch (error) {
-    console.error("❌ Repository 자동 초기화 실패:", error);
+    logger.error("❌ Repository 자동 초기화 실패:", undefined, error);
     // 초기화 실패해도 앱은 계속 실행 (하위 호환성)
   }
 }
@@ -23,12 +24,12 @@ export async function initializeRepositories(): Promise<void> {
  */
 export function checkRepositoryStatus(): void {
   if (typeof window !== "undefined") {
-    console.log("🌐 클라이언트 사이드에서 Repository 상태 확인");
+    logger.info("🌐 클라이언트 사이드에서 Repository 상태 확인");
     RepositoryInitializer.logStatus();
   }
 }
 
 // Next.js 앱 시작 시 자동 초기화 (서버와 클라이언트 모두)
 initializeRepositories().catch((error) => {
-  console.error("❌ Repository 초기화 중 오류:", error);
+  logger.error("❌ Repository 초기화 중 오류:", undefined, error);
 });

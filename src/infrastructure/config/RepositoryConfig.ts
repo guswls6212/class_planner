@@ -1,3 +1,4 @@
+import { logger } from "../../lib/logger";
 import { EnrollmentRepositoryFactory } from "../factories/EnrollmentRepositoryFactory";
 import { SessionRepositoryFactory } from "../factories/SessionRepositoryFactory";
 import { StudentRepositoryFactory } from "../factories/StudentRepositoryFactory";
@@ -43,7 +44,7 @@ export class RepositoryConfigFactory {
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
     };
 
-    console.log("✅ Repository 설정 생성 완료:", {
+    logger.info("✅ Repository 설정 생성 완료", {
       studentRepository: config.studentRepository.constructor.name,
       subjectRepository: config.subjectRepository.constructor.name,
       sessionRepository: config.sessionRepository.constructor.name,
@@ -58,7 +59,7 @@ export class RepositoryConfigFactory {
    * @returns RepositoryConfig 인스턴스 (모두 Mock 구현체)
    */
   static createForTest(): RepositoryConfig {
-    console.log("🧪 테스트용 Repository 설정 생성 중...");
+    logger.info("🧪 테스트용 Repository 설정 생성 중...");
 
     const config: RepositoryConfig = {
       studentRepository: StudentRepositoryFactory.create(),
@@ -67,7 +68,7 @@ export class RepositoryConfigFactory {
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
     };
 
-    console.log("✅ 테스트용 Repository 설정 생성 완료");
+    logger.info("✅ 테스트용 Repository 설정 생성 완료");
     return config;
   }
 
@@ -76,7 +77,7 @@ export class RepositoryConfigFactory {
    * @returns RepositoryConfig 인스턴스
    */
   static createForDevelopment(): RepositoryConfig {
-    console.log("🛠️ 개발용 Repository 설정 생성 중...");
+    logger.info("🛠️ 개발용 Repository 설정 생성 중...");
 
     const config: RepositoryConfig = {
       studentRepository: StudentRepositoryFactory.create(),
@@ -85,7 +86,7 @@ export class RepositoryConfigFactory {
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
     };
 
-    console.log("✅ 개발용 Repository 설정 생성 완료");
+    logger.info("✅ 개발용 Repository 설정 생성 완료");
     return config;
   }
 
@@ -94,7 +95,7 @@ export class RepositoryConfigFactory {
    * @returns RepositoryConfig 인스턴스
    */
   static createForProduction(): RepositoryConfig {
-    console.log("🚀 프로덕션용 Repository 설정 생성 중...");
+    logger.info("🚀 프로덕션용 Repository 설정 생성 중...");
 
     const config: RepositoryConfig = {
       studentRepository: StudentRepositoryFactory.create(),
@@ -103,8 +104,7 @@ export class RepositoryConfigFactory {
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
     };
 
-    console.log("✅ 프로덕션용 Repository 설정 생성 완료");
+    logger.info("✅ 프로덕션용 Repository 설정 생성 완료");
     return config;
   }
 }
-

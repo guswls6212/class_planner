@@ -1,3 +1,4 @@
+import { logger } from "/logger";
 /**
  * 데이터 동기화 유틸리티 함수들
  * localStorage와 DB 간의 데이터 처리 및 비교 로직

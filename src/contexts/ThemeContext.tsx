@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { logger } from "../lib/logger";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useUserSettings } from "../hooks/useUserSettings";
 
@@ -74,9 +75,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       if (userId && updateTheme) {
         try {
           await updateTheme(newTheme);
-          console.log("✅ 테마 설정 저장 완료:", newTheme);
+          logger.info("✅ 테마 설정 저장 완료:", { newTheme });
         } catch (error) {
-          console.error("❌ 테마 저장 중 오류:", error);
+          logger.error("❌ 테마 저장 중 오류:", undefined, error);
         }
       }
     }

@@ -5,6 +5,7 @@
  */
 
 import { StudentMapper } from '../../application/mappers/StudentMapper';
+import { logger } from "../../lib/logger";
 import { Student } from '../../domain/entities/Student';
 import type { IStudentRepository } from '../../domain/repositories';
 import { StudentId } from '../../domain/value-objects/StudentId';

@@ -12,9 +12,41 @@ const mockSessionRepository = {
   delete: vi.fn(),
 };
 
+// Mock the ServiceFactory
+const mockSessionService = {
+  getAllSessions: vi.fn(),
+  getSessionById: vi.fn(),
+  addSession: vi.fn(),
+  updateSession: vi.fn(),
+  deleteSession: vi.fn(),
+};
+
 vi.mock("@/infrastructure/RepositoryFactory", () => ({
   createSessionRepository: vi.fn(() => mockSessionRepository),
 }));
+
+vi.mock("@/application/services/ServiceFactory", () => ({
+  ServiceFactory: {
+    createSessionService: vi.fn(() => mockSessionService),
+  },
+}));
+
+// Mock environment variables
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(),
+        })),
+      })),
+    })),
+  })),
+}));
+
+// Mock environment variables for tests
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
 describe("/api/sessions API Routes", () => {
   beforeEach(async () => {
@@ -26,6 +58,12 @@ describe("/api/sessions API Routes", () => {
     mockSessionRepository.create.mockReset();
     mockSessionRepository.update.mockReset();
     mockSessionRepository.delete.mockReset();
+
+    mockSessionService.getAllSessions.mockReset();
+    mockSessionService.getSessionById.mockReset();
+    mockSessionService.addSession.mockReset();
+    mockSessionService.updateSession.mockReset();
+    mockSessionService.deleteSession.mockReset();
   });
 
   describe("GET /api/sessions", () => {
@@ -53,7 +91,7 @@ describe("/api/sessions API Routes", () => {
         },
       ];
 
-      mockSessionRepository.getAll.mockResolvedValue(mockSessions);
+      mockSessionService.getAllSessions.mockResolvedValue(mockSessions);
 
       const request = new NextRequest("http://localhost:3000/api/sessions");
       const response = await GET(request);
@@ -71,7 +109,7 @@ describe("/api/sessions API Routes", () => {
     });
 
     it("세션이 없을 때 빈 배열을 반환해야 한다", async () => {
-      mockSessionRepository.getAll.mockResolvedValue([]);
+      mockSessionService.getAllSessions.mockResolvedValue([]);
 
       const request = new NextRequest("http://localhost:3000/api/sessions");
       const response = await GET(request);

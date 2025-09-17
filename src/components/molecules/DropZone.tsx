@@ -1,24 +1,34 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface DropZoneProps {
   weekday: number;
   time: string;
   yPosition?: number; // 🆕 현재 DropZone의 yPosition (1, 2, 3...)
-  onDrop: (weekday: number, time: string, enrollmentId: string) => void;
+  onDrop: (
+    weekday: number,
+    time: string,
+    enrollmentId: string,
+    yPosition?: number
+  ) => void; // 🆕 yPosition 추가
   onSessionDrop?: (
     sessionId: string,
     weekday: number,
     time: string,
     yPosition: number
   ) => void; // 🆕 세션 드롭 핸들러
-  onEmptySpaceClick: (weekday: number, time: string) => void;
+  onEmptySpaceClick: (
+    weekday: number,
+    time: string,
+    yPosition?: number
+  ) => void; // 🆕 yPosition 추가
   style?: React.CSSProperties;
   // 🆕 드래그 오버 핸들러
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   // 🆕 드래그 중인 세션의 시간 범위 (드롭 영역 표시용)
   draggedSessionTimeRange?: { startsAt: string; endsAt: string } | null;
   isDragging?: boolean; // 드래그 중인지 여부
+  isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   // 🆕 드래그 프리뷰 정보
   dragPreview?: { draggedSession: any } | null;
 }
@@ -34,29 +44,58 @@ export default function DropZone({
   onDragOver, // 🆕 드래그 오버 핸들러
   draggedSessionTimeRange, // 🆕 드래그 중인 세션의 시간 범위
   isDragging = false, // 🆕 기본값 false
+  isAnyDragging = false, // 🆕 전역 드래그 상태 기본값 false
   dragPreview = null, // 🆕 드래그 프리뷰 정보
 }: DropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
+  // 🆕 전역 드래그 상태가 리셋될 때 드래그 오버 상태도 리셋
+  useEffect(() => {
+    if (!isAnyDragging) {
+      setIsDragOver(false);
+    }
+  }, [isAnyDragging]);
+
   const handleDragEnter = (e: React.DragEvent) => {
+    console.log("🆕 DropZone handleDragEnter 호출됨:", {
+      weekday,
+      time,
+      yPosition,
+      effectAllowed: e.dataTransfer?.effectAllowed,
+      types: e.dataTransfer?.types,
+    });
     e.preventDefault();
+    e.stopPropagation(); // 이벤트 전파 중단
     setIsDragOver(true);
 
-    // 🆕 드롭 효과 설정 (드롭 허용)
-    e.dataTransfer.dropEffect = "move";
+    // 🆕 드롭 효과 설정 (드롭 허용) - effectAllowed를 기반으로 판단
+    if (e.dataTransfer) {
+      if (e.dataTransfer.effectAllowed === "move") {
+        e.dataTransfer.dropEffect = "move"; // 세션 드래그는 move
+      } else {
+        e.dataTransfer.dropEffect = "copy"; // 학생 드래그는 copy
+      }
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsDragOver(false); // 🆕 드래그 리브 시 드롭존 표시 해제
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    e.stopPropagation(); // 이벤트 전파 중단
+    setIsDragOver(true); // 🆕 드래그 오버 시 드롭존 표시
 
-    // 🆕 드롭 효과 설정 (드롭 허용)
-    e.dataTransfer.dropEffect = "move";
+    // 🆕 드롭 효과 설정 (드롭 허용) - effectAllowed를 기반으로 판단
+    if (e.dataTransfer) {
+      if (e.dataTransfer.effectAllowed === "move") {
+        e.dataTransfer.dropEffect = "move"; // 세션 드래그는 move
+      } else {
+        e.dataTransfer.dropEffect = "copy"; // 학생 드래그는 copy
+      }
+    }
 
     // 🆕 실시간 미리보기를 위한 드래그 오버 처리
     if (onDragOver) {
@@ -67,80 +106,69 @@ export default function DropZone({
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-
-    const data = e.dataTransfer?.getData("text/plain");
-    console.log("🎯 DropZone 드롭 이벤트 발생:", {
+    console.log("🆕 DropZone handleDrop 호출됨:", {
       weekday,
       time,
       yPosition,
-      data,
+      effectAllowed: e.dataTransfer?.effectAllowed,
+      dropEffect: e.dataTransfer?.dropEffect,
+      types: e.dataTransfer?.types,
     });
+    e.preventDefault();
+    e.stopPropagation(); // 이벤트 전파 중단
+    setIsDragOver(false); // 🆕 드롭 시 드래그 오버 상태 리셋
+
+    const data = e.dataTransfer?.getData("text/plain");
+    console.log("🆕 DropZone 드롭 데이터:", data);
+
+    // 🆕 드래그 상태 리셋 - 드래그 소스의 드래그 상태를 강제로 종료
+    if (e.dataTransfer) {
+      e.dataTransfer.clearData();
+      // 드롭 후에는 effectAllowed를 none으로 설정하지 않음 (드래그 종료 시 자연스럽게 처리)
+    }
 
     if (data) {
       // 🆕 세션 드롭 처리
       if (data.startsWith("session:")) {
         const sessionId = data.replace("session:", "");
-        console.log("🎯 DropZone 세션 드롭 처리:", {
-          sessionId,
-          weekday,
-          time,
-          yPosition,
-        });
+        console.log("🆕 세션 드롭 처리:", sessionId);
 
         // 현재 DropZone의 yPosition을 픽셀 위치로 변환
         const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
-        console.log("🎯 DropZone 픽셀 위치 변환:", {
-          yPosition,
-          pixelYPosition,
-        });
 
         if (onSessionDrop) {
-          console.log("🎯 DropZone onSessionDrop 호출:", {
-            sessionId,
-            weekday,
-            time,
-            pixelYPosition,
-          });
           onSessionDrop(sessionId, weekday, time, pixelYPosition);
-        } else {
-          console.log("❌ DropZone onSessionDrop 핸들러가 없음");
         }
       }
       // 🆕 기존 enrollment 드롭 처리
       else {
-        console.log("🎯 DropZone enrollment 드롭 처리:", {
-          weekday,
-          time,
-          data,
-        });
+        console.log("🆕 enrollment 드롭 처리:", data);
         if (onDrop) {
-          onDrop(weekday, time, data);
+          onDrop(weekday, time, data, yPosition); // 🆕 yPosition 추가
         }
       }
     } else {
-      console.log("❌ DropZone 드롭 데이터가 없음");
+      console.log("🆕 DropZone: 드롭 데이터가 없음");
     }
   };
 
   const handleClick = () => {
     if (onEmptySpaceClick) {
-      onEmptySpaceClick(weekday, time);
+      onEmptySpaceClick(weekday, time, yPosition); // 🆕 yPosition 추가
     }
   };
 
-  // 🆕 드래그 중인 세션의 시간 범위에만 드롭 영역 표시 (학생 드래그는 항상 표시)
+  // 🆕 드롭존 표시 조건 (학생 드래그와 세션 드래그 모두 동일)
   const shouldShowDropZone = () => {
     // 학생 드래그인 경우 항상 드롭존 표시
     if (!draggedSessionTimeRange) return true;
 
     // 세션 드래그의 경우 요일만 맞으면 드롭존 표시
-    // 실제 시간 충돌과 위치 조정은 TimeTableGrid의 스마트 포지셔닝에서 처리
     return true;
   };
 
   const shouldShow = shouldShowDropZone();
+  // 🆕 드래그 오버된 부분만 드롭존 표시 (학생 드래그와 세션 드래그 동일)
   const showBorder = isDragOver && shouldShow;
 
   const styles = {
@@ -169,6 +197,12 @@ export default function DropZone({
       onDrop={handleDrop}
       onClick={handleClick}
       data-testid={`dropzone-${weekday}-${time}-${yPosition}`}
+      // 🆕 드롭 영역 설정 강화
+      draggable={false}
+      data-drop-zone="true"
+      data-weekday={weekday}
+      data-time={time}
+      data-y-position={yPosition}
     >
       {/* 🆕 개별 DropZone으로 단순화 - 분할 렌더링 제거 */}
     </div>

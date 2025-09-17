@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { logger } from "../lib/logger";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import AuthGuard from "../components/atoms/AuthGuard";
@@ -18,7 +19,7 @@ export default function Home() {
         // 로그인 성공 시 저장된 리다이렉트 URL로 이동
         const redirectUrl = localStorage.getItem("redirectAfterLogin");
         if (redirectUrl && redirectUrl !== "/login" && redirectUrl !== "/") {
-          console.log("🔍 HomePage - 저장된 URL로 리다이렉트:", redirectUrl);
+          logger.debug("HomePage - 저장된 URL로 리다이렉트:", { redirectUrl });
           localStorage.removeItem("redirectAfterLogin");
           router.push(redirectUrl);
         }

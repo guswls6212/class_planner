@@ -1,4 +1,5 @@
 import { Student } from "@/domain/entities/Student";
+import { logger } from "../../lib/logger";
 import { StudentRepository } from "@/infrastructure/interfaces";
 
 export class StudentApplicationServiceImpl {
@@ -8,7 +9,7 @@ export class StudentApplicationServiceImpl {
     try {
       return await this.studentRepository.getAll(userId);
     } catch (error) {
-      console.error("학생 목록 조회 중 에러 발생:", error);
+      logger.error("학생 목록 조회 중 에러 발생:", undefined, error);
       return [];
     }
   }
@@ -17,7 +18,7 @@ export class StudentApplicationServiceImpl {
     try {
       return await this.studentRepository.getById(id);
     } catch (error) {
-      console.error("학생 조회 중 에러 발생:", error);
+      logger.error("학생 조회 중 에러 발생:", undefined, error);
       return null;
     }
   }
@@ -39,7 +40,7 @@ export class StudentApplicationServiceImpl {
 
       return await this.studentRepository.create(studentData, userId);
     } catch (error) {
-      console.error("학생 추가 중 에러 발생:", error);
+      logger.error("학생 추가 중 에러 발생:", undefined, error);
       throw error;
     }
   }
@@ -68,7 +69,7 @@ export class StudentApplicationServiceImpl {
 
       return await this.studentRepository.update(id, studentData);
     } catch (error) {
-      console.error("학생 업데이트 중 에러 발생:", error);
+      logger.error("학생 업데이트 중 에러 발생:", undefined, error);
       throw error;
     }
   }
@@ -77,7 +78,7 @@ export class StudentApplicationServiceImpl {
     try {
       return await this.studentRepository.delete(id);
     } catch (error) {
-      console.error("학생 삭제 중 에러 발생:", error);
+      logger.error("학생 삭제 중 에러 발생:", undefined, error);
       throw error;
     }
   }

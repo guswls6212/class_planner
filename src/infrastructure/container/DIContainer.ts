@@ -1,3 +1,4 @@
+import { logger } from "../../lib/logger";
 /**
  * 의존성 주입 컨테이너
  * 싱글톤 패턴으로 구현되어 전역에서 하나의 인스턴스만 존재합니다.
@@ -109,7 +110,7 @@ export class DIContainer {
     this.instances.clear();
     this.factories.clear();
 
-    console.log("🧹 모든 의존성 초기화 완료");
+    logger.info("🧹 모든 의존성 초기화 완료");
   }
 
   /**
@@ -136,7 +137,7 @@ export class DIContainer {
    */
   static resetInstance(): void {
     DIContainer.instance = null as any;
-    console.log("🔄 DIContainer 인스턴스 리셋");
+    logger.info("🔄 DIContainer 인스턴스 리셋");
   }
 }
 

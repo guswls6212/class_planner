@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { logger } from "@/lib/logger";
+import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,7 +15,7 @@ function createServiceRoleClient() {
     );
   }
 
-  console.log("🔍 Service Role 클라이언트 생성 중...");
+  logger.debug("Service Role 클라이언트 생성 중...");
   return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId") || "default-user-id";
 
-    console.log("🔍 API GET - 사용자 ID:", userId);
+    logger.debug("API GET - 사용자 ID:", { userId });
 
     // Service Role 클라이언트로 직접 데이터 조회
     const { data, error } = await serviceRoleClient
@@ -46,13 +48,23 @@ export async function GET(request: NextRequest) {
       .eq("user_id", userId)
       .single();
 
-    console.log("🔍 Service Role 쿼리 결과 - data:", data, "error:", error);
+    logger.debug("Service Role 쿼리 결과", { data, error });
 
     if (error) {
-      console.error("Service Role 데이터 조회 실패:", error);
+      logger.error("Service Role 데이터 조회 실패:", undefined, error);
       if (error.code === "PGRST116") {
-        console.log("🔍 사용자 데이터가 없음, 빈 과목 목록 반환");
-        return NextResponse.json({ success: true, data: [] });
+        logger.debug("사용자 데이터가 없음, 빈 과목 목록 반환");
+        return NextResponse.json(
+          { success: true, data: [] },
+          {
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+              "Access-Control-Allow-Headers":
+                "Content-Type, Authorization, X-Requested-With",
+            },
+          }
+        );
       }
       throw error;
     }
@@ -60,18 +72,42 @@ export async function GET(request: NextRequest) {
     const userData = data?.data;
     const subjects = userData?.subjects || [];
 
-    return NextResponse.json({ success: true, data: subjects });
+    return NextResponse.json(
+      { success: true, data: subjects },
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Authorization, X-Requested-With",
+        },
+      }
+    );
   } catch (error) {
-    console.error("Error fetching subjects:", error);
+    logger.error("Error fetching subjects:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subjects" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers":
+            "Content-Type, Authorization, X-Requested-With",
+        },
+      }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // CORS 검증
+    const corsResponse = corsMiddleware(request);
+    if (corsResponse.status !== 200) {
+      return corsResponse;
+    }
+
     const body = await request.json();
     const { name, color } = body;
     const { searchParams } = new URL(request.url);
@@ -100,7 +136,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error adding subject:", error);
+    logger.error("Error adding subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to add subject" },
       { status: 500 }
@@ -110,6 +146,12 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    // CORS 검증
+    const corsResponse = corsMiddleware(request);
+    if (corsResponse.status !== 200) {
+      return corsResponse;
+    }
+
     const body = await request.json();
     const { id, name, color } = body;
 
@@ -126,7 +168,7 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedSubject });
   } catch (error) {
-    console.error("Error updating subject:", error);
+    logger.error("Error updating subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to update subject" },
       { status: 500 }
@@ -136,6 +178,12 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // CORS 검증
+    const corsResponse = corsMiddleware(request);
+    if (corsResponse.status !== 200) {
+      return corsResponse;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -152,10 +200,14 @@ export async function DELETE(request: NextRequest) {
       message: "Subject deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting subject:", error);
+    logger.error("Error deleting subject:", undefined, error);
     return NextResponse.json(
       { success: false, error: "Failed to delete subject" },
       { status: 500 }
     );
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  return handleCorsOptions(request);
 }

@@ -3,6 +3,7 @@
  * 기존 픽셀 값(0, 51, 102...)을 논리적 위치(1, 2, 3...)로 변환
  */
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
+import { logger } from "/logger";
 
 import type { Session } from "./planner";
 
