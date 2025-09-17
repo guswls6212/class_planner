@@ -982,6 +982,51 @@ npm run test:e2e:browser-compatibility   # 브라우저 호환성 테스트
 
 ## 📅 최근 업데이트 이력
 
+### **2024-12-17**: 드래그 앤 드롭 충돌 해결 로직 완전 구현 및 시스템 개선 (커밋: 43f7d89)
+
+#### **주요 개선사항**
+
+- **학생 드래그로 수업 추가 시 충돌 해결 로직 구현**: 학생을 드래그하여 수업을 추가할 때도 기존 세션과의 충돌을 자동으로 해결
+- **우선순위 기반 세션 재배치 시스템 완성**: 새로 추가된 세션이 우선순위를 가지며, 충돌하는 기존 세션들이 아래로 밀려남
+- **addSession 함수에 충돌 해결 로직 통합**: setTimeout을 활용한 비동기 충돌 해결 구현
+- **enrollment 정보 누락 문제 해결**: 충돌 해결 과정에서 새로 생성된 enrollment가 세션과 올바르게 연결되도록 수정
+- **타입 안전성 개선**: enrollmentIds, newEnrollments 타입을 명시적으로 정의하여 TypeScript 오류 해결
+- **불완전한 세션 필터링 문제 해결**: useDisplaySessions에서 세션을 "불완전한 세션"으로 잘못 판단하는 문제 해결
+- **보안 및 로깅 시스템 강화**: 새로운 로깅 시스템(logger.ts), API 보안 강화(apiSecurity.ts), 에러 추적 시스템(errorTracker.ts) 구현
+- **CORS 미들웨어 구현**: API 보안을 위한 CORS 설정 자동화
+- **문서화 개선**: LOGGING_GUIDE.md, SECURITY_GUIDE.md 추가로 개발자 가이드 완성
+- **테스트 코드 업데이트**: 모든 테스트 코드를 새로운 로직에 맞게 업데이트
+
+#### **테스트 시나리오**
+
+**학생 드래그로 수업 추가 시 충돌 해결 테스트**:
+1. 학생을 드래그하여 기존 세션이 있는 시간대에 드롭
+2. 새 세션이 생성되고 충돌하는 기존 세션들이 자동으로 아래로 밀려나는지 확인
+3. enrollment 정보가 올바르게 연결되어 세션이 정상적으로 표시되는지 확인
+4. 콘솔 로그에서 충돌 해결 과정 확인
+
+**예상 로그**:
+```
+🔍 addSession 시작: {studentIds: Array(1), subjectId: 'default-5', weekday: 3, startTime: '11:30', endTime: '12:30', yPosition: 1}
+🆕 새로운 enrollment 생성: {id: '9fad81b2-84c7-49bc-8f55-c391e681689d', studentId: '1e122211-2a1c-4d38-9c1b-fb6d70a104e4', subjectId: 'default-5'}
+🆕 새로운 세션 생성: {id: '1652fac8-d245-4982-a1c0-1b9bfea0f0d6', subjectId: 'default-5', studentIds: Array(1), weekday: 3, startsAt: '11:30', endsAt: '12:30', room: '', enrollmentIds: Array(1), yPosition: 1}
+✅ 세션 추가 완료
+🔍 충돌 해결 시작 (비동기)
+🔄 우선순위 기반 충돌 해결 시작: {targetWeekday: 3, targetStartTime: '11:30', targetEndTime: '12:30', targetYPosition: 1, movingSessionId: '1652fac8-d245-4982-a1c0-1b9bfea0f0d6'}
+✅ 충돌 해결 완료 - 최종 세션 수: 19
+✅ 충돌 해결 업데이트 완료
+```
+
+#### **관련 파일**
+
+- `src/app/schedule/page.tsx`: 충돌 감지 및 재배치 로직, addSession 함수 개선
+- `src/components/molecules/DropZone.tsx`: 학생 드래그 앤 드롭 처리
+- `src/hooks/useDisplaySessions.ts`: 세션 필터링 로직 개선
+- `src/lib/logger.ts`: 새로운 로깅 시스템
+- `src/lib/apiSecurity.ts`: API 보안 강화
+- `src/lib/errorTracker.ts`: 에러 추적 시스템
+- `src/middleware/cors.ts`: CORS 미들웨어
+
 ### **2024-12-XX**: 드래그 앤 드롭 충돌 해결 로직 개선
 
 #### **주요 개선사항**
