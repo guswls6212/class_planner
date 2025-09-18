@@ -103,22 +103,6 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     if (error) logger.error("Google 로그인 에러:", undefined, error);
   };
 
-  // 카카오 로그인 함수 - 일시적으로 비활성화
-  /* const handleKakaoLogin = async () => {
-    if (!isSupabaseConfigured) {
-      alert('로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.');                                
-      return;
-    }
-
-    const { error } = await supabase.auth.signInWithOAuth({                                               
-      provider: 'kakao',
-      options: {
-        redirectTo: `${window.location.origin}/students`,                                   
-      },
-    });
-    if (error) console.error('카카오 로그인 에러:', error);                                               
-  }; */
-
   const handleLogout = async () => {
     logger.info("로그아웃 버튼 클릭됨");
 
@@ -244,7 +228,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
             <div className={styles.loginContent}>
               <p className={styles.loginDescription}>
-                소셜 계정으로 간편하게 로그인하세요
+                Google 계정으로 간편하게 로그인하세요
               </p>
 
               <div className={styles.socialButtons}>
@@ -272,24 +256,6 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
                   </svg>
                   Google로 로그인
                 </button>
-
-                {/* 카카오 로그인 버튼 - 일시적으로 비활성화 */}
-                {/* <button
-                  className={`${styles.socialButton} ${styles.kakaoButton}`}                              
-                  onClick={handleKakaoLogin}
-                >
-                  <svg className={styles.socialIcon} viewBox="0 0 24 24">                                 
-                    <path
-                      fill="#FEE500"
-                      d="M12 3C6.48 3 2 6.48 2 10.5c0 2.5 1.5 4.7 3.8 6.1L5.2 18.5c-.1.2-.1.4 0 .6.1.2.3.3.5.3h.6l2.1-1.4c.5.1 1 .1 1.5.1 5.52 0 10-3.48 10-7.5S17.52 3 12 3z"                                      
-                    />
-                    <path
-                      fill="#3C1E1E"
-                      d="M8.5 9.5c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm7 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z"                                          
-                    />
-                  </svg>
-                  카카오로 로그인
-                </button> */}
               </div>
             </div>
           </div>

@@ -104,30 +104,6 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleKakaoLogin = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "kakao",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) {
-        logger.error("Kakao 로그인 에러:", undefined, error);
-        setError("로그인에 실패했습니다. 다시 시도해주세요.");
-      }
-    } catch (err) {
-      logger.error("로그인 처리 중 오류:", undefined, err);
-      setError("로그인 중 오류가 발생했습니다.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div
       className="min-h-screen flex items-center justify-center p-5"
@@ -290,99 +266,6 @@ const LoginPage: React.FC = () => {
                 <span>Google로 로그인</span>
               </div>
             </Button>
-
-            <Button
-              onClick={handleKakaoLogin}
-              disabled={isLoading}
-              variant="transparent"
-              className="w-full py-3 px-4 border transition-all duration-200"
-              style={{
-                backgroundColor: "#fee500",
-                border: "1px solid #fee500",
-                color: "#3c1e1e",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#fdd835";
-                e.currentTarget.style.borderColor = "#fdd835";
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(0, 0, 0, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#fee500";
-                e.currentTarget.style.borderColor = "#fee500";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <div
-                className="flex items-center justify-center gap-3"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "12px",
-                }}
-              >
-                <svg
-                  className="flex-shrink-0"
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                >
-                  <path
-                    fill="#3C1E1E"
-                    d="M12 3C6.48 3 2 6.48 2 10.5c0 2.5 1.5 4.7 3.7 6.1L4.5 21l4.9-2.5c1.1.3 2.2.5 3.6.5 5.52 0 10-3.48 10-7.5S17.52 3 12 3z"
-                  />
-                </svg>
-                <span>Kakao로 로그인</span>
-              </div>
-            </Button>
-          </div>
-
-          {/* Divider - 원본 CSS와 정확히 일치하도록 수정 */}
-          <div
-            className="relative"
-            style={{
-              position: "relative",
-              margin: "24px 0",
-            }}
-          >
-            {/* 원본 CSS의 ::before 가상 요소를 정확히 재현 */}
-            <div
-              className="absolute inset-0 flex items-center"
-              style={{
-                content: '""',
-                position: "absolute",
-                top: "50%",
-                left: "0",
-                right: "0",
-                height: "1px",
-                background: "#e5e7eb",
-              }}
-            >
-              <div
-                className="w-full h-px"
-                style={{
-                  height: "1px",
-                  background: "#e5e7eb",
-                }}
-              ></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span
-                className="bg-white text-sm"
-                style={{
-                  background: "white",
-                  padding: "0 16px",
-                  color: "#6b7280",
-                  fontSize: "0.875rem",
-                }}
-              >
-                또는
-              </span>
-            </div>
           </div>
 
           {/* Email Section */}

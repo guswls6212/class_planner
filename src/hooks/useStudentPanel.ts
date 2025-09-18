@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Student } from "../lib/planner";
 import type { DragOffset, StudentPanelState } from "../types/scheduleTypes";
-import { usePanelPosition } from "./usePanelPosition";
 
 export const useStudentPanel = (
   students: Student[],
@@ -20,8 +19,31 @@ export const useStudentPanel = (
   const [dragOffset, setDragOffset] = useState<DragOffset>({ x: 0, y: 0 });
   const [isDragStarting, setIsDragStarting] = useState(false); // 🆕 드래그 시작 플래그
 
-  // 패널 위치 관리
-  const { position, updatePosition } = usePanelPosition();
+  // 패널 위치 관리 (직접 localStorage 사용)
+  const [position, setPosition] = useState({ x: 20, y: 100 });
+
+  // localStorage에서 패널 위치 로드
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPosition = localStorage.getItem("studentPanelPosition");
+      if (savedPosition) {
+        try {
+          const parsed = JSON.parse(savedPosition);
+          setPosition(parsed);
+        } catch (error) {
+          console.warn("패널 위치 파싱 실패:", error);
+        }
+      }
+    }
+  }, []);
+
+  // 패널 위치 업데이트 함수
+  const updatePosition = (newPosition: { x: number; y: number }) => {
+    setPosition(newPosition);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("studentPanelPosition", JSON.stringify(newPosition));
+    }
+  };
 
   // 검색어에 따라 필터링된 학생 목록
   const filteredStudents = useMemo(() => {

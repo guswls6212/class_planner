@@ -3,6 +3,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import React, { useState } from "react";
 import LoginButton from "../components/atoms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
@@ -21,13 +22,40 @@ const geistMono = Geist_Mono({
 
 function Navigation() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const navItems = [
     { href: "/students", label: "학생" },
     { href: "/subjects", label: "과목" },
     { href: "/schedule", label: "시간표" },
-    { href: "/manual", label: "사용법" },
+    { href: "/about", label: "소개" },
   ];
+
+  // 로그인 상태 확인 - localStorage에서 사용자 ID 확인
+  React.useEffect(() => {
+    const checkLoginStatus = () => {
+      const userId = localStorage.getItem("supabase_user_id");
+      setIsLoggedIn(!!userId);
+    };
+
+    checkLoginStatus();
+
+    // 로그인 상태 변화 감지
+    const handleAuthChange = () => {
+      checkLoginStatus();
+    };
+
+    // 로그아웃 이벤트 감지
+    window.addEventListener("userLoggedOut", handleAuthChange);
+
+    // 주기적으로 상태 확인 (로그인 시)
+    const interval = setInterval(checkLoginStatus, 1000);
+
+    return () => {
+      window.removeEventListener("userLoggedOut", handleAuthChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <nav
@@ -61,7 +89,7 @@ function Navigation() {
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <ThemeToggle size="small" variant="both" />
+        {isLoggedIn && <ThemeToggle size="small" variant="both" />}
         <LoginButton />
       </div>
     </nav>

@@ -137,8 +137,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return null;
   }
 
-  // 로그인한 사용자가 로그인 페이지에 접근하는 경우
-  if (!requireAuth && isAuthenticated) {
+  // 로그인한 사용자가 로그인 페이지에 접근하는 경우 (requireAuth가 false이고 인증된 경우)
+  // 단, 로그인 페이지가 아닌 경우(예: /about)는 허용
+  if (
+    !requireAuth &&
+    isAuthenticated &&
+    window.location.pathname === "/login"
+  ) {
     return null;
   }
 

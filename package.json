@@ -21,6 +21,8 @@
     "test:integration:real-supabase": "vitest run tests/integration/real-supabase.test.ts",
     "test:integration:real-data": "vitest run tests/integration/real-data-validation.test.tsx",
     "test:real-client": "npm run test:integration:real-supabase && npm run test:integration:real-data && npm run test:e2e:real-scenarios",
+    "test:system": "node scripts/system-test.js",
+    "test:system:headless": "headless=true node scripts/system-test.js",
     "type-check": "tsc --noEmit",
     "prepare-commit": "chmod +x scripts/protection-check.sh && ./scripts/protection-check.sh",
     "migration:run": "./migration/run-migration.sh",
