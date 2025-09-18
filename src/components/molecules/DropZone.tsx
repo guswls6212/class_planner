@@ -1,5 +1,6 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import React, { useEffect, useState } from "react";
+import { logger } from "../../lib/logger";
 
 interface DropZoneProps {
   weekday: number;
@@ -57,7 +58,7 @@ export default function DropZone({
   }, [isAnyDragging]);
 
   const handleDragEnter = (e: React.DragEvent) => {
-    console.log("🆕 DropZone handleDragEnter 호출됨:", {
+    logger.debug("DropZone handleDragEnter 호출됨", {
       weekday,
       time,
       yPosition,
@@ -106,7 +107,7 @@ export default function DropZone({
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    console.log("🆕 DropZone handleDrop 호출됨:", {
+    logger.debug("DropZone handleDrop 호출됨", {
       weekday,
       time,
       yPosition,
@@ -119,10 +120,10 @@ export default function DropZone({
     setIsDragOver(false); // 🆕 드롭 시 드래그 오버 상태 리셋
 
     const data = e.dataTransfer?.getData("text/plain");
-    console.log("🆕 DropZone 드롭 데이터:", data);
+    logger.debug("DropZone 드롭 데이터", { data });
 
     // 🆕 드래그 상태 리셋 - 드래그 소스의 드래그 상태를 강제로 종료
-    if (e.dataTransfer) {
+    if (e.dataTransfer && typeof e.dataTransfer.clearData === "function") {
       e.dataTransfer.clearData();
       // 드롭 후에는 effectAllowed를 none으로 설정하지 않음 (드래그 종료 시 자연스럽게 처리)
     }
@@ -131,7 +132,7 @@ export default function DropZone({
       // 🆕 세션 드롭 처리
       if (data.startsWith("session:")) {
         const sessionId = data.replace("session:", "");
-        console.log("🆕 세션 드롭 처리:", sessionId);
+        logger.debug("세션 드롭 처리", { sessionId });
 
         // 현재 DropZone의 yPosition을 픽셀 위치로 변환
         const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
@@ -142,13 +143,13 @@ export default function DropZone({
       }
       // 🆕 기존 enrollment 드롭 처리
       else {
-        console.log("🆕 enrollment 드롭 처리:", data);
+        logger.debug("enrollment 드롭 처리", { data });
         if (onDrop) {
           onDrop(weekday, time, data, yPosition); // 🆕 yPosition 추가
         }
       }
     } else {
-      console.log("🆕 DropZone: 드롭 데이터가 없음");
+      logger.debug("DropZone: 드롭 데이터가 없음");
     }
   };
 

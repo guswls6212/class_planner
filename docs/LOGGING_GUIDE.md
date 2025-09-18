@@ -239,12 +239,24 @@ logger.info("사용자 로그인", {
 ### 환경 변수
 
 ```bash
+# Supabase 설정 (Next.js 방식)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
 # 로그 레벨 설정
-LOG_LEVEL=2  # 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG
+LOG_LEVEL=INFO  # DEBUG, INFO, WARN, ERROR
 
 # 환경 설정
 NODE_ENV=production
 ```
+
+### 로그 레벨 설명
+
+- **DEBUG**: 모든 로그 출력 (개발 환경)
+- **INFO**: 일반적인 정보 로그 (기본값)
+- **WARN**: 경고 및 보안 이벤트
+- **ERROR**: 에러만 출력 (프로덕션 환경)
 
 ### Vercel 설정
 

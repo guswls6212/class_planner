@@ -29,16 +29,12 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         );
 
         logger.debug("AuthGuard - localStorage 토큰 존재:", { hasAuthToken });
-        console.log(
-          "🔍 AuthGuard - localStorage 모든 키들:",
-          Object.keys(localStorage)
-        );
-        console.log(
-          "🔍 AuthGuard - Supabase 관련 키들:",
-          Object.keys(localStorage).filter(
+        logger.debug("AuthGuard - localStorage 키들", {
+          allKeys: Object.keys(localStorage),
+          supabaseKeys: Object.keys(localStorage).filter(
             (key) => key.startsWith("sb-") || key.includes("supabase")
-          )
-        );
+          ),
+        });
 
         if (!hasAuthToken) {
           logger.debug("AuthGuard - 토큰 없음, 인증 안됨으로 설정");
@@ -92,10 +88,11 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         event,
         hasSession: !!session,
       });
-      console.log(
-        "🔍 AuthGuard - localStorage 토큰들:",
-        Object.keys(localStorage).filter((key) => key.startsWith("sb-"))
-      );
+      logger.debug("AuthGuard - localStorage 토큰들", {
+        tokens: Object.keys(localStorage).filter((key) =>
+          key.startsWith("sb-")
+        ),
+      });
       setIsAuthenticated(!!session);
     });
 

@@ -31,11 +31,9 @@ export class RepositoryConfigFactory {
    * @returns RepositoryConfig 인스턴스
    */
   static create(): RepositoryConfig {
-    console.log(
-      `🔧 Repository 설정 생성 중... (환경: ${
-        process.env.NODE_ENV || "development"
-      })`
-    );
+    logger.debug("Repository 설정 생성 중", {
+      environment: process.env.NODE_ENV || "development",
+    });
 
     const config: RepositoryConfig = {
       studentRepository: StudentRepositoryFactory.create(),

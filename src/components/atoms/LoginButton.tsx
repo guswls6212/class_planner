@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useUserTracking } from "../../hooks/useUserTracking";
 import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./LoginButton.module.css";
@@ -19,6 +20,8 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const { setUserId, clearUserId, trackAction, trackSecurityEvent } =
+    useUserTracking();
 
   // 데이터 마이그레이션 로직 제거됨 - 이제 Supabase 데이터만 사용
 
@@ -50,8 +53,6 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // console.log('인증 상태 변화:', event, session?.user?.email);
-
       if (session?.user) {
         setIsLoggedIn(true);
         setUser(session.user);
@@ -66,19 +67,28 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
           // 사용자 ID를 localStorage에 저장 (테마 저장용)
           localStorage.setItem("supabase_user_id", session.user.id);
           logger.info("✅ 사용자 ID 저장됨", { userId: session.user.id });
+
+          // 사용자 추적 시스템에 사용자 ID 설정
+          setUserId(session.user.id);
+          trackAction("login_complete", "auth-system", {
+            userId: session.user.id,
+            email: session.user.email,
+          });
         }
       } else {
-        // console.log('사용자 로그아웃됨, 상태 업데이트 중...');
         setIsLoggedIn(false);
         setUser(null);
 
         // 로그아웃 시 사용자 ID 제거
         localStorage.removeItem("supabase_user_id");
-        // console.log('🗑️ 사용자 ID 제거됨'); // 무한루프 방지를 위해 주석 처리
+
+        // 사용자 추적 시스템에서 사용자 ID 제거
+        clearUserId();
 
         // 로그아웃 시 이벤트 발생으로 상태 초기화
         if (event === "SIGNED_OUT") {
           logger.info("로그아웃 감지 - 상태 초기화");
+          trackAction("logout_complete", "auth-system");
           // 로그아웃 이벤트 발생으로 데이터 초기화
           window.dispatchEvent(new CustomEvent("userLoggedOut"));
         }
@@ -91,8 +101,13 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   const handleGoogleLogin = async () => {
     if (!isSupabaseConfigured) {
       alert("로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.");
+      trackSecurityEvent("login_configuration_error", {
+        error: "Supabase not configured",
+      });
       return;
     }
+
+    trackAction("login_attempt", "google-login-button", { provider: "google" });
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -100,14 +115,29 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         redirectTo: `${window.location.origin}/students`,
       },
     });
-    if (error) logger.error("Google 로그인 에러:", undefined, error);
+
+    if (error) {
+      logger.error("Google 로그인 에러:", undefined, error);
+      trackSecurityEvent("login_error", {
+        provider: "google",
+        error: error.message,
+      });
+    } else {
+      trackAction("login_success", "google-login-button", {
+        provider: "google",
+      });
+    }
   };
 
   const handleLogout = async () => {
     logger.info("로그아웃 버튼 클릭됨");
+    trackAction("logout_attempt", "logout-button");
 
     if (!isSupabaseConfigured) {
       logger.info("Supabase가 설정되지 않음");
+      trackSecurityEvent("logout_configuration_error", {
+        error: "Supabase not configured",
+      });
       return;
     }
 

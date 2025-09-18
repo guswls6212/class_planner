@@ -131,7 +131,7 @@ export class RepositoryInitializer {
    * 초기화 상태를 출력합니다.
    */
   static logStatus(): void {
-    console.log("📊 Repository 초기화 상태:", {
+    logger.debug("Repository 초기화 상태", {
       isInitialized: this.isInitialized,
       isInitializing: this.initializationPromise !== null,
       environment: this.getCurrentEnvironment(),

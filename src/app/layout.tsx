@@ -3,11 +3,13 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
 import LoginButton from "../components/atoms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { useGlobalSubjectInitialization } from "../hooks/useGlobalSubjectInitialization";
+import { useUserTracking } from "../hooks/useUserTracking";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,6 +25,7 @@ const geistMono = Geist_Mono({
 function Navigation() {
   const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { trackPageView, trackAction } = useUserTracking();
 
   const navItems = [
     { href: "/students", label: "학생" },
@@ -30,6 +33,16 @@ function Navigation() {
     { href: "/schedule", label: "시간표" },
     { href: "/about", label: "소개" },
   ];
+
+  // 페이지 뷰 추적
+  useEffect(() => {
+    trackPageView(pathname);
+  }, [pathname, trackPageView]);
+
+  // 네비게이션 클릭 핸들러
+  const handleNavClick = (href: string, label: string) => {
+    trackAction("navigation_click", "nav-link", { href, label });
+  };
 
   // 로그인 상태 확인 - localStorage에서 사용자 ID 확인
   React.useEffect(() => {
@@ -73,6 +86,7 @@ function Navigation() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={() => handleNavClick(item.href, item.label)}
             style={{
               fontWeight: pathname === item.href ? 600 : 400,
               textDecoration: "none",
@@ -132,7 +146,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
   const { isInitialized, isInitializing } = useGlobalSubjectInitialization();
 
   return (
-    <>
+    <ErrorBoundary>
       <Navigation />
       <main style={{ paddingBottom: "60px" }}>
         {isInitializing && (
@@ -157,7 +171,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <Footer />
-    </>
+    </ErrorBoundary>
   );
 }
 

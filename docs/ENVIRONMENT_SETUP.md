@@ -166,6 +166,9 @@ console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
 ## 📚 관련 문서
 
+- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
+- [Supabase 가이드](./SUPABASE_JSONB_GUIDE.md)
+- [문서 가이드](./README.md)
 - [Next.js 환경 변수 문서](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables)
 - [Supabase 클라이언트 설정](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
 - [Vercel 환경 변수 설정](https://vercel.com/docs/projects/environment-variables)

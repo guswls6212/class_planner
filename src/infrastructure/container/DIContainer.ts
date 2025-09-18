@@ -30,7 +30,7 @@ export class DIContainer {
     this.factories.set(key, factory);
     this.repositories.set(key, { factory, singleton });
 
-    console.log(`📝 의존성 등록: ${key} (싱글톤: ${singleton})`);
+    logger.debug("의존성 등록", { key, singleton });
   }
 
   /**
@@ -51,12 +51,12 @@ export class DIContainer {
 
     // 싱글톤인 경우 인스턴스 캐시 사용
     if (config.singleton && this.instances.has(key)) {
-      console.log(`♻️ 싱글톤 인스턴스 반환: ${key}`);
+      logger.debug("싱글톤 인스턴스 반환", { key });
       return this.instances.get(key);
     }
 
     // 새 인스턴스 생성
-    console.log(`🏭 새 인스턴스 생성: ${key}`);
+    logger.debug("새 인스턴스 생성", { key });
     const instance = config.factory();
 
     // 싱글톤인 경우 인스턴스 캐시에 저장
@@ -99,7 +99,7 @@ export class DIContainer {
     this.instances.delete(key);
     this.factories.delete(key);
 
-    console.log(`🗑️ 의존성 제거: ${key}`);
+    logger.debug("의존성 제거", { key });
   }
 
   /**
@@ -125,7 +125,7 @@ export class DIContainer {
    * 컨테이너 상태를 출력합니다.
    */
   logStatus(): void {
-    console.log("📊 DIContainer 상태:", {
+    logger.debug("DIContainer 상태", {
       registeredKeys: this.getRegisteredKeys(),
       singletonInstances: Array.from(this.instances.keys()),
       totalFactories: this.factories.size,
@@ -140,5 +140,3 @@ export class DIContainer {
     logger.info("🔄 DIContainer 인스턴스 리셋");
   }
 }
-
-

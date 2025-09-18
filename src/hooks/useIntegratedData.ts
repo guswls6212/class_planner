@@ -64,7 +64,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
       const authData = authToken ? JSON.parse(authToken) : null;
       const accessToken = authData?.access_token;
 
-      console.log("🔍 useIntegratedData - 토큰 상태:", {
+      logger.debug("토큰 상태 확인", {
         authToken: authToken ? "존재" : "없음",
         authData: authData ? "파싱됨" : "파싱 실패",
         accessToken: accessToken ? "존재" : "없음",

@@ -3,11 +3,11 @@
  * DB 쓰기 작업을 Debounce하여 성능 최적화
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from "react";
+import { DATA_SAVE_DEBOUNCE_CONFIG, debounce } from "../lib/debounceUtils";
 import { logger } from "../lib/logger";
-import { DATA_SAVE_DEBOUNCE_CONFIG, debounce } from '../lib/debounceUtils';
-import type { ClassPlannerData } from '../types/dataSyncTypes';
-import { supabase } from '../utils/supabaseClient';
+import type { ClassPlannerData } from "../types/dataSyncTypes";
+import { supabase } from "../utils/supabaseClient";
 
 interface UseDebouncedSaveReturn {
   saveData: (data: ClassPlannerData) => void;
@@ -35,11 +35,11 @@ export const useDebouncedSave = (): UseDebouncedSaveReturn => {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          console.warn('로그인되지 않은 사용자 - 서버 저장 건너뜀');
+          console.warn("로그인되지 않은 사용자 - 서버 저장 건너뜀");
           return;
         }
 
-        const { error } = await supabase.from('user_data').upsert({
+        const { error } = await supabase.from("user_data").upsert({
           user_id: user.id,
           data: data,
           updated_at: new Date().toISOString(),
@@ -49,9 +49,9 @@ export const useDebouncedSave = (): UseDebouncedSaveReturn => {
           throw error;
         }
 
-        console.log('데이터가 서버에 성공적으로 저장되었습니다.');
+        logger.info("데이터가 서버에 성공적으로 저장되었습니다.");
       } catch (error) {
-        console.error('서버 저장 실패:', error);
+        logger.error("서버 저장 실패", undefined, error);
         throw error;
       }
     },

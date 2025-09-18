@@ -52,14 +52,12 @@ const LoginPage: React.FC = () => {
 
       if (event === "SIGNED_IN" && session) {
         logger.debug("LoginPage - 로그인 성공, 토큰 저장 확인");
-        console.log(
-          "🔍 LoginPage - localStorage 토큰들:",
-          Object.keys(localStorage).filter((key) => key.startsWith("sb-"))
-        );
-        console.log(
-          "🔍 LoginPage - 모든 localStorage 키들:",
-          Object.keys(localStorage)
-        );
+        logger.debug("LoginPage - localStorage 토큰들", {
+          tokens: Object.keys(localStorage).filter((key) =>
+            key.startsWith("sb-")
+          ),
+          allKeys: Object.keys(localStorage),
+        });
 
         // 잠시 대기 후 저장된 리다이렉트 URL 또는 메인페이지로 이동
         setTimeout(() => {

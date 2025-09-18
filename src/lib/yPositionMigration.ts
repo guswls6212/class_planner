@@ -2,8 +2,8 @@
  * yPosition 마이그레이션 유틸리티
  * 기존 픽셀 값(0, 51, 102...)을 논리적 위치(1, 2, 3...)로 변환
  */
+import { logger } from "@/lib/logger";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
-import { logger } from "/logger";
 
 import type { Session } from "./planner";
 
@@ -45,9 +45,11 @@ export function migrateSessionsToLogicalPosition(
       if (isPixelPosition) {
         // 픽셀 위치를 논리적 위치로 변환
         const logicalPosition = pixelToLogicalPosition(session.yPosition);
-        console.log(
-          `🔄 세션 ${session.id} yPosition 마이그레이션: ${session.yPosition}px → ${logicalPosition}번째 자리`
-        );
+        logger.debug("세션 yPosition 마이그레이션", {
+          sessionId: session.id,
+          fromPixel: session.yPosition,
+          toLogical: logicalPosition,
+        });
         return { ...session, yPosition: logicalPosition };
       } else {
         // 이미 논리적 위치인 경우 그대로 유지
@@ -68,9 +70,11 @@ export function migrateSessionsToPixelPosition(sessions: Session[]): Session[] {
     if (session.yPosition !== undefined && session.yPosition !== null) {
       // 논리적 위치를 픽셀 위치로 변환
       const pixelPosition = logicalToPixelPosition(session.yPosition);
-      console.log(
-        `🔄 세션 ${session.id} yPosition 역마이그레이션: ${session.yPosition}번째 자리 → ${pixelPosition}px`
-      );
+      logger.debug("세션 yPosition 역마이그레이션", {
+        sessionId: session.id,
+        fromLogical: session.yPosition,
+        toPixel: pixelPosition,
+      });
       return { ...session, yPosition: pixelPosition };
     }
     return session;

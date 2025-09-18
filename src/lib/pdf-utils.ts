@@ -163,9 +163,7 @@ export function hideTimeHeadersOutsideSessionRange(
           headersHiddenBeforeStartTime++;
         }
 
-        console.log(
-          `🆕 시간 헤더 숨김: ${time} (세션 범위: ${startTime} ~ ${endTime})`
-        );
+        logger.debug("시간 헤더 숨김", { time, startTime, endTime });
       }
     }
   });
@@ -185,9 +183,10 @@ export function restoreHiddenTimeHeaders(element: HTMLElement): void {
     const headerElement = header as HTMLElement;
     if (headerElement.style.display === "none") {
       headerElement.style.display = ""; // 원래 display 값으로 복원
-      console.log(
-        `🆕 시간 헤더 복원: ${headerElement.textContent?.trim()} (display: none → '')`
-      );
+      logger.debug("시간 헤더 복원", {
+        headerText: headerElement.textContent?.trim(),
+        action: "display: none → ''",
+      });
     }
   });
 }
@@ -215,9 +214,11 @@ export function adjustSessionPositions(
     );
     sessionElement.style.left = `${newLeftValue}px`;
 
-    console.log(
-      `🆕 세션셀 위치 조정: ${currentLeft} → ${newLeftValue}px (세션 시작 시간보다 앞선 시간 헤더: ${headersHiddenBeforeStartTime}개)`
-    );
+    logger.debug("세션셀 위치 조정", {
+      currentLeft,
+      newLeftValue,
+      headersHiddenBeforeStartTime,
+    });
   });
 }
 
@@ -432,10 +433,7 @@ export async function captureElement(
 
     // 🆕 세션 범위에 맞는 시간 헤더 필터링 및 세션셀 위치 조정
     if (sessionRange && sessionTimeRange.hasSessions) {
-      console.log(
-        "세션 범위 필터링 시작:",
-        JSON.stringify(sessionTimeRange, null, 2)
-      );
+      logger.debug("세션 범위 필터링 시작", { sessionTimeRange });
 
       // 🆕 원본 세션셀 위치 백업
       const originalSessionBlocks = element.querySelectorAll(
@@ -463,7 +461,7 @@ export async function captureElement(
       // 🆕 시간 헤더 필터링 결과 로깅
       const timeHeaders = extractTimeHeaders(element);
 
-      console.log("🆕 시간 헤더 필터링 결과:", {
+      logger.debug("시간 헤더 필터링 결과", {
         totalHeaders: timeHeaders.length,
         filteredCount: headersHiddenBeforeStartTime,
         remainingHeaders: timeHeaders.length - headersHiddenBeforeStartTime,

@@ -10,8 +10,10 @@ import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedData } from "../../hooks/useIntegratedData";
+import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
+import { logger } from "../../lib/logger";
 import type { Enrollment, Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import type { GroupSessionData } from "../../types/scheduleTypes";
@@ -72,6 +74,10 @@ function SchedulePageContent() {
     updateData,
   } = useIntegratedData();
 
+  // 성능 모니터링
+  const { startApiCall, endApiCall, startInteraction, endInteraction } =
+    usePerformanceMonitoring();
+
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
@@ -80,7 +86,8 @@ function SchedulePageContent() {
   // 🆕 세션 관리 함수들 (통합 데이터 업데이트 방식)
   const addSession = useCallback(
     async (sessionData: any) => {
-      console.log("🔍 addSession 시작:", sessionData);
+      logger.debug("세션 추가 시작", { sessionData });
+      startInteraction("add_session");
 
       // 1단계: 각 학생에 대해 enrollment 생성/확인
       const enrollmentIds: string[] = [];
@@ -101,9 +108,9 @@ function SchedulePageContent() {
             subjectId: sessionData.subjectId,
           };
           newEnrollments.push(enrollment);
-          console.log("🆕 새로운 enrollment 생성:", enrollment);
+          logger.debug("새로운 enrollment 생성", { enrollment });
         } else {
-          console.log("✅ 기존 enrollment 사용:", enrollment);
+          logger.debug("기존 enrollment 사용", { enrollment });
         }
 
         enrollmentIds.push(enrollment.id);
@@ -122,7 +129,7 @@ function SchedulePageContent() {
         yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
       };
 
-      console.log("🆕 새로운 세션 생성:", newSession);
+      logger.debug("새로운 세션 생성", { newSession });
 
       // 3단계: enrollment와 session을 한 번에 업데이트
       const updateDataPayload: any = {
@@ -130,21 +137,23 @@ function SchedulePageContent() {
       };
 
       if (newEnrollments.length > 0) {
-        console.log(
-          "💾 새로운 enrollments와 세션을 함께 저장:",
-          newEnrollments
-        );
+        logger.debug("새로운 enrollments와 세션을 함께 저장", {
+          newEnrollments,
+        });
         updateDataPayload.enrollments = [...enrollments, ...newEnrollments];
       }
 
+      startApiCall("update_data");
       await updateData(updateDataPayload);
+      endApiCall("update_data", true);
 
-      console.log("✅ 세션 추가 완료");
+      logger.info("세션 추가 완료");
+      endInteraction("add_session");
 
       // 🆕 충돌 해결을 위해 다음 렌더링 사이클에서 실행
       setTimeout(async () => {
         try {
-          console.log("🔍 충돌 해결 시작 (비동기)");
+          logger.debug("충돌 해결 시작 (비동기)");
 
           // 현재 세션 목록으로 충돌 해결 (새로 생성된 enrollment 포함)
           const updatedSessions = [...sessions, newSession];
@@ -162,10 +171,9 @@ function SchedulePageContent() {
             newSession.id
           );
 
-          console.log(
-            "✅ 충돌 해결 완료 - 최종 세션 수:",
-            repositionedSessions.length
-          );
+          logger.debug("충돌 해결 완료", {
+            finalSessionCount: repositionedSessions.length,
+          });
 
           // 충돌 해결된 세션들과 enrollment를 함께 업데이트
           const updatePayload: any = { sessions: repositionedSessions };
@@ -175,9 +183,9 @@ function SchedulePageContent() {
 
           await updateData(updatePayload);
 
-          console.log("✅ 충돌 해결 업데이트 완료");
+          logger.info("충돌 해결 업데이트 완료");
         } catch (error) {
-          console.error("❌ 충돌 해결 실패:", error);
+          logger.error("충돌 해결 실패", undefined, error);
         }
       }, 0);
     },
@@ -186,7 +194,7 @@ function SchedulePageContent() {
 
   const updateSession = useCallback(
     async (sessionId: string, sessionData: any) => {
-      console.log("🔄 updateSession 시작:", { sessionId, sessionData });
+      logger.debug("세션 업데이트 시작", { sessionId, sessionData });
 
       const newSessions = sessions.map((s) => {
         if (s.id === sessionId) {
@@ -202,7 +210,7 @@ function SchedulePageContent() {
           delete updatedSession.startTime;
           delete updatedSession.endTime;
 
-          console.log("🔄 세션 업데이트:", {
+          logger.debug("세션 업데이트", {
             original: { startsAt: s.startsAt, endsAt: s.endsAt },
             updated: {
               startsAt: updatedSession.startsAt,
@@ -216,7 +224,7 @@ function SchedulePageContent() {
       });
 
       await updateData({ sessions: newSessions });
-      console.log("✅ updateSession 완료");
+      logger.info("세션 업데이트 완료");
     },
     [sessions, updateData]
   );
@@ -319,7 +327,7 @@ function SchedulePageContent() {
       targetYPosition: number,
       movingSessionId: string
     ): Session[] => {
-      console.log("🔄 우선순위 기반 충돌 해결 시작:", {
+      logger.debug("우선순위 기반 충돌 해결 시작", {
         targetWeekday,
         targetStartTime,
         targetEndTime,
@@ -346,15 +354,14 @@ function SchedulePageContent() {
           targetDaySessions.get(yPos)!.push({ ...session, priorityLevel: 0 });
         });
 
-      console.log(
-        "📊 초기 targetDaySessions:",
-        Object.fromEntries(
+      logger.debug("초기 targetDaySessions", {
+        sessions: Object.fromEntries(
           Array.from(targetDaySessions.entries()).map(([yPos, sessions]) => [
             yPos,
             sessions.map((s) => ({ id: s.id, priorityLevel: s.priorityLevel })),
           ])
-        )
-      );
+        ),
+      });
 
       // 2. 충돌 해결 로직 (재귀적 처리)
       let currentYPosition = targetYPosition;
@@ -425,9 +432,9 @@ function SchedulePageContent() {
         }
 
         if (loopCount === 1) {
-          console.log(
-            `🔍 첫 번째 루프: 이동할 세션과 시간이 겹치는 세션들 (yPosition ${currentYPosition}):`,
-            collidingSessions.map((s) => {
+          logger.debug("첫 번째 루프: 충돌 세션들", {
+            currentYPosition,
+            collidingSessions: collidingSessions.map((s) => {
               // enrollmentIds를 통해 과목 정보 찾기
               const enrollment = enrollments.find((e) =>
                 s.enrollmentIds?.includes(e.id)
@@ -441,12 +448,13 @@ function SchedulePageContent() {
                 time: `${s.startsAt} - ${s.endsAt}`,
                 priorityLevel: s.priorityLevel,
               };
-            })
-          );
+            }),
+          });
         } else {
-          console.log(
-            `🔍 ${loopCount}번째 루프: 우선순위 레벨 1 세션들과 시간이 겹치는 세션들 (yPosition ${currentYPosition}):`,
-            collidingSessions.map((s) => {
+          logger.debug(`${loopCount}번째 루프: 우선순위 레벨 1 충돌 세션들`, {
+            loopCount,
+            currentYPosition,
+            collidingSessions: collidingSessions.map((s) => {
               // enrollmentIds를 통해 과목 정보 찾기
               const enrollment = enrollments.find((e) =>
                 s.enrollmentIds?.includes(e.id)
@@ -460,18 +468,18 @@ function SchedulePageContent() {
                 time: `${s.startsAt} - ${s.endsAt}`,
                 priorityLevel: s.priorityLevel,
               };
-            })
-          );
+            }),
+          });
         }
 
         if (collidingSessions.length === 0) {
-          console.log(`✅ yPosition ${currentYPosition}에서 충돌 없음, 종료`);
+          // 충돌 없음, 종료
           break; // 루프 바로 종료
         }
 
         // 첫 번째 루프에서는 우선순위 체크하지 않고 모든 충돌 세션 이동
         if (loopCount === 1) {
-          console.log(`🔄 첫 번째 루프: 모든 충돌 세션을 다음 위치로 이동`);
+          // 첫 번째 루프: 모든 충돌 세션을 다음 위치로 이동
 
           const nextYPosition = currentYPosition + 1;
 
@@ -502,21 +510,21 @@ function SchedulePageContent() {
               ? subjects.find((sub) => sub.id === enrollment.subjectId)
               : null;
 
-            console.log(
-              `🔄 세션 ${session.id} (${subject?.name || "알 수 없음"}, ${
-                session.startsAt
-              } - ${
-                session.endsAt
-              }) 이동: yPosition ${currentYPosition} → ${nextYPosition}, 우선순위 레벨 ${
-                session.priorityLevel || 0
-              } → ${(session.priorityLevel || 0) + 1}`
-            );
+            logger.debug("세션 이동 및 우선순위 업데이트", {
+              sessionId: session.id,
+              subjectName: subject?.name || "알 수 없음",
+              time: `${session.startsAt} - ${session.endsAt}`,
+              fromYPosition: currentYPosition,
+              toYPosition: nextYPosition,
+              fromPriorityLevel: session.priorityLevel || 0,
+              toPriorityLevel: (session.priorityLevel || 0) + 1,
+            });
           });
 
           currentYPosition = nextYPosition;
         } else {
           // 두 번째 루프부터는 우선순위 레벨 기반 처리
-          console.log(`🔄 ${loopCount}번째 루프: 우선순위 레벨 기반 처리`);
+          // 우선순위 레벨 기반 처리
 
           // 우선순위 레벨 1인 세션들은 현재 위치에 유지
           const highPrioritySessions = collidingSessions.filter(
@@ -528,9 +536,8 @@ function SchedulePageContent() {
             (session) => (session.priorityLevel || 0) === 0
           );
 
-          console.log(
-            `📊 우선순위 레벨 1 세션들 (현재 위치 유지):`,
-            highPrioritySessions.map((s) => {
+          logger.debug("우선순위 레벨 1 세션들 (현재 위치 유지)", {
+            sessions: highPrioritySessions.map((s) => {
               const enrollment = enrollments.find((e) =>
                 s.enrollmentIds?.includes(e.id)
               );
@@ -543,11 +550,10 @@ function SchedulePageContent() {
                 time: `${s.startsAt} - ${s.endsAt}`,
                 priorityLevel: s.priorityLevel,
               };
-            })
-          );
-          console.log(
-            `📊 우선순위 레벨 0 세션들 (다음 위치로 이동):`,
-            lowPrioritySessions.map((s) => {
+            }),
+          });
+          logger.debug("우선순위 레벨 0 세션들 (다음 위치로 이동)", {
+            sessions: lowPrioritySessions.map((s) => {
               const enrollment = enrollments.find((e) =>
                 s.enrollmentIds?.includes(e.id)
               );
@@ -560,11 +566,11 @@ function SchedulePageContent() {
                 time: `${s.startsAt} - ${s.endsAt}`,
                 priorityLevel: s.priorityLevel,
               };
-            })
-          );
+            }),
+          });
 
           if (lowPrioritySessions.length === 0) {
-            console.log(`✅ 이동할 우선순위 레벨 0 세션이 없음, 종료`);
+            // 이동할 우선순위 레벨 0 세션이 없음, 종료
             break; // 루프 바로 종료
           }
 
@@ -597,15 +603,15 @@ function SchedulePageContent() {
               ? subjects.find((sub) => sub.id === enrollment.subjectId)
               : null;
 
-            console.log(
-              `🔄 세션 ${session.id} (${subject?.name || "알 수 없음"}, ${
-                session.startsAt
-              } - ${
-                session.endsAt
-              }) 이동: yPosition ${currentYPosition} → ${nextYPosition}, 우선순위 레벨 ${
-                session.priorityLevel || 0
-              } → ${(session.priorityLevel || 0) + 1}`
-            );
+            logger.debug("세션 이동 및 우선순위 업데이트", {
+              sessionId: session.id,
+              subjectName: subject?.name || "알 수 없음",
+              time: `${session.startsAt} - ${session.endsAt}`,
+              fromYPosition: currentYPosition,
+              toYPosition: nextYPosition,
+              fromPriorityLevel: session.priorityLevel || 0,
+              toPriorityLevel: (session.priorityLevel || 0) + 1,
+            });
           });
 
           currentYPosition = nextYPosition;
@@ -647,7 +653,7 @@ function SchedulePageContent() {
         return session;
       });
 
-      console.log("✅ 우선순위 기반 충돌 해결 완료");
+      logger.debug("우선순위 기반 충돌 해결 완료");
       return finalSessions;
     },
     [isTimeOverlapping]
@@ -679,7 +685,7 @@ function SchedulePageContent() {
       // 픽셀 위치를 논리적 위치로 변환 (1, 2, 3...)
       const logicalPosition = Math.round(yPosition / SESSION_CELL_HEIGHT) + 1; // 0px = 1번째, SESSION_CELL_HEIGHT px = 2번째, SESSION_CELL_HEIGHT * 2 px = 3번째
 
-      console.log("🔄 세션 위치 업데이트:", {
+      logger.debug("세션 위치 업데이트", {
         sessionId,
         originalTime: `${existingSession.startsAt}-${existingSession.endsAt}`,
         newTime: `${time}-${newEndTime}`,
@@ -689,7 +695,7 @@ function SchedulePageContent() {
       });
 
       // 🆕 충돌 방지 로직 적용
-      console.log("🔄 repositionSessions 호출 시작");
+      logger.debug("repositionSessions 호출 시작");
       const newSessions = repositionSessions(
         sessions,
         weekday,
@@ -698,14 +704,13 @@ function SchedulePageContent() {
         logicalPosition,
         sessionId
       );
-      console.log(
-        "🔄 repositionSessions 완료, 새로운 세션 수:",
-        newSessions.length
-      );
+      logger.debug("repositionSessions 완료", {
+        newSessionCount: newSessions.length,
+      });
 
-      console.log("🔄 updateData 호출 시작");
+      logger.debug("updateData 호출 시작");
       await updateData({ sessions: newSessions });
-      console.log("✅ updateData 완료");
+      logger.info("updateData 완료");
     },
     [sessions, updateData, repositionSessions]
   );
@@ -726,7 +731,7 @@ function SchedulePageContent() {
         try {
           const savedStudentId = localStorage.getItem("ui:selectedStudent");
           if (savedStudentId && students.some((s) => s.id === savedStudentId)) {
-            console.log("🔄 저장된 학생 선택 복원:", savedStudentId);
+            logger.debug("저장된 학생 선택 복원", { savedStudentId });
             setSelectedStudentId(savedStudentId);
           }
         } catch {
@@ -738,7 +743,7 @@ function SchedulePageContent() {
 
   // 🆕 학생 데이터 디버깅
   useEffect(() => {
-    console.log("🆕 학생 데이터 상태:", {
+    logger.debug("학생 데이터 상태", {
       studentsCount: students.length,
       selectedStudentId,
       selectedStudentName: students.find((s) => s.id === selectedStudentId)
@@ -748,7 +753,7 @@ function SchedulePageContent() {
 
   // 🆕 selectedStudentId 변경 감지 및 저장
   useEffect(() => {
-    console.log("🆕 selectedStudentId 변경됨:", selectedStudentId);
+    logger.debug("selectedStudentId 변경됨", { selectedStudentId });
     // 클라이언트에서만 localStorage 접근
     if (typeof window !== "undefined") {
       try {
@@ -772,14 +777,14 @@ function SchedulePageContent() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-          console.log("🔔 로그아웃 상태 감지 - 컴포넌트 정리");
+          logger.debug("로그아웃 상태 감지 - 컴포넌트 정리");
           // 로그아웃 상태에서는 불필요한 로그 방지
           return;
         }
 
-        console.log("🔔 로그인 상태 확인됨:", user.email);
+        logger.debug("로그인 상태 확인됨", { email: user.email });
       } catch (error) {
-        console.error("🔔 인증 상태 확인 실패:", error);
+        logger.error("인증 상태 확인 실패", undefined, error);
       }
     };
 
@@ -882,8 +887,10 @@ function SchedulePageContent() {
 
   // 🆕 학생 입력값 상태 디버깅 및 최적화
   useEffect(() => {
-    console.log("🔄 editStudentInputValue 상태 변경:", editStudentInputValue);
-    console.log("🔄 버튼 활성화 조건:", !!editStudentInputValue.trim());
+    logger.debug("editStudentInputValue 상태 변경", { editStudentInputValue });
+    logger.debug("버튼 활성화 조건", {
+      isEnabled: !!editStudentInputValue.trim(),
+    });
   }, [editStudentInputValue]);
 
   // 🆕 세션 편집 모달 상태 (useCallback보다 앞에 선언)
@@ -896,7 +903,7 @@ function SchedulePageContent() {
   const handleEditStudentInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
-      console.log("🔄 학생 입력값 변경:", value);
+      logger.debug("학생 입력값 변경", { value });
       setEditStudentInputValue(value);
     },
     []
@@ -905,7 +912,7 @@ function SchedulePageContent() {
   // 🆕 학생 추가 핸들러 최적화
   const handleEditStudentAdd = useCallback(
     (studentId?: string) => {
-      console.log("🔄 handleEditStudentAdd 호출:", {
+      logger.debug("handleEditStudentAdd 호출", {
         studentId,
         editStudentInputValue,
       });
@@ -916,10 +923,12 @@ function SchedulePageContent() {
           (s) => s.name.toLowerCase() === editStudentInputValue.toLowerCase()
         )?.id;
 
-      console.log("🔄 찾은 학생 ID:", targetStudentId);
+      logger.debug("찾은 학생 ID", { targetStudentId });
 
       if (!targetStudentId) {
-        console.log("❌ 학생을 찾을 수 없음");
+        logger.warn("학생을 찾을 수 없음", {
+          inputValue: editStudentInputValue,
+        });
         // 존재하지 않는 학생인 경우 입력창을 초기화하지 않고 피드백만 제공
         return;
       }
@@ -933,7 +942,7 @@ function SchedulePageContent() {
       );
 
       if (isAlreadyAdded) {
-        console.log("❌ 이미 추가된 학생");
+        logger.warn("이미 추가된 학생", { studentId: targetStudentId });
         setEditStudentInputValue("");
         return;
       }
@@ -998,7 +1007,7 @@ function SchedulePageContent() {
 
   // 🆕 학생 추가 핸들러 최적화
   const handleEditStudentAddClick = useCallback(() => {
-    console.log("🔄 학생 추가 버튼 클릭");
+    logger.debug("학생 추가 버튼 클릭");
     handleEditStudentAdd();
   }, [handleEditStudentAdd]);
 
@@ -1056,33 +1065,36 @@ function SchedulePageContent() {
 
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = async (data: GroupSessionData) => {
-    console.log("🔍 addGroupSession 시작:", data);
+    logger.debug("addGroupSession 시작", { data });
 
     // 시간 유효성 검사
     if (!validateTimeRange(data.startTime, data.endTime)) {
-      console.log("❌ 시간 유효성 검사 실패");
+      logger.warn("시간 유효성 검사 실패", {
+        startTime: data.startTime,
+        endTime: data.endTime,
+      });
       alert("시작 시간은 종료 시간보다 빨라야 합니다.");
       return;
     }
-    console.log("✅ 시간 유효성 검사 통과");
+    logger.debug("시간 유효성 검사 통과");
 
     // 🆕 과목 선택 검증
     if (!data.subjectId) {
-      console.log("❌ 과목 선택 검증 실패");
+      logger.warn("과목 선택 검증 실패");
       alert("과목을 선택해주세요.");
       return;
     }
-    console.log("✅ 과목 선택 검증 통과");
+    logger.debug("과목 선택 검증 통과");
 
     // 🆕 학생 선택 검증
     if (!data.studentIds || data.studentIds.length === 0) {
-      console.log("❌ 학생 선택 검증 실패");
+      logger.warn("학생 선택 검증 실패");
       alert("학생을 선택해주세요.");
       return;
     }
-    console.log("✅ 학생 선택 검증 통과");
+    logger.debug("학생 선택 검증 통과");
 
-    console.log("🔍 addSession 호출 시작:", {
+    logger.debug("addSession 호출 시작", {
       subjectId: data.subjectId,
       studentIds: data.studentIds,
       startTime: data.startTime,
@@ -1090,7 +1102,7 @@ function SchedulePageContent() {
     });
 
     try {
-      console.log("🔄 addSession 함수 호출 중...");
+      logger.debug("addSession 함수 호출 중");
       await addSession({
         studentIds: data.studentIds,
         subjectId: data.subjectId,
@@ -1100,13 +1112,13 @@ function SchedulePageContent() {
         room: data.room,
         yPosition: data.yPosition || 1, // 🆕 yPosition 추가
       });
-      console.log("✅ addSession 함수 완료");
+      logger.debug("addSession 함수 완료");
 
-      console.log("🔄 모달 닫기 중...");
+      logger.debug("모달 닫기 중");
       setShowGroupModal(false);
-      console.log("✅ 세션 추가 완료");
+      logger.debug("세션 추가 완료");
     } catch (error) {
-      console.error("❌ 세션 추가 실패:", error);
+      logger.error("세션 추가 실패", undefined, error);
       alert("세션 추가에 실패했습니다.");
     }
   };
@@ -1117,7 +1129,7 @@ function SchedulePageContent() {
     time: string,
     yPosition?: number
   ) => {
-    console.log("🆕 그룹 수업 모달 열기:", { weekday, time, yPosition });
+    logger.debug("그룹 수업 모달 열기", { weekday, time, yPosition });
     setGroupModalData({
       studentIds: [], // 빈 배열로 초기화
       subjectId: "",
@@ -1127,7 +1139,7 @@ function SchedulePageContent() {
       yPosition: yPosition || 1, // 🆕 yPosition 추가
     });
     setShowGroupModal(true);
-    console.log("🆕 모달 상태 설정 완료:", { showGroupModal: true });
+    logger.debug("모달 상태 설정 완료", { showGroupModal: true });
   };
 
   // 🆕 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
@@ -1185,7 +1197,7 @@ function SchedulePageContent() {
     enrollmentId: string,
     yPosition?: number
   ) => {
-    console.log("🆕 handleDrop 호출됨:", {
+    logger.debug("handleDrop 호출됨", {
       weekday,
       time,
       enrollmentId,
@@ -1198,21 +1210,21 @@ function SchedulePageContent() {
     // 학생 ID인지 확인 (enrollment가 없는 경우)
     if (enrollmentId.startsWith("student:")) {
       const studentId = enrollmentId.replace("student:", "");
-      console.log("🆕 학생 ID로 드롭됨:", studentId);
+      logger.debug("학생 ID로 드롭됨", { studentId });
 
       // 학생 정보 찾기
       const student = students.find((s) => s.id === studentId);
       if (!student) {
-        console.log("🆕 학생을 찾을 수 없음:", studentId);
+        logger.warn("학생을 찾을 수 없음", { studentId });
         return;
       }
 
-      console.log("🆕 그룹 수업 모달 데이터 설정 (학생 ID):", {
+      logger.debug("그룹 수업 모달 데이터 설정 (학생 ID)", {
         studentId,
         weekday,
         startTime: time,
         endTime: getNextHour(time),
-        yPosition: yPosition || 1, // 🆕 yPosition 추가
+        yPosition: yPosition || 1,
       });
 
       // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
@@ -1225,12 +1237,12 @@ function SchedulePageContent() {
         yPosition: yPosition || 1, // 🆕 yPosition 추가
       });
 
-      console.log("🆕 showGroupModal을 true로 설정");
+      logger.debug("showGroupModal을 true로 설정");
       setShowGroupModal(true);
 
       // 디버깅을 위한 상태 확인
       setTimeout(() => {
-        console.log("🆕 모달 상태 확인:", {
+        logger.debug("모달 상태 확인", {
           showGroupModal: true,
           groupModalData: {
             studentIds: [studentId],
@@ -1247,20 +1259,20 @@ function SchedulePageContent() {
 
     // 기존 enrollment 처리
     const enrollment = enrollments.find((e) => e.id === enrollmentId);
-    console.log("🆕 찾은 enrollment:", enrollment);
+    logger.debug("찾은 enrollment", { enrollment });
 
     if (!enrollment) {
-      console.log("🆕 enrollment를 찾을 수 없음");
+      logger.warn("enrollment를 찾을 수 없음", { enrollmentId });
       return;
     }
 
-    console.log("🆕 그룹 수업 모달 데이터 설정:", {
+    logger.debug("그룹 수업 모달 데이터 설정", {
       studentId: enrollment.studentId,
       subjectId: enrollment.subjectId,
       weekday,
       startTime: time,
       endTime: getNextHour(time),
-      yPosition: yPosition || 1, // 🆕 yPosition 추가
+      yPosition: yPosition || 1,
     });
 
     // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
@@ -1273,7 +1285,7 @@ function SchedulePageContent() {
       yPosition: yPosition || 1, // 🆕 yPosition 추가
     });
 
-    console.log("🆕 showGroupModal을 true로 설정");
+    logger.debug("showGroupModal을 true로 설정");
     setShowGroupModal(true);
 
     // 🆕 드래그 상태 강제 해제
@@ -1294,10 +1306,10 @@ function SchedulePageContent() {
       });
       document.dispatchEvent(mouseUpEvent);
 
-      console.log("🆕 드래그 상태 강제 해제 완료");
+      logger.debug("드래그 상태 강제 해제 완료");
     }, 100);
 
-    console.log("🆕 handleDrop 완료");
+    logger.debug("handleDrop 완료");
   };
 
   // 🆕 세션 드롭 핸들러 (드래그 앤 드롭으로 세션 이동)
@@ -1307,7 +1319,7 @@ function SchedulePageContent() {
     time: string,
     yPosition: number
   ) => {
-    console.log("🔄 Schedule 페이지 세션 드롭 처리:", {
+    logger.debug("Schedule 페이지 세션 드롭 처리", {
       sessionId,
       weekday,
       time,
@@ -1316,11 +1328,11 @@ function SchedulePageContent() {
 
     try {
       // 세션 위치 업데이트
-      console.log("🔄 updateSessionPosition 호출 시작");
+      logger.debug("updateSessionPosition 호출 시작", { sessionId });
       await updateSessionPosition(sessionId, weekday, time, yPosition);
-      console.log("✅ 세션 위치 업데이트 완료");
+      logger.debug("세션 위치 업데이트 완료", { sessionId });
     } catch (error) {
-      console.error("❌ 세션 위치 업데이트 실패:", error);
+      logger.error("세션 위치 업데이트 실패", { sessionId }, error);
       alert("세션 이동에 실패했습니다.");
     }
   };
@@ -1331,13 +1343,13 @@ function SchedulePageContent() {
     time: string,
     yPosition?: number
   ) => {
-    console.log("🆕 빈 공간 클릭됨:", { weekday, time, yPosition });
+    logger.debug("빈 공간 클릭됨", { weekday, time, yPosition });
     openGroupModal(weekday, time, yPosition);
   };
 
   // 🆕 세션 클릭 처리
   const handleSessionClick = (session: Session) => {
-    console.log("🖱️ 세션 클릭됨:", {
+    logger.debug("세션 클릭됨", {
       sessionId: session.id,
       startsAt: session.startsAt,
       endsAt: session.endsAt,
@@ -1357,7 +1369,7 @@ function SchedulePageContent() {
     setTempEnrollments([]); // 🆕 임시 enrollment 초기화
     setShowEditModal(true);
 
-    console.log("🔄 편집 모달 열림:", {
+    logger.debug("편집 모달 열림", {
       editModalData: session,
       editModalTimeData: {
         startTime: session.startsAt,
@@ -1376,7 +1388,7 @@ function SchedulePageContent() {
 
   // 드래그 시작 처리
   const handleDragStart = (e: React.DragEvent, student: Student) => {
-    console.log("🆕 학생 드래그 시작:", student.name);
+    logger.debug("학생 드래그 시작", { studentName: student.name });
 
     // 🆕 학생 드래그 상태 설정
     setIsStudentDragging(true);
@@ -1386,13 +1398,14 @@ function SchedulePageContent() {
       (enrollment) => enrollment.studentId === student.id
     );
     if (studentEnrollment) {
-      console.log("🆕 드래그 시작 - enrollment ID 전달:", studentEnrollment.id);
+      logger.debug("드래그 시작 - enrollment ID 전달", {
+        enrollmentId: studentEnrollment.id,
+      });
       e.dataTransfer.setData("text/plain", studentEnrollment.id);
     } else {
-      console.log(
-        "🆕 드래그 시작 - 학생 ID 전달 (enrollment 없음):",
-        student.id
-      );
+      logger.debug("드래그 시작 - 학생 ID 전달 (enrollment 없음)", {
+        studentId: student.id,
+      });
       // enrollment가 없으면 학생 ID를 직접 전달
       e.dataTransfer.setData("text/plain", `student:${student.id}`);
     }
@@ -1404,7 +1417,7 @@ function SchedulePageContent() {
 
   // 🆕 드래그 종료 처리
   const handleDragEnd = (e: React.DragEvent) => {
-    console.log("🆕 학생 드래그 종료:", e.dataTransfer.dropEffect);
+    logger.debug("학생 드래그 종료", { dropEffect: e.dataTransfer.dropEffect });
 
     // 🆕 학생 드래그 상태 리셋
     setIsStudentDragging(false);
@@ -1496,7 +1509,7 @@ function SchedulePageContent() {
       {/* 그룹 수업 추가 모달 */}
       {showGroupModal && (
         <>
-          {console.log("🆕 모달 렌더링 중:", {
+          {logger.debug("모달 렌더링 중", {
             showGroupModal,
             groupModalData,
           })}
@@ -1565,7 +1578,7 @@ function SchedulePageContent() {
                                 studentInputValue.toLowerCase()
                             );
 
-                            console.log("🔍 그룹 모달 학생 검색 디버깅:", {
+                            logger.debug("그룹 모달 학생 검색 디버깅", {
                               studentInputValue,
                               filteredStudentsLength: filteredStudents.length,
                               studentExists,
@@ -1814,7 +1827,7 @@ function SchedulePageContent() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          console.log("🔄 Enter 키로 학생 추가 시도");
+                          logger.debug("Enter 키로 학생 추가 시도");
                           handleEditStudentAdd();
                           // 🆕 입력창 완전 초기화
                           setEditStudentInputValue("");
@@ -1959,7 +1972,7 @@ function SchedulePageContent() {
                       try {
                         await deleteSession(editModalData.id);
                         setShowEditModal(false);
-                        console.log("✅ 세션 삭제 완료");
+                        logger.debug("세션 삭제 완료");
                       } catch (error) {
                         console.error("세션 삭제 실패:", error);
                         alert("세션 삭제에 실패했습니다.");
@@ -2019,7 +2032,7 @@ function SchedulePageContent() {
                         // 🆕 임시 과목 ID 사용
                         const currentSubjectId = tempSubjectId;
 
-                        console.log("💾 세션 저장 시작:", {
+                        logger.debug("세션 저장 시작", {
                           sessionId: editModalData.id,
                           originalTime: `${editModalData.startsAt}-${editModalData.endsAt}`,
                           newTime: `${startTime}-${endTime}`,
@@ -2040,7 +2053,7 @@ function SchedulePageContent() {
                         setShowEditModal(false);
                         setTempSubjectId(""); // 🆕 임시 상태 초기화
                         setTempEnrollments([]); // 🆕 임시 enrollment 초기화
-                        console.log("✅ 세션 업데이트 완료");
+                        logger.debug("세션 업데이트 완료");
                       } catch (error) {
                         console.error("세션 업데이트 실패:", error);
                         alert("세션 업데이트에 실패했습니다.");
