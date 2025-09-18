@@ -173,7 +173,7 @@ export const getSessionBlockStyles = (
     display: "flex", // 항상 flex로 유지
     alignItems: "center",
     overflow: "hidden",
-    zIndex: isDragging && !isDraggedSession ? 0 : 1000 + yOffset, // 🆕 드래그 중일 때 다른 세션들의 z-index를 낮춤
+    zIndex: isDragging && !isDraggedSession ? 0 : 100 + yOffset, // 🆕 footer(z-index: 1000)보다 낮게 설정
     border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity, // 🆕 투명도 적용
