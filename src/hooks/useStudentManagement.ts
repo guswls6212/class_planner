@@ -50,7 +50,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
   // API 호출 헬퍼 함수
   const apiCall = async (url: string, options: RequestInit = {}) => {
     try {
-      const response = await fetch(url, {
+      const response = await globalThis.fetch(url, {
         headers: {
           "Content-Type": "application/json",
           ...options.headers,
@@ -97,7 +97,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
   // ===== 학생 추가 =====
 
   const addStudent = useCallback(
-    async (name: string, gender?: string): Promise<boolean> => {
+    async (name: string): Promise<boolean> => {
       try {
         setLoading(true);
         setError(null);
@@ -107,7 +107,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
           throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
 
-        const data = await apiCall(`/api/students?userId=${userId}`, {
+        await apiCall(`/api/students?userId=${userId}`, {
           method: "POST",
           body: JSON.stringify({ name }),
         });
@@ -139,7 +139,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        const data = await apiCall(`/api/students/${id}`, {
+        await apiCall(`/api/students/${id}`, {
           method: "PUT",
           body: JSON.stringify(updates),
         });
@@ -168,7 +168,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        const data = await apiCall(`/api/students/${id}`, {
+        await apiCall(`/api/students/${id}`, {
           method: "DELETE",
         });
 

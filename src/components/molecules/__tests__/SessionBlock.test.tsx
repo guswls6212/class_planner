@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { logger } from "../../../lib/logger";
+// import { logger } from "../../../lib/logger";
 import { describe, expect, it, vi } from "vitest";
 import SessionBlock, {
   shouldShowSubjectName,

@@ -1,6 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
-import { trackDatabaseError } from "@/lib/errorTracker";
+// import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 

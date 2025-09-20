@@ -1,6 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
-import { trackDatabaseError } from "@/lib/errorTracker";
+// import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the session service (for testing purposes)

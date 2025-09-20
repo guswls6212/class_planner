@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SchedulePage from "../page";
+import * as useIntegratedDataModule from "../../../hooks/useIntegratedData";
 
 // Mock useIntegratedData
 vi.mock("../../../hooks/useIntegratedData", () => ({
@@ -113,14 +114,14 @@ describe("Schedule Page", () => {
 
     // Mock된 훅이 호출되었는지 확인
     expect(
-      vi.mocked(require("../../../hooks/useIntegratedData").useIntegratedData)
+      vi.mocked(useIntegratedDataModule.useIntegratedData)
     ).toHaveBeenCalledTimes(1);
   });
 
   it("로딩 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 로딩 상태로 변경
     vi.mocked(
-      require("../../../hooks/useIntegratedData").useIntegratedData
+      useIntegratedDataModule.useIntegratedData
     ).mockReturnValue({
       data: {
         students: [],
@@ -132,7 +133,13 @@ describe("Schedule Page", () => {
       },
       loading: true,
       error: null,
+      refreshData: vi.fn(),
       updateData: vi.fn(),
+      clearError: vi.fn(),
+      studentCount: 0,
+      subjectCount: 0,
+      sessionCount: 0,
+      enrollmentCount: 0,
     });
 
     render(<SchedulePage />);
@@ -143,7 +150,7 @@ describe("Schedule Page", () => {
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 에러 상태로 변경
     vi.mocked(
-      require("../../../hooks/useIntegratedData").useIntegratedData
+      useIntegratedDataModule.useIntegratedData
     ).mockReturnValue({
       data: {
         students: [],
@@ -155,7 +162,13 @@ describe("Schedule Page", () => {
       },
       loading: false,
       error: "데이터 로드 실패",
+      refreshData: vi.fn(),
       updateData: vi.fn(),
+      clearError: vi.fn(),
+      studentCount: 0,
+      subjectCount: 0,
+      sessionCount: 0,
+      enrollmentCount: 0,
     });
 
     render(<SchedulePage />);

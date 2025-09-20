@@ -26,8 +26,8 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
   onDeleteStudent,
   errorMessage,
   isLoading = false,
-  error,
-  onClearError,
+  error: _error,
+  onClearError: _onClearError,
 }) => {
   return (
     <div

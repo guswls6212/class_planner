@@ -41,7 +41,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data");
+      const response = await globalThis.fetch("/api/data");
       const data = await response.json();
 
       expect(response.ok).toBe(true);
@@ -64,7 +64,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data");
+      const response = await globalThis.fetch("/api/data");
       const data = await response.json();
 
       expect(response.ok).toBe(true);
@@ -84,7 +84,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data");
+      const response = await globalThis.fetch("/api/data");
       const data = await response.json();
 
       expect(response.ok).toBe(false);
@@ -116,7 +116,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data", {
+      const response = await globalThis.globalThis.globalThis.fetch("/api/data", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -152,7 +152,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data", {
+      const response = await globalThis.globalThis.globalThis.fetch("/api/data", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -182,7 +182,7 @@ describe("/api/data API Routes", () => {
         }),
       });
 
-      const response = await fetch("/api/data", {
+      const response = await globalThis.globalThis.globalThis.fetch("/api/data", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

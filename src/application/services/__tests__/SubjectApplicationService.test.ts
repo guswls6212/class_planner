@@ -66,10 +66,10 @@ describe("SubjectApplicationService", () => {
       expect(result.name).toBe("과학");
       expect(result.color.value).toBe("#0000FF");
       expect(mockSubjectRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
           name: "과학",
-          color: expect.objectContaining({ value: "#0000FF" }),
-        }),
+          color: "#0000FF",
+        },
         "test-user-id"
       );
     });
@@ -122,12 +122,16 @@ describe("SubjectApplicationService", () => {
       );
 
       // Act
-      const result = await service.updateSubject(subjectId, updateData, "test-user-id");
+      const result = await service.updateSubject(
+        subjectId,
+        updateData,
+        "test-user-id"
+      );
 
       // Assert
       expect(result.name).toBe("수학");
       expect(result.color.value).toBe("#FF0000");
-      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId);
+      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId, "test-user-id");
       expect(mockSubjectRepository.update).toHaveBeenCalledWith(
         subjectId,
         updateData

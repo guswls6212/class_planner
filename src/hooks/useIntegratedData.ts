@@ -74,7 +74,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
           : "없음",
       });
 
-      const response = await fetch(url, {
+      const response = await globalThis.fetch(url, {
         headers: {
           "Content-Type": "application/json",
           ...(accessToken && { Authorization: `Bearer ${accessToken}` }),

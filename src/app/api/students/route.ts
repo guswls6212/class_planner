@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
 // Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createServiceRoleClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

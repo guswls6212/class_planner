@@ -62,7 +62,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
   // API 호출 헬퍼 함수
   const apiCall = async (url: string, options: RequestInit = {}) => {
     try {
-      const response = await fetch(url, {
+      const response = await globalThis.fetch(url, {
         headers: {
           "Content-Type": "application/json",
           ...options.headers,
@@ -125,7 +125,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
           throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
 
-        const data = await apiCall(`/api/subjects?userId=${userId}`, {
+        await apiCall(`/api/subjects?userId=${userId}`, {
           method: "POST",
           body: JSON.stringify({ name, color }),
         });
@@ -154,7 +154,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
       try {
         setErrorMessage("");
 
-        const data = await apiCall(`/api/subjects/${id}`, {
+        await apiCall(`/api/subjects/${id}`, {
           method: "PUT",
           body: JSON.stringify(updates),
         });
@@ -180,7 +180,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
       try {
         setErrorMessage("");
 
-        const data = await apiCall(`/api/subjects/${id}`, {
+        await apiCall(`/api/subjects/${id}`, {
           method: "DELETE",
         });
 

@@ -32,22 +32,25 @@ class PerformanceMonitor {
   measurePageLoad() {
     if (typeof window === "undefined") return;
 
-    const startTime = performance.now();
+    const startTime = globalThis.performance?.now() || Date.now();
 
     window.addEventListener("load", () => {
-      const loadTime = performance.now() - startTime;
+      const loadTime = globalThis.performance?.now() || Date.now() - startTime;
       this.metrics.pageLoadTime = loadTime;
 
       trackPerformance("page_load", loadTime, {
         url: window.location.href,
-        userAgent: navigator.userAgent,
+        userAgent: globalThis.navigator?.userAgent || "unknown",
       });
     });
   }
 
   // API 호출 시간 측정 시작
   startApiCall(apiName: string) {
-    this.startTimes.set(`api_${apiName}`, performance.now());
+    this.startTimes.set(
+      `api_${apiName}`,
+      globalThis.performance?.now() || Date.now()
+    );
   }
 
   // API 호출 시간 측정 종료
@@ -55,7 +58,7 @@ class PerformanceMonitor {
     const startTime = this.startTimes.get(`api_${apiName}`);
     if (!startTime) return;
 
-    const duration = performance.now() - startTime;
+    const duration = globalThis.performance?.now() || Date.now() - startTime;
     this.metrics.apiCallTimes[apiName] = duration;
     this.startTimes.delete(`api_${apiName}`);
 
@@ -77,7 +80,10 @@ class PerformanceMonitor {
 
   // 사용자 상호작용 시간 측정 시작
   startInteraction(interactionName: string) {
-    this.startTimes.set(`interaction_${interactionName}`, performance.now());
+    this.startTimes.set(
+      `interaction_${interactionName}`,
+      globalThis.performance?.now() || Date.now()
+    );
   }
 
   // 사용자 상호작용 시간 측정 종료
@@ -85,7 +91,7 @@ class PerformanceMonitor {
     const startTime = this.startTimes.get(`interaction_${interactionName}`);
     if (!startTime) return;
 
-    const duration = performance.now() - startTime;
+    const duration = globalThis.performance?.now() || Date.now() - startTime;
     this.metrics.interactionTimes[interactionName] = duration;
     this.startTimes.delete(`interaction_${interactionName}`);
 
@@ -105,9 +111,9 @@ class PerformanceMonitor {
 
   // 메모리 사용량 측정
   measureMemoryUsage() {
-    if (typeof window === "undefined" || !("memory" in performance)) return;
+    if (typeof window === "undefined" || !globalThis.performance || !("memory" in globalThis.performance)) return;
 
-    const memory = (performance as any).memory;
+    const memory = (globalThis.performance as any).memory;
     if (memory) {
       const memoryUsage = {
         usedJSHeapSize: memory.usedJSHeapSize,
