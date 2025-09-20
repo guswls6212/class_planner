@@ -9,6 +9,7 @@
  */
 
 import { LogContext, logger } from "./logger";
+import { getKSTTime } from "./timeUtils";
 
 export enum ErrorCategory {
   AUTHENTICATION = "authentication",
@@ -69,7 +70,7 @@ class ErrorTracker {
       stackTrace: error.stack,
       userId: context?.userId,
       endpoint: context?.endpoint,
-      timestamp: new Date().toISOString(),
+      timestamp: getKSTTime(),
     };
 
     // 최근 에러 목록에 추가

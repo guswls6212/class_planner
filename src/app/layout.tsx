@@ -8,7 +8,7 @@ import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
 import LoginButton from "../components/atoms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
-import { useGlobalSubjectInitialization } from "../hooks/useGlobalSubjectInitialization";
+import { useGlobalDataInitialization } from "../hooks/useGlobalDataInitialization";
 import { useUserTracking } from "../hooks/useUserTracking";
 import "./globals.css";
 
@@ -142,30 +142,23 @@ function Footer() {
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  // 전역 기본 과목 초기화
-  const { isInitialized, isInitializing } = useGlobalSubjectInitialization();
+  // 전역 사용자 데이터 초기화
+  const { isInitialized, isInitializing } = useGlobalDataInitialization();
 
   return (
     <ErrorBoundary>
       <Navigation />
       <main style={{ paddingBottom: "60px" }}>
         {isInitializing && (
-          <div
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              background: "var(--color-bg-primary)",
-              padding: "16px",
-              borderRadius: "8px",
-              border: "1px solid var(--color-border)",
-              zIndex: 9999,
-              fontSize: "14px",
-              color: "var(--color-text-primary)",
-            }}
-          >
-            기본 과목을 초기화하는 중...
+          <div className="loading-overlay">
+            {/* 로딩 스피너 */}
+            <div className="loading-spinner" />
+
+            {/* 애니메이션 텍스트 */}
+            <span className="loading-text">
+              사용자 데이터를 불러오는 중
+              <span className="loading-dots">...</span>
+            </span>
           </div>
         )}
         {children}

@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { trackDatabaseError } from "@/lib/errorTracker";
 import { logger } from "@/lib/logger";
+import { getKSTTime } from "@/lib/timeUtils";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { withApiLogging } from "@/middleware/logging";
 import { createClient } from "@supabase/supabase-js";
@@ -181,7 +182,7 @@ export async function PUT(request: NextRequest) {
       sessions: sessions || [],
       enrollments: enrollments || [],
       version: "1.0",
-      lastModified: new Date().toISOString(),
+      lastModified: getKSTTime(),
     };
 
     const { data, error } = await serviceRoleClient
@@ -189,7 +190,7 @@ export async function PUT(request: NextRequest) {
       .upsert({
         user_id: userId,
         data: userData,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTTime(),
       })
       .select()
       .single();

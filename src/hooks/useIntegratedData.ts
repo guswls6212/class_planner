@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { logger } from "../lib/logger";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
+import { getKSTTime } from "../lib/timeUtils";
 import { migrateSessionsToLogicalPosition } from "../lib/yPositionMigration";
 
 // ===== 타입 정의 =====
@@ -49,7 +50,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
     sessions: [],
     enrollments: [],
     version: "1.0",
-    lastModified: new Date().toISOString(),
+    lastModified: getKSTTime(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +124,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
         sessions: migratedSessions,
         enrollments: apiData.enrollments || [],
         version: apiData.version || "1.0",
-        lastModified: apiData.lastModified || new Date().toISOString(),
+        lastModified: apiData.lastModified || getKSTTime(),
       });
     } catch (err) {
       const errorMessage =
@@ -158,7 +159,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
         const updatedData = {
           ...data,
           ...migratedNewData,
-          lastModified: new Date().toISOString(),
+          lastModified: getKSTTime(),
         };
 
         const responseData = await apiCall(`/api/data?userId=${userId}`, {

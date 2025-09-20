@@ -1,4 +1,4 @@
-import { logger } from "/logger";
+import { getKSTTime } from "./timeUtils";
 /**
  * 데이터 동기화 유틸리티 함수들
  * localStorage와 DB 간의 데이터 처리 및 비교 로직
@@ -9,7 +9,7 @@ import type {
   DataSource,
   DataSummary,
   SyncScenario,
-} from '../types/dataSyncTypes';
+} from "../types/dataSyncTypes";
 
 /**
  * 데이터 요약 정보 생성
@@ -22,7 +22,7 @@ export const createDataSummary = (
   const students = data?.students?.length || 0;
   const subjects = data?.subjects?.length || 0;
   const sessions = data?.sessions?.length || 0;
-  const lastModified = data?.lastModified || new Date().toISOString();
+  const lastModified = data?.lastModified || getKSTTime();
   const dataSize = JSON.stringify(data).length;
 
   return {
@@ -70,13 +70,13 @@ export const getTimeAgo = (date: Date): string => {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffMinutes < 60) {
-    return diffMinutes <= 1 ? '방금 전' : `${diffMinutes}분 전`;
+    return diffMinutes <= 1 ? "방금 전" : `${diffMinutes}분 전`;
   } else if (diffHours < 24) {
     return `${diffHours}시간 전`;
   } else if (diffDays < 7) {
     return `${diffDays}일 전`;
   } else {
-    return date.toLocaleDateString('ko-KR');
+    return date.toLocaleDateString("ko-KR");
   }
 };
 
@@ -88,13 +88,13 @@ export const determineSyncScenario = (
   hasServerData: boolean
 ): SyncScenario => {
   if (hasLocalData && !hasServerData) {
-    return 'localOnlyFirstLogin';
+    return "localOnlyFirstLogin";
   } else if (!hasLocalData && hasServerData) {
-    return 'normalLogin';
+    return "normalLogin";
   } else if (hasLocalData && hasServerData) {
-    return 'localAndServerConflict';
+    return "localAndServerConflict";
   } else {
-    return 'noData';
+    return "noData";
   }
 };
 
@@ -102,7 +102,7 @@ export const determineSyncScenario = (
  * localStorage에서 데이터 로드
  */
 export const loadFromLocalStorage = (
-  key: string = 'classPlannerData'
+  key: string = "classPlannerData"
 ): ClassPlannerData | null => {
   try {
     // 먼저 통합된 데이터 키로 시도
@@ -112,10 +112,10 @@ export const loadFromLocalStorage = (
     }
 
     // 통합된 데이터가 없으면 개별 키들에서 데이터 수집
-    const sessions = localStorage.getItem('sessions');
-    const enrollments = localStorage.getItem('enrollments');
-    const students = localStorage.getItem('students');
-    const subjects = localStorage.getItem('subjects');
+    const sessions = localStorage.getItem("sessions");
+    const enrollments = localStorage.getItem("enrollments");
+    const students = localStorage.getItem("students");
+    const subjects = localStorage.getItem("subjects");
 
     if (sessions || enrollments || students || subjects) {
       const data: ClassPlannerData = {
@@ -123,15 +123,15 @@ export const loadFromLocalStorage = (
         subjects: subjects ? JSON.parse(subjects) : [],
         sessions: sessions ? JSON.parse(sessions) : [],
         enrollments: enrollments ? JSON.parse(enrollments) : [],
-        lastModified: new Date().toISOString(),
-        version: '1.0',
+        lastModified: getKSTTime(),
+        version: "1.0",
       };
       return data;
     }
 
     return null;
   } catch (error) {
-    console.error('localStorage에서 데이터 로드 실패:', error);
+    console.error("localStorage에서 데이터 로드 실패:", error);
     return null;
   }
 };
@@ -141,18 +141,18 @@ export const loadFromLocalStorage = (
  */
 export const saveToLocalStorage = (
   data: ClassPlannerData,
-  key: string = 'classPlannerData'
+  key: string = "classPlannerData"
 ): boolean => {
   try {
     const dataWithTimestamp = {
       ...data,
-      lastModified: new Date().toISOString(),
-      source: 'localStorage' as DataSource,
+      lastModified: getKSTTime(),
+      source: "localStorage" as DataSource,
     };
     localStorage.setItem(key, JSON.stringify(dataWithTimestamp));
     return true;
   } catch (error) {
-    console.error('localStorage에 데이터 저장 실패:', error);
+    console.error("localStorage에 데이터 저장 실패:", error);
     return false;
   }
 };
@@ -161,21 +161,21 @@ export const saveToLocalStorage = (
  * localStorage에서 데이터 삭제
  */
 export const removeFromLocalStorage = (
-  key: string = 'classPlannerData'
+  key: string = "classPlannerData"
 ): boolean => {
   try {
     // 통합된 데이터 키 삭제
     localStorage.removeItem(key);
 
     // 개별 키들도 삭제
-    localStorage.removeItem('sessions');
-    localStorage.removeItem('enrollments');
-    localStorage.removeItem('students');
-    localStorage.removeItem('subjects');
+    localStorage.removeItem("sessions");
+    localStorage.removeItem("enrollments");
+    localStorage.removeItem("students");
+    localStorage.removeItem("subjects");
 
     return true;
   } catch (error) {
-    console.error('localStorage에서 데이터 삭제 실패:', error);
+    console.error("localStorage에서 데이터 삭제 실패:", error);
     return false;
   }
 };
@@ -185,7 +185,7 @@ export const removeFromLocalStorage = (
  */
 
 export const validateData = (data: unknown): data is ClassPlannerData => {
-  if (!data || typeof data !== 'object') {
+  if (!data || typeof data !== "object") {
     return false;
   }
 
@@ -205,11 +205,11 @@ export const validateData = (data: unknown): data is ClassPlannerData => {
 export const mergeData = (
   localData: ClassPlannerData,
   serverData: ClassPlannerData,
-  strategy: 'local' | 'server' | 'merge'
+  strategy: "local" | "server" | "merge"
 ): ClassPlannerData => {
-  if (strategy === 'local') {
+  if (strategy === "local") {
     return localData;
-  } else if (strategy === 'server') {
+  } else if (strategy === "server") {
     return serverData;
   } else {
     // 병합 전략: 최신 데이터 우선, 그 다음 로컬 데이터 우선
@@ -246,9 +246,9 @@ export const checkDataSize = (
  */
 export const createDataBackup = (data: ClassPlannerData): string => {
   const backup = {
-    timestamp: new Date().toISOString(),
+    timestamp: getKSTTime(),
     data,
-    version: '1.0',
+    version: "1.0",
   };
 
   return JSON.stringify(backup);
@@ -264,7 +264,7 @@ export const restoreDataBackup = (
     const backup = JSON.parse(backupString);
     return backup.data;
   } catch (error) {
-    console.error('백업 복원 실패:', error);
+    console.error("백업 복원 실패:", error);
     return null;
   }
 };

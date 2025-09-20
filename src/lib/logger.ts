@@ -8,6 +8,8 @@
  * - 성능 모니터링 지원
  */
 
+import { getKSTTime } from "./timeUtils";
+
 export enum LogLevel {
   ERROR = 0,
   WARN = 1,
@@ -64,7 +66,7 @@ class Logger {
     metadata?: Record<string, any>
   ): LogEntry {
     const logEntry: LogEntry = {
-      timestamp: new Date().toISOString(),
+      timestamp: getKSTTime(),
       level,
       message,
     };

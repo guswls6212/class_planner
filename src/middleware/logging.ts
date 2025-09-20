@@ -9,6 +9,7 @@
  */
 
 import { LogContext, logger } from "@/lib/logger";
+import { getKSTTime } from "@/lib/timeUtils";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 
@@ -127,7 +128,7 @@ export function createLoggingMiddleware(options: LoggingOptions = {}) {
           JSON.stringify({
             error: "Internal Server Error",
             requestId,
-            timestamp: new Date().toISOString(),
+            timestamp: getKSTTime(),
           }),
           {
             status: 500,
