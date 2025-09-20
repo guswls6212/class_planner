@@ -150,14 +150,6 @@ export class StudentDomainService {
    */
   static calculateStatistics(students: Student[]): StudentStatistics {
     const totalCount = students.length;
-    const genderCounts = students.reduce(
-      (acc, student) => {
-        const gender = student.gender || 'unknown';
-        acc[gender] = (acc[gender] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
 
     const nameLengths = students.map(student => student.name.length);
     const averageNameLength =

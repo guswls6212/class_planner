@@ -51,7 +51,7 @@ class Logger {
     // 환경별 로그 레벨 설정
     this.logLevel = this.isDevelopment
       ? LogLevel.DEBUG
-      : (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO;
+      : (process.env.LOG_LEVEL as unknown as LogLevel) || LogLevel.INFO;
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -286,7 +286,7 @@ export const logPerformance = (
   duration: number,
   context?: LogContext,
   metadata?: Record<string, any>
-) => logger.performance(operation, context, metadata);
+) => logger.performance(operation, duration, context, metadata);
 
 export const logSecurity = (
   event: string,

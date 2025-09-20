@@ -26,6 +26,7 @@ describe("StudentPanel Component", () => {
     onMouseDown: vi.fn(),
     onStudentClick: vi.fn(),
     onDragStart: vi.fn(),
+    onDragEnd: vi.fn(),
     onSearchChange: vi.fn(),
   };
 

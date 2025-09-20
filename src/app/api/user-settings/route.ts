@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error("Error fetching user settings:", undefined, error);
+      logger.error("Error fetching user settings:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch user settings" },
       {
@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
       message: "User settings updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating user settings:", undefined, error);
+      logger.error("Error updating user settings:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update user settings" },
       { status: 500 }

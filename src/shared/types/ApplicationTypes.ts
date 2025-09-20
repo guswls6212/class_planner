@@ -12,7 +12,6 @@ import type { Enrollment, Session, Student, Subject } from "./DomainTypes";
 export interface StudentDto {
   id: string;
   name: string;
-  gender?: string;
   createdAt: string;
   updatedAt: string;
 }

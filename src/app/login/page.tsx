@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
           }
         }
       } catch (error) {
-        logger.error("로그인 페이지 인증 확인 오류:", undefined, error);
+        logger.error("로그인 페이지 인증 확인 오류:", undefined, error as Error);
       }
     };
 
@@ -91,7 +91,7 @@ const LoginPage: React.FC = () => {
       });
 
       if (error) {
-        logger.error("Google 로그인 에러:", undefined, error);
+        logger.error("Google 로그인 에러:", undefined, error as Error);
         setError("로그인에 실패했습니다. 다시 시도해주세요.");
       }
     } catch (err) {

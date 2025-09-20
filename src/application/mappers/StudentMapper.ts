@@ -15,7 +15,6 @@ export class StudentMapper {
     return {
       id: student.id.value,
       name: student.name,
-      gender: student.gender,
       createdAt: student.createdAt.toISOString(),
       updatedAt: student.updatedAt.toISOString(),
     };
@@ -28,7 +27,6 @@ export class StudentMapper {
     return Student.restore(
       dto.id,
       dto.name,
-      dto.gender,
       new Date(dto.createdAt),
       new Date(dto.updatedAt)
     );
@@ -69,12 +67,10 @@ export class StudentMapper {
   static toLegacy(student: Student): {
     id: string;
     name: string;
-    gender?: string;
   } {
     return {
       id: student.id.value,
       name: student.name,
-      gender: student.gender,
     };
   }
 }

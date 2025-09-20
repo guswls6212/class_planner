@@ -9,6 +9,8 @@ interface ButtonProps {
   loading?: boolean;
   onClick?: () => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  onMouseEnter?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseLeave?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string;
   style?: React.CSSProperties;
   "aria-label"?: string;
@@ -24,6 +26,8 @@ export const Button: React.FC<ButtonProps> = ({
   loading = false,
   onClick,
   onKeyDown,
+  onMouseEnter,
+  onMouseLeave,
   className = "",
   style = {},
   "aria-label": ariaLabel,
@@ -45,6 +49,8 @@ export const Button: React.FC<ButtonProps> = ({
       className={buttonClasses}
       onClick={onClick}
       onKeyDown={onKeyDown}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       disabled={disabled || loading}
       style={style}
       aria-label={ariaLabel}

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    logger.error("Error fetching subjects:", undefined, error);
+    logger.error("Error fetching subjects:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subjects" },
       {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding subject:", undefined, error);
+    logger.error("Error adding subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to add subject" },
       { status: 500 }
@@ -168,7 +168,7 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedSubject });
   } catch (error) {
-    logger.error("Error updating subject:", undefined, error);
+    logger.error("Error updating subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update subject" },
       { status: 500 }
@@ -200,7 +200,7 @@ export async function DELETE(request: NextRequest) {
       message: "Subject deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting subject:", undefined, error);
+    logger.error("Error deleting subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete subject" },
       { status: 500 }
