@@ -46,7 +46,7 @@ export class DataApplicationServiceImpl {
       logger.debug("Supabase 쿼리 결과", { data, error });
 
       if (error) {
-        logger.error("Supabase 데이터 조회 실패:", undefined, error);
+        logger.error("Supabase 데이터 조회 실패:", undefined, error as Error);
         // 데이터가 없는 경우 빈 데이터 반환
         if (error.code === "PGRST116") {
           logger.debug("사용자 데이터가 없음, 빈 데이터 반환");
@@ -76,7 +76,7 @@ export class DataApplicationServiceImpl {
         lastModified: userData.lastModified || getKSTTime(),
       };
     } catch (error) {
-      logger.error("전체 사용자 데이터 조회 실패:", undefined, error);
+      logger.error("전체 사용자 데이터 조회 실패:", undefined, error as Error);
       throw error;
     }
   }
@@ -103,14 +103,14 @@ export class DataApplicationServiceImpl {
         .single();
 
       if (error) {
-        logger.error("Supabase 데이터 저장 실패:", undefined, error);
+        logger.error("Supabase 데이터 저장 실패:", undefined, error as Error);
         throw error;
       }
 
       logger.debug("Supabase에 저장 완료:", { result });
       return data;
     } catch (error) {
-      logger.error("전체 사용자 데이터 업데이트 실패:", undefined, error);
+      logger.error("전체 사용자 데이터 업데이트 실패:", undefined, error as Error);
       throw error;
     }
   }

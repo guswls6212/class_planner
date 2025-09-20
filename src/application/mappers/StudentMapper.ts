@@ -56,8 +56,7 @@ export class StudentMapper {
   }): Student {
     return Student.restore(
       legacyStudent.id,
-      legacyStudent.name,
-      legacyStudent.gender
+      legacyStudent.name
     );
   }
 

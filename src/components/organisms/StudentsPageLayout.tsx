@@ -12,6 +12,8 @@ interface StudentsPageLayoutProps {
   onDeleteStudent: (studentId: string) => void;
   errorMessage?: string;
   isLoading?: boolean;
+  error?: string;
+  onClearError: () => void;
 }
 
 const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
@@ -24,6 +26,8 @@ const StudentsPageLayout: React.FC<StudentsPageLayoutProps> = ({
   onDeleteStudent,
   errorMessage,
   isLoading = false,
+  error,
+  onClearError,
 }) => {
   return (
     <div

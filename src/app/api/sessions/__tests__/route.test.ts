@@ -72,8 +72,8 @@ describe("/api/sessions API Routes", () => {
         {
           id: "550e8400-e29b-41d4-a716-446655440201",
           subjectId: "550e8400-e29b-41d4-a716-446655440101",
-          startsAt: new Date("2024-01-01T09:00:00"),
-          endsAt: new Date("2024-01-01T10:00:00"),
+          startsAt: "09:00",
+          endsAt: "10:00",
           enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
           weekday: 0,
           createdAt: new Date(),
@@ -82,8 +82,8 @@ describe("/api/sessions API Routes", () => {
         {
           id: "550e8400-e29b-41d4-a716-446655440202",
           subjectId: "550e8400-e29b-41d4-a716-446655440102",
-          startsAt: new Date("2024-01-01T10:00:00"),
-          endsAt: new Date("2024-01-01T11:00:00"),
+          startsAt: "10:00",
+          endsAt: "11:00",
           enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
           weekday: 1,
           createdAt: new Date(),
@@ -140,8 +140,8 @@ describe("/api/sessions API Routes", () => {
       const newSession: Session = {
         id: "session-new",
         subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: new Date("2024-01-01T09:00:00"),
-        endsAt: new Date("2024-01-01T10:00:00"),
+        startsAt: "09:00",
+        endsAt: "10:00",
         enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
         weekday: 0,
         createdAt: new Date(),
@@ -169,8 +169,8 @@ describe("/api/sessions API Routes", () => {
       expect(data.data.subjectId).toBe("550e8400-e29b-41d4-a716-446655440101");
       expect(mockSessionRepository.create).toHaveBeenCalledWith({
         subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: new Date("2024-01-01T09:00:00"),
-        endsAt: new Date("2024-01-01T10:00:00"),
+        startsAt: "09:00",
+        endsAt: "10:00",
         enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
         weekday: 0,
       });

@@ -19,7 +19,12 @@ export class SessionApplicationServiceImpl {
     enrollmentIds: string[];
     weekday: number;
   }): Promise<Session> {
-    return this.sessionRepository.create(sessionData);
+    const sessionToCreate = {
+      ...sessionData,
+      startsAt: sessionData.startsAt.toISOString().substring(11, 16), // HH:MM 형식
+      endsAt: sessionData.endsAt.toISOString().substring(11, 16), // HH:MM 형식
+    };
+    return this.sessionRepository.create(sessionToCreate);
   }
 
   async updateSession(
@@ -32,7 +37,12 @@ export class SessionApplicationServiceImpl {
       weekday: number;
     }
   ): Promise<Session> {
-    return this.sessionRepository.update(id, sessionData);
+    const sessionToUpdate = {
+      ...sessionData,
+      startsAt: sessionData.startsAt.toISOString().substring(11, 16), // HH:MM 형식
+      endsAt: sessionData.endsAt.toISOString().substring(11, 16), // HH:MM 형식
+    };
+    return this.sessionRepository.update(id, sessionToUpdate);
   }
 
   async updateSessionPosition(
@@ -47,8 +57,8 @@ export class SessionApplicationServiceImpl {
     return this.sessionRepository.update(id, {
       ...session,
       weekday: position.weekday,
-      startsAt: position.startsAt,
-      endsAt: position.endsAt,
+      startsAt: position.startsAt.toISOString().substring(11, 16), // HH:MM 형식
+      endsAt: position.endsAt.toISOString().substring(11, 16), // HH:MM 형식
     });
   }
 

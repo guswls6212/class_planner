@@ -70,7 +70,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             {cancelText}
           </Button>
           <Button
-            variant={variant}
+            variant={variant === "warning" ? "primary" : variant === "info" ? "secondary" : variant}
             size="small"
             onClick={onConfirm}
             className={styles.confirmButton}

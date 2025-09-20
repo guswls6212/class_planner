@@ -25,11 +25,13 @@ export interface Subject {
 
 export interface Session {
   readonly id: string;
+  readonly subjectId: string;
   readonly enrollmentIds: string[];
   readonly weekday: number; // 0: 월요일, 1: 화요일, ..., 6: 일요일
   readonly startsAt: string; // HH:MM 형식
   readonly endsAt: string; // HH:MM 형식
   readonly room?: string;
+  readonly yPosition?: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
