@@ -12,8 +12,8 @@ export { DIContainer } from "./container/DIContainer";
 export { RepositoryInitializer } from "./container/RepositoryInitializer";
 export { RepositoryRegistry } from "./container/RepositoryRegistry";
 
-// 자동 초기화 (서버 사이드에서만 실행)
-import "./auto-initialize";
+// 자동 초기화 (서버 사이드에서만 실행) - 삭제됨
+// import "./auto-initialize";
 
 // Factory 클래스들
 export { EnrollmentRepositoryFactory } from "./factories/EnrollmentRepositoryFactory";
