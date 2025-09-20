@@ -677,7 +677,7 @@ export async function downloadElementAsPDF(
     // 2. 캔버스를 PDF로 변환하여 다운로드
     downloadCanvasAsPDF(canvas, options);
   } catch (error) {
-    logger.error("PDF 다운로드 중 오류 발생:", undefined, error);
+    logger.error("PDF 다운로드 중 오류 발생:", undefined, error as Error);
     throw error;
   }
 }

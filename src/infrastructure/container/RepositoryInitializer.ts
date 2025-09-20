@@ -66,7 +66,7 @@ export class RepositoryInitializer {
       this.isInitialized = true;
       logger.info("✅ Repository 초기화 완료");
     } catch (error) {
-      logger.error("❌ Repository 초기화 실패:", undefined, error);
+      logger.error("❌ Repository 초기화 실패:", undefined, error as Error);
       this.initializationPromise = null; // 실패 시 재시도 가능하도록
       throw error;
     }
