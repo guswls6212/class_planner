@@ -5,6 +5,7 @@
  */
 
 import { logger } from "../../lib/logger";
+import { getKSTTime } from "../../lib/timeUtils";
 import { supabase } from "../../utils/supabaseClient";
 
 export interface UserData {
@@ -55,7 +56,7 @@ export class DataApplicationServiceImpl {
             sessions: [],
             enrollments: [],
             version: "1.0",
-            lastModified: new Date().toISOString(),
+            lastModified: getKSTTime(),
           };
         }
         throw error;
@@ -72,7 +73,7 @@ export class DataApplicationServiceImpl {
         sessions: userData.sessions || [],
         enrollments: userData.enrollments || [],
         version: userData.version || "1.0",
-        lastModified: userData.lastModified || new Date().toISOString(),
+        lastModified: userData.lastModified || getKSTTime(),
       };
     } catch (error) {
       logger.error("전체 사용자 데이터 조회 실패:", undefined, error);
@@ -96,7 +97,7 @@ export class DataApplicationServiceImpl {
         .upsert({
           user_id: userId,
           data: data,
-          updated_at: new Date().toISOString(),
+          updated_at: getKSTTime(),
         })
         .select()
         .single();

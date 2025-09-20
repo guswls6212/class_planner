@@ -32,7 +32,7 @@ const TEST_CONFIG = {
 };
 
 // 테스트 결과 저장
-let testResults = {
+const testResults = {
   timestamp: new Date().toISOString(),
   environment: {
     nodeVersion: process.version,

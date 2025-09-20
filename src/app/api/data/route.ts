@@ -37,7 +37,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
   // URL에서 사용자 ID 가져오기 (catch 블록에서도 접근 가능하도록 상위 스코프에 선언)
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId") || "default-user-id";
-  
+
   try {
     // Service Role 클라이언트 생성 (RLS 우회)
     const serviceRoleClient = createServiceRoleClient();

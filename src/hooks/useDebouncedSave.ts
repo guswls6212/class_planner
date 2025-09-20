@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { DATA_SAVE_DEBOUNCE_CONFIG, debounce } from "../lib/debounceUtils";
 import { logger } from "../lib/logger";
+import { getKSTTime } from "../lib/timeUtils";
 import type { ClassPlannerData } from "../types/dataSyncTypes";
 import { supabase } from "../utils/supabaseClient";
 
@@ -42,7 +43,7 @@ export const useDebouncedSave = (): UseDebouncedSaveReturn => {
         const { error } = await supabase.from("user_data").upsert({
           user_id: user.id,
           data: data,
-          updated_at: new Date().toISOString(),
+          updated_at: getKSTTime(),
         });
 
         if (error) {

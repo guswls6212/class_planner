@@ -1,7 +1,8 @@
 import { Student } from "@/domain/entities/Student";
-import { logger } from "../../lib/logger";
 import type { StudentRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "../../lib/logger";
+import { getKSTTime } from "../../lib/timeUtils";
 
 export class SupabaseStudentRepository implements StudentRepository {
   // Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
@@ -100,7 +101,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       const { error } = await serviceRoleClient.from("user_data").upsert({
         user_id: userId,
         data: userData,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTTime(),
       });
 
       if (error) {
@@ -154,7 +155,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       const { error } = await serviceRoleClient.from("user_data").upsert({
         user_id: userId,
         data: userData,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTTime(),
       });
 
       if (error) {
@@ -217,7 +218,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       const { error } = await serviceRoleClient.from("user_data").upsert({
         user_id: userId,
         data: userData,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTTime(),
       });
 
       if (error) {

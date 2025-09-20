@@ -9,6 +9,7 @@
  */
 
 import { LogContext, logger } from "@/lib/logger";
+import { getKSTTime } from "@/lib/timeUtils";
 import { useCallback } from "react";
 
 export interface UserAction {
@@ -51,7 +52,7 @@ class UserTracker {
       userAgent:
         typeof window !== "undefined" ? window.navigator.userAgent : undefined,
       url: typeof window !== "undefined" ? window.location.href : undefined,
-      timestamp: new Date().toISOString(),
+      timestamp: getKSTTime(),
     };
   }
 

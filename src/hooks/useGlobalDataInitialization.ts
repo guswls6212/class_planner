@@ -134,14 +134,17 @@ export const useGlobalDataInitialization = () => {
           };
 
           // 서버에 저장
-          const saveResponse = await globalThis.fetch(`/api/data?userId=${userId}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify(updatedData),
-          });
+          const saveResponse = await globalThis.fetch(
+            `/api/data?userId=${userId}`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify(updatedData),
+            }
+          );
 
           if (saveResponse.ok) {
             logger.info("기본 과목이 포함된 데이터가 서버에 저장되었습니다");

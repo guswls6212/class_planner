@@ -4,15 +4,15 @@
  * localStorage를 캐시로 활용하여 빠른 초기 로딩과 백그라운드 동기화 제공
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { logger } from "../lib/logger";
+import { useCallback, useEffect, useState } from "react";
 import {
   loadFromLocalStorage,
   saveToLocalStorage,
   validateData,
-} from '../lib/dataSyncUtils';
-import type { CacheStrategy, ClassPlannerData } from '../types/dataSyncTypes';
-import { supabase } from '../utils/supabaseClient';
+} from "../lib/dataSyncUtils";
+import { getKSTTime } from "../lib/timeUtils";
+import type { CacheStrategy, ClassPlannerData } from "../types/dataSyncTypes";
+import { supabase } from "../utils/supabaseClient";
 
 interface UseStaleWhileRevalidateReturn {
   data: ClassPlannerData | null;
@@ -24,7 +24,7 @@ interface UseStaleWhileRevalidateReturn {
 }
 
 export const useStaleWhileRevalidate = (
-  cacheKey: string = 'classPlannerData',
+  cacheKey: string = "classPlannerData",
   strategy: CacheStrategy = {
     useStaleWhileRevalidate: true,
     cacheExpiry: 5 * 60 * 1000, // 5분
@@ -64,13 +64,13 @@ export const useStaleWhileRevalidate = (
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          throw new Error('로그인이 필요합니다.');
+          throw new Error("로그인이 필요합니다.");
         }
 
         const { data: serverData, error } = await supabase
-          .from('user_data')
-          .select('data, updated_at')
-          .eq('user_id', user.id)
+          .from("user_data")
+          .select("data, updated_at")
+          .eq("user_id", user.id)
           .single();
 
         if (error) {
@@ -79,7 +79,7 @@ export const useStaleWhileRevalidate = (
 
         return serverData?.data || null;
       } catch (error) {
-        console.error('서버에서 데이터 가져오기 실패:', error);
+        console.error("서버에서 데이터 가져오기 실패:", error);
         throw error;
       }
     }, []);
@@ -96,13 +96,13 @@ export const useStaleWhileRevalidate = (
 
       if (serverData) {
         setData(serverData);
-        setLastUpdated(new Date().toISOString());
+        setLastUpdated(getKSTTime());
 
         // 캐시 업데이트
         saveToLocalStorage(serverData, cacheKey);
       }
     } catch (error) {
-      console.error('데이터 새로고침 실패:', error);
+      console.error("데이터 새로고침 실패:", error);
       // 서버에서 가져오기 실패 시 캐시된 데이터 유지
     } finally {
       setIsLoading(false);
@@ -117,7 +117,7 @@ export const useStaleWhileRevalidate = (
       try {
         // 로컬 상태 업데이트
         setData(newData);
-        setLastUpdated(new Date().toISOString());
+        setLastUpdated(getKSTTime());
 
         // 캐시 업데이트
         saveToLocalStorage(newData, cacheKey);
@@ -127,14 +127,14 @@ export const useStaleWhileRevalidate = (
           data: { user },
         } = await supabase.auth.getUser();
         if (user) {
-          await supabase.from('user_data').upsert({
+          await supabase.from("user_data").upsert({
             user_id: user.id,
             data: newData,
-            updated_at: new Date().toISOString(),
+            updated_at: getKSTTime(),
           });
         }
       } catch (error) {
-        console.error('데이터 업데이트 실패:', error);
+        console.error("데이터 업데이트 실패:", error);
         throw error;
       }
     },
@@ -175,21 +175,19 @@ export const useStaleWhileRevalidate = (
                 JSON.stringify(serverData) !== JSON.stringify(cachedData)
               ) {
                 setData(serverData);
-                setLastUpdated(
-                  serverData.lastModified || new Date().toISOString()
-                );
+                setLastUpdated(serverData.lastModified || getKSTTime());
                 saveToLocalStorage(serverData, cacheKey);
               }
 
               setIsStale(false);
             }
           } catch (error) {
-            console.warn('백그라운드 데이터 동기화 실패:', error);
+            console.warn("백그라운드 데이터 동기화 실패:", error);
             // 서버 동기화 실패 시 캐시된 데이터 유지
           }
         }
       } catch (error) {
-        console.error('초기 데이터 로드 실패:', error);
+        console.error("초기 데이터 로드 실패:", error);
       } finally {
         setIsLoading(false);
       }
@@ -212,12 +210,12 @@ export const useStaleWhileRevalidate = (
 
         if (serverData && JSON.stringify(serverData) !== JSON.stringify(data)) {
           setData(serverData);
-          setLastUpdated(serverData.lastModified || new Date().toISOString());
+          setLastUpdated(serverData.lastModified || getKSTTime());
           saveToLocalStorage(serverData, cacheKey);
           setIsStale(false);
         }
       } catch (error) {
-        console.warn('주기적 동기화 실패:', error);
+        console.warn("주기적 동기화 실패:", error);
       }
     }, strategy.cacheExpiry); // 캐시 만료 시간마다 동기화
 

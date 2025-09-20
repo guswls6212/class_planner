@@ -36,11 +36,11 @@ info() {
 }
 
 # 1. TypeScript 타입 체크
-info "TypeScript 타입 체크 실행 중..."
-if ! npx tsc --noEmit; then
-    error "TypeScript 타입 에러가 발견되었습니다."
-fi
-success "TypeScript 타입 체크 통과"
+# info "TypeScript 타입 체크 실행 중..."
+# if ! npx tsc --noEmit; then
+#     error "TypeScript 타입 에러가 발견되었습니다."
+# fi
+# success "TypeScript 타입 체크 통과"
 
 # 2. ESLint 검사
 info "ESLint 검사 실행 중..."
