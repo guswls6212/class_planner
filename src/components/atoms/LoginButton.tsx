@@ -117,7 +117,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     });
 
     if (error) {
-      logger.error("Google 로그인 에러:", undefined, error);
+      logger.error("Google 로그인 에러:", undefined, error as Error);
       trackSecurityEvent("login_error", {
         provider: "google",
         error: error.message,
@@ -169,7 +169,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
       logger.info("✅ 로컬 로그아웃 완료");
     } catch (error) {
-      logger.error("로그아웃 처리 중 오류:", undefined, error);
+      logger.error("로그아웃 처리 중 오류:", undefined, error as Error);
       // 에러가 있어도 로컬 상태는 이미 업데이트됨
     }
   };

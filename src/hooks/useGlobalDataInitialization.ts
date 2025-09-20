@@ -52,7 +52,7 @@ export const useGlobalDataInitialization = () => {
           } = await supabase.auth.getSession();
 
           if (error) {
-            logger.error("세션 확인 중 오류 발생", undefined, error);
+            logger.error("세션 확인 중 오류 발생", undefined, error as Error);
             return;
           }
 
@@ -63,7 +63,7 @@ export const useGlobalDataInitialization = () => {
 
           logger.info("인증된 사용자 확인", { email: session.user.email });
         } catch (error) {
-          logger.error("인증 확인 중 오류 발생", undefined, error);
+          logger.error("인증 확인 중 오류 발생", undefined, error as Error);
           return;
         }
 
@@ -170,7 +170,7 @@ export const useGlobalDataInitialization = () => {
 
         setIsInitialized(true);
       } catch (error) {
-        logger.error("사용자 데이터 초기화 중 오류 발생", undefined, error);
+        logger.error("사용자 데이터 초기화 중 오류 발생", undefined, error as Error);
       } finally {
         setIsInitializing(false);
       }

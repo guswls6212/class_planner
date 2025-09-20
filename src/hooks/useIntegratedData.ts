@@ -130,7 +130,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "통합 데이터 조회 실패";
       setError(errorMessage);
-      logger.error("통합 데이터 조회 실패:", undefined, err);
+      logger.error("통합 데이터 조회 실패:", undefined, err as Error);
     } finally {
       setLoading(false);
     }
@@ -174,7 +174,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "통합 데이터 업데이트 실패";
         setError(errorMessage);
-        logger.error("통합 데이터 업데이트 실패:", undefined, err);
+        logger.error("통합 데이터 업데이트 실패:", undefined, err as Error);
         return false;
       } finally {
         setLoading(false);

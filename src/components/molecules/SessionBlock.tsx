@@ -134,7 +134,7 @@ function SessionBlock({
       e.dataTransfer.effectAllowed = "move";
       logger.info("✅ 드래그 데이터 설정 완료", { sessionId: session.id });
     } catch (error) {
-      logger.error("❌ 드래그 데이터 설정 실패:", undefined, error);
+      logger.error("❌ 드래그 데이터 설정 실패:", undefined, error as Error);
     }
 
     // 드래그 이미지 설정 (선택사항)
