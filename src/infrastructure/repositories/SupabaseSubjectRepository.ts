@@ -74,7 +74,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
     }
   }
 
-  async create(subject: Subject, userId: string): Promise<Subject> {
+  async create(subject: { name: string; color: string }, userId: string): Promise<Subject> {
     try {
       const serviceRoleClient = this.createServiceRoleClient();
 
@@ -92,11 +92,12 @@ export class SupabaseSubjectRepository implements SubjectRepository {
       const userData = (existingData?.data as any) || {};
       const subjects = userData.subjects || [];
 
-      // 새 과목 추가
+      // 새 과목 생성
+      const newSubjectEntity = Subject.create(subject.name, subject.color);
       const newSubject = {
-        id: subject.id.value,
-        name: subject.name,
-        color: subject.color.value,
+        id: newSubjectEntity.id.value,
+        name: newSubjectEntity.name,
+        color: newSubjectEntity.color.value,
       };
 
       subjects.push(newSubject);
@@ -117,14 +118,14 @@ export class SupabaseSubjectRepository implements SubjectRepository {
         throw new Error(`과목 생성 실패: ${updateError.message}`);
       }
 
-      return subject;
+      return newSubjectEntity;
     } catch (error) {
       logger.error("과목 생성 중 오류:", undefined, error);
       throw error;
     }
   }
 
-  async update(id: string, subject: Subject): Promise<Subject> {
+  async update(id: string, subject: { name: string; color: string }, userId?: string): Promise<Subject> {
     try {
       const serviceRoleClient = this.createServiceRoleClient();
 

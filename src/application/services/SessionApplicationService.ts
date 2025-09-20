@@ -35,6 +35,23 @@ export class SessionApplicationServiceImpl {
     return this.sessionRepository.update(id, sessionData);
   }
 
+  async updateSessionPosition(
+    id: string,
+    position: { weekday: number; startsAt: Date; endsAt: Date }
+  ): Promise<Session> {
+    const session = await this.sessionRepository.getById(id);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+    
+    return this.sessionRepository.update(id, {
+      ...session,
+      weekday: position.weekday,
+      startsAt: position.startsAt,
+      endsAt: position.endsAt,
+    });
+  }
+
   async deleteSession(id: string): Promise<void> {
     return this.sessionRepository.delete(id);
   }

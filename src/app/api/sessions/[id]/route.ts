@@ -57,10 +57,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { studentIds, subjectId, weekday, startTime, endTime, room } = body;
+    const { enrollmentIds, subjectId, weekday, startTime, endTime, room } = body;
 
     if (
-      !studentIds ||
+      !enrollmentIds ||
       !subjectId ||
       weekday === undefined ||
       !startTime ||
@@ -73,7 +73,7 @@ export async function PUT(
     }
 
     const updatedSession = await getSessionService().updateSession(id, {
-      studentIds,
+      enrollmentIds,
       subjectId,
       weekday,
       startsAt: startTime,
