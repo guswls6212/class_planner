@@ -25,7 +25,7 @@ describe("ServiceFactory", () => {
 
     it("학생 목록을 조회할 수 있어야 한다", async () => {
       const service = ServiceFactory.createStudentService();
-      const students = await service.getAllStudents();
+      const students = await service.getAllStudents("test-user-id");
 
       expect(Array.isArray(students)).toBe(true);
     });
@@ -44,7 +44,7 @@ describe("ServiceFactory", () => {
 
     it("과목 목록을 조회할 수 있어야 한다", async () => {
       const service = ServiceFactory.createSubjectService();
-      const subjects = await service.getAllSubjects();
+      const subjects = await service.getAllSubjects("test-user-id");
 
       expect(Array.isArray(subjects)).toBe(true);
     });
@@ -81,8 +81,8 @@ describe("ServiceFactory", () => {
     it("생성된 모든 서비스가 정상 동작해야 한다", async () => {
       const services = ServiceFactory.createAllServices();
 
-      const students = await services.studentService.getAllStudents();
-      const subjects = await services.subjectService.getAllSubjects();
+      const students = await services.studentService.getAllStudents("test-user-id");
+      const subjects = await services.subjectService.getAllSubjects("test-user-id");
       const sessions = await services.sessionService.getAllSessions();
 
       expect(Array.isArray(students)).toBe(true);

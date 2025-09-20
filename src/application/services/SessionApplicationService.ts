@@ -35,6 +35,7 @@ export class SessionApplicationServiceImpl {
       endsAt: Date;
       enrollmentIds: string[];
       weekday: number;
+      room?: string;
     }
   ): Promise<Session> {
     const sessionToUpdate = {
@@ -47,7 +48,7 @@ export class SessionApplicationServiceImpl {
 
   async updateSessionPosition(
     id: string,
-    position: { weekday: number; startsAt: Date; endsAt: Date }
+    position: { weekday: number; startsAt: Date; endsAt: Date; yPosition?: number }
   ): Promise<Session> {
     const session = await this.sessionRepository.getById(id);
     if (!session) {
@@ -59,6 +60,7 @@ export class SessionApplicationServiceImpl {
       weekday: position.weekday,
       startsAt: position.startsAt.toISOString().substring(11, 16), // HH:MM 형식
       endsAt: position.endsAt.toISOString().substring(11, 16), // HH:MM 형식
+      yPosition: position.yPosition,
     });
   }
 

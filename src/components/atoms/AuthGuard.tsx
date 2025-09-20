@@ -64,7 +64,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
 
         if (error) {
-          logger.error("세션 확인 중 오류:", undefined, error);
+          logger.error("세션 확인 중 오류:", undefined, error as Error);
           setIsAuthenticated(false);
         } else {
           setIsAuthenticated(!!session);
