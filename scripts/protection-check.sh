@@ -51,56 +51,56 @@ success "ESLint 검사 통과"
 
 # 3. 기존 테스트 실행
 info "기존 테스트 실행 중..."
-if ! npm run test:run; then
+if ! npm run test; then
     error "기존 테스트가 실패했습니다."
 fi
 success "기존 테스트 통과"
 
 # 4. 전체 프로젝트 보호 테스트 실행 (Next.js 구조에 맞게 수정)
 info "전체 프로젝트 보호 테스트 실행 중..."
-if ! npm run test:run -- --testNamePattern="project-protection"; then
+if ! npm run test -- --testNamePattern="project-protection"; then
     warning "전체 프로젝트 보호 테스트가 실패했습니다. 기존 기능이 손상되었을 수 있습니다."
 fi
 success "전체 프로젝트 보호 테스트 통과"
 
 # 5. Domain 계층 테스트 실행
 info "Domain 계층 테스트 실행 중..."
-if ! npm run test:run -- src/domain/; then
+if ! npm run test -- src/domain/; then
     error "Domain 계층 테스트가 실패했습니다."
 fi
 success "Domain 계층 테스트 통과"
 
 # 6. Application 계층 테스트 실행
 info "Application 계층 테스트 실행 중..."
-if ! npm run test:run -- src/application/; then
+if ! npm run test -- src/application/; then
     error "Application 계층 테스트가 실패했습니다."
 fi
 success "Application 계층 테스트 통과"
 
 # 7. Infrastructure 계층 테스트 실행
 info "Infrastructure 계층 테스트 실행 중..."
-if ! npm run test:run -- src/infrastructure/; then
+if ! npm run test -- src/infrastructure/; then
     error "Infrastructure 계층 테스트가 실패했습니다."
 fi
 success "Infrastructure 계층 테스트 통과"
 
 # 8. Presentation 계층 테스트 실행
 info "Presentation 계층 테스트 실행 중..."
-if ! npm run test:run -- src/components/; then
+if ! npm run test -- src/components/; then
     error "Presentation 계층 테스트가 실패했습니다."
 fi
 success "Presentation 계층 테스트 통과"
 
 # 9. API Routes 테스트 실행
 info "API Routes 테스트 실행 중..."
-if ! npm run test:run -- src/app/api/; then
+if ! npm run test -- src/app/api/; then
     error "API Routes 테스트가 실패했습니다."
 fi
 success "API Routes 테스트 통과"
 
 # 10. 통합 테스트 실행 (Next.js 구조에 맞게 수정)
 info "통합 테스트 실행 중..."
-if ! npm run test:run -- --testNamePattern="integration"; then
+if ! npm run test -- --testNamePattern="integration"; then
     error "통합 테스트가 실패했습니다."
 fi
 success "통합 테스트 통과"

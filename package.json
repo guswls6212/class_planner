@@ -23,6 +23,9 @@
     "test:system:headless": "headless=true node scripts/system-test.js",
     "type-check": "tsc --noEmit",
     "prepare-commit": "chmod +x scripts/protection-check.sh && ./scripts/protection-check.sh",
+    "pre-commit": "chmod +x scripts/pre-commit-check.sh && ./scripts/pre-commit-check.sh",
+    "pre-pr": "chmod +x scripts/pre-pr-check.sh && ./scripts/pre-pr-check.sh",
+    "pre-deploy": "chmod +x scripts/pre-deploy-check.sh && ./scripts/pre-deploy-check.sh",
     "migration:run": "./migration/run-migration.sh",
     "migration:status": "echo 'Migration 상태를 확인하려면 Supabase SQL Editor에서 다음 쿼리를 실행하세요: SELECT * FROM public.get_migration_status();'"
   },
