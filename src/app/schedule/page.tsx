@@ -185,7 +185,7 @@ function SchedulePageContent() {
 
           logger.info("충돌 해결 업데이트 완료");
         } catch (error) {
-          logger.error("충돌 해결 실패", undefined, error);
+          logger.error("충돌 해결 실패", undefined, error as Error);
         }
       }, 0);
     },
@@ -784,7 +784,7 @@ function SchedulePageContent() {
 
         logger.debug("로그인 상태 확인됨", { email: user.email });
       } catch (error) {
-        logger.error("인증 상태 확인 실패", undefined, error);
+        logger.error("인증 상태 확인 실패", undefined, error as Error);
       }
     };
 
@@ -1118,7 +1118,7 @@ function SchedulePageContent() {
       setShowGroupModal(false);
       logger.debug("세션 추가 완료");
     } catch (error) {
-      logger.error("세션 추가 실패", undefined, error);
+      logger.error("세션 추가 실패", undefined, error as Error);
       alert("세션 추가에 실패했습니다.");
     }
   };
@@ -1332,7 +1332,7 @@ function SchedulePageContent() {
       await updateSessionPosition(sessionId, weekday, time, yPosition);
       logger.debug("세션 위치 업데이트 완료", { sessionId });
     } catch (error) {
-      logger.error("세션 위치 업데이트 실패", { sessionId }, error);
+      logger.error("세션 위치 업데이트 실패", { sessionId }, error as Error);
       alert("세션 이동에 실패했습니다.");
     }
   };

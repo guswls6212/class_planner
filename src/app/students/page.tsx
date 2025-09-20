@@ -42,7 +42,7 @@ function StudentsPageContent() {
         await refreshStudents(); // 학생 목록 새로고침
       }
     } catch (error) {
-      logger.error("학생 추가 실패:", undefined, error);
+      logger.error("학생 추가 실패:", undefined, error as Error);
     }
   };
 
@@ -63,7 +63,7 @@ function StudentsPageContent() {
         await refreshStudents(); // 학생 목록 새로고침
       }
     } catch (error) {
-      logger.error("학생 삭제 실패:", undefined, error);
+      logger.error("학생 삭제 실패:", undefined, error as Error);
     }
   };
 

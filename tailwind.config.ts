@@ -6,16 +6,6 @@ const config: Config = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
-  safelist: [
-    // 기본 클래스들을 안전하게 포함
-    "bg-white",
-    "text-gray-700",
-    "border-gray-300",
-    "hover:bg-gray-50",
-    "bg-primary-DEFAULT",
-    "text-white",
-    "hover:bg-primary-dark",
-  ],
   theme: {
     extend: {
       colors: {

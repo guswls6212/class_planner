@@ -4,7 +4,7 @@
  */
 
 // 새로운 구조 (권장)
-export {
+export type {
   RepositoryConfig,
   RepositoryConfigFactory,
 } from "./config/RepositoryConfig";
