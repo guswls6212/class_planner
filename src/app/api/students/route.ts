@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const students = await getStudentService().getAllStudents(userId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
-    logger.error("Error fetching students:", undefined, error);
+    logger.error("Error fetching students:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch students" },
       { status: 500 }
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding student:", undefined, error);
+    logger.error("Error adding student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to add student" },
       { status: 500 }
@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
-    logger.error("Error updating student:", undefined, error);
+    logger.error("Error updating student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update student" },
       { status: 500 }
@@ -125,7 +125,7 @@ export async function DELETE(request: NextRequest) {
       message: "Student deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting student:", undefined, error);
+    logger.error("Error deleting student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete student" },
       { status: 500 }

@@ -11,10 +11,10 @@ export function getSubjectService() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: subject });
   } catch (error) {
-    logger.error("Error fetching subject:", undefined, error);
+    logger.error("Error fetching subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subject" },
       { status: 500 }
@@ -44,10 +44,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function PUT(
       message: "Subject updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating subject:", undefined, error);
+    logger.error("Error updating subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update subject" },
       { status: 500 }
@@ -87,10 +87,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -105,7 +105,7 @@ export async function DELETE(
       message: "Subject deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting subject:", undefined, error);
+    logger.error("Error deleting subject:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete subject" },
       { status: 500 }

@@ -1,4 +1,4 @@
-import { Session } from "@/entities";
+import { Session } from "@/shared/types/DomainTypes";
 import { SessionRepository } from "@/infrastructure/interfaces";
 
 export class SessionApplicationServiceImpl {

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const sessions = await getSessionService().getAllSessions();
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
-    logger.error("Error fetching sessions:", undefined, error);
+    logger.error("Error fetching sessions:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch sessions" },
       { status: 500 }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding session:", undefined, error);
+    logger.error("Error adding session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to add session" },
       { status: 500 }
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
-    logger.error("Error updating session:", undefined, error);
+    logger.error("Error updating session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update session" },
       { status: 500 }
@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest) {
       message: "Session deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting session:", undefined, error);
+    logger.error("Error deleting session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete session" },
       { status: 500 }

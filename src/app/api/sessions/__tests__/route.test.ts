@@ -1,4 +1,4 @@
-import { Session } from "@/entities";
+import { Session } from "@/shared/types/DomainTypes";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST } from "../route";

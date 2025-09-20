@@ -11,10 +11,10 @@ export function getSessionService() {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -47,7 +47,7 @@ export async function PUT(
       message: "Session position updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating session position:", undefined, error);
+    logger.error("Error updating session position:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update session position" },
       { status: 500 }

@@ -11,10 +11,10 @@ export function getSessionService() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: session });
   } catch (error) {
-    logger.error("Error fetching session:", undefined, error);
+    logger.error("Error fetching session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch session" },
       { status: 500 }
@@ -44,10 +44,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -87,7 +87,7 @@ export async function PUT(
       message: "Session updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating session:", undefined, error);
+    logger.error("Error updating session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update session" },
       { status: 500 }
@@ -97,10 +97,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -115,7 +115,7 @@ export async function DELETE(
       message: "Session deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting session:", undefined, error);
+    logger.error("Error deleting session:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete session" },
       { status: 500 }

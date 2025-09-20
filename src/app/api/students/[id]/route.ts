@@ -11,10 +11,10 @@ export function getStudentService() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -34,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: student });
   } catch (error) {
-    logger.error("Error fetching student:", undefined, error);
+    logger.error("Error fetching student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch student" },
       { status: 500 }
@@ -44,10 +44,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -57,7 +57,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, gender } = body;
+    const { name } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -68,7 +68,6 @@ export async function PUT(
 
     const updatedStudent = await getStudentService().updateStudent(id, {
       name,
-      gender,
     });
 
     return NextResponse.json({
@@ -77,7 +76,7 @@ export async function PUT(
       message: "Student updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating student:", undefined, error);
+    logger.error("Error updating student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update student" },
       { status: 500 }
@@ -87,10 +86,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -105,7 +104,7 @@ export async function DELETE(
       message: "Student deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting student:", undefined, error);
+    logger.error("Error deleting student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to delete student" },
       { status: 500 }

@@ -1,30 +1,31 @@
 import { Student } from "@/domain/entities/Student";
 import { Subject } from "@/domain/entities/Subject";
-import { Enrollment, Session } from "@/entities";
+import { Enrollment, Session } from "@/shared/types/DomainTypes";
 
 export interface StudentRepository {
-  getAll(): Promise<Student[]>;
-  getById(id: string): Promise<Student | null>;
+  getAll(userId: string): Promise<Student[]>;
+  getById(id: string, userId?: string): Promise<Student | null>;
   create(student: {
     name: string;
-    gender: "male" | "female";
-  }): Promise<Student>;
+  }, userId: string): Promise<Student>;
   update(
     id: string,
-    student: { name: string; gender: "male" | "female" }
+    student: { name: string; },
+    userId?: string
   ): Promise<Student>;
-  delete(id: string): Promise<void>;
+  delete(id: string, userId?: string): Promise<void>;
 }
 
 export interface SubjectRepository {
-  getAll(): Promise<Subject[]>;
-  getById(id: string): Promise<Subject | null>;
-  create(subject: { name: string; color: string }): Promise<Subject>;
+  getAll(userId: string): Promise<Subject[]>;
+  getById(id: string, userId?: string): Promise<Subject | null>;
+  create(subject: { name: string; color: string }, userId: string): Promise<Subject>;
   update(
     id: string,
-    subject: { name: string; color: string }
+    subject: { name: string; color: string },
+    userId?: string
   ): Promise<Subject>;
-  delete(id: string): Promise<void>;
+  delete(id: string, userId?: string): Promise<void>;
 }
 
 export interface SessionRepository {
