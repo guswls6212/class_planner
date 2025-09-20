@@ -72,7 +72,7 @@ describe("StudentApplicationService", () => {
     it("ID로 학생을 성공적으로 조회해야 한다", async () => {
       // Arrange
       const studentId = "test-id";
-      const mockStudent = Student.create("김철수", "male");
+      const mockStudent = Student.create("김철수");
 
       vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(mockStudent);
 
@@ -81,7 +81,7 @@ describe("StudentApplicationService", () => {
 
       // Assert
       expect(result?.name).toBe("김철수");
-      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId);
+      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId, undefined);
     });
 
     it("존재하지 않는 학생 ID로 조회 시 null을 반환해야 한다", async () => {
@@ -101,9 +101,9 @@ describe("StudentApplicationService", () => {
     it("학생을 성공적으로 업데이트해야 한다", async () => {
       // Arrange
       const studentId = "test-id";
-      const updateData = { name: "김영희", gender: "female" as const };
-      const existingStudent = Student.create("김철수", "male");
-      const updatedStudent = Student.create(updateData.name, updateData.gender);
+      const updateData = { name: "김영희" };
+      const existingStudent = Student.create("김철수");
+      const updatedStudent = Student.create(updateData.name);
 
       // Mock: 기존 학생이 존재한다고 설정
       vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(
@@ -115,14 +115,15 @@ describe("StudentApplicationService", () => {
       );
 
       // Act
-      const result = await service.updateStudent(studentId, updateData);
+      const result = await service.updateStudent(studentId, updateData, "test-user-id");
 
       // Assert
       expect(result.name).toBe("김영희");
-      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId);
+      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId, undefined);
       expect(mockStudentRepository.update).toHaveBeenCalledWith(
         studentId,
-        updateData
+        updateData,
+        "test-user-id"
       );
     });
   });

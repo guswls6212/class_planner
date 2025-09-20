@@ -71,7 +71,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
           logger.debug("AuthGuard - 인증 상태", { isAuthenticated: !!session });
         }
       } catch (err) {
-        logger.error("인증 확인 중 오류:", undefined, err);
+        logger.error("인증 확인 중 오류:", undefined, err as Error);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);

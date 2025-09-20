@@ -30,13 +30,13 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue(mockSubjects);
 
       // Act
-      const result = await service.getAllSubjects();
+      const result = await service.getAllSubjects("test-user-id");
 
       // Assert
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe("수학");
       expect(result[1].name).toBe("영어");
-      expect(mockSubjectRepository.getAll).toHaveBeenCalledTimes(1);
+      expect(mockSubjectRepository.getAll).toHaveBeenCalledWith("test-user-id");
     });
 
     it("과목이 없을 때 빈 배열을 반환해야 한다", async () => {
@@ -44,7 +44,7 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([]);
 
       // Act
-      const result = await service.getAllSubjects();
+      const result = await service.getAllSubjects("test-user-id");
 
       // Assert
       expect(result).toHaveLength(0);
@@ -60,7 +60,7 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "create").mockResolvedValue(mockSubject);
 
       // Act
-      const result = await service.addSubject(input);
+      const result = await service.addSubject(input, "test-user-id");
 
       // Assert
       expect(result.name).toBe("과학");
@@ -70,7 +70,7 @@ describe("SubjectApplicationService", () => {
           name: "과학",
           color: expect.objectContaining({ value: "#0000FF" }),
         }),
-        undefined
+        "test-user-id"
       );
     });
   });
@@ -122,7 +122,7 @@ describe("SubjectApplicationService", () => {
       );
 
       // Act
-      const result = await service.updateSubject(subjectId, updateData);
+      const result = await service.updateSubject(subjectId, updateData, "test-user-id");
 
       // Assert
       expect(result.name).toBe("수학");

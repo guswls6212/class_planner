@@ -160,7 +160,7 @@ export class StudentDomainService {
 
     return {
       totalCount,
-      genderCounts,
+      // genderCounts 제거됨 (gender 속성 삭제)
       averageNameLength: Math.round(averageNameLength * 100) / 100,
       longestName: Math.max(...nameLengths, 0),
       shortestName: Math.min(...nameLengths, 0),
@@ -183,7 +183,7 @@ export interface ValidationError {
 
 export interface StudentStatistics {
   totalCount: number;
-  genderCounts: Record<string, number>;
+  // genderCounts: Record<string, number>; // gender 속성 제거됨
   averageNameLength: number;
   longestName: number;
   shortestName: number;

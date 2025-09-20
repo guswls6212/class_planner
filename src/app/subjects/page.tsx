@@ -49,6 +49,10 @@ const SubjectsPageContent: React.FC = () => {
     setSelectedSubjectId(subjectId);
   };
 
+  const handleUpdateSubject = (subjectId: string, name: string, color: string) => {
+    updateSubject(subjectId, { name, color });
+  };
+
   return (
     <SubjectsPageLayout
       subjects={domainSubjects}
@@ -56,7 +60,7 @@ const SubjectsPageContent: React.FC = () => {
       onAddSubject={addSubject}
       onDeleteSubject={deleteSubject}
       onSelectSubject={handleSelectSubject}
-      onUpdateSubject={updateSubject}
+      onUpdateSubject={handleUpdateSubject}
       errorMessage={errorMessage}
     />
   );

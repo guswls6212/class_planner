@@ -48,7 +48,7 @@ describe("Student Entity", () => {
     });
 
     it("유효하지 않은 이름으로 변경하면 에러를 던져야 한다", () => {
-      const student = Student.create("김철수", "male");
+      const student = Student.create("김철수");
 
       expect(() => student.changeName("")).toThrow(
         "Invalid student: 학생 이름을 입력해주세요."

@@ -61,7 +61,7 @@ export function createLoggingMiddleware(options: LoggingOptions = {}) {
         requestId,
         endpoint: pathname,
         method: request.method,
-        ip: request.ip || request.headers.get("x-forwarded-for") || "unknown",
+        ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
       };
 

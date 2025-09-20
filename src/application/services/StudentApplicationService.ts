@@ -47,17 +47,18 @@ export class StudentApplicationServiceImpl {
 
   async updateStudent(
     id: string,
-    studentData: { name: string }
+    studentData: { name: string },
+    userId: string
   ): Promise<Student> {
     try {
       // 기존 학생 조회
-      const existingStudent = await this.studentRepository.getById(id);
+      const existingStudent = await this.studentRepository.getById(id, userId);
       if (!existingStudent) {
         throw new Error("존재하지 않는 학생입니다.");
       }
 
       // 중복 체크 (자기 자신 제외)
-      const existingStudents = await this.studentRepository.getAll();
+      const existingStudents = await this.studentRepository.getAll(userId);
       const isDuplicate = existingStudents.some(
         (student) =>
           student.name === studentData.name && student.id.value !== id

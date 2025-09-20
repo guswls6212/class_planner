@@ -74,9 +74,10 @@ export class UpdateStudentUseCase {
         updatedStudent = updatedStudent.changeName(request.name);
       }
 
-      if (request.gender !== undefined) {
-        updatedStudent = updatedStudent.changeGender(request.gender);
-      }
+      // gender 속성 제거됨
+      // if (request.gender !== undefined) {
+      //   updatedStudent = updatedStudent.changeGender(request.gender);
+      // }
 
       // 6. 변경사항이 없으면 기존 학생 반환
       if (updatedStudent.equals(existingStudent)) {

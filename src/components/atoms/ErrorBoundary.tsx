@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // 에러를 Vercel 로그 시스템에 전송
-    trackError(error, errorInfo.componentStack, "ErrorBoundary");
+    trackError(error, errorInfo.componentStack || undefined, "ErrorBoundary");
 
     // 추가 에러 핸들러가 있으면 호출
     if (this.props.onError) {

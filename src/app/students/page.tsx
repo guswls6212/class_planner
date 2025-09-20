@@ -77,7 +77,7 @@ function StudentsPageContent() {
       onSelectStudent={handleSelectStudent}
       onDeleteStudent={handleDeleteStudent}
       isLoading={isLoading}
-      error={error}
+      error={error || undefined}
       onClearError={clearError}
     />
   );

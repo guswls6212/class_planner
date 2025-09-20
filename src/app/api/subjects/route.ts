@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
+// import { validateUserAuth } from "@/lib/auth";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -162,10 +163,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // 간단한 userId 추출 (실제 프로젝트에서는 적절한 인증 로직 사용)
+    const userId = "default-user-id";
     const updatedSubject = await getSubjectService().updateSubject(id, {
       name,
       color,
-    });
+    }, userId);
     return NextResponse.json({ success: true, data: updatedSubject });
   } catch (error) {
     logger.error("Error updating subject:", undefined, error as Error);

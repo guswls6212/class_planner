@@ -64,9 +64,9 @@ export class SupabaseSubjectRepository implements SubjectRepository {
     }
   }
 
-  async getById(id: string): Promise<Subject | null> {
+  async getById(id: string, userId?: string): Promise<Subject | null> {
     try {
-      const subjects = await this.getAll();
+      const subjects = await this.getAll(userId || "default-user-id");
       return subjects.find((subject) => subject.id.value === id) || null;
     } catch (error) {
       logger.error("과목 조회 중 오류:", undefined, error as Error);
@@ -156,9 +156,9 @@ export class SupabaseSubjectRepository implements SubjectRepository {
       }
 
       subjects[subjectIndex] = {
-        id: subject.id.value,
+        id: id,
         name: subject.name,
-        color: subject.color.value,
+        color: subject.color,
       };
 
       // 데이터 업데이트
@@ -177,7 +177,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
         throw new Error(`과목 수정 실패: ${updateError.message}`);
       }
 
-      return subject;
+      return Subject.create(subject.name, subject.color);
     } catch (error) {
       logger.error("과목 수정 중 오류:", undefined, error as Error);
       throw error;

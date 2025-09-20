@@ -25,8 +25,8 @@ describe("AddStudentUseCase", () => {
   describe("성공적인 학생 추가", () => {
     it("새로운 학생을 성공적으로 추가해야 한다", async () => {
       // Arrange
-      const input = { name: "김철수", gender: "male" };
-      const mockStudent = Student.create(input.name, input.gender);
+      const input = { name: "김철수" };
+      const mockStudent = Student.create(input.name);
 
       vi.spyOn(mockStudentRepository, "findAll").mockResolvedValue([]);
       vi.spyOn(mockStudentRepository, "save").mockResolvedValue(mockStudent);
@@ -46,8 +46,8 @@ describe("AddStudentUseCase", () => {
 
     it("추가된 학생이 올바른 속성을 가져야 한다", async () => {
       // Arrange
-      const input = { name: "김영희", gender: "female" };
-      const mockStudent = Student.create(input.name, input.gender);
+      const input = { name: "김영희" };
+      const mockStudent = Student.create(input.name);
 
       vi.spyOn(mockStudentRepository, "findAll").mockResolvedValue([]);
       vi.spyOn(mockStudentRepository, "save").mockResolvedValue(mockStudent);
@@ -66,7 +66,7 @@ describe("AddStudentUseCase", () => {
     it("중복된 학생 이름이 있을 때 에러를 반환해야 한다", async () => {
       // Arrange
       const input = { name: "김철수" };
-      const existingStudent = Student.create("김철수", "male");
+      const existingStudent = Student.create("김철수");
 
       vi.spyOn(mockStudentRepository, "findAll").mockResolvedValue([
         existingStudent,
@@ -85,7 +85,7 @@ describe("AddStudentUseCase", () => {
     it("대소문자 구분 없이 중복을 검사해야 한다", async () => {
       // Arrange
       const input = { name: "김철수" };
-      const existingStudent = Student.create("김철수", "male");
+      const existingStudent = Student.create("김철수");
 
       vi.spyOn(mockStudentRepository, "findAll").mockResolvedValue([
         existingStudent,

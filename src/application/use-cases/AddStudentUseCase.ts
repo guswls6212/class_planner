@@ -51,7 +51,7 @@ export class AddStudentUseCase {
       }
 
       // 4. 학생 생성
-      const newStudent = Student.create(request.name, request.gender);
+      const newStudent = Student.create(request.name);
 
       // 5. 학생 저장
       const savedStudent = await this.studentRepository.save(newStudent);

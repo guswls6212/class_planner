@@ -91,7 +91,7 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
 
       return responseData;
     } catch (error) {
-      logger.error("API 호출 실패:", undefined, error);
+      logger.error("API 호출 실패:", undefined, error as Error);
       throw error;
     }
   };

@@ -66,9 +66,10 @@ export async function PUT(
       );
     }
 
+    const userId = "default-user-id";
     const updatedStudent = await getStudentService().updateStudent(id, {
       name,
-    });
+    }, userId);
 
     return NextResponse.json({
       success: true,

@@ -94,9 +94,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const userId = "default-user-id";
     const updatedStudent = await getStudentService().updateStudent(id, {
       name,
-    });
+    }, userId);
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
     logger.error("Error updating student:", undefined, error as Error);

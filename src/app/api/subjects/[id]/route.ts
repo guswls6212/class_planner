@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
 import { trackDatabaseError } from "@/lib/errorTracker";
+// import { validateUserAuth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the subject service (for testing purposes)
@@ -66,10 +67,12 @@ export async function PUT(
       );
     }
 
+    // 간단한 userId 추출 (실제 프로젝트에서는 적절한 인증 로직 사용)
+    const userId = "default-user-id";
     const updatedSubject = await getSubjectService().updateSubject(id, {
       name,
       color,
-    });
+    }, userId);
 
     return NextResponse.json({
       success: true,

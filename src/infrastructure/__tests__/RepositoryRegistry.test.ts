@@ -23,7 +23,7 @@ describe("RepositoryRegistry", () => {
     it("등록된 Repository들을 가져올 수 있어야 한다", () => {
       RepositoryRegistry.registerAll();
 
-      const studentRepo = RepositoryRegistry.getStudentRepository();
+      const studentRepo = RepositoryRegistry.getStudentRepository() as any;
       const subjectRepo = RepositoryRegistry.getSubjectRepository();
       const sessionRepo = RepositoryRegistry.getSessionRepository();
       const enrollmentRepo = RepositoryRegistry.getEnrollmentRepository();
@@ -45,7 +45,7 @@ describe("RepositoryRegistry", () => {
     it("테스트용 Repository들이 Mock 구현체여야 한다", async () => {
       RepositoryRegistry.registerForTest();
 
-      const studentRepo = RepositoryRegistry.getStudentRepository();
+      const studentRepo = RepositoryRegistry.getStudentRepository() as any;
       const students = await studentRepo.getAll();
 
       // Mock 데이터가 반환되는지 확인

@@ -9,7 +9,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.getAll(userId);
     } catch (error) {
-      logger.error("과목 목록 조회 중 에러 발생:", undefined, error);
+      logger.error("과목 목록 조회 중 에러 발생:", undefined, error as Error);
       return [];
     }
   }
@@ -18,7 +18,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.getById(id);
     } catch (error) {
-      logger.error("과목 조회 중 에러 발생:", undefined, error);
+      logger.error("과목 조회 중 에러 발생:", undefined, error as Error);
       return null;
     }
   }
@@ -43,7 +43,7 @@ export class SubjectApplicationServiceImpl {
 
       const newSubject = Subject.create(subjectData.name, subjectData.color);
       return await this.subjectRepository.create(
-        { name: newSubject.name, color: newSubject.color },
+        { name: newSubject.name, color: newSubject.color.value },
         userId
       );
     } catch (error) {
@@ -65,7 +65,7 @@ export class SubjectApplicationServiceImpl {
       }
 
       // 중복 체크 (자기 자신 제외)
-      const existingSubjects = await this.subjectRepository.getAll();
+      const existingSubjects = await this.subjectRepository.getAll(userId);
       const isDuplicate = existingSubjects.some(
         (subject) =>
           subject.name === subjectData.name && subject.id.value !== id
@@ -77,7 +77,7 @@ export class SubjectApplicationServiceImpl {
 
       return await this.subjectRepository.update(id, subjectData);
     } catch (error) {
-      logger.error("과목 업데이트 중 에러 발생:", undefined, error);
+      logger.error("과목 업데이트 중 에러 발생:", undefined, error as Error);
       throw error;
     }
   }
@@ -86,7 +86,7 @@ export class SubjectApplicationServiceImpl {
     try {
       return await this.subjectRepository.delete(id);
     } catch (error) {
-      logger.error("과목 삭제 중 에러 발생:", undefined, error);
+      logger.error("과목 삭제 중 에러 발생:", undefined, error as Error);
       throw error;
     }
   }

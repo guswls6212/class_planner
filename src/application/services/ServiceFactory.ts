@@ -19,7 +19,7 @@ export class ServiceFactory {
    * @returns StudentApplicationService 인스턴스
    */
   static createStudentService(): StudentApplicationServiceImpl {
-    const studentRepository = RepositoryRegistry.getStudentRepository();
+    const studentRepository = RepositoryRegistry.getStudentRepository() as import('@/infrastructure/interfaces').StudentRepository;
     return new StudentApplicationServiceImpl(studentRepository);
   }
 
@@ -28,7 +28,7 @@ export class ServiceFactory {
    * @returns SubjectApplicationService 인스턴스
    */
   static createSubjectService(): SubjectApplicationServiceImpl {
-    const subjectRepository = RepositoryRegistry.getSubjectRepository();
+    const subjectRepository = RepositoryRegistry.getSubjectRepository() as import('@/infrastructure/interfaces').SubjectRepository;
     return new SubjectApplicationServiceImpl(subjectRepository);
   }
 
@@ -37,7 +37,7 @@ export class ServiceFactory {
    * @returns SessionApplicationService 인스턴스
    */
   static createSessionService(): SessionApplicationServiceImpl {
-    const sessionRepository = RepositoryRegistry.getSessionRepository();
+    const sessionRepository = RepositoryRegistry.getSessionRepository() as import('@/infrastructure/interfaces').SessionRepository;
     return new SessionApplicationServiceImpl(sessionRepository);
   }
 

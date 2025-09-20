@@ -78,7 +78,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
 
       return data;
     } catch (error) {
-      logger.error("API 호출 실패:", undefined, error);
+      logger.error("API 호출 실패:", undefined, error as Error);
       throw error;
     }
   };
@@ -106,7 +106,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "과목 목록 조회 실패";
       setErrorMessage(errorMessage);
-      logger.error("과목 목록 조회 실패:", undefined, err);
+      logger.error("과목 목록 조회 실패:", undefined, err as Error);
 
       // API 호출 실패 시 기본 과목 사용
       setSubjects(DEFAULT_SUBJECTS);
@@ -137,7 +137,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 추가 실패";
         setErrorMessage(errorMessage);
-        logger.error("과목 추가 실패:", undefined, err);
+        logger.error("과목 추가 실패:", undefined, err as Error);
         return false;
       }
     },
@@ -166,7 +166,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 수정 실패";
         setErrorMessage(errorMessage);
-        logger.error("과목 수정 실패:", undefined, err);
+        logger.error("과목 수정 실패:", undefined, err as Error);
         return false;
       }
     },
@@ -191,7 +191,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "과목 삭제 실패";
         setErrorMessage(errorMessage);
-        logger.error("과목 삭제 실패:", undefined, err);
+        logger.error("과목 삭제 실패:", undefined, err as Error);
         return false;
       }
     },
@@ -206,7 +206,7 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
         const data = await apiCall(`/api/subjects/${id}`);
         return data.data || null;
       } catch (err) {
-        logger.error("과목 조회 실패:", undefined, err);
+        logger.error("과목 조회 실패:", undefined, err as Error);
         return null;
       }
     },

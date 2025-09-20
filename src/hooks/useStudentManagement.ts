@@ -66,7 +66,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
       return data;
     } catch (error) {
-      logger.error("API 호출 실패:", undefined, error);
+      logger.error("API 호출 실패:", undefined, error as Error);
       throw error;
     }
   };
@@ -88,7 +88,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
       const errorMessage =
         err instanceof Error ? err.message : "학생 목록 조회 실패";
       setError(errorMessage);
-      logger.error("학생 목록 조회 실패:", undefined, err);
+      logger.error("학생 목록 조회 실패:", undefined, err as Error);
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 추가 실패";
         setError(errorMessage);
-        logger.error("학생 추가 실패:", undefined, err);
+        logger.error("학생 추가 실패:", undefined, err as Error);
         return false;
       } finally {
         setLoading(false);
@@ -151,7 +151,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 수정 실패";
         setError(errorMessage);
-        logger.error("학생 수정 실패:", undefined, err);
+        logger.error("학생 수정 실패:", undefined, err as Error);
         return false;
       } finally {
         setLoading(false);
@@ -179,7 +179,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const errorMessage =
           err instanceof Error ? err.message : "학생 삭제 실패";
         setError(errorMessage);
-        logger.error("학생 삭제 실패:", undefined, err);
+        logger.error("학생 삭제 실패:", undefined, err as Error);
         return false;
       } finally {
         setLoading(false);
@@ -196,7 +196,7 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         const data = await apiCall(`/api/students/${id}`);
         return data.data || null;
       } catch (err) {
-        logger.error("학생 조회 실패:", undefined, err);
+        logger.error("학생 조회 실패:", undefined, err as Error);
         return null;
       }
     },

@@ -57,9 +57,9 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  async getById(id: string): Promise<Student | null> {
+  async getById(id: string, userId?: string): Promise<Student | null> {
     try {
-      const students = await this.getAll();
+      const students = await this.getAll(userId || "default-user-id");
       return students.find((student) => student.id.value === id) || null;
     } catch (error) {
       logger.error("학생 조회 중 오류:", undefined, error as Error);
