@@ -143,7 +143,7 @@ function Footer() {
 
 function AppContent({ children }: { children: React.ReactNode }) {
   // 전역 사용자 데이터 초기화
-  const { isInitialized, isInitializing } = useGlobalDataInitialization();
+  const { isInitializing } = useGlobalDataInitialization();
 
   return (
     <ErrorBoundary>

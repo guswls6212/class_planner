@@ -25,15 +25,15 @@ const DEFAULT_SUBJECTS: Subject[] = [
   { id: "default-9", name: "고등국어", color: "#059669" }, // 진한 초록색
 ];
 
-// 기본 classPlannerData 구조
-const createDefaultClassPlannerData = (subjects: Subject[] = []) => ({
-  students: [],
-  subjects,
-  sessions: [],
-  enrollments: [],
-  version: "1.0",
-  lastModified: getKSTTime(),
-});
+// 기본 classPlannerData 구조 (향후 사용 예정)
+// const createDefaultClassPlannerData = (subjects: Subject[] = []) => ({
+//   students: [],
+//   subjects,
+//   sessions: [],
+//   enrollments: [],
+//   version: "1.0",
+//   lastModified: getKSTTime(),
+// });
 
 export const useGlobalDataInitialization = () => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -84,7 +84,7 @@ export const useGlobalDataInitialization = () => {
 
         // 🔥 1단계: 서버에서 classPlannerData 전체 조회
         logger.info("서버에서 classPlannerData 전체를 조회합니다");
-        const response = await fetch(`/api/data?userId=${userId}`, {
+        const response = await globalThis.fetch(`/api/data?userId=${userId}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
@@ -134,7 +134,7 @@ export const useGlobalDataInitialization = () => {
           };
 
           // 서버에 저장
-          const saveResponse = await fetch(`/api/data?userId=${userId}`, {
+          const saveResponse = await globalThis.fetch(`/api/data?userId=${userId}`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",

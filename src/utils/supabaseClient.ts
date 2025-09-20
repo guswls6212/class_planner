@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../lib/logger";
+import { getKSTTime } from "../lib/timeUtils";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -205,7 +206,7 @@ export const supabaseUtils = {
       .upsert({
         user_id: userId,
         data,
-        updated_at: new Date().toISOString(),
+        updated_at: getKSTTime(),
       })
       .select()
       .single();

@@ -1,7 +1,8 @@
 import { Subject } from "@/domain/entities/Subject";
-import { logger } from "../../lib/logger";
 import type { SubjectRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
+import { logger } from "../../lib/logger";
+import { getKSTTime } from "../../lib/timeUtils";
 
 export class SupabaseSubjectRepository implements SubjectRepository {
   // Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
@@ -108,7 +109,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
           data: {
             ...userData,
             subjects,
-            lastModified: new Date().toISOString(),
+            lastModified: getKSTTime(),
           },
         });
 
@@ -167,7 +168,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
           data: {
             ...userData,
             subjects,
-            lastModified: new Date().toISOString(),
+            lastModified: getKSTTime(),
           },
         });
 
@@ -217,7 +218,7 @@ export class SupabaseSubjectRepository implements SubjectRepository {
           data: {
             ...userData,
             subjects: filteredSubjects,
-            lastModified: new Date().toISOString(),
+            lastModified: getKSTTime(),
           },
         });
 
