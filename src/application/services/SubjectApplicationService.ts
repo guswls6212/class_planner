@@ -42,20 +42,24 @@ export class SubjectApplicationServiceImpl {
       }
 
       const newSubject = Subject.create(subjectData.name, subjectData.color);
-      return await this.subjectRepository.create(newSubject, userId);
+      return await this.subjectRepository.create(
+        { name: newSubject.name, color: newSubject.color },
+        userId
+      );
     } catch (error) {
-      logger.error("과목 추가 중 에러 발생:", undefined, error);
+      logger.error("과목 추가 중 에러 발생:", undefined, error as Error);
       throw error;
     }
   }
 
   async updateSubject(
     id: string,
-    subjectData: { name: string; color: string }
+    subjectData: { name: string; color: string },
+    userId: string
   ): Promise<Subject> {
     try {
       // 기존 과목 조회
-      const existingSubject = await this.subjectRepository.getById(id);
+      const existingSubject = await this.subjectRepository.getById(id, userId);
       if (!existingSubject) {
         throw new Error("존재하지 않는 과목입니다.");
       }

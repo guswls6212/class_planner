@@ -4,8 +4,8 @@ import StudentsPageLayout from "../StudentsPageLayout";
 
 // Mock props
 const mockStudents = [
-  { id: "1", name: "김철수", gender: "male" as const },
-  { id: "2", name: "이영희", gender: "female" as const },
+  { id: "1", name: "김철수" },
+  { id: "2", name: "이영희" },
 ];
 
 const mockProps = {
@@ -17,6 +17,7 @@ const mockProps = {
   onSelectStudent: vi.fn(),
   onDeleteStudent: vi.fn(),
   errorMessage: "",
+  onClearError: vi.fn(),
 };
 
 describe("StudentsPageLayout Component", () => {
