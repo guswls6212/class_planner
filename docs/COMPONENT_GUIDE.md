@@ -18,10 +18,15 @@
 
 **예시:**
 
+- `AuthGuard.tsx` - 인증 가드 컴포넌트
 - `Button.tsx` - 버튼 컴포넌트
+- `ErrorBoundary.tsx` - 에러 바운더리 컴포넌트
 - `Input.tsx` - 입력 필드
 - `Label.tsx` - 라벨
-- `Typography.tsx` - 텍스트 스타일
+- `LoginButton.tsx` - 로그인 버튼 컴포넌트
+- `StudentListItem.tsx` - 학생 목록 아이템
+- `SubjectListItem.tsx` - 과목 목록 아이템
+- `ThemeToggle.tsx` - 테마 토글 컴포넌트
 
 ### 🧬 Molecules (분자 컴포넌트)
 
@@ -35,10 +40,15 @@
 
 **예시:**
 
-- `SessionBlock.tsx` - 세션 블록
-- `TimeTableRow.tsx` - 시간표 행
-- `StudentInputSection.tsx` - 학생 입력 섹션
+- `ConfirmModal.tsx` - 확인 모달
+- `DropZone.tsx` - 드래그 앤 드롭 영역
 - `PDFDownloadButton.tsx` - PDF 다운로드 버튼
+- `SessionBlock.tsx` - 세션 블록
+- `StudentInputSection.tsx` - 학생 입력 섹션
+- `StudentList.tsx` - 학생 목록
+- `SubjectInputSection.tsx` - 과목 입력 섹션
+- `SubjectList.tsx` - 과목 목록
+- `TimeTableRow.tsx` - 시간표 행
 
 ### 🦠 Organisms (유기체 컴포넌트)
 
@@ -52,10 +62,13 @@
 
 **예시:**
 
-- `TimeTableGrid.tsx` - 시간표 그리드
+- `AboutPageLayout.tsx` - 소개 페이지 레이아웃
+- `StudentManagementSection.tsx` - 학생 관리 섹션
 - `StudentPanel.tsx` - 학생 패널
 - `StudentsPageLayout.tsx` - 학생 페이지 레이아웃
-- `AboutPageLayout.tsx` - 소개 페이지 레이아웃
+- `SubjectManagementSection.tsx` - 과목 관리 섹션
+- `SubjectsPageLayout.tsx` - 과목 페이지 레이아웃
+- `TimeTableGrid.tsx` - 시간표 그리드
 
 ## 🎣 Custom Hooks (커스텀 훅)
 
@@ -69,19 +82,20 @@
 
 ### 주요 훅들
 
-#### **🌍 전역 기본 과목 초기화 훅**
+#### **🌍 전역 데이터 초기화 훅**
 
-**`useGlobalSubjectInitialization`**
+**`useGlobalDataInitialization`**
 
-- **위치**: `src/hooks/useGlobalSubjectInitialization.ts`
-- **용도**: 로그인한 사용자가 처음 접속할 때 기본 과목들을 자동으로 생성
+- **위치**: `src/hooks/useGlobalDataInitialization.ts`
+- **용도**: 로그인한 사용자의 모든 데이터를 초기화하고 기본 과목을 생성
 - **사용 시점**: RootLayout에서 전역적으로 실행
 - **특징**:
-  - 어느 페이지에서든 로그인 후 자동으로 기본 과목 생성
+  - 로그인 후 전체 classPlannerData를 로컬스토리지로 가져옴
+  - 과목이 없을 때만 기본 과목 자동 생성
   - 브라우저 독립적 동작 (Chrome, Firefox, Safari 등 모든 브라우저에서 동일)
   - 서버 기반 중복 방지 (Supabase 데이터베이스 기준)
   - Supabase Auth 보안 강화 (토큰 탈취 공격 방지)
-  - 초기화 중 로딩 표시
+  - 초기화 중 애니메이션 로딩 표시
 
 #### **🚀 통합 데이터 관리 훅 (권장)**
 
@@ -110,11 +124,17 @@
 - **용도**: 과목 데이터 CRUD (API Routes 기반)
 - **사용 시점**: 과목 관리 페이지 등 개별 데이터 관리가 필요한 곳
 
-**`useSessionManagement`**
+**`usePerformanceMonitoring`**
 
-- **위치**: `src/hooks/useSessionManagement.ts`
-- **용도**: 세션 데이터 CRUD (API Routes 기반)
-- **사용 시점**: 세션 관리가 필요한 곳
+- **위치**: `src/hooks/usePerformanceMonitoring.ts`
+- **용도**: 성능 모니터링 및 메트릭 수집
+- **사용 시점**: 성능 측정이 필요한 컴포넌트
+
+**`useUserTracking`**
+
+- **위치**: `src/hooks/useUserTracking.ts`
+- **용도**: 사용자 추적 및 분석 데이터 수집
+- **사용 시점**: 사용자 행동 분석이 필요한 곳
 
 **`useDisplaySessions`**
 

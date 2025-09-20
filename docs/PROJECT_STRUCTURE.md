@@ -13,13 +13,18 @@ class-planner/
 │   │   ├── api/               # API 라우트 (Clean Architecture 통합)
 │   │   │   ├── data/          # 통합 데이터 관리 API (JSONB 기반)
 │   │   │   ├── students/      # 학생 관리 API (개별 CRUD)
+│   │   │   │   └── [id]/      # 개별 학생 API
 │   │   │   ├── subjects/      # 과목 관리 API (개별 CRUD)
-│   │   │   └── sessions/      # 세션 관리 API (개별 CRUD)
-│   │   ├── students/          # 학생 페이지
-│   │   ├── subjects/          # 과목 페이지
-│   │   ├── schedule/          # 시간표 페이지
+│   │   │   │   └── [id]/      # 개별 과목 API
+│   │   │   ├── sessions/      # 세션 관리 API (개별 CRUD)
+│   │   │   │   └── [id]/      # 개별 세션 API
+│   │   │   │       └── position/ # 세션 위치 업데이트 API
+│   │   │   └── user-settings/ # 사용자 설정 API
 │   │   ├── about/             # 소개 페이지
 │   │   ├── login/             # 로그인 페이지
+│   │   ├── schedule/          # 시간표 페이지
+│   │   ├── students/          # 학생 페이지
+│   │   ├── subjects/          # 과목 페이지
 │   │   ├── layout.tsx         # 루트 레이아웃 (네비게이션 포함)
 │   │   ├── page.tsx           # 홈페이지
 │   │   └── globals.css        # 전역 스타일
@@ -28,30 +33,37 @@ class-planner/
 │   │   ├── molecules/        # 분자 컴포넌트 (FormField, SessionBlock 등)
 │   │   └── organisms/        # 유기체 컴포넌트 (TimeTableGrid, StudentPanel 등)
 │   ├── domain/               # Clean Architecture - Domain 계층
-│   │   ├── entities/         # 도메인 엔티티 (Student, Subject, Session)
+│   │   ├── entities/         # 도메인 엔티티 (Student, Subject)
 │   │   ├── value-objects/    # 값 객체 (StudentId, SubjectId, Color)
 │   │   ├── repositories/     # 리포지토리 인터페이스
-│   │   ├── services/         # 도메인 서비스
-│   │   └── events/           # 도메인 이벤트
+│   │   └── services/         # 도메인 서비스
 │   ├── application/          # Clean Architecture - Application 계층
 │   │   ├── services/         # 애플리케이션 서비스
 │   │   ├── use-cases/        # 유스케이스
-│   │   ├── mappers/          # 데이터 매퍼
-│   │   └── repositories/     # 리포지토리 인터페이스
+│   │   └── mappers/          # 데이터 매퍼
 │   ├── infrastructure/       # Clean Architecture - Infrastructure 계층
+│   │   ├── config/           # 설정 파일
+│   │   ├── container/        # DI 컨테이너 및 레지스트리
+│   │   ├── factories/        # 리포지토리 팩토리들
 │   │   ├── repositories/     # Supabase 리포지토리 구현
 │   │   ├── interfaces.ts     # 인터페이스 정의
-│   │   └── RepositoryFactory.ts # 리포지토리 팩토리
+│   │   └── RepositoryFactory.ts # 메인 리포지토리 팩토리
 │   ├── shared/               # 공유 타입 및 유틸리티
+│   │   ├── constants/        # 공통 상수
 │   │   └── types/           # 공통 타입 정의
 │   ├── hooks/                # 커스텀 훅
 │   ├── contexts/             # React Context (ThemeContext)
 │   ├── lib/                  # 유틸리티 함수
-│   └── utils/                # API 클라이언트 및 유틸리티
+│   ├── middleware/           # Next.js 미들웨어
+│   ├── types/                # 레거시 타입 정의
+│   ├── utils/                # API 클라이언트 및 유틸리티
+│   └── setupTests.ts         # 테스트 설정
 ├── docs/                     # 프로젝트 문서
 ├── scripts/                  # 개발 도구 스크립트
 │   ├── clear-localstorage.js    # localStorage 정리 도구
+│   ├── detailed-unused-analysis.sh # 상세 미사용 파일 분석
 │   ├── find-unused-files.sh     # 미사용 파일 탐지 도구
+│   ├── find-unused-src-files.sh # src 폴더 미사용 파일 탐지
 │   ├── performance-monitor.js   # 성능 모니터링 도구
 │   ├── system-test.js          # 시스템 테스트 자동화
 │   ├── pre-commit-check.sh     # 커밋 전 검증 (1-3분)
