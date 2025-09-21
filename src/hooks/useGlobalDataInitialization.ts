@@ -67,14 +67,7 @@ export const useGlobalDataInitialization = () => {
           const existingData = localStorage.getItem("classPlannerData");
           const storedUserId = localStorage.getItem("supabase_user_id");
 
-          if (existingData && storedUserId === session.user.id) {
-            logger.info("기존 사용자 데이터 존재 - 서버 호출 건너뜀", {
-              userId: storedUserId,
-              dataSize: existingData.length,
-            });
-            setIsInitialized(true);
-            return;
-          }
+          // 기존 데이터 존재해도 서버 호출은 항상 실행 (타임스탬프 비교를 위해)
 
           // 다른 사용자의 데이터가 있거나 데이터가 없는 경우
           if (existingData && storedUserId !== session.user.id) {
@@ -115,31 +108,76 @@ export const useGlobalDataInitialization = () => {
 
         const responseData = await response.json();
         const serverData = responseData.data || {};
+        const serverUpdatedAt = responseData.updated_at; // 서버의 updated_at 타임스탬프
 
-        // 🔥 2단계: 로컬스토리지에 전체 데이터 저장
-        const classPlannerData = {
-          students: serverData.students || [],
-          subjects: serverData.subjects || [],
-          sessions: serverData.sessions || [],
-          enrollments: serverData.enrollments || [],
-          version: serverData.version || "1.0",
-        };
+        // 🔥 2단계: 로컬 데이터와 서버 데이터 타임스탬프 비교
+        const existingLocalData = localStorage.getItem("classPlannerData");
+        let shouldUpdateLocal = true; // 기본적으로 업데이트
 
-        logger.info("서버 데이터를 로컬스토리지에 저장합니다", {
-          studentCount: classPlannerData.students.length,
-          subjectCount: classPlannerData.subjects.length,
-          sessionCount: classPlannerData.sessions.length,
-          enrollmentCount: classPlannerData.enrollments.length,
-        });
+        if (existingLocalData && serverUpdatedAt) {
+          try {
+            const localData = JSON.parse(existingLocalData);
+            const localLastModified = localData.lastModified;
 
-        // 로컬스토리지에 저장
-        localStorage.setItem(
-          "classPlannerData",
-          JSON.stringify(classPlannerData)
-        );
+            if (localLastModified) {
+              const serverTime = new Date(serverUpdatedAt).getTime();
+              const localTime = new Date(localLastModified).getTime();
+
+              if (serverTime <= localTime) {
+                shouldUpdateLocal = false;
+                logger.info("로컬 데이터가 최신 - 서버 데이터로 교체하지 않음", {
+                  serverUpdatedAt,
+                  localLastModified,
+                  timeDiff: localTime - serverTime,
+                });
+              } else {
+                logger.info("서버 데이터가 최신 - 로컬 데이터 교체", {
+                  serverUpdatedAt,
+                  localLastModified,
+                  timeDiff: serverTime - localTime,
+                });
+              }
+            }
+          } catch (error) {
+            logger.warn("로컬 데이터 파싱 실패 - 서버 데이터로 교체", undefined, error as Error);
+          }
+        }
+
+        // 🔥 3단계: 필요한 경우에만 로컬스토리지 데이터 업데이트
+        let classPlannerData;
+        
+        if (shouldUpdateLocal) {
+          classPlannerData = {
+            students: serverData.students || [],
+            subjects: serverData.subjects || [],
+            sessions: serverData.sessions || [],
+            enrollments: serverData.enrollments || [],
+            version: serverData.version || "1.0",
+            lastModified: serverUpdatedAt || new Date().toISOString(),
+          };
+
+          logger.info("서버 데이터를 로컬스토리지에 저장합니다", {
+            studentCount: classPlannerData.students.length,
+            subjectCount: classPlannerData.subjects.length,
+            sessionCount: classPlannerData.sessions.length,
+            enrollmentCount: classPlannerData.enrollments.length,
+          });
+
+          // 로컬스토리지에 저장
+          localStorage.setItem(
+            "classPlannerData",
+            JSON.stringify(classPlannerData)
+          );
+        } else {
+          // 로컬 데이터 유지
+          classPlannerData = JSON.parse(existingLocalData!);
+          logger.info("로컬 데이터 유지 - 서버 데이터로 교체하지 않음");
+        }
+
+        // 사용자 ID 저장 (항상 업데이트)
         localStorage.setItem("supabase_user_id", userId);
 
-        // 🔥 3단계: 과목 수가 0건인지 확인
+        // 🔥 4단계: 과목 수가 0건인지 확인
         const existingSubjects = classPlannerData.subjects || [];
         if (existingSubjects.length === 0) {
           logger.info("과목이 없어서 기본 과목들을 추가합니다", {
@@ -147,7 +185,7 @@ export const useGlobalDataInitialization = () => {
             defaultSubjectNames: DEFAULT_SUBJECTS.map((s) => s.name),
           });
 
-          // 🔥 4단계: 기본 과목을 포함하여 데이터 업데이트
+          // 🔥 5단계: 기본 과목을 포함하여 데이터 업데이트
           const updatedData = {
             ...classPlannerData,
             subjects: DEFAULT_SUBJECTS,
