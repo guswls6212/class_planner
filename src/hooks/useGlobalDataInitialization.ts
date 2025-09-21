@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { logger } from "../lib/logger";
 import type { Subject } from "../lib/planner";
-import { getKSTTime } from "../lib/timeUtils";
+// KST time utils import removed
 import { supabase } from "../utils/supabaseClient";
 
 // 기본 과목 목록 (고정 ID 사용)
@@ -147,17 +147,11 @@ export const useGlobalDataInitialization = () => {
             defaultSubjectNames: DEFAULT_SUBJECTS.map((s) => s.name),
           });
 
-          // 🔥 4단계: 기본 과목을 포함하여 데이터 업데이트 (KST 시간으로 타임스탬프 추가)
-          const now = getKSTTime();
-          const subjectsWithTimestamps = DEFAULT_SUBJECTS.map((subject) => ({
-            ...subject,
-            createdAt: now,
-            updatedAt: now,
-          }));
-
+          // 🔥 4단계: 기본 과목을 포함하여 데이터 업데이트
           const updatedData = {
             ...classPlannerData,
-            subjects: subjectsWithTimestamps,
+            subjects: DEFAULT_SUBJECTS,
+            lastModified: new Date().toISOString(), // 데이터 변경 시 lastModified 갱신
           };
 
           // 서버에 저장

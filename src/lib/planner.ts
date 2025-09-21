@@ -2,16 +2,12 @@ export type Student = {
   id: string;
   name: string;
   gender?: string;
-  createdAt?: string; // 🔄 KST ISO 문자열로 변경
-  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 };
 
 export type Subject = {
   id: string;
   name: string;
   color?: string;
-  createdAt?: string; // 🔄 KST ISO 문자열로 변경
-  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 };
 
 // 🆕 그룹 수업을 위한 새로운 타입 정의
@@ -19,8 +15,6 @@ export type Enrollment = {
   id: string;
   studentId: string;
   subjectId: string;
-  createdAt?: string; // 🔄 KST ISO 문자열로 변경
-  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 };
 
 export type Session = {
@@ -31,8 +25,6 @@ export type Session = {
   endsAt: string; // 종료 시간 (HH:MM 형식)
   room?: string; // 강의실 (선택적)
   yPosition?: number; // 🆕 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
-  createdAt?: string; // 🔄 KST ISO 문자열로 변경
-  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입

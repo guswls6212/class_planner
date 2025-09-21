@@ -1,7 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { trackDatabaseError } from "@/lib/errorTracker";
 import { logger } from "@/lib/logger";
-import { getKSTTimestampForDB } from "@/lib/timeUtils";
+// KST time utils import removed
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { withApiLogging } from "@/middleware/logging";
 import { createClient } from "@supabase/supabase-js";
@@ -189,7 +189,7 @@ export async function PUT(request: NextRequest) {
       .upsert({
         user_id: userId,
         data: userData,
-        updated_at: getKSTTimestampForDB(),
+        updated_at: new Date().toISOString(),
       })
       .select()
       .single();

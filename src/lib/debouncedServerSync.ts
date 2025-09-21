@@ -7,7 +7,7 @@
 
 import type { ClassPlannerData } from "./localStorageCrud";
 import { logger } from "./logger";
-import { getKSTTime } from "./timeUtils";
+// KST time utils import removed
 
 // ===== 타입 정의 =====
 
@@ -84,7 +84,7 @@ const syncToServer = async (data: ClassPlannerData): Promise<SyncResult> => {
       throw new Error(responseData.error || `HTTP ${response.status}`);
     }
 
-    const syncedAt = getKSTTime();
+    const syncedAt = new Date().toISOString();
     lastSyncTime = syncedAt;
 
     logger.info("debouncedServerSync - 서버 동기화 성공", {
@@ -239,7 +239,7 @@ export const scheduleServerSync = (data: ClassPlannerData): void => {
     // 새로운 동기화 아이템 생성
     const syncItem: SyncQueueItem = {
       data: { ...data },
-      timestamp: getKSTTime(),
+      timestamp: new Date().toISOString(),
       retryCount: 0,
     };
 
@@ -277,7 +277,7 @@ export const forceSyncToServer = async (
 
     if (result.success) {
       // 성공 시 큐에서 해당 데이터 제거 (현재 시간으로 필터링)
-      const currentTime = getKSTTime();
+      const currentTime = new Date().toISOString();
       syncQueue = syncQueue.filter(
         (item) =>
           Math.abs(

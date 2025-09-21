@@ -37,9 +37,7 @@ vi.mock("../lib/logger", () => ({
   },
 }));
 
-vi.mock("../lib/timeUtils", () => ({
-  getKSTTime: () => "2025-09-21T15:00:00.000+09:00",
-}));
+// timeUtils mock removed - using standard Date now
 
 // Mock localStorage
 const localStorageMock = {

@@ -7,7 +7,6 @@
 
 import { logger } from "./logger";
 import type { Enrollment, Session, Student, Subject } from "./planner";
-import { getKSTTime } from "./timeUtils";
 
 // ===== 타입 정의 =====
 
@@ -17,6 +16,7 @@ export interface ClassPlannerData {
   sessions: Session[];
   enrollments: Enrollment[];
   version: string;
+  lastModified: string;
 }
 
 export interface CrudResult<T> {
@@ -34,6 +34,7 @@ const DEFAULT_DATA: ClassPlannerData = {
   sessions: [],
   enrollments: [],
   version: "1.0",
+  lastModified: new Date().toISOString(),
 };
 
 // ===== 기본 CRUD 함수들 =====
@@ -62,67 +63,19 @@ export const getClassPlannerData = (): ClassPlannerData => {
       return DEFAULT_DATA;
     }
 
-    // 🔄 마이그레이션: 기존 데이터에 타임스탬프 추가
-    const now = getKSTTime();
-
-    const migratedStudents = (parsed.students || []).map((student: any) => ({
-      ...student,
-      createdAt: student.createdAt || now,
-      updatedAt: student.updatedAt || now,
-    }));
-
-    const migratedSubjects = (parsed.subjects || []).map((subject: any) => ({
-      ...subject,
-      createdAt: subject.createdAt || now,
-      updatedAt: subject.updatedAt || now,
-    }));
-
-    const migratedSessions = (parsed.sessions || []).map((session: any) => ({
-      ...session,
-      createdAt: session.createdAt || now,
-      updatedAt: session.updatedAt || now,
-    }));
-
-    const migratedEnrollments = (parsed.enrollments || []).map(
-      (enrollment: any) => ({
-        ...enrollment,
-        createdAt: enrollment.createdAt || now,
-        updatedAt: enrollment.updatedAt || now,
-      })
-    );
-
+    // 기본 구조 확인 및 마이그레이션
     const result: ClassPlannerData = {
-      students: migratedStudents,
-      subjects: migratedSubjects,
-      sessions: migratedSessions,
-      enrollments: migratedEnrollments,
+      students: parsed.students || [],
+      subjects: parsed.subjects || [],
+      sessions: parsed.sessions || [],
+      enrollments: parsed.enrollments || [],
       version: parsed.version || "1.0",
+      lastModified: parsed.lastModified || new Date().toISOString(),
     };
 
-    // 🔄 마이그레이션이 발생했다면 저장
-    const needsMigration =
-      (parsed.students || []).some(
-        (item: any) => !item.createdAt || !item.updatedAt
-      ) ||
-      (parsed.subjects || []).some(
-        (item: any) => !item.createdAt || !item.updatedAt
-      ) ||
-      (parsed.sessions || []).some(
-        (item: any) => !item.createdAt || !item.updatedAt
-      ) ||
-      (parsed.enrollments || []).some(
-        (item: any) => !item.createdAt || !item.updatedAt
-      );
-
-    if (needsMigration) {
-      logger.info("localStorageCrud - 데이터 마이그레이션 수행", {
-        studentCount: result.students.length,
-        subjectCount: result.subjects.length,
-        sessionCount: result.sessions.length,
-        enrollmentCount: result.enrollments.length,
-      });
-
-      // 마이그레이션된 데이터를 다시 저장
+    // lastModified가 없으면 추가하고 저장
+    if (!parsed.lastModified) {
+      logger.info("localStorageCrud - lastModified 마이그레이션 실행");
       setClassPlannerData(result);
     }
 
@@ -221,13 +174,10 @@ export const addStudentToLocal = (name: string): CrudResult<Student> => {
   try {
     const data = getClassPlannerData();
 
-    // 새 학생 생성 (KST 시간으로 생성)
-    const now = getKSTTime();
+    // 새 학생 생성
     const newStudent: Student = {
       id: crypto.randomUUID(),
       name: name.trim(),
-      createdAt: now,
-      updatedAt: now,
     };
 
     // 중복 이름 검사
@@ -241,6 +191,7 @@ export const addStudentToLocal = (name: string): CrudResult<Student> => {
 
     // 데이터 업데이트
     data.students.push(newStudent);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 학생 추가 성공", {
@@ -302,14 +253,14 @@ export const updateStudentInLocal = (
       }
     }
 
-    // 학생 업데이트 (KST 시간으로 updatedAt 갱신)
+    // 학생 업데이트
     const updatedStudent: Student = {
       ...data.students[studentIndex],
       ...(updates.name && { name: updates.name.trim() }),
-      updatedAt: getKSTTime(),
     };
 
     data.students[studentIndex] = updatedStudent;
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 학생 수정 성공", {
@@ -361,6 +312,7 @@ export const deleteStudentFromLocal = (id: string): CrudResult<boolean> => {
 
     // 해당 학생의 모든 enrollment 삭제
     data.enrollments = data.enrollments.filter((e) => e.studentId !== id);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 학생 삭제 성공", {
@@ -438,14 +390,11 @@ export const addSubjectToLocal = (
   try {
     const data = getClassPlannerData();
 
-    // 새 과목 생성 (KST 시간으로 생성)
-    const now = getKSTTime();
+    // 새 과목 생성
     const newSubject: Subject = {
       id: crypto.randomUUID(),
       name: name.trim(),
       color: color,
-      createdAt: now,
-      updatedAt: now,
     };
 
     // 중복 이름 검사
@@ -459,6 +408,7 @@ export const addSubjectToLocal = (
 
     // 데이터 업데이트
     data.subjects.push(newSubject);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 과목 추가 성공", {
@@ -521,15 +471,15 @@ export const updateSubjectInLocal = (
       }
     }
 
-    // 과목 업데이트 (KST 시간으로 updatedAt 갱신)
+    // 과목 업데이트
     const updatedSubject: Subject = {
       ...data.subjects[subjectIndex],
       ...(updates.name && { name: updates.name.trim() }),
       ...(updates.color && { color: updates.color }),
-      updatedAt: getKSTTime(),
     };
 
     data.subjects[subjectIndex] = updatedSubject;
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 과목 수정 성공", {
@@ -590,6 +540,7 @@ export const deleteSubjectFromLocal = (id: string): CrudResult<boolean> => {
     data.sessions = data.sessions.filter(
       (s) => !s.enrollmentIds?.some((eId) => deletedEnrollmentIds.includes(eId))
     );
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 과목 삭제 성공", {
@@ -662,22 +613,20 @@ export const getAllSubjectsFromLocal = (): Subject[] => {
  * 세션 추가
  */
 export const addSessionToLocal = (
-  sessionData: Omit<Session, "id" | "createdAt" | "updatedAt">
+  sessionData: Omit<Session, "id">
 ): CrudResult<Session> => {
   try {
     const data = getClassPlannerData();
 
-    // 새 세션 생성 (KST 시간으로 생성)
-    const now = getKSTTime();
+    // 새 세션 생성
     const newSession: Session = {
       id: crypto.randomUUID(),
       ...sessionData,
-      createdAt: now,
-      updatedAt: now,
     };
 
     // 데이터 업데이트
     data.sessions.push(newSession);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 세션 추가 성공", {
@@ -714,7 +663,7 @@ export const addSessionToLocal = (
  */
 export const updateSessionInLocal = (
   id: string,
-  updates: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
+  updates: Partial<Omit<Session, "id">>
 ): CrudResult<Session> => {
   try {
     const data = getClassPlannerData();
@@ -727,14 +676,14 @@ export const updateSessionInLocal = (
       };
     }
 
-    // 세션 업데이트 (KST 시간으로 updatedAt 갱신)
+    // 세션 업데이트
     const updatedSession: Session = {
       ...data.sessions[sessionIndex],
       ...updates,
-      updatedAt: getKSTTime(),
     };
 
     data.sessions[sessionIndex] = updatedSession;
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 세션 수정 성공", {
@@ -782,6 +731,7 @@ export const deleteSessionFromLocal = (id: string): CrudResult<boolean> => {
 
     const deletedSession = data.sessions[sessionIndex];
     data.sessions.splice(sessionIndex, 1);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 세션 삭제 성공", {
@@ -836,18 +786,16 @@ export const addEnrollmentToLocal = (
       };
     }
 
-    // 새 등록 생성 (KST 시간으로 생성)
-    const now = getKSTTime();
+    // 새 등록 생성
     const newEnrollment: Enrollment = {
       id: crypto.randomUUID(),
       studentId,
       subjectId,
-      createdAt: now,
-      updatedAt: now,
     };
 
     // 데이터 업데이트
     data.enrollments.push(newEnrollment);
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 등록 추가 성공", {
@@ -904,7 +852,6 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
           return {
             ...session,
             enrollmentIds: session.enrollmentIds.filter((eId) => eId !== id),
-            updatedAt: getKSTTime(),
           };
         }
         return session;
@@ -914,6 +861,8 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
           // enrollmentIds가 빈 배열이 된 session은 삭제
           session.enrollmentIds && session.enrollmentIds.length > 0
       );
+
+    data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
       logger.info("localStorageCrud - 등록 삭제 성공", {
@@ -959,6 +908,7 @@ export const updateClassPlannerData = (
     const updatedData: ClassPlannerData = {
       ...currentData,
       ...updates,
+      lastModified: new Date().toISOString(), // CRU 작업 시 lastModified 갱신
     };
 
     if (setClassPlannerData(updatedData)) {

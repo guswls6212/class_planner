@@ -80,6 +80,7 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       });
     });
 
@@ -90,6 +91,7 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       };
 
       const result = setClassPlannerData(testData);
@@ -134,6 +136,7 @@ describe("localStorage CRUD 유틸리티", () => {
           sessions: [],
           enrollments: [],
           version: "1.0",
+          lastModified: new Date().toISOString(),
         })
       );
     });
@@ -218,6 +221,7 @@ describe("localStorage CRUD 유틸리티", () => {
           sessions: [],
           enrollments: [],
           version: "1.0",
+          lastModified: new Date().toISOString(),
         })
       );
     });
@@ -295,6 +299,7 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       });
     });
 
@@ -309,6 +314,7 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       });
     });
 
@@ -323,11 +329,130 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       };
 
       const result = setClassPlannerData(testData);
 
       expect(result).toBe(false);
+    });
+  });
+
+  // ===== lastModified 기능 테스트 =====
+  describe("lastModified 자동 갱신 테스트", () => {
+    beforeEach(() => {
+      // 초기 데이터 설정
+      const initialData = {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: "2025-01-01T00:00:00.000Z", // 과거 시간
+      };
+
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(initialData));
+    });
+
+    it("학생 추가 시 lastModified가 갱신되어야 함", () => {
+      const beforeTime = new Date().toISOString();
+
+      const result = addStudentToLocal("홍길동");
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[0][1]);
+      expect(savedData.lastModified).not.toBe("2025-01-01T00:00:00.000Z");
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
+    });
+
+    it("학생 수정 시 lastModified가 갱신되어야 함", () => {
+      // 먼저 학생 추가
+      addStudentToLocal("홍길동");
+      const student = getAllStudentsFromLocal()[0];
+
+      const beforeTime = new Date().toISOString();
+
+      const result = updateStudentInLocal(student.id, { name: "김철수" });
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[1][1]);
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
+    });
+
+    it("학생 삭제 시 lastModified가 갱신되어야 함", () => {
+      // 먼저 학생 추가
+      addStudentToLocal("홍길동");
+      const student = getAllStudentsFromLocal()[0];
+
+      const beforeTime = new Date().toISOString();
+
+      const result = deleteStudentFromLocal(student.id);
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[1][1]);
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
+    });
+
+    it("과목 추가 시 lastModified가 갱신되어야 함", () => {
+      const beforeTime = new Date().toISOString();
+
+      const result = addSubjectToLocal("수학", "#ff0000");
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[0][1]);
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
+    });
+
+    it("과목 수정 시 lastModified가 갱신되어야 함", () => {
+      // 먼저 과목 추가
+      addSubjectToLocal("수학", "#ff0000");
+      const subject = getAllSubjectsFromLocal()[0];
+
+      const beforeTime = new Date().toISOString();
+
+      const result = updateSubjectInLocal(subject.id, { name: "영어" });
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[1][1]);
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
+    });
+
+    it("과목 삭제 시 lastModified가 갱신되어야 함", () => {
+      // 먼저 과목 추가
+      addSubjectToLocal("수학", "#ff0000");
+      const subject = getAllSubjectsFromLocal()[0];
+
+      const beforeTime = new Date().toISOString();
+
+      const result = deleteSubjectFromLocal(subject.id);
+
+      expect(result.success).toBe(true);
+
+      // lastModified가 갱신되었는지 확인
+      const savedData = JSON.parse(localStorageMock.setItem.mock.calls[1][1]);
+      expect(new Date(savedData.lastModified).getTime()).toBeGreaterThanOrEqual(
+        new Date(beforeTime).getTime()
+      );
     });
   });
 });

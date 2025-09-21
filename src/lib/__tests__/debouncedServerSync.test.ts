@@ -21,9 +21,7 @@ vi.mock("../logger", () => ({
   },
 }));
 
-vi.mock("../timeUtils", () => ({
-  getKSTTime: () => "2025-09-21T16:00:00.000+09:00",
-}));
+// timeUtils mock removed - using standard Date now
 
 // Mock localStorage
 const localStorageMock = {
@@ -253,6 +251,7 @@ describe("debouncedServerSync", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
+        lastModified: new Date().toISOString(),
       });
 
       const statusBefore = getSyncStatus();
@@ -263,6 +262,34 @@ describe("debouncedServerSync", () => {
       const statusAfter = getSyncStatus();
       expect(statusAfter.queueLength).toBe(0);
       expect(statusAfter.isActive).toBe(false);
+    });
+
+    it("lastModified가 포함된 데이터를 올바르게 동기화해야 함", async () => {
+      // Mock successful response
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const testData = {
+        students: [{ id: "1", name: "홍길동" }],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+
+      const result = await forceSyncToServer(testData);
+
+      expect(result.success).toBe(true);
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/data"),
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify(testData),
+        })
+      );
     });
   });
 });
