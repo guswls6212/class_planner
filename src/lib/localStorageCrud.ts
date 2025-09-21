@@ -17,7 +17,6 @@ export interface ClassPlannerData {
   sessions: Session[];
   enrollments: Enrollment[];
   version: string;
-  lastModified: string;
 }
 
 export interface CrudResult<T> {
@@ -35,7 +34,6 @@ const DEFAULT_DATA: ClassPlannerData = {
   sessions: [],
   enrollments: [],
   version: "1.0",
-  lastModified: getKSTTime(),
 };
 
 // ===== 기본 CRUD 함수들 =====
@@ -64,14 +62,69 @@ export const getClassPlannerData = (): ClassPlannerData => {
       return DEFAULT_DATA;
     }
 
+    // 🔄 마이그레이션: 기존 데이터에 타임스탬프 추가
+    const now = getKSTTime();
+
+    const migratedStudents = (parsed.students || []).map((student: any) => ({
+      ...student,
+      createdAt: student.createdAt || now,
+      updatedAt: student.updatedAt || now,
+    }));
+
+    const migratedSubjects = (parsed.subjects || []).map((subject: any) => ({
+      ...subject,
+      createdAt: subject.createdAt || now,
+      updatedAt: subject.updatedAt || now,
+    }));
+
+    const migratedSessions = (parsed.sessions || []).map((session: any) => ({
+      ...session,
+      createdAt: session.createdAt || now,
+      updatedAt: session.updatedAt || now,
+    }));
+
+    const migratedEnrollments = (parsed.enrollments || []).map(
+      (enrollment: any) => ({
+        ...enrollment,
+        createdAt: enrollment.createdAt || now,
+        updatedAt: enrollment.updatedAt || now,
+      })
+    );
+
     const result: ClassPlannerData = {
-      students: parsed.students || [],
-      subjects: parsed.subjects || [],
-      sessions: parsed.sessions || [],
-      enrollments: parsed.enrollments || [],
+      students: migratedStudents,
+      subjects: migratedSubjects,
+      sessions: migratedSessions,
+      enrollments: migratedEnrollments,
       version: parsed.version || "1.0",
-      lastModified: parsed.lastModified || getKSTTime(),
     };
+
+    // 🔄 마이그레이션이 발생했다면 저장
+    const needsMigration =
+      (parsed.students || []).some(
+        (item: any) => !item.createdAt || !item.updatedAt
+      ) ||
+      (parsed.subjects || []).some(
+        (item: any) => !item.createdAt || !item.updatedAt
+      ) ||
+      (parsed.sessions || []).some(
+        (item: any) => !item.createdAt || !item.updatedAt
+      ) ||
+      (parsed.enrollments || []).some(
+        (item: any) => !item.createdAt || !item.updatedAt
+      );
+
+    if (needsMigration) {
+      logger.info("localStorageCrud - 데이터 마이그레이션 수행", {
+        studentCount: result.students.length,
+        subjectCount: result.subjects.length,
+        sessionCount: result.sessions.length,
+        enrollmentCount: result.enrollments.length,
+      });
+
+      // 마이그레이션된 데이터를 다시 저장
+      setClassPlannerData(result);
+    }
 
     logger.debug("localStorageCrud - 데이터 로드 성공", {
       studentCount: result.students.length,
@@ -101,10 +154,9 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
       return false;
     }
 
-    // lastModified 자동 업데이트
+    // 데이터 저장 준비
     const dataToSave = {
       ...data,
-      lastModified: getKSTTime(),
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -114,7 +166,6 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
       subjectCount: dataToSave.subjects.length,
       sessionCount: dataToSave.sessions.length,
       enrollmentCount: dataToSave.enrollments.length,
-      lastModified: dataToSave.lastModified,
     });
 
     // localStorage 변경 이벤트 발생 (다른 탭 동기화)
@@ -170,12 +221,13 @@ export const addStudentToLocal = (name: string): CrudResult<Student> => {
   try {
     const data = getClassPlannerData();
 
-    // 새 학생 생성
+    // 새 학생 생성 (KST 시간으로 생성)
+    const now = getKSTTime();
     const newStudent: Student = {
       id: crypto.randomUUID(),
       name: name.trim(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     // 중복 이름 검사
@@ -250,11 +302,11 @@ export const updateStudentInLocal = (
       }
     }
 
-    // 학생 업데이트
+    // 학생 업데이트 (KST 시간으로 updatedAt 갱신)
     const updatedStudent: Student = {
       ...data.students[studentIndex],
       ...(updates.name && { name: updates.name.trim() }),
-      updatedAt: new Date(),
+      updatedAt: getKSTTime(),
     };
 
     data.students[studentIndex] = updatedStudent;
@@ -386,13 +438,14 @@ export const addSubjectToLocal = (
   try {
     const data = getClassPlannerData();
 
-    // 새 과목 생성
+    // 새 과목 생성 (KST 시간으로 생성)
+    const now = getKSTTime();
     const newSubject: Subject = {
       id: crypto.randomUUID(),
       name: name.trim(),
       color: color,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     // 중복 이름 검사
@@ -468,12 +521,12 @@ export const updateSubjectInLocal = (
       }
     }
 
-    // 과목 업데이트
+    // 과목 업데이트 (KST 시간으로 updatedAt 갱신)
     const updatedSubject: Subject = {
       ...data.subjects[subjectIndex],
       ...(updates.name && { name: updates.name.trim() }),
       ...(updates.color && { color: updates.color }),
-      updatedAt: new Date(),
+      updatedAt: getKSTTime(),
     };
 
     data.subjects[subjectIndex] = updatedSubject;
@@ -614,12 +667,13 @@ export const addSessionToLocal = (
   try {
     const data = getClassPlannerData();
 
-    // 새 세션 생성
+    // 새 세션 생성 (KST 시간으로 생성)
+    const now = getKSTTime();
     const newSession: Session = {
       id: crypto.randomUUID(),
       ...sessionData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     // 데이터 업데이트
@@ -673,11 +727,11 @@ export const updateSessionInLocal = (
       };
     }
 
-    // 세션 업데이트
+    // 세션 업데이트 (KST 시간으로 updatedAt 갱신)
     const updatedSession: Session = {
       ...data.sessions[sessionIndex],
       ...updates,
-      updatedAt: new Date(),
+      updatedAt: getKSTTime(),
     };
 
     data.sessions[sessionIndex] = updatedSession;
@@ -782,13 +836,14 @@ export const addEnrollmentToLocal = (
       };
     }
 
-    // 새 등록 생성
+    // 새 등록 생성 (KST 시간으로 생성)
+    const now = getKSTTime();
     const newEnrollment: Enrollment = {
       id: crypto.randomUUID(),
       studentId,
       subjectId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     // 데이터 업데이트
@@ -849,7 +904,7 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
           return {
             ...session,
             enrollmentIds: session.enrollmentIds.filter((eId) => eId !== id),
-            updatedAt: new Date(),
+            updatedAt: getKSTTime(),
           };
         }
         return session;
@@ -904,7 +959,6 @@ export const updateClassPlannerData = (
     const updatedData: ClassPlannerData = {
       ...currentData,
       ...updates,
-      lastModified: getKSTTime(),
     };
 
     if (setClassPlannerData(updatedData)) {

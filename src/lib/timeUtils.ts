@@ -26,6 +26,36 @@ export function getKSTTime(): string {
 }
 
 /**
+ * 🆕 KST 시간대의 Date 객체를 반환합니다.
+ * localStorage에 저장할 Date 객체 생성용
+ */
+export function getKSTDate(): Date {
+  // Intl.DateTimeFormat을 사용하여 정확한 KST 시간 생성
+  const now = new Date();
+  const kstTimeString = now.toLocaleString("sv-SE", {
+    timeZone: KST_TIMEZONE,
+  }); // 'sv-SE' 로케일은 'YYYY-MM-DD HH:mm:ss' 형식
+
+  return new Date(kstTimeString);
+}
+
+/**
+ * 🆕 Supabase용 KST 타임스탬프 (PostgreSQL timestamptz 호환)
+ * Supabase에 저장할 때 사용
+ */
+export function getKSTTimestampForDB(): string {
+  const now = new Date();
+
+  // KST 시간을 PostgreSQL timestamptz 형식으로 변환
+  const kstTimeString = now.toLocaleString("sv-SE", {
+    timeZone: "Asia/Seoul",
+  });
+
+  // PostgreSQL timestamptz는 'YYYY-MM-DD HH:mm:ss+09:00' 형식을 완전히 지원
+  return kstTimeString + "+09:00";
+}
+
+/**
  * 특정 Date 객체를 한국 시간 ISO 문자열로 변환합니다.
  */
 export function toKSTString(date: Date): string {
@@ -38,13 +68,7 @@ export function toKSTString(date: Date): string {
   return isoString;
 }
 
-/**
- * 현재 한국 시간을 Date 객체로 반환합니다.
- */
-export function getKSTDate(): Date {
-  const now = new Date();
-  return new Date(now.getTime() + KST_OFFSET * 60 * 1000);
-}
+// 이 함수는 위에서 새로 정의된 getKSTDate()로 대체됨
 
 /**
  * ISO 문자열을 한국 시간 기준으로 파싱합니다.

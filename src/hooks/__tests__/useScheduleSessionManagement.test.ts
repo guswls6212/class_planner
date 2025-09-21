@@ -32,8 +32,8 @@ const mockSessions = [
     weekday: 0,
     enrollmentIds: ["enrollment-1"],
     yPosition: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -42,8 +42,8 @@ const mockEnrollments = [
     id: "enrollment-1",
     studentId: "student-1",
     subjectId: "subject-1",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -137,5 +137,3 @@ describe("useScheduleSessionManagement", () => {
     expect(Array.isArray(collidingSessions)).toBe(true);
   });
 });
-
-

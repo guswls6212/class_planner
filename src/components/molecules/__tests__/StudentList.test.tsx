@@ -15,14 +15,14 @@ const mockStudents = [
   {
     id: "student-1",
     name: "김철수",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
   {
     id: "student-2",
     name: "이영희",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -131,8 +131,8 @@ describe("StudentList", () => {
     const manyStudents = Array.from({ length: 10 }, (_, i) => ({
       id: `student-${i}`,
       name: `학생${i}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: "2025-09-21T18:00:00.000+09:00",
+      updatedAt: "2025-09-21T18:00:00.000+09:00",
     }));
 
     expect(() => {
@@ -147,5 +147,3 @@ describe("StudentList", () => {
     }).not.toThrow();
   });
 });
-
-

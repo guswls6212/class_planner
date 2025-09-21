@@ -10,8 +10,8 @@ const mockStudents = [
   {
     id: "student-1",
     name: "김철수",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -85,5 +85,3 @@ describe("ScheduleHeader", () => {
     }).not.toThrow();
   });
 });
-
-

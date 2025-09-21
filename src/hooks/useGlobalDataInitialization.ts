@@ -123,7 +123,6 @@ export const useGlobalDataInitialization = () => {
           sessions: serverData.sessions || [],
           enrollments: serverData.enrollments || [],
           version: serverData.version || "1.0",
-          lastModified: serverData.lastModified || getKSTTime(),
         };
 
         logger.info("서버 데이터를 로컬스토리지에 저장합니다", {
@@ -148,11 +147,17 @@ export const useGlobalDataInitialization = () => {
             defaultSubjectNames: DEFAULT_SUBJECTS.map((s) => s.name),
           });
 
-          // 🔥 4단계: 기본 과목을 포함하여 데이터 업데이트
+          // 🔥 4단계: 기본 과목을 포함하여 데이터 업데이트 (KST 시간으로 타임스탬프 추가)
+          const now = getKSTTime();
+          const subjectsWithTimestamps = DEFAULT_SUBJECTS.map((subject) => ({
+            ...subject,
+            createdAt: now,
+            updatedAt: now,
+          }));
+
           const updatedData = {
             ...classPlannerData,
-            subjects: DEFAULT_SUBJECTS,
-            lastModified: getKSTTime(),
+            subjects: subjectsWithTimestamps,
           };
 
           // 서버에 저장

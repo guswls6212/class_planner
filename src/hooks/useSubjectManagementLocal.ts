@@ -23,8 +23,8 @@ export interface Subject {
   id: string;
   name: string;
   color?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: string; // 🔄 KST ISO 문자열로 변경
+  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 }
 
 export interface UseSubjectManagementLocalReturn {

@@ -23,8 +23,8 @@ export interface Student {
   id: string;
   name: string;
   gender?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: string; // 🔄 KST ISO 문자열로 변경
+  updatedAt?: string; // 🔄 KST ISO 문자열로 변경
 }
 
 export interface UseStudentManagementLocalReturn {

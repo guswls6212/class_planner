@@ -27,7 +27,6 @@ export interface IntegratedData {
   sessions: Session[];
   enrollments: Enrollment[];
   version: string;
-  lastModified: string;
 }
 
 export interface UseIntegratedDataLocalReturn {
@@ -72,7 +71,6 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     sessions: [],
     enrollments: [],
     version: "1.0",
-    lastModified: new Date().toISOString(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -80,7 +80,6 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2025-09-21T16:00:00.000+09:00",
       });
     });
 
@@ -91,7 +90,6 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2025-09-21T15:00:00.000+09:00",
       };
 
       const result = setClassPlannerData(testData);
@@ -136,7 +134,6 @@ describe("localStorage CRUD 유틸리티", () => {
           sessions: [],
           enrollments: [],
           version: "1.0",
-          lastModified: "2025-09-21T15:00:00.000+09:00",
         })
       );
     });
@@ -221,7 +218,6 @@ describe("localStorage CRUD 유틸리티", () => {
           sessions: [],
           enrollments: [],
           version: "1.0",
-          lastModified: "2025-09-21T15:00:00.000+09:00",
         })
       );
     });
@@ -299,7 +295,6 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2025-09-21T16:00:00.000+09:00",
       });
     });
 
@@ -314,7 +309,6 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2025-09-21T16:00:00.000+09:00",
       });
     });
 
@@ -329,7 +323,6 @@ describe("localStorage CRUD 유틸리티", () => {
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2025-09-21T16:00:00.000+09:00",
       };
 
       const result = setClassPlannerData(testData);

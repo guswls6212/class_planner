@@ -66,7 +66,6 @@ const syncToServer = async (data: ClassPlannerData): Promise<SyncResult> => {
       subjectCount: data.subjects.length,
       sessionCount: data.sessions.length,
       enrollmentCount: data.enrollments.length,
-      lastModified: data.lastModified,
     });
 
     // 서버에 데이터 전송
@@ -126,9 +125,13 @@ const processSyncQueue = async (): Promise<void> => {
     const latestItem = syncQueue[syncQueue.length - 1];
     syncQueue = []; // 큐 비우기
 
-    logger.debug("debouncedServerSync - 큐 처리 시작", {
+    logger.info("🚀 debouncedServerSync - 큐 처리 시작", {
       queueLength: syncQueue.length,
       retryCount: latestItem.retryCount,
+      studentCount: latestItem.data.students.length,
+      subjectCount: latestItem.data.subjects.length,
+      sessionCount: latestItem.data.sessions.length,
+      enrollmentCount: latestItem.data.enrollments.length,
     });
 
     const result = await syncToServer(latestItem.data);
@@ -273,9 +276,13 @@ export const forceSyncToServer = async (
     const result = await syncToServer(data);
 
     if (result.success) {
-      // 성공 시 큐에서 해당 데이터 제거
+      // 성공 시 큐에서 해당 데이터 제거 (현재 시간으로 필터링)
+      const currentTime = getKSTTime();
       syncQueue = syncQueue.filter(
-        (item) => item.timestamp !== data.lastModified
+        (item) =>
+          Math.abs(
+            new Date(item.timestamp).getTime() - new Date(currentTime).getTime()
+          ) > 1000
       );
     }
 

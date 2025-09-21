@@ -28,8 +28,8 @@ const mockSubjects = [
     id: "subject-1",
     name: "수학",
     color: "#ff0000",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -37,8 +37,8 @@ const mockStudents = [
   {
     id: "student-1",
     name: "김철수",
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: "2025-09-21T18:00:00.000+09:00",
+    updatedAt: "2025-09-21T18:00:00.000+09:00",
   },
 ];
 
@@ -128,5 +128,3 @@ describe("SessionForm", () => {
     }).not.toThrow();
   });
 });
-
-

@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { getKSTTime } from "@/lib/timeUtils";
+import { getKSTTimestampForDB } from "@/lib/timeUtils";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
           profile_public: false,
           data_sharing: false,
         },
-        updated_at: getKSTTime(),
+        updated_at: getKSTTimestampForDB(),
       })
       .eq("user_id", userId)
       .select()
