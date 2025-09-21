@@ -1,12 +1,13 @@
 /**
- * 🎣 Custom Hook - useStudentManagement (API Routes 기반)
+ * 🎣 Custom Hook - useStudentManagement (캐시 우선 학생 데이터 관리)
  *
- * API Routes를 통해 학생 데이터를 관리하는 훅입니다.
- * Clean Architecture 패턴을 유지하면서 클라이언트-서버 분리를 구현합니다.
+ * localStorage 캐시를 우선적으로 읽어와 즉시 UI에 표시하고,
+ * CRUD 작업은 서버와 동기화하는 효율적인 학생 데이터 관리 훅입니다.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { logger } from "../lib/logger";
+import { useCachedData } from "./useCachedData";
 
 // ===== 타입 정의 =====
 
@@ -29,7 +30,7 @@ export interface UseStudentManagementReturn {
     updates: { name?: string; gender?: string }
   ) => Promise<boolean>;
   deleteStudent: (id: string) => Promise<boolean>;
-  getStudent: (id: string) => Promise<Student | null>;
+  getStudent: (id: string) => Student | null;
 
   // 유틸리티
   refreshStudents: () => Promise<void>;
@@ -42,17 +43,38 @@ export interface UseStudentManagementReturn {
 // ===== 훅 구현 =====
 
 export const useStudentManagementClean = (): UseStudentManagementReturn => {
-  // 상태
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // 🚀 캐시 우선 데이터 관리 훅 사용
+  const {
+    data: cachedData,
+    loading,
+    error,
+    refreshFromServer,
+    clearError: clearCacheError,
+  } = useCachedData();
+
+  // 학생 데이터만 추출
+  const students: Student[] = useMemo(() => {
+    return cachedData.students.map((student) => ({
+      id: student.id,
+      name: student.name,
+      gender: student.gender,
+    }));
+  }, [cachedData.students]);
 
   // API 호출 헬퍼 함수
   const apiCall = async (url: string, options: RequestInit = {}) => {
     try {
+      // 인증 토큰 가져오기
+      const authToken = localStorage.getItem(
+        "sb-kcyqftasdxtqslrhbctv-auth-token"
+      );
+      const authData = authToken ? JSON.parse(authToken) : null;
+      const accessToken = authData?.access_token;
+
       const response = await globalThis.fetch(url, {
         headers: {
           "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
           ...options.headers,
         },
         ...options,
@@ -66,7 +88,11 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
 
       return data;
     } catch (error) {
-      logger.error("API 호출 실패:", undefined, error as Error);
+      logger.error(
+        "useStudentManagement - API 호출 실패:",
+        undefined,
+        error as Error
+      );
       throw error;
     }
   };
@@ -74,58 +100,44 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
   // ===== 학생 목록 조회 =====
 
   const refreshStudents = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // 사용자 ID 가져오기
-      const userId =
-        localStorage.getItem("supabase_user_id") || "default-user-id";
-
-      const data = await apiCall(`/api/students?userId=${userId}`);
-      setStudents(data.data || []);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "학생 목록 조회 실패";
-      setError(errorMessage);
-      logger.error("학생 목록 조회 실패:", undefined, err as Error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    logger.debug("useStudentManagement - 서버에서 학생 데이터 새로고침 요청");
+    await refreshFromServer();
+  }, [refreshFromServer]);
 
   // ===== 학생 추가 =====
 
   const addStudent = useCallback(
     async (name: string): Promise<boolean> => {
       try {
-        setLoading(true);
-        setError(null);
-
         const userId = localStorage.getItem("supabase_user_id");
         if (!userId) {
           throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
+
+        logger.debug("useStudentManagement - 학생 추가 시작", { name, userId });
 
         await apiCall(`/api/students?userId=${userId}`, {
           method: "POST",
           body: JSON.stringify({ name }),
         });
 
-        // 성공 시 목록 새로고침
-        await refreshStudents();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useStudentManagement - 학생 추가 성공", { name });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "학생 추가 실패";
-        setError(errorMessage);
-        logger.error("학생 추가 실패:", undefined, err as Error);
+        logger.error(
+          "useStudentManagement - 학생 추가 실패:",
+          undefined,
+          err as Error
+        );
         return false;
-      } finally {
-        setLoading(false);
       }
     },
-    [refreshStudents]
+    [refreshFromServer]
   );
 
   // ===== 학생 수정 =====
@@ -136,28 +148,39 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
       updates: { name?: string; gender?: string }
     ): Promise<boolean> => {
       try {
-        setLoading(true);
-        setError(null);
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
+        }
 
-        await apiCall(`/api/students/${id}`, {
+        logger.debug("useStudentManagement - 학생 수정 시작", {
+          id,
+          updates,
+          userId,
+        });
+
+        await apiCall(`/api/students/${id}?userId=${userId}`, {
           method: "PUT",
           body: JSON.stringify(updates),
         });
 
-        // 성공 시 목록 새로고침
-        await refreshStudents();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useStudentManagement - 학생 수정 성공", { id, updates });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "학생 수정 실패";
-        setError(errorMessage);
-        logger.error("학생 수정 실패:", undefined, err as Error);
+        logger.error(
+          "useStudentManagement - 학생 수정 실패:",
+          undefined,
+          err as Error
+        );
         return false;
-      } finally {
-        setLoading(false);
       }
     },
-    [refreshStudents]
+    [refreshFromServer]
   );
 
   // ===== 학생 삭제 =====
@@ -165,61 +188,52 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
   const deleteStudent = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        setLoading(true);
-        setError(null);
-
         // localStorage에서 userId 가져오기
         const userId = localStorage.getItem("supabase_user_id");
         if (!userId) {
           throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
 
+        logger.debug("useStudentManagement - 학생 삭제 시작", { id, userId });
+
         await apiCall(`/api/students/${id}?userId=${userId}`, {
           method: "DELETE",
         });
 
-        // 성공 시 목록 새로고침
-        await refreshStudents();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useStudentManagement - 학생 삭제 성공", { id });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "학생 삭제 실패";
-        setError(errorMessage);
-        logger.error("학생 삭제 실패:", undefined, err as Error);
+        logger.error(
+          "useStudentManagement - 학생 삭제 실패:",
+          undefined,
+          err as Error
+        );
         return false;
-      } finally {
-        setLoading(false);
       }
     },
-    [refreshStudents]
+    [refreshFromServer]
   );
 
   // ===== 학생 조회 =====
 
   const getStudent = useCallback(
-    async (id: string): Promise<Student | null> => {
-      try {
-        const data = await apiCall(`/api/students/${id}`);
-        return data.data || null;
-      } catch (err) {
-        logger.error("학생 조회 실패:", undefined, err as Error);
-        return null;
-      }
+    (id: string): Student | null => {
+      const student = students.find((s) => s.id === id);
+      return student || null;
     },
-    []
+    [students]
   );
 
   // ===== 에러 초기화 =====
 
   const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  // ===== 초기 데이터 로드 =====
-
-  useEffect(() => {
-    refreshStudents();
-  }, [refreshStudents]);
+    clearCacheError();
+  }, [clearCacheError]);
 
   // ===== 통계 =====
 

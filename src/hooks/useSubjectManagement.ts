@@ -1,12 +1,13 @@
 /**
- * 🎣 Custom Hook - useSubjectManagement (API Routes 기반)
+ * 🎣 Custom Hook - useSubjectManagement (캐시 우선 과목 데이터 관리)
  *
- * API Routes를 통해 과목 데이터를 관리하는 훅입니다.
- * Clean Architecture 패턴을 유지하면서 클라이언트-서버 분리를 구현합니다.
+ * localStorage 캐시를 우선적으로 읽어와 즉시 UI에 표시하고,
+ * CRUD 작업은 서버와 동기화하는 효율적인 과목 데이터 관리 훅입니다.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { logger } from "../lib/logger";
+import { useCachedData } from "./useCachedData";
 
 // ===== 타입 정의 =====
 
@@ -28,7 +29,7 @@ export interface UseSubjectManagementReturn {
     updates: { name?: string; color?: string }
   ) => Promise<boolean>;
   deleteSubject: (id: string) => Promise<boolean>;
-  getSubject: (id: string) => Promise<Subject | null>;
+  getSubject: (id: string) => Subject | null;
 
   // 유틸리티
   refreshSubjects: () => Promise<void>;
@@ -55,16 +56,40 @@ const DEFAULT_SUBJECTS: Subject[] = [
 // ===== 훅 구현 =====
 
 export const useSubjectManagement = (): UseSubjectManagementReturn => {
-  // 상태
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [errorMessage, setErrorMessage] = useState<string>("");
+  // 🚀 캐시 우선 데이터 관리 훅 사용
+  const {
+    data: cachedData,
+    error,
+    refreshFromServer,
+    clearError: clearCacheError,
+  } = useCachedData();
+
+  // 과목 데이터만 추출
+  const subjects: Subject[] = useMemo(() => {
+    return cachedData.subjects.map((subject) => ({
+      id: subject.id,
+      name: subject.name,
+      color: subject.color || "#3b82f6", // 기본 색상 제공
+    }));
+  }, [cachedData.subjects]);
+
+  // 에러 메시지 변환
+  const errorMessage = error || "";
 
   // API 호출 헬퍼 함수
   const apiCall = async (url: string, options: RequestInit = {}) => {
     try {
+      // 인증 토큰 가져오기
+      const authToken = localStorage.getItem(
+        "sb-kcyqftasdxtqslrhbctv-auth-token"
+      );
+      const authData = authToken ? JSON.parse(authToken) : null;
+      const accessToken = authData?.access_token;
+
       const response = await globalThis.fetch(url, {
         headers: {
           "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
           ...options.headers,
         },
         ...options,
@@ -78,7 +103,11 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
 
       return data;
     } catch (error) {
-      logger.error("API 호출 실패:", undefined, error as Error);
+      logger.error(
+        "useSubjectManagement - API 호출 실패:",
+        undefined,
+        error as Error
+      );
       throw error;
     }
   };
@@ -86,62 +115,48 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
   // ===== 과목 목록 조회 =====
 
   const refreshSubjects = useCallback(async () => {
-    try {
-      setErrorMessage("");
-
-      // 사용자 ID 가져오기
-      const userId =
-        localStorage.getItem("supabase_user_id") || "default-user-id";
-
-      const data = await apiCall(`/api/subjects?userId=${userId}`);
-      const apiSubjects = data.data || [];
-
-      // API에서 과목이 없으면 기본 과목 사용
-      if (apiSubjects.length === 0) {
-        setSubjects(DEFAULT_SUBJECTS);
-      } else {
-        setSubjects(apiSubjects);
-      }
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "과목 목록 조회 실패";
-      setErrorMessage(errorMessage);
-      logger.error("과목 목록 조회 실패:", undefined, err as Error);
-
-      // API 호출 실패 시 기본 과목 사용
-      setSubjects(DEFAULT_SUBJECTS);
-    }
-  }, []);
+    logger.debug("useSubjectManagement - 서버에서 과목 데이터 새로고침 요청");
+    await refreshFromServer();
+  }, [refreshFromServer]);
 
   // ===== 과목 추가 =====
 
   const addSubject = useCallback(
     async (name: string, color: string): Promise<boolean> => {
       try {
-        setErrorMessage("");
-
         const userId = localStorage.getItem("supabase_user_id");
         if (!userId) {
           throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
         }
+
+        logger.debug("useSubjectManagement - 과목 추가 시작", {
+          name,
+          color,
+          userId,
+        });
 
         await apiCall(`/api/subjects?userId=${userId}`, {
           method: "POST",
           body: JSON.stringify({ name, color }),
         });
 
-        // 성공 시 목록 새로고침
-        await refreshSubjects();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useSubjectManagement - 과목 추가 성공", { name, color });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "과목 추가 실패";
-        setErrorMessage(errorMessage);
-        logger.error("과목 추가 실패:", undefined, err as Error);
+        logger.error(
+          "useSubjectManagement - 과목 추가 실패:",
+          undefined,
+          err as Error
+        );
         return false;
       }
     },
-    [refreshSubjects]
+    [refreshFromServer]
   );
 
   // ===== 과목 수정 =====
@@ -152,25 +167,39 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
       updates: { name?: string; color?: string }
     ): Promise<boolean> => {
       try {
-        setErrorMessage("");
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
+        }
 
-        await apiCall(`/api/subjects/${id}`, {
+        logger.debug("useSubjectManagement - 과목 수정 시작", {
+          id,
+          updates,
+          userId,
+        });
+
+        await apiCall(`/api/subjects/${id}?userId=${userId}`, {
           method: "PUT",
           body: JSON.stringify(updates),
         });
 
-        // 성공 시 목록 새로고침
-        await refreshSubjects();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useSubjectManagement - 과목 수정 성공", { id, updates });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "과목 수정 실패";
-        setErrorMessage(errorMessage);
-        logger.error("과목 수정 실패:", undefined, err as Error);
+        logger.error(
+          "useSubjectManagement - 과목 수정 실패:",
+          undefined,
+          err as Error
+        );
         return false;
       }
     },
-    [refreshSubjects]
+    [refreshFromServer]
   );
 
   // ===== 과목 삭제 =====
@@ -178,52 +207,51 @@ export const useSubjectManagement = (): UseSubjectManagementReturn => {
   const deleteSubject = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        setErrorMessage("");
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
+        }
 
-        await apiCall(`/api/subjects/${id}`, {
+        logger.debug("useSubjectManagement - 과목 삭제 시작", { id, userId });
+
+        await apiCall(`/api/subjects/${id}?userId=${userId}`, {
           method: "DELETE",
         });
 
-        // 성공 시 목록 새로고침
-        await refreshSubjects();
+        // 성공 시 캐시된 데이터 새로고침
+        await refreshFromServer();
+
+        logger.info("useSubjectManagement - 과목 삭제 성공", { id });
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "과목 삭제 실패";
-        setErrorMessage(errorMessage);
-        logger.error("과목 삭제 실패:", undefined, err as Error);
+        logger.error(
+          "useSubjectManagement - 과목 삭제 실패:",
+          undefined,
+          err as Error
+        );
         return false;
       }
     },
-    [refreshSubjects]
+    [refreshFromServer]
   );
 
   // ===== 과목 조회 =====
 
   const getSubject = useCallback(
-    async (id: string): Promise<Subject | null> => {
-      try {
-        const data = await apiCall(`/api/subjects/${id}`);
-        return data.data || null;
-      } catch (err) {
-        logger.error("과목 조회 실패:", undefined, err as Error);
-        return null;
-      }
+    (id: string): Subject | null => {
+      const subject = subjects.find((s) => s.id === id);
+      return subject || null;
     },
-    []
+    [subjects]
   );
 
   // ===== 에러 초기화 =====
 
   const clearError = useCallback(() => {
-    setErrorMessage("");
-  }, []);
-
-  // ===== 초기 데이터 로드 =====
-
-  useEffect(() => {
-    refreshSubjects();
-  }, [refreshSubjects]);
+    clearCacheError();
+  }, [clearCacheError]);
 
   // ===== 통계 =====
 

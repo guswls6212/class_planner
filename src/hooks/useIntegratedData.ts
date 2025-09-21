@@ -1,15 +1,16 @@
 /**
- * 🎣 Custom Hook - useIntegratedData (JSONB 기반 통합 데이터 관리)
+ * 🎣 Custom Hook - useIntegratedData (캐시 우선 통합 데이터 관리)
  *
- * JSONB 구조를 활용하여 students, subjects, sessions, enrollments를
- * 한 번의 API 호출로 효율적으로 관리하는 훅입니다.
+ * localStorage 캐시를 우선적으로 읽어와 즉시 UI에 표시하고,
+ * 백그라운드에서 서버 데이터와 동기화하는 효율적인 데이터 관리 훅입니다.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { logger } from "../lib/logger";
 import type { Enrollment, Session, Student, Subject } from "../lib/planner";
 import { getKSTTime } from "../lib/timeUtils";
 import { migrateSessionsToLogicalPosition } from "../lib/yPositionMigration";
+import { useCachedData } from "./useCachedData";
 
 // ===== 타입 정의 =====
 
@@ -43,110 +44,42 @@ export interface UseIntegratedDataReturn {
 // ===== 훅 구현 =====
 
 export const useIntegratedData = (): UseIntegratedDataReturn => {
-  // 상태
-  const [data, setData] = useState<IntegratedData>({
-    students: [],
-    subjects: [],
-    sessions: [],
-    enrollments: [],
-    version: "1.0",
-    lastModified: getKSTTime(),
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // 🚀 캐시 우선 데이터 관리 훅 사용
+  const {
+    data: cachedData,
+    loading,
+    error,
+    isFromCache,
+    refreshFromServer,
+    clearError: clearCacheError,
+  } = useCachedData();
 
-  // API 호출 헬퍼 함수
-  const apiCall = async (url: string, options: RequestInit = {}) => {
-    try {
-      // 인증 토큰 가져오기
-      const authToken = localStorage.getItem(
-        "sb-kcyqftasdxtqslrhbctv-auth-token"
-      );
-      const authData = authToken ? JSON.parse(authToken) : null;
-      const accessToken = authData?.access_token;
-
-      logger.debug("토큰 상태 확인", {
-        authToken: authToken ? "존재" : "없음",
-        authData: authData ? "파싱됨" : "파싱 실패",
-        accessToken: accessToken ? "존재" : "없음",
-        tokenPreview: accessToken
-          ? accessToken.substring(0, 20) + "..."
-          : "없음",
-      });
-
-      const response = await globalThis.fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-          ...options.headers,
-        },
-        ...options,
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok || !responseData.success) {
-        throw new Error(responseData.error || `HTTP ${response.status}`);
-      }
-
-      return responseData;
-    } catch (error) {
-      logger.error("API 호출 실패:", undefined, error as Error);
-      throw error;
-    }
+  // IntegratedData 형식으로 변환
+  const data: IntegratedData = {
+    students: cachedData.students,
+    subjects: cachedData.subjects,
+    sessions: cachedData.sessions,
+    enrollments: cachedData.enrollments,
+    version: cachedData.version,
+    lastModified: cachedData.lastModified,
   };
 
-  // ===== 통합 데이터 조회 =====
-
+  // refreshData는 서버에서 최신 데이터를 가져오는 함수로 매핑
   const refreshData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // 사용자 ID 가져오기
-      const userId =
-        localStorage.getItem("supabase_user_id") || "default-user-id";
-      logger.debug("useIntegratedData - 사용자 ID:", { userId });
-
-      const responseData = await apiCall(`/api/data?userId=${userId}`);
-      const apiData = responseData.data || {};
-
-      logger.debug("useIntegratedData - API 응답:", { apiData });
-
-      // 세션 데이터 마이그레이션 (픽셀 → 논리적 위치)
-      const migratedSessions = migrateSessionsToLogicalPosition(
-        apiData.sessions || []
-      );
-
-      setData({
-        students: apiData.students || [],
-        subjects: apiData.subjects || [],
-        sessions: migratedSessions,
-        enrollments: apiData.enrollments || [],
-        version: apiData.version || "1.0",
-        lastModified: apiData.lastModified || getKSTTime(),
-      });
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "통합 데이터 조회 실패";
-      setError(errorMessage);
-      logger.error("통합 데이터 조회 실패:", undefined, err as Error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    logger.debug("useIntegratedData - 서버에서 데이터 새로고침 요청");
+    await refreshFromServer();
+  }, [refreshFromServer]);
 
   // ===== 통합 데이터 업데이트 =====
 
   const updateData = useCallback(
     async (newData: Partial<IntegratedData>): Promise<boolean> => {
       try {
-        setLoading(true);
-        setError(null);
-
         // 사용자 ID 가져오기
-        const userId =
-          localStorage.getItem("supabase_user_id") || "default-user-id";
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 다시 로그인해주세요.");
+        }
 
         // 새 데이터에 세션이 포함되어 있으면 마이그레이션 적용
         const migratedNewData = {
@@ -162,38 +95,66 @@ export const useIntegratedData = (): UseIntegratedDataReturn => {
           lastModified: getKSTTime(),
         };
 
-        const responseData = await apiCall(`/api/data?userId=${userId}`, {
+        logger.debug("useIntegratedData - 데이터 업데이트 시작", {
+          userId,
+          updatedData: {
+            studentCount: updatedData.students.length,
+            subjectCount: updatedData.subjects.length,
+            sessionCount: updatedData.sessions.length,
+            enrollmentCount: updatedData.enrollments.length,
+          },
+        });
+
+        // 인증 토큰 가져오기
+        const authToken = localStorage.getItem(
+          "sb-kcyqftasdxtqslrhbctv-auth-token"
+        );
+        const authData = authToken ? JSON.parse(authToken) : null;
+        const accessToken = authData?.access_token;
+
+        // 서버에 업데이트 요청
+        const response = await globalThis.fetch(`/api/data?userId=${userId}`, {
           method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+          },
           body: JSON.stringify(updatedData),
         });
 
-        // 성공 시 로컬 상태 업데이트
-        setData(updatedData);
+        const responseData = await response.json();
+
+        if (!response.ok || !responseData.success) {
+          throw new Error(responseData.error || `HTTP ${response.status}`);
+        }
+
+        // 성공 시 localStorage 캐시도 업데이트
+        localStorage.setItem("classPlannerData", JSON.stringify(updatedData));
+
+        // 서버에서 최신 데이터 다시 로드
+        await refreshFromServer();
+
+        logger.info("useIntegratedData - 데이터 업데이트 성공");
         return true;
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "통합 데이터 업데이트 실패";
-        setError(errorMessage);
-        logger.error("통합 데이터 업데이트 실패:", undefined, err as Error);
+        logger.error(
+          "useIntegratedData - 데이터 업데이트 실패:",
+          undefined,
+          err as Error
+        );
         return false;
-      } finally {
-        setLoading(false);
       }
     },
-    [data]
+    [data, refreshFromServer]
   );
 
   // ===== 에러 초기화 =====
 
   const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  // ===== 초기 데이터 로드 =====
-
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    clearCacheError();
+  }, [clearCacheError]);
 
   // ===== 통계 =====
 
