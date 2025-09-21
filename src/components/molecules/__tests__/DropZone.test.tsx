@@ -64,7 +64,7 @@ describe("DropZone Component", () => {
     fireEvent(dropzone, dropEvent);
 
     expect(mockOnDrop).toHaveBeenCalledTimes(1);
-    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", "enrollment-1");
+    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", "enrollment-1", 1);
   });
 
   it("빈 공간 클릭 이벤트가 올바르게 처리되어야 한다", () => {
@@ -77,7 +77,7 @@ describe("DropZone Component", () => {
     fireEvent.click(dropzone);
 
     expect(mockOnEmptySpaceClick).toHaveBeenCalledTimes(1);
-    expect(mockOnEmptySpaceClick).toHaveBeenCalledWith(0, "09:00");
+    expect(mockOnEmptySpaceClick).toHaveBeenCalledWith(0, "09:00", 1);
   });
 
   it("style prop이 올바르게 적용되어야 한다", () => {
@@ -254,7 +254,7 @@ describe("DropZone Component", () => {
     fireEvent(dropzone, dropEvent);
 
     expect(mockOnDrop).toHaveBeenCalledTimes(1);
-    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", longEnrollmentId);
+    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", longEnrollmentId, 1);
   });
 
   it("특수 문자가 포함된 enrollmentId를 안전하게 처리해야 한다", () => {
@@ -275,7 +275,7 @@ describe("DropZone Component", () => {
     fireEvent(dropzone, dropEvent);
 
     expect(mockOnDrop).toHaveBeenCalledTimes(1);
-    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", specialEnrollmentId);
+    expect(mockOnDrop).toHaveBeenCalledWith(0, "09:00", specialEnrollmentId, 1);
   });
 
   it("연속된 드래그 이벤트를 안전하게 처리해야 한다", () => {

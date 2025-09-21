@@ -67,9 +67,13 @@ export async function PUT(
     }
 
     const userId = "default-user-id";
-    const updatedStudent = await getStudentService().updateStudent(id, {
-      name,
-    }, userId);
+    const updatedStudent = await getStudentService().updateStudent(
+      id,
+      {
+        name,
+      },
+      userId
+    );
 
     return NextResponse.json({
       success: true,
@@ -92,6 +96,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
+    // URL에서 userId 추출
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Student ID is required" },
@@ -99,7 +107,14 @@ export async function DELETE(
       );
     }
 
-    await getStudentService().deleteStudent(id);
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await getStudentService().deleteStudent(id, userId);
     return NextResponse.json({
       success: true,
       message: "Student deleted successfully",
@@ -112,4 +127,3 @@ export async function DELETE(
     );
   }
 }
-

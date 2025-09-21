@@ -1,8 +1,8 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
 // import { trackDatabaseError } from "@/lib/errorTracker";
-import { NextRequest, NextResponse } from "next/server";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
+import { NextRequest, NextResponse } from "next/server";
 
 // Create a function to get the session service (for testing purposes)
 export function getSessionService() {
@@ -12,9 +12,9 @@ export function getSessionService() {
 
 export async function GET(request: NextRequest) {
   try {
-// CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-// CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-// CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -117,9 +117,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-// CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 

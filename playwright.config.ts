@@ -6,9 +6,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  reporter: [["html", { open: "never" }], ["list"]],
   use: {
-    baseURL: "http://localhost:3001", // 포트 3001로 변경 (실제 개발 서버 포트)
+    baseURL: "http://localhost:3000", // 실제 개발 서버 포트
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure", // 실패 시 비디오 녹화
@@ -39,8 +39,8 @@ export default defineConfig({
 
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:3001", // 포트 3001로 변경
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000, // 2분 타임아웃
+    url: "http://localhost:3000", // 실제 개발 서버 포트
+    reuseExistingServer: true, // 항상 기존 서버 재사용
+    timeout: 30 * 1000, // 30초 타임아웃으로 단축
   },
 });

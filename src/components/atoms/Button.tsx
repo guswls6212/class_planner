@@ -3,6 +3,7 @@ import styles from "./Button.module.css";
 
 interface ButtonProps {
   children: React.ReactNode;
+  type?: "button" | "submit" | "reset";
   variant?: "primary" | "secondary" | "danger" | "transparent";
   size?: "small" | "medium" | "large";
   disabled?: boolean;
@@ -20,6 +21,7 @@ interface ButtonProps {
 
 export const Button: React.FC<ButtonProps> = ({
   children,
+  type = "button",
   variant = "primary",
   size = "medium",
   disabled = false,
@@ -46,6 +48,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      type={type}
       className={buttonClasses}
       onClick={onClick}
       onKeyDown={onKeyDown}

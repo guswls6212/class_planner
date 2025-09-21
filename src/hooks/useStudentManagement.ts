@@ -168,7 +168,13 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
         setLoading(true);
         setError(null);
 
-        await apiCall(`/api/students/${id}`, {
+        // localStorage에서 userId 가져오기
+        const userId = localStorage.getItem("supabase_user_id");
+        if (!userId) {
+          throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
+        }
+
+        await apiCall(`/api/students/${id}?userId=${userId}`, {
           method: "DELETE",
         });
 

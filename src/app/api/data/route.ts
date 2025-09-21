@@ -154,9 +154,9 @@ export const GET = withApiLogging(async (request: NextRequest) => {
 
 export async function PUT(request: NextRequest) {
   try {
-    // CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 

@@ -90,6 +90,37 @@
   - `src/lib/logoutUtils.ts`
   - `src/components/atoms/LoginButton.tsx`
 
+#### 10. **E2E 테스트 시스템 안정화 및 구조 개선**
+
+- **현재 상태**:
+  - E2E 테스트가 브라우저별로 불안정함
+  - 인증 토큰 방식으로 일부 성공하지만 일관성 부족
+  - HTML 리포트 서버 자동 종료 문제 해결됨
+- **목표**:
+  - 모든 브라우저에서 일관되게 작동하는 안정적인 E2E 테스트 시스템 구축
+  - 인증 우회 로직 표준화 및 단순화
+  - E2E 테스트 시나리오 확장 (현재 25개 → 전체 기능 커버)
+- **구현 계획**:
+  - **인증 시스템 개선**:
+    - `AuthGuard.tsx`에서 E2E 모드 감지 로직 단순화
+    - 실제 Supabase 토큰 키 (`sb-kcyqftasdxtqslrhbctv-auth-token`) 사용 표준화
+    - JWT 토큰과 사용자 ID 일치성 보장
+  - **테스트 시나리오 확장**:
+    - 드래그 앤 드롭 기능 테스트 (현재 Unit/Integration으로만 커버)
+    - 세션 추가/편집 모달 테스트
+    - PDF 다운로드 기능 테스트
+    - 복잡한 반응형 디자인 테스트
+  - **테스트 환경 최적화**:
+    - Playwright 설정 개선 (포트 충돌 방지)
+    - 브라우저별 렌더링 차이 대응 로직 표준화
+    - 테스트 데이터 격리 및 정리 자동화
+- **적용 파일**:
+  - `tests/e2e/final-working-test.spec.ts` - 현재 성공하는 테스트 기반 확장
+  - `src/components/atoms/AuthGuard.tsx` - E2E 인증 로직 개선
+  - `playwright.config.ts` - 설정 최적화
+  - `package.json` - E2E 스크립트 정리
+  - `scripts/pre-pr-check.sh`, `scripts/pre-deploy-check.sh` - E2E 통합
+
 ---
 
 ## 📁 **새로 생성된 파일들**

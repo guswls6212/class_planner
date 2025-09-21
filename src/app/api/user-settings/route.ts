@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-      logger.error("Error fetching user settings:", undefined, error as Error);
+    logger.error("Error fetching user settings:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch user settings" },
       {
@@ -118,9 +118,9 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
       message: "User settings updated successfully",
     });
   } catch (error) {
-      logger.error("Error updating user settings:", undefined, error as Error);
+    logger.error("Error updating user settings:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to update user settings" },
       { status: 500 }

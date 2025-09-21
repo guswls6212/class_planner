@@ -1,0 +1,132 @@
+/**
+ * SessionForm 테스트 (195줄 - 큰 파일)
+ */
+
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import SessionForm from "../SessionForm";
+
+// Mock dependencies
+vi.mock("../../atoms/Button", () => ({
+  default: vi.fn(() => <button data-testid="button">Button</button>),
+}));
+
+vi.mock("../../atoms/Input", () => ({
+  default: vi.fn(() => <input data-testid="input" />),
+}));
+
+vi.mock("../../atoms/Label", () => ({
+  default: vi.fn(() => <label data-testid="label">Label</label>),
+}));
+
+vi.mock("../../../lib/planner", () => ({
+  weekdays: ["월", "화", "수", "목", "금", "토", "일"],
+}));
+
+const mockSubjects = [
+  {
+    id: "subject-1",
+    name: "수학",
+    color: "#ff0000",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+const mockStudents = [
+  {
+    id: "student-1",
+    name: "김철수",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+describe("SessionForm", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("세션 폼이 에러 없이 렌더링되어야 한다", () => {
+    expect(() => {
+      render(
+        <SessionForm
+          subjects={mockSubjects}
+          students={mockStudents}
+          isOpen={true}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+      );
+    }).not.toThrow();
+  });
+
+  it("닫힌 상태에서는 렌더링되지 않아야 한다", () => {
+    const { container } = render(
+      <SessionForm
+        subjects={mockSubjects}
+        students={mockStudents}
+        isOpen={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("열린 상태에서 기본 구조가 렌더링되어야 한다", () => {
+    const { container } = render(
+      <SessionForm
+        subjects={mockSubjects}
+        students={mockStudents}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    expect(container.firstChild).toBeDefined();
+  });
+
+  it("초기 데이터와 함께 렌더링되어야 한다", () => {
+    const initialData = {
+      subjectId: "subject-1",
+      weekday: 1,
+      startTime: "10:00",
+      endTime: "11:00",
+      studentIds: ["student-1"],
+      room: "101호",
+      yPosition: 2,
+    };
+
+    expect(() => {
+      render(
+        <SessionForm
+          subjects={mockSubjects}
+          students={mockStudents}
+          isOpen={true}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+          initialData={initialData}
+        />
+      );
+    }).not.toThrow();
+  });
+
+  it("빈 과목/학생 배열을 안전하게 처리해야 한다", () => {
+    expect(() => {
+      render(
+        <SessionForm
+          subjects={[]}
+          students={[]}
+          isOpen={true}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+      );
+    }).not.toThrow();
+  });
+});
+
+

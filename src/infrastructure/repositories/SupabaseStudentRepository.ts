@@ -170,18 +170,13 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, userId?: string): Promise<void> {
     try {
       const serviceRoleClient = this.createServiceRoleClient();
 
-      // 현재 사용자 ID 가져오기 (localStorage에서)
-      const userId =
-        typeof window !== "undefined"
-          ? localStorage.getItem("supabase_user_id")
-          : null;
-
+      // userId가 제공되지 않으면 에러
       if (!userId) {
-        throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
+        throw new Error("사용자 ID가 필요합니다.");
       }
 
       // 기존 데이터 조회

@@ -103,9 +103,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -147,9 +147,9 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
@@ -165,10 +165,14 @@ export async function PUT(request: NextRequest) {
 
     // 간단한 userId 추출 (실제 프로젝트에서는 적절한 인증 로직 사용)
     const userId = "default-user-id";
-    const updatedSubject = await getSubjectService().updateSubject(id, {
-      name,
-      color,
-    }, userId);
+    const updatedSubject = await getSubjectService().updateSubject(
+      id,
+      {
+        name,
+        color,
+      },
+      userId
+    );
     return NextResponse.json({ success: true, data: updatedSubject });
   } catch (error) {
     logger.error("Error updating subject:", undefined, error as Error);
@@ -181,9 +185,9 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // CORS 검증
+    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
-    if (corsResponse.status !== 200) {
+    if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 

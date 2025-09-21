@@ -2,6 +2,8 @@ import React from "react";
 import styles from "./Input.module.css";
 
 interface InputProps {
+  id?: string;
+  type?: string;
   placeholder?: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -9,11 +11,14 @@ interface InputProps {
   size?: "small" | "medium" | "large";
   error?: boolean;
   disabled?: boolean;
+  required?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
 
 export const Input: React.FC<InputProps> = ({
+  id,
+  type = "text",
   placeholder,
   value,
   onChange,
@@ -21,6 +26,7 @@ export const Input: React.FC<InputProps> = ({
   size = "medium",
   error = false,
   disabled = false,
+  required = false,
   className = "",
   style = {},
 }) => {
@@ -36,11 +42,14 @@ export const Input: React.FC<InputProps> = ({
 
   return (
     <input
+      id={id}
+      type={type}
       placeholder={placeholder}
       value={value}
       onChange={onChange}
       onKeyPress={onKeyPress}
       disabled={disabled}
+      required={required}
       className={inputClasses}
       style={style}
     />

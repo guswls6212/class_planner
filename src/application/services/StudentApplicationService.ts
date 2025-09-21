@@ -1,6 +1,6 @@
 import { Student } from "@/domain/entities/Student";
-import { logger } from "../../lib/logger";
 import { StudentRepository } from "@/infrastructure/interfaces";
+import { logger } from "../../lib/logger";
 
 export class StudentApplicationServiceImpl {
   constructor(private studentRepository: StudentRepository) {}
@@ -75,9 +75,9 @@ export class StudentApplicationServiceImpl {
     }
   }
 
-  async deleteStudent(id: string): Promise<void> {
+  async deleteStudent(id: string, userId: string): Promise<void> {
     try {
-      return await this.studentRepository.delete(id);
+      return await this.studentRepository.delete(id, userId);
     } catch (error) {
       logger.error("학생 삭제 중 에러 발생:", undefined, error as Error);
       throw error;

@@ -301,3 +301,4 @@ describe("TimeTableRow Component", () => {
     expect(sessionElement).toBeInTheDocument();
   });
 });
+

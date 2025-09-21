@@ -95,10 +95,24 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const userId = "default-user-id";
-    const updatedStudent = await getStudentService().updateStudent(id, {
-      name,
-    }, userId);
+    // URL에서 userId 추출
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const updatedStudent = await getStudentService().updateStudent(
+      id,
+      {
+        name,
+      },
+      userId
+    );
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
     logger.error("Error updating student:", undefined, error as Error);
@@ -113,6 +127,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const userId = searchParams.get("userId");
 
     if (!id) {
       return NextResponse.json(
@@ -121,7 +136,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await getStudentService().deleteStudent(id);
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await getStudentService().deleteStudent(id, userId);
     return NextResponse.json({
       success: true,
       message: "Student deleted successfully",
