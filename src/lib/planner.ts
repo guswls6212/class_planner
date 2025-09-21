@@ -1,21 +1,38 @@
-export type Student = { id: string; name: string; gender?: string };
-export type Subject = { id: string; name: string; color?: string };
+export type Student = {
+  id: string;
+  name: string;
+  gender?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type Subject = {
+  id: string;
+  name: string;
+  color?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
 
 // 🆕 그룹 수업을 위한 새로운 타입 정의
 export type Enrollment = {
   id: string;
   studentId: string;
   subjectId: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type Session = {
   id: string; // 세션 고유 식별자
-  enrollmentIds: string[]; // 🆕 여러 수강신청 ID (그룹 수업 지원)
+  enrollmentIds?: string[]; // 🆕 여러 수강신청 ID (그룹 수업 지원)
   weekday: number; // 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
   startsAt: string; // 시작 시간 (HH:MM 형식)
   endsAt: string; // 종료 시간 (HH:MM 형식)
   room?: string; // 강의실 (선택적)
   yPosition?: number; // 🆕 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입
@@ -74,7 +91,7 @@ export function canFormGroupSession(
       session.startsAt === candidate.startsAt &&
       session.endsAt === candidate.endsAt &&
       // 과목이 같은지 확인 (enrollmentIds를 통해)
-      session.enrollmentIds.some((enrollmentId) => {
+      (session.enrollmentIds || []).some((enrollmentId) => {
         const enrollment = enrollments.find((e) => e.id === enrollmentId);
         return enrollment?.subjectId === candidate.subjectId;
       })
@@ -104,10 +121,11 @@ export function mergeIntoGroupSession(
   }
 
   // 중복 enrollment 방지
-  if (!existingSession.enrollmentIds.includes(newEnrollment.id)) {
+  const existingIds = existingSession.enrollmentIds || [];
+  if (!existingIds.includes(newEnrollment.id)) {
     return {
       ...existingSession,
-      enrollmentIds: [...existingSession.enrollmentIds, newEnrollment.id],
+      enrollmentIds: [...existingIds, newEnrollment.id],
     };
   }
 

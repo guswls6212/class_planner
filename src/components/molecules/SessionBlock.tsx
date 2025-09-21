@@ -10,7 +10,7 @@ import {
 // 로컬 타입 정의 (SessionBlock.utils.ts와 동일)
 type Session = {
   id: string;
-  enrollmentIds: string[];
+  enrollmentIds?: string[];
   weekday: number;
   startsAt: string;
   endsAt: string;

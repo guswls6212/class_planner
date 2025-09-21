@@ -52,8 +52,16 @@ class-planner/
 │   │   ├── constants/        # 공통 상수
 │   │   └── types/           # 공통 타입 정의
 │   ├── hooks/                # 커스텀 훅
+│   │   ├── useStudentManagementLocal.ts  # 🆕 localStorage 직접 조작 학생 관리
+│   │   ├── useSubjectManagementLocal.ts  # 🆕 localStorage 직접 조작 과목 관리
+│   │   ├── useIntegratedDataLocal.ts     # 🆕 localStorage 직접 조작 통합 데이터
+│   │   ├── useGlobalDataInitialization.ts # 🔄 스마트 초기화 (보안 강화)
+│   │   ├── useCachedData.ts              # 캐시 우선 데이터 관리 (레거시)
+│   │   ├── useStudentManagement.ts       # 기존 학생 관리 (레거시)
+│   │   ├── useSubjectManagement.ts       # 기존 과목 관리 (레거시)
+│   │   ├── useIntegratedData.ts          # 기존 통합 데이터 (레거시)
+│   │   └── [기타 훅들...]               # 기타 유틸리티 훅들
 │   ├── contexts/             # React Context (ThemeContext)
-│   ├── lib/                  # 유틸리티 함수
 │   ├── middleware/           # Next.js 미들웨어
 │   ├── types/                # 레거시 타입 정의
 │   ├── utils/                # API 클라이언트 및 유틸리티
@@ -208,6 +216,46 @@ npm run pre-deploy
 npm run prepare-commit
 ```
 
+## 🚀 **NEW** - localStorage 직접 조작 시스템 (2025-09-21 구현)
+
+### **📊 시스템 아키텍처**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   사용자 액션   │ -> │  localStorage   │ -> │   즉시 UI 반영  │
+│  (ADD/UPDATE)   │    │   직접 조작     │    │    (⚡ 0ms)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │ debounce 서버   │
+                       │ 동기화 (1분마다) │
+                       └─────────────────┘
+```
+
+### **🔄 데이터 흐름**
+
+1. **READ**: localStorage → 즉시 UI 표시 ⚡
+2. **WRITE**: localStorage 즉시 업데이트 → UI 반영 → 1분 후 서버 동기화
+3. **초기화**: 스마트 로딩 (캐시 우선, 필요시에만 서버 호출)
+4. **보안**: 로그아웃 시 완전한 데이터 삭제, 사용자 간 격리
+
+### **🛡️ 보안 특징**
+
+- **사용자 간 데이터 완전 격리**
+- **로그아웃 시 민감 데이터 완전 삭제**
+- **UI 설정 보존** (테마, 언어 등)
+- **다른 사용자 로그인 시 이전 데이터 자동 삭제**
+
+### **⚡ 성능 특징**
+
+- **즉시 반응**: localStorage 직접 조작으로 0ms 응답
+- **효율적 동기화**: debounce로 서버 부하 최소화
+- **스마트 로딩**: 불필요한 API 호출 제거
+- **메모리 최적화**: 통합 데이터 구조로 메모리 효율성
+
+---
+
 ## 📚 관련 문서
 
 - [개발 워크플로우 가이드](./DEVELOPMENT_WORKFLOW.md)
@@ -217,6 +265,7 @@ npm run prepare-commit
 - [환경 설정 가이드](./ENVIRONMENT_SETUP.md)
 - [Supabase 가이드](./SUPABASE_JSONB_GUIDE.md)
 - [문서 가이드](./README.md)
+- [Future TODO](./FUTURE_TODO.md) - 🆕 다음 단계 개선 계획
 
 ---
 

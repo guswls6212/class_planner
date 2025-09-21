@@ -4,7 +4,7 @@ import type { Subject as DomainSubject } from "@/shared/types/DomainTypes";
 import React, { useEffect, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
-import { useSubjectManagement } from "../../hooks/useSubjectManagement";
+import { useSubjectManagementLocal } from "../../hooks/useSubjectManagementLocal";
 import { logger } from "../../lib/logger";
 
 const SELECTED_SUBJECT_KEY = "selectedSubjectId";
@@ -20,7 +20,7 @@ const SubjectsPage: React.FC = () => {
 const SubjectsPageContent: React.FC = () => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
   const { subjects, addSubject, deleteSubject, updateSubject, errorMessage } =
-    useSubjectManagement();
+    useSubjectManagementLocal();
 
   // 디버깅용 로그
   logger.debug("SubjectsPage - subjects:", { subjects });
@@ -32,7 +32,7 @@ const SubjectsPageContent: React.FC = () => {
   const domainSubjects: DomainSubject[] = subjects.map((subject) => ({
     id: subject.id,
     name: subject.name,
-    color: subject.color,
+    color: subject.color || "#3b82f6", // 기본 색상 제공
     createdAt: new Date(),
     updatedAt: new Date(),
   }));
@@ -49,7 +49,11 @@ const SubjectsPageContent: React.FC = () => {
     setSelectedSubjectId(subjectId);
   };
 
-  const handleUpdateSubject = (subjectId: string, name: string, color: string) => {
+  const handleUpdateSubject = (
+    subjectId: string,
+    name: string,
+    color: string
+  ) => {
     updateSubject(subjectId, { name, color });
   };
 

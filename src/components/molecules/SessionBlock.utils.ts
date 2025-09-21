@@ -5,7 +5,7 @@ import { logger } from "../../lib/logger";
 // 타입을 직접 정의하여 import 의존성 제거
 type Session = {
   id: string;
-  enrollmentIds: string[];
+  enrollmentIds?: string[];
   weekday: number;
   startsAt: string;
   endsAt: string;
@@ -74,13 +74,12 @@ export const getSessionSubject = (
   }
 
   // 첫 번째 enrollment에서 과목 정보 가져오기
-  const firstEnrollment = enrollments?.find(
-    (e) => e.id === session.enrollmentIds[0]
-  );
+  const enrollmentIds = session.enrollmentIds || [];
+  const firstEnrollment = enrollments?.find((e) => e.id === enrollmentIds[0]);
   if (!firstEnrollment) {
     console.warn("🔍 SessionBlock: enrollment를 찾을 수 없음", {
       sessionId: session.id,
-      enrollmentId: session.enrollmentIds[0],
+      enrollmentId: enrollmentIds[0],
       availableEnrollments: enrollments?.map((e) => e.id),
     });
     return null;

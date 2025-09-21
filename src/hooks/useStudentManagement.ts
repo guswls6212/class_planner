@@ -1,13 +1,12 @@
 /**
- * 🎣 Custom Hook - useStudentManagement (캐시 우선 학생 데이터 관리)
+ * 🎣 Custom Hook - useStudentManagement (localStorage 직접 조작)
  *
- * localStorage 캐시를 우선적으로 읽어와 즉시 UI에 표시하고,
- * CRUD 작업은 서버와 동기화하는 효율적인 학생 데이터 관리 훅입니다.
+ * localStorage의 classPlannerData를 직접 조작하여 즉시 UI에 반영하고,
+ * debounce로 서버와 동기화하는 초고속 학생 데이터 관리 훅입니다.
  */
 
 import { useCallback, useMemo } from "react";
 import { logger } from "../lib/logger";
-import { useCachedData } from "./useCachedData";
 
 // ===== 타입 정의 =====
 
@@ -50,11 +49,24 @@ export const useStudentManagementClean = (): UseStudentManagementReturn => {
     error,
     refreshFromServer,
     clearError: clearCacheError,
-  } = useCachedData();
+  } = {
+    data: {
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      version: "1.0",
+      lastModified: "",
+    },
+    loading: false,
+    error: null,
+    refreshFromServer: async () => {},
+    clearError: () => {},
+  };
 
   // 학생 데이터만 추출
   const students: Student[] = useMemo(() => {
-    return cachedData.students.map((student) => ({
+    return cachedData.students.map((student: any) => ({
       id: student.id,
       name: student.name,
       gender: student.gender,

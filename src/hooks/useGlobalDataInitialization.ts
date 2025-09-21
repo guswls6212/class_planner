@@ -62,6 +62,28 @@ export const useGlobalDataInitialization = () => {
           }
 
           logger.info("인증된 사용자 확인", { email: session.user.email });
+
+          // 🚀 스마트 초기화: localStorage 데이터 체크
+          const existingData = localStorage.getItem("classPlannerData");
+          const storedUserId = localStorage.getItem("supabase_user_id");
+
+          if (existingData && storedUserId === session.user.id) {
+            logger.info("기존 사용자 데이터 존재 - 서버 호출 건너뜀", {
+              userId: storedUserId,
+              dataSize: existingData.length,
+            });
+            setIsInitialized(true);
+            return;
+          }
+
+          // 다른 사용자의 데이터가 있거나 데이터가 없는 경우
+          if (existingData && storedUserId !== session.user.id) {
+            logger.warn("다른 사용자 데이터 감지 - 기존 데이터 삭제", {
+              previousUserId: storedUserId,
+              currentUserId: session.user.id,
+            });
+            localStorage.removeItem("classPlannerData");
+          }
         } catch (error) {
           logger.error("인증 확인 중 오류 발생", undefined, error as Error);
           return;
@@ -170,7 +192,11 @@ export const useGlobalDataInitialization = () => {
 
         setIsInitialized(true);
       } catch (error) {
-        logger.error("사용자 데이터 초기화 중 오류 발생", undefined, error as Error);
+        logger.error(
+          "사용자 데이터 초기화 중 오류 발생",
+          undefined,
+          error as Error
+        );
       } finally {
         setIsInitializing(false);
       }

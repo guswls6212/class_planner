@@ -9,7 +9,7 @@ import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
-import { useIntegratedData } from "../../hooks/useIntegratedData";
+import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
@@ -36,7 +36,7 @@ function SchedulePageContent() {
     loading: dataLoading,
     error,
     updateData,
-  } = useIntegratedData();
+  } = useIntegratedDataLocal();
 
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =

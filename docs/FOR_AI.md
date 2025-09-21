@@ -8,6 +8,7 @@
 
 - **Frontend**: Next.js 15.5.2, React 19, TypeScript
 - **Backend**: Supabase (PostgreSQL, Authentication)
+- **Data Management**: 🆕 localStorage 직접 조작 + debounce 서버 동기화
 - **Testing**: Vitest, Playwright, React Testing Library
 - **Architecture**: Clean Architecture + Atomic Design
 - **Styling**: Tailwind CSS 4.0
@@ -21,8 +22,8 @@ src/
 ├── domain/                 # Clean Architecture - Domain 계층
 ├── application/            # Clean Architecture - Application 계층
 ├── infrastructure/         # Clean Architecture - Infrastructure 계층
-├── hooks/                  # React 커스텀 훅
-├── lib/                    # 유틸리티 함수
+├── hooks/                  # React 커스텀 훅 (🆕 Local 버전 추가)
+├── lib/                    # 유틸리티 함수 (🆕 localStorage CRUD 시스템)
 └── shared/                 # 공유 타입 및 상수
 ```
 
@@ -148,6 +149,35 @@ npm run pre-deploy          # 배포 전 완전 검증 (15-30분)
 - `docs/TESTING_STRATEGY.md`: 테스트 전략
 - `docs/DEVELOPMENT_WORKFLOW.md`: 개발 워크플로우
 
+## 🚀 **NEW** - localStorage 직접 조작 시스템 (2025-09-21)
+
+### **🎯 핵심 개념**
+
+1. **즉시 반응**: 모든 CRUD 작업이 localStorage 직접 조작으로 0ms 응답
+2. **스마트 동기화**: 1분마다 debounce로 서버와 자동 동기화
+3. **보안 강화**: 사용자 간 완전한 데이터 격리
+4. **성능 최적화**: 불필요한 API 호출 제거
+
+### **🔧 새로운 파일들**
+
+- `src/lib/localStorageCrud.ts` - 통합 CRUD 시스템
+- `src/lib/debouncedServerSync.ts` - 서버 동기화 시스템
+- `src/hooks/useStudentManagementLocal.ts` - 학생 관리 (Local)
+- `src/hooks/useSubjectManagementLocal.ts` - 과목 관리 (Local)
+- `src/hooks/useIntegratedDataLocal.ts` - 통합 데이터 (Local)
+
+### **🔄 사용 방법**
+
+```typescript
+// 기존 방식 (레거시)
+import { useStudentManagement } from "../../hooks/useStudentManagement";
+
+// 새로운 방식 (권장) ⚡
+import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
+```
+
+---
+
 ## 💡 AI 명령어 처리 팁
 
 1. **항상 워크플로우 준수**: 변경사항 규모에 맞는 검증 스크립트 실행
@@ -155,9 +185,10 @@ npm run pre-deploy          # 배포 전 완전 검증 (15-30분)
 3. **테스트 우선**: 기능 수정 시 관련 테스트 확인/업데이트
 4. **아키텍처 일관성**: Clean Architecture 원칙 준수
 5. **타입 안전성**: TypeScript 에러 해결 우선
+6. **🆕 Local 훅 우선**: 새로운 기능은 localStorage 직접 조작 방식 사용
 
 ---
 
-**마지막 업데이트**: 2025-09-20  
+**마지막 업데이트**: 2025-09-21  
 **프로젝트 버전**: v0.1.0  
-**상태**: 완벽한 프로덕션 준비 완료 🎉
+**상태**: localStorage 직접 조작 시스템 완성 🚀

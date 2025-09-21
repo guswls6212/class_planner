@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { logger } from "../../lib/logger";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
-import { useStudentManagementClean } from "../../hooks/useStudentManagement";
+import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
+import { logger } from "../../lib/logger";
 
 export default function StudentsPage() {
   return (
@@ -22,7 +22,7 @@ function StudentsPageContent() {
     ""
   );
 
-  // Clean Architecture 훅 사용
+  // 🚀 localStorage 직접 조작 훅 사용
   const {
     students,
     loading: isLoading,
@@ -31,7 +31,7 @@ function StudentsPageContent() {
     deleteStudent,
     refreshStudents,
     clearError,
-  } = useStudentManagementClean();
+  } = useStudentManagementLocal();
 
   // 학생 추가 핸들러
   const handleAddStudent = async (name: string) => {

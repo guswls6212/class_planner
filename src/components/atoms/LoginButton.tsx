@@ -79,8 +79,10 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         setIsLoggedIn(false);
         setUser(null);
 
-        // 로그아웃 시 사용자 ID 제거
+        // 🛡️ 보안 강화: 사용자 데이터 완전 삭제
         localStorage.removeItem("supabase_user_id");
+        localStorage.removeItem("classPlannerData");
+        logger.info("🛡️ onAuthStateChange - 사용자 데이터 완전 삭제");
 
         // 사용자 추적 시스템에서 사용자 ID 제거
         clearUserId();
@@ -144,14 +146,23 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     try {
       logger.info("Supabase 로그아웃 시도 중...");
 
-      // 로컬 스토리지에서 모든 Supabase 관련 토큰만 삭제
-      logger.info("로컬 스토리지에서 Supabase 토큰만 삭제 중...");
+      // 🛡️ 보안 강화: 사용자 데이터 완전 삭제
+      logger.info("로컬 스토리지에서 사용자 데이터 완전 삭제 중...");
+
+      // 1. Supabase 관련 토큰 삭제
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("sb-") || key.includes("supabase")) {
           localStorage.removeItem(key);
           logger.info("Supabase 토큰 제거됨:", { key });
         }
       });
+
+      // 2. 🚨 사용자 데이터 완전 삭제 (보안 중요!)
+      localStorage.removeItem("classPlannerData");
+      localStorage.removeItem("supabase_user_id");
+      logger.info("🛡️ 사용자 데이터 완전 삭제 완료");
+
+      // 3. UI 설정은 유지 (테마, 언어 설정 등)
 
       // 로컬 상태 즉시 업데이트
       logger.info("로컬 상태 즉시 업데이트");
