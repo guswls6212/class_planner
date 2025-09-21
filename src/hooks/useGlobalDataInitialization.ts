@@ -125,11 +125,14 @@ export const useGlobalDataInitialization = () => {
 
               if (serverTime <= localTime) {
                 shouldUpdateLocal = false;
-                logger.info("로컬 데이터가 최신 - 서버 데이터로 교체하지 않음", {
-                  serverUpdatedAt,
-                  localLastModified,
-                  timeDiff: localTime - serverTime,
-                });
+                logger.info(
+                  "로컬 데이터가 최신 - 서버 데이터로 교체하지 않음",
+                  {
+                    serverUpdatedAt,
+                    localLastModified,
+                    timeDiff: localTime - serverTime,
+                  }
+                );
               } else {
                 logger.info("서버 데이터가 최신 - 로컬 데이터 교체", {
                   serverUpdatedAt,
@@ -139,13 +142,17 @@ export const useGlobalDataInitialization = () => {
               }
             }
           } catch (error) {
-            logger.warn("로컬 데이터 파싱 실패 - 서버 데이터로 교체", undefined, error as Error);
+            logger.warn(
+              "로컬 데이터 파싱 실패 - 서버 데이터로 교체",
+              undefined,
+              error as Error
+            );
           }
         }
 
         // 🔥 3단계: 필요한 경우에만 로컬스토리지 데이터 업데이트
         let classPlannerData;
-        
+
         if (shouldUpdateLocal) {
           classPlannerData = {
             students: serverData.students || [],

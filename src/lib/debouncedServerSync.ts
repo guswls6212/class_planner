@@ -25,7 +25,8 @@ interface SyncResult {
 
 // ===== 상수 =====
 
-const SYNC_INTERVAL = 60 * 1000; // 1분 (60초)
+const SYNC_INTERVAL = 30 * 1000; // 30초 (debounce)
+const MAX_DELAY = 5 * 60 * 1000; // 최대 5분 후 강제 동기화
 const MAX_RETRY_COUNT = 3;
 const RETRY_DELAY = 5000; // 5초
 
@@ -35,6 +36,7 @@ let syncTimer: NodeJS.Timeout | null = null;
 let syncQueue: SyncQueueItem[] = [];
 let isSyncing = false;
 let lastSyncTime: string | null = null;
+let firstChangeTime: string | null = null; // 🆕 첫 번째 변경 시간 (안전장치용)
 
 // ===== 핵심 동기화 함수 =====
 
@@ -171,6 +173,9 @@ const processSyncQueue = async (): Promise<void> => {
         syncedAt: result.syncedAt,
       });
 
+      // 🆕 동기화 완료 후 첫 번째 변경 시간 리셋
+      firstChangeTime = null;
+
       // 동기화 성공 이벤트
       if (typeof window !== "undefined") {
         window.dispatchEvent(
@@ -197,19 +202,42 @@ const processSyncQueue = async (): Promise<void> => {
 };
 
 /**
- * 동기화 타이머 시작
+ * 동기화 타이머 시작 (리셋 디바운스 방식)
  */
 const startSyncTimer = (): void => {
+  // 기존 타이머가 있으면 취소 (리셋)
   if (syncTimer) {
-    clearInterval(syncTimer);
+    clearTimeout(syncTimer);
   }
 
-  syncTimer = setInterval(() => {
+  // 🆕 안전장치: 첫 번째 변경으로부터 최대 지연 시간 체크
+  const now = new Date().toISOString();
+  if (firstChangeTime) {
+    const timeSinceFirstChange =
+      new Date(now).getTime() - new Date(firstChangeTime).getTime();
+
+    if (timeSinceFirstChange >= MAX_DELAY) {
+      // 최대 지연 시간 초과 → 즉시 동기화
+      logger.info("debouncedServerSync - 최대 지연 시간 초과, 즉시 동기화", {
+        firstChangeTime,
+        timeSinceFirstChange,
+        maxDelay: MAX_DELAY,
+      });
+      processSyncQueue();
+      return;
+    }
+  }
+
+  // 새로운 타이머 시작 (setTimeout 사용)
+  syncTimer = setTimeout(() => {
     processSyncQueue();
+    syncTimer = null; // 타이머 완료 후 null로 설정
+    firstChangeTime = null; // 첫 번째 변경 시간 리셋
   }, SYNC_INTERVAL);
 
-  logger.debug("debouncedServerSync - 동기화 타이머 시작", {
+  logger.debug("debouncedServerSync - 동기화 타이머 시작/리셋", {
     interval: SYNC_INTERVAL,
+    firstChangeTime,
   });
 };
 
@@ -218,8 +246,9 @@ const startSyncTimer = (): void => {
  */
 const stopSyncTimer = (): void => {
   if (syncTimer) {
-    clearInterval(syncTimer);
+    clearTimeout(syncTimer);
     syncTimer = null;
+    firstChangeTime = null; // 첫 번째 변경 시간도 리셋
     logger.debug("debouncedServerSync - 동기화 타이머 중지");
   }
 };
@@ -236,6 +265,14 @@ export const scheduleServerSync = (data: ClassPlannerData): void => {
       return;
     }
 
+    // 🆕 첫 번째 변경 시간 추적 (안전장치용)
+    if (!firstChangeTime) {
+      firstChangeTime = new Date().toISOString();
+      logger.debug("debouncedServerSync - 첫 번째 변경 시간 기록", {
+        firstChangeTime,
+      });
+    }
+
     // 새로운 동기화 아이템 생성
     const syncItem: SyncQueueItem = {
       data: { ...data },
@@ -246,15 +283,15 @@ export const scheduleServerSync = (data: ClassPlannerData): void => {
     // 기존 큐 클리어 (최신 데이터만 유지)
     syncQueue = [syncItem];
 
-    logger.debug("debouncedServerSync - 동기화 예약", {
+    logger.debug("debouncedServerSync - 동기화 예약 (리셋 디바운스)", {
       timestamp: syncItem.timestamp,
       queueLength: syncQueue.length,
+      firstChangeTime,
+      willResetTimer: !!syncTimer,
     });
 
-    // 타이머가 없으면 시작
-    if (!syncTimer) {
-      startSyncTimer();
-    }
+    // 🔄 항상 타이머 시작/리셋 (리셋 디바운스)
+    startSyncTimer();
   } catch (error) {
     logger.error(
       "debouncedServerSync - 동기화 예약 실패:",
@@ -360,6 +397,7 @@ export const cleanupSyncSystem = (): void => {
     syncQueue = [];
     isSyncing = false;
     lastSyncTime = null;
+    firstChangeTime = null; // 🆕 첫 번째 변경 시간도 리셋
 
     logger.info("debouncedServerSync - 시스템 정리 완료");
   } catch (error) {
@@ -376,6 +414,8 @@ export const getSyncStatus = () => {
     queueLength: syncQueue.length,
     isSyncing,
     lastSyncTime,
+    firstChangeTime, // 🆕 첫 번째 변경 시간
     nextSyncIn: syncTimer ? SYNC_INTERVAL : null,
+    maxDelay: MAX_DELAY, // 🆕 최대 지연 시간
   };
 };

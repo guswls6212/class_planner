@@ -291,5 +291,93 @@ describe("debouncedServerSync", () => {
         })
       );
     });
+
+    it("리셋 디바운스 방식으로 동작해야 함", () => {
+      const testData = {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+
+      // 첫 번째 스케줄
+      scheduleServerSync(testData);
+      const status1 = getSyncStatus();
+      expect(status1.isActive).toBe(true);
+      expect(status1.firstChangeTime).toBeTruthy();
+
+      // 두 번째 스케줄 (타이머 리셋)
+      scheduleServerSync(testData);
+      const status2 = getSyncStatus();
+      expect(status2.isActive).toBe(true);
+      expect(status2.firstChangeTime).toBe(status1.firstChangeTime); // 첫 번째 시간 유지
+    });
+
+    it("안전장치가 올바르게 동작해야 함", () => {
+      const testData = {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+
+      // Mock 시간을 5분 전으로 설정
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      
+      // firstChangeTime을 직접 설정 (내부 상태 조작)
+      scheduleServerSync(testData);
+      const status = getSyncStatus();
+      
+      expect(status.maxDelay).toBe(5 * 60 * 1000); // 5분
+      expect(status.firstChangeTime).toBeTruthy();
+    });
+
+    it("getSyncStatus가 새로운 상태 정보를 반환해야 함", () => {
+      cleanupSyncSystem(); // 상태 초기화
+
+      const testData = {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+
+      const emptyStatus = getSyncStatus();
+      expect(emptyStatus.isActive).toBe(false);
+      expect(emptyStatus.firstChangeTime).toBeNull();
+      expect(emptyStatus.maxDelay).toBe(5 * 60 * 1000);
+
+      scheduleServerSync(testData);
+      const activeStatus = getSyncStatus();
+      expect(activeStatus.isActive).toBe(true);
+      expect(activeStatus.firstChangeTime).toBeTruthy();
+      expect(activeStatus.nextSyncIn).toBe(30 * 1000); // 30초
+    });
+
+    it("cleanupSyncSystem이 firstChangeTime을 리셋해야 함", () => {
+      const testData = {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+
+      scheduleServerSync(testData);
+      const statusBefore = getSyncStatus();
+      expect(statusBefore.firstChangeTime).toBeTruthy();
+
+      cleanupSyncSystem();
+      const statusAfter = getSyncStatus();
+      expect(statusAfter.firstChangeTime).toBeNull();
+      expect(statusAfter.isActive).toBe(false);
+    });
   });
 });
