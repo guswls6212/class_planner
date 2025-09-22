@@ -176,6 +176,14 @@ class-planner/
   - 구현: `src/components/molecules/SessionBlock.utils.ts#getGroupStudentDisplayText`
   - 테스트: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`, `src/components/molecules/__tests__/SessionBlock.test.tsx`, `tests/e2e/schedule-student-names.spec.ts`
 
+#### 시간 겹침/충돌 및 재배치 정책 (2025-09-22)
+
+- 겹침: `start1 < end2 && start2 < end1`
+- 재배치: 이동 대상 세션의 목표 y 고정(anchor), 겹치는 세션들을 `y+1`로 이동시키며 연쇄 전파(propagate)
+- 구현: `src/lib/sessionCollisionUtils.ts#repositionSessions`
+- 호출 지점: 세션 추가, 드래그 이동, 편집 모달 저장
+- 관련 테스트: `src/lib/__tests__/sessionCollisionUtils.test.ts`
+
 ### **Organisms (유기체 컴포넌트)**
 
 - TimeTableGrid, StudentPanel, StudentsPageLayout

@@ -210,6 +210,21 @@ const [selectedStudentId, setSelectedStudentId] = useLocal(
     - 단위(UI): `src/components/molecules/__tests__/SessionBlock.test.tsx`
     - E2E: `tests/e2e/schedule-student-names.spec.ts`
 
+### 시간 겹침/충돌 및 재배치 정책 (2025-09-22)
+
+- 겹침 정의: `start1 < end2 && start2 < end1`
+- 재배치 알고리즘: 이동 대상 세션의 목표 `yPosition`은 고정(anchor). 동일 y에서 겹치는 세션들을 아래 줄로 한 칸씩 이동시키며, 필요 시 연쇄적으로 전파(propagate).
+- 호출 시점:
+  - 세션 추가 직후
+  - 세션 드래그 앤 드롭 이동 시
+  - 수업 편집 모달에서 시간 저장 시
+- 구현: `src/lib/sessionCollisionUtils.ts`의 `repositionSessions`
+- 스케줄 페이지 연결:
+  - 드래그 이동: `updateSessionPosition` → `repositionSessions`
+  - 편집 저장: `updateSession` → `repositionSessions`
+- 테스트:
+  - `src/lib/__tests__/sessionCollisionUtils.test.ts` (드래그/편집 체인 전파 검증)
+
 #### **개별 세션 관리가 필요한 경우:**
 
 ```typescript
