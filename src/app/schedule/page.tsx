@@ -14,18 +14,30 @@ import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
-import type { Enrollment, Session, Student } from "../../lib/planner";
+import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import EditSessionModal from "./_components/EditSessionModal";
+import GroupSessionModal from "./_components/GroupSessionModal";
+import {
+  DEFAULT_EDIT_MODAL_TIME_DATA,
+  DEFAULT_GROUP_SESSION_DATA,
+  ERROR_MESSAGES,
+  MAX_SESSION_DURATION_MINUTES,
+} from "./_constants/scheduleConstants";
 import {
   buildSelectedStudents,
   filterEditableStudents,
   removeStudentFromEnrollmentIds,
 } from "./_utils/scheduleSelectors";
-import GroupSessionModal from "./_components/GroupSessionModal";
+import {
+  buildSessionSaveData,
+  extractStudentIds,
+  processTempEnrollments,
+  type TempEnrollment,
+} from "./_utils/sessionSaveUtils";
 import styles from "./Schedule.module.css";
 
 export default function SchedulePage() {
@@ -220,6 +232,10 @@ function SchedulePageContent() {
     },
     [sessions, updateData, enrollments, subjects]
   );
+
+  // ================================
+  // 🎯 드래그 앤 드롭 / 충돌 처리 섹션
+  // ================================
 
   // 🆕 시간 충돌 감지 함수
   const isTimeOverlapping = useCallback(
@@ -651,6 +667,10 @@ function SchedulePageContent() {
     [isTimeOverlapping]
   );
 
+  // ================================
+  // 🎯 세션 위치 업데이트 섹션
+  // ================================
+
   const updateSessionPosition = useCallback(
     async (
       sessionId: string,
@@ -798,17 +818,18 @@ function SchedulePageContent() {
     setSelectedStudentId
   );
 
-  const { validateTimeRange, validateDurationWithinLimit, getNextHour } =
-    useTimeValidation();
+  const {
+    validateTimeRange,
+    validateDurationWithinLimit,
+    getNextHour,
+    validateAndToastGroup,
+    validateAndToastEdit,
+  } = useTimeValidation();
 
   // 🆕 그룹 수업 모달 상태
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [groupModalData, setGroupModalData] = useState<GroupSessionData>({
-    studentIds: [], // 빈 배열로 초기화
-    subjectId: "",
-    weekday: 0,
-    startTime: "",
-    endTime: "",
+    ...DEFAULT_GROUP_SESSION_DATA,
     yPosition: 1, // 🆕 기본값 1
   });
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
@@ -828,10 +849,9 @@ function SchedulePageContent() {
   const [editStudentInputValue, setEditStudentInputValue] = useState("");
 
   // 🆕 수업 편집 모달용 시간 상태
-  const [editModalTimeData, setEditModalTimeData] = useState({
-    startTime: "",
-    endTime: "",
-  });
+  const [editModalTimeData, setEditModalTimeData] = useState(
+    DEFAULT_EDIT_MODAL_TIME_DATA
+  );
   const [editTimeError, setEditTimeError] = useState<string>("");
 
   // 🆕 수업 편집 모달용 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
@@ -845,16 +865,20 @@ function SchedulePageContent() {
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        setEditTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
+        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
       }
 
       // 8시간 초과 시 즉시 경고
       if (
         newStartTime &&
         currentEndTime &&
-        !validateDurationWithinLimit(newStartTime, currentEndTime, 480)
+        !validateDurationWithinLimit(
+          newStartTime,
+          currentEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
       ) {
-        setEditTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
       }
 
       // 정상 상태면 에러 해제
@@ -862,7 +886,11 @@ function SchedulePageContent() {
         newStartTime &&
         currentEndTime &&
         validateTimeRange(newStartTime, currentEndTime) &&
-        validateDurationWithinLimit(newStartTime, currentEndTime, 480)
+        validateDurationWithinLimit(
+          newStartTime,
+          currentEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
       ) {
         setEditTimeError("");
       }
@@ -885,16 +913,20 @@ function SchedulePageContent() {
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        setEditTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
+        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
       }
 
       // 8시간 초과 시 즉시 경고
       if (
         newEndTime &&
         currentStartTime &&
-        !validateDurationWithinLimit(currentStartTime, newEndTime, 480)
+        !validateDurationWithinLimit(
+          currentStartTime,
+          newEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
       ) {
-        setEditTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
       }
 
       // 정상 상태면 에러 해제
@@ -902,7 +934,11 @@ function SchedulePageContent() {
         newEndTime &&
         currentStartTime &&
         validateTimeRange(currentStartTime, newEndTime) &&
-        validateDurationWithinLimit(currentStartTime, newEndTime, 480)
+        validateDurationWithinLimit(
+          currentStartTime,
+          newEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
       ) {
         setEditTimeError("");
       }
@@ -926,7 +962,11 @@ function SchedulePageContent() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editModalData, setEditModalData] = useState<Session | null>(null);
   const [tempSubjectId, setTempSubjectId] = useState<string>(""); // 🆕 임시 과목 ID
-  const [tempEnrollments, setTempEnrollments] = useState<Enrollment[]>([]); // 🆕 임시 enrollment 관리
+  const [tempEnrollments, setTempEnrollments] = useState<TempEnrollment[]>([]); // 🆕 임시 enrollment 관리
+
+  // ================================
+  // 🎯 모달 제어 / 학생 관리 섹션
+  // ================================
 
   // 🆕 학생 입력값 변경 핸들러 최적화
   const handleEditStudentInputChange = useCallback(
@@ -1096,18 +1136,10 @@ function SchedulePageContent() {
   const addGroupSession = async (data: GroupSessionData) => {
     logger.debug("addGroupSession 시작", { data });
 
-    // 시간 유효성 검사
-    if (!validateTimeRange(data.startTime, data.endTime)) {
-      logger.warn("시간 유효성 검사 실패", {
-        startTime: data.startTime,
-        endTime: data.endTime,
-      });
-      setGroupTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
-      return;
-    }
-    // 8시간 제한 검증
-    if (!validateDurationWithinLimit(data.startTime, data.endTime, 480)) {
-      setGroupTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+    // 시간 유효성 검사 (그룹 모달용)
+    if (
+      !validateAndToastGroup(data.startTime, data.endTime, setGroupTimeError)
+    ) {
       return;
     }
     setGroupTimeError("");
@@ -1116,7 +1148,7 @@ function SchedulePageContent() {
     // 🆕 과목 선택 검증
     if (!data.subjectId) {
       logger.warn("과목 선택 검증 실패");
-      alert("과목을 선택해주세요.");
+      alert(ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
       return;
     }
     logger.debug("과목 선택 검증 통과");
@@ -1124,7 +1156,7 @@ function SchedulePageContent() {
     // 🆕 학생 선택 검증
     if (!data.studentIds || data.studentIds.length === 0) {
       logger.warn("학생 선택 검증 실패");
-      alert("학생을 선택해주세요.");
+      alert(ERROR_MESSAGES.STUDENT_NOT_SELECTED);
       return;
     }
     logger.debug("학생 선택 검증 통과");
@@ -1568,7 +1600,11 @@ function SchedulePageContent() {
         selectedStudents={buildSelectedStudents(
           editModalData?.enrollmentIds,
           enrollments,
-          tempEnrollments,
+          tempEnrollments.map((t) => ({
+            id: "",
+            studentId: t.studentId,
+            subjectId: t.subjectId,
+          })),
           students
         )}
         onRemoveStudent={(studentId) => {
@@ -1576,10 +1612,18 @@ function SchedulePageContent() {
             studentId,
             editModalData?.enrollmentIds,
             enrollments,
-            tempEnrollments
+            tempEnrollments.map((t) => ({
+              id: "",
+              studentId: t.studentId,
+              subjectId: t.subjectId,
+            }))
           );
-          setTempEnrollments((prev) => prev.filter((e) => e.studentId !== studentId));
-          setEditModalData((prev) => (prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null));
+          setTempEnrollments((prev) =>
+            prev.filter((e) => e.studentId !== studentId)
+          );
+          setEditModalData((prev) =>
+            prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null
+          );
         }}
         editStudentInputValue={editStudentInputValue}
         onEditStudentInputChange={(value) => {
@@ -1587,13 +1631,13 @@ function SchedulePageContent() {
           setEditStudentInputValue(value);
         }}
         onEditStudentInputKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          logger.debug("Enter 키로 학생 추가 시도");
-                          handleEditStudentAdd();
-                          setEditStudentInputValue("");
-                        }
-                      }}
+          if (e.key === "Enter") {
+            e.preventDefault();
+            logger.debug("Enter 키로 학생 추가 시도");
+            handleEditStudentAdd();
+            setEditStudentInputValue("");
+          }
+        }}
         onAddStudentClick={handleEditStudentAddClick}
         editSearchResults={filterEditableStudents(
           editStudentInputValue,
@@ -1614,104 +1658,80 @@ function SchedulePageContent() {
         timeError={editTimeError}
         onDelete={async () => {
           if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
-                      try {
-                        await deleteSession(editModalData.id);
-                        setShowEditModal(false);
-                        logger.debug("세션 삭제 완료");
-                      } catch (error) {
-                        console.error("세션 삭제 실패:", error);
-                        alert("세션 삭제에 실패했습니다.");
-                      }
-                    }
-                  }}
+            try {
+              await deleteSession(editModalData.id);
+              setShowEditModal(false);
+              logger.debug("세션 삭제 완료");
+            } catch (error) {
+              console.error("세션 삭제 실패:", error);
+              alert("세션 삭제에 실패했습니다.");
+            }
+          }
+        }}
         onCancel={() => {
-                      setShowEditModal(false);
+          setShowEditModal(false);
           setTempSubjectId("");
         }}
         onSave={async () => {
           if (!editModalData) return;
-                      const weekday = Number(
+          const weekday = Number(
             (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
               ?.value
-                      );
-                      const startTime = editModalTimeData.startTime;
-                      const endTime = editModalTimeData.endTime;
-                      if (!startTime || !endTime) return;
-                      if (!validateTimeRange(startTime, endTime)) {
-            window.dispatchEvent(
-              new CustomEvent("toast", {
-                detail: {
-                  type: "error",
-                  message: "종료 시간은 시작 시간보다 늦어야 합니다.",
-                },
-              })
-            );
-                        return;
-                      }
-          if (!validateDurationWithinLimit(startTime, endTime, 480)) {
-            window.dispatchEvent(
-              new CustomEvent("toast", {
-                detail: {
-                  type: "error",
-                  message: "세션 시간은 최대 8시간까지 설정할 수 있습니다.",
-                },
-              })
-            );
+          );
+          const startTime = editModalTimeData.startTime;
+          const endTime = editModalTimeData.endTime;
+          if (!startTime || !endTime) return;
+          if (!validateAndToastEdit(startTime, endTime)) {
             return;
           }
           try {
-                        if (tempEnrollments.length > 0) {
-                          for (const tempEnrollment of tempEnrollments) {
-                            await addEnrollment(
-                              tempEnrollment.studentId,
-                              tempEnrollment.subjectId
-                            );
-                          }
-                        }
-                        const updatedData = getClassPlannerData();
-                        const allEnrollments = updatedData.enrollments;
-                        const currentEnrollmentIds =
+            // 임시 enrollments 처리 및 병합
+            const { allEnrollments, currentEnrollmentIds } =
+              await processTempEnrollments(
+                tempEnrollments,
+                addEnrollment,
+                getClassPlannerData
+              );
+
+            // 기존 enrollmentIds와 병합
+            const existingEnrollmentIds =
               editModalData.enrollmentIds?.filter((enrollmentId) =>
                 allEnrollments.some((e) => e.id === enrollmentId)
-                          ) || [];
-                        for (const tempEnrollment of tempEnrollments) {
-                          const realEnrollment = allEnrollments.find(
-                            (e) =>
-                              e.studentId === tempEnrollment.studentId &&
-                              e.subjectId === tempEnrollment.subjectId
-                          );
-                          if (
-                            realEnrollment &&
-                            !currentEnrollmentIds.includes(realEnrollment.id)
-                          ) {
-                            currentEnrollmentIds.push(realEnrollment.id);
-                          }
-                        }
-                        const currentStudentIds = currentEnrollmentIds
-              .map(
-                (enrollmentId) =>
-                  allEnrollments.find((e) => e.id === enrollmentId)?.studentId
-              )
-                          .filter(Boolean) as string[];
-                        const currentSubjectId = tempSubjectId;
-                        await updateSession(editModalData.id, {
-              enrollmentIds: currentEnrollmentIds,
-                          studentIds: currentStudentIds,
-                          subjectId: currentSubjectId,
-                          weekday,
-                          startTime,
-                          endTime,
-                          room: editModalData.room,
-                        });
-                        setShowEditModal(false);
+              ) || [];
+            const mergedEnrollmentIds = [
+              ...existingEnrollmentIds,
+              ...currentEnrollmentIds,
+            ];
+
+            // studentIds 추출
+            const currentStudentIds = extractStudentIds(
+              mergedEnrollmentIds,
+              allEnrollments
+            );
+
+            // 세션 저장 데이터 생성
+            const sessionData = buildSessionSaveData(
+              mergedEnrollmentIds,
+              currentStudentIds,
+              tempSubjectId,
+              weekday,
+              startTime,
+              endTime,
+              editModalData.room || ""
+            );
+
+            await updateSession(editModalData.id, sessionData);
+
+            // 상태 초기화
+            setShowEditModal(false);
             setTempSubjectId("");
             setTempEnrollments([]);
-                        logger.debug("세션 업데이트 완료");
-                      } catch (error) {
-                        console.error("세션 업데이트 실패:", error);
-                        alert("세션 업데이트에 실패했습니다.");
-                      }
-                    }}
+            logger.debug("세션 업데이트 완료");
+          } catch (error) {
+            console.error("세션 업데이트 실패:", error);
+            alert("세션 업데이트에 실패했습니다.");
+          }
+        }}
       />
     </div>
   );

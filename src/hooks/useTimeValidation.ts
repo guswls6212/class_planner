@@ -42,45 +42,55 @@ export const useTimeValidation = () => {
       .padStart(2, "0")}`;
   };
 
-  // 시작 시간 변경 처리
-  const handleStartTimeChange = (
-    newStartTime: string,
-    currentEndTime: string,
-    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void
-  ) => {
-    if (
-      newStartTime &&
-      currentEndTime &&
-      !validateTimeRange(newStartTime, currentEndTime)
-    ) {
-      console.warn("시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.");
-    }
-
-    onUpdate({ startTime: newStartTime });
+  // 토스트 이벤트 트리거 유틸
+  const dispatchToast = (type: "error" | "success", message: string) => {
+    window.dispatchEvent(
+      new CustomEvent("toast", {
+        detail: { type, message },
+      })
+    );
   };
 
-  // 종료 시간 변경 처리
-  const handleEndTimeChange = (
-    newEndTime: string,
-    currentStartTime: string,
-    onUpdate: (data: Partial<GroupSessionData | EditModalTimeData>) => void
-  ) => {
-    if (
-      newEndTime &&
-      currentStartTime &&
-      !validateTimeRange(currentStartTime, newEndTime)
-    ) {
-      console.warn("종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.");
+  // 시간 검증 + 토스트 트리거 (그룹 모달용)
+  const validateAndToastGroup = (
+    startTime: string,
+    endTime: string,
+    setError: (error: string) => void
+  ): boolean => {
+    if (!validateTimeRange(startTime, endTime)) {
+      setError("종료 시간은 시작 시간보다 늦어야 합니다.");
+      return false;
     }
+    if (!validateDurationWithinLimit(startTime, endTime, 480)) {
+      setError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      return false;
+    }
+    setError("");
+    return true;
+  };
 
-    onUpdate({ endTime: newEndTime });
+  // 시간 검증 + 토스트 트리거 (편집 모달용)
+  const validateAndToastEdit = (
+    startTime: string,
+    endTime: string
+  ): boolean => {
+    if (!validateTimeRange(startTime, endTime)) {
+      dispatchToast("error", "종료 시간은 시작 시간보다 늦어야 합니다.");
+      return false;
+    }
+    if (!validateDurationWithinLimit(startTime, endTime, 480)) {
+      dispatchToast("error", "세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      return false;
+    }
+    return true;
   };
 
   return {
     validateTimeRange,
     validateDurationWithinLimit,
     getNextHour,
-    handleStartTimeChange,
-    handleEndTimeChange,
+    dispatchToast,
+    validateAndToastGroup,
+    validateAndToastEdit,
   };
 };
