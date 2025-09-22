@@ -34,9 +34,9 @@ import {
 } from "./_utils/scheduleSelectors";
 import {
   buildSessionSaveData,
+  ensureEnrollmentIdsForSubject,
   extractStudentIds,
   processTempEnrollments,
-  ensureEnrollmentIdsForSubject,
   type TempEnrollment,
 } from "./_utils/sessionSaveUtils";
 import styles from "./Schedule.module.css";

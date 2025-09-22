@@ -45,7 +45,7 @@ describe("GroupSessionModal - state updates", () => {
 
     const controller = createStateController(initial);
 
-    const { getByLabelText } = render(
+    const { getByRole, getByLabelText } = render(
       <GroupSessionModal
         isOpen={true}
         groupModalData={controller.get()}
@@ -68,13 +68,17 @@ describe("GroupSessionModal - state updates", () => {
       />
     );
 
-    // 과목 선택 변경
-    const subjectSelect = getByLabelText("과목") as HTMLSelectElement;
+    // 과목 선택 변경 (접근성 이름으로 조회)
+    const subjectSelect = getByRole("combobox", {
+      name: /과목/,
+    }) as HTMLSelectElement;
     fireEvent.change(subjectSelect, { target: { value: "sub-1" } });
     expect(controller.get().subjectId).toBe("sub-1");
 
-    // 요일 변경
-    const weekdaySelect = getByLabelText("요일") as HTMLSelectElement;
+    // 요일 변경 (접근성 이름으로 조회)
+    const weekdaySelect = getByRole("combobox", {
+      name: /요일/,
+    }) as HTMLSelectElement;
     fireEvent.change(weekdaySelect, { target: { value: "2" } });
     expect(controller.get().weekday).toBe(2);
 

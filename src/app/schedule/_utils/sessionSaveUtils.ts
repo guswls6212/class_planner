@@ -1,4 +1,4 @@
-import type { Enrollment, Session } from "../../../lib/planner";
+import type { Enrollment } from "../../../lib/planner";
 
 export interface TempEnrollment {
   studentId: string;
@@ -22,7 +22,10 @@ export const processTempEnrollments = async (
   tempEnrollments: TempEnrollment[],
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>,
   getClassPlannerData: () => { enrollments: Enrollment[] }
-): Promise<{ allEnrollments: Enrollment[]; currentEnrollmentIds: string[] }> => {
+): Promise<{
+  allEnrollments: Enrollment[];
+  currentEnrollmentIds: string[];
+}> => {
   // 임시 enrollments를 실제로 추가
   if (tempEnrollments.length > 0) {
     for (const tempEnrollment of tempEnrollments) {
@@ -60,8 +63,9 @@ export const extractStudentIds = (
   allEnrollments: Enrollment[]
 ): string[] => {
   return enrollmentIds
-    .map((enrollmentId) =>
-      allEnrollments.find((e) => e.id === enrollmentId)?.studentId
+    .map(
+      (enrollmentId) =>
+        allEnrollments.find((e) => e.id === enrollmentId)?.studentId
     )
     .filter(Boolean) as string[];
 };
