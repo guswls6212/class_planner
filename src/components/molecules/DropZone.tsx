@@ -151,6 +151,12 @@ export default function DropZone({
     } else {
       logger.debug("DropZone: 드롭 데이터가 없음");
     }
+
+    // 🆕 드롭 완료 후 브라우저 드래그 상태 잔상 제거 시도
+    try {
+      // 일부 브라우저에서 드래그 잔상이 남는 문제를 완화
+      (document.activeElement as HTMLElement)?.blur?.();
+    } catch {}
   };
 
   const handleClick = () => {
