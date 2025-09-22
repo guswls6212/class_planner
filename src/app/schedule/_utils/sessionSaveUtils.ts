@@ -88,3 +88,34 @@ export const buildSessionSaveData = (
     room,
   };
 };
+
+/**
+ * 주어진 학생 IDs에 대해 특정 과목(subjectId)에 맞는 enrollment들을 보장하고 ID 목록을 반환
+ */
+export const ensureEnrollmentIdsForSubject = async (
+  studentIds: string[],
+  subjectId: string,
+  addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>,
+  getClassPlannerData: () => { enrollments: Enrollment[] },
+  baseEnrollments: Enrollment[]
+): Promise<{ enrollmentIds: string[]; allEnrollments: Enrollment[] }> => {
+  let allEnrollments = baseEnrollments;
+  const ensuredIds: string[] = [];
+
+  for (const studentId of studentIds) {
+    let found = allEnrollments.find(
+      (e) => e.studentId === studentId && e.subjectId === subjectId
+    );
+    if (!found) {
+      await addEnrollment(studentId, subjectId);
+      const data = getClassPlannerData();
+      allEnrollments = data.enrollments;
+      found = allEnrollments.find(
+        (e) => e.studentId === studentId && e.subjectId === subjectId
+      );
+    }
+    if (found) ensuredIds.push(found.id);
+  }
+
+  return { enrollmentIds: ensuredIds, allEnrollments };
+};
