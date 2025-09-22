@@ -3,8 +3,6 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
-import Button from "../../components/atoms/Button";
-import Label from "../../components/atoms/Label";
 import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
@@ -21,8 +19,13 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
-import GroupSessionModal from "./_components/GroupSessionModal";
 import EditSessionModal from "./_components/EditSessionModal";
+import {
+  buildSelectedStudents,
+  filterEditableStudents,
+  removeStudentFromEnrollmentIds,
+} from "./_utils/scheduleSelectors";
+import GroupSessionModal from "./_components/GroupSessionModal";
 import styles from "./Schedule.module.css";
 
 export default function SchedulePage() {
@@ -1562,27 +1565,21 @@ function SchedulePageContent() {
       {/* 세션 편집 모달 (분리) */}
       <EditSessionModal
         isOpen={Boolean(showEditModal && editModalData)}
-        selectedStudents={(() => {
-          const allEnrollments = [...enrollments, ...tempEnrollments];
-          const selected =
-            editModalData?.enrollmentIds
-                          ?.map((enrollmentId) => {
-                const enrollment = allEnrollments.find((e) => e.id === enrollmentId);
-                            if (!enrollment) return null;
-                const student = students.find((s) => s.id === enrollment.studentId);
-                return student ? { id: student.id, name: student.name } : null;
-                          })
-                          .filter(Boolean) || [];
-          return selected as { id: string; name: string }[];
-                    })()}
+        selectedStudents={buildSelectedStudents(
+          editModalData?.enrollmentIds,
+          enrollments,
+          tempEnrollments,
+          students
+        )}
         onRemoveStudent={(studentId) => {
-          const allEnrollments = [...enrollments, ...tempEnrollments];
-          const updatedEnrollmentIds = editModalData?.enrollmentIds?.filter((id) => {
-            const enrollment = allEnrollments.find((e) => e.id === id);
-            return enrollment?.studentId !== studentId;
-          });
+          const updatedEnrollmentIds = removeStudentFromEnrollmentIds(
+            studentId,
+            editModalData?.enrollmentIds,
+            enrollments,
+            tempEnrollments
+          );
           setTempEnrollments((prev) => prev.filter((e) => e.studentId !== studentId));
-          setEditModalData((prev) => (prev ? { ...prev, enrollmentIds: updatedEnrollmentIds || [] } : null));
+          setEditModalData((prev) => (prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null));
         }}
         editStudentInputValue={editStudentInputValue}
         onEditStudentInputChange={(value) => {
@@ -1598,18 +1595,12 @@ function SchedulePageContent() {
                         }
                       }}
         onAddStudentClick={handleEditStudentAddClick}
-        editSearchResults={(() => {
-          if (!editModalData) return [] as { id: string; name: string }[];
-          return students
-            .filter((student) =>
-              student.name.toLowerCase().includes(editStudentInputValue.toLowerCase()) &&
-              !editModalData.enrollmentIds?.some((enrollmentId) => {
-                const enrollment = enrollments.find((e) => e.id === enrollmentId);
-                                return enrollment?.studentId === student.id;
-              })
-            )
-            .map((s) => ({ id: s.id, name: s.name }));
-                      })()}
+        editSearchResults={filterEditableStudents(
+          editStudentInputValue,
+          editModalData,
+          enrollments,
+          students
+        )}
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
         tempSubjectId={tempSubjectId}
@@ -1639,38 +1630,68 @@ function SchedulePageContent() {
         }}
         onSave={async () => {
           if (!editModalData) return;
-          const weekday = Number((document.getElementById("edit-modal-weekday") as HTMLSelectElement)?.value);
+                      const weekday = Number(
+            (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
+              ?.value
+                      );
                       const startTime = editModalTimeData.startTime;
                       const endTime = editModalTimeData.endTime;
                       if (!startTime || !endTime) return;
                       if (!validateTimeRange(startTime, endTime)) {
-            window.dispatchEvent(new CustomEvent("toast", { detail: { type: "error", message: "종료 시간은 시작 시간보다 늦어야 합니다." } }));
+            window.dispatchEvent(
+              new CustomEvent("toast", {
+                detail: {
+                  type: "error",
+                  message: "종료 시간은 시작 시간보다 늦어야 합니다.",
+                },
+              })
+            );
                         return;
                       }
           if (!validateDurationWithinLimit(startTime, endTime, 480)) {
-            window.dispatchEvent(new CustomEvent("toast", { detail: { type: "error", message: "세션 시간은 최대 8시간까지 설정할 수 있습니다." } }));
+            window.dispatchEvent(
+              new CustomEvent("toast", {
+                detail: {
+                  type: "error",
+                  message: "세션 시간은 최대 8시간까지 설정할 수 있습니다.",
+                },
+              })
+            );
             return;
           }
-                      try {
+          try {
                         if (tempEnrollments.length > 0) {
                           for (const tempEnrollment of tempEnrollments) {
-                await addEnrollment(tempEnrollment.studentId, tempEnrollment.subjectId);
+                            await addEnrollment(
+                              tempEnrollment.studentId,
+                              tempEnrollment.subjectId
+                            );
                           }
                         }
                         const updatedData = getClassPlannerData();
                         const allEnrollments = updatedData.enrollments;
                         const currentEnrollmentIds =
-              editModalData.enrollmentIds?.filter((enrollmentId) => allEnrollments.some((e) => e.id === enrollmentId)) || [];
+              editModalData.enrollmentIds?.filter((enrollmentId) =>
+                allEnrollments.some((e) => e.id === enrollmentId)
+                          ) || [];
                         for (const tempEnrollment of tempEnrollments) {
                           const realEnrollment = allEnrollments.find(
-                (e) => e.studentId === tempEnrollment.studentId && e.subjectId === tempEnrollment.subjectId
+                            (e) =>
+                              e.studentId === tempEnrollment.studentId &&
+                              e.subjectId === tempEnrollment.subjectId
                           );
-              if (realEnrollment && !currentEnrollmentIds.includes(realEnrollment.id)) {
+                          if (
+                            realEnrollment &&
+                            !currentEnrollmentIds.includes(realEnrollment.id)
+                          ) {
                             currentEnrollmentIds.push(realEnrollment.id);
                           }
                         }
                         const currentStudentIds = currentEnrollmentIds
-              .map((enrollmentId) => allEnrollments.find((e) => e.id === enrollmentId)?.studentId)
+              .map(
+                (enrollmentId) =>
+                  allEnrollments.find((e) => e.id === enrollmentId)?.studentId
+              )
                           .filter(Boolean) as string[];
                         const currentSubjectId = tempSubjectId;
                         await updateSession(editModalData.id, {
