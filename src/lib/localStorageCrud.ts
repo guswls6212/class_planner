@@ -315,12 +315,33 @@ export const deleteStudentFromLocal = (id: string): CrudResult<boolean> => {
       };
     }
 
-    // 관련 enrollments도 함께 삭제
+    // 관련 enrollments 및 sessions 정리
     const deletedStudent = data.students[studentIndex];
     data.students.splice(studentIndex, 1);
 
-    // 해당 학생의 모든 enrollment 삭제
+    // 1) 해당 학생의 enrollments 수집 및 삭제
+    const targetEnrollments = data.enrollments.filter(
+      (e) => e.studentId === id
+    );
+    const targetEnrollmentIds = new Set(targetEnrollments.map((e) => e.id));
     data.enrollments = data.enrollments.filter((e) => e.studentId !== id);
+
+    // 2) 세션에서 해당 enrollmentIds 제거, 비어 있으면 세션 삭제
+    data.sessions = data.sessions
+      .map((session) => {
+        if (session.enrollmentIds && session.enrollmentIds.length > 0) {
+          const filtered = session.enrollmentIds.filter(
+            (eId) => !targetEnrollmentIds.has(eId)
+          );
+          if (filtered.length !== session.enrollmentIds.length) {
+            return { ...session, enrollmentIds: filtered };
+          }
+        }
+        return session;
+      })
+      .filter(
+        (session) => session.enrollmentIds && session.enrollmentIds.length > 0
+      );
     data.lastModified = new Date().toISOString(); // CRU 작업 시 lastModified 갱신
 
     if (setClassPlannerData(data)) {
