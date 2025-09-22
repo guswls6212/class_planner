@@ -11,6 +11,7 @@ type StudentOption = { id: string; name: string };
 interface GroupSessionModalProps {
   isOpen: boolean;
   groupModalData: GroupSessionData;
+  setGroupModalData: React.Dispatch<React.SetStateAction<GroupSessionData>>;
   setShowGroupModal: (open: boolean) => void;
   removeStudent: (studentId: string) => void;
   studentInputValue: string;
@@ -31,6 +32,7 @@ interface GroupSessionModalProps {
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   isOpen,
   groupModalData,
+  setGroupModalData,
   setShowGroupModal,
   removeStudent,
   studentInputValue,
@@ -137,12 +139,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 id="modal-subject"
                 className="form-select"
                 value={groupModalData.subjectId}
-                onChange={(e) => {
-                  const ev = new CustomEvent("group-modal-change", {
-                    detail: { field: "subjectId", value: e.target.value },
-                  });
-                  window.dispatchEvent(ev);
-                }}
+                onChange={(e) =>
+                  setGroupModalData((prev) => ({
+                    ...prev,
+                    subjectId: e.target.value,
+                  }))
+                }
                 disabled={groupModalData.studentIds.length === 0}
               >
                 <option value="">
@@ -167,13 +169,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 id="modal-weekday"
                 className="form-select"
                 value={groupModalData.weekday}
-                onChange={(e) => {
-                  const value = Number(e.target.value);
-                  const ev = new CustomEvent("group-modal-change", {
-                    detail: { field: "weekday", value },
-                  });
-                  window.dispatchEvent(ev);
-                }}
+                onChange={(e) =>
+                  setGroupModalData((prev) => ({
+                    ...prev,
+                    weekday: Number(e.target.value),
+                  }))
+                }
               >
                 {weekdays.map((w, idx) => (
                   <option key={idx} value={idx}>
@@ -223,12 +224,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 className="form-input"
                 placeholder="강의실 (선택사항)"
                 value={groupModalData.room || ""}
-                onChange={(e) => {
-                  const ev = new CustomEvent("group-modal-change", {
-                    detail: { field: "room", value: e.target.value },
-                  });
-                  window.dispatchEvent(ev);
-                }}
+                onChange={(e) =>
+                  setGroupModalData((prev) => ({
+                    ...prev,
+                    room: e.target.value,
+                  }))
+                }
               />
             </div>
           </div>

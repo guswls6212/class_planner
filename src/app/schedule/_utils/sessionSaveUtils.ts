@@ -1,4 +1,4 @@
-import type { Enrollment, Session } from "../../../lib/planner";
+import type { Enrollment } from "../../../lib/planner";
 
 export interface TempEnrollment {
   studentId: string;
@@ -22,7 +22,10 @@ export const processTempEnrollments = async (
   tempEnrollments: TempEnrollment[],
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>,
   getClassPlannerData: () => { enrollments: Enrollment[] }
-): Promise<{ allEnrollments: Enrollment[]; currentEnrollmentIds: string[] }> => {
+): Promise<{
+  allEnrollments: Enrollment[];
+  currentEnrollmentIds: string[];
+}> => {
   // 임시 enrollments를 실제로 추가
   if (tempEnrollments.length > 0) {
     for (const tempEnrollment of tempEnrollments) {
@@ -60,8 +63,9 @@ export const extractStudentIds = (
   allEnrollments: Enrollment[]
 ): string[] => {
   return enrollmentIds
-    .map((enrollmentId) =>
-      allEnrollments.find((e) => e.id === enrollmentId)?.studentId
+    .map(
+      (enrollmentId) =>
+        allEnrollments.find((e) => e.id === enrollmentId)?.studentId
     )
     .filter(Boolean) as string[];
 };
@@ -87,4 +91,35 @@ export const buildSessionSaveData = (
     endTime,
     room,
   };
+};
+
+/**
+ * 주어진 학생 IDs에 대해 특정 과목(subjectId)에 맞는 enrollment들을 보장하고 ID 목록을 반환
+ */
+export const ensureEnrollmentIdsForSubject = async (
+  studentIds: string[],
+  subjectId: string,
+  addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>,
+  getClassPlannerData: () => { enrollments: Enrollment[] },
+  baseEnrollments: Enrollment[]
+): Promise<{ enrollmentIds: string[]; allEnrollments: Enrollment[] }> => {
+  let allEnrollments = baseEnrollments;
+  const ensuredIds: string[] = [];
+
+  for (const studentId of studentIds) {
+    let found = allEnrollments.find(
+      (e) => e.studentId === studentId && e.subjectId === subjectId
+    );
+    if (!found) {
+      await addEnrollment(studentId, subjectId);
+      const data = getClassPlannerData();
+      allEnrollments = data.enrollments;
+      found = allEnrollments.find(
+        (e) => e.studentId === studentId && e.subjectId === subjectId
+      );
+    }
+    if (found) ensuredIds.push(found.id);
+  }
+
+  return { enrollmentIds: ensuredIds, allEnrollments };
 };

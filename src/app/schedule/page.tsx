@@ -34,6 +34,7 @@ import {
 } from "./_utils/scheduleSelectors";
 import {
   buildSessionSaveData,
+  ensureEnrollmentIdsForSubject,
   extractStudentIds,
   processTempEnrollments,
   type TempEnrollment,
@@ -1577,6 +1578,7 @@ function SchedulePageContent() {
       <GroupSessionModal
         isOpen={showGroupModal}
         groupModalData={groupModalData}
+        setGroupModalData={setGroupModalData}
         setShowGroupModal={setShowGroupModal}
         removeStudent={removeStudent}
         studentInputValue={studentInputValue}
@@ -1709,9 +1711,21 @@ function SchedulePageContent() {
               allEnrollments
             );
 
+            // 🆕 과목 변경 시 학생들에 대해 해당 과목 enrollmentIds 보장
+            const { enrollmentIds: ensuredEnrollmentIds } =
+              await ensureEnrollmentIdsForSubject(
+                currentStudentIds,
+                tempSubjectId,
+                addEnrollment,
+                getClassPlannerData,
+                allEnrollments
+              );
+
             // 세션 저장 데이터 생성
             const sessionData = buildSessionSaveData(
-              mergedEnrollmentIds,
+              ensuredEnrollmentIds.length > 0
+                ? ensuredEnrollmentIds
+                : mergedEnrollmentIds,
               currentStudentIds,
               tempSubjectId,
               weekday,
