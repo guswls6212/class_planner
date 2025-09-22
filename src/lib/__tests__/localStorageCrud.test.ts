@@ -44,7 +44,7 @@ const localStorageMock = {
     delete storage[key];
   }),
   clear: vi.fn(() => {
-    Object.keys(storage).forEach(key => delete storage[key]);
+    Object.keys(storage).forEach((key) => delete storage[key]);
   }),
 };
 
@@ -69,10 +69,26 @@ Object.defineProperty(global, "crypto", {
 describe("localStorage CRUD 유틸리티", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // storage 내용 초기화
-    Object.keys(storage).forEach(key => delete storage[key]);
-    
+    Object.keys(storage).forEach((key) => delete storage[key]);
+
+    // 모의 구현 리셋 (이전 테스트에서 덮어쓴 구현 복원)
+    localStorageMock.getItem.mockImplementation(
+      (key: string) => storage[key] || null
+    );
+    localStorageMock.setItem.mockImplementation(
+      (key: string, value: string) => {
+        storage[key] = value;
+      }
+    );
+    localStorageMock.removeItem.mockImplementation((key: string) => {
+      delete storage[key];
+    });
+    localStorageMock.clear.mockImplementation(() => {
+      Object.keys(storage).forEach((key) => delete storage[key]);
+    });
+
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
@@ -353,7 +369,7 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 추가 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       const beforeTime = new Date().toISOString();
 
       const result = addStudentToLocal("홍길동");
@@ -371,12 +387,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 수정 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 학생 추가
       const addResult = addStudentToLocal("홍길동");
       expect(addResult.success).toBe(true);
-      
+
       const student = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = updateStudentInLocal(student!.id, { name: "김철수" });
@@ -393,12 +413,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 삭제 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 학생 추가
       const addResult = addStudentToLocal("홍길동");
       expect(addResult.success).toBe(true);
-      
+
       const student = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = deleteStudentFromLocal(student!.id);
@@ -415,7 +439,7 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 추가 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       const beforeTime = new Date().toISOString();
 
       const result = addSubjectToLocal("과학", "#ff0000");
@@ -432,12 +456,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 수정 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 과목 추가
       const addResult = addSubjectToLocal("수학", "#ff0000");
       expect(addResult.success).toBe(true);
-      
+
       const subject = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = updateSubjectInLocal(subject!.id, { name: "영어" });
@@ -454,12 +482,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 삭제 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 과목 추가
       const addResult = addSubjectToLocal("수학", "#ff0000");
       expect(addResult.success).toBe(true);
-      
+
       const subject = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = deleteSubjectFromLocal(subject!.id);

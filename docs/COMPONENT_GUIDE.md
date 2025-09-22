@@ -200,6 +200,16 @@ const [selectedStudentId, setSelectedStudentId] = useLocal(
 );
 ```
 
+### 표시 규칙 업데이트 (2025-09-22)
+
+- 세션 셀 학생 이름 표시: 최대 3명까지 이름을 그대로 표기하고, 4명 이상일 경우 "외 N명" 형식으로 요약 표시합니다.
+  - 구현 위치: `src/components/molecules/SessionBlock.utils.ts`의 `getGroupStudentDisplayText`
+  - 예: "학생1, 학생2, 학생3 외 2명"
+  - 관련 테스트:
+    - 단위: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`
+    - 단위(UI): `src/components/molecules/__tests__/SessionBlock.test.tsx`
+    - E2E: `tests/e2e/schedule-student-names.spec.ts`
+
 #### **개별 세션 관리가 필요한 경우:**
 
 ```typescript

@@ -170,6 +170,12 @@ class-planner/
 - Atoms를 조합한 단위
 - 특정 기능을 담당
 
+#### 표시 규칙 업데이트 (2025-09-22)
+
+- `SessionBlock` 학생명 표시 규칙: 최대 3명 + "외 N명" 요약 표기
+  - 구현: `src/components/molecules/SessionBlock.utils.ts#getGroupStudentDisplayText`
+  - 테스트: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`, `src/components/molecules/__tests__/SessionBlock.test.tsx`, `tests/e2e/schedule-student-names.spec.ts`
+
 ### **Organisms (유기체 컴포넌트)**
 
 - TimeTableGrid, StudentPanel, StudentsPageLayout

@@ -14,6 +14,7 @@ import { useLocal } from "../../hooks/useLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
+import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
 import type { Enrollment, Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
@@ -36,6 +37,7 @@ function SchedulePageContent() {
     loading: dataLoading,
     error,
     updateData,
+    addEnrollment,
   } = useIntegratedDataLocal();
 
   // 성능 모니터링
@@ -1978,22 +1980,64 @@ function SchedulePageContent() {
                       }
 
                       try {
-                        // 현재 세션의 학생 ID들을 가져오기 (기존 enrollment + 임시 enrollment)
-                        const allEnrollments = [
-                          ...enrollments,
-                          ...tempEnrollments,
-                        ];
-                        const currentStudentIds =
-                          (editModalData.enrollmentIds
-                            ?.map((enrollmentId) => {
+                        // 🆕 1단계: tempEnrollments를 실제 데이터에 추가
+                        if (tempEnrollments.length > 0) {
+                          logger.debug(
+                            "임시 enrollments를 실제 데이터에 추가",
+                            {
+                              tempEnrollmentsCount: tempEnrollments.length,
+                              tempEnrollments,
+                            }
+                          );
+
+                          for (const tempEnrollment of tempEnrollments) {
+                            await addEnrollment(
+                              tempEnrollment.studentId,
+                              tempEnrollment.subjectId
+                            );
+                          }
+                        }
+
+                        // 🆕 2단계: 업데이트된 enrollments 다시 로드
+                        const updatedData = getClassPlannerData();
+                        const allEnrollments = updatedData.enrollments;
+
+                        // 🆕 3단계: 현재 세션의 enrollmentIds 재계산
+                        const currentEnrollmentIds =
+                          editModalData.enrollmentIds?.filter(
+                            (enrollmentId) => {
                               const enrollment = allEnrollments.find(
                                 (e) => e.id === enrollmentId
                               );
-                              return enrollment?.studentId;
-                            })
-                            .filter(Boolean) as string[]) || [];
+                              return enrollment; // 유효한 enrollment만 유지
+                            }
+                          ) || [];
 
-                        // 🆕 임시 과목 ID 사용
+                        // 🆕 4단계: 새로 추가된 tempEnrollments의 ID도 포함
+                        for (const tempEnrollment of tempEnrollments) {
+                          const realEnrollment = allEnrollments.find(
+                            (e) =>
+                              e.studentId === tempEnrollment.studentId &&
+                              e.subjectId === tempEnrollment.subjectId
+                          );
+                          if (
+                            realEnrollment &&
+                            !currentEnrollmentIds.includes(realEnrollment.id)
+                          ) {
+                            currentEnrollmentIds.push(realEnrollment.id);
+                          }
+                        }
+
+                        // 🆕 5단계: studentIds 계산 (호환성 유지)
+                        const currentStudentIds = currentEnrollmentIds
+                          .map((enrollmentId) => {
+                            const enrollment = allEnrollments.find(
+                              (e) => e.id === enrollmentId
+                            );
+                            return enrollment?.studentId;
+                          })
+                          .filter(Boolean) as string[];
+
                         const currentSubjectId = tempSubjectId;
 
                         logger.debug("세션 저장 시작", {
@@ -2003,9 +2047,13 @@ function SchedulePageContent() {
                           weekday,
                           currentStudentIds,
                           currentSubjectId,
+                          currentEnrollmentIds,
+                          tempEnrollmentsAdded: tempEnrollments.length,
                         });
 
+                        // 🆕 6단계: enrollmentIds와 studentIds 모두 업데이트
                         await updateSession(editModalData.id, {
+                          enrollmentIds: currentEnrollmentIds, // ← 핵심: enrollmentIds도 업데이트!
                           studentIds: currentStudentIds,
                           subjectId: currentSubjectId,
                           weekday,

@@ -28,14 +28,14 @@ export interface CrudResult<T> {
 // ===== 상수 =====
 
 const STORAGE_KEY = "classPlannerData";
-const DEFAULT_DATA: ClassPlannerData = {
+const createDefaultData = (): ClassPlannerData => ({
   students: [],
   subjects: [],
   sessions: [],
   enrollments: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
-};
+});
 
 // ===== 기본 CRUD 함수들 =====
 
@@ -46,13 +46,13 @@ export const getClassPlannerData = (): ClassPlannerData => {
   try {
     if (typeof window === "undefined") {
       logger.debug("localStorageCrud - SSR 환경, 기본 데이터 반환");
-      return DEFAULT_DATA;
+      return createDefaultData();
     }
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       logger.debug("localStorageCrud - 저장된 데이터 없음, 기본 데이터 반환");
-      return DEFAULT_DATA;
+      return createDefaultData();
     }
 
     const parsed = JSON.parse(stored);
@@ -60,7 +60,7 @@ export const getClassPlannerData = (): ClassPlannerData => {
     // 데이터 구조 검증
     if (!parsed || typeof parsed !== "object") {
       logger.warn("localStorageCrud - 잘못된 데이터 구조, 기본 데이터 반환");
-      return DEFAULT_DATA;
+      return createDefaultData();
     }
 
     // 기본 구조 확인 및 마이그레이션
@@ -93,7 +93,7 @@ export const getClassPlannerData = (): ClassPlannerData => {
       undefined,
       error as Error
     );
-    return DEFAULT_DATA;
+    return createDefaultData();
   }
 };
 
@@ -122,11 +122,16 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
     });
 
     // localStorage 변경 이벤트 발생 (다른 탭 동기화)
-    window.dispatchEvent(
-      new CustomEvent("classPlannerDataChanged", {
-        detail: dataToSave,
-      })
-    );
+    try {
+      window.dispatchEvent(
+        new CustomEvent("classPlannerDataChanged", {
+          detail: dataToSave,
+        })
+      );
+    } catch (eventError) {
+      // 테스트/비표준 환경에서 CustomEvent 미지원 등으로 실패해도 저장은 성공 처리
+      logger.warn("localStorageCrud - 변경 이벤트 디스패치 실패 (무시)");
+    }
 
     return true;
   } catch (error) {
@@ -151,8 +156,12 @@ export const clearClassPlannerData = (): boolean => {
     localStorage.removeItem(STORAGE_KEY);
     logger.info("localStorageCrud - 데이터 초기화 완료");
 
-    // 초기화 이벤트 발생
-    window.dispatchEvent(new CustomEvent("classPlannerDataCleared"));
+    // 초기화 이벤트 발생 (실패해도 무시)
+    try {
+      window.dispatchEvent(new CustomEvent("classPlannerDataCleared"));
+    } catch (eventError) {
+      logger.warn("localStorageCrud - 초기화 이벤트 디스패치 실패 (무시)");
+    }
 
     return true;
   } catch (error) {
