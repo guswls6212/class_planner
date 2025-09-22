@@ -79,21 +79,19 @@ else
     success "테스트 커버리지 측정 완료"
 fi
 
-# step "5단계: 주요 E2E 시나리오 테스트"
-# info "핵심 사용자 시나리오 E2E 테스트 실행 중..."
-# if ! npm run test:e2e; then
-#     warning "E2E 테스트가 실패했습니다. 브라우저 환경을 확인하세요."
-#     echo "E2E 테스트 실패를 무시하고 계속하시겠습니까? (y/N): "
-#     read -r response
-#     if [[ ! "$response" =~ ^[Yy]$ ]]; then
-#         error "E2E 테스트 실패로 인한 중단"
-#     fi
-#     warning "E2E 테스트 실패를 무시하고 계속 진행합니다."
-# else
-#     success "주요 E2E 시나리오 테스트 통과"
-# fi
-info "⚠️ E2E 테스트는 현재 불안정으로 인해 비활성화됨 (FUTURE_TODO.md 참조)"
-
+step "5단계: 주요 E2E 시나리오 테스트"
+info "핵심 사용자 시나리오 E2E 테스트 실행 중..."
+if ! npm run test:e2e; then
+    warning "E2E 테스트가 실패했습니다. 브라우저 환경을 확인하세요."
+    echo "E2E 테스트 실패를 무시하고 계속하시겠습니까? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        error "E2E 테스트 실패로 인한 중단"
+    fi
+    warning "E2E 테스트 실패를 무시하고 계속 진행합니다."
+else
+    success "주요 E2E 시나리오 테스트 통과"
+fi
 info "브라우저 호환성 테스트는 5단계 E2E 테스트에 포함됨..."
 
 step "7단계: 프로덕션 빌드 검증"
@@ -104,12 +102,29 @@ fi
 success "프로덕션 빌드 검증 통과"
 
 step "8단계: 시스템 통합 테스트"
-info "전체 시스템 통합 테스트 실행 중..."
+info "개발 서버 기동 후 전체 시스템 통합 테스트 실행..."
+# 포트 선점 프로세스 종료
+lsof -ti:3000 | xargs -r kill -9 || true
+# 서버 백그라운드 기동
+npm run dev >/dev/null 2>&1 &
+DEV_SERVER_PID=$!
+# 서버 대기 (최대 30초)
+for i in {1..30}; do
+  if curl -sSf http://localhost:3000 >/dev/null; then
+    break
+  fi
+  sleep 1
+done
+if ! curl -sSf http://localhost:3000 >/dev/null; then
+  warning "개발 서버 기동 실패 또는 지연"
+fi
 if ! npm run test:system:headless; then
     warning "시스템 통합 테스트가 실패했습니다."
 else
     success "시스템 통합 테스트 통과"
 fi
+# 서버 종료
+kill -9 $DEV_SERVER_PID 2>/dev/null || true
 
 # 실행 시간 계산
 end_time=$(date +%s)
