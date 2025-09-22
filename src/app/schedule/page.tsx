@@ -1577,6 +1577,7 @@ function SchedulePageContent() {
       <GroupSessionModal
         isOpen={showGroupModal}
         groupModalData={groupModalData}
+        setGroupModalData={setGroupModalData}
         setShowGroupModal={setShowGroupModal}
         removeStudent={removeStudent}
         studentInputValue={studentInputValue}
