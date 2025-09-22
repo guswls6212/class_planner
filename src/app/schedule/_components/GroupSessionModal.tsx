@@ -1,9 +1,9 @@
 "use client";
 import React from "react";
-import styles from "./Schedule.module.css";
-import Label from "../../components/atoms/Label";
-import Button from "../../components/atoms/Button";
-import type { GroupSessionData } from "../../types/scheduleTypes";
+import Button from "../../../components/atoms/Button";
+import Label from "../../../components/atoms/Label";
+import type { GroupSessionData } from "../../../types/scheduleTypes";
+import styles from "../Schedule.module.css";
 
 type SubjectOption = { id: string; name: string; color?: string };
 type StudentOption = { id: string; name: string };
@@ -137,16 +137,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 id="modal-subject"
                 className="form-select"
                 value={groupModalData.subjectId}
-                onChange={(e) =>
-                  (window.requestAnimationFrame || setTimeout)(() => {
-                    // 부모 상태 업데이트 호출 (성능 보호용 최소 지연)
-                    const value = e.target.value;
-                    (function updateSubject() {
-                      // 부모의 setGroupModalData를 직접 받지 않고, 상위에서 상태 핸들링하도록 유지
-                      // 상위에서 onChange를 바인딩했으므로 여기서는 DOM 반영만
-                    })();
-                  })
-                }
+                onChange={(e) => {
+                  const ev = new CustomEvent("group-modal-change", {
+                    detail: { field: "subjectId", value: e.target.value },
+                  });
+                  window.dispatchEvent(ev);
+                }}
                 disabled={groupModalData.studentIds.length === 0}
               >
                 <option value="">
@@ -238,7 +234,10 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           </div>
 
           <div className={styles.modalActions}>
-            <Button variant="transparent" onClick={() => setShowGroupModal(false)}>
+            <Button
+              variant="transparent"
+              onClick={() => setShowGroupModal(false)}
+            >
               취소
             </Button>
             <Button

@@ -4,7 +4,6 @@ import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import Button from "../../components/atoms/Button";
-import GroupSessionModal from "./GroupSessionModal";
 import Label from "../../components/atoms/Label";
 import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
@@ -22,6 +21,7 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
+import GroupSessionModal from "./_components/GroupSessionModal";
 import styles from "./Schedule.module.css";
 
 export default function SchedulePage() {
