@@ -157,4 +157,3 @@ describe("StudentInputSection Component", () => {
     ).not.toBeInTheDocument();
   });
 });
-

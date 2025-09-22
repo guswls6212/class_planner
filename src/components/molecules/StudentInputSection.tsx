@@ -53,7 +53,9 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onNewStudentNameChange(e.target.value);
+    const value = e.target.value;
+    const limited = value.slice(0, 4);
+    onNewStudentNameChange(limited);
     // 입력 중일 때는 내부 에러 메시지 숨김
     if (internalErrorMessage) {
       setInternalErrorMessage('');
