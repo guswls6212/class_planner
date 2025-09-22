@@ -8,7 +8,7 @@ interface ButtonProps {
   size?: "small" | "medium" | "large";
   disabled?: boolean;
   loading?: boolean;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   onMouseEnter?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseLeave?: (event: React.MouseEvent<HTMLButtonElement>) => void;

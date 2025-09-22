@@ -28,6 +28,7 @@ function StudentsPageContent() {
     loading: isLoading,
     error,
     addStudent,
+    updateStudent,
     deleteStudent,
     refreshStudents,
     clearError,
@@ -76,6 +77,10 @@ function StudentsPageContent() {
       onAddStudent={handleAddStudent}
       onSelectStudent={handleSelectStudent}
       onDeleteStudent={handleDeleteStudent}
+      onUpdateStudent={async (id, name) => {
+        await updateStudent(id, { name });
+        await refreshStudents();
+      }}
       isLoading={isLoading}
       error={error || undefined}
       onClearError={clearError}

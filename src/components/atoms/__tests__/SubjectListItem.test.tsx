@@ -1,10 +1,33 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import SubjectListItem from "../SubjectListItem";
+
+describe("SubjectListItem - 6글자 제한", () => {
+  it("편집 시 6글자 초과 입력을 잘라내고 저장한다", () => {
+    const onUpdate = vi.fn();
+    render(
+      <SubjectListItem
+        subject={{ id: "sub-1", name: "과목", color: "#000" } as any}
+        isSelected={false}
+        onSelect={() => {}}
+        onDelete={() => {}}
+        onUpdate={onUpdate}
+      />
+    );
+
+    fireEvent.click(screen.getByText("편집"));
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "초등수학사회역" } }); // 6글자 초과
+    fireEvent.click(screen.getByTitle("저장"));
+
+    expect(onUpdate).toHaveBeenCalledWith("sub-1", "초등수학사회", "#000");
+  });
+});
 /**
  * SubjectListItem 테스트 (67줄) - 완전 수정
  */
 
-import { render } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import SubjectListItem from "../SubjectListItem";
+// 아래 블록은 동일 파일 내 중복 선언을 피하기 위해 import를 재선언하지 않습니다.
 
 const mockSubject = {
   id: "subject-1",

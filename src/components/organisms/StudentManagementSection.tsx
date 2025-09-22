@@ -11,6 +11,7 @@ interface StudentManagementSectionProps {
   onAddStudent: (name: string) => void;
   onSelectStudent: (studentId: string) => void;
   onDeleteStudent: (studentId: string) => void;
+  onUpdateStudent?: (studentId: string, name: string) => void;
   errorMessage?: string;
   isLoading?: boolean;
   className?: string;
@@ -27,6 +28,7 @@ export const StudentManagementSection: React.FC<
   onAddStudent,
   onSelectStudent,
   onDeleteStudent,
+  onUpdateStudent,
   errorMessage,
   isLoading = false,
   className = "",
@@ -52,6 +54,7 @@ export const StudentManagementSection: React.FC<
         selectedStudentId={selectedStudentId}
         onSelectStudent={onSelectStudent}
         onDeleteStudent={onDeleteStudent}
+        onUpdateStudent={onUpdateStudent}
         isLoading={isLoading}
       />
 

@@ -1,7 +1,7 @@
 import type { Subject } from "@/shared/types/DomainTypes";
 import React, { useState } from "react";
-import Button from "./Button";
 import ConfirmModal from "../molecules/ConfirmModal";
+import Button from "./Button";
 import styles from "./SubjectListItem.module.css";
 
 interface SubjectListItemProps {
@@ -32,7 +32,8 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
 
   const handleSave = () => {
     if (editName.trim()) {
-      onUpdate(subject.id, editName.trim(), editColor);
+      const name = editName.trim().slice(0, 6);
+      onUpdate(subject.id, name, editColor);
       setIsEditing(false);
     }
   };
@@ -81,10 +82,11 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
               <input
                 type="text"
                 value={editName}
-                onChange={(e) => setEditName(e.target.value)}
+                onChange={(e) => setEditName(e.target.value.slice(0, 6))}
                 onKeyDown={handleKeyDown}
                 className={styles.editInput}
                 autoFocus
+                maxLength={6}
               />
               <input
                 type="color"
@@ -94,14 +96,20 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
                 title="색상 변경"
               />
               <button
-                onClick={handleSave}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSave();
+                }}
                 className={styles.saveButton}
                 title="저장"
               >
                 ✓
               </button>
               <button
-                onClick={handleCancel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCancel();
+                }}
                 className={styles.cancelButton}
                 title="취소"
               >
