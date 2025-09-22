@@ -28,29 +28,32 @@ const mockSessions = [
   },
 ];
 
-// 모든 훅들 Mock
-vi.mock("../../hooks/useIntegratedData", () => ({
-  useIntegratedData: () => ({
+// 모든 훅들 Mock (올바른 경로)
+vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
+  useIntegratedDataLocal: () => ({
     data: {
       students: mockStudents,
-      subjects: [],
+      subjects: [{ id: "sub-1", name: "중등수학", color: "#f0a" }],
       sessions: mockSessions,
-      enrollments: [],
+      enrollments: [
+        { id: "enrollment-1", studentId: "student-1", subjectId: "sub-1" },
+      ],
     },
     loading: false,
     error: null,
     updateData: vi.fn(),
+    addEnrollment: vi.fn(),
   }),
 }));
 
-vi.mock("../../hooks/useUserTracking", () => ({
+vi.mock("../../../hooks/useUserTracking", () => ({
   useUserTracking: () => ({
     trackPageView: vi.fn(),
     trackAction: vi.fn(),
   }),
 }));
 
-vi.mock("../../hooks/usePerformanceMonitoring", () => ({
+vi.mock("../../../hooks/usePerformanceMonitoring", () => ({
   usePerformanceMonitoring: () => ({
     startApiCall: vi.fn(),
     endApiCall: vi.fn(),
@@ -59,7 +62,7 @@ vi.mock("../../hooks/usePerformanceMonitoring", () => ({
   }),
 }));
 
-vi.mock("../../hooks/useStudentPanel", () => ({
+vi.mock("../../../hooks/useStudentPanel", () => ({
   useStudentPanel: () => ({
     position: { x: 0, y: 0 },
     isDragging: false,
@@ -73,25 +76,67 @@ vi.mock("../../hooks/useStudentPanel", () => ({
   }),
 }));
 
-vi.mock("../../hooks/useScheduleSessionManagement", () => ({
+vi.mock("../../../hooks/useScheduleSessionManagement", () => ({
   useScheduleSessionManagement: () => ({
     addSession: vi.fn(),
   }),
 }));
 
 // 실제 드래그 로직 대신, 드롭 시 페이지에서 사용하는 핸들러가 호출되었다고 가정
-vi.mock("../../hooks/useScheduleDragAndDrop", () => ({
+vi.mock("../../../hooks/useScheduleDragAndDrop", () => ({
   useScheduleDragAndDrop: () => ({
     handleDrop: vi.fn(),
     handleSessionDrop: vi.fn(),
   }),
 }));
 
-vi.mock("../../hooks/useLocal", () => ({
+// 화면 렌더를 위한 표시용 훅 모킹 (세션 계산 의존성 제거)
+vi.mock("../../../hooks/useDisplaySessions", () => ({
+  useDisplaySessions: () => ({
+    sessions: new Map<number, any[]>([
+      [
+        1,
+        [
+          {
+            id: "session-1",
+            weekday: 1,
+            startsAt: "09:00",
+            endsAt: "10:00",
+            yPosition: 1,
+            enrollmentIds: ["enrollment-1"],
+            room: "",
+          },
+        ],
+      ],
+    ]),
+  }),
+}));
+
+vi.mock("../../../hooks/useLocal", () => ({
   useLocal: () => ["", vi.fn()],
 }));
 
-describe.skip("스케줄 페이지 UI 통합 테스트", () => {
+// 컴포넌트 모킹으로 DOM 안정화
+vi.mock("../../../components/atoms/AuthGuard", () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="auth-guard">{children}</div>
+  ),
+}));
+
+vi.mock("../../../components/organisms/TimeTableGrid", () => ({
+  default: () => <div data-testid="time-table-grid">TimeTableGrid</div>,
+}));
+
+vi.mock("../../../components/organisms/StudentPanel", () => ({
+  default: () => (
+    <div>
+      <div>수강생 리스트</div>
+      <div>김철수</div>
+    </div>
+  ),
+}));
+
+describe("스케줄 페이지 UI 통합 테스트", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // 테스트에서 인증 우회: 토큰 존재한다고 가정
