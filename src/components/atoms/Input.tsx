@@ -12,6 +12,7 @@ interface InputProps {
   error?: boolean;
   disabled?: boolean;
   required?: boolean;
+  maxLength?: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -27,6 +28,7 @@ export const Input: React.FC<InputProps> = ({
   error = false,
   disabled = false,
   required = false,
+  maxLength,
   className = "",
   style = {},
 }) => {
@@ -50,6 +52,7 @@ export const Input: React.FC<InputProps> = ({
       onKeyPress={onKeyPress}
       disabled={disabled}
       required={required}
+      maxLength={maxLength}
       className={inputClasses}
       style={style}
     />
