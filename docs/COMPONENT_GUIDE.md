@@ -200,6 +200,31 @@ const [selectedStudentId, setSelectedStudentId] = useLocal(
 );
 ```
 
+### 표시 규칙 업데이트 (2025-09-22)
+
+- 세션 셀 학생 이름 표시: 최대 3명까지 이름을 그대로 표기하고, 4명 이상일 경우 "외 N명" 형식으로 요약 표시합니다.
+  - 구현 위치: `src/components/molecules/SessionBlock.utils.ts`의 `getGroupStudentDisplayText`
+  - 예: "학생1, 학생2, 학생3 외 2명"
+  - 관련 테스트:
+    - 단위: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`
+    - 단위(UI): `src/components/molecules/__tests__/SessionBlock.test.tsx`
+    - E2E: `tests/e2e/schedule-student-names.spec.ts`
+
+### 시간 겹침/충돌 및 재배치 정책 (2025-09-22)
+
+- 겹침 정의: `start1 < end2 && start2 < end1`
+- 재배치 알고리즘: 이동 대상 세션의 목표 `yPosition`은 고정(anchor). 동일 y에서 겹치는 세션들을 아래 줄로 한 칸씩 이동시키며, 필요 시 연쇄적으로 전파(propagate).
+- 호출 시점:
+  - 세션 추가 직후
+  - 세션 드래그 앤 드롭 이동 시
+  - 수업 편집 모달에서 시간 저장 시
+- 구현: `src/lib/sessionCollisionUtils.ts`의 `repositionSessions`
+- 스케줄 페이지 연결:
+  - 드래그 이동: `updateSessionPosition` → `repositionSessions`
+  - 편집 저장: `updateSession` → `repositionSessions`
+- 테스트:
+  - `src/lib/__tests__/sessionCollisionUtils.test.ts` (드래그/편집 체인 전파 검증)
+
 #### **개별 세션 관리가 필요한 경우:**
 
 ```typescript

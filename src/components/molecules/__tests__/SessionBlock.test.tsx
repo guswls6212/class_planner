@@ -335,6 +335,45 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
     expect(screen.getByText(specialSubjectName)).toBeInTheDocument();
   });
+
+  it("학생이 4명일 때 3명 + '외 1명'으로 표시되어야 한다", () => {
+    const sessionWithFour = {
+      ...mockSession,
+      enrollmentIds: ["enroll-1", "enroll-2", "enroll-3", "enroll-4"],
+    } as any;
+
+    const enrollmentsWithFour = [
+      { id: "enroll-1", studentId: "s-1", subjectId: mockSubjects[0].id },
+      { id: "enroll-2", studentId: "s-2", subjectId: mockSubjects[0].id },
+      { id: "enroll-3", studentId: "s-3", subjectId: mockSubjects[0].id },
+      { id: "enroll-4", studentId: "s-4", subjectId: mockSubjects[0].id },
+    ];
+
+    const studentsWithFour = [
+      { id: "s-1", name: "학생1" },
+      { id: "s-2", name: "학생2" },
+      { id: "s-3", name: "학생3" },
+      { id: "s-4", name: "학생4" },
+    ];
+
+    render(
+      <SessionBlock
+        {...defaultProps}
+        session={sessionWithFour}
+        enrollments={enrollmentsWithFour as any}
+        students={studentsWithFour as any}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toBeInTheDocument();
+    expect(sessionBlock).toHaveTextContent("학생1");
+    expect(sessionBlock).toHaveTextContent("학생2");
+    expect(sessionBlock).toHaveTextContent("학생3");
+    expect(sessionBlock).toHaveTextContent("외 1명");
+  });
 });
 
 describe("SessionBlock Utility Functions", () => {

@@ -2,7 +2,7 @@
  * StudentListItem 테스트 (95줄)
  */
 
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StudentListItem from "../StudentListItem";
 
@@ -87,5 +87,26 @@ describe("StudentListItem", () => {
         );
       }).not.toThrow();
     });
+  });
+
+  it("편집 버튼으로 이름을 수정할 수 있어야 한다(4글자 제한)", () => {
+    const onUpdate = vi.fn();
+    render(
+      <StudentListItem
+        student={mockStudent}
+        isSelected={false}
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+        onUpdate={onUpdate}
+      />
+    );
+
+    // 편집 클릭
+    fireEvent.click(screen.getByText("편집"));
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "홍길동박이" } });
+    // 저장
+    fireEvent.click(screen.getByText("저장"));
+    expect(onUpdate).toHaveBeenCalledWith("student-1", "홍길동박");
   });
 });

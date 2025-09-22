@@ -44,7 +44,7 @@ const localStorageMock = {
     delete storage[key];
   }),
   clear: vi.fn(() => {
-    Object.keys(storage).forEach(key => delete storage[key]);
+    Object.keys(storage).forEach((key) => delete storage[key]);
   }),
 };
 
@@ -69,10 +69,26 @@ Object.defineProperty(global, "crypto", {
 describe("localStorage CRUD 유틸리티", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // storage 내용 초기화
-    Object.keys(storage).forEach(key => delete storage[key]);
-    
+    Object.keys(storage).forEach((key) => delete storage[key]);
+
+    // 모의 구현 리셋 (이전 테스트에서 덮어쓴 구현 복원)
+    localStorageMock.getItem.mockImplementation(
+      (key: string) => storage[key] || null
+    );
+    localStorageMock.setItem.mockImplementation(
+      (key: string, value: string) => {
+        storage[key] = value;
+      }
+    );
+    localStorageMock.removeItem.mockImplementation((key: string) => {
+      delete storage[key];
+    });
+    localStorageMock.clear.mockImplementation(() => {
+      Object.keys(storage).forEach((key) => delete storage[key]);
+    });
+
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
@@ -144,7 +160,11 @@ describe("localStorage CRUD 유틸리티", () => {
             { id: "student-1", name: "김철수" },
             { id: "student-2", name: "이영희" },
           ],
-          subjects: [],
+          subjects: [
+            { id: "subject-1", name: "수학", color: "#ff0000" },
+            { id: "subject-2", name: "영어", color: "#00ff00" },
+          ],
+          // 세션/등록 기본값은 각 테스트에서 사용 목적에 맞게 구성
           sessions: [],
           enrollments: [],
           version: "1.0",
@@ -198,6 +218,101 @@ describe("localStorage CRUD 유틸리티", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("학생을 찾을 수 없습니다.");
+    });
+
+    it("학생 삭제 시 해당 학생의 enrollments와 세션(enrollmentIds 기반)이 함께 정리되어야 한다 (단독 세션)", () => {
+      // 데이터 구성: student-1의 단독 enrollment와 그 enrollment만 가진 세션 1개
+      const initial = {
+        students: [
+          { id: "student-1", name: "김철수" },
+          { id: "student-2", name: "이영희" },
+        ],
+        subjects: [{ id: "subject-1", name: "수학", color: "#ff0000" }],
+        enrollments: [
+          { id: "enroll-1", studentId: "student-1", subjectId: "subject-1" },
+        ],
+        sessions: [
+          {
+            id: "session-1",
+            enrollmentIds: ["enroll-1"],
+            weekday: 0,
+            startsAt: "10:00",
+            endsAt: "11:00",
+            yPosition: 1,
+          },
+        ],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+      localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(initial));
+
+      const res = deleteStudentFromLocal("student-1");
+      expect(res.success).toBe(true);
+
+      const lastSetCall =
+        localStorageMock.setItem.mock.calls[
+          localStorageMock.setItem.mock.calls.length - 1
+        ];
+      const saved = JSON.parse(lastSetCall[1] as string);
+      // student-1 제거
+      expect(
+        saved.students.find((s: any) => s.id === "student-1")
+      ).toBeUndefined();
+      // enrollments 제거
+      expect(
+        saved.enrollments.some((e: any) => e.studentId === "student-1")
+      ).toBe(false);
+      // 해당 enrollment만 가진 세션은 삭제됨
+      expect(saved.sessions.some((s: any) => s.id === "session-1")).toBe(false);
+    });
+
+    it("학생 삭제 시 공유 세션의 enrollmentIds에서 해당 학생의 enrollment만 제거되고, 남아있으면 세션 유지되어야 한다 (그룹 세션)", () => {
+      // 데이터 구성: session-1은 student-1과 student-2의 enrollment를 함께 가짐
+      const initial = {
+        students: [
+          { id: "student-1", name: "김철수" },
+          { id: "student-2", name: "이영희" },
+        ],
+        subjects: [{ id: "subject-1", name: "수학", color: "#ff0000" }],
+        enrollments: [
+          { id: "enroll-1", studentId: "student-1", subjectId: "subject-1" },
+          { id: "enroll-2", studentId: "student-2", subjectId: "subject-1" },
+        ],
+        sessions: [
+          {
+            id: "session-1",
+            enrollmentIds: ["enroll-1", "enroll-2"],
+            weekday: 0,
+            startsAt: "10:00",
+            endsAt: "11:00",
+            yPosition: 1,
+          },
+        ],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+      localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(initial));
+
+      const res = deleteStudentFromLocal("student-1");
+      expect(res.success).toBe(true);
+
+      const lastSetCall =
+        localStorageMock.setItem.mock.calls[
+          localStorageMock.setItem.mock.calls.length - 1
+        ];
+      const saved = JSON.parse(lastSetCall[1] as string);
+      // student-1 제거
+      expect(
+        saved.students.find((s: any) => s.id === "student-1")
+      ).toBeUndefined();
+      // student-1의 enrollment(enroll-1) 제거
+      expect(saved.enrollments.some((e: any) => e.id === "enroll-1")).toBe(
+        false
+      );
+      // 세션은 유지되되, enrollmentIds에서 enroll-1만 제거되고 enroll-2는 남음
+      const session = saved.sessions.find((s: any) => s.id === "session-1");
+      expect(session).toBeTruthy();
+      expect(session.enrollmentIds).toEqual(["enroll-2"]);
     });
 
     it("특정 학생을 조회해야 한다", () => {
@@ -353,7 +468,7 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 추가 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       const beforeTime = new Date().toISOString();
 
       const result = addStudentToLocal("홍길동");
@@ -371,12 +486,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 수정 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 학생 추가
       const addResult = addStudentToLocal("홍길동");
       expect(addResult.success).toBe(true);
-      
+
       const student = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = updateStudentInLocal(student!.id, { name: "김철수" });
@@ -393,12 +512,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("학생 삭제 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 학생 추가
       const addResult = addStudentToLocal("홍길동");
       expect(addResult.success).toBe(true);
-      
+
       const student = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = deleteStudentFromLocal(student!.id);
@@ -415,7 +538,7 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 추가 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       const beforeTime = new Date().toISOString();
 
       const result = addSubjectToLocal("과학", "#ff0000");
@@ -432,12 +555,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 수정 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 과목 추가
       const addResult = addSubjectToLocal("수학", "#ff0000");
       expect(addResult.success).toBe(true);
-      
+
       const subject = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = updateSubjectInLocal(subject!.id, { name: "영어" });
@@ -454,12 +581,16 @@ describe("localStorage CRUD 유틸리티", () => {
     it("과목 삭제 시 lastModified가 갱신되어야 함", () => {
       // localStorage 초기화
       localStorageMock.getItem.mockReturnValue(null);
-      
+
       // 먼저 과목 추가
       const addResult = addSubjectToLocal("수학", "#ff0000");
       expect(addResult.success).toBe(true);
-      
+
       const subject = addResult.data;
+      // 이후 호출부터는 실제 storage를 읽도록 복원
+      localStorageMock.getItem.mockImplementation(
+        (key: string) => storage[key] || null
+      );
       const beforeTime = new Date().toISOString();
 
       const result = deleteSubjectFromLocal(subject!.id);

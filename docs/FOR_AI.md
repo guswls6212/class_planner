@@ -187,6 +187,50 @@ import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal
 5. **타입 안전성**: TypeScript 에러 해결 우선
 6. **🆕 Local 훅 우선**: 새로운 기능은 localStorage 직접 조작 방식 사용
 
+## 🌳 Git 브랜치 관리 규칙
+
+### **Merge 전략**
+
+#### **⚠️ 중요: 항상 Merge Commit 생성**
+```bash
+# ❌ Fast-forward 병합 (가지가 안 보임)
+git merge feature-branch
+
+# ✅ Merge commit 생성 (가지 구조 시각화)
+git merge --no-ff feature-branch
+```
+
+#### **🔄 브랜치 병합 워크플로우**
+```bash
+# 1. feature 브랜치에서 작업 완료
+git checkout feature/new-feature
+npm run pre-commit && npm run pre-pr  # 검증
+
+# 2. develop으로 이동
+git checkout develop
+
+# 3. Merge commit으로 병합 (가지 구조 유지)
+git merge --no-ff feature/new-feature
+
+# 4. 병합된 브랜치 삭제
+git branch -d feature/new-feature
+```
+
+#### **📊 예상 Git 그래프**
+```
+      ┌─ feature/A ──┐
+      │              ├─ merge commit
+develop ├─ feature/B ──┤
+      │              ├─ merge commit  
+      └─ feature/C ──┘
+```
+
+### **브랜치 명명 규칙**
+- `feature/기능명`: 새로운 기능 개발
+- `fix/버그명`: 버그 수정
+- `refactor/개선명`: 코드 리팩토링
+- `test/테스트명`: 테스트 관련 작업
+
 ---
 
 **마지막 업데이트**: 2025-09-21  

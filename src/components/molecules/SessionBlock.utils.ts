@@ -105,17 +105,15 @@ export const getSessionSubject = (
   return subject;
 };
 
-// 🆕 그룹 학생 이름을 표시하는 함수 (최대 5명까지 표시)
+// 🆕 그룹 학생 이름을 표시하는 함수 (최대 3명까지 표시)
 export const getGroupStudentDisplayText = (studentNames: string[]): string => {
   if (studentNames.length === 0) return "";
   if (studentNames.length === 1) return studentNames[0];
   if (studentNames.length === 2) return studentNames.join(", ");
   if (studentNames.length === 3) return studentNames.join(", ");
-  if (studentNames.length === 4) return studentNames.join(", ");
-  if (studentNames.length === 5) return studentNames.join(", ");
-  // 6명 이상인 경우: 첫 5명 + 외 N명
-  return `${studentNames.slice(0, 5).join(", ")} 외 ${
-    studentNames.length - 5
+  // 4명 이상인 경우: 첫 3명 + 외 N명
+  return `${studentNames.slice(0, 3).join(", ")} 외 ${
+    studentNames.length - 3
   }명`;
 };
 

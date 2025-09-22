@@ -2,7 +2,7 @@
  * SessionForm 테스트 (195줄 - 큰 파일)
  */
 
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SessionForm from "../SessionForm";
 
@@ -12,7 +12,7 @@ vi.mock("../../atoms/Button", () => ({
 }));
 
 vi.mock("../../atoms/Input", () => ({
-  default: vi.fn(() => <input data-testid="input" />),
+  default: vi.fn((props: any) => <input data-testid="input" {...props} />),
 }));
 
 vi.mock("../../atoms/Label", () => ({
@@ -108,6 +108,54 @@ describe("SessionForm", () => {
         />
       );
     }).not.toThrow();
+  });
+
+  it("종료 시간이 시작 시간보다 이르면 즉시 경고가 표시되어야 한다", () => {
+    render(
+      <SessionForm
+        subjects={mockSubjects}
+        students={mockStudents}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const inputs = screen.getAllByTestId("input");
+    const startInput = inputs[0];
+    const endInput = inputs[1];
+
+    // 시작 10:00, 종료 09:00 으로 설정
+    fireEvent.change(startInput, { target: { value: "10:00" } });
+    fireEvent.change(endInput, { target: { value: "09:00" } });
+
+    expect(
+      screen.getByText("종료 시간은 시작 시간보다 늦어야 합니다.")
+    ).toBeInTheDocument();
+  });
+
+  it("8시간을 초과하면 즉시 경고가 표시되어야 한다", () => {
+    render(
+      <SessionForm
+        subjects={mockSubjects}
+        students={mockStudents}
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const inputs = screen.getAllByTestId("input");
+    const startInput = inputs[0];
+    const endInput = inputs[1];
+
+    // 09:00 ~ 18:59 은 9시간 미만? -> 10시간? 정확히 초과 케이스로 09:00~18:30(9.5h)
+    fireEvent.change(startInput, { target: { value: "09:00" } });
+    fireEvent.change(endInput, { target: { value: "18:30" } });
+
+    expect(
+      screen.getByText("세션 시간은 최대 8시간까지 설정할 수 있습니다.")
+    ).toBeInTheDocument();
   });
 
   it("빈 과목/학생 배열을 안전하게 처리해야 한다", () => {

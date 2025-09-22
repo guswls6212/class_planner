@@ -3,8 +3,6 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
-import Button from "../../components/atoms/Button";
-import Label from "../../components/atoms/Label";
 import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
@@ -14,11 +12,32 @@ import { useLocal } from "../../hooks/useLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
+import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
-import type { Enrollment, Session, Student } from "../../lib/planner";
+import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
+import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
+import EditSessionModal from "./_components/EditSessionModal";
+import GroupSessionModal from "./_components/GroupSessionModal";
+import {
+  DEFAULT_EDIT_MODAL_TIME_DATA,
+  DEFAULT_GROUP_SESSION_DATA,
+  ERROR_MESSAGES,
+  MAX_SESSION_DURATION_MINUTES,
+} from "./_constants/scheduleConstants";
+import {
+  buildSelectedStudents,
+  filterEditableStudents,
+  removeStudentFromEnrollmentIds,
+} from "./_utils/scheduleSelectors";
+import {
+  buildSessionSaveData,
+  extractStudentIds,
+  processTempEnrollments,
+  type TempEnrollment,
+} from "./_utils/sessionSaveUtils";
 import styles from "./Schedule.module.css";
 
 export default function SchedulePage() {
@@ -36,6 +55,7 @@ function SchedulePageContent() {
     loading: dataLoading,
     error,
     updateData,
+    addEnrollment,
   } = useIntegratedDataLocal();
 
   // 성능 모니터링
@@ -126,8 +146,10 @@ function SchedulePageContent() {
               ? [...enrollments, ...newEnrollments]
               : enrollments;
 
-          const repositionedSessions = repositionSessions(
+          const repositionedSessions = repositionSessionsUtil(
             updatedSessions,
+            updatedEnrollments,
+            subjects,
             sessionData.weekday,
             sessionData.startTime,
             sessionData.endTime,
@@ -187,11 +209,33 @@ function SchedulePageContent() {
         return s;
       });
 
-      await updateData({ sessions: newSessions });
-      logger.info("세션 업데이트 완료");
+      // 🆕 시간 변경 시 충돌 재배치 수행
+      const target = newSessions.find((s) => s.id === sessionId);
+      const targetWeekday = target?.weekday ?? sessionData.weekday ?? 0;
+      const targetStartTime = target?.startsAt ?? sessionData.startTime;
+      const targetEndTime = target?.endsAt ?? sessionData.endTime;
+      const targetYPosition = target?.yPosition || 1;
+
+      const repositioned = repositionSessionsUtil(
+        newSessions,
+        enrollments,
+        subjects,
+        targetWeekday,
+        targetStartTime,
+        targetEndTime,
+        targetYPosition,
+        sessionId
+      );
+
+      await updateData({ sessions: repositioned });
+      logger.info("세션 업데이트 및 재배치 완료");
     },
-    [sessions, updateData]
+    [sessions, updateData, enrollments, subjects]
   );
+
+  // ================================
+  // 🎯 드래그 앤 드롭 / 충돌 처리 섹션
+  // ================================
 
   // 🆕 시간 충돌 감지 함수
   const isTimeOverlapping = useCallback(
@@ -623,6 +667,10 @@ function SchedulePageContent() {
     [isTimeOverlapping]
   );
 
+  // ================================
+  // 🎯 세션 위치 업데이트 섹션
+  // ================================
+
   const updateSessionPosition = useCallback(
     async (
       sessionId: string,
@@ -660,8 +708,10 @@ function SchedulePageContent() {
 
       // 🆕 충돌 방지 로직 적용
       logger.debug("repositionSessions 호출 시작");
-      const newSessions = repositionSessions(
+      const newSessions = repositionSessionsUtil(
         sessions,
+        enrollments,
+        subjects,
         weekday,
         time,
         newEndTime,
@@ -768,18 +818,21 @@ function SchedulePageContent() {
     setSelectedStudentId
   );
 
-  const { validateTimeRange, getNextHour } = useTimeValidation();
+  const {
+    validateTimeRange,
+    validateDurationWithinLimit,
+    getNextHour,
+    validateAndToastGroup,
+    validateAndToastEdit,
+  } = useTimeValidation();
 
   // 🆕 그룹 수업 모달 상태
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [groupModalData, setGroupModalData] = useState<GroupSessionData>({
-    studentIds: [], // 빈 배열로 초기화
-    subjectId: "",
-    weekday: 0,
-    startTime: "",
-    endTime: "",
+    ...DEFAULT_GROUP_SESSION_DATA,
     yPosition: 1, // 🆕 기본값 1
   });
+  const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
 
   // 🆕 학생 입력 관련 상태
   const [studentInputValue, setStudentInputValue] = useState("");
@@ -796,26 +849,50 @@ function SchedulePageContent() {
   const [editStudentInputValue, setEditStudentInputValue] = useState("");
 
   // 🆕 수업 편집 모달용 시간 상태
-  const [editModalTimeData, setEditModalTimeData] = useState({
-    startTime: "",
-    endTime: "",
-  });
+  const [editModalTimeData, setEditModalTimeData] = useState(
+    DEFAULT_EDIT_MODAL_TIME_DATA
+  );
+  const [editTimeError, setEditTimeError] = useState<string>("");
 
   // 🆕 수업 편집 모달용 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
   const handleEditStartTimeChange = (newStartTime: string) => {
     setEditModalTimeData((prev) => {
       const currentEndTime = prev.endTime;
 
-      // 시작 시간이 종료 시간보다 늦으면 경고만 표시하고 자동 조정하지 않음
+      // 시작 시간이 종료 시간보다 늦으면 즉시 경고
       if (
         newStartTime &&
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요."
-        );
+        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
+      }
+
+      // 8시간 초과 시 즉시 경고
+      if (
+        newStartTime &&
+        currentEndTime &&
+        !validateDurationWithinLimit(
+          newStartTime,
+          currentEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
+      ) {
+        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
+      }
+
+      // 정상 상태면 에러 해제
+      if (
+        newStartTime &&
+        currentEndTime &&
+        validateTimeRange(newStartTime, currentEndTime) &&
+        validateDurationWithinLimit(
+          newStartTime,
+          currentEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
+      ) {
+        setEditTimeError("");
       }
 
       return {
@@ -830,16 +907,40 @@ function SchedulePageContent() {
     setEditModalTimeData((prev) => {
       const currentStartTime = prev.startTime;
 
-      // 종료 시간이 시작 시간보다 빠르면 경고만 표시하고 자동 조정하지 않음
+      // 종료 시간이 시작 시간보다 빠르면 즉시 경고
       if (
         newEndTime &&
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요."
-        );
+        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
+      }
+
+      // 8시간 초과 시 즉시 경고
+      if (
+        newEndTime &&
+        currentStartTime &&
+        !validateDurationWithinLimit(
+          currentStartTime,
+          newEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
+      ) {
+        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
+      }
+
+      // 정상 상태면 에러 해제
+      if (
+        newEndTime &&
+        currentStartTime &&
+        validateTimeRange(currentStartTime, newEndTime) &&
+        validateDurationWithinLimit(
+          currentStartTime,
+          newEndTime,
+          MAX_SESSION_DURATION_MINUTES
+        )
+      ) {
+        setEditTimeError("");
       }
 
       return {
@@ -861,7 +962,11 @@ function SchedulePageContent() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editModalData, setEditModalData] = useState<Session | null>(null);
   const [tempSubjectId, setTempSubjectId] = useState<string>(""); // 🆕 임시 과목 ID
-  const [tempEnrollments, setTempEnrollments] = useState<Enrollment[]>([]); // 🆕 임시 enrollment 관리
+  const [tempEnrollments, setTempEnrollments] = useState<TempEnrollment[]>([]); // 🆕 임시 enrollment 관리
+
+  // ================================
+  // 🎯 모달 제어 / 학생 관리 섹션
+  // ================================
 
   // 🆕 학생 입력값 변경 핸들러 최적화
   const handleEditStudentInputChange = useCallback(
@@ -1031,21 +1136,19 @@ function SchedulePageContent() {
   const addGroupSession = async (data: GroupSessionData) => {
     logger.debug("addGroupSession 시작", { data });
 
-    // 시간 유효성 검사
-    if (!validateTimeRange(data.startTime, data.endTime)) {
-      logger.warn("시간 유효성 검사 실패", {
-        startTime: data.startTime,
-        endTime: data.endTime,
-      });
-      alert("시작 시간은 종료 시간보다 빨라야 합니다.");
+    // 시간 유효성 검사 (그룹 모달용)
+    if (
+      !validateAndToastGroup(data.startTime, data.endTime, setGroupTimeError)
+    ) {
       return;
     }
+    setGroupTimeError("");
     logger.debug("시간 유효성 검사 통과");
 
     // 🆕 과목 선택 검증
     if (!data.subjectId) {
       logger.warn("과목 선택 검증 실패");
-      alert("과목을 선택해주세요.");
+      alert(ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
       return;
     }
     logger.debug("과목 선택 검증 통과");
@@ -1053,7 +1156,7 @@ function SchedulePageContent() {
     // 🆕 학생 선택 검증
     if (!data.studentIds || data.studentIds.length === 0) {
       logger.warn("학생 선택 검증 실패");
-      alert("학생을 선택해주세요.");
+      alert(ERROR_MESSAGES.STUDENT_NOT_SELECTED);
       return;
     }
     logger.debug("학생 선택 검증 통과");
@@ -1470,568 +1573,166 @@ function SchedulePageContent() {
         onSearchChange={studentPanelState.setSearchQuery}
       />
 
-      {/* 그룹 수업 추가 모달 */}
-      {showGroupModal && (
-        <>
-          {logger.debug("모달 렌더링 중", {
-            showGroupModal,
-            groupModalData,
-          })}
-          <div className="modal-backdrop">
-            <div className={styles.modalOverlay}>
-              <div className={styles.modalContent}>
-                <h4 className={styles.modalTitle}>수업 추가</h4>
-                <div className={styles.modalForm}>
-                  <div className="form-group">
-                    <Label htmlFor="modal-student" required>
-                      학생
-                    </Label>
-                    <div className={styles.studentTagsContainer}>
-                      {/* 선택된 학생 태그들 */}
-                      {groupModalData.studentIds.map((studentId) => {
-                        const student = students.find(
-                          (s) => s.id === studentId
-                        );
-                        return student ? (
-                          <span key={studentId} className={styles.studentTag}>
-                            {student.name}
-                            <button
-                              type="button"
-                              className={styles.removeStudentBtn}
-                              onClick={() => removeStudent(studentId)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                    <div className={styles.studentInputContainer}>
-                      <input
-                        id="modal-student-input"
-                        type="text"
-                        className="form-input"
-                        placeholder="학생 이름을 입력하세요"
-                        value={studentInputValue}
-                        onChange={(e) => setStudentInputValue(e.target.value)}
-                        onKeyDown={handleStudentInputKeyDown}
-                      />
-                      <button
-                        type="button"
-                        className={styles.addStudentBtn}
-                        onClick={addStudentFromInput}
-                        disabled={!studentInputValue.trim()}
-                      >
-                        추가
-                      </button>
-                    </div>
-                    {/* 학생 검색 결과 */}
-                    {studentInputValue && (
-                      <div className={styles.studentSearchResults}>
-                        {(() => {
-                          const filteredStudents =
-                            filteredStudentsForModal.filter(
-                              (student) =>
-                                !groupModalData.studentIds.includes(student.id)
-                            );
+      {/* 그룹 수업 추가 모달 (분리) */}
+      <GroupSessionModal
+        isOpen={showGroupModal}
+        groupModalData={groupModalData}
+        setShowGroupModal={setShowGroupModal}
+        removeStudent={removeStudent}
+        studentInputValue={studentInputValue}
+        setStudentInputValue={setStudentInputValue}
+        handleStudentInputKeyDown={handleStudentInputKeyDown}
+        addStudentFromInput={addStudentFromInput}
+        filteredStudentsForModal={filteredStudentsForModal}
+        addStudent={addStudent}
+        subjects={subjects}
+        students={students}
+        weekdays={weekdays}
+        handleStartTimeChange={handleStartTimeChange}
+        handleEndTimeChange={handleEndTimeChange}
+        groupTimeError={groupTimeError}
+        addGroupSession={addGroupSession}
+      />
 
-                          if (filteredStudents.length === 0) {
-                            const studentExists = students.some(
-                              (s) =>
-                                s.name.toLowerCase() ===
-                                studentInputValue.toLowerCase()
-                            );
+      {/* 세션 편집 모달 (분리) */}
+      <EditSessionModal
+        isOpen={Boolean(showEditModal && editModalData)}
+        selectedStudents={buildSelectedStudents(
+          editModalData?.enrollmentIds,
+          enrollments,
+          tempEnrollments.map((t) => ({
+            id: "",
+            studentId: t.studentId,
+            subjectId: t.subjectId,
+          })),
+          students
+        )}
+        onRemoveStudent={(studentId) => {
+          const updatedEnrollmentIds = removeStudentFromEnrollmentIds(
+            studentId,
+            editModalData?.enrollmentIds,
+            enrollments,
+            tempEnrollments.map((t) => ({
+              id: "",
+              studentId: t.studentId,
+              subjectId: t.subjectId,
+            }))
+          );
+          setTempEnrollments((prev) =>
+            prev.filter((e) => e.studentId !== studentId)
+          );
+          setEditModalData((prev) =>
+            prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null
+          );
+        }}
+        editStudentInputValue={editStudentInputValue}
+        onEditStudentInputChange={(value) => {
+          logger.debug("학생 입력값 변경", { value });
+          setEditStudentInputValue(value);
+        }}
+        onEditStudentInputKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            logger.debug("Enter 키로 학생 추가 시도");
+            handleEditStudentAdd();
+            setEditStudentInputValue("");
+          }
+        }}
+        onAddStudentClick={handleEditStudentAddClick}
+        editSearchResults={filterEditableStudents(
+          editStudentInputValue,
+          editModalData,
+          enrollments,
+          students
+        )}
+        onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+        tempSubjectId={tempSubjectId}
+        onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
+        weekdays={weekdays}
+        defaultWeekday={editModalData?.weekday ?? 0}
+        startTime={editModalTimeData.startTime}
+        endTime={editModalTimeData.endTime}
+        onStartTimeChange={handleEditStartTimeChange}
+        onEndTimeChange={handleEditEndTimeChange}
+        timeError={editTimeError}
+        onDelete={async () => {
+          if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
+            try {
+              await deleteSession(editModalData.id);
+              setShowEditModal(false);
+              logger.debug("세션 삭제 완료");
+            } catch (error) {
+              console.error("세션 삭제 실패:", error);
+              alert("세션 삭제에 실패했습니다.");
+            }
+          }
+        }}
+        onCancel={() => {
+          setShowEditModal(false);
+          setTempSubjectId("");
+        }}
+        onSave={async () => {
+          if (!editModalData) return;
+          const weekday = Number(
+            (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
+              ?.value
+          );
+          const startTime = editModalTimeData.startTime;
+          const endTime = editModalTimeData.endTime;
+          if (!startTime || !endTime) return;
+          if (!validateAndToastEdit(startTime, endTime)) {
+            return;
+          }
+          try {
+            // 임시 enrollments 처리 및 병합
+            const { allEnrollments, currentEnrollmentIds } =
+              await processTempEnrollments(
+                tempEnrollments,
+                addEnrollment,
+                getClassPlannerData
+              );
 
-                            logger.debug("그룹 모달 학생 검색 디버깅", {
-                              studentInputValue,
-                              filteredStudentsLength: filteredStudents.length,
-                              studentExists,
-                              totalStudents: students.length,
-                            });
+            // 기존 enrollmentIds와 병합
+            const existingEnrollmentIds =
+              editModalData.enrollmentIds?.filter((enrollmentId) =>
+                allEnrollments.some((e) => e.id === enrollmentId)
+              ) || [];
+            const mergedEnrollmentIds = [
+              ...existingEnrollmentIds,
+              ...currentEnrollmentIds,
+            ];
 
-                            return (
-                              <div className={styles.noSearchResults}>
-                                <span>검색 결과가 없습니다</span>
-                                {!studentExists && (
-                                  <span className={styles.studentNotFound}>
-                                    (존재하지 않는 학생입니다)
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          }
+            // studentIds 추출
+            const currentStudentIds = extractStudentIds(
+              mergedEnrollmentIds,
+              allEnrollments
+            );
 
-                          return filteredStudents.map((student) => (
-                            <div
-                              key={student.id}
-                              className={styles.studentSearchItem}
-                              onClick={() => addStudent(student.id)}
-                            >
-                              {student.name}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-subject" required>
-                      과목
-                    </Label>
-                    <select
-                      id="modal-subject"
-                      className="form-select"
-                      value={groupModalData.subjectId}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          subjectId: e.target.value,
-                        }))
-                      }
-                      disabled={groupModalData.studentIds.length === 0}
-                    >
-                      <option value="">
-                        {groupModalData.studentIds.length === 0
-                          ? "먼저 학생을 선택하세요"
-                          : "과목을 선택하세요"}
-                      </option>
-                      {groupModalData.studentIds.length > 0 &&
-                        subjects.map((subject) => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-weekday" required>
-                      요일
-                    </Label>
-                    <select
-                      id="modal-weekday"
-                      className="form-select"
-                      value={groupModalData.weekday}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          weekday: Number(e.target.value),
-                        }))
-                      }
-                    >
-                      {weekdays.map((w, idx) => (
-                        <option key={idx} value={idx}>
-                          {w}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-start-time" required>
-                      시작 시간
-                    </Label>
-                    <input
-                      id="modal-start-time"
-                      type="time"
-                      className="form-input"
-                      value={groupModalData.startTime}
-                      onChange={(e) => handleStartTimeChange(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-end-time" required>
-                      종료 시간
-                    </Label>
-                    <input
-                      id="modal-end-time"
-                      type="time"
-                      className="form-input"
-                      value={groupModalData.endTime}
-                      onChange={(e) => handleEndTimeChange(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-room">강의실</Label>
-                    <input
-                      id="modal-room"
-                      type="text"
-                      className="form-input"
-                      placeholder="강의실 (선택사항)"
-                      value={groupModalData.room || ""}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          room: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className={styles.modalActions}>
-                  <Button
-                    variant="transparent"
-                    onClick={() => setShowGroupModal(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => addGroupSession(groupModalData)}
-                    disabled={
-                      groupModalData.studentIds.length === 0 ||
-                      !groupModalData.subjectId ||
-                      !groupModalData.startTime ||
-                      !groupModalData.endTime
-                    }
-                  >
-                    추가
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+            // 세션 저장 데이터 생성
+            const sessionData = buildSessionSaveData(
+              mergedEnrollmentIds,
+              currentStudentIds,
+              tempSubjectId,
+              weekday,
+              startTime,
+              endTime,
+              editModalData.room || ""
+            );
 
-      {/* 세션 편집 모달 */}
-      {showEditModal && editModalData && (
-        <div className="modal-backdrop">
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-              <h4 className={styles.modalTitle}>수업 편집</h4>
-              <div className={styles.modalForm}>
-                <div className="form-group">
-                  <Label htmlFor="edit-modal-students" required>
-                    학생
-                  </Label>
-                  <div className={styles.studentTagsContainer}>
-                    {/* 선택된 학생들을 태그로 표시 */}
-                    {(() => {
-                      // 🆕 기존 enrollments와 tempEnrollments를 합쳐서 모든 enrollment를 가져옴
-                      const allEnrollments = [
-                        ...enrollments,
-                        ...tempEnrollments,
-                      ];
+            await updateSession(editModalData.id, sessionData);
 
-                      const selectedStudents =
-                        editModalData.enrollmentIds
-                          ?.map((enrollmentId) => {
-                            const enrollment = allEnrollments.find(
-                              (e) => e.id === enrollmentId
-                            );
-                            if (!enrollment) return null;
-                            const student = students.find(
-                              (s) => s.id === enrollment.studentId
-                            );
-                            return student
-                              ? { id: student.id, name: student.name }
-                              : null;
-                          })
-                          .filter(Boolean) || [];
-
-                      return selectedStudents.map((student) => (
-                        <div key={student!.id} className={styles.studentTag}>
-                          <span>{student!.name}</span>
-                          <button
-                            type="button"
-                            className={styles.removeStudentBtn}
-                            onClick={() => {
-                              // 🆕 학생 제거 로직 (tempEnrollments도 고려)
-                              const allEnrollments = [
-                                ...enrollments,
-                                ...tempEnrollments,
-                              ];
-
-                              const updatedEnrollmentIds =
-                                editModalData.enrollmentIds?.filter(
-                                  (id) =>
-                                    id !==
-                                    editModalData.enrollmentIds?.find(
-                                      (enrollmentId) => {
-                                        const enrollment = allEnrollments.find(
-                                          (e) => e.id === enrollmentId
-                                        );
-                                        return (
-                                          enrollment?.studentId === student!.id
-                                        );
-                                      }
-                                    )
-                                );
-                              // 🆕 tempEnrollments에서도 해당 학생 제거
-                              setTempEnrollments((prev) =>
-                                prev.filter(
-                                  (enrollment) =>
-                                    enrollment.studentId !== student!.id
-                                )
-                              );
-
-                              setEditModalData((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      enrollmentIds: updatedEnrollmentIds || [],
-                                    }
-                                  : null
-                              );
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                  {/* 학생 추가 입력창 */}
-                  <div className={styles.studentInputContainer}>
-                    <input
-                      type="text"
-                      placeholder="학생 이름을 입력하세요"
-                      className="form-input"
-                      value={editStudentInputValue}
-                      onChange={handleEditStudentInputChange}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          logger.debug("Enter 키로 학생 추가 시도");
-                          handleEditStudentAdd();
-                          // 🆕 입력창 완전 초기화
-                          setEditStudentInputValue("");
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={styles.addStudentBtn}
-                      onClick={handleEditStudentAddClick}
-                      disabled={
-                        !editStudentInputValue || !editStudentInputValue.trim()
-                      }
-                      style={{
-                        opacity:
-                          !editStudentInputValue ||
-                          !editStudentInputValue.trim()
-                            ? 0.5
-                            : 1,
-                        cursor:
-                          !editStudentInputValue ||
-                          !editStudentInputValue.trim()
-                            ? "not-allowed"
-                            : "pointer",
-                      }}
-                    >
-                      추가
-                    </button>
-                  </div>
-                  {/* 🆕 실시간 학생 검색 결과 */}
-                  {editStudentInputValue.trim() && (
-                    <div className={styles.studentSearchResults}>
-                      {(() => {
-                        const filteredStudents = students.filter(
-                          (student) =>
-                            student.name
-                              .toLowerCase()
-                              .includes(editStudentInputValue.toLowerCase()) &&
-                            !editModalData.enrollmentIds?.some(
-                              (enrollmentId) => {
-                                const enrollment = enrollments.find(
-                                  (e) => e.id === enrollmentId
-                                );
-                                return enrollment?.studentId === student.id;
-                              }
-                            )
-                        );
-
-                        if (filteredStudents.length === 0) {
-                          return (
-                            <div className={styles.noSearchResults}>
-                              <span>검색 결과가 없습니다</span>
-                              {!students.some(
-                                (s) =>
-                                  s.name.toLowerCase() ===
-                                  editStudentInputValue.toLowerCase()
-                              ) && (
-                                <span className={styles.studentNotFound}>
-                                  (존재하지 않는 학생입니다)
-                                </span>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return filteredStudents.map((student) => (
-                          <div
-                            key={student.id}
-                            className={styles.studentSearchItem}
-                            onClick={() => {
-                              handleEditStudentAdd(student.id);
-                            }}
-                          >
-                            {student.name}
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  )}
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="edit-modal-subject" required>
-                    과목
-                  </Label>
-                  <select
-                    id="edit-modal-subject"
-                    className="form-select"
-                    value={tempSubjectId}
-                    onChange={(e) => {
-                      const subjectId = e.target.value;
-                      setTempSubjectId(subjectId); // 🆕 임시 상태만 업데이트
-                    }}
-                  >
-                    <option value="">과목을 선택하세요</option>
-                    {subjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">요일</label>
-                  <select
-                    id="edit-modal-weekday"
-                    className="form-select"
-                    defaultValue={editModalData.weekday}
-                  >
-                    {weekdays.map((w, idx) => (
-                      <option key={idx} value={idx}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">시작 시간</label>
-                  <input
-                    id="edit-modal-start-time"
-                    type="time"
-                    className="form-input"
-                    value={editModalTimeData.startTime}
-                    onChange={(e) => handleEditStartTimeChange(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">종료 시간</label>
-                  <input
-                    id="edit-modal-end-time"
-                    type="time"
-                    className="form-input"
-                    value={editModalTimeData.endTime}
-                    onChange={(e) => handleEditEndTimeChange(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className={styles.modalActions}>
-                <Button
-                  variant="danger"
-                  onClick={async () => {
-                    if (confirm("정말로 이 수업을 삭제하시겠습니까?")) {
-                      try {
-                        await deleteSession(editModalData.id);
-                        setShowEditModal(false);
-                        logger.debug("세션 삭제 완료");
-                      } catch (error) {
-                        console.error("세션 삭제 실패:", error);
-                        alert("세션 삭제에 실패했습니다.");
-                      }
-                    }
-                  }}
-                >
-                  삭제
-                </Button>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Button
-                    variant="transparent"
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setTempSubjectId(""); // 🆕 임시 상태 초기화
-                    }}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={async () => {
-                      const weekday = Number(
-                        (
-                          document.getElementById(
-                            "edit-modal-weekday"
-                          ) as HTMLSelectElement
-                        )?.value
-                      );
-                      const startTime = editModalTimeData.startTime;
-                      const endTime = editModalTimeData.endTime;
-
-                      if (!startTime || !endTime) return;
-
-                      // 시간 유효성 검사
-                      if (!validateTimeRange(startTime, endTime)) {
-                        alert("시작 시간은 종료 시간보다 빨라야 합니다.");
-                        return;
-                      }
-
-                      try {
-                        // 현재 세션의 학생 ID들을 가져오기 (기존 enrollment + 임시 enrollment)
-                        const allEnrollments = [
-                          ...enrollments,
-                          ...tempEnrollments,
-                        ];
-                        const currentStudentIds =
-                          (editModalData.enrollmentIds
-                            ?.map((enrollmentId) => {
-                              const enrollment = allEnrollments.find(
-                                (e) => e.id === enrollmentId
-                              );
-                              return enrollment?.studentId;
-                            })
-                            .filter(Boolean) as string[]) || [];
-
-                        // 🆕 임시 과목 ID 사용
-                        const currentSubjectId = tempSubjectId;
-
-                        logger.debug("세션 저장 시작", {
-                          sessionId: editModalData.id,
-                          originalTime: `${editModalData.startsAt}-${editModalData.endsAt}`,
-                          newTime: `${startTime}-${endTime}`,
-                          weekday,
-                          currentStudentIds,
-                          currentSubjectId,
-                        });
-
-                        await updateSession(editModalData.id, {
-                          studentIds: currentStudentIds,
-                          subjectId: currentSubjectId,
-                          weekday,
-                          startTime,
-                          endTime,
-                          room: editModalData.room,
-                        });
-
-                        setShowEditModal(false);
-                        setTempSubjectId(""); // 🆕 임시 상태 초기화
-                        setTempEnrollments([]); // 🆕 임시 enrollment 초기화
-                        logger.debug("세션 업데이트 완료");
-                      } catch (error) {
-                        console.error("세션 업데이트 실패:", error);
-                        alert("세션 업데이트에 실패했습니다.");
-                      }
-                    }}
-                  >
-                    저장
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+            // 상태 초기화
+            setShowEditModal(false);
+            setTempSubjectId("");
+            setTempEnrollments([]);
+            logger.debug("세션 업데이트 완료");
+          } catch (error) {
+            console.error("세션 업데이트 실패:", error);
+            alert("세션 업데이트에 실패했습니다.");
+          }
+        }}
+      />
     </div>
   );
 }

@@ -273,7 +273,7 @@ const AboutPageLayout: React.FC = () => {
                 }}
               >
                 Google 로그인과 스마트 동기화로 여러 기기에서 동일한 데이터에
-                접근할 수 있습니다. 사용자 선택 기반의 안전한 데이터 관리.
+                접근할 수 있습니다.
               </p>
             </div>
           </div>
@@ -1222,7 +1222,7 @@ const AboutPageLayout: React.FC = () => {
                           margin: "0",
                         }}
                       >
-                        로컬 데이터와 클라우드 데이터 충돌 시 사용자가 선택
+                        로컬 데이터와 서버 데이터를 자동으로 동기화
                       </p>
                     </div>
                   </div>
@@ -1363,7 +1363,7 @@ const AboutPageLayout: React.FC = () => {
                           margin: "0",
                         }}
                       >
-                        사용자 선택 후에만 로컬 데이터 삭제
+                        사용자별 데이터 격리 및 안전한 저장
                       </p>
                     </div>
                   </div>

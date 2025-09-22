@@ -36,6 +36,12 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
       return;
     }
 
+    // 길이 제한: 최대 6글자
+    if (name.length > 6) {
+      setInternalErrorMessage("과목 이름은 최대 6글자까지 가능합니다.");
+      return;
+    }
+
     // 중복 이름 체크
     const isDuplicate = subjects.some(
       (subject) => subject.name.toLowerCase() === name.toLowerCase()
@@ -63,7 +69,8 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setSubjectName(value);
+    const limited = value.slice(0, 6);
+    setSubjectName(limited);
 
     // 검색 기능이 활성화된 경우 검색어도 업데이트
     if (onSearchChange) {
@@ -83,6 +90,7 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           placeholder="과목 이름 (검색 가능)"
           value={subjectName}
           onChange={handleInputChange}
+          maxLength={6}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

@@ -116,12 +116,14 @@ export const repositionSessions = (
   });
 
   // 2. 충돌 해결 로직 (재귀적 처리)
-  let currentYPosition = targetYPosition;
+  // 이동 대상의 목표 y는 고정(anchor), 충돌 전파는 별도 포인터로 진행
+  const anchorYPosition = targetYPosition;
+  let propagateYPosition = targetYPosition;
 
   // 초기 충돌 확인
   let hasCollisions = checkCollisionsAtYPosition(
     targetDaySessions,
-    currentYPosition,
+    propagateYPosition,
     targetStartTime,
     targetEndTime
   );
@@ -130,7 +132,8 @@ export const repositionSessions = (
 
   while (hasCollisions) {
     loopCount++;
-    const sessionsAtCurrentPos = targetDaySessions.get(currentYPosition) || [];
+    const sessionsAtCurrentPos =
+      targetDaySessions.get(propagateYPosition) || [];
 
     let collidingSessions: SessionWithPriority[] = [];
 
@@ -173,13 +176,13 @@ export const repositionSessions = (
 
     // 첫 번째 루프에서는 우선순위 체크하지 않고 모든 충돌 세션 이동
     if (loopCount === 1) {
-      const nextYPosition = currentYPosition + 1;
+      const nextYPosition = propagateYPosition + 1;
 
       collidingSessions.forEach((session) => {
         // 기존 위치에서 제거
-        const currentSessions = targetDaySessions.get(currentYPosition) || [];
+        const currentSessions = targetDaySessions.get(propagateYPosition) || [];
         targetDaySessions.set(
-          currentYPosition,
+          propagateYPosition,
           currentSessions.filter((s) => s.id !== session.id)
         );
 
@@ -205,14 +208,14 @@ export const repositionSessions = (
           sessionId: session.id,
           subjectName: subject?.name || "알 수 없음",
           time: `${session.startsAt} - ${session.endsAt}`,
-          fromYPosition: currentYPosition,
+          fromYPosition: propagateYPosition,
           toYPosition: nextYPosition,
           fromPriorityLevel: session.priorityLevel || 0,
           toPriorityLevel: (session.priorityLevel || 0) + 1,
         });
       });
-
-      currentYPosition = nextYPosition;
+      // 체인 전파: 다음 줄에서 계속 확인
+      propagateYPosition = nextYPosition;
     } else {
       // 두 번째 루프부터는 우선순위 레벨 기반 처리
 
@@ -231,13 +234,13 @@ export const repositionSessions = (
         break;
       }
 
-      const nextYPosition = currentYPosition + 1;
+      const nextYPosition = propagateYPosition + 1;
 
       lowPrioritySessions.forEach((session) => {
         // 기존 위치에서 제거
-        const currentSessions = targetDaySessions.get(currentYPosition) || [];
+        const currentSessions = targetDaySessions.get(propagateYPosition) || [];
         targetDaySessions.set(
-          currentYPosition,
+          propagateYPosition,
           currentSessions.filter((s) => s.id !== session.id)
         );
 
@@ -253,30 +256,29 @@ export const repositionSessions = (
 
         logger.debug("우선순위 레벨 0 세션 이동", {
           sessionId: session.id,
-          fromYPosition: currentYPosition,
+          fromYPosition: propagateYPosition,
           toYPosition: nextYPosition,
           newPriorityLevel: (session.priorityLevel || 0) + 1,
         });
       });
-
-      currentYPosition = nextYPosition;
+      // 체인 전파
+      propagateYPosition = nextYPosition;
     }
 
-    // 다음 yPosition에서 충돌 확인
-    // 두 번째 루프부터는 우선순위 레벨 1인 세션들과의 충돌 확인
+    // 다음 전파 위치에서 충돌 재확인 (2회차부터 우선순위 고려)
     hasCollisions = checkCollisionsAtYPosition(
       targetDaySessions,
-      currentYPosition,
+      propagateYPosition,
       targetStartTime,
       targetEndTime,
-      loopCount > 1 // 두 번째 루프부터 우선순위 레벨 1 세션들과 충돌 확인
+      loopCount > 1
     );
 
     // 무한 루프 방지 (안전 장치)
     if (loopCount > 20) {
       logger.warn("충돌 해결 루프 제한 도달, 강제 종료", {
         loopCount,
-        currentYPosition,
+        currentYPosition: propagateYPosition,
       });
       break;
     }
@@ -287,12 +289,12 @@ export const repositionSessions = (
   if (movingSession) {
     logger.debug("이동할 세션을 목표 위치에 배치", {
       sessionId: movingSessionId,
-      targetYPosition: currentYPosition,
+      targetYPosition: anchorYPosition,
     });
 
     // 이동할 세션을 목표 위치에 추가
-    if (!targetDaySessions.has(currentYPosition)) {
-      targetDaySessions.set(currentYPosition, []);
+    if (!targetDaySessions.has(anchorYPosition)) {
+      targetDaySessions.set(anchorYPosition, []);
     }
 
     // 기존 위치에서 제거 (다른 요일이나 위치에 있을 수 있음)
@@ -302,12 +304,12 @@ export const repositionSessions = (
     });
 
     // 새 위치와 시간으로 업데이트하여 추가
-    targetDaySessions.get(currentYPosition)!.push({
+    targetDaySessions.get(anchorYPosition)!.push({
       ...movingSession,
       weekday: targetWeekday,
       startsAt: targetStartTime,
       endsAt: targetEndTime,
-      yPosition: currentYPosition,
+      yPosition: anchorYPosition,
       priorityLevel: 1, // 이동하는 세션은 우선순위 1
     });
   }

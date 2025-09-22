@@ -1,7 +1,14 @@
+// 간단한 hover 스타일 존재 여부 스모크 테스트 + 버튼 컴포넌트 테스트
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Button } from "../Button";
+import Button, { Button as NamedButton } from "../Button";
 
+describe("Button hover styles - transparency variant", () => {
+  it("transparent 버튼 렌더링 스모크", () => {
+    const { container } = render(<Button variant="transparent">편집</Button>);
+    expect(container.firstChild).toBeDefined();
+  });
+});
 describe("Button Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();

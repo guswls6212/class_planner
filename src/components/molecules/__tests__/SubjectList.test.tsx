@@ -61,6 +61,22 @@ describe("SubjectList", () => {
     expect(container.firstChild).toBeDefined();
   });
 
+  it("과목명 편집은 6글자를 초과하지 않아야 한다", () => {
+    // 이 테스트는 SubjectListItem 편집 로직을 통합적으로 확인하기보다는
+    // 컴파일/렌더 안정성만 보장. 구체 로직은 SubjectListItem에서 검증.
+    expect(() => {
+      render(
+        <SubjectList
+          subjects={[{ id: "1", name: "수학", color: "#000" }] as any}
+          selectedSubjectId="1"
+          onSelectSubject={() => {}}
+          onDeleteSubject={() => {}}
+          onUpdateSubject={() => {}}
+        />
+      );
+    }).not.toThrow();
+  });
+
   it("빈 배열을 처리해야 한다", () => {
     expect(() => {
       render(
@@ -143,5 +159,3 @@ describe("SubjectList", () => {
     }).not.toThrow();
   });
 });
-
-

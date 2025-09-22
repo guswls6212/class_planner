@@ -29,7 +29,7 @@ describe("StudentInputSection Component", () => {
 
   it("학생 이름을 입력하고 추가 버튼을 클릭하면 onAddStudent가 호출되어야 한다", async () => {
     // Arrange
-    const propsWithName = { ...mockProps, newStudentName: "김철수" };
+    const propsWithName = { ...mockProps, newStudentName: "김철" };
     render(<StudentInputSection {...propsWithName} />);
     const addButton = screen.getByRole("button", { name: /추가/ });
 
@@ -38,13 +38,13 @@ describe("StudentInputSection Component", () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockProps.onAddStudent).toHaveBeenCalledWith("김철수");
+      expect(mockProps.onAddStudent).toHaveBeenCalledWith("김철");
     });
   });
 
   it("Enter 키를 누르면 학생이 추가되어야 한다", async () => {
     // Arrange
-    const propsWithName = { ...mockProps, newStudentName: "이영희" };
+    const propsWithName = { ...mockProps, newStudentName: "이영" };
     render(<StudentInputSection {...propsWithName} />);
     const nameInput = screen.getByPlaceholderText(/학생 이름 \(검색 가능\)/);
 
@@ -57,12 +57,12 @@ describe("StudentInputSection Component", () => {
     // });
 
     // 대신 입력 필드가 올바르게 렌더링되는지 확인
-    expect(nameInput).toHaveValue("이영희");
+    expect(nameInput).toHaveValue("이영");
   });
 
   it("학생 추가 후 입력 필드가 초기화되어야 한다", async () => {
     // Arrange
-    const propsWithName = { ...mockProps, newStudentName: "박민수" };
+    const propsWithName = { ...mockProps, newStudentName: "박민" };
     render(<StudentInputSection {...propsWithName} />);
     const addButton = screen.getByRole("button", { name: /추가/ });
 
@@ -71,7 +71,24 @@ describe("StudentInputSection Component", () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockProps.onAddStudent).toHaveBeenCalledWith("박민수");
+      expect(mockProps.onAddStudent).toHaveBeenCalledWith("박민");
+    });
+  });
+
+  it("5글자 초과 입력 시 에러 메시지가 표시되어야 한다", async () => {
+    // Arrange
+    const propsWithLong = { ...mockProps, newStudentName: "김철수박이" };
+    render(<StudentInputSection {...propsWithLong} />);
+    const addButton = screen.getByRole("button", { name: /추가/ });
+
+    // Act
+    fireEvent.click(addButton);
+
+    // Assert
+    await waitFor(() => {
+      expect(
+        screen.getByText("학생 이름은 최대 4글자까지 가능합니다.")
+      ).toBeInTheDocument();
     });
   });
 
@@ -140,4 +157,3 @@ describe("StudentInputSection Component", () => {
     ).not.toBeInTheDocument();
   });
 });
-

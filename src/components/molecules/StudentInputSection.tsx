@@ -34,6 +34,12 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
       return;
     }
 
+    // 길이 제한: 최대 4글자
+    if (name.length > 4) {
+      setInternalErrorMessage('학생 이름은 최대 4글자까지 가능합니다.');
+      return;
+    }
+
     // 중복 이름 체크
     const isDuplicate = students.some(student => student.name === name);
     if (isDuplicate) {
@@ -47,7 +53,9 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onNewStudentNameChange(e.target.value);
+    const value = e.target.value;
+    const limited = value.slice(0, 4);
+    onNewStudentNameChange(limited);
     // 입력 중일 때는 내부 에러 메시지 숨김
     if (internalErrorMessage) {
       setInternalErrorMessage('');
@@ -61,6 +69,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
           placeholder="학생 이름 (검색 가능)"
           value={newStudentName}
           onChange={handleInputChange}
+          maxLength={4}
           onKeyPress={e => {
             if (e.key === 'Enter') {
               e.preventDefault();

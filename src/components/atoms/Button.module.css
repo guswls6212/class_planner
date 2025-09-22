@@ -35,12 +35,17 @@
 }
 
 .danger {
-  background-color: var(--color-danger);
-  color: white;
+  /* 테마 변수 + fallback(hex)로 항상 선명한 빨강 유지 */
+  background-color: var(--color-danger, #ef4444) !important;
+  color: #ffffff;
+  border: 1px solid var(--color-danger, #ef4444);
 }
 
 .danger:hover:not(:disabled) {
-  background-color: var(--color-danger-dark);
+  background-color: var(--color-danger-dark, #dc2626) !important;
+  border-color: var(--color-danger-dark, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
 }
 
 .transparent {
@@ -50,7 +55,9 @@
 }
 
 .transparent:hover:not(:disabled) {
-  background-color: var(--color-background-hover);
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-border-light);
+  color: var(--color-text-primary);
 }
 
 .small {
