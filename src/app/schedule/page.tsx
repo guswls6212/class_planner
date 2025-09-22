@@ -793,7 +793,8 @@ function SchedulePageContent() {
     setSelectedStudentId
   );
 
-  const { validateTimeRange, getNextHour } = useTimeValidation();
+  const { validateTimeRange, validateDurationWithinLimit, getNextHour } =
+    useTimeValidation();
 
   // 🆕 그룹 수업 모달 상태
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -805,6 +806,7 @@ function SchedulePageContent() {
     endTime: "",
     yPosition: 1, // 🆕 기본값 1
   });
+  const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
 
   // 🆕 학생 입력 관련 상태
   const [studentInputValue, setStudentInputValue] = useState("");
@@ -825,22 +827,39 @@ function SchedulePageContent() {
     startTime: "",
     endTime: "",
   });
+  const [editTimeError, setEditTimeError] = useState<string>("");
 
   // 🆕 수업 편집 모달용 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
   const handleEditStartTimeChange = (newStartTime: string) => {
     setEditModalTimeData((prev) => {
       const currentEndTime = prev.endTime;
 
-      // 시작 시간이 종료 시간보다 늦으면 경고만 표시하고 자동 조정하지 않음
+      // 시작 시간이 종료 시간보다 늦으면 즉시 경고
       if (
         newStartTime &&
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요."
-        );
+        setEditTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
+      }
+
+      // 8시간 초과 시 즉시 경고
+      if (
+        newStartTime &&
+        currentEndTime &&
+        !validateDurationWithinLimit(newStartTime, currentEndTime, 480)
+      ) {
+        setEditTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      }
+
+      // 정상 상태면 에러 해제
+      if (
+        newStartTime &&
+        currentEndTime &&
+        validateTimeRange(newStartTime, currentEndTime) &&
+        validateDurationWithinLimit(newStartTime, currentEndTime, 480)
+      ) {
+        setEditTimeError("");
       }
 
       return {
@@ -855,16 +874,32 @@ function SchedulePageContent() {
     setEditModalTimeData((prev) => {
       const currentStartTime = prev.startTime;
 
-      // 종료 시간이 시작 시간보다 빠르면 경고만 표시하고 자동 조정하지 않음
+      // 종료 시간이 시작 시간보다 빠르면 즉시 경고
       if (
         newEndTime &&
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요."
-        );
+        setEditTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
+      }
+
+      // 8시간 초과 시 즉시 경고
+      if (
+        newEndTime &&
+        currentStartTime &&
+        !validateDurationWithinLimit(currentStartTime, newEndTime, 480)
+      ) {
+        setEditTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      }
+
+      // 정상 상태면 에러 해제
+      if (
+        newEndTime &&
+        currentStartTime &&
+        validateTimeRange(currentStartTime, newEndTime) &&
+        validateDurationWithinLimit(currentStartTime, newEndTime, 480)
+      ) {
+        setEditTimeError("");
       }
 
       return {
@@ -1062,9 +1097,15 @@ function SchedulePageContent() {
         startTime: data.startTime,
         endTime: data.endTime,
       });
-      alert("시작 시간은 종료 시간보다 빨라야 합니다.");
+      setGroupTimeError("종료 시간은 시작 시간보다 늦어야 합니다.");
       return;
     }
+    // 8시간 제한 검증
+    if (!validateDurationWithinLimit(data.startTime, data.endTime, 480)) {
+      setGroupTimeError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      return;
+    }
+    setGroupTimeError("");
     logger.debug("시간 유효성 검사 통과");
 
     // 🆕 과목 선택 검증
@@ -1674,6 +1715,11 @@ function SchedulePageContent() {
                       onChange={(e) => handleEndTimeChange(e.target.value)}
                     />
                   </div>
+                  {groupTimeError && (
+                    <div className="form-error" role="alert">
+                      {groupTimeError}
+                    </div>
+                  )}
                   <div className="form-group">
                     <Label htmlFor="modal-room">강의실</Label>
                     <input
@@ -1952,6 +1998,11 @@ function SchedulePageContent() {
                     onChange={(e) => handleEditEndTimeChange(e.target.value)}
                   />
                 </div>
+                {editTimeError && (
+                  <div className="form-error" role="alert">
+                    {editTimeError}
+                  </div>
+                )}
               </div>
               <div className={styles.modalActions}>
                 <Button
@@ -1998,7 +2049,29 @@ function SchedulePageContent() {
 
                       // 시간 유효성 검사
                       if (!validateTimeRange(startTime, endTime)) {
-                        alert("시작 시간은 종료 시간보다 빨라야 합니다.");
+                        window.dispatchEvent(
+                          new CustomEvent("toast", {
+                            detail: {
+                              type: "error",
+                              message:
+                                "종료 시간은 시작 시간보다 늦어야 합니다.",
+                            },
+                          })
+                        );
+                        return;
+                      }
+                      if (
+                        !validateDurationWithinLimit(startTime, endTime, 480)
+                      ) {
+                        window.dispatchEvent(
+                          new CustomEvent("toast", {
+                            detail: {
+                              type: "error",
+                              message:
+                                "세션 시간은 최대 8시간까지 설정할 수 있습니다.",
+                            },
+                          })
+                        );
                         return;
                       }
 

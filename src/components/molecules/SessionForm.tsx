@@ -2,7 +2,7 @@
  * 세션 추가/수정 폼 컴포넌트
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Student, Subject } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
 import Button from "../atoms/Button";
@@ -44,19 +44,63 @@ export default function SessionForm({
     yPosition: initialData?.yPosition || 1,
   });
 
+  // 즉시 검증용 에러 메시지
+  const [errorMessage, setErrorMessage] = useState<string>("");
+
+  const toMinutes = useCallback((t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  }, []);
+
+  const durationMinutes = useMemo(() => {
+    const start = toMinutes(formData.startTime);
+    const end = toMinutes(formData.endTime);
+    return end - start;
+  }, [formData.startTime, formData.endTime, toMinutes]);
+
+  const validateTimes = useCallback(
+    (next: { startTime?: string; endTime?: string }) => {
+      const start = toMinutes(next.startTime ?? formData.startTime);
+      const end = toMinutes(next.endTime ?? formData.endTime);
+      if (end <= start) {
+        setErrorMessage("종료 시간은 시작 시간보다 늦어야 합니다.");
+        return false;
+      }
+      if (end - start > 8 * 60) {
+        setErrorMessage("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+        return false;
+      }
+      setErrorMessage("");
+      return true;
+    },
+    [formData.startTime, formData.endTime, toMinutes]
+  );
+
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
 
       if (!formData.subjectId || formData.studentIds.length === 0) {
-        alert("과목과 학생을 선택해주세요.");
+        setErrorMessage("과목과 학생을 선택해주세요.");
+        return;
+      }
+
+      // 제출 시 방어적 검증
+      const start = toMinutes(formData.startTime);
+      const end = toMinutes(formData.endTime);
+      if (end <= start) {
+        setErrorMessage("종료 시간은 시작 시간보다 늦어야 합니다.");
+        return;
+      }
+      if (end - start > 8 * 60) {
+        setErrorMessage("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
         return;
       }
 
       onSubmit(formData);
       onClose();
     },
-    [formData, onSubmit, onClose]
+    [formData, onSubmit, onClose, toMinutes]
   );
 
   const handleStudentToggle = useCallback((studentId: string) => {
@@ -128,9 +172,11 @@ export default function SessionForm({
             <Input
               type="time"
               value={formData.startTime}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, startTime: e.target.value }))
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                validateTimes({ startTime: value });
+                setFormData((prev) => ({ ...prev, startTime: value }));
+              }}
               required
             />
           </div>
@@ -140,12 +186,20 @@ export default function SessionForm({
             <Input
               type="time"
               value={formData.endTime}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, endTime: e.target.value }))
-              }
+              onChange={(e) => {
+                const value = e.target.value;
+                validateTimes({ endTime: value });
+                setFormData((prev) => ({ ...prev, endTime: value }));
+              }}
               required
             />
           </div>
+
+          {errorMessage && (
+            <div className="form-error" role="alert">
+              {errorMessage}
+            </div>
+          )}
 
           {/* 강의실 */}
           <div className="form-group">

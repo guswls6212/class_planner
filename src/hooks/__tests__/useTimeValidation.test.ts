@@ -54,4 +54,33 @@ describe("useTimeValidation", () => {
 
     expect(typeof result.current.handleEndTimeChange).toBe("function");
   });
+
+  it("validateTimeRange: 종료가 시작보다 늦어야 true", () => {
+    const { result } = renderHook(() => useTimeValidation());
+    expect(result.current.validateTimeRange("10:00", "11:00")).toBe(true);
+    expect(result.current.validateTimeRange("11:00", "10:00")).toBe(false);
+    expect(result.current.validateTimeRange("10:00", "10:00")).toBe(false);
+  });
+
+  it("validateDurationWithinLimit: 8시간 이내만 허용", () => {
+    const { result } = renderHook(() => useTimeValidation());
+    // 8시간 == 480분
+    expect(result.current.validateDurationWithinLimit("09:00", "17:00", 480)).toBe(true);
+    // 8시간 초과
+    expect(result.current.validateDurationWithinLimit("09:00", "17:30", 480)).toBe(false);
+  });
+
+  it("핸들러: 역전 시간 입력 시 console.warn 호출", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { result } = renderHook(() => useTimeValidation());
+    const onUpdate = vi.fn();
+
+    // 시작 시간 변경 → 종료보다 늦음
+    result.current.handleStartTimeChange("12:00", "11:00", onUpdate);
+    // 종료 시간 변경 → 시작보다 이름
+    result.current.handleEndTimeChange("10:00", "11:00", onUpdate);
+
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
 });
