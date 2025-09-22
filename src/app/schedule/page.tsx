@@ -22,6 +22,7 @@ import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionC
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import GroupSessionModal from "./_components/GroupSessionModal";
+import EditSessionModal from "./_components/EditSessionModal";
 import styles from "./Schedule.module.css";
 
 export default function SchedulePage() {
@@ -1558,252 +1559,70 @@ function SchedulePageContent() {
         addGroupSession={addGroupSession}
       />
 
-      {/* 세션 편집 모달 */}
-      {showEditModal && editModalData && (
-        <div className="modal-backdrop">
-          <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-              <h4 className={styles.modalTitle}>수업 편집</h4>
-              <div className={styles.modalForm}>
-                <div className="form-group">
-                  <Label htmlFor="edit-modal-students" required>
-                    학생
-                  </Label>
-                  <div className={styles.studentTagsContainer}>
-                    {/* 선택된 학생들을 태그로 표시 */}
-                    {(() => {
-                      // 🆕 기존 enrollments와 tempEnrollments를 합쳐서 모든 enrollment를 가져옴
-                      const allEnrollments = [
-                        ...enrollments,
-                        ...tempEnrollments,
-                      ];
-
-                      const selectedStudents =
-                        editModalData.enrollmentIds
+      {/* 세션 편집 모달 (분리) */}
+      <EditSessionModal
+        isOpen={Boolean(showEditModal && editModalData)}
+        selectedStudents={(() => {
+          const allEnrollments = [...enrollments, ...tempEnrollments];
+          const selected =
+            editModalData?.enrollmentIds
                           ?.map((enrollmentId) => {
-                            const enrollment = allEnrollments.find(
-                              (e) => e.id === enrollmentId
-                            );
+                const enrollment = allEnrollments.find((e) => e.id === enrollmentId);
                             if (!enrollment) return null;
-                            const student = students.find(
-                              (s) => s.id === enrollment.studentId
-                            );
-                            return student
-                              ? { id: student.id, name: student.name }
-                              : null;
+                const student = students.find((s) => s.id === enrollment.studentId);
+                return student ? { id: student.id, name: student.name } : null;
                           })
                           .filter(Boolean) || [];
-
-                      return selectedStudents.map((student) => (
-                        <div key={student!.id} className={styles.studentTag}>
-                          <span>{student!.name}</span>
-                          <button
-                            type="button"
-                            className={styles.removeStudentBtn}
-                            onClick={() => {
-                              // 🆕 학생 제거 로직 (tempEnrollments도 고려)
-                              const allEnrollments = [
-                                ...enrollments,
-                                ...tempEnrollments,
-                              ];
-
-                              const updatedEnrollmentIds =
-                                editModalData.enrollmentIds?.filter(
-                                  (id) =>
-                                    id !==
-                                    editModalData.enrollmentIds?.find(
-                                      (enrollmentId) => {
-                                        const enrollment = allEnrollments.find(
-                                          (e) => e.id === enrollmentId
-                                        );
-                                        return (
-                                          enrollment?.studentId === student!.id
-                                        );
-                                      }
-                                    )
-                                );
-                              // 🆕 tempEnrollments에서도 해당 학생 제거
-                              setTempEnrollments((prev) =>
-                                prev.filter(
-                                  (enrollment) =>
-                                    enrollment.studentId !== student!.id
-                                )
-                              );
-
-                              setEditModalData((prev) =>
-                                prev
-                                  ? {
-                                      ...prev,
-                                      enrollmentIds: updatedEnrollmentIds || [],
-                                    }
-                                  : null
-                              );
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ));
+          return selected as { id: string; name: string }[];
                     })()}
-                  </div>
-                  {/* 학생 추가 입력창 */}
-                  <div className={styles.studentInputContainer}>
-                    <input
-                      type="text"
-                      placeholder="학생 이름을 입력하세요"
-                      className="form-input"
-                      value={editStudentInputValue}
-                      onChange={handleEditStudentInputChange}
-                      onKeyDown={(e) => {
+        onRemoveStudent={(studentId) => {
+          const allEnrollments = [...enrollments, ...tempEnrollments];
+          const updatedEnrollmentIds = editModalData?.enrollmentIds?.filter((id) => {
+            const enrollment = allEnrollments.find((e) => e.id === id);
+            return enrollment?.studentId !== studentId;
+          });
+          setTempEnrollments((prev) => prev.filter((e) => e.studentId !== studentId));
+          setEditModalData((prev) => (prev ? { ...prev, enrollmentIds: updatedEnrollmentIds || [] } : null));
+        }}
+        editStudentInputValue={editStudentInputValue}
+        onEditStudentInputChange={(value) => {
+          logger.debug("학생 입력값 변경", { value });
+          setEditStudentInputValue(value);
+        }}
+        onEditStudentInputKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           logger.debug("Enter 키로 학생 추가 시도");
                           handleEditStudentAdd();
-                          // 🆕 입력창 완전 초기화
                           setEditStudentInputValue("");
                         }
                       }}
-                    />
-                    <button
-                      type="button"
-                      className={styles.addStudentBtn}
-                      onClick={handleEditStudentAddClick}
-                      disabled={
-                        !editStudentInputValue || !editStudentInputValue.trim()
-                      }
-                      style={{
-                        opacity:
-                          !editStudentInputValue ||
-                          !editStudentInputValue.trim()
-                            ? 0.5
-                            : 1,
-                        cursor:
-                          !editStudentInputValue ||
-                          !editStudentInputValue.trim()
-                            ? "not-allowed"
-                            : "pointer",
-                      }}
-                    >
-                      추가
-                    </button>
-                  </div>
-                  {/* 🆕 실시간 학생 검색 결과 */}
-                  {editStudentInputValue.trim() && (
-                    <div className={styles.studentSearchResults}>
-                      {(() => {
-                        const filteredStudents = students.filter(
-                          (student) =>
-                            student.name
-                              .toLowerCase()
-                              .includes(editStudentInputValue.toLowerCase()) &&
-                            !editModalData.enrollmentIds?.some(
-                              (enrollmentId) => {
-                                const enrollment = enrollments.find(
-                                  (e) => e.id === enrollmentId
-                                );
+        onAddStudentClick={handleEditStudentAddClick}
+        editSearchResults={(() => {
+          if (!editModalData) return [] as { id: string; name: string }[];
+          return students
+            .filter((student) =>
+              student.name.toLowerCase().includes(editStudentInputValue.toLowerCase()) &&
+              !editModalData.enrollmentIds?.some((enrollmentId) => {
+                const enrollment = enrollments.find((e) => e.id === enrollmentId);
                                 return enrollment?.studentId === student.id;
-                              }
-                            )
-                        );
-
-                        if (filteredStudents.length === 0) {
-                          return (
-                            <div className={styles.noSearchResults}>
-                              <span>검색 결과가 없습니다</span>
-                              {!students.some(
-                                (s) =>
-                                  s.name.toLowerCase() ===
-                                  editStudentInputValue.toLowerCase()
-                              ) && (
-                                <span className={styles.studentNotFound}>
-                                  (존재하지 않는 학생입니다)
-                                </span>
-                              )}
-                            </div>
-                          );
-                        }
-
-                        return filteredStudents.map((student) => (
-                          <div
-                            key={student.id}
-                            className={styles.studentSearchItem}
-                            onClick={() => {
-                              handleEditStudentAdd(student.id);
-                            }}
-                          >
-                            {student.name}
-                          </div>
-                        ));
+              })
+            )
+            .map((s) => ({ id: s.id, name: s.name }));
                       })()}
-                    </div>
-                  )}
-                </div>
-                <div className="form-group">
-                  <Label htmlFor="edit-modal-subject" required>
-                    과목
-                  </Label>
-                  <select
-                    id="edit-modal-subject"
-                    className="form-select"
-                    value={tempSubjectId}
-                    onChange={(e) => {
-                      const subjectId = e.target.value;
-                      setTempSubjectId(subjectId); // 🆕 임시 상태만 업데이트
-                    }}
-                  >
-                    <option value="">과목을 선택하세요</option>
-                    {subjects.map((subject) => (
-                      <option key={subject.id} value={subject.id}>
-                        {subject.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">요일</label>
-                  <select
-                    id="edit-modal-weekday"
-                    className="form-select"
-                    defaultValue={editModalData.weekday}
-                  >
-                    {weekdays.map((w, idx) => (
-                      <option key={idx} value={idx}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">시작 시간</label>
-                  <input
-                    id="edit-modal-start-time"
-                    type="time"
-                    className="form-input"
-                    value={editModalTimeData.startTime}
-                    onChange={(e) => handleEditStartTimeChange(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">종료 시간</label>
-                  <input
-                    id="edit-modal-end-time"
-                    type="time"
-                    className="form-input"
-                    value={editModalTimeData.endTime}
-                    onChange={(e) => handleEditEndTimeChange(e.target.value)}
-                  />
-                </div>
-                {editTimeError && (
-                  <div className="form-error" role="alert">
-                    {editTimeError}
-                  </div>
-                )}
-              </div>
-              <div className={styles.modalActions}>
-                <Button
-                  variant="danger"
-                  onClick={async () => {
-                    if (confirm("정말로 이 수업을 삭제하시겠습니까?")) {
+        onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+        tempSubjectId={tempSubjectId}
+        onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
+        weekdays={weekdays}
+        defaultWeekday={editModalData?.weekday ?? 0}
+        startTime={editModalTimeData.startTime}
+        endTime={editModalTimeData.endTime}
+        onStartTimeChange={handleEditStartTimeChange}
+        onEndTimeChange={handleEditEndTimeChange}
+        timeError={editTimeError}
+        onDelete={async () => {
+          if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
                       try {
                         await deleteSession(editModalData.id);
                         setShowEditModal(false);
@@ -1814,137 +1633,48 @@ function SchedulePageContent() {
                       }
                     }
                   }}
-                >
-                  삭제
-                </Button>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Button
-                    variant="transparent"
-                    onClick={() => {
+        onCancel={() => {
                       setShowEditModal(false);
-                      setTempSubjectId(""); // 🆕 임시 상태 초기화
-                    }}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={async () => {
-                      const weekday = Number(
-                        (
-                          document.getElementById(
-                            "edit-modal-weekday"
-                          ) as HTMLSelectElement
-                        )?.value
-                      );
+          setTempSubjectId("");
+        }}
+        onSave={async () => {
+          if (!editModalData) return;
+          const weekday = Number((document.getElementById("edit-modal-weekday") as HTMLSelectElement)?.value);
                       const startTime = editModalTimeData.startTime;
                       const endTime = editModalTimeData.endTime;
-
                       if (!startTime || !endTime) return;
-
-                      // 시간 유효성 검사
                       if (!validateTimeRange(startTime, endTime)) {
-                        window.dispatchEvent(
-                          new CustomEvent("toast", {
-                            detail: {
-                              type: "error",
-                              message:
-                                "종료 시간은 시작 시간보다 늦어야 합니다.",
-                            },
-                          })
-                        );
+            window.dispatchEvent(new CustomEvent("toast", { detail: { type: "error", message: "종료 시간은 시작 시간보다 늦어야 합니다." } }));
                         return;
                       }
-                      if (
-                        !validateDurationWithinLimit(startTime, endTime, 480)
-                      ) {
-                        window.dispatchEvent(
-                          new CustomEvent("toast", {
-                            detail: {
-                              type: "error",
-                              message:
-                                "세션 시간은 최대 8시간까지 설정할 수 있습니다.",
-                            },
-                          })
-                        );
-                        return;
-                      }
-
+          if (!validateDurationWithinLimit(startTime, endTime, 480)) {
+            window.dispatchEvent(new CustomEvent("toast", { detail: { type: "error", message: "세션 시간은 최대 8시간까지 설정할 수 있습니다." } }));
+            return;
+          }
                       try {
-                        // 🆕 1단계: tempEnrollments를 실제 데이터에 추가
                         if (tempEnrollments.length > 0) {
-                          logger.debug(
-                            "임시 enrollments를 실제 데이터에 추가",
-                            {
-                              tempEnrollmentsCount: tempEnrollments.length,
-                              tempEnrollments,
-                            }
-                          );
-
                           for (const tempEnrollment of tempEnrollments) {
-                            await addEnrollment(
-                              tempEnrollment.studentId,
-                              tempEnrollment.subjectId
-                            );
+                await addEnrollment(tempEnrollment.studentId, tempEnrollment.subjectId);
                           }
                         }
-
-                        // 🆕 2단계: 업데이트된 enrollments 다시 로드
                         const updatedData = getClassPlannerData();
                         const allEnrollments = updatedData.enrollments;
-
-                        // 🆕 3단계: 현재 세션의 enrollmentIds 재계산
                         const currentEnrollmentIds =
-                          editModalData.enrollmentIds?.filter(
-                            (enrollmentId) => {
-                              const enrollment = allEnrollments.find(
-                                (e) => e.id === enrollmentId
-                              );
-                              return enrollment; // 유효한 enrollment만 유지
-                            }
-                          ) || [];
-
-                        // 🆕 4단계: 새로 추가된 tempEnrollments의 ID도 포함
+              editModalData.enrollmentIds?.filter((enrollmentId) => allEnrollments.some((e) => e.id === enrollmentId)) || [];
                         for (const tempEnrollment of tempEnrollments) {
                           const realEnrollment = allEnrollments.find(
-                            (e) =>
-                              e.studentId === tempEnrollment.studentId &&
-                              e.subjectId === tempEnrollment.subjectId
+                (e) => e.studentId === tempEnrollment.studentId && e.subjectId === tempEnrollment.subjectId
                           );
-                          if (
-                            realEnrollment &&
-                            !currentEnrollmentIds.includes(realEnrollment.id)
-                          ) {
+              if (realEnrollment && !currentEnrollmentIds.includes(realEnrollment.id)) {
                             currentEnrollmentIds.push(realEnrollment.id);
                           }
                         }
-
-                        // 🆕 5단계: studentIds 계산 (호환성 유지)
                         const currentStudentIds = currentEnrollmentIds
-                          .map((enrollmentId) => {
-                            const enrollment = allEnrollments.find(
-                              (e) => e.id === enrollmentId
-                            );
-                            return enrollment?.studentId;
-                          })
+              .map((enrollmentId) => allEnrollments.find((e) => e.id === enrollmentId)?.studentId)
                           .filter(Boolean) as string[];
-
                         const currentSubjectId = tempSubjectId;
-
-                        logger.debug("세션 저장 시작", {
-                          sessionId: editModalData.id,
-                          originalTime: `${editModalData.startsAt}-${editModalData.endsAt}`,
-                          newTime: `${startTime}-${endTime}`,
-                          weekday,
-                          currentStudentIds,
-                          currentSubjectId,
-                          currentEnrollmentIds,
-                          tempEnrollmentsAdded: tempEnrollments.length,
-                        });
-
-                        // 🆕 6단계: enrollmentIds와 studentIds 모두 업데이트
                         await updateSession(editModalData.id, {
-                          enrollmentIds: currentEnrollmentIds, // ← 핵심: enrollmentIds도 업데이트!
+              enrollmentIds: currentEnrollmentIds,
                           studentIds: currentStudentIds,
                           subjectId: currentSubjectId,
                           weekday,
@@ -1952,25 +1682,16 @@ function SchedulePageContent() {
                           endTime,
                           room: editModalData.room,
                         });
-
                         setShowEditModal(false);
-                        setTempSubjectId(""); // 🆕 임시 상태 초기화
-                        setTempEnrollments([]); // 🆕 임시 enrollment 초기화
+            setTempSubjectId("");
+            setTempEnrollments([]);
                         logger.debug("세션 업데이트 완료");
                       } catch (error) {
                         console.error("세션 업데이트 실패:", error);
                         alert("세션 업데이트에 실패했습니다.");
                       }
                     }}
-                  >
-                    저장
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      />
     </div>
   );
 }
