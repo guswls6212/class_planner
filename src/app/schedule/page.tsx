@@ -1,11 +1,27 @@
 "use client";
 
+/**
+ * SchedulePage
+ *
+ * 파일 구성 가이드 (읽기 순서 권장):
+ * 1) Imports & Constants
+ * 2) Public Component Entrypoint (SchedulePage)
+ * 3) Container Component (SchedulePageContent)
+ *    3-1) Data hooks & perf hooks
+ *    3-2) Local UI states
+ *    3-3) Core callbacks (addSession / updateSession)
+ *    3-4) Collision helpers (isTimeOverlapping, findCollidingSessions, ...)
+ *    3-5) DnD handlers & UI event handlers
+ *    3-6) Modal wiring (GroupSessionModal / EditSessionModal)
+ *    3-7) Render
+ *
+ * 주의: 본 리팩토링은 비기능적(가독성) 수정으로, 로직 변경 없음
+ */
+
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
+import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
-import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
-import StudentPanel from "../../components/organisms/StudentPanel";
-import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -21,12 +37,44 @@ import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import EditSessionModal from "./_components/EditSessionModal";
 import GroupSessionModal from "./_components/GroupSessionModal";
+import PdfDownloadSection from "./_components/PdfDownloadSection";
+import ScheduleGridSection from "./_components/ScheduleGridSection";
+import ScheduleHeader from "./_components/ScheduleHeader";
+import StudentPanelSection from "./_components/StudentPanelSection";
 import {
-  DEFAULT_EDIT_MODAL_TIME_DATA,
   DEFAULT_GROUP_SESSION_DATA,
   ERROR_MESSAGES,
   MAX_SESSION_DURATION_MINUTES,
 } from "./_constants/scheduleConstants";
+import { useEditModalState } from "./_hooks/useEditModalState";
+import { useUiState } from "./_hooks/useUiState";
+import { isTimeOverlapping } from "./_utils/collisionHelpers";
+import {
+  checkCollisionsAtYPositionImpl,
+  findCollidingSessionsImpl,
+} from "./_utils/collisionQueries";
+import {
+  buildHandleDrop,
+  buildHandleSessionClick,
+  buildHandleSessionDrop,
+  buildOpenGroupModalHandler,
+  onDragEndStudent,
+  onDragStartStudent,
+} from "./_utils/dndHelpers";
+import {
+  buildEditOnCancel,
+  buildEditOnDelete,
+  buildEditOnSave,
+} from "./_utils/editSaveHandlers";
+import {
+  buildEditStudentAdd,
+  buildEditStudentAddClick,
+  buildEditStudentInputChange,
+} from "./_utils/editStudentHandlers";
+import {
+  buildEditTimeChangeHandlers,
+  buildGroupTimeChangeHandlers,
+} from "./_utils/modalHandlers";
 import {
   buildSelectedStudents,
   filterEditableStudents,
@@ -37,11 +85,13 @@ import {
   ensureEnrollmentIdsForSubject,
   extractStudentIds,
   processTempEnrollments,
-  type TempEnrollment,
 } from "./_utils/sessionSaveUtils";
-import styles from "./Schedule.module.css";
 
-export default function SchedulePage() {
+/**
+ * 페이지 엔트리 컴포넌트
+ * 인증 가드로 감싼 스케줄 페이지 컨테이너를 노출합니다.
+ */
+export default function SchedulePage(): JSX.Element {
   return (
     <AuthGuard requireAuth={true}>
       <SchedulePageContent />
@@ -49,7 +99,11 @@ export default function SchedulePage() {
   );
 }
 
-function SchedulePageContent() {
+/**
+ * 스케줄 페이지 컨테이너
+ * 데이터 훅 바인딩, 콜백 정의, 모달/그리드/패널을 연결합니다.
+ */
+function SchedulePageContent(): JSX.Element {
   // 🚀 통합 데이터 훅 사용 (JSONB 기반 효율적 데이터 관리)
   const {
     data: { students, subjects, sessions, enrollments },
@@ -63,14 +117,43 @@ function SchedulePageContent() {
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
     usePerformanceMonitoring();
 
+  // ================================
+  // 🧩 로컬 타입 (가독성 향상용)
+  // ================================
+  type SessionCreateInput = {
+    subjectId: string;
+    studentIds: string[];
+    weekday: number;
+    startTime: string;
+    endTime: string;
+    yPosition?: number;
+    room?: string;
+  };
+
+  type SessionUpdateInput = {
+    startTime?: string;
+    endTime?: string;
+    weekday?: number;
+    room?: string;
+    yPosition?: number;
+    subjectId?: string;
+    studentIds?: string[];
+  };
+
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
   );
 
-  // 🆕 세션 관리 함수들 (통합 데이터 업데이트 방식)
+  // ================================
+  // 🧩 핵심 콜백: 세션 추가
+  // ================================
+  /**
+   * 세션을 추가하고, 생성된 enrollment와 함께 업데이트합니다.
+   * 이후 충돌 재배치를 비동기 사이클에 수행합니다.
+   */
   const addSession = useCallback(
-    async (sessionData: any) => {
+    async (sessionData: SessionCreateInput) => {
       logger.debug("세션 추가 시작", { sessionData });
       startInteraction("add_session");
 
@@ -179,8 +262,14 @@ function SchedulePageContent() {
     [sessions, enrollments, updateData]
   );
 
+  // ================================
+  // 🧩 핵심 콜백: 세션 업데이트
+  // ================================
+  /**
+   * 지정된 세션의 시간/속성을 갱신하고, 동일 요일 내에서 충돌 재배치를 수행합니다.
+   */
   const updateSession = useCallback(
-    async (sessionId: string, sessionData: any) => {
+    async (sessionId: string, sessionData: SessionUpdateInput) => {
       logger.debug("세션 업데이트 시작", { sessionId, sessionData });
 
       const newSessions = sessions.map((s) => {
@@ -213,8 +302,8 @@ function SchedulePageContent() {
       // 🆕 시간 변경 시 충돌 재배치 수행
       const target = newSessions.find((s) => s.id === sessionId);
       const targetWeekday = target?.weekday ?? sessionData.weekday ?? 0;
-      const targetStartTime = target?.startsAt ?? sessionData.startTime;
-      const targetEndTime = target?.endsAt ?? sessionData.endTime;
+      const targetStartTime = (target?.startsAt ?? sessionData.startTime) || "";
+      const targetEndTime = (target?.endsAt ?? sessionData.endTime) || "";
       const targetYPosition = target?.yPosition || 1;
 
       const repositioned = repositionSessionsUtil(
@@ -238,19 +327,7 @@ function SchedulePageContent() {
   // 🎯 드래그 앤 드롭 / 충돌 처리 섹션
   // ================================
 
-  // 🆕 시간 충돌 감지 함수
-  const isTimeOverlapping = useCallback(
-    (start1: string, end1: string, start2: string, end2: string): boolean => {
-      const start1Minutes = timeToMinutes(start1);
-      const end1Minutes = timeToMinutes(end1);
-      const start2Minutes = timeToMinutes(start2);
-      const end2Minutes = timeToMinutes(end2);
-
-      // 두 시간 범위가 겹치는지 확인
-      return start1Minutes < end2Minutes && start2Minutes < end1Minutes;
-    },
-    []
-  );
+  // 🆕 시간 충돌 감지: 유틸로 추출 (useCallback 불필요)
 
   // 🆕 특정 요일과 시간대에서 충돌하는 세션들 찾기
   const findCollidingSessions = useCallback(
@@ -259,22 +336,15 @@ function SchedulePageContent() {
       startTime: string,
       endTime: string,
       excludeSessionId?: string
-    ): Session[] => {
-      return sessions.filter((session) => {
-        // 같은 요일이고, 제외할 세션이 아니며, 시간이 겹치는 세션들
-        return (
-          session.weekday === weekday &&
-          session.id !== excludeSessionId &&
-          isTimeOverlapping(
-            startTime,
-            endTime,
-            session.startsAt,
-            session.endsAt
-          )
-        );
-      });
-    },
-    [sessions, isTimeOverlapping]
+    ): Session[] =>
+      findCollidingSessionsImpl(
+        sessions,
+        weekday,
+        startTime,
+        endTime,
+        excludeSessionId
+      ),
+    [sessions]
   );
 
   // 🆕 임시 우선순위 레벨을 가진 세션 타입
@@ -289,41 +359,16 @@ function SchedulePageContent() {
       yPosition: number,
       targetStartTime: string,
       targetEndTime: string,
-      checkWithPriorityLevel1: boolean = false // 🆕 우선순위 레벨 1 세션들과 충돌 확인 여부
-    ): boolean => {
-      const sessionsAtYPosition = targetDaySessions.get(yPosition) || [];
-
-      if (checkWithPriorityLevel1) {
-        // 🆕 우선순위 레벨 1인 세션들과 충돌 확인
-        const priorityLevel1Sessions = sessionsAtYPosition.filter(
-          (session) => session.priorityLevel === 1
-        );
-
-        return priorityLevel1Sessions.some((prioritySession) =>
-          sessionsAtYPosition.some(
-            (session) =>
-              session.priorityLevel === 0 && // 우선순위 레벨 0인 세션만 확인
-              isTimeOverlapping(
-                session.startsAt,
-                session.endsAt,
-                prioritySession.startsAt,
-                prioritySession.endsAt
-              )
-          )
-        );
-      } else {
-        // 기존 로직: 이동하려는 세션의 시간과 충돌 확인
-        return sessionsAtYPosition.some((session) =>
-          isTimeOverlapping(
-            session.startsAt,
-            session.endsAt,
-            targetStartTime,
-            targetEndTime
-          )
-        );
-      }
-    },
-    [isTimeOverlapping]
+      checkWithPriorityLevel1: boolean = false
+    ): boolean =>
+      checkCollisionsAtYPositionImpl(
+        targetDaySessions as unknown as Map<number, any[]>,
+        yPosition,
+        targetStartTime,
+        targetEndTime,
+        checkWithPriorityLevel1
+      ),
+    []
   );
 
   // 🆕 우선순위 기반 충돌 해결 로직
@@ -846,110 +891,44 @@ function SchedulePageContent() {
     );
   }, [students, studentInputValue]);
 
-  // 🆕 수업 편집 모달용 학생 입력 상태
-  const [editStudentInputValue, setEditStudentInputValue] = useState("");
+  // 🆕 편집 모달 상태 훅 사용
+  const {
+    showEditModal,
+    setShowEditModal,
+    editModalData,
+    setEditModalData,
+    tempSubjectId,
+    setTempSubjectId,
+    tempEnrollments,
+    setTempEnrollments,
+    editStudentInputValue,
+    setEditStudentInputValue,
+    editModalTimeData,
+    setEditModalTimeData,
+    editTimeError,
+    setEditTimeError,
+  } = useEditModalState();
 
-  // 🆕 수업 편집 모달용 시간 상태
-  const [editModalTimeData, setEditModalTimeData] = useState(
-    DEFAULT_EDIT_MODAL_TIME_DATA
+  // 🆕 수업 편집 모달 시간 변경 핸들러 (헬퍼 적용)
+  const { handleEditStartTimeChange, handleEditEndTimeChange } = useMemo(
+    () =>
+      buildEditTimeChangeHandlers({
+        validateTimeRange,
+        validateDurationWithinLimit,
+        maxMinutes: MAX_SESSION_DURATION_MINUTES,
+        setEditModalTimeData,
+        setEditTimeError,
+        endBeforeStartMsg: ERROR_MESSAGES.END_TIME_BEFORE_START,
+        tooLongMsg: ERROR_MESSAGES.SESSION_TOO_LONG,
+      }),
+    [
+      validateTimeRange,
+      validateDurationWithinLimit,
+      MAX_SESSION_DURATION_MINUTES,
+      setEditModalTimeData,
+      setEditTimeError,
+    ]
   );
-  const [editTimeError, setEditTimeError] = useState<string>("");
-
-  // 🆕 수업 편집 모달용 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
-  const handleEditStartTimeChange = (newStartTime: string) => {
-    setEditModalTimeData((prev) => {
-      const currentEndTime = prev.endTime;
-
-      // 시작 시간이 종료 시간보다 늦으면 즉시 경고
-      if (
-        newStartTime &&
-        currentEndTime &&
-        !validateTimeRange(newStartTime, currentEndTime)
-      ) {
-        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
-      }
-
-      // 8시간 초과 시 즉시 경고
-      if (
-        newStartTime &&
-        currentEndTime &&
-        !validateDurationWithinLimit(
-          newStartTime,
-          currentEndTime,
-          MAX_SESSION_DURATION_MINUTES
-        )
-      ) {
-        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
-      }
-
-      // 정상 상태면 에러 해제
-      if (
-        newStartTime &&
-        currentEndTime &&
-        validateTimeRange(newStartTime, currentEndTime) &&
-        validateDurationWithinLimit(
-          newStartTime,
-          currentEndTime,
-          MAX_SESSION_DURATION_MINUTES
-        )
-      ) {
-        setEditTimeError("");
-      }
-
-      return {
-        ...prev,
-        startTime: newStartTime,
-      };
-    });
-  };
-
-  // 🆕 수업 편집 모달용 종료 시간 변경 처리 (시작 시간보다 빠르지 않도록)
-  const handleEditEndTimeChange = (newEndTime: string) => {
-    setEditModalTimeData((prev) => {
-      const currentStartTime = prev.startTime;
-
-      // 종료 시간이 시작 시간보다 빠르면 즉시 경고
-      if (
-        newEndTime &&
-        currentStartTime &&
-        !validateTimeRange(currentStartTime, newEndTime)
-      ) {
-        setEditTimeError(ERROR_MESSAGES.END_TIME_BEFORE_START);
-      }
-
-      // 8시간 초과 시 즉시 경고
-      if (
-        newEndTime &&
-        currentStartTime &&
-        !validateDurationWithinLimit(
-          currentStartTime,
-          newEndTime,
-          MAX_SESSION_DURATION_MINUTES
-        )
-      ) {
-        setEditTimeError(ERROR_MESSAGES.SESSION_TOO_LONG);
-      }
-
-      // 정상 상태면 에러 해제
-      if (
-        newEndTime &&
-        currentStartTime &&
-        validateTimeRange(currentStartTime, newEndTime) &&
-        validateDurationWithinLimit(
-          currentStartTime,
-          newEndTime,
-          MAX_SESSION_DURATION_MINUTES
-        )
-      ) {
-        setEditTimeError("");
-      }
-
-      return {
-        ...prev,
-        endTime: newEndTime,
-      };
-    });
-  };
 
   // 🆕 학생 입력값 상태 디버깅 및 최적화
   useEffect(() => {
@@ -959,127 +938,44 @@ function SchedulePageContent() {
     });
   }, [editStudentInputValue]);
 
-  // 🆕 세션 편집 모달 상태 (useCallback보다 앞에 선언)
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editModalData, setEditModalData] = useState<Session | null>(null);
-  const [tempSubjectId, setTempSubjectId] = useState<string>(""); // 🆕 임시 과목 ID
-  const [tempEnrollments, setTempEnrollments] = useState<TempEnrollment[]>([]); // 🆕 임시 enrollment 관리
+  // (훅으로 대체됨)
 
   // ================================
   // 🎯 모달 제어 / 학생 관리 섹션
   // ================================
 
   // 🆕 학생 입력값 변경 핸들러 최적화
-  const handleEditStudentInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      logger.debug("학생 입력값 변경", { value });
-      setEditStudentInputValue(value);
-    },
-    []
+  const handleEditStudentInputChange = useMemo(
+    () => buildEditStudentInputChange(setEditStudentInputValue),
+    [setEditStudentInputValue]
   );
 
   // 🆕 학생 추가 핸들러 최적화
-  const handleEditStudentAdd = useCallback(
-    (studentId?: string) => {
-      logger.debug("handleEditStudentAdd 호출", {
-        studentId,
-        editStudentInputValue,
-      });
-
-      const targetStudentId =
-        studentId ||
-        students.find(
-          (s) => s.name.toLowerCase() === editStudentInputValue.toLowerCase()
-        )?.id;
-
-      logger.debug("찾은 학생 ID", { targetStudentId });
-
-      if (!targetStudentId) {
-        logger.warn("학생을 찾을 수 없음", {
-          inputValue: editStudentInputValue,
-        });
-        // 존재하지 않는 학생인 경우 입력창을 초기화하지 않고 피드백만 제공
-        return;
-      }
-
-      // 🆕 학생이 이미 추가되어 있는지 확인
-      const isAlreadyAdded = editModalData?.enrollmentIds?.some(
-        (enrollmentId: string) => {
-          const enrollment = enrollments.find((e) => e.id === enrollmentId);
-          return enrollment?.studentId === targetStudentId;
-        }
-      );
-
-      if (isAlreadyAdded) {
-        logger.warn("이미 추가된 학생", { studentId: targetStudentId });
-        setEditStudentInputValue("");
-        return;
-      }
-
-      // enrollment가 있는지 확인하고 없으면 생성
-      let enrollment = enrollments.find(
-        (e) =>
-          e.studentId === targetStudentId &&
-          e.subjectId ===
-            (() => {
-              const firstEnrollment = enrollments.find(
-                (e) => e.id === editModalData?.enrollmentIds?.[0]
-              );
-              return firstEnrollment?.subjectId || "";
-            })()
-      );
-
-      if (!enrollment) {
-        // 🆕 임시 enrollment 객체를 생성하여 tempEnrollments에 추가
-        enrollment = {
-          id: crypto.randomUUID(),
-          studentId: targetStudentId,
-          subjectId: (() => {
-            const firstEnrollment = enrollments.find(
-              (e) => e.id === editModalData?.enrollmentIds?.[0]
-            );
-            return firstEnrollment?.subjectId || "";
-          })(),
-        };
-
-        // 🆕 임시 enrollment를 tempEnrollments에 추가
-        setTempEnrollments((prev) => [...prev, enrollment!]);
-      }
-
-      // enrollmentIds에 추가 (최대 14명 제한)
-      if (
-        editModalData &&
-        !editModalData.enrollmentIds?.includes(enrollment.id)
-      ) {
-        // 🆕 최대 14명 제한 확인
-        const currentCount = editModalData.enrollmentIds?.length || 0;
-        if (currentCount >= 14) {
-          alert("최대 14명까지 추가할 수 있습니다.");
-          return;
-        }
-
-        // 🆕 모달 상태만 업데이트 (실제 세션 데이터는 저장 버튼에서 업데이트)
-        setEditModalData((prev: Session | null) =>
-          prev
-            ? {
-                ...prev,
-                enrollmentIds: [...(prev.enrollmentIds || []), enrollment!.id],
-              }
-            : null
-        );
-        // 성공적으로 추가된 경우에만 입력창 초기화
-        setEditStudentInputValue("");
-      }
-    },
-    [editStudentInputValue, students, enrollments, editModalData]
+  const handleEditStudentAdd = useMemo(
+    () =>
+      buildEditStudentAdd({
+        students,
+        enrollments,
+        editModalData,
+        getEditStudentInputValue: () => editStudentInputValue,
+        setEditStudentInputValue,
+        setTempEnrollments,
+        setEditModalData,
+      }),
+    [
+      students,
+      enrollments,
+      editModalData,
+      editStudentInputValue,
+      setEditStudentInputValue,
+    ]
   );
 
   // 🆕 학생 추가 핸들러 최적화
-  const handleEditStudentAddClick = useCallback(() => {
-    logger.debug("학생 추가 버튼 클릭");
-    handleEditStudentAdd();
-  }, [handleEditStudentAdd]);
+  const handleEditStudentAddClick = useMemo(
+    () => buildEditStudentAddClick(handleEditStudentAdd),
+    [handleEditStudentAdd]
+  );
 
   // 🆕 학생 추가 함수 (최대 14명 제한)
   const addStudent = (studentId: string) => {
@@ -1192,220 +1088,58 @@ function SchedulePageContent() {
   };
 
   // 🆕 그룹 수업 모달 열기
-  const openGroupModal = (
-    weekday: number,
-    time: string,
-    yPosition?: number
-  ) => {
-    logger.debug("그룹 수업 모달 열기", { weekday, time, yPosition });
-    setGroupModalData({
-      studentIds: [], // 빈 배열로 초기화
-      subjectId: "",
-      weekday,
-      startTime: time,
-      endTime: getNextHour(time),
-      yPosition: yPosition || 1, // 🆕 yPosition 추가
+  const openGroupModal = useMemo(
+    () =>
+      buildOpenGroupModalHandler(
+        setGroupModalData,
+        setShowGroupModal,
+        getNextHour
+      ),
+    [setGroupModalData, setShowGroupModal, getNextHour]
+  );
+
+  // 🆕 그룹 모달 시간 변경 핸들러 (헬퍼 적용)
+  const { handleStartTimeChange, handleEndTimeChange } = useMemo(
+    () => buildGroupTimeChangeHandlers(validateTimeRange, setGroupModalData),
+    [validateTimeRange, setGroupModalData]
+  );
+
+  // 🆕 UI 상태 훅
+  const {
+    isStudentDragging,
+    setIsStudentDragging,
+    gridVersion,
+    setGridVersion,
+  } = useUiState();
+
+  // 🆕 드래그 앤 드롭 처리 (헬퍼 빌더로 교체)
+  const handleDrop = useMemo(() => {
+    // setIsStudentDragging 선언 이후에 클로저가 캡처되도록 지연 생성
+    return buildHandleDrop({
+      students,
+      enrollments,
+      setIsStudentDragging,
+      setGroupModalData,
+      setShowGroupModal,
+      getNextHour,
     });
-    setShowGroupModal(true);
-    logger.debug("모달 상태 설정 완료", { showGroupModal: true });
-  };
+  }, [
+    students,
+    enrollments,
+    setIsStudentDragging,
+    setGroupModalData,
+    setShowGroupModal,
+    getNextHour,
+  ]);
 
-  // 🆕 시작 시간 변경 처리 (종료 시간보다 늦지 않도록)
-  const handleStartTimeChange = (newStartTime: string) => {
-    setGroupModalData((prev) => {
-      const currentEndTime = prev.endTime;
-
-      // 시작 시간이 종료 시간보다 늦으면 경고만 표시하고 자동 조정하지 않음
-      if (
-        newStartTime &&
-        currentEndTime &&
-        !validateTimeRange(newStartTime, currentEndTime)
-      ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요."
-        );
-      }
-
-      return {
-        ...prev,
-        startTime: newStartTime,
-      };
+  // 🆕 세션 드롭 핸들러 (헬퍼 빌더 적용)
+  const handleSessionDrop = useMemo(() => {
+    return buildHandleSessionDrop({
+      updateSessionPosition,
+      // setGridVersion는 함수 식별자이므로 선언 위치와 무관하게 안전하게 참조 가능
+      setGridVersion,
     });
-  };
-
-  // 🆕 종료 시간 변경 처리 (시작 시간보다 빠르지 않도록)
-  const handleEndTimeChange = (newEndTime: string) => {
-    setGroupModalData((prev) => {
-      const currentStartTime = prev.startTime;
-
-      // 종료 시간이 시작 시간보다 빠르면 경고만 표시하고 자동 조정하지 않음
-      if (
-        newEndTime &&
-        currentStartTime &&
-        !validateTimeRange(currentStartTime, newEndTime)
-      ) {
-        // 경고 메시지 표시 (선택사항)
-        console.warn(
-          "종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요."
-        );
-      }
-
-      return {
-        ...prev,
-        endTime: newEndTime,
-      };
-    });
-  };
-
-  // 🆕 드래그 앤 드롭 처리
-  const handleDrop = (
-    weekday: number,
-    time: string,
-    enrollmentId: string,
-    yPosition?: number
-  ) => {
-    logger.debug("handleDrop 호출됨", {
-      weekday,
-      time,
-      enrollmentId,
-      yPosition,
-    });
-
-    // 🆕 학생 드래그 상태 리셋 (드롭 시)
-    setIsStudentDragging(false);
-
-    // 학생 ID인지 확인 (enrollment가 없는 경우)
-    if (enrollmentId.startsWith("student:")) {
-      const studentId = enrollmentId.replace("student:", "");
-      logger.debug("학생 ID로 드롭됨", { studentId });
-
-      // 학생 정보 찾기
-      const student = students.find((s) => s.id === studentId);
-      if (!student) {
-        logger.warn("학생을 찾을 수 없음", { studentId });
-        return;
-      }
-
-      logger.debug("그룹 수업 모달 데이터 설정 (학생 ID)", {
-        studentId,
-        weekday,
-        startTime: time,
-        endTime: getNextHour(time),
-        yPosition: yPosition || 1,
-      });
-
-      // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
-      setGroupModalData({
-        studentIds: [studentId],
-        subjectId: "", // 과목은 선택되지 않은 상태
-        weekday,
-        startTime: time,
-        endTime: getNextHour(time),
-        yPosition: yPosition || 1, // 🆕 yPosition 추가
-      });
-
-      logger.debug("showGroupModal을 true로 설정");
-      setShowGroupModal(true);
-
-      // 디버깅을 위한 상태 확인
-      setTimeout(() => {
-        logger.debug("모달 상태 확인", {
-          showGroupModal: true,
-          groupModalData: {
-            studentIds: [studentId],
-            subjectId: "",
-            weekday,
-            startTime: time,
-            endTime: getNextHour(time),
-          },
-        });
-      }, 100);
-
-      return;
-    }
-
-    // 기존 enrollment 처리
-    const enrollment = enrollments.find((e) => e.id === enrollmentId);
-    logger.debug("찾은 enrollment", { enrollment });
-
-    if (!enrollment) {
-      logger.warn("enrollment를 찾을 수 없음", { enrollmentId });
-      return;
-    }
-
-    logger.debug("그룹 수업 모달 데이터 설정", {
-      studentId: enrollment.studentId,
-      subjectId: enrollment.subjectId,
-      weekday,
-      startTime: time,
-      endTime: getNextHour(time),
-      yPosition: yPosition || 1,
-    });
-
-    // 🆕 그룹 수업 모달 열기 (과목은 선택되지 않은 상태)
-    setGroupModalData({
-      studentIds: [enrollment.studentId], // 배열로 변경
-      subjectId: "", // 과목은 선택되지 않은 상태로 초기화
-      weekday,
-      startTime: time,
-      endTime: getNextHour(time),
-      yPosition: yPosition || 1, // 🆕 yPosition 추가
-    });
-
-    logger.debug("showGroupModal을 true로 설정");
-    setShowGroupModal(true);
-
-    // 🆕 드래그 상태 강제 해제
-    setTimeout(() => {
-      // 모든 드래그 이벤트 강제 종료
-      const dragEndEvent = new DragEvent("dragend", {
-        bubbles: true,
-        cancelable: true,
-      });
-      document.dispatchEvent(dragEndEvent);
-
-      // 마우스 업 이벤트 강제 발생
-      const mouseUpEvent = new MouseEvent("mouseup", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 0,
-        clientY: 0,
-      });
-      document.dispatchEvent(mouseUpEvent);
-
-      logger.debug("드래그 상태 강제 해제 완료");
-    }, 100);
-
-    logger.debug("handleDrop 완료");
-  };
-
-  // 🆕 세션 드롭 핸들러 (드래그 앤 드롭으로 세션 이동)
-  const handleSessionDrop = async (
-    sessionId: string,
-    weekday: number,
-    time: string,
-    yPosition: number
-  ) => {
-    logger.debug("Schedule 페이지 세션 드롭 처리", {
-      sessionId,
-      weekday,
-      time,
-      yPosition,
-    });
-
-    try {
-      // 세션 위치 업데이트
-      logger.debug("updateSessionPosition 호출 시작", { sessionId });
-      await updateSessionPosition(sessionId, weekday, time, yPosition);
-      logger.debug("세션 위치 업데이트 완료", { sessionId });
-      // 🆕 드롭 직후 그리드 재마운트로 드래그 프리뷰/투명 상태를 즉시 복구
-      setGridVersion((v) => v + 1);
-    } catch (error) {
-      logger.error("세션 위치 업데이트 실패", { sessionId }, error as Error);
-      alert("세션 이동에 실패했습니다.");
-    }
-  };
+  }, [updateSessionPosition]);
 
   // 🆕 빈 공간 클릭 처리
   const handleEmptySpaceClick = (
@@ -1417,133 +1151,63 @@ function SchedulePageContent() {
     openGroupModal(weekday, time, yPosition);
   };
 
-  // 🆕 세션 클릭 처리
-  const handleSessionClick = (session: Session) => {
-    logger.debug("세션 클릭됨", {
-      sessionId: session.id,
-      startsAt: session.startsAt,
-      endsAt: session.endsAt,
-      enrollmentIds: session.enrollmentIds,
-    });
-
-    setEditModalData(session);
-    setEditModalTimeData({
-      startTime: session.startsAt,
-      endTime: session.endsAt,
-    });
-    // 🆕 임시 과목 ID 초기화
-    const firstEnrollment = enrollments.find(
-      (e) => e.id === session.enrollmentIds?.[0]
-    );
-    setTempSubjectId(firstEnrollment?.subjectId || "");
-    setTempEnrollments([]); // 🆕 임시 enrollment 초기화
-    setShowEditModal(true);
-
-    logger.debug("편집 모달 열림", {
-      editModalData: session,
-      editModalTimeData: {
-        startTime: session.startsAt,
-        endTime: session.endsAt,
-      },
-      tempSubjectId: firstEnrollment?.subjectId || "",
-    });
-  };
+  // 🆕 세션 클릭 처리 (헬퍼 빌더 적용)
+  const handleSessionClick = useMemo(
+    () =>
+      buildHandleSessionClick({
+        enrollments,
+        setEditModalData,
+        setEditModalTimeData,
+        setTempSubjectId,
+        setTempEnrollments,
+        setShowEditModal,
+      }),
+    [
+      enrollments,
+      setEditModalData,
+      setEditModalTimeData,
+      setTempSubjectId,
+      setTempEnrollments,
+      setShowEditModal,
+    ]
+  );
 
   // 🆕 PDF 다운로드 처리
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 🆕 학생 드래그 상태 관리
-  const [isStudentDragging, setIsStudentDragging] = useState(false);
-  // 🆕 드롭 후 그리드 강제 리렌더를 위한 버전 키
-  const [gridVersion, setGridVersion] = useState(0);
+  // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
+  // (훅으로 대체됨)
 
   // 드래그 시작 처리
-  const handleDragStart = (e: React.DragEvent, student: Student) => {
-    logger.debug("학생 드래그 시작", { studentName: student.name });
-
-    // 🆕 학생 드래그 상태 설정
-    setIsStudentDragging(true);
-
-    // 해당 학생의 첫 번째 enrollment ID를 찾아서 전달
-    const studentEnrollment = enrollments.find(
-      (enrollment) => enrollment.studentId === student.id
+  const handleDragStart = (e: React.DragEvent, student: Student) =>
+    onDragStartStudent(
+      e,
+      student,
+      enrollments,
+      setIsStudentDragging,
+      studentPanelState.resetDragState
     );
-    if (studentEnrollment) {
-      logger.debug("드래그 시작 - enrollment ID 전달", {
-        enrollmentId: studentEnrollment.id,
-      });
-      e.dataTransfer.setData("text/plain", studentEnrollment.id);
-    } else {
-      logger.debug("드래그 시작 - 학생 ID 전달 (enrollment 없음)", {
-        studentId: student.id,
-      });
-      // enrollment가 없으면 학생 ID를 직접 전달
-      e.dataTransfer.setData("text/plain", `student:${student.id}`);
-    }
-    e.dataTransfer.effectAllowed = "copy"; // 🆕 이미 "copy"로 설정되어 있음
-
-    // 🆕 학생 패널의 드래그 상태 리셋 (학생 드래그 시 패널 드래그 방지)
-    studentPanelState.resetDragState();
-  };
 
   // 🆕 드래그 종료 처리
-  const handleDragEnd = (e: React.DragEvent) => {
-    logger.debug("학생 드래그 종료", { dropEffect: e.dataTransfer.dropEffect });
-
-    // 🆕 학생 드래그 상태 리셋
-    setIsStudentDragging(false);
-
-    // 🆕 학생 패널의 드래그 상태 리셋 (드래그 종료 시 패널 드래그 상태 정리)
-    studentPanelState.resetDragState();
-  };
+  const handleDragEnd = (e: React.DragEvent) =>
+    onDragEndStudent(e, setIsStudentDragging, studentPanelState.resetDragState);
 
   return (
     <div className="timetable-container" style={{ padding: 16 }}>
-      <div className={styles.pageHeader}>
-        <h2>주간 시간표</h2>
-        {dataLoading && (
-          <div style={{ color: "var(--color-blue-500)", fontSize: "14px" }}>
-            {error
-              ? "데이터 로드 중 오류가 발생했습니다."
-              : "세션 데이터를 로드 중..."}
-          </div>
-        )}
-        {error && (
-          <div
-            style={{
-              color: "var(--color-red-500)",
-              fontSize: "14px",
-              backgroundColor: "var(--color-red-50)",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              border: "1px solid var(--color-red-200)",
-              marginTop: "8px",
-            }}
-          >
-            ⚠️ {error}
-            <br />
-            <small style={{ color: "var(--color-gray-600)" }}>
-              로컬 데이터로 계속 작업할 수 있습니다.
-            </small>
-          </div>
-        )}
-      </div>
-      {selectedStudentId ? (
-        <p style={{ color: "var(--color-gray-500)" }}>
-          {students.find((s) => s.id === selectedStudentId)?.name} 학생의
-          시간표입니다. 다른 학생을 선택하거나 선택 해제하여 전체 시간표를 볼 수
-          있습니다.
-        </p>
-      ) : (
-        <p style={{ color: "var(--color-gray-500)" }}>
-          전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당
-          학생의 시간표만 볼 수 있습니다.
-        </p>
-      )}
+      <ScheduleHeader
+        dataLoading={dataLoading}
+        error={error ?? undefined}
+        selectedStudentName={
+          selectedStudentId
+            ? students.find((s) => s.id === selectedStudentId)?.name ??
+              undefined
+            : undefined
+        }
+      />
 
       {/* PDF 다운로드 버튼 */}
-      <PDFDownloadButton
+      <PdfDownloadSection
         timeTableRef={timeTableRef}
         selectedStudent={students.find((s) => s.id === selectedStudentId)}
         isDownloading={isDownloading}
@@ -1552,31 +1216,27 @@ function SchedulePageContent() {
       />
 
       {/* 🆕 시간표 그리드 */}
-      <div ref={timeTableRef}>
-        <TimeTableGrid
-          key={gridVersion}
-          sessions={displaySessions}
-          subjects={subjects}
-          enrollments={enrollments}
-          students={students}
-          onSessionClick={handleSessionClick}
-          onDrop={handleDrop}
-          onSessionDrop={handleSessionDrop} // 🆕 세션 드롭 핸들러 전달
-          onEmptySpaceClick={handleEmptySpaceClick}
-          selectedStudentId={selectedStudentId} // 🆕 선택된 학생 ID 전달
-          isStudentDragging={isStudentDragging} // 🆕 학생 드래그 상태 전달
-        />
-      </div>
+      <ScheduleGridSection
+        containerRef={timeTableRef}
+        gridVersion={gridVersion}
+        sessions={displaySessions}
+        subjects={subjects}
+        enrollments={enrollments}
+        students={students}
+        onSessionClick={handleSessionClick}
+        onDrop={handleDrop}
+        onSessionDrop={handleSessionDrop}
+        onEmptySpaceClick={handleEmptySpaceClick}
+        selectedStudentId={selectedStudentId}
+        isStudentDragging={isStudentDragging}
+      />
 
       {/* 🆕 학생 패널 */}
-      <StudentPanel
+      <StudentPanelSection
         selectedStudentId={selectedStudentId}
         panelState={studentPanelState}
-        onMouseDown={studentPanelState.handleMouseDown}
-        onStudentClick={studentPanelState.handleStudentClick}
         onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd} // 🆕 드래그 종료 핸들러 추가
-        onSearchChange={studentPanelState.setSearchQuery}
+        onDragEnd={handleDragEnd}
       />
 
       {/* 그룹 수업 추가 모달 (분리) */}
@@ -1663,94 +1323,33 @@ function SchedulePageContent() {
         onStartTimeChange={handleEditStartTimeChange}
         onEndTimeChange={handleEditEndTimeChange}
         timeError={editTimeError}
-        onDelete={async () => {
-          if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
-            try {
-              await deleteSession(editModalData.id);
-              setShowEditModal(false);
-              logger.debug("세션 삭제 완료");
-            } catch (error) {
-              console.error("세션 삭제 실패:", error);
-              alert("세션 삭제에 실패했습니다.");
-            }
-          }
-        }}
-        onCancel={() => {
-          setShowEditModal(false);
-          setTempSubjectId("");
-        }}
-        onSave={async () => {
-          if (!editModalData) return;
-          const weekday = Number(
-            (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
-              ?.value
-          );
-          const startTime = editModalTimeData.startTime;
-          const endTime = editModalTimeData.endTime;
-          if (!startTime || !endTime) return;
-          if (!validateAndToastEdit(startTime, endTime)) {
-            return;
-          }
-          try {
-            // 임시 enrollments 처리 및 병합
-            const { allEnrollments, currentEnrollmentIds } =
-              await processTempEnrollments(
-                tempEnrollments,
-                addEnrollment,
-                getClassPlannerData
-              );
-
-            // 기존 enrollmentIds와 병합
-            const existingEnrollmentIds =
-              editModalData.enrollmentIds?.filter((enrollmentId) =>
-                allEnrollments.some((e) => e.id === enrollmentId)
-              ) || [];
-            const mergedEnrollmentIds = [
-              ...existingEnrollmentIds,
-              ...currentEnrollmentIds,
-            ];
-
-            // studentIds 추출
-            const currentStudentIds = extractStudentIds(
-              mergedEnrollmentIds,
-              allEnrollments
-            );
-
-            // 🆕 과목 변경 시 학생들에 대해 해당 과목 enrollmentIds 보장
-            const { enrollmentIds: ensuredEnrollmentIds } =
-              await ensureEnrollmentIdsForSubject(
-                currentStudentIds,
-                tempSubjectId,
-                addEnrollment,
-                getClassPlannerData,
-                allEnrollments
-              );
-
-            // 세션 저장 데이터 생성
-            const sessionData = buildSessionSaveData(
-              ensuredEnrollmentIds.length > 0
-                ? ensuredEnrollmentIds
-                : mergedEnrollmentIds,
-              currentStudentIds,
-              tempSubjectId,
-              weekday,
-              startTime,
-              endTime,
-              editModalData.room || ""
-            );
-
-            await updateSession(editModalData.id, sessionData);
-
-            // 상태 초기화
-            setShowEditModal(false);
-            setTempSubjectId("");
-            setTempEnrollments([]);
-            logger.debug("세션 업데이트 완료");
-          } catch (error) {
-            console.error("세션 업데이트 실패:", error);
-            alert("세션 업데이트에 실패했습니다.");
-          }
-        }}
+        onDelete={buildEditOnDelete({
+          editModalData,
+          deleteSession,
+          setShowEditModal,
+        })}
+        onCancel={buildEditOnCancel({
+          setShowEditModal,
+          setTempSubjectId,
+        })}
+        onSave={buildEditOnSave({
+          editModalData,
+          editModalTimeData,
+          tempSubjectId,
+          tempEnrollments,
+          enrollments,
+          addEnrollment,
+          getClassPlannerData,
+          processTempEnrollments,
+          ensureEnrollmentIdsForSubject,
+          extractStudentIds,
+          buildSessionSaveData,
+          updateSession,
+          validateAndToastEdit,
+          setShowEditModal,
+          setTempSubjectId,
+          setTempEnrollments,
+        })}
       />
     </div>
   );
