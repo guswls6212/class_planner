@@ -1,0 +1,119 @@
+/* SubjectList.module.css */
+.searchContainer {
+  margin-bottom: var(--spacing-sm);
+}
+
+.searchInput {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.container {
+  list-style: none !important;
+  list-style-type: none !important;
+  list-style-image: none !important;
+  margin: 0;
+  padding: 0;
+  max-height: 400px;
+  overflow: auto;
+  background: var(--color-bg-primary);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border);
+  position: relative; /* 가상 요소 제어를 위해 */
+  /* 기본: 스크롤바 숨김 (Firefox/Edge) */
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* 가상 요소 완전 제거 */
+.container::before,
+.container::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* WebKit: 기본은 스크롤바 숨김 */
+.container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Hover 시에만 얇은 스크롤바 표시 (macOS의 auto-hide 느낌 근사) */
+.container:hover {
+  scrollbar-width: thin; /* Firefox */
+}
+
+.container:hover::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.container:hover::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+.container:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.container:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
+}
+
+.container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
+}
+
+.emptyMessage {
+  color: var(--color-text-muted);
+  padding: var(--spacing-md);
+  text-align: center;
+  font-style: italic;
+  background: var(--color-bg-secondary);
+  margin: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  border: 1px dashed var(--color-border-light);
+}
+
+.scrollIndicator {
+  color: var(--color-text-muted);
+  padding: var(--spacing-sm);
+  font-size: 12px;
+  text-align: center;
+  border-top: 1px solid var(--color-border-light);
+  margin-top: var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  font-style: italic;
+  border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+}
