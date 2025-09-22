@@ -1399,8 +1399,8 @@ function SchedulePageContent() {
       logger.debug("updateSessionPosition 호출 시작", { sessionId });
       await updateSessionPosition(sessionId, weekday, time, yPosition);
       logger.debug("세션 위치 업데이트 완료", { sessionId });
-    // 🆕 드롭 직후 그리드 재마운트로 드래그 프리뷰/투명 상태를 즉시 복구
-    setGridVersion((v) => v + 1);
+      // 🆕 드롭 직후 그리드 재마운트로 드래그 프리뷰/투명 상태를 즉시 복구
+      setGridVersion((v) => v + 1);
     } catch (error) {
       logger.error("세션 위치 업데이트 실패", { sessionId }, error as Error);
       alert("세션 이동에 실패했습니다.");
@@ -1625,10 +1625,10 @@ function SchedulePageContent() {
               subjectId: t.subjectId,
             }))
           );
-                              setTempEnrollments((prev) =>
+          setTempEnrollments((prev) =>
             prev.filter((e) => e.studentId !== studentId)
-                              );
-                              setEditModalData((prev) =>
+          );
+          setEditModalData((prev) =>
             prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null
           );
         }}
@@ -1638,13 +1638,13 @@ function SchedulePageContent() {
           setEditStudentInputValue(value);
         }}
         onEditStudentInputKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          logger.debug("Enter 키로 학생 추가 시도");
-                          handleEditStudentAdd();
-                          setEditStudentInputValue("");
-                        }
-                      }}
+          if (e.key === "Enter") {
+            e.preventDefault();
+            logger.debug("Enter 키로 학생 추가 시도");
+            handleEditStudentAdd();
+            setEditStudentInputValue("");
+          }
+        }}
         onAddStudentClick={handleEditStudentAddClick}
         editSearchResults={filterEditableStudents(
           editStudentInputValue,
@@ -1665,37 +1665,37 @@ function SchedulePageContent() {
         timeError={editTimeError}
         onDelete={async () => {
           if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
-                      try {
-                        await deleteSession(editModalData.id);
-                        setShowEditModal(false);
-                        logger.debug("세션 삭제 완료");
-                      } catch (error) {
-                        console.error("세션 삭제 실패:", error);
-                        alert("세션 삭제에 실패했습니다.");
-                      }
-                    }
-                  }}
+            try {
+              await deleteSession(editModalData.id);
+              setShowEditModal(false);
+              logger.debug("세션 삭제 완료");
+            } catch (error) {
+              console.error("세션 삭제 실패:", error);
+              alert("세션 삭제에 실패했습니다.");
+            }
+          }
+        }}
         onCancel={() => {
-                      setShowEditModal(false);
+          setShowEditModal(false);
           setTempSubjectId("");
         }}
         onSave={async () => {
           if (!editModalData) return;
-                      const weekday = Number(
+          const weekday = Number(
             (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
               ?.value
-                      );
-                      const startTime = editModalTimeData.startTime;
-                      const endTime = editModalTimeData.endTime;
-                      if (!startTime || !endTime) return;
+          );
+          const startTime = editModalTimeData.startTime;
+          const endTime = editModalTimeData.endTime;
+          if (!startTime || !endTime) return;
           if (!validateAndToastEdit(startTime, endTime)) {
-                        return;
-                      }
+            return;
+          }
           try {
             // 임시 enrollments 처리 및 병합
             const { allEnrollments, currentEnrollmentIds } =
               await processTempEnrollments(
-                              tempEnrollments,
+                tempEnrollments,
                 addEnrollment,
                 getClassPlannerData
               );
@@ -1704,7 +1704,7 @@ function SchedulePageContent() {
             const existingEnrollmentIds =
               editModalData.enrollmentIds?.filter((enrollmentId) =>
                 allEnrollments.some((e) => e.id === enrollmentId)
-                          ) || [];
+              ) || [];
             const mergedEnrollmentIds = [
               ...existingEnrollmentIds,
               ...currentEnrollmentIds,
@@ -1731,26 +1731,26 @@ function SchedulePageContent() {
               ensuredEnrollmentIds.length > 0
                 ? ensuredEnrollmentIds
                 : mergedEnrollmentIds,
-                          currentStudentIds,
+              currentStudentIds,
               tempSubjectId,
-                          weekday,
-                          startTime,
-                          endTime,
+              weekday,
+              startTime,
+              endTime,
               editModalData.room || ""
             );
 
             await updateSession(editModalData.id, sessionData);
 
             // 상태 초기화
-                        setShowEditModal(false);
+            setShowEditModal(false);
             setTempSubjectId("");
             setTempEnrollments([]);
-                        logger.debug("세션 업데이트 완료");
-                      } catch (error) {
-                        console.error("세션 업데이트 실패:", error);
-                        alert("세션 업데이트에 실패했습니다.");
-                      }
-                    }}
+            logger.debug("세션 업데이트 완료");
+          } catch (error) {
+            console.error("세션 업데이트 실패:", error);
+            alert("세션 업데이트에 실패했습니다.");
+          }
+        }}
       />
     </div>
   );
