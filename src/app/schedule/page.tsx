@@ -4,6 +4,7 @@ import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import Button from "../../components/atoms/Button";
+import GroupSessionModal from "./GroupSessionModal";
 import Label from "../../components/atoms/Label";
 import PDFDownloadButton from "../../components/molecules/PDFDownloadButton";
 import StudentPanel from "../../components/organisms/StudentPanel";
@@ -1536,232 +1537,26 @@ function SchedulePageContent() {
         onSearchChange={studentPanelState.setSearchQuery}
       />
 
-      {/* 그룹 수업 추가 모달 */}
-      {showGroupModal && (
-        <>
-          {logger.debug("모달 렌더링 중", {
-            showGroupModal,
-            groupModalData,
-          })}
-          <div className="modal-backdrop">
-            <div className={styles.modalOverlay}>
-              <div className={styles.modalContent}>
-                <h4 className={styles.modalTitle}>수업 추가</h4>
-                <div className={styles.modalForm}>
-                  <div className="form-group">
-                    <Label htmlFor="modal-student" required>
-                      학생
-                    </Label>
-                    <div className={styles.studentTagsContainer}>
-                      {/* 선택된 학생 태그들 */}
-                      {groupModalData.studentIds.map((studentId) => {
-                        const student = students.find(
-                          (s) => s.id === studentId
-                        );
-                        return student ? (
-                          <span key={studentId} className={styles.studentTag}>
-                            {student.name}
-                            <button
-                              type="button"
-                              className={styles.removeStudentBtn}
-                              onClick={() => removeStudent(studentId)}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                    <div className={styles.studentInputContainer}>
-                      <input
-                        id="modal-student-input"
-                        type="text"
-                        className="form-input"
-                        placeholder="학생 이름을 입력하세요"
-                        value={studentInputValue}
-                        onChange={(e) => setStudentInputValue(e.target.value)}
-                        onKeyDown={handleStudentInputKeyDown}
-                      />
-                      <button
-                        type="button"
-                        className={styles.addStudentBtn}
-                        onClick={addStudentFromInput}
-                        disabled={!studentInputValue.trim()}
-                      >
-                        추가
-                      </button>
-                    </div>
-                    {/* 학생 검색 결과 */}
-                    {studentInputValue && (
-                      <div className={styles.studentSearchResults}>
-                        {(() => {
-                          const filteredStudents =
-                            filteredStudentsForModal.filter(
-                              (student) =>
-                                !groupModalData.studentIds.includes(student.id)
-                            );
-
-                          if (filteredStudents.length === 0) {
-                            const studentExists = students.some(
-                              (s) =>
-                                s.name.toLowerCase() ===
-                                studentInputValue.toLowerCase()
-                            );
-
-                            logger.debug("그룹 모달 학생 검색 디버깅", {
-                              studentInputValue,
-                              filteredStudentsLength: filteredStudents.length,
-                              studentExists,
-                              totalStudents: students.length,
-                            });
-
-                            return (
-                              <div className={styles.noSearchResults}>
-                                <span>검색 결과가 없습니다</span>
-                                {!studentExists && (
-                                  <span className={styles.studentNotFound}>
-                                    (존재하지 않는 학생입니다)
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          }
-
-                          return filteredStudents.map((student) => (
-                            <div
-                              key={student.id}
-                              className={styles.studentSearchItem}
-                              onClick={() => addStudent(student.id)}
-                            >
-                              {student.name}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-subject" required>
-                      과목
-                    </Label>
-                    <select
-                      id="modal-subject"
-                      className="form-select"
-                      value={groupModalData.subjectId}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          subjectId: e.target.value,
-                        }))
-                      }
-                      disabled={groupModalData.studentIds.length === 0}
-                    >
-                      <option value="">
-                        {groupModalData.studentIds.length === 0
-                          ? "먼저 학생을 선택하세요"
-                          : "과목을 선택하세요"}
-                      </option>
-                      {groupModalData.studentIds.length > 0 &&
-                        subjects.map((subject) => (
-                          <option key={subject.id} value={subject.id}>
-                            {subject.name}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-weekday" required>
-                      요일
-                    </Label>
-                    <select
-                      id="modal-weekday"
-                      className="form-select"
-                      value={groupModalData.weekday}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          weekday: Number(e.target.value),
-                        }))
-                      }
-                    >
-                      {weekdays.map((w, idx) => (
-                        <option key={idx} value={idx}>
-                          {w}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-start-time" required>
-                      시작 시간
-                    </Label>
-                    <input
-                      id="modal-start-time"
-                      type="time"
-                      className="form-input"
-                      value={groupModalData.startTime}
-                      onChange={(e) => handleStartTimeChange(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <Label htmlFor="modal-end-time" required>
-                      종료 시간
-                    </Label>
-                    <input
-                      id="modal-end-time"
-                      type="time"
-                      className="form-input"
-                      value={groupModalData.endTime}
-                      onChange={(e) => handleEndTimeChange(e.target.value)}
-                    />
-                  </div>
-                  {groupTimeError && (
-                    <div className="form-error" role="alert">
-                      {groupTimeError}
-                    </div>
-                  )}
-                  <div className="form-group">
-                    <Label htmlFor="modal-room">강의실</Label>
-                    <input
-                      id="modal-room"
-                      type="text"
-                      className="form-input"
-                      placeholder="강의실 (선택사항)"
-                      value={groupModalData.room || ""}
-                      onChange={(e) =>
-                        setGroupModalData((prev) => ({
-                          ...prev,
-                          room: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div className={styles.modalActions}>
-                  <Button
-                    variant="transparent"
-                    onClick={() => setShowGroupModal(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => addGroupSession(groupModalData)}
-                    disabled={
-                      groupModalData.studentIds.length === 0 ||
-                      !groupModalData.subjectId ||
-                      !groupModalData.startTime ||
-                      !groupModalData.endTime
-                    }
-                  >
-                    추가
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      {/* 그룹 수업 추가 모달 (분리) */}
+      <GroupSessionModal
+        isOpen={showGroupModal}
+        groupModalData={groupModalData}
+        setShowGroupModal={setShowGroupModal}
+        removeStudent={removeStudent}
+        studentInputValue={studentInputValue}
+        setStudentInputValue={setStudentInputValue}
+        handleStudentInputKeyDown={handleStudentInputKeyDown}
+        addStudentFromInput={addStudentFromInput}
+        filteredStudentsForModal={filteredStudentsForModal}
+        addStudent={addStudent}
+        subjects={subjects}
+        students={students}
+        weekdays={weekdays}
+        handleStartTimeChange={handleStartTimeChange}
+        handleEndTimeChange={handleEndTimeChange}
+        groupTimeError={groupTimeError}
+        addGroupSession={addGroupSession}
+      />
 
       {/* 세션 편집 모달 */}
       {showEditModal && editModalData && (
