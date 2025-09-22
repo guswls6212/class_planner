@@ -317,10 +317,14 @@ export const repositionSessions = (
   // 4. 최종 세션 배열 생성
   const finalSessions: Session[] = [];
 
-  // 다른 요일의 세션들은 그대로 유지
+  // 다른 요일의 세션들은 그대로 유지하되, 이동 대상 세션은 제외하여 중복 방지
   sessions
     .filter((s) => s.weekday !== targetWeekday)
     .forEach((session) => {
+      if (session.id === movingSessionId) {
+        // 기존 요일에 남아 있던 이동 세션 제거
+        return;
+      }
       finalSessions.push(session);
     });
 

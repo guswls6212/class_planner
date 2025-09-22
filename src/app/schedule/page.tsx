@@ -1399,6 +1399,8 @@ function SchedulePageContent() {
       logger.debug("updateSessionPosition 호출 시작", { sessionId });
       await updateSessionPosition(sessionId, weekday, time, yPosition);
       logger.debug("세션 위치 업데이트 완료", { sessionId });
+      // 🆕 드롭 직후 그리드 재마운트로 드래그 프리뷰/투명 상태를 즉시 복구
+      setGridVersion((v) => v + 1);
     } catch (error) {
       logger.error("세션 위치 업데이트 실패", { sessionId }, error as Error);
       alert("세션 이동에 실패했습니다.");
@@ -1453,6 +1455,8 @@ function SchedulePageContent() {
 
   // 🆕 학생 드래그 상태 관리
   const [isStudentDragging, setIsStudentDragging] = useState(false);
+  // 🆕 드롭 후 그리드 강제 리렌더를 위한 버전 키
+  const [gridVersion, setGridVersion] = useState(0);
 
   // 드래그 시작 처리
   const handleDragStart = (e: React.DragEvent, student: Student) => {
@@ -1550,6 +1554,7 @@ function SchedulePageContent() {
       {/* 🆕 시간표 그리드 */}
       <div ref={timeTableRef}>
         <TimeTableGrid
+          key={gridVersion}
           sessions={displaySessions}
           subjects={subjects}
           enrollments={enrollments}
