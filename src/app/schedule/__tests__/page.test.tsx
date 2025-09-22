@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as useIntegratedDataModule from "../../../hooks/useIntegratedData";
+import * as useIntegratedDataModule from "../../../hooks/useIntegratedDataLocal";
 import SchedulePage from "../page";
 
-// Mock useIntegratedData
-vi.mock("../../../hooks/useIntegratedData", () => ({
-  useIntegratedData: vi.fn(() => ({
+// Mock useIntegratedDataLocal
+vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
+  useIntegratedDataLocal: vi.fn(() => ({
     data: {
       students: [
         { id: "student-1", name: "김철수" },
@@ -114,26 +114,30 @@ describe("Schedule Page", () => {
 
     // Mock된 훅이 호출되었는지 확인 (React Strict Mode로 인해 2번 호출될 수 있음)
     expect(
-      vi.mocked(useIntegratedDataModule.useIntegratedData)
+      vi.mocked(useIntegratedDataModule.useIntegratedDataLocal)
     ).toHaveBeenCalled();
   });
 
   it("로딩 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 로딩 상태로 변경
-    vi.mocked(useIntegratedDataModule.useIntegratedData).mockReturnValue({
+    vi.mocked(useIntegratedDataModule.useIntegratedDataLocal).mockReturnValue({
       data: {
         students: [],
         subjects: [],
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2024-01-01T00:00:00.000Z",
       },
       loading: true,
       error: null,
       refreshData: vi.fn(),
       updateData: vi.fn(),
       clearError: vi.fn(),
+      addSession: vi.fn(),
+      updateSession: vi.fn(),
+      deleteSession: vi.fn(),
+      addEnrollment: vi.fn(),
+      deleteEnrollment: vi.fn(),
       studentCount: 0,
       subjectCount: 0,
       sessionCount: 0,
@@ -147,20 +151,24 @@ describe("Schedule Page", () => {
 
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 에러 상태로 변경
-    vi.mocked(useIntegratedDataModule.useIntegratedData).mockReturnValue({
+    vi.mocked(useIntegratedDataModule.useIntegratedDataLocal).mockReturnValue({
       data: {
         students: [],
         subjects: [],
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: "2024-01-01T00:00:00.000Z",
       },
       loading: false,
       error: "데이터 로드 실패",
       refreshData: vi.fn(),
       updateData: vi.fn(),
       clearError: vi.fn(),
+      addSession: vi.fn(),
+      updateSession: vi.fn(),
+      deleteSession: vi.fn(),
+      addEnrollment: vi.fn(),
+      deleteEnrollment: vi.fn(),
       studentCount: 0,
       subjectCount: 0,
       sessionCount: 0,

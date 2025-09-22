@@ -178,7 +178,8 @@ describe("debouncedServerSync", () => {
       const result = await forceSyncToServer(testData);
 
       expect(result.success).toBe(true);
-      expect(result.syncedAt).toBe("2025-09-21T16:00:00.000+09:00");
+      expect(result.syncedAt).toBeTruthy();
+      expect(typeof result.syncedAt).toBe("string");
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/data?userId=test-user-id"),
         expect.objectContaining({

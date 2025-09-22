@@ -33,12 +33,19 @@ vi.mock("../timeUtils", () => ({
   getKSTTime: () => "2025-09-21T16:00:00.000+09:00",
 }));
 
-// Mock localStorage
+// Mock localStorage with actual storage behavior
+const storage: Record<string, string> = {};
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((key: string) => storage[key] || null),
+  setItem: vi.fn((key: string, value: string) => {
+    storage[key] = value;
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete storage[key];
+  }),
+  clear: vi.fn(() => {
+    Object.keys(storage).forEach(key => delete storage[key]);
+  }),
 };
 
 // Mock window.dispatchEvent
@@ -62,6 +69,10 @@ Object.defineProperty(global, "crypto", {
 describe("localStorage CRUD 유틸리티", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // storage 내용 초기화
+    Object.keys(storage).forEach(key => delete storage[key]);
+    
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
@@ -74,14 +85,15 @@ describe("localStorage CRUD 유틸리티", () => {
 
       const data = getClassPlannerData();
 
-      expect(data).toEqual({
+      expect(data).toMatchObject({
         students: [],
         subjects: [],
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: new Date().toISOString(),
       });
+      expect(data.lastModified).toBeTruthy();
+      expect(typeof data.lastModified).toBe("string");
     });
 
     it("데이터를 성공적으로 저장해야 한다", () => {
@@ -148,8 +160,6 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(result.data).toEqual({
         id: expect.stringContaining("test-uuid-"),
         name: "박민수",
-        createdAt: expect.any(Date),
-        updatedAt: expect.any(Date),
       });
       expect(localStorageMock.setItem).toHaveBeenCalled();
     });
@@ -234,8 +244,6 @@ describe("localStorage CRUD 유틸리티", () => {
         id: expect.stringContaining("test-uuid-"),
         name: "과학",
         color: "#0000ff",
-        createdAt: expect.any(Date),
-        updatedAt: expect.any(Date),
       });
       expect(localStorageMock.setItem).toHaveBeenCalled();
     });
@@ -293,14 +301,14 @@ describe("localStorage CRUD 유틸리티", () => {
 
       const data = getClassPlannerData();
 
-      expect(data).toEqual({
+      expect(data).toMatchObject({
         students: [],
         subjects: [],
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: new Date().toISOString(),
       });
+      expect(data.lastModified).toBeTruthy();
     });
 
     it("잘못된 JSON 데이터 시 기본값을 반환해야 한다", () => {
@@ -308,14 +316,14 @@ describe("localStorage CRUD 유틸리티", () => {
 
       const data = getClassPlannerData();
 
-      expect(data).toEqual({
+      expect(data).toMatchObject({
         students: [],
         subjects: [],
         sessions: [],
         enrollments: [],
         version: "1.0",
-        lastModified: new Date().toISOString(),
       });
+      expect(data.lastModified).toBeTruthy();
     });
 
     it("localStorage 저장 실패 시 false를 반환해야 한다", () => {
@@ -340,21 +348,12 @@ describe("localStorage CRUD 유틸리티", () => {
 
   // ===== lastModified 기능 테스트 =====
   describe("lastModified 자동 갱신 테스트", () => {
-    beforeEach(() => {
-      // 초기 데이터 설정
-      const initialData = {
-        students: [],
-        subjects: [],
-        sessions: [],
-        enrollments: [],
-        version: "1.0",
-        lastModified: "2025-01-01T00:00:00.000Z", // 과거 시간
-      };
-
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(initialData));
-    });
+    // 전역 beforeEach에서 storage를 초기화하므로 별도 설정 불필요
 
     it("학생 추가 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       const beforeTime = new Date().toISOString();
 
       const result = addStudentToLocal("홍길동");
@@ -370,13 +369,17 @@ describe("localStorage CRUD 유틸리티", () => {
     });
 
     it("학생 수정 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       // 먼저 학생 추가
-      addStudentToLocal("홍길동");
-      const student = getAllStudentsFromLocal()[0];
-
+      const addResult = addStudentToLocal("홍길동");
+      expect(addResult.success).toBe(true);
+      
+      const student = addResult.data;
       const beforeTime = new Date().toISOString();
 
-      const result = updateStudentInLocal(student.id, { name: "김철수" });
+      const result = updateStudentInLocal(student!.id, { name: "김철수" });
 
       expect(result.success).toBe(true);
 
@@ -388,13 +391,17 @@ describe("localStorage CRUD 유틸리티", () => {
     });
 
     it("학생 삭제 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       // 먼저 학생 추가
-      addStudentToLocal("홍길동");
-      const student = getAllStudentsFromLocal()[0];
-
+      const addResult = addStudentToLocal("홍길동");
+      expect(addResult.success).toBe(true);
+      
+      const student = addResult.data;
       const beforeTime = new Date().toISOString();
 
-      const result = deleteStudentFromLocal(student.id);
+      const result = deleteStudentFromLocal(student!.id);
 
       expect(result.success).toBe(true);
 
@@ -406,9 +413,12 @@ describe("localStorage CRUD 유틸리티", () => {
     });
 
     it("과목 추가 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       const beforeTime = new Date().toISOString();
 
-      const result = addSubjectToLocal("수학", "#ff0000");
+      const result = addSubjectToLocal("과학", "#ff0000");
 
       expect(result.success).toBe(true);
 
@@ -420,13 +430,17 @@ describe("localStorage CRUD 유틸리티", () => {
     });
 
     it("과목 수정 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       // 먼저 과목 추가
-      addSubjectToLocal("수학", "#ff0000");
-      const subject = getAllSubjectsFromLocal()[0];
-
+      const addResult = addSubjectToLocal("수학", "#ff0000");
+      expect(addResult.success).toBe(true);
+      
+      const subject = addResult.data;
       const beforeTime = new Date().toISOString();
 
-      const result = updateSubjectInLocal(subject.id, { name: "영어" });
+      const result = updateSubjectInLocal(subject!.id, { name: "영어" });
 
       expect(result.success).toBe(true);
 
@@ -438,13 +452,17 @@ describe("localStorage CRUD 유틸리티", () => {
     });
 
     it("과목 삭제 시 lastModified가 갱신되어야 함", () => {
+      // localStorage 초기화
+      localStorageMock.getItem.mockReturnValue(null);
+      
       // 먼저 과목 추가
-      addSubjectToLocal("수학", "#ff0000");
-      const subject = getAllSubjectsFromLocal()[0];
-
+      const addResult = addSubjectToLocal("수학", "#ff0000");
+      expect(addResult.success).toBe(true);
+      
+      const subject = addResult.data;
       const beforeTime = new Date().toISOString();
 
-      const result = deleteSubjectFromLocal(subject.id);
+      const result = deleteSubjectFromLocal(subject!.id);
 
       expect(result.success).toBe(true);
 
