@@ -18,6 +18,7 @@ import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
 import type { Enrollment, Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
+import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./Schedule.module.css";
@@ -128,8 +129,10 @@ function SchedulePageContent() {
               ? [...enrollments, ...newEnrollments]
               : enrollments;
 
-          const repositionedSessions = repositionSessions(
+          const repositionedSessions = repositionSessionsUtil(
             updatedSessions,
+            updatedEnrollments,
+            subjects,
             sessionData.weekday,
             sessionData.startTime,
             sessionData.endTime,
@@ -189,10 +192,28 @@ function SchedulePageContent() {
         return s;
       });
 
-      await updateData({ sessions: newSessions });
-      logger.info("세션 업데이트 완료");
+      // 🆕 시간 변경 시 충돌 재배치 수행
+      const target = newSessions.find((s) => s.id === sessionId);
+      const targetWeekday = target?.weekday ?? sessionData.weekday ?? 0;
+      const targetStartTime = target?.startsAt ?? sessionData.startTime;
+      const targetEndTime = target?.endsAt ?? sessionData.endTime;
+      const targetYPosition = target?.yPosition || 1;
+
+      const repositioned = repositionSessionsUtil(
+        newSessions,
+        enrollments,
+        subjects,
+        targetWeekday,
+        targetStartTime,
+        targetEndTime,
+        targetYPosition,
+        sessionId
+      );
+
+      await updateData({ sessions: repositioned });
+      logger.info("세션 업데이트 및 재배치 완료");
     },
-    [sessions, updateData]
+    [sessions, updateData, enrollments, subjects]
   );
 
   // 🆕 시간 충돌 감지 함수
@@ -662,8 +683,10 @@ function SchedulePageContent() {
 
       // 🆕 충돌 방지 로직 적용
       logger.debug("repositionSessions 호출 시작");
-      const newSessions = repositionSessions(
+      const newSessions = repositionSessionsUtil(
         sessions,
+        enrollments,
+        subjects,
         weekday,
         time,
         newEndTime,
