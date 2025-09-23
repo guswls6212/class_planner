@@ -48,13 +48,8 @@ check_deploy_env() {
         echo "배포 환경을 선택하세요:"
         echo "1) staging"
         echo "2) production"
-        read -p "선택 (1-2): " env_choice
-        
-        case $env_choice in
-            1) export DEPLOY_ENV="staging" ;;
-            2) export DEPLOY_ENV="production" ;;
-            *) error "잘못된 선택입니다." ;;
-        esac
+        echo "자동으로 staging을 선택합니다."
+        export DEPLOY_ENV="staging"
     fi
     
     info "배포 환경: $DEPLOY_ENV"

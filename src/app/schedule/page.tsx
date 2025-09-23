@@ -1268,7 +1268,7 @@ function SchedulePageContent(): JSX.Element {
           editModalData?.enrollmentIds,
           enrollments,
           tempEnrollments.map((t) => ({
-            id: "",
+            id: t.id,
             studentId: t.studentId,
             subjectId: t.subjectId,
           })),
@@ -1280,7 +1280,7 @@ function SchedulePageContent(): JSX.Element {
             editModalData?.enrollmentIds,
             enrollments,
             tempEnrollments.map((t) => ({
-              id: "",
+              id: t.id,
               studentId: t.studentId,
               subjectId: t.subjectId,
             }))
