@@ -164,7 +164,7 @@ export function buildHandleSessionClick(params: {
   setEditModalTimeData: (v: { startTime: string; endTime: string }) => void;
   setTempSubjectId: (id: string) => void;
   setTempEnrollments: Dispatch<
-    SetStateAction<Array<{ studentId: string; subjectId: string }>>
+    SetStateAction<Array<{ id: string; studentId: string; subjectId: string }>>
   >;
   setShowEditModal: (open: boolean) => void;
 }) {

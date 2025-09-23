@@ -22,7 +22,7 @@ describe("useEditModalState", () => {
       result.current.setShowEditModal(true);
       result.current.setTempSubjectId("sub-1");
       result.current.setTempEnrollments([
-        { studentId: "st-1", subjectId: "sub-1" },
+        { id: "temp-1", studentId: "st-1", subjectId: "sub-1" },
       ]);
       result.current.setEditStudentInputValue("홍길동");
       result.current.setEditModalTimeData({

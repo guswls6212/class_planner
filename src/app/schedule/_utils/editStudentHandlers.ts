@@ -72,7 +72,7 @@ export function buildEditStudentAdd(params: {
       );
     });
 
-    let tempId: string | null = null;
+    const tempId: string | null = null;
     const subjectIdForTemp = ((): string => {
       const firstEnrollment = enrollments.find(
         (e) => e.id === editModalData?.enrollmentIds?.[0]
@@ -80,20 +80,11 @@ export function buildEditStudentAdd(params: {
       return firstEnrollment?.subjectId || "";
     })();
 
-    if (!existing) {
-      // 임시 enrollment 생성 (TempEnrollment 형태로 상태에 저장)
-      const temp: TempEnrollment = {
-        studentId: targetStudentId,
-        subjectId: subjectIdForTemp,
-      };
-      setTempEnrollments((prev) => [...prev, temp]);
-      tempId = crypto.randomUUID();
-    }
+    const enrollmentIdToUse = existing?.id || crypto.randomUUID();
 
-    const enrollmentIdToUse = existing?.id || tempId;
+    // 14명 제한 체크를 먼저 수행
     if (
       editModalData &&
-      enrollmentIdToUse &&
       !editModalData.enrollmentIds?.includes(enrollmentIdToUse)
     ) {
       const currentCount = editModalData.enrollmentIds?.length || 0;
@@ -101,7 +92,23 @@ export function buildEditStudentAdd(params: {
         alert("최대 14명까지 추가할 수 있습니다.");
         return;
       }
+    }
 
+    if (!existing) {
+      // 임시 enrollment 생성 (TempEnrollment 형태로 상태에 저장)
+      const temp: TempEnrollment = {
+        id: enrollmentIdToUse,
+        studentId: targetStudentId,
+        subjectId: subjectIdForTemp,
+      };
+      setTempEnrollments((prev) => [...prev, temp]);
+    }
+
+    if (
+      editModalData &&
+      enrollmentIdToUse &&
+      !editModalData.enrollmentIds?.includes(enrollmentIdToUse)
+    ) {
       setEditModalData((prev: Session | null) =>
         prev
           ? {
