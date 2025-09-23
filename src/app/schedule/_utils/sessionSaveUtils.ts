@@ -1,6 +1,7 @@
 import type { Enrollment } from "../../../lib/planner";
 
 export interface TempEnrollment {
+  id: string;
   studentId: string;
   subjectId: string;
 }
