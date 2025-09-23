@@ -34,7 +34,7 @@ describe("useEditModalState", () => {
     expect(result.current.showEditModal).toBe(true);
     expect(result.current.tempSubjectId).toBe("sub-1");
     expect(result.current.tempEnrollments).toEqual([
-      { studentId: "st-1", subjectId: "sub-1" },
+      { id: "temp-1", studentId: "st-1", subjectId: "sub-1" },
     ]);
     expect(result.current.editStudentInputValue).toBe("홍길동");
     expect(result.current.editModalTimeData).toEqual({
