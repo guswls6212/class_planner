@@ -128,6 +128,30 @@ class-planner/
 - PDF 다운로드
 - 충돌 해결 로직
 
+#### 최근 리팩토링 (2025-09-23)
+
+- 페이지 분할: `src/app/schedule/page.tsx`의 책임을 아래 컴포넌트/훅/유틸로 분리
+  - 컴포넌트(`_components/`):
+    - `ScheduleHeader.tsx` (헤더/로딩/에러/설명)
+    - `ScheduleGridSection.tsx` (TimeTableGrid 바인딩)
+    - `StudentPanelSection.tsx` (학생 패널 바인딩)
+    - `PdfDownloadSection.tsx` (PDF 버튼)
+  - 훅(`_hooks/`):
+    - `useEditModalState.ts` (편집 모달 상태 묶음)
+    - `useUiState.ts` (드래그 상태, gridVersion)
+  - 유틸(`_utils/`):
+    - `collisionHelpers.ts` (시간 겹침 판정)
+    - `collisionQueries.ts` (충돌 세션 조회/체크)
+    - `dndHelpers.ts` (드래그/드롭 헬퍼 및 빌더)
+    - `modalHandlers.ts` (모달 시간 변경 핸들러 빌더)
+    - `editStudentHandlers.ts` (편집 모달 학생 입력/추가 헬퍼)
+    - `editSaveHandlers.ts` (편집 모달 저장/삭제/취소 빌더)
+
+#### 테스트 추가
+
+- `src/app/schedule/_hooks/__tests__/useEditModalState.test.ts`
+- `src/app/schedule/_hooks/__tests__/useUiState.test.ts`
+
 ### **About 페이지** (`/about`)
 
 - 프로젝트 소개
