@@ -70,6 +70,24 @@
 - `SubjectsPageLayout.tsx` - 과목 페이지 레이아웃
 - `TimeTableGrid.tsx` - 시간표 그리드
 
+### 🧩 Schedule 페이지 분리 컴포넌트 (app/schedule/\_components)
+
+- `ScheduleHeader.tsx`: 스케줄 페이지 헤더/로딩/에러/설명
+- `ScheduleGridSection.tsx`: `TimeTableGrid` 바인딩 섹션
+- `StudentPanelSection.tsx`: `StudentPanel` 바인딩 섹션
+- `PdfDownloadSection.tsx`: `PDFDownloadButton` 바인딩 섹션
+
+### 🧪 Schedule 관련 헬퍼/훅
+
+- `_utils/collisionHelpers.ts`: `isTimeOverlapping`
+- `_utils/collisionQueries.ts`: `findCollidingSessions`, `checkCollisionsAtYPosition`
+- `_utils/dndHelpers.ts`: DnD 헬퍼(학생 드래그 시작/종료, drop/세션드롭 빌더 등)
+- `_utils/modalHandlers.ts`: 그룹/편집 모달 시간 변경 핸들러
+- `_utils/editStudentHandlers.ts`: 편집 모달 학생 입력/추가 헬퍼
+- `_utils/editSaveHandlers.ts`: 편집 모달 저장/삭제/취소 헬퍼
+- `_hooks/useEditModalState.ts`: 편집 모달 상태 묶음
+- `_hooks/useUiState.ts`: 드래그 상태, gridVersion
+
 ## 🎣 Custom Hooks (커스텀 훅)
 
 **위치:** `src/hooks/`
