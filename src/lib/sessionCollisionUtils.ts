@@ -317,18 +317,55 @@ export const repositionSessions = (
   // 4. 최종 세션 배열 생성
   const finalSessions: Session[] = [];
 
-  // 다른 요일의 세션들은 그대로 유지하되, 이동 대상 세션은 제외하여 중복 방지
+  // 다른 요일의 세션들은 유지하되,
+  // 교차-요일 이동 시 원래 요일(sourceWeekday)은 yPosition을 1부터 다시 압축(compact)
+  const sourceWeekday = movingSession ? movingSession.weekday : undefined;
+  const isCrossWeekdayMove =
+    sourceWeekday !== undefined && sourceWeekday !== targetWeekday;
+
+  // 4-1) 원래 요일 압축 처리 (교차-요일 이동인 경우)
+  if (isCrossWeekdayMove) {
+    const sourceDaySessions = new Map<number, SessionWithPriority[]>();
+    sessions
+      .filter((s) => s.weekday === sourceWeekday && s.id !== movingSessionId)
+      .forEach((session) => {
+        const yPos = session.yPosition || 1;
+        if (!sourceDaySessions.has(yPos)) sourceDaySessions.set(yPos, []);
+        sourceDaySessions.get(yPos)!.push({ ...session, priorityLevel: 0 });
+      });
+
+    const sortedSourceY = Array.from(sourceDaySessions.keys()).sort(
+      (a, b) => a - b
+    );
+    let compactY = 1;
+    sortedSourceY.forEach((yPos) => {
+      const list = sourceDaySessions.get(yPos) || [];
+      if (list.length === 0) return;
+      list.forEach((session) => {
+        const reassigned: SessionWithPriority = {
+          ...session,
+          yPosition: compactY,
+        };
+        const { priorityLevel, ...clean } = reassigned;
+        finalSessions.push(clean as Session);
+      });
+      compactY += 1;
+    });
+  }
+
+  // 4-2) 나머지 다른 요일들은 그대로 유지 (이동 세션 제외, sourceWeekday는 이미 처리했으므로 스킵)
   sessions
-    .filter((s) => s.weekday !== targetWeekday)
+    .filter(
+      (s) =>
+        s.weekday !== targetWeekday &&
+        (!isCrossWeekdayMove || s.weekday !== sourceWeekday)
+    )
     .forEach((session) => {
-      if (session.id === movingSessionId) {
-        // 기존 요일에 남아 있던 이동 세션 제거
-        return;
-      }
+      if (session.id === movingSessionId) return;
       finalSessions.push(session);
     });
 
-  // 해당 요일의 세션들은 충돌 해결된 것으로 교체하되,
+  // 해당(목표) 요일의 세션들은 충돌 해결된 것으로 교체하되,
   // 빈 yPosition(행)을 제거하고 1부터 연속되도록 압축(compact)한다
   // 1) yPosition 키를 정렬하여 순회
   const sortedYPositions = Array.from(targetDaySessions.keys()).sort(
