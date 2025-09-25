@@ -146,6 +146,88 @@ body {
   background: var(--color-border-light);
 }
 
+/* TimeTableGrid 컴포넌트의 스크롤바를 강제로 항상 표시 */
+/* 맥북 크롬에서도 스크롤바가 보이도록 강력한 설정 */
+
+.time-table-grid {
+  /* 스크롤바 공간 항상 예약 */
+  scrollbar-gutter: stable both-edges !important;
+
+  /* Firefox용 스크롤바 스타일 */
+  scrollbar-width: auto !important;
+  scrollbar-color: #6b7280 #374151 !important;
+
+  /* 강제로 스크롤바가 보이도록 설정 */
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* 맥북 크롬에서 스크롤바 강제 표시 */
+.time-table-grid::-webkit-scrollbar {
+  width: 16px !important; /* 세로 스크롤바 너비 - 더 두껍게 */
+  height: 16px !important; /* 가로 스크롤바 높이 - 더 두껍게 */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  -webkit-appearance: none !important;
+  /* 스크롤바가 숨겨지지 않도록 강제 */
+  position: relative !important;
+  z-index: 9999 !important;
+}
+
+/* 스크롤바 트랙 - 매우 진한 색상으로 강제 표시 */
+.time-table-grid::-webkit-scrollbar-track {
+  background-color: #1f2937 !important; /* 매우 진한 회색 */
+  border-radius: 8px !important;
+  border: 2px solid #111827 !important;
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 스크롤바 막대 - 밝은 색상으로 강제 표시 */
+.time-table-grid::-webkit-scrollbar-thumb {
+  background-color: #4b5563 !important; /* 밝은 회색 */
+  border-radius: 8px !important;
+  border: 2px solid #1f2937 !important;
+  min-height: 20px !important;
+  min-width: 20px !important;
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 스크롤바 막대 호버 효과 */
+.time-table-grid::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280 !important;
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 스크롤바 막대 클릭 효과 */
+.time-table-grid::-webkit-scrollbar-thumb:active {
+  background-color: #9ca3af !important;
+}
+
+/* 스크롤바 코너 */
+.time-table-grid::-webkit-scrollbar-corner {
+  background-color: #1f2937 !important;
+  border: 2px solid #111827 !important;
+}
+
+/* 스크롤바 버튼 강제 표시 */
+.time-table-grid::-webkit-scrollbar-button {
+  display: block !important;
+  height: 16px !important;
+  width: 16px !important;
+  background-color: #374151 !important;
+  border: 1px solid #1f2937 !important;
+}
+
+.time-table-grid::-webkit-scrollbar-button:start:decrement {
+  background-color: #4b5563 !important;
+  border-radius: 4px !important;
+}
+
+.time-table-grid::-webkit-scrollbar-button:end:increment {
+  background-color: #4b5563 !important;
+  border-radius: 4px !important;
+}
+
 .flex-col {
   flex-direction: column;
 }
@@ -520,6 +602,135 @@ body {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* TimeTableGrid 컨테이너 */
+.time-table-container {
+  position: relative;
+  width: 100%;
+}
+
+/* TimeTableGrid 커스텀 스크롤바 - 순수 CSS 방식 */
+
+/* macOS에서 강제로 가로 스크롤바 항상 표시 */
+.time-table-grid {
+  /* Firefox용 스크롤바 스타일 */
+  scrollbar-width: thin !important;
+  scrollbar-color: #666 #f0f0f0 !important; /* 자연스러운 색상 */
+
+  /* 스크롤바 공간 항상 예약 */
+  scrollbar-gutter: stable both-edges !important;
+
+  /* 강제로 가로 스크롤바가 항상 보이도록 설정 */
+  -webkit-overflow-scrolling: touch !important;
+
+  /* 가로 스크롤바는 항상 표시, 세로는 필요할 때만 */
+  overflow-x: scroll !important;
+  overflow-y: auto !important;
+
+  /* 추가 강제 설정 - macOS 시스템 설정 무시 */
+  -webkit-appearance: none !important;
+
+  /* 가상 스크롤바 추가 */
+  position: relative !important;
+}
+
+/* 가상 스크롤바 컨테이너 */
+.virtual-scrollbar-container {
+  position: sticky !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 12px !important;
+  background-color: #f0f0f0 !important;
+  border-top: 1px solid #ddd !important;
+  z-index: 1000 !important;
+  cursor: pointer !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+/* 가상 스크롤바 썸 */
+.virtual-scrollbar-thumb {
+  position: absolute !important;
+  bottom: 1px !important;
+  height: 10px !important;
+  background-color: #666 !important;
+  border-radius: 5px !important;
+  z-index: 1001 !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.virtual-scrollbar-thumb:hover {
+  background-color: #555 !important;
+}
+
+.virtual-scrollbar-thumb:active {
+  background-color: #444 !important;
+}
+
+/* Webkit 계열 브라우저 - 가로 스크롤바 항상 표시 */
+.time-table-grid::-webkit-scrollbar {
+  width: 12px !important; /* 세로 스크롤바 너비 */
+  height: 12px !important; /* 가로 스크롤바 높이 - 항상 표시 */
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  -webkit-appearance: none !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  background-color: #f0f0f0 !important; /* 자연스러운 배경색 */
+}
+
+/* 가로 스크롤바 트랙 - 항상 보이도록 강제 */
+.time-table-grid::-webkit-scrollbar-track {
+  background-color: #f0f0f0 !important;
+  border-radius: 6px !important;
+  border: 1px solid #ddd !important;
+  -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 가로 스크롤바 막대 - 항상 보이도록 강제 */
+.time-table-grid::-webkit-scrollbar-thumb {
+  background-color: #666 !important;
+  border-radius: 6px !important;
+  border: 1px solid #f0f0f0 !important;
+  min-height: 20px !important;
+  min-width: 20px !important;
+  -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.time-table-grid::-webkit-scrollbar-thumb:hover {
+  background-color: #555 !important;
+}
+
+.time-table-grid::-webkit-scrollbar-thumb:active {
+  background-color: #444 !important;
+}
+
+/* 스크롤바 코너 */
+.time-table-grid::-webkit-scrollbar-corner {
+  background-color: #f0f0f0 !important;
+  border: 1px solid #ddd !important;
+}
+
+/* 스크롤바 버튼 - 가로 스크롤바만 강제 표시 */
+.time-table-grid::-webkit-scrollbar-button {
+  display: block !important;
+  height: 12px !important;
+  width: 12px !important;
+  background-color: #ddd !important;
+  border: 1px solid #bbb !important;
+}
+
+.time-table-grid::-webkit-scrollbar-button:start:decrement {
+  background-color: #ccc !important;
+  border-radius: 3px !important;
+}
+
+.time-table-grid::-webkit-scrollbar-button:end:increment {
+  background-color: #ccc !important;
+  border-radius: 3px !important;
 }
 
 .modal-content {
