@@ -1,11 +1,35 @@
 import React from "react";
 import { logger } from "../../lib/logger";
 import {
-  getGroupStudentDisplayText,
   getGroupStudentNames,
   getSessionBlockStyles,
   getSessionSubject,
 } from "./SessionBlock.utils";
+
+// 🆕 다이나믹 글자크기 함수 - 학생이름 4글자 기준으로 최적화
+const getDynamicFontSize = (studentCount: number): string => {
+  // 학생이름이 모두 4글자라고 가정하고 계산
+  // 세션 셀 가로길이 약 72px (80px - 8px 패딩) 기준
+
+  if (studentCount <= 3) return "14px"; // 3명까지: 14px
+  if (studentCount <= 4) return "12px"; // 4명: 12px
+  if (studentCount <= 5) return "9px"; // 5명: 약 45px (충분)
+  if (studentCount <= 6) return "8px"; // 6명: 약 48px (충분)
+  if (studentCount <= 7) return "7px"; // 7명: 약 49px (충분)
+  if (studentCount <= 8) return "6px"; // 8명: 약 48px (충분)
+  return "5px"; // 9명 이상: 더 작은 글자로 최대한 표시
+};
+
+// 🆕 학생이름 표시 로직 개선 - 더 많은 학생 표시 가능
+const getImprovedStudentDisplayText = (studentNames: string[]): string => {
+  // 학생이름이 모두 4글자라고 가정하고 세션 셀 너비에 맞춰 최대한 표시
+  if (studentNames.length <= 8) {
+    return studentNames.join(", ");
+  }
+  return `${studentNames.slice(0, 8).join(", ")} 외 ${
+    studentNames.length - 8
+  }명`;
+};
 
 // 로컬 타입 정의 (SessionBlock.utils.ts와 동일)
 type Session = {
@@ -189,77 +213,81 @@ function SessionBlock({
           flexDirection: "column",
           width: "100%",
           height: "100%",
-          padding: "4px", // 🆕 패딩을 줄여서 내용이 잘리지 않도록
+          padding: "4px",
+          justifyContent: "space-between", // 🆕 상하 공간 분배
         }}
       >
-        {/* 첫 번째 줄: 과목명 - 왼쪽 위 배치 */}
+        {/* 첫 번째 줄: 과목명(왼쪽) + 시간(오른쪽) */}
         <div
           style={{
             display: "flex",
             alignItems: "flex-start",
-            justifyContent: "flex-start",
-            height: "13px", // 🆕 과목 이름이 잘리지 않도록 높이 증가
+            justifyContent: "space-between",
+            height: "15px",
             overflow: "hidden",
           }}
         >
+          {/* 과목명 - 왼쪽 */}
           <span
             style={{
               color: "#fff",
               fontWeight: "600",
-              fontSize: "11px",
+              fontSize: "13px",
               textAlign: "left",
               letterSpacing: "-0.5px",
               lineHeight: "1.1",
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {subject?.name || "과목 없음"}
           </span>
+
+          {/* 시간 - 오른쪽 */}
+          <span
+            style={{
+              color: "rgba(255, 255, 255, 0.8)",
+              fontSize: "11px",
+              textAlign: "right",
+              letterSpacing: "-0.2px",
+              lineHeight: "1.1",
+              marginLeft: "4px",
+              flexShrink: 0,
+            }}
+          >
+            {session.startsAt}-{session.endsAt}
+          </span>
         </div>
 
-        {/* 두 번째 줄: 학생명 - 중간 오른쪽 정렬 */}
+        {/* 두 번째 줄: 학생명 - 오른쪽 아래 */}
         {studentNames.length > 0 && (
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-end",
               justifyContent: "flex-end",
-              height: "12px", // 🆕 16px에서 12px로 되돌려서 1줄로만 표시
+              height: "14px",
               overflow: "hidden",
-              marginTop: "1px", // 🆕 위쪽 margin 1px
-              marginBottom: "1px", // 🆕 아래쪽 margin 1px 추가
             }}
           >
             <span
               style={{
                 color: "rgba(255, 255, 255, 0.9)",
-                fontSize: "10px",
+                fontSize: getDynamicFontSize(studentNames.length),
                 textAlign: "right",
                 letterSpacing: "-0.3px",
                 lineHeight: "1.1",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
-              {getGroupStudentDisplayText(studentNames)}
+              {getImprovedStudentDisplayText(studentNames)}
             </span>
           </div>
         )}
-
-        {/* 세 번째 줄: 시간 정보 - 하단 중앙 정렬 */}
-        <div
-          style={{
-            fontSize: "9px",
-            color: "rgba(255, 255, 255, 0.8)",
-            marginTop: "1px", // 🆕 auto 대신 1px로 변경
-            textAlign: "center",
-            height: "9px", // 🆕 폰트 크기와 동일하게 설정
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            letterSpacing: "-0.2px",
-            lineHeight: "1.1",
-          }}
-        >
-          {session.startsAt} - {session.endsAt}
-        </div>
       </div>
     </div>
   );

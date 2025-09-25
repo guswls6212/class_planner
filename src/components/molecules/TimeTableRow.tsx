@@ -166,7 +166,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         const timeBasedWidth = Math.round((sessionDuration / 30) * 100); // 🆕 Math.round로 소수점 제거
 
         // 🆕 정확한 시간 기반 너비 사용
-        const width = Math.max(timeBasedWidth, 50); // 🆕 최소 너비 50px 보장
+        const width = Math.max(timeBasedWidth, 80); // 🆕 최소 너비 80px로 증가 (기존 50px)
 
         merged.push({
           session: session,
