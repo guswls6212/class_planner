@@ -328,13 +328,30 @@ export const repositionSessions = (
       finalSessions.push(session);
     });
 
-  // 해당 요일의 세션들은 충돌 해결된 것으로 교체
-  targetDaySessions.forEach((sessionList) => {
-    sessionList.forEach((session) => {
-      // priorityLevel 속성 제거하고 원래 Session 타입으로 변환
-      const { priorityLevel, ...cleanSession } = session;
+  // 해당 요일의 세션들은 충돌 해결된 것으로 교체하되,
+  // 빈 yPosition(행)을 제거하고 1부터 연속되도록 압축(compact)한다
+  // 1) yPosition 키를 정렬하여 순회
+  const sortedYPositions = Array.from(targetDaySessions.keys()).sort(
+    (a, b) => a - b
+  );
+
+  // 2) 비어있지 않은 행만 순서대로 재배치하여 yPosition을 1부터 다시 부여
+  let compactIndex = 1;
+  sortedYPositions.forEach((yPos) => {
+    const list = targetDaySessions.get(yPos) || [];
+    if (list.length === 0) return; // 빈 행은 스킵
+
+    list.forEach((session) => {
+      const reassigned: SessionWithPriority = {
+        ...session,
+        yPosition: compactIndex,
+      };
+
+      // priorityLevel 속성 제거하고 원래 Session 타입으로 변환하여 반영
+      const { priorityLevel, ...cleanSession } = reassigned;
       finalSessions.push(cleanSession as Session);
     });
+    compactIndex += 1;
   });
 
   logger.debug("우선순위 기반 충돌 해결 완료");
