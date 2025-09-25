@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { repositionSessions } from "../sessionCollisionUtils";
+import { describe, expect, it } from "vitest";
 import type { Enrollment, Session, Subject } from "../planner";
+import { repositionSessions } from "../sessionCollisionUtils";
 
 function buildSession(
   id: string,
@@ -58,23 +58,18 @@ describe("repositionSessions - 빈 yPos 압축", () => {
     );
 
     const thu = result.filter((s) => s.weekday === weekday);
-    // 압축 후 yPosition은 1부터 연속
+    // 압축 후 yPosition은 1부터 연속 (같은 yPosition에 여러 세션이 있어도 각각 다른 위치로 배치)
     const positions = thu.map((s) => s.yPosition || 1).sort((a, b) => a - b);
-    expect(positions).toEqual([1, 2, 2]);
+    expect(positions).toEqual([1, 2, 2]); // 실제로는 같은 yPosition에 여러 세션이 있을 수 있음
   });
 
   it("해당 요일이 비어 있고 yPos=4로 추가되어도 압축되어 yPos=1이 되어야 한다", () => {
     const weekday = 4; // 목요일
 
     // 목요일엔 새 세션 하나만, yPos=4로 존재하는 상황 가정 (add 이후 즉시 재배치 단계)
-    const newSession = buildSession(
-      "NEW",
-      weekday,
-      "10:30",
-      "11:30",
-      4,
-      ["en-1"]
-    );
+    const newSession = buildSession("NEW", weekday, "10:30", "11:30", 4, [
+      "en-1",
+    ]);
 
     const sessions = [newSession];
 
@@ -94,5 +89,3 @@ describe("repositionSessions - 빈 yPos 압축", () => {
     expect(thu[0].yPosition).toBe(1);
   });
 });
-
-
