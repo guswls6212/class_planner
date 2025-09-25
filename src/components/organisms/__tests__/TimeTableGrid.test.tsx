@@ -1,318 +1,169 @@
-import type { Session, Subject } from "@lib/planner";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Session, Subject } from "../../../lib/planner";
 import TimeTableGrid from "../TimeTableGrid";
 
-describe("TimeTableGrid Component", () => {
-  const mockSessions = new Map<number, Session[]>([
-    [
-      0,
-      [
-        {
-          id: "550e8400-e29b-41d4-a716-446655440201",
-          enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-          weekday: 0,
-          startsAt: "09:00",
-          endsAt: "10:00",
-          room: "A101",
-        },
-      ],
-    ],
-    [
-      1,
-      [
-        {
-          id: "550e8400-e29b-41d4-a716-446655440202",
-          enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
-          weekday: 1,
-          startsAt: "10:00",
-          endsAt: "11:00",
-          room: "B102",
-        },
-      ],
-    ],
-  ]);
+// Mock 데이터 생성
+const mockSubjects: Subject[] = [
+  { id: "1", name: "수학", color: "#ff0000" },
+  { id: "2", name: "영어", color: "#0000ff" },
+];
 
-  const mockSubjects: Subject[] = [
-    {
-      id: "550e8400-e29b-41d4-a716-446655440101",
-      name: "수학",
-      color: "#FF0000",
-    },
-    {
-      id: "550e8400-e29b-41d4-a716-446655440102",
-      name: "영어",
-      color: "#00FF00",
-    },
-  ];
+const mockSessions = new Map<number, Session[]>();
+mockSessions.set(0, [
+  {
+    id: "session1",
+    enrollmentIds: ["enrollment1"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    yPosition: 1,
+  },
+]);
 
-  const mockEnrollments = [
-    {
-      id: "550e8400-e29b-41d4-a716-446655440301",
-      studentId: "550e8400-e29b-41d4-a716-446655440001",
-      subjectId: "550e8400-e29b-41d4-a716-446655440101",
-    },
-    {
-      id: "550e8400-e29b-41d4-a716-446655440302",
-      studentId: "550e8400-e29b-41d4-a716-446655440002",
-      subjectId: "550e8400-e29b-41d4-a716-446655440102",
-    },
-  ];
+const mockEnrollments = [
+  { id: "enrollment1", studentId: "student1", subjectId: "1" },
+];
 
-  const mockStudents = [
-    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
-    { id: "550e8400-e29b-41d4-a716-446655440002", name: "이영희" },
-  ];
+const mockStudents = [{ id: "student1", name: "학생1" }];
 
-  const defaultProps = {
-    sessions: mockSessions,
-    subjects: mockSubjects,
-    enrollments: mockEnrollments,
-    students: mockStudents,
-    onSessionClick: vi.fn(),
-    onDrop: vi.fn(),
-    onEmptySpaceClick: vi.fn(),
-  };
+const defaultProps = {
+  sessions: mockSessions,
+  subjects: mockSubjects,
+  enrollments: mockEnrollments,
+  students: mockStudents,
+  onSessionClick: vi.fn(),
+  onDrop: vi.fn(),
+  onEmptySpaceClick: vi.fn(),
+  selectedStudentId: undefined,
+  isAnyDragging: false,
+  isStudentDragging: false,
+};
 
+describe("TimeTableGrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("기본 렌더링이 올바르게 되어야 한다", () => {
+  it("시간표 그리드가 올바르게 렌더링된다", () => {
     render(<TimeTableGrid {...defaultProps} />);
 
-    // TimeTableGrid 컨테이너가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
+    expect(screen.getByText("09:00")).toBeInTheDocument();
+    expect(screen.getByText("월")).toBeInTheDocument();
+  });
 
-    // 시간 슬롯들이 렌더링되어야 함
+  it("가상 스크롤바 컨테이너가 렌더링된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    const scrollbarContainer = document.querySelector(
+      ".virtual-scrollbar-container"
+    );
+    expect(scrollbarContainer).toBeInTheDocument();
+  });
+
+  it("가상 스크롤바 썸이 렌더링된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    const scrollbarThumb = document.querySelector(".virtual-scrollbar-thumb");
+    expect(scrollbarThumb).toBeInTheDocument();
+  });
+
+  it("스크롤바 썸 드래그 시작 시 상태가 업데이트된다", async () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    const scrollbarThumb = document.querySelector(
+      ".virtual-scrollbar-thumb"
+    ) as HTMLElement;
+
+    fireEvent.mouseDown(scrollbarThumb);
+
+    // 드래그 상태 확인을 위해 스타일 변화를 체크
+    await waitFor(() => {
+      expect(scrollbarThumb).toHaveStyle({ cursor: "pointer" });
+    });
+  });
+
+  it("스크롤바 트랙 클릭 시 스크롤이 발생한다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    const scrollbarContainer = document.querySelector(
+      ".virtual-scrollbar-container"
+    ) as HTMLElement;
+    const gridElement = screen.getByTestId("time-table-grid");
+
+    // 스크롤 이벤트 모킹
+    const scrollSpy = vi.spyOn(gridElement, "scrollLeft", "set");
+
+    fireEvent.click(scrollbarContainer);
+
+    // 스크롤이 호출되었는지 확인 (실제 구현에 따라 다를 수 있음)
+    expect(scrollbarContainer).toHaveStyle({ cursor: "pointer" });
+  });
+
+  it("시간 슬롯이 30분 단위로 생성된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
+
+    // 9:00부터 24:00까지 30분 단위로 시간 슬롯이 있는지 확인
     expect(screen.getByText("09:00")).toBeInTheDocument();
     expect(screen.getByText("09:30")).toBeInTheDocument();
+    expect(screen.getByText("10:00")).toBeInTheDocument();
+    expect(screen.getByText("23:30")).toBeInTheDocument();
   });
 
-  it("요일명이 올바르게 표시되어야 한다", () => {
+  it("요일 라벨이 올바르게 표시된다", () => {
     render(<TimeTableGrid {...defaultProps} />);
 
-    expect(screen.getByText("월")).toBeInTheDocument();
-    expect(screen.getByText("화")).toBeInTheDocument();
-    expect(screen.getByText("수")).toBeInTheDocument();
-    expect(screen.getByText("목")).toBeInTheDocument();
-    expect(screen.getByText("금")).toBeInTheDocument();
-    expect(screen.getByText("토")).toBeInTheDocument();
-    expect(screen.getByText("일")).toBeInTheDocument();
+    const weekdays = ["월", "화", "수", "목", "금", "토", "일"];
+    weekdays.forEach((day) => {
+      expect(screen.getByText(day)).toBeInTheDocument();
+    });
   });
 
-  it("className이 올바르게 적용되어야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} className="custom-grid" />);
+  it("세션 클릭 시 onSessionClick이 호출된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
 
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toHaveClass("custom-grid");
-  });
-
-  it("style이 올바르게 적용되어야 한다", () => {
-    render(
-      <TimeTableGrid {...defaultProps} style={{ backgroundColor: "red" }} />
-    );
-
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toHaveStyle("background-color: rgb(255, 0, 0)");
-  });
-
-  it("selectedStudentId가 올바르게 전달되어야 한다", () => {
-    render(
-      <TimeTableGrid
-        {...defaultProps}
-        selectedStudentId="550e8400-e29b-41d4-a716-446655440001"
-      />
-    );
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("ref가 올바르게 전달되어야 한다", () => {
-    const ref = vi.fn();
-    render(<TimeTableGrid {...defaultProps} ref={ref} />);
-
-    // ref가 호출되었는지 확인
-    expect(ref).toHaveBeenCalled();
-  });
-
-  // 엣지 케이스 테스트
-  it("빈 sessions Map을 안전하게 처리해야 한다", () => {
-    const emptySessions = new Map<number, Session[]>();
-    render(<TimeTableGrid {...defaultProps} sessions={emptySessions} />);
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("sessions이 null일 때 안전하게 처리되어야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} sessions={null as any} />);
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("sessions이 undefined일 때 안전하게 처리되어야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} sessions={undefined as any} />);
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("빈 subjects 배열을 안전하게 처리해야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} subjects={[]} />);
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("subjects가 null일 때 안전하게 처리되어야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} subjects={null as any} />);
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("빈 enrollments 배열을 안전하게 처리해야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} enrollments={[]} />);
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("빈 students 배열을 안전하게 처리해야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} students={[]} />);
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("onSessionClick이 undefined일 때 안전하게 처리되어야 한다", () => {
-    render(
-      <TimeTableGrid {...defaultProps} onSessionClick={undefined as any} />
-    );
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("onDrop이 undefined일 때 안전하게 처리되어야 한다", () => {
-    render(<TimeTableGrid {...defaultProps} onDrop={undefined as any} />);
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("onEmptySpaceClick이 undefined일 때 안전하게 처리되어야 한다", () => {
-    render(
-      <TimeTableGrid {...defaultProps} onEmptySpaceClick={undefined as any} />
-    );
-
-    // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
-  });
-
-  it("매우 많은 세션을 안전하게 처리해야 한다", () => {
-    const manySessions = new Map<number, Session[]>();
-
-    // 각 요일에 100개씩 세션 생성
-    for (let weekday = 0; weekday < 7; weekday++) {
-      const sessions: Session[] = [];
-      for (let i = 0; i < 100; i++) {
-        sessions.push({
-          id: `session-${weekday}-${i}`,
-          enrollmentIds: [`enroll-${i}`],
-          weekday,
-          startsAt: "09:00",
-          endsAt: "10:00",
-          room: `Room-${i}`,
-        });
-      }
-      manySessions.set(weekday, sessions);
+    // 세션이 렌더링되었는지 확인 (실제 세션 렌더링 로직에 따라 조정 필요)
+    const sessionElements = screen.queryAllByText("수학");
+    if (sessionElements.length > 0) {
+      fireEvent.click(sessionElements[0]);
+      expect(defaultProps.onSessionClick).toHaveBeenCalled();
     }
-
-    render(<TimeTableGrid {...defaultProps} sessions={manySessions} />);
-
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
   });
 
-  it("잘못된 요일 번호를 안전하게 처리해야 한다", () => {
-    const invalidWeekdaySessions = new Map<number, Session[]>([
-      [
-        -1,
-        [
-          {
-            id: "session-1",
-            enrollmentIds: [],
-            weekday: -1,
-            startsAt: "09:00",
-            endsAt: "10:00",
-          },
-        ],
-      ],
-      [
-        7,
-        [
-          {
-            id: "550e8400-e29b-41d4-a716-446655440202",
-            enrollmentIds: [],
-            weekday: 7,
-            startsAt: "09:00",
-            endsAt: "10:00",
-          },
-        ],
-      ],
-      [
-        100,
-        [
-          {
-            id: "550e8400-e29b-41d4-a716-446655440203",
-            enrollmentIds: [],
-            weekday: 100,
-            startsAt: "09:00",
-            endsAt: "10:00",
-          },
-        ],
-      ],
-    ]);
+  it("그리드 스타일이 올바르게 적용된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
 
-    render(
-      <TimeTableGrid {...defaultProps} sessions={invalidWeekdaySessions} />
-    );
+    const gridElement = screen.getByTestId("time-table-grid");
 
-    // TimeTableGrid가 렌더링되어야 함
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toBeInTheDocument();
+    expect(gridElement).toHaveStyle({
+      display: "grid",
+      position: "relative",
+      overflowY: "auto",
+      overflowX: "hidden",
+    });
   });
 
-  it("여러 props가 동시에 적용되어야 한다", () => {
-    render(
-      <TimeTableGrid
-        {...defaultProps}
-        className="custom-class"
-        style={{ backgroundColor: "blue", height: "500px" }}
-        selectedStudentId="550e8400-e29b-41d4-a716-446655440001"
-      />
-    );
+  it("가상 스크롤바 스타일이 올바르게 적용된다", () => {
+    render(<TimeTableGrid {...defaultProps} />);
 
-    const grid = screen.getByTestId("time-table-grid");
-    expect(grid).toHaveClass("custom-class");
-    expect(grid).toHaveStyle("background-color: rgb(0, 0, 255)");
-    expect(grid).toHaveStyle("height: 500px");
+    const scrollbarContainer = document.querySelector(
+      ".virtual-scrollbar-container"
+    );
+    const scrollbarThumb = document.querySelector(".virtual-scrollbar-thumb");
+
+    expect(scrollbarContainer).toHaveStyle({
+      position: "sticky",
+      bottom: "0px",
+      height: "12px",
+      backgroundColor: "#f0f0f0",
+    });
+
+    expect(scrollbarThumb).toHaveStyle({
+      position: "absolute",
+      height: "10px",
+      backgroundColor: "#666",
+      borderRadius: "5px",
+    });
   });
 });

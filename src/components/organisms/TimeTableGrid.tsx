@@ -1,5 +1,12 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
-import React, { forwardRef, useCallback, useMemo, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { logger } from "../../lib/logger";
 import type { Session, Subject } from "../../lib/planner";
 import TimeTableRow from "../molecules/TimeTableRow";
@@ -60,6 +67,136 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       targetTime: null,
       targetYPosition: null,
     });
+
+    // 🆕 가상 스크롤바 상태 관리
+    const [scrollbarState, setScrollbarState] = useState({
+      thumbWidth: 0,
+      thumbPosition: 0,
+      isDragging: false,
+    });
+
+    const gridRef = useRef<HTMLDivElement>(null);
+    const scrollbarThumbRef = useRef<HTMLDivElement>(null);
+
+    // 🆕 가상 스크롤바 업데이트 함수
+    const updateScrollbar = useCallback(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      const containerWidth = element.clientWidth;
+      const contentWidth = element.scrollWidth;
+      const scrollLeft = element.scrollLeft;
+
+      if (contentWidth <= containerWidth) {
+        setScrollbarState({
+          thumbWidth: 0,
+          thumbPosition: 0,
+          isDragging: false,
+        });
+        return;
+      }
+
+      const thumbWidth = (containerWidth / contentWidth) * containerWidth;
+      const thumbPosition =
+        (scrollLeft / (contentWidth - containerWidth)) *
+        (containerWidth - thumbWidth);
+
+      setScrollbarState((prev) => ({
+        ...prev,
+        thumbWidth: Math.max(thumbWidth, 30),
+        thumbPosition: Math.max(0, thumbPosition),
+      }));
+    }, []);
+
+    // 🆕 스크롤바 썸 드래그 시작
+    const handleScrollbarMouseDown = useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      setScrollbarState((prev) => ({ ...prev, isDragging: true }));
+    }, []);
+
+    // 🆕 스크롤바 썸 드래그 중
+    const handleScrollbarMouseMove = useCallback(
+      (e: MouseEvent) => {
+        if (!scrollbarState.isDragging) return;
+
+        const element = gridRef.current;
+        if (!element) return;
+
+        const containerWidth = element.clientWidth;
+        const contentWidth = element.scrollWidth;
+        const scrollbarContainer = element;
+
+        const rect = scrollbarContainer.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const thumbWidth = scrollbarState.thumbWidth;
+        const maxPosition = containerWidth - thumbWidth;
+
+        const newPosition = Math.max(
+          0,
+          Math.min(clickX - thumbWidth / 2, maxPosition)
+        );
+        const scrollRatio = newPosition / maxPosition;
+        const newScrollLeft = scrollRatio * (contentWidth - containerWidth);
+
+        element.scrollLeft = newScrollLeft;
+      },
+      [scrollbarState.isDragging, scrollbarState.thumbWidth]
+    );
+
+    // 🆕 스크롤바 썸 드래그 종료
+    const handleScrollbarMouseUp = useCallback(() => {
+      setScrollbarState((prev) => ({ ...prev, isDragging: false }));
+    }, []);
+
+    // 🆕 스크롤바 트랙 클릭
+    const handleScrollbarTrackClick = useCallback((e: React.MouseEvent) => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      const containerWidth = element.clientWidth;
+      const contentWidth = element.scrollWidth;
+      const scrollbarContainer = e.currentTarget as HTMLElement;
+
+      const rect = scrollbarContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const scrollRatio = clickX / rect.width;
+      const newScrollLeft = scrollRatio * (contentWidth - containerWidth);
+
+      element.scrollLeft = newScrollLeft;
+    }, []);
+
+    // 🆕 스크롤 이벤트 리스너
+    useEffect(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      element.addEventListener("scroll", updateScrollbar);
+
+      // 초기 설정
+      const timer = setTimeout(updateScrollbar, 100);
+
+      return () => {
+        clearTimeout(timer);
+        element.removeEventListener("scroll", updateScrollbar);
+      };
+    }, [updateScrollbar]);
+
+    // 🆕 전역 마우스 이벤트 리스너
+    useEffect(() => {
+      if (scrollbarState.isDragging) {
+        document.addEventListener("mousemove", handleScrollbarMouseMove);
+        document.addEventListener("mouseup", handleScrollbarMouseUp);
+      }
+
+      return () => {
+        document.removeEventListener("mousemove", handleScrollbarMouseMove);
+        document.removeEventListener("mouseup", handleScrollbarMouseUp);
+      };
+    }, [
+      scrollbarState.isDragging,
+      handleScrollbarMouseMove,
+      handleScrollbarMouseUp,
+    ]);
 
     // 🆕 30분 단위로 변경: 9:00 ~ 24:00 (30개 열)
     const timeSlots30Min = useMemo(() => {
@@ -171,86 +308,133 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, []);
 
     return (
-      <div
-        ref={ref}
-        className={`time-table-grid ${className}`}
-        data-testid="time-table-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns,
-          gridTemplateRows,
-          backgroundColor: "var(--color-bg-primary)",
-          border: "1px solid var(--color-border-grid)",
-          borderRadius: "8px",
-          // 그리드 내부에서만 스크롤되도록 설정
-          overflow: "auto",
-          position: "relative",
-          isolation: "isolate",
-          maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화
-          ...style,
-        }}
-      >
-        {/* 좌상단 빈칸 */}
-        <div style={{ backgroundColor: "var(--color-background)" }} />
+      <div className="time-table-container">
+        <div
+          ref={(node) => {
+            if (ref) {
+              if (typeof ref === "function") {
+                ref(node);
+              } else {
+                ref.current = node;
+              }
+            }
+            gridRef.current = node;
+          }}
+          className={`time-table-grid ${className}`}
+          data-testid="time-table-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns,
+            gridTemplateRows,
+            backgroundColor: "var(--color-bg-primary)",
+            border: "1px solid var(--color-border-grid)",
+            borderRadius: "8px 8px 0 0", // 위쪽만 둥글게
+            // 그리드 내부에서만 스크롤되도록 설정
+            overflowY: "auto", // 세로 스크롤은 필요할 때만 표시
+            overflowX: "hidden", // 가상 스크롤바를 위해 숨김
+            position: "relative",
+            isolation: "isolate",
+            maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화
+            ...style,
+          }}
+        >
+          {/* 좌상단 빈칸 */}
+          <div style={{ backgroundColor: "var(--color-background)" }} />
 
-        {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
-        {timeSlots30Min.map((timeString, index) => {
-          const isLastTime = index === timeSlots30Min.length - 1;
-          return (
-            <div
-              key={timeString}
-              className="shadow-sm"
-              style={{
-                // 완전 불투명 배경으로 세션 셀과의 겹침 제거
-                backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
-                padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
-                textAlign: "center",
-                fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                borderRight: isLastTime
-                  ? "1px solid var(--color-border)"
-                  : "1px solid var(--color-border-grid)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "40px",
-                position: "sticky",
-                top: 0,
-                zIndex: 999, // 세션보다 높게
-              }}
-            >
-              {timeString}
-            </div>
-          );
-        })}
+          {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
+          {timeSlots30Min.map((timeString, index) => {
+            const isLastTime = index === timeSlots30Min.length - 1;
+            return (
+              <div
+                key={timeString}
+                className="shadow-sm"
+                style={{
+                  // 완전 불투명 배경으로 세션 셀과의 겹침 제거
+                  backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
+                  padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
+                  textAlign: "center",
+                  fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
+                  color: "var(--color-text-secondary)",
+                  border: "1px solid var(--color-border)",
+                  borderRight: isLastTime
+                    ? "1px solid var(--color-border)"
+                    : "1px solid var(--color-border-grid)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "40px",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 999, // 세션보다 높게
+                }}
+              >
+                {timeString}
+              </div>
+            );
+          })}
 
-        {/* 요일별 행 (Y축 왼쪽) */}
-        {Array.from({ length: 7 }, (_, weekday) => {
-          return (
-            <TimeTableRow
-              key={weekday}
-              weekday={weekday}
-              height={weekdayHeights[weekday]}
-              sessions={sessions}
-              subjects={subjects}
-              enrollments={enrollments}
-              students={students}
-              sessionYPositions={getSessionYPositions(weekday)}
-              onSessionClick={onSessionClick}
-              onDrop={onDrop}
-              onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
-              onEmptySpaceClick={onEmptySpaceClick}
-              selectedStudentId={selectedStudentId}
-              isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
-              // 🆕 드래그 핸들러들 전달
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              dragPreview={dragPreview}
-            />
-          );
-        })}
+          {/* 요일별 행 (Y축 왼쪽) */}
+          {Array.from({ length: 7 }, (_, weekday) => {
+            return (
+              <TimeTableRow
+                key={weekday}
+                weekday={weekday}
+                height={weekdayHeights[weekday]}
+                sessions={sessions}
+                subjects={subjects}
+                enrollments={enrollments}
+                students={students}
+                sessionYPositions={getSessionYPositions(weekday)}
+                onSessionClick={onSessionClick}
+                onDrop={onDrop}
+                onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
+                onEmptySpaceClick={onEmptySpaceClick}
+                selectedStudentId={selectedStudentId}
+                isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
+                // 🆕 드래그 핸들러들 전달
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                dragPreview={dragPreview}
+              />
+            );
+          })}
+        </div>
+
+        {/* 🆕 가상 가로 스크롤바 */}
+        <div
+          className="virtual-scrollbar-container"
+          style={{
+            position: "sticky",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "12px",
+            backgroundColor: "#f0f0f0",
+            borderTop: "1px solid #ddd",
+            borderRadius: "0 0 8px 8px",
+            zIndex: 1000,
+            cursor: "pointer",
+          }}
+          onClick={handleScrollbarTrackClick}
+        >
+          <div
+            ref={scrollbarThumbRef}
+            className="virtual-scrollbar-thumb"
+            style={{
+              position: "absolute",
+              bottom: "1px",
+              left: `${scrollbarState.thumbPosition}px`,
+              height: "10px",
+              width: `${scrollbarState.thumbWidth}px`,
+              backgroundColor: "#666",
+              borderRadius: "5px",
+              cursor: "pointer",
+              zIndex: 1001,
+            }}
+            onMouseDown={handleScrollbarMouseDown}
+          />
+        </div>
       </div>
     );
   }
