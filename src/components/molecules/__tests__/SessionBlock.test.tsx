@@ -114,7 +114,7 @@ describe("SessionBlock Component", () => {
   it("시간 정보가 올바르게 표시되어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 
-    expect(screen.getByText("09:00 - 10:00")).toBeInTheDocument();
+    expect(screen.getByText("09:00-10:00")).toBeInTheDocument();
   });
 
   it("클릭 이벤트가 올바르게 처리되어야 한다", () => {
@@ -336,7 +336,7 @@ describe("SessionBlock Component", () => {
     expect(screen.getByText(specialSubjectName)).toBeInTheDocument();
   });
 
-  it("학생이 4명일 때 3명 + '외 1명'으로 표시되어야 한다", () => {
+  it("학생이 4명일 때 모든 학생이 표시되어야 한다", () => {
     const sessionWithFour = {
       ...mockSession,
       enrollmentIds: ["enroll-1", "enroll-2", "enroll-3", "enroll-4"],
@@ -372,6 +372,130 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveTextContent("학생1");
     expect(sessionBlock).toHaveTextContent("학생2");
     expect(sessionBlock).toHaveTextContent("학생3");
+    expect(sessionBlock).toHaveTextContent("학생4");
+  });
+
+  it("학생이 8명일 때 모든 학생이 표시되어야 한다", () => {
+    const sessionWithEight = {
+      ...mockSession,
+      enrollmentIds: [
+        "enroll-1",
+        "enroll-2",
+        "enroll-3",
+        "enroll-4",
+        "enroll-5",
+        "enroll-6",
+        "enroll-7",
+        "enroll-8",
+      ],
+    } as any;
+
+    const enrollmentsWithEight = [
+      { id: "enroll-1", studentId: "student-1", subjectId: "subject-1" },
+      { id: "enroll-2", studentId: "student-2", subjectId: "subject-1" },
+      { id: "enroll-3", studentId: "student-3", subjectId: "subject-1" },
+      { id: "enroll-4", studentId: "student-4", subjectId: "subject-1" },
+      { id: "enroll-5", studentId: "student-5", subjectId: "subject-1" },
+      { id: "enroll-6", studentId: "student-6", subjectId: "subject-1" },
+      { id: "enroll-7", studentId: "student-7", subjectId: "subject-1" },
+      { id: "enroll-8", studentId: "student-8", subjectId: "subject-1" },
+    ];
+
+    const studentsWithEight = [
+      { id: "student-1", name: "학생1" },
+      { id: "student-2", name: "학생2" },
+      { id: "student-3", name: "학생3" },
+      { id: "student-4", name: "학생4" },
+      { id: "student-5", name: "학생5" },
+      { id: "student-6", name: "학생6" },
+      { id: "student-7", name: "학생7" },
+      { id: "student-8", name: "학생8" },
+    ];
+
+    render(
+      <SessionBlock
+        {...defaultProps}
+        session={sessionWithEight}
+        enrollments={enrollmentsWithEight as any}
+        students={studentsWithEight as any}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toBeInTheDocument();
+    expect(sessionBlock).toHaveTextContent("학생1");
+    expect(sessionBlock).toHaveTextContent("학생2");
+    expect(sessionBlock).toHaveTextContent("학생3");
+    expect(sessionBlock).toHaveTextContent("학생4");
+    expect(sessionBlock).toHaveTextContent("학생5");
+    expect(sessionBlock).toHaveTextContent("학생6");
+    expect(sessionBlock).toHaveTextContent("학생7");
+    expect(sessionBlock).toHaveTextContent("학생8");
+  });
+
+  it("학생이 9명일 때 8명 + '외 1명'으로 표시되어야 한다", () => {
+    const sessionWithNine = {
+      ...mockSession,
+      enrollmentIds: [
+        "enroll-1",
+        "enroll-2",
+        "enroll-3",
+        "enroll-4",
+        "enroll-5",
+        "enroll-6",
+        "enroll-7",
+        "enroll-8",
+        "enroll-9",
+      ],
+    } as any;
+
+    const enrollmentsWithNine = [
+      { id: "enroll-1", studentId: "student-1", subjectId: "subject-1" },
+      { id: "enroll-2", studentId: "student-2", subjectId: "subject-1" },
+      { id: "enroll-3", studentId: "student-3", subjectId: "subject-1" },
+      { id: "enroll-4", studentId: "student-4", subjectId: "subject-1" },
+      { id: "enroll-5", studentId: "student-5", subjectId: "subject-1" },
+      { id: "enroll-6", studentId: "student-6", subjectId: "subject-1" },
+      { id: "enroll-7", studentId: "student-7", subjectId: "subject-1" },
+      { id: "enroll-8", studentId: "student-8", subjectId: "subject-1" },
+      { id: "enroll-9", studentId: "student-9", subjectId: "subject-1" },
+    ];
+
+    const studentsWithNine = [
+      { id: "student-1", name: "학생1" },
+      { id: "student-2", name: "학생2" },
+      { id: "student-3", name: "학생3" },
+      { id: "student-4", name: "학생4" },
+      { id: "student-5", name: "학생5" },
+      { id: "student-6", name: "학생6" },
+      { id: "student-7", name: "학생7" },
+      { id: "student-8", name: "학생8" },
+      { id: "student-9", name: "학생9" },
+    ];
+
+    render(
+      <SessionBlock
+        {...defaultProps}
+        session={sessionWithNine}
+        enrollments={enrollmentsWithNine as any}
+        students={studentsWithNine as any}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toBeInTheDocument();
+    expect(sessionBlock).toHaveTextContent("학생1");
+    expect(sessionBlock).toHaveTextContent("학생2");
+    expect(sessionBlock).toHaveTextContent("학생3");
+    expect(sessionBlock).toHaveTextContent("학생4");
+    expect(sessionBlock).toHaveTextContent("학생5");
+    expect(sessionBlock).toHaveTextContent("학생6");
+    expect(sessionBlock).toHaveTextContent("학생7");
+    expect(sessionBlock).toHaveTextContent("학생8");
     expect(sessionBlock).toHaveTextContent("외 1명");
   });
 });
