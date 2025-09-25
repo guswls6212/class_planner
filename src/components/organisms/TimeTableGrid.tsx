@@ -179,10 +179,14 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           display: "grid",
           gridTemplateColumns,
           gridTemplateRows,
-          backgroundColor: "var(--color-background)",
+          backgroundColor: "var(--color-bg-primary)",
           border: "1px solid var(--color-border-grid)",
           borderRadius: "8px",
+          // 그리드 내부에서만 스크롤되도록 설정
           overflow: "auto",
+          position: "relative",
+          isolation: "isolate",
+          maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화
           ...style,
         }}
       >
@@ -195,8 +199,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           return (
             <div
               key={timeString}
+              className="shadow-sm"
               style={{
-                backgroundColor: "var(--color-background)",
+                // 완전 불투명 배경으로 세션 셀과의 겹침 제거
+                backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
                 padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
                 textAlign: "center",
                 fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
@@ -211,7 +217,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 height: "40px",
                 position: "sticky",
                 top: 0,
-                zIndex: 10,
+                zIndex: 999, // 세션보다 높게
               }}
             >
               {timeString}

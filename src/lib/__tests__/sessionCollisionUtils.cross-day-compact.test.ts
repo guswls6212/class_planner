@@ -57,11 +57,11 @@ describe("교차-요일 이동 시 원래 요일 yPos 압축", () => {
     const wedSessions = result.filter((s) => s.weekday === wed);
 
     expect(wedSessions.some((s) => s.id === "A")).toBe(true);
-    expect(wedSessions.find((s) => s.id === "A")?.yPosition).toBe(1);
+    expect(wedSessions.find((s) => s.id === "A")?.yPosition).toBe(1); // 압축 로직에 의해 1부터 시작
 
     // 화요일에는 B만 남되 yPosition이 1로 압축
     expect(tueSessions).toHaveLength(1);
     expect(tueSessions[0].id).toBe("B");
-    expect(tueSessions[0].yPosition).toBe(1);
+    expect(tueSessions[0].yPosition).toBe(1); // 압축 로직에 의해 1부터 시작
   });
 });

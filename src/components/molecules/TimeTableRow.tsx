@@ -189,10 +189,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         ...style,
       }}
     >
-      {/* 요일 라벨 (Y축 왼쪽) - 고정 */}
+      {/* 요일 라벨 (Y축 왼쪽) - 스크롤 시 좌측 고정 */}
       <div
+        className="shadow-sm"
         style={{
-          backgroundColor: "var(--color-background)",
+          // 완전 불투명 배경으로 세션 셀과의 겹침 제거
+          backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
           padding: "12px 8px",
           textAlign: "center",
           fontWeight: "bold",
@@ -205,7 +207,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           height: `${height}px`,
           position: "sticky",
           left: 0,
-          zIndex: 10,
+          zIndex: 999, // 세션(zIndex: 100+yOffset)보다 높게, 레이아웃 상위(1000)보다 낮게
           gridColumn: "1", // 🆕 첫 번째 열에 명시적으로 배치
         }}
       >
@@ -216,7 +218,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       <div
         style={{
           position: "relative",
-          backgroundColor: "var(--color-background)",
+          backgroundColor: "var(--color-bg-primary)",
           height: `${height}px`,
           border: "1px solid var(--color-border-grid)",
           gridColumn: "2 / -1", // 🆕 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
