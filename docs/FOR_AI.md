@@ -79,12 +79,21 @@ npm run type-check          # TypeScript 타입 체크
 npm run lint:fix            # ESLint 자동 수정
 ```
 
-### 3단계 검증 스크립트
+### 3단계 검증 스크립트 (개선됨)
 
 ```bash
-npm run pre-commit          # 커밋 전 필수 검증 (1-3분)
-npm run pre-pr              # PR 전 통합 검증 (5-15분)
-npm run pre-deploy          # 배포 전 완전 검증 (15-30분)
+npm run pre-commit          # 커밋 전 필수 검증 (1-3분) - 포트 충돌 해결
+npm run pre-pr              # PR 전 통합 검증 (5-15분) - 자동 진행 모드
+npm run pre-deploy          # 배포 전 완전 검증 (15-30분) - 서버 관리 개선
+```
+
+#### 🔧 서버 관리 명령어 (신규)
+```bash
+npm run server:start        # 개발 서버 시작 (포트 충돌 방지)
+npm run server:stop         # 개발 서버 종료
+npm run server:restart      # 개발 서버 재시작
+npm run server:status       # 서버 상태 확인
+npm run server:clean        # 포트 3000 정리
 ```
 
 ## 🎯 AI 명령어 처리 시 주의사항
@@ -227,6 +236,44 @@ export const E2E_CONFIG = {
 - **서버 관리**: `npm run dev` 실행 시 기존 프로세스 자동 종료
 - **실제 소스코드 반영**: `"학생 이름 (검색 가능)"` 등 실제 placeholder 사용
 - **성능 테스트 제거**: 실제 DB 사용 방지로 무료 플랜 보호
+
+### **🆕 스크립트 시스템 개선 (2025-09-29)**
+
+#### **핵심 개선사항**
+
+1. **포트 충돌 해결**: 서버 관리자 시스템으로 포트 3000 충돌 완전 해결
+2. **자동 진행 모드**: CI/CD 환경에서 사용자 입력 없이 자동 진행
+3. **통합 에러 처리**: 일관된 에러 처리 및 사용자 경험 개선
+4. **서버 생명주기 관리**: PID 추적 및 Graceful Shutdown 구현
+
+#### **새로운 서버 관리 시스템**
+
+- `scripts/server-manager.sh` - 통합 서버 관리 도구
+- 포트 충돌 자동 감지 및 정리
+- PID 파일 기반 정확한 프로세스 제어
+- EXIT 트랩으로 안전한 cleanup 보장
+
+#### **개선된 스크립트들**
+
+- **pre-commit**: 통합된 에러 처리, 명확한 단계별 진행
+- **pre-pr**: 자동 진행 모드, 서버 관리자 통합
+- **pre-deploy**: 환경별 검증, 보안 강화, 빌드 결과물 검증
+
+#### **CI/CD 지원**
+
+```bash
+# 자동 진행 모드 활성화
+export AUTO_PROCEED=Y
+npm run pre-pr
+npm run pre-deploy
+```
+
+#### **해결된 주요 문제들**
+
+- ✅ 포트 충돌 문제 (`Error: http://localhost:3000 is already used`)
+- ✅ 사용자 입력 대기 문제 (CI/CD 환경에서 중단)
+- ✅ 서버 종료 로직 불완전 (프로세스 남아있음)
+- ✅ 에러 처리 일관성 부족
 
 ### **🔄 사용 방법**
 
