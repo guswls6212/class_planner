@@ -1,0 +1,45 @@
+{
+  "summary": {
+    "timestamp": "2025-09-25T17:01:16.095Z",
+    "totalImprovement": "76.89%",
+    "networkReduction": "66.67%",
+    "dataConsistency": "100%"
+  },
+  "details": {
+    "timestamp": "2025-09-25T17:01:16.095Z",
+    "individualApiCalls": {
+      "students": {
+        "duration": 876,
+        "success": true
+      },
+      "subjects": {
+        "duration": 453,
+        "success": false
+      },
+      "sessions": {
+        "duration": 328,
+        "success": false
+      }
+    },
+    "integratedApiCall": {
+      "duration": 383,
+      "success": false,
+      "dataSize": 53
+    },
+    "comparison": {
+      "totalIndividualDuration": 1657,
+      "integratedDuration": 383,
+      "improvement": 76.88593844296922,
+      "networkRequests": {
+        "individual": 3,
+        "integrated": 1,
+        "reduction": 66.66666666666666
+      }
+    }
+  },
+  "recommendations": [
+    "JSONB 통합 데이터 관리 시스템이 성능을 크게 개선했습니다.",
+    "Schedule 페이지에서 통합 데이터 훅 사용을 권장합니다.",
+    "추가 최적화를 위해 캐싱 전략을 고려해보세요."
+  ]
+}
