@@ -1,60 +1,14 @@
 import { expect, test } from "@playwright/test";
+import {
+  createAuthData,
+  E2E_CONFIG,
+  loadPageWithAuth,
+} from "./config/e2e-config";
 
 /**
- * E2E 테스트 설정 상수
+ * E2E 테스트용 기본 데이터 생성 (로컬 커스터마이징)
  */
-const E2E_CONFIG = {
-  TEST_USER_ID: "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391",
-  TEST_EMAIL: "info365001.e2e.test@gmail.com",
-  SUPABASE_TOKEN_KEY: "sb-kcyqftasdxtqslrhbctv-auth-token",
-  BASE_URL: "http://localhost:3000",
-  TIMEOUTS: {
-    AUTH_WAIT: 15000,
-    STUDENT_ADD_WAIT: 5000,
-    STUDENT_VISIBLE_WAIT: 15000,
-  },
-} as const;
-
-/**
- * E2E 테스트용 인증 데이터 생성
- */
-function createAuthData(userId: string, email: string) {
-  return {
-    access_token: `eyJhbGciOiJIUzI1NiIsImtpZCI6IjFjUzJoOWJGcE9QVjVkWE0iLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzI3MDU5ODMyLCJpYXQiOjE3MjcwNTYyMzIsImlzcyI6Imh0dHBzOi8va2N5cWZ0YXNkeHRxc2xyaGJjdHYuc3VwYWJhc2UuY28vYXV0aC92MSIsInN1YiI6IiR7dXNlcklkfSIsImVtYWlsIjoiJHtlbWFpbH0iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6Imdvb2dsZSIsInByb3ZpZGVycyI6WyJnb29nbGUiXX0sInVzZXJfbWV0YWRhdGEiOnsibmFtZSI6IkUyRSBUZXN0IFVzZXIiLCJlbWFpbCI6IiR7ZW1haWx9IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZX0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoib2F1dGgiLCJ0aW1lc3RhbXAiOjE3MjcwNTYyMzJ9XSwic2Vzc2lvbl9pZCI6ImE1NjE3ZjJiLWIwZjUtNGU5Mi1hYjVjLWQwMzQ5MmFkZGRhMyIsImlzX2Fub255bW91cyI6ZmFsc2V9.test-signature`,
-    refresh_token: "test-refresh-token",
-    expires_at: Date.now() + 3600000,
-    expires_in: 3600,
-    token_type: "bearer",
-    user: {
-      id: userId,
-      email: email,
-      aud: "authenticated",
-      role: "authenticated",
-      email_confirmed_at: new Date().toISOString(),
-      phone: "",
-      confirmed_at: new Date().toISOString(),
-      last_sign_in_at: new Date().toISOString(),
-      app_metadata: {
-        provider: "google",
-        providers: ["google"],
-      },
-      user_metadata: {
-        name: "E2E Test User",
-        email: email,
-        email_verified: true,
-        phone_verified: false,
-      },
-      identities: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  };
-}
-
-/**
- * E2E 테스트용 기본 데이터 생성
- */
-function createDefaultData() {
+function createLocalDefaultData() {
   return {
     students: [],
     subjects: [
@@ -95,12 +49,12 @@ test.describe("E2E 테스트 - 학생 관리", () => {
           E2E_CONFIG.TEST_USER_ID,
           E2E_CONFIG.TEST_EMAIL
         ),
-        defaultData: createDefaultData(),
+        defaultData: createLocalDefaultData(),
       }
     );
 
     // 학생 페이지로 이동 및 인증 확인
-    await page.goto(`${E2E_CONFIG.BASE_URL}/students`);
+    await loadPageWithAuth(page, "/students");
     await page.waitForSelector("h2:has-text('학생 목록')", {
       timeout: E2E_CONFIG.TIMEOUTS.AUTH_WAIT,
     });
