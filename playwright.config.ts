@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_CONFIG } from "./tests/e2e/config/e2e-config";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -8,7 +9,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: [["html", { open: "never" }], ["list"]],
   use: {
-    baseURL: "http://localhost:3000", // 실제 개발 서버 포트
+    baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure", // 실패 시 비디오 녹화
@@ -38,9 +39,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000", // 실제 개발 서버 포트
-    reuseExistingServer: true, // 항상 기존 서버 재사용
-    timeout: 30 * 1000, // 30초 타임아웃으로 단축
+    command: "npm run dev", // 개발 서버 시작
+    url: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
+    reuseExistingServer: false, // 항상 새 서버 시작 (E2E 전용)
+    timeout: E2E_CONFIG.TIMEOUTS.PAGE_LOAD * 6, // 공용 타임아웃 사용 (6배로 설정)
   },
 });

@@ -140,7 +140,7 @@ describe("TimeTableGrid", () => {
       display: "grid",
       position: "relative",
       overflowY: "auto",
-      overflowX: "hidden",
+      overflowX: "auto",
     });
   });
 

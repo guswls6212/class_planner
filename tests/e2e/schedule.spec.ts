@@ -41,7 +41,10 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("드래그 앤 드롭으로 수업을 추가할 수 있어야 한다", async ({ page }) => {
     // Arrange - 먼저 학생과 과목이 있는지 확인하고 없으면 추가
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "테스트학생");
+    await page.fill(
+      'input[placeholder*="학생 이름 (검색 가능)"]',
+      "테스트학생"
+    );
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/subjects");
@@ -63,7 +66,7 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("수업 블록을 클릭하여 편집할 수 있어야 한다", async ({ page }) => {
     // Arrange - 수업이 있는 상태로 만들기
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "편집학생");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "편집학생");
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/subjects");
@@ -87,7 +90,7 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("수업 편집 모달이 올바르게 작동해야 한다", async ({ page }) => {
     // Arrange - 수업이 있는 상태로 만들기
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "모달학생");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "모달학생");
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/subjects");
@@ -112,7 +115,7 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("수업을 삭제할 수 있어야 한다", async ({ page }) => {
     // Arrange - 수업이 있는 상태로 만들기
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "삭제학생");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "삭제학생");
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/subjects");
@@ -141,9 +144,9 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("학생 필터링이 작동해야 한다", async ({ page }) => {
     // Arrange - 여러 학생 추가
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "필터학생1");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "필터학생1");
     await page.click('button:has-text("추가")');
-    await page.fill('input[placeholder*="학생 이름"]', "필터학생2");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "필터학생2");
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/schedule");
@@ -172,7 +175,7 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   }) => {
     // Arrange - 수업 추가
     await page.goto("http://localhost:3000/students");
-    await page.fill('input[placeholder*="학생 이름"]', "유지학생");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "유지학생");
     await page.click('button:has-text("추가")');
 
     await page.goto("http://localhost:3000/subjects");
@@ -221,4 +224,3 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
     await expect(page.locator("body")).toHaveClass(/dark/);
   });
 });
-

@@ -183,6 +183,51 @@ npm run pre-deploy          # 배포 전 완전 검증 (15-30분)
 - **E2E 테스트**: `scroll-position-preservation.spec.ts` - 사용자 시나리오 테스트
 - **저장소 테스트**: `scrollPositionStorage.test.ts` - localStorage 관리 테스트
 
+### **🆕 E2E 테스트 공용 설정 시스템 (2025-09-29)**
+
+#### **핵심 개념**
+
+1. **중앙화된 설정**: 모든 E2E 테스트가 공통 설정을 사용하여 일관성 보장
+2. **자동 인증**: 테스트용 계정으로 자동 로그인하여 인증 문제 해결
+3. **통합된 타임아웃**: 페이지별 적절한 타임아웃 설정으로 안정성 향상
+4. **소스코드 일치**: 실제 컴포넌트의 placeholder와 선택자 사용
+
+#### **주요 파일**
+
+- `tests/e2e/config/e2e-config.ts` - E2E 테스트 공용 설정
+- `playwright.config.ts` - Playwright 설정 (공용 설정 사용)
+
+#### **공용 설정 내용**
+
+```typescript
+export const E2E_CONFIG = {
+  TEST_USER_ID: "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391",
+  TEST_EMAIL: "info365001.e2e.test@gmail.com",
+  SUPABASE_TOKEN_KEY: "sb-kcyqftasdxtqslrhbctv-auth-token",
+  BASE_URL: "http://localhost:3000", // E2E 테스트 전용 포트
+  TIMEOUTS: {
+    AUTH_WAIT: 15000,
+    PAGE_LOAD: 10000,
+    STUDENT_ADD_WAIT: 5000,
+    STUDENT_VISIBLE_WAIT: 15000,
+  },
+};
+```
+
+#### **핵심 함수들**
+
+- `setupE2EAuth(page, customData?)`: 테스트용 인증 및 기본 데이터 설정
+- `loadPageWithAuth(page, path)`: 인증 후 페이지 로드
+- `createAuthData(userId, email)`: 테스트용 인증 데이터 생성
+- `createDefaultData()`: 기본 테스트 데이터 생성
+
+#### **개선사항**
+
+- **포트 통일**: 모든 E2E 테스트가 `localhost:3000` 사용
+- **서버 관리**: `npm run dev` 실행 시 기존 프로세스 자동 종료
+- **실제 소스코드 반영**: `"학생 이름 (검색 가능)"` 등 실제 placeholder 사용
+- **성능 테스트 제거**: 실제 DB 사용 방지로 무료 플랜 보호
+
 ### **🔄 사용 방법**
 
 ```typescript

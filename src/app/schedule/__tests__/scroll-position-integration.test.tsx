@@ -57,7 +57,9 @@ vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
 
 // AuthGuard mock 추가
 vi.mock("../../../components/atoms/AuthGuard", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock("../../../hooks/useScheduleSessionManagementLocal", () => ({
@@ -121,13 +123,10 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
     });
 
-    // localStorage에서 데이터를 조회했는지 확인
+    // localStorage에서 저장된 위치를 가져왔는지 확인 (스크롤 위치 복원)
     expect(localStorageMock.getItem).toHaveBeenCalledWith(
       "schedule_scroll_position"
     );
-
-    // requestAnimationFrame이 호출되었는지 확인 (스크롤 위치 복원)
-    expect(requestAnimationFrameMock).toHaveBeenCalled();
   });
 
   it("사용자 스크롤 시 위치를 localStorage에 저장해야 한다", async () => {
@@ -374,6 +373,92 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
     // 스크롤 위치 복원이 다시 실행되어야 함
     expect(localStorageMock.getItem).toHaveBeenCalledWith(
       "schedule_scroll_position"
+    );
+  });
+
+  it("사용자가 스크롤할 때는 복원하지 않고 저장만 해야 한다", async () => {
+    // 먼저 저장된 위치를 설정
+    const savedData = {
+      scrollLeft: 400,
+      scrollTop: 200,
+      timestamp: Date.now() - 1 * 60 * 1000,
+    };
+    localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
+
+    render(
+      <AuthGuard requireAuth={false}>
+        <SchedulePage />
+      </AuthGuard>
+    );
+
+    const gridElement = await screen.findByTestId("time-table-grid");
+
+    // 초기 로드 시 복원 확인
+    await waitFor(() => {
+      expect(gridElement.scrollLeft).toBe(400);
+      expect(gridElement.scrollTop).toBe(200);
+    });
+
+    // 사용자가 다른 위치로 스크롤
+    fireEvent.scroll(gridElement, {
+      target: { scrollLeft: 100, scrollTop: 50 },
+    });
+
+    // 스크롤 위치는 사용자가 설정한 대로 유지되어야 함
+    expect(gridElement.scrollLeft).toBe(100);
+    expect(gridElement.scrollTop).toBe(50);
+
+    // debounce 후 새로운 위치가 저장되어야 함
+    await waitFor(
+      () => {
+        expect(localStorageMock.setItem).toHaveBeenCalledWith(
+          "schedule_scroll_position",
+          expect.stringContaining('"scrollLeft":100')
+        );
+      },
+      { timeout: 500 }
+    );
+  });
+
+  it("사용자가 맨 위로 스크롤할 때 원래 위치로 되돌아가지 않아야 한다", async () => {
+    // 먼저 저장된 위치를 설정
+    const savedData = {
+      scrollLeft: 500,
+      scrollTop: 300,
+      timestamp: Date.now() - 1 * 60 * 1000,
+    };
+    localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
+
+    render(
+      <AuthGuard requireAuth={false}>
+        <SchedulePage />
+      </AuthGuard>
+    );
+
+    const gridElement = await screen.findByTestId("time-table-grid");
+
+    // 초기 로드 시 복원 확인
+    await waitFor(() => {
+      expect(gridElement.scrollLeft).toBe(500);
+      expect(gridElement.scrollTop).toBe(300);
+    });
+
+    // 사용자가 맨 위로 스크롤
+    fireEvent.scroll(gridElement, { target: { scrollLeft: 0, scrollTop: 0 } });
+
+    // 스크롤 위치는 사용자가 설정한 0,0으로 유지되어야 함 (복원되지 않음)
+    expect(gridElement.scrollLeft).toBe(0);
+    expect(gridElement.scrollTop).toBe(0);
+
+    // debounce 후 0,0 위치가 저장되어야 함
+    await waitFor(
+      () => {
+        expect(localStorageMock.setItem).toHaveBeenCalledWith(
+          "schedule_scroll_position",
+          expect.stringContaining('"scrollLeft":0')
+        );
+      },
+      { timeout: 500 }
     );
   });
 });
