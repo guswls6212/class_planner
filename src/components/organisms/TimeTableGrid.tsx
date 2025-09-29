@@ -78,6 +78,14 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const gridRef = useRef<HTMLDivElement>(null);
     const scrollbarThumbRef = useRef<HTMLDivElement>(null);
 
+    // 🆕 스크롤 위치 보존을 위한 ref
+    const scrollPositionRef = useRef<{ scrollLeft: number; scrollTop: number }>(
+      {
+        scrollLeft: 0,
+        scrollTop: 0,
+      }
+    );
+
     // 🆕 가상 스크롤바 업데이트 함수
     const updateScrollbar = useCallback(() => {
       const element = gridRef.current;
@@ -86,6 +94,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       const containerWidth = element.clientWidth;
       const contentWidth = element.scrollWidth;
       const scrollLeft = element.scrollLeft;
+
+      // 🆕 스크롤 위치 저장
+      scrollPositionRef.current = {
+        scrollLeft: element.scrollLeft,
+        scrollTop: element.scrollTop,
+      };
 
       if (contentWidth <= containerWidth) {
         setScrollbarState({
@@ -165,21 +179,112 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       element.scrollLeft = newScrollLeft;
     }, []);
 
-    // 🆕 스크롤 이벤트 리스너
+    // 🆕 초기 스크롤바 설정
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
-
-      element.addEventListener("scroll", updateScrollbar);
 
       // 초기 설정
       const timer = setTimeout(updateScrollbar, 100);
 
       return () => {
         clearTimeout(timer);
-        element.removeEventListener("scroll", updateScrollbar);
       };
     }, [updateScrollbar]);
+
+    // 🆕 localStorage에서 스크롤 위치 저장/복원
+    const saveScrollPosition = useCallback(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      const scrollData = {
+        scrollLeft: element.scrollLeft,
+        scrollTop: element.scrollTop,
+        timestamp: Date.now(),
+      };
+
+      try {
+        localStorage.setItem(
+          "schedule_scroll_position",
+          JSON.stringify(scrollData)
+        );
+      } catch (error) {
+        // localStorage 에러는 무시
+        // console.warn('스크롤 위치 저장 실패:', error);
+      }
+    }, []);
+
+    // 🆕 저장된 스크롤 위치를 가져오는 함수 (동기적)
+    const getSavedScrollPosition = useCallback(() => {
+      try {
+        const savedData = localStorage.getItem("schedule_scroll_position");
+        if (savedData) {
+          const { scrollLeft, scrollTop, timestamp } = JSON.parse(savedData);
+
+          // 5분 이내의 데이터만 사용
+          if (Date.now() - timestamp < 5 * 60 * 1000) {
+            return { scrollLeft, scrollTop };
+          }
+        }
+      } catch (error) {
+        // localStorage 에러는 무시
+      }
+      return null;
+    }, []);
+
+    const restoreScrollPosition = useCallback(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      const savedPosition = getSavedScrollPosition();
+      if (savedPosition) {
+        element.scrollLeft = savedPosition.scrollLeft;
+        element.scrollTop = savedPosition.scrollTop;
+      }
+    }, [getSavedScrollPosition]);
+
+    // 🆕 추가 보장을 위한 스크롤 위치 복원 (ref에서 처리되지 않은 경우를 대비)
+    useEffect(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      // ref에서 즉시 설정이 실패한 경우를 대비한 백업 복원
+      const timer = setTimeout(() => {
+        const savedPosition = getSavedScrollPosition();
+        if (
+          savedPosition &&
+          element.scrollLeft === 0 &&
+          element.scrollTop === 0
+        ) {
+          element.scrollLeft = savedPosition.scrollLeft;
+          element.scrollTop = savedPosition.scrollTop;
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }, [getSavedScrollPosition]);
+
+    // 🆕 스크롤 위치 저장 (debounce 적용)
+    useEffect(() => {
+      const element = gridRef.current;
+      if (!element) return;
+
+      let saveTimer: NodeJS.Timeout;
+      const handleScrollWithSave = () => {
+        updateScrollbar();
+
+        // 스크롤 위치 저장을 debounce
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveScrollPosition, 300);
+      };
+
+      element.addEventListener("scroll", handleScrollWithSave);
+
+      return () => {
+        clearTimeout(saveTimer);
+        element.removeEventListener("scroll", handleScrollWithSave);
+      };
+    }, [updateScrollbar, saveScrollPosition]);
 
     // 🆕 전역 마우스 이벤트 리스너
     useEffect(() => {
@@ -305,7 +410,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetTime: null,
         targetYPosition: null,
       });
-    }, []);
+
+      // 🆕 드래그 종료 후 스크롤 위치 복원
+      setTimeout(() => {
+        restoreScrollPosition();
+      }, 100); // 그리드 리렌더링 완료 후 복원
+    }, [restoreScrollPosition]);
 
     return (
       <div className="time-table-container">
@@ -319,6 +429,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               }
             }
             gridRef.current = node;
+
+            // 🆕 DOM이 마운트되자마자 저장된 스크롤 위치 즉시 설정 (깜빡임 방지)
+            if (node) {
+              const savedPosition = getSavedScrollPosition();
+              if (savedPosition) {
+                // requestAnimationFrame을 사용하여 DOM 렌더링 완료 후 실행
+                requestAnimationFrame(() => {
+                  node.scrollLeft = savedPosition.scrollLeft;
+                  node.scrollTop = savedPosition.scrollTop;
+                });
+              }
+            }
           }}
           className={`time-table-grid ${className}`}
           data-testid="time-table-grid"
