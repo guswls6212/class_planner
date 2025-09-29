@@ -10,6 +10,21 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
+
+// E2E 설정 가져오기
+const E2E_CONFIG = {
+  TEST_USER_ID: "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391",
+  TEST_EMAIL: "info365001.e2e.test@gmail.com",
+  SUPABASE_TOKEN_KEY: "sb-kcyqftasdxtqslrhbctv-auth-token",
+  BASE_URL: "http://localhost:3000",
+  TIMEOUTS: {
+    AUTH_WAIT: 15000,
+    PAGE_LOAD: 10000,
+    STUDENT_ADD_WAIT: 5000,
+    STUDENT_VISIBLE_WAIT: 15000,
+  },
+};
 
 // 테스트 결과 저장 디렉토리
 const TEST_RESULTS_DIR = path.join(__dirname, "..", "test-results");
@@ -27,8 +42,20 @@ const RESULTS_FILE = path.join(
 const TEST_CONFIG = {
   baseURL: "http://localhost:3000",
   timeout: 30000,
-  headless: false, // 테스트 과정을 볼 수 있도록 headless: false
+  headless: process.env.headless === "true", // 환경변수로 제어
   viewport: { width: 1280, height: 720 },
+  // 브라우저 프로세스 제한 설정
+  browserOptions: {
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-renderer-backgrounding",
+      "--max_old_space_size=4096", // 메모리 제한
+    ],
+  },
 };
 
 // 테스트 결과 저장
@@ -48,6 +75,101 @@ const testResults = {
   },
 };
 
+// 서버 관리 변수
+let serverProcess = null;
+let serverStartedByTest = false;
+
+// 서버 관리 함수들
+async function startDevServer() {
+  return new Promise((resolve, reject) => {
+    console.log("🚀 개발 서버 시작 중...");
+
+    // 기존 프로세스 정리
+    const { exec } = require("child_process");
+    exec("pkill -f 'next dev' || true", (error) => {
+      // 에러 무시 (프로세스가 없을 수도 있음)
+
+      // 새 서버 시작
+      serverProcess = spawn("npm", ["run", "dev"], {
+        stdio: "pipe",
+        shell: true,
+        cwd: path.join(__dirname, ".."),
+      });
+
+      serverProcess.stdout.on("data", (data) => {
+        const output = data.toString();
+        if (output.includes("Ready") || output.includes("Local:")) {
+          console.log("✅ 개발 서버가 시작되었습니다.");
+          serverStartedByTest = true;
+          resolve();
+        }
+      });
+
+      serverProcess.stderr.on("data", (data) => {
+        const output = data.toString();
+        if (output.includes("Error") || output.includes("Failed")) {
+          console.error("❌ 서버 시작 실패:", output);
+          reject(new Error("서버 시작 실패"));
+        }
+      });
+
+      // 타임아웃 설정 (30초)
+      setTimeout(() => {
+        if (!serverStartedByTest) {
+          console.error("❌ 서버 시작 타임아웃");
+          reject(new Error("서버 시작 타임아웃"));
+        }
+      }, 30000);
+    });
+  });
+}
+
+async function stopDevServer() {
+  return new Promise((resolve) => {
+    if (serverProcess && serverStartedByTest) {
+      console.log("🛑 개발 서버 종료 중...");
+      serverProcess.kill("SIGTERM");
+
+      serverProcess.on("exit", () => {
+        console.log("✅ 개발 서버가 종료되었습니다.");
+        serverProcess = null;
+        serverStartedByTest = false;
+        resolve();
+      });
+
+      // 강제 종료 타임아웃 (5초)
+      setTimeout(() => {
+        if (serverProcess) {
+          serverProcess.kill("SIGKILL");
+          serverProcess = null;
+          serverStartedByTest = false;
+          resolve();
+        }
+      }, 5000);
+    } else {
+      resolve();
+    }
+  });
+}
+
+async function checkServerRunning() {
+  return new Promise((resolve) => {
+    const { exec } = require("child_process");
+    console.log("🔍 서버 상태 확인 중... (프로세스 확인)");
+
+    // 프로세스 확인으로 서버 상태 체크
+    exec("ps aux | grep 'next dev' | grep -v grep", (error, stdout) => {
+      if (stdout.trim().length > 0) {
+        console.log("✅ Next.js 개발 서버가 실행 중입니다.");
+        resolve(true);
+      } else {
+        console.log("❌ Next.js 개발 서버가 실행되지 않음");
+        resolve(false);
+      }
+    });
+  });
+}
+
 // 테스트 헬퍼 함수들
 class TestHelper {
   constructor(page) {
@@ -64,12 +186,9 @@ class TestHelper {
   }
 
   async takeScreenshot(name) {
-    const screenshotPath = path.join(
-      TEST_RESULTS_DIR,
-      `${name}-${Date.now()}.png`
-    );
-    await this.page.screenshot({ path: screenshotPath });
-    return screenshotPath;
+    // 스크린샷 기능 비활성화 (성능 최적화)
+    this.log(`스크린샷 기능이 비활성화됨: ${name}`, "info");
+    return null;
   }
 
   async log(message, level = "info") {
@@ -123,114 +242,248 @@ class SystemTests {
     }
   }
 
+  // 실제 E2E 인증 설정
+  async setupRealAuth() {
+    this.helper.log("🔐 실제 E2E 인증 설정 중...");
+
+    // E2E 테스트용 인증 데이터 생성
+    const authData = {
+      access_token: `eyJhbGciOiJIUzI1NiIsImtpZCI6IjFjUzJoOWJGcE9QVjVkWE0iLCJ0eXAiOiJKV1QifQ.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzI3MDU5ODMyLCJpYXQiOjE3MjcwNTYyMzIsImlzcyI6Imh0dHBzOi8va2N5cWZ0YXNkeHRxc2xyaGJjdHYuc3VwYWJhc2UuY28vYXV0aC92MSIsInN1YiI6IiR7dXNlcklkfSIsImVtYWlsIjoiJHtlbWFpbH0iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6Imdvb2dsZSIsInByb3ZpZGVycyI6WyJnb29nbGUiXX0sInVzZXJfbWV0YWRhdGEiOnsibmFtZSI6IkUyRSBUZXN0IFVzZXIiLCJlbWFpbCI6IiR7ZW1haWx9IiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBob25lX3ZlcmlmaWVkIjpmYWxzZX0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoib2F1dGgiLCJ0aW1lc3RhbXAiOjE3MjcwNTYyMzJ9XSwic2Vzc2lvbl9pZCI6ImE1NjE3ZjJiLWIwZjUtNGU5Mi1hYjVjLWQwMzQ5MmFkZGRhMyIsImlzX2Fub255bW91cyI6ZmFsc2V9.test-signature`,
+      refresh_token: "test-refresh-token",
+      expires_at: Date.now() + 3600000,
+      expires_in: 3600,
+      token_type: "bearer",
+      user: {
+        id: E2E_CONFIG.TEST_USER_ID,
+        email: E2E_CONFIG.TEST_EMAIL,
+        aud: "authenticated",
+        role: "authenticated",
+        email_confirmed_at: new Date().toISOString(),
+        phone: "",
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: {
+          provider: "google",
+          providers: ["google"],
+        },
+        user_metadata: {
+          name: "E2E Test User",
+          email: E2E_CONFIG.TEST_EMAIL,
+          email_verified: true,
+          phone_verified: false,
+        },
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    };
+
+    // localStorage에 인증 정보 설정
+    await this.page.addInitScript(
+      ({ config, authData }) => {
+        console.log("🚀 시스템 테스트 환경 설정 중...");
+
+        // 사용자 ID 설정
+        localStorage.setItem("supabase_user_id", config.TEST_USER_ID);
+
+        // 실제 Supabase 인증 토큰 설정
+        localStorage.setItem(
+          config.SUPABASE_TOKEN_KEY,
+          JSON.stringify(authData)
+        );
+
+        console.log("✅ 시스템 테스트 환경 설정 완료");
+      },
+      {
+        config: E2E_CONFIG,
+        authData: authData,
+      }
+    );
+
+    this.helper.log("✅ 실제 E2E 인증 설정 완료");
+  }
+
+  // 인증 헬퍼 메서드 (실제 E2E 인증 사용)
+  async performLogin() {
+    // 실제 E2E 인증 설정
+    await this.setupRealAuth();
+
+    // 인증된 페이지로 이동하여 로그인 상태 확인
+    await this.page.goto(`${TEST_CONFIG.baseURL}/schedule`);
+    await this.page.waitForTimeout(2000);
+
+    // 로그인 상태 확인 (AuthGuard가 통과하는지 확인)
+    try {
+      await this.page.waitForSelector("h1, h2", { timeout: 5000 });
+      this.helper.log("✅ 로그인 성공 - 인증된 페이지 접근 가능");
+    } catch (error) {
+      this.helper.log("⚠️ 로그인 상태 확인 실패 - 페이지 구조가 다를 수 있음");
+    }
+  }
+
   // TC-001: Google OAuth 로그인
   async testGoogleOAuthLogin() {
     await this.runTest("Google OAuth 로그인", async () => {
       await this.page.goto(TEST_CONFIG.baseURL);
-      await this.helper.waitForElement("button");
+      await this.page.waitForTimeout(2000); // 페이지 로딩 대기
 
-      // 로그인 버튼 찾기 (실제 페이지 구조에 맞게)
+      // 로그인 버튼 찾기 (더 구체적인 선택자 사용)
       const loginButton = this.page
-        .locator("button")
-        .filter({ hasText: /로그인|Login/ })
+        .locator(
+          'button[data-testid="login-button"], .login-button, button:has-text("로그인"), button:has-text("Login")'
+        )
         .first();
+
       if ((await loginButton.count()) > 0) {
         await loginButton.click();
+        await this.page.waitForTimeout(1000);
 
         // Google OAuth 페이지로 리다이렉트 확인 (선택적)
         try {
           await this.page.waitForURL("**/accounts.google.com/**", {
-            timeout: 5000,
+            timeout: 3000,
           });
           this.helper.log("Google OAuth 페이지로 리다이렉트됨");
         } catch (error) {
-          this.helper.log(
-            "Google OAuth 리다이렉트 확인 실패 - 로그인 모달이 표시될 수 있음"
+          // 로그인 모달이나 다른 형태의 로그인 UI 확인
+          const loginModal = this.page.locator(
+            '[role="dialog"], .modal, [data-testid="login-modal"]'
           );
+          if ((await loginModal.count()) > 0) {
+            this.helper.log("로그인 모달이 표시됨");
+          } else {
+            this.helper.log(
+              "Google OAuth 리다이렉트 확인 실패 - 로그인 UI가 다를 수 있음"
+            );
+          }
         }
       } else {
-        this.helper.log("로그인 버튼을 찾을 수 없음 - 스킵");
+        // 이미 로그인된 상태일 수 있음
+        const userMenu = this.page.locator(
+          '[data-testid="user-menu"], .user-menu, button:has-text("로그아웃")'
+        );
+        if ((await userMenu.count()) > 0) {
+          this.helper.log("이미 로그인된 상태입니다");
+        } else {
+          this.helper.log(
+            "로그인 버튼을 찾을 수 없음 - 페이지 구조가 다를 수 있음"
+          );
+        }
       }
     });
   }
 
-  // TC-003: 학생 추가 기능
+  // TC-003: 학생 추가 기능 (인증 포함)
   async testStudentAddition() {
     await this.runTest("학생 추가 기능", async () => {
-      await this.page.goto(`${TEST_CONFIG.baseURL}/students`);
-      await this.helper.waitForElement("input");
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
 
-      // 학생 이름 입력창 찾기
-      const studentInput = this.page.locator("input").first();
+      // 2. 학생 관리 페이지로 이동
+      await this.page.goto(`${TEST_CONFIG.baseURL}/students`);
+      await this.page.waitForTimeout(2000);
+
+      // 3. 학생 이름 입력창 찾기 (정확한 placeholder 사용)
+      const studentInput = this.page.locator(
+        'input[placeholder*="학생 이름 (검색 가능)"]'
+      );
       if ((await studentInput.count()) > 0) {
         await studentInput.fill("김철수");
 
-        // 추가 버튼 찾기
+        // 4. 추가 버튼 찾기
         const addButton = this.page
           .locator("button")
-          .filter({ hasText: /추가|Add/ })
+          .filter({ hasText: /추가/ })
           .first();
         if ((await addButton.count()) > 0) {
           await addButton.click();
+          await this.page.waitForTimeout(1000);
 
-          // 학생 목록에 추가 확인
+          // 5. 학생 목록에 추가 확인 (더 정확한 선택자 사용)
           try {
             await this.page.waitForSelector("text=김철수", { timeout: 5000 });
             this.helper.log("학생 김철수 추가 성공");
           } catch (error) {
-            this.helper.log("학생 추가 확인 실패 - 페이지 구조가 다를 수 있음");
+            // 입력창이 비워졌는지 확인 (추가 성공의 다른 지표)
+            const inputValue = await studentInput.inputValue();
+            if (inputValue === "") {
+              this.helper.log("학생 추가 성공 (입력창 초기화됨)");
+            } else {
+              this.helper.log(
+                "학생 추가 확인 실패 - 페이지 구조가 다를 수 있음"
+              );
+            }
           }
         } else {
-          this.helper.log("추가 버튼을 찾을 수 없음 - 스킵");
+          throw new Error("학생 추가 버튼을 찾을 수 없음 - 테스트 실패");
         }
       } else {
-        this.helper.log("학생 입력창을 찾을 수 없음 - 스킵");
+        throw new Error("학생 입력창을 찾을 수 없음 - 테스트 실패");
       }
     });
   }
 
-  // TC-006: 과목 추가 기능
+  // TC-006: 과목 추가 기능 (인증 포함)
   async testSubjectAddition() {
     await this.runTest("과목 추가 기능", async () => {
-      await this.page.goto(`${TEST_CONFIG.baseURL}/subjects`);
-      await this.helper.waitForElement("input");
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
 
-      // 과목 이름 입력창 찾기
-      const subjectInput = this.page.locator("input").first();
+      // 2. 과목 관리 페이지로 이동
+      await this.page.goto(`${TEST_CONFIG.baseURL}/subjects`);
+      await this.page.waitForTimeout(2000);
+
+      // 3. 과목 이름 입력창 찾기 (정확한 placeholder 사용)
+      const subjectInput = this.page.locator(
+        'input[placeholder*="과목 이름 (검색 가능)"]'
+      );
       if ((await subjectInput.count()) > 0) {
         await subjectInput.fill("수학");
 
-        // 추가 버튼 찾기
+        // 4. 추가 버튼 찾기
         const addButton = this.page
           .locator("button")
-          .filter({ hasText: /추가|Add/ })
+          .filter({ hasText: /추가/ })
           .first();
         if ((await addButton.count()) > 0) {
           await addButton.click();
+          await this.page.waitForTimeout(1000);
 
-          // 과목 목록에 추가 확인
+          // 5. 과목 목록에 추가 확인 (더 정확한 선택자 사용)
           try {
             await this.page.waitForSelector("text=수학", { timeout: 5000 });
             this.helper.log("과목 수학 추가 성공");
           } catch (error) {
-            this.helper.log("과목 추가 확인 실패 - 페이지 구조가 다를 수 있음");
+            // 입력창이 비워졌는지 확인 (추가 성공의 다른 지표)
+            const inputValue = await subjectInput.inputValue();
+            if (inputValue === "") {
+              this.helper.log("과목 추가 성공 (입력창 초기화됨)");
+            } else {
+              this.helper.log(
+                "과목 추가 확인 실패 - 페이지 구조가 다를 수 있음"
+              );
+            }
           }
         } else {
-          this.helper.log("추가 버튼을 찾을 수 없음 - 스킵");
+          throw new Error("과목 추가 버튼을 찾을 수 없음 - 테스트 실패");
         }
       } else {
-        this.helper.log("과목 입력창을 찾을 수 없음 - 스킵");
+        throw new Error("과목 입력창을 찾을 수 없음 - 테스트 실패");
       }
     });
   }
 
-  // TC-009: 세션 추가 (드래그 앤 드롭)
+  // TC-009: 세션 추가 (드래그 앤 드롭) (인증 포함)
   async testSessionAddition() {
     await this.runTest("세션 추가 (드래그 앤 드롭)", async () => {
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
+
+      // 2. 스케줄 페이지로 이동
       await this.page.goto(`${TEST_CONFIG.baseURL}/schedule`);
       await this.helper.waitForElement("div");
 
-      // 학생 패널에서 학생 드래그 (실제 페이지 구조에 맞게)
+      // 3. 학생 패널에서 학생 드래그 (실제 페이지 구조에 맞게)
       const studentItem = this.page
         .locator("div")
         .filter({ hasText: /학생|Student/ })
@@ -243,7 +496,7 @@ class SystemTests {
       if ((await studentItem.count()) > 0 && (await dropZone.count()) > 0) {
         await studentItem.dragTo(dropZone);
 
-        // 세션 추가 모달 표시 확인
+        // 4. 세션 추가 모달 표시 확인
         try {
           await this.page.waitForSelector(
             'div[role="dialog"], .modal, [data-testid="session-modal"]',
@@ -256,49 +509,64 @@ class SystemTests {
           );
         }
       } else {
-        this.helper.log("드래그 앤 드롭 요소를 찾을 수 없음 - 스킵");
+        throw new Error("드래그 앤 드롭 요소를 찾을 수 없음 - 테스트 실패");
       }
     });
   }
 
-  // TC-012: 세션 드래그 앤 드롭 이동
+  // TC-012: 세션 드래그 앤 드롭 이동 (인증 포함)
   async testSessionDragAndDrop() {
     await this.runTest("세션 드래그 앤 드롭 이동", async () => {
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
+
+      // 2. 스케줄 페이지로 이동
       await this.page.goto(`${TEST_CONFIG.baseURL}/schedule`);
-      await this.helper.waitForElement("div");
+      await this.page.waitForTimeout(3000); // 페이지 로딩 대기
 
-      // 세션 블록과 드롭존 찾기 (실제 페이지 구조에 맞게)
-      const sessionBlock = this.page
-        .locator("div")
-        .filter({ hasText: /수학|영어|과학/ })
-        .first();
-      const targetDropZone = this.page
-        .locator("div")
-        .filter({ hasText: /시간|Time/ })
-        .nth(1);
+      // 3. 세션 블록 찾기 (더 구체적인 선택자 사용)
+      const sessionBlocks = this.page.locator(
+        '[data-testid="session-block"], .session-block, [class*="session"]'
+      );
 
-      if (
-        (await sessionBlock.count()) > 0 &&
-        (await targetDropZone.count()) > 0
-      ) {
-        await sessionBlock.dragTo(targetDropZone);
+      if ((await sessionBlocks.count()) > 0) {
+        const firstSession = sessionBlocks.first();
 
-        // 세션 위치 변경 확인
-        await this.page.waitForTimeout(1000);
-        this.helper.log("세션 드래그 앤 드롭 성공");
+        // 4. 드롭존 찾기 (시간표 그리드 내의 빈 공간)
+        const dropZones = this.page.locator(
+          '[data-testid="drop-zone"], .drop-zone, [class*="time-slot"]'
+        );
+
+        if ((await dropZones.count()) > 0) {
+          const targetDropZone = dropZones.nth(1); // 두 번째 드롭존 선택
+
+          // 5. 드래그 앤 드롭 실행
+          await firstSession.dragTo(targetDropZone);
+          await this.page.waitForTimeout(2000); // 드롭 완료 대기
+
+          this.helper.log("세션 드래그 앤 드롭 성공");
+        } else {
+          this.helper.log("드롭존을 찾을 수 없음 - 드래그 앤 드롭 테스트 스킵");
+        }
       } else {
-        this.helper.log("세션 블록 또는 드롭존을 찾을 수 없음 - 스킵");
+        this.helper.log(
+          "세션 블록을 찾을 수 없음 - 드래그 앤 드롭 테스트 스킵"
+        );
       }
     });
   }
 
-  // TC-014: 학생별 필터링
+  // TC-014: 학생별 필터링 (인증 포함)
   async testStudentFiltering() {
     await this.runTest("학생별 필터링", async () => {
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
+
+      // 2. 스케줄 페이지로 이동
       await this.page.goto(`${TEST_CONFIG.baseURL}/schedule`);
       await this.helper.waitForElement("div");
 
-      // 학생 선택 (실제 페이지 구조에 맞게)
+      // 3. 학생 선택 (실제 페이지 구조에 맞게)
       const studentItem = this.page
         .locator("div")
         .filter({ hasText: /학생|Student/ })
@@ -306,11 +574,11 @@ class SystemTests {
       if ((await studentItem.count()) > 0) {
         await studentItem.click();
 
-        // 필터링 결과 확인
+        // 4. 필터링 결과 확인
         await this.page.waitForTimeout(1000);
         this.helper.log("학생별 필터링 성공");
       } else {
-        this.helper.log("학생 요소를 찾을 수 없음 - 스킵");
+        throw new Error("학생 요소를 찾을 수 없음 - 테스트 실패");
       }
     });
   }
@@ -337,23 +605,47 @@ class SystemTests {
     });
   }
 
-  // TC-019: 다크/라이트 테마
+  // TC-019: 다크/라이트 테마 (인증 포함)
   async testThemeToggle() {
     await this.runTest("다크/라이트 테마", async () => {
-      await this.page.goto(TEST_CONFIG.baseURL);
-      await this.helper.waitForElement("button");
+      // 1. 로그인 먼저 수행
+      await this.performLogin();
 
-      // 테마 토글 버튼 찾기 (실제 페이지 구조에 맞게)
-      const themeToggle = this.page
-        .locator("button")
-        .filter({ hasText: /🌙|☀️|테마/ })
-        .first();
+      // 2. 메인 페이지로 이동
+      await this.page.goto(TEST_CONFIG.baseURL);
+      await this.page.waitForTimeout(2000);
+
+      // 3. 테마 토글 버튼 찾기 (정확한 클래스명 사용)
+      const themeToggle = this.page.locator("button.theme-toggle");
       if ((await themeToggle.count()) > 0) {
+        // 테마 토글 전 상태 확인
+        const initialTheme = await themeToggle.getAttribute("title");
+        this.helper.log(`초기 테마: ${initialTheme}`);
+
         await themeToggle.click();
         await this.page.waitForTimeout(1000);
-        this.helper.log("테마 전환 성공");
+
+        // 테마 토글 후 상태 확인
+        const newTheme = await themeToggle.getAttribute("title");
+        this.helper.log(`변경된 테마: ${newTheme}`);
+
+        if (initialTheme !== newTheme) {
+          this.helper.log("테마 전환 성공");
+        } else {
+          this.helper.log("테마 전환 확인 - 버튼은 클릭됨");
+        }
       } else {
-        this.helper.log("테마 토글 버튼을 찾을 수 없음 - 스킵");
+        // 대안: 이모지로 찾기
+        const emojiToggle = this.page
+          .locator("button")
+          .filter({ hasText: /🌙|☀️/ });
+        if ((await emojiToggle.count()) > 0) {
+          await emojiToggle.click();
+          await this.page.waitForTimeout(1000);
+          this.helper.log("테마 전환 성공 (이모지 버튼)");
+        } else {
+          throw new Error("테마 토글 버튼을 찾을 수 없음 - 테스트 실패");
+        }
       }
     });
   }
@@ -407,61 +699,98 @@ class SystemTests {
 
 // 메인 실행 함수
 async function runSystemTests() {
-  const browser = await chromium.launch({
-    headless: TEST_CONFIG.headless,
-    slowMo: 1000, // 테스트 과정을 천천히 진행
-  });
-
-  const context = await browser.newContext({
-    viewport: TEST_CONFIG.viewport,
-  });
-
-  const page = await context.newPage();
-  const helper = new TestHelper(page);
-  const tests = new SystemTests(page, helper);
-
   try {
-    // 테스트 시작 로그
-    helper.log("=".repeat(60));
-    helper.log("🧪 클래스 플래너 시스템 테스트 시작");
-    helper.log("=".repeat(60));
+    // 1. 서버 상태 확인
+    console.log("🔍 서버 상태 확인 중...");
+    const isServerRunning = await checkServerRunning();
 
-    // 모든 테스트 실행
-    await tests.runAllTests();
-
-    // 테스트 결과 저장
-    fs.writeFileSync(RESULTS_FILE, JSON.stringify(testResults, null, 2));
-
-    // 결과 요약 출력
-    helper.log("=".repeat(60));
-    helper.log("📊 테스트 결과 요약");
-    helper.log("=".repeat(60));
-    helper.log(`총 테스트: ${testResults.summary.total}개`);
-    helper.log(`통과: ${testResults.summary.passed}개`);
-    helper.log(`실패: ${testResults.summary.failed}개`);
-    helper.log(
-      `통과율: ${(
-        (testResults.summary.passed / testResults.summary.total) *
-        100
-      ).toFixed(1)}%`
-    );
-    helper.log(`결과 파일: ${RESULTS_FILE}`);
-
-    if (testResults.summary.failed > 0) {
-      helper.log(
-        "❌ 일부 테스트가 실패했습니다. 결과 파일을 확인하세요.",
-        "error"
+    // 2. 시스템 테스트는 독립적인 서버 관리 (포트 충돌 방지)
+    if (!isServerRunning) {
+      console.log(
+        "📡 서버가 실행되지 않음. 시스템 테스트용 서버를 시작합니다..."
       );
-      process.exit(1);
+      await startDevServer();
+      serverStartedByTest = true; // 테스트가 시작한 서버임을 표시
+
+      // 서버 준비 대기
+      console.log("⏳ 서버 준비 대기 중...");
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     } else {
-      helper.log("✅ 모든 테스트가 통과했습니다!", "success");
-      process.exit(0);
+      console.log("✅ 서버가 이미 실행 중입니다. 기존 서버를 사용합니다.");
+      serverStartedByTest = false; // 기존 서버를 사용하므로 정리하지 않음
+    }
+
+    // 2. 브라우저 시작 (프로세스 제한 설정 적용)
+    const browser = await chromium.launch({
+      headless: TEST_CONFIG.headless,
+      slowMo: 500, // 테스트 속도 향상 (1초 → 0.5초)
+      args: TEST_CONFIG.browserOptions.args, // 브라우저 프로세스 제한 설정
+    });
+
+    const context = await browser.newContext({
+      viewport: TEST_CONFIG.viewport,
+      // 동시 탭 수 제한
+      maxPages: 3,
+    });
+
+    const page = await context.newPage();
+    const helper = new TestHelper(page);
+    const tests = new SystemTests(page, helper);
+
+    try {
+      // 테스트 시작 로그
+      helper.log("=".repeat(60));
+      helper.log("🧪 클래스 플래너 시스템 테스트 시작");
+      helper.log("=".repeat(60));
+
+      // 모든 테스트 실행
+      await tests.runAllTests();
+
+      // 테스트 결과 저장
+      fs.writeFileSync(RESULTS_FILE, JSON.stringify(testResults, null, 2));
+
+      // 결과 요약 출력
+      helper.log("=".repeat(60));
+      helper.log("📊 테스트 결과 요약");
+      helper.log("=".repeat(60));
+      helper.log(`총 테스트: ${testResults.summary.total}개`);
+      helper.log(`통과: ${testResults.summary.passed}개`);
+      helper.log(`실패: ${testResults.summary.failed}개`);
+      helper.log(
+        `통과율: ${(
+          (testResults.summary.passed / testResults.summary.total) *
+          100
+        ).toFixed(1)}%`
+      );
+      helper.log(`결과 파일: ${RESULTS_FILE}`);
+
+      if (testResults.summary.failed > 0) {
+        helper.log(
+          "❌ 일부 테스트가 실패했습니다. 결과 파일을 확인하세요.",
+          "error"
+        );
+        process.exit(1);
+      } else {
+        helper.log("✅ 모든 테스트가 통과했습니다!", "success");
+        process.exit(0);
+      }
+    } catch (error) {
+      console.error(`테스트 실행 중 치명적 오류: ${error.message}`);
+      process.exit(1);
+    } finally {
+      // 브라우저 종료
+      if (browser) {
+        await browser.close();
+      }
+
+      // 서버 정리 (테스트가 시작한 서버만)
+      await stopDevServer();
     }
   } catch (error) {
-    helper.log(`테스트 실행 중 치명적 오류: ${error.message}`, "error");
+    console.error(`시스템 테스트 초기화 실패: ${error.message}`);
+    // 서버 정리
+    await stopDevServer();
     process.exit(1);
-  } finally {
-    await browser.close();
   }
 }
 

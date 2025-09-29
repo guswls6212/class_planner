@@ -31,7 +31,14 @@ interface DropZoneProps {
   isDragging?: boolean; // 드래그 중인지 여부
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   // 🆕 드래그 프리뷰 정보
-  dragPreview?: { draggedSession: any } | null;
+  dragPreview?: {
+    draggedSession: {
+      id: string;
+      subjectName: string;
+      startsAt: string;
+      endsAt: string;
+    };
+  } | null;
 }
 
 export default function DropZone({
@@ -156,7 +163,9 @@ export default function DropZone({
     try {
       // 일부 브라우저에서 드래그 잔상이 남는 문제를 완화
       (document.activeElement as HTMLElement)?.blur?.();
-    } catch {}
+    } catch {
+      // 드래그 잔상 제거 실패는 무시
+    }
   };
 
   const handleClick = () => {

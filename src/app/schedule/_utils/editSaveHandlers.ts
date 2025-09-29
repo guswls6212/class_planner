@@ -48,7 +48,18 @@ export function buildEditOnSave(params: {
     endTime: string;
     room: string;
   };
-  updateSession: (sessionId: string, data: any) => Promise<void>;
+  updateSession: (
+    sessionId: string,
+    data: {
+      enrollmentIds: string[];
+      studentIds: string[];
+      subjectId: string;
+      weekday: number;
+      startTime: string;
+      endTime: string;
+      room: string;
+    }
+  ) => Promise<void>;
   validateAndToastEdit: (start: string, end: string) => boolean;
   setShowEditModal: (open: boolean) => void;
   setTempSubjectId: (id: string) => void;

@@ -429,10 +429,6 @@ function SchedulePageContent(): JSX.Element {
       // );
       // const maxYPosition = actualMaxYPosition + 1; // 실제 최대값 + 1
 
-      // console.log(
-      //   `📊 해당 요일의 최대 yPosition: ${actualMaxYPosition}, 충돌 해결 최대값: ${maxYPosition}`
-      // );
-
       // 초기 충돌 확인
       let hasCollisions = checkCollisionsAtYPosition(
         targetDaySessions,
