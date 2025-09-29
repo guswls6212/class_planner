@@ -243,28 +243,26 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       }
     }, [getSavedScrollPosition]);
 
-    // 🆕 추가 보장을 위한 스크롤 위치 복원 (ref에서 처리되지 않은 경우를 대비)
+    // 🆕 초기 로드 시에만 스크롤 위치 복원 (컴포넌트 마운트 시 한 번만)
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
 
-      // ref에서 즉시 설정이 실패한 경우를 대비한 백업 복원
-      const timer = setTimeout(() => {
-        const savedPosition = getSavedScrollPosition();
+      const savedPosition = getSavedScrollPosition();
+      if (savedPosition) {
+        // 초기 상태(0,0)일 때만 복원
         if (
-          savedPosition &&
           element.scrollLeft === 0 &&
-          element.scrollTop === 0
+          element.scrollTop === 0 &&
+          savedPosition.scrollLeft > 0
         ) {
           element.scrollLeft = savedPosition.scrollLeft;
           element.scrollTop = savedPosition.scrollTop;
         }
-      }, 100);
+      }
+    }, [getSavedScrollPosition]); // 의존성 배열에 getSavedScrollPosition만 포함
 
-      return () => clearTimeout(timer);
-    }, [getSavedScrollPosition]);
-
-    // 🆕 스크롤 위치 저장 (debounce 적용)
+    // 🆕 사용자 스크롤 시 위치 저장 (debounce 적용)
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
@@ -273,7 +271,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       const handleScrollWithSave = () => {
         updateScrollbar();
 
-        // 스크롤 위치 저장을 debounce
+        // 사용자 스크롤 시에만 위치 저장 (debounce 적용)
         clearTimeout(saveTimer);
         saveTimer = setTimeout(saveScrollPosition, 300);
       };
@@ -411,11 +409,19 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetYPosition: null,
       });
 
-      // 🆕 드래그 종료 후 스크롤 위치 복원
+      // 🆕 세션 드래그앤드롭 후에만 스크롤 위치 복원
       setTimeout(() => {
-        restoreScrollPosition();
+        const element = gridRef.current;
+        if (element) {
+          const savedPosition = getSavedScrollPosition();
+          if (savedPosition) {
+            // 드래그앤드롭 후에는 저장된 위치로 완전 복원
+            element.scrollLeft = savedPosition.scrollLeft;
+            element.scrollTop = savedPosition.scrollTop;
+          }
+        }
       }, 100); // 그리드 리렌더링 완료 후 복원
-    }, [restoreScrollPosition]);
+    }, [getSavedScrollPosition]);
 
     return (
       <div className="time-table-container">
@@ -428,19 +434,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 ref.current = node;
               }
             }
-            gridRef.current = node;
 
-            // 🆕 DOM이 마운트되자마자 저장된 스크롤 위치 즉시 설정 (깜빡임 방지)
-            if (node) {
-              const savedPosition = getSavedScrollPosition();
-              if (savedPosition) {
-                // requestAnimationFrame을 사용하여 DOM 렌더링 완료 후 실행
-                requestAnimationFrame(() => {
-                  node.scrollLeft = savedPosition.scrollLeft;
-                  node.scrollTop = savedPosition.scrollTop;
-                });
-              }
-            }
+            // 🆕 ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
+
+            gridRef.current = node;
           }}
           className={`time-table-grid ${className}`}
           data-testid="time-table-grid"
@@ -453,7 +450,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             borderRadius: "8px 8px 0 0", // 위쪽만 둥글게
             // 그리드 내부에서만 스크롤되도록 설정
             overflowY: "auto", // 세로 스크롤은 필요할 때만 표시
-            overflowX: "hidden", // 가상 스크롤바를 위해 숨김
+            overflowX: "auto", // 가로 스크롤 활성화
             position: "relative",
             isolation: "isolate",
             maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화

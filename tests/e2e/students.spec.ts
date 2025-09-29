@@ -13,13 +13,15 @@ test.describe("Students 페이지 E2E 테스트", () => {
     await expect(page.locator("h2")).toContainText("학생 목록");
 
     // 학생 입력 섹션 확인
-    await expect(page.locator('input[placeholder*="학생 이름"]')).toBeVisible();
+    await expect(
+      page.locator('input[placeholder*="학생 이름 (검색 가능)"]')
+    ).toBeVisible();
     await expect(page.locator('button:has-text("추가")')).toBeVisible();
   });
 
   test("새로운 학생을 추가할 수 있어야 한다", async ({ page }) => {
     // 학생 이름 입력
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
 
     // 추가 버튼 클릭
     await page.click('button:has-text("추가")');
@@ -28,17 +30,17 @@ test.describe("Students 페이지 E2E 테스트", () => {
     await expect(page.locator("text=김철수")).toBeVisible();
 
     // 입력창이 초기화되었는지 확인
-    await expect(page.locator('input[placeholder*="학생 이름"]')).toHaveValue(
-      ""
-    );
+    await expect(
+      page.locator('input[placeholder*="학생 이름 (검색 가능)"]')
+    ).toHaveValue("");
   });
 
   test("Enter 키로 학생을 추가할 수 있어야 한다", async ({ page }) => {
     // 학생 이름 입력
-    await page.fill('input[placeholder*="학생 이름"]', "김영희");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김영희");
 
     // Enter 키 누르기
-    await page.press('input[placeholder*="학생 이름"]', "Enter");
+    await page.press('input[placeholder*="학생 이름 (검색 가능)"]', "Enter");
 
     // 학생이 목록에 추가되었는지 확인
     await expect(page.locator("text=김영희")).toBeVisible();
@@ -48,11 +50,11 @@ test.describe("Students 페이지 E2E 테스트", () => {
     page,
   }) => {
     // 첫 번째 학생 추가
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
     await page.click('button:has-text("추가")');
 
     // 같은 이름으로 다시 추가 시도
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
     await page.click('button:has-text("추가")');
 
     // 에러 메시지 확인 (실제 구현에 따라 조정 필요)
@@ -75,7 +77,7 @@ test.describe("Students 페이지 E2E 테스트", () => {
 
   test("학생을 삭제할 수 있어야 한다", async ({ page }) => {
     // 학생 추가
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
     await page.click('button:has-text("추가")');
 
     // 삭제 버튼 클릭 (실제 구현에 따라 조정 필요)
@@ -90,13 +92,13 @@ test.describe("Students 페이지 E2E 테스트", () => {
 
   test("학생 검색 기능이 작동해야 한다", async ({ page }) => {
     // 여러 학생 추가
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
     await page.click('button:has-text("추가")');
 
-    await page.fill('input[placeholder*="학생 이름"]', "김영희");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김영희");
     await page.click('button:has-text("추가")');
 
-    await page.fill('input[placeholder*="학생 이름"]', "이민수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "이민수");
     await page.click('button:has-text("추가")');
 
     // 검색 입력 (실제 구현에 따라 조정 필요)
@@ -110,7 +112,7 @@ test.describe("Students 페이지 E2E 테스트", () => {
 
   test("학생 선택 기능이 작동해야 한다", async ({ page }) => {
     // 학생 추가
-    await page.fill('input[placeholder*="학생 이름"]', "김철수");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "김철수");
     await page.click('button:has-text("추가")');
 
     // 학생 카드 클릭하여 선택 (실제 구현에 따라 조정 필요)
