@@ -3,16 +3,31 @@ import { E2E_CONFIG } from "./tests/e2e/config/e2e-config";
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  fullyParallel: false, // 병렬 실행 비활성화로 안정성 향상
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // 단일 워커로 안정성 최대화
+  timeout: 60000, // E2E 테스트 타임아웃을 1분으로 더 단축
   reporter: [["html", { open: "never" }], ["list"]],
   use: {
     baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure", // 실패 시 비디오 녹화
+    actionTimeout: 15000, // 개별 액션 타임아웃 15초
+    navigationTimeout: 15000, // 네비게이션 타임아웃 15초
+    // 브라우저 안정성 설정
+    launchOptions: {
+      slowMo: 100, // 액션 간 100ms 지연
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-background-timer-throttling",
+        "--disable-backgrounding-occluded-windows",
+        "--disable-renderer-backgrounding",
+      ],
+    },
   },
 
   projects: [

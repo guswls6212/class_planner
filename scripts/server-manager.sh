@@ -138,7 +138,10 @@ setup_cleanup_trap() {
 # 메인 함수들
 case "${1:-}" in
     "start")
-        setup_cleanup_trap
+        # 4번째 파라미터가 "no-trap"이면 트랩 설정 안함
+        if [ "${4:-}" != "no-trap" ]; then
+            setup_cleanup_trap
+        fi
         start_dev_server "${2:-30}" "${3:-false}"
         ;;
     "stop")

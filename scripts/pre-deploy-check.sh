@@ -157,27 +157,42 @@ step "3단계: 실제 클라이언트 통합 테스트"
 run_step "실제 클라이언트 환경 테스트" "npm run test:real-client" true
 
 step "4단계: 시스템 레벨 테스트"
-info "개발 서버 기동 후 전체 시스템 테스트 실행..."
+info "기존 서버 사용하여 전체 시스템 테스트 실행..."
 
-# 서버 관리자 사용하여 서버 시작
-if ! ./scripts/server-manager.sh start 45 true; then
-    warning "개발 서버 기동 실패"
-    if [ "$DEPLOY_ENV" = "production" ]; then
-        error "프로덕션 배포에서는 시스템 테스트가 필수입니다."
-    fi
-    if auto_proceed "Y" 15; then
-        warning "서버 기동 실패를 무시하고 계속 진행합니다."
-        skip_system_test=true
+# 기존 서버 상태 확인 (프로세스 확인 방식)
+if ps aux | grep "next dev" | grep -v grep > /dev/null 2>&1; then
+    success "✅ Next.js 개발 서버가 이미 실행 중입니다. 기존 서버를 사용합니다."
+    server_started_by_pre_deploy=false
+else
+    warning "⚠️ Next.js 개발 서버가 실행되지 않음. 시스템 테스트용 서버를 시작합니다."
+    if ! ./scripts/server-manager.sh start 45 true; then
+        warning "개발 서버 기동 실패"
+        if [ "$DEPLOY_ENV" = "production" ]; then
+            error "프로덕션 배포에서는 시스템 테스트가 필수입니다."
+        fi
+        if auto_proceed "Y" 15; then
+            warning "서버 기동 실패를 무시하고 계속 진행합니다."
+            skip_system_test=true
+        else
+            error "서버 기동 실패로 인한 중단"
+        fi
     else
-        error "서버 기동 실패로 인한 중단"
+        server_started_by_pre_deploy=true
     fi
 fi
 
 if [ "$skip_system_test" != "true" ]; then
+    # 시스템 테스트는 독립적으로 서버를 관리 (포트 충돌 방지)
     run_step "시스템 테스트" "npm run test:system" false true "Y" true
     
-    # 서버 정리
-    ./scripts/server-manager.sh stop
+    # pre-deploy가 시작한 서버만 정리
+    if [ "$server_started_by_pre_deploy" = "true" ]; then
+        info "🧹 pre-deploy가 시작한 서버 정리 중..."
+        ./scripts/server-manager.sh stop
+        success "✅ 서버 정리 완료"
+    else
+        info "ℹ️ 기존 서버를 사용했으므로 종료하지 않습니다."
+    fi
 fi
 
 step "5단계: 성능 벤치마크 테스트"
