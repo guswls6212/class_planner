@@ -163,11 +163,41 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("PDF 다운로드 버튼이 작동해야 한다", async ({ page }) => {
     // Act
     const downloadPromise = page.waitForEvent("download");
-    await page.click('button:has-text("PDF 다운로드")');
+    await page.click('button:has-text("시간표 다운로드")');
     const download = await downloadPromise;
 
     // Assert
-    expect(download.suggestedFilename()).toContain("schedule");
+    expect(download.suggestedFilename()).toContain("시간표");
+  });
+
+  test("PDF 다운로드 시 모든 요일(월~일)이 포함되어야 한다", async ({
+    page,
+  }) => {
+    // Arrange - 콘솔 로그 수집
+    const consoleLogs: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "log") {
+        consoleLogs.push(msg.text());
+      }
+    });
+
+    // Act
+    const downloadPromise = page.waitForEvent("download");
+    await page.click('button:has-text("시간표 다운로드")');
+    await downloadPromise;
+
+    // Assert - 디버깅 정보에서 모든 요일이 찾아졌는지 확인
+    const debugInfoLog = consoleLogs.find((log) =>
+      log.includes("모든 요일 및 세션셀 포함 높이 계산")
+    );
+    expect(debugInfoLog).toBeDefined();
+
+    // foundWeekdays가 7개인지 확인 (월~일)
+    const foundWeekdaysMatch = debugInfoLog?.match(/foundWeekdays":(\d+)/);
+    if (foundWeekdaysMatch) {
+      const foundWeekdaysCount = parseInt(foundWeekdaysMatch[1], 10);
+      expect(foundWeekdaysCount).toBeGreaterThanOrEqual(7);
+    }
   });
 
   test("페이지 새로고침 후에도 수업 데이터가 유지되어야 한다", async ({
