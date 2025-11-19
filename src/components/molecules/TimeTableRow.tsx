@@ -38,14 +38,7 @@ interface TimeTableRowProps {
   onDragStart?: (session: Session) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   onDragEnd?: () => void;
-  dragPreview?: {
-    draggedSession: {
-      id: string;
-      subjectName: string;
-      startsAt: string;
-      endsAt: string;
-    };
-  } | null;
+  dragPreview?: DragPreviewState;
 }
 
 export const TimeTableRow: React.FC<TimeTableRowProps> = ({

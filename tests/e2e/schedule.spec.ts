@@ -223,4 +223,34 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
     await expect(page.locator('[data-testid="time-table-grid"]')).toBeVisible();
     await expect(page.locator("body")).toHaveClass(/dark/);
   });
+
+  test("드래그 중이 아닐 때 세션 블록의 opacity는 1.0이어야 한다", async ({
+    page,
+  }) => {
+    // Arrange - 세션이 있는 상태로 만들기
+    await page.goto("http://localhost:3000/students");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "opacity학생");
+    await page.click('button:has-text("추가")');
+
+    await page.goto("http://localhost:3000/subjects");
+    await page.fill('input[placeholder*="과목 이름"]', "opacity과목");
+    await page.click('button:has-text("추가")');
+
+    await page.goto("http://localhost:3000/schedule");
+
+    // 수업 추가
+    const studentElement = page.locator("text=opacity학생");
+    const timeSlot = page.locator('[data-testid="time-slot"]').first();
+    await studentElement.dragTo(timeSlot);
+
+    // Assert - 세션 블록의 opacity 확인
+    const sessionBlock = page.locator('[data-session-id]').first();
+    await expect(sessionBlock).toBeVisible();
+    
+    const opacity = await sessionBlock.evaluate((el) => {
+      return window.getComputedStyle(el).opacity;
+    });
+    
+    expect(parseFloat(opacity)).toBe(1.0);
+  });
 });

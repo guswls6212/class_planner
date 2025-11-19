@@ -514,18 +514,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
-                dragPreview={
-                  dragPreview.draggedSession
-                    ? {
-                        draggedSession: {
-                          id: dragPreview.draggedSession.id,
-                          subjectName: "과목",
-                          startsAt: dragPreview.draggedSession.startsAt,
-                          endsAt: dragPreview.draggedSession.endsAt,
-                        },
-                      }
-                    : null
-                }
+                dragPreview={dragPreview}
               />
             );
           })}

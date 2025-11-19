@@ -31,14 +31,7 @@ interface DropZoneProps {
   isDragging?: boolean; // 드래그 중인지 여부
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   // 🆕 드래그 프리뷰 정보
-  dragPreview?: {
-    draggedSession: {
-      id: string;
-      subjectName: string;
-      startsAt: string;
-      endsAt: string;
-    };
-  } | null;
+  dragPreview?: { draggedSession: any } | null;
 }
 
 export default function DropZone({
