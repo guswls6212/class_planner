@@ -7,15 +7,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import SubjectsPage from "../page";
 
 // Mock all dependencies
-vi.mock("../../../hooks/useSubjectManagement", () => ({
-  useSubjectManagement: vi.fn(() => ({
+vi.mock("../../../hooks/useSubjectManagementLocal", () => ({
+  useSubjectManagementLocal: vi.fn(() => ({
     subjects: [],
-    loading: false,
-    error: null,
+    errorMessage: "",
     addSubject: vi.fn(),
     updateSubject: vi.fn(),
     deleteSubject: vi.fn(),
+    getSubject: vi.fn(),
     refreshSubjects: vi.fn(),
+    clearError: vi.fn(),
     subjectCount: 0,
   })),
 }));
