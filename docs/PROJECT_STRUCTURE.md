@@ -82,12 +82,9 @@ class-planner/
 │   ├── detailed-unused-analysis.sh # 상세 미사용 파일 분석
 │   ├── find-unused-files.sh     # 미사용 파일 탐지 도구
 │   ├── find-unused-src-files.sh # src 폴더 미사용 파일 탐지
-│   ├── performance-monitor.js   # 성능 모니터링 도구
-│   ├── system-test.js          # 시스템 테스트 자동화
-│   ├── pre-commit-check.sh     # 커밋 전 검증 (1-3분)
-│   ├── pre-pr-check.sh         # PR 전 통합 검증 (5-15분)
-│   ├── pre-deploy-check.sh     # 배포 전 완전 검증 (15-30분)
-│   └── protection-check.sh     # 기존 기능 보호 검증
+│   ├── server-manager.sh       # 개발 서버 시작/정지 관리
+│   ├── setup-server.sh         # 서버 초기 설정
+│   └── system-test.js          # 시스템 테스트 자동화
 ├── migration/                # 데이터베이스 마이그레이션
 │   ├── migrations/           # SQL 마이그레이션 파일들
 │   ├── run-migration.sh      # 마이그레이션 실행 스크립트
@@ -241,27 +238,22 @@ class-planner/
 
 ### **3단계 검증 스크립트**
 
-| 스크립트              | 용도                | 소요시간 | 실행 시점          |
-| --------------------- | ------------------- | -------- | ------------------ |
-| `pre-commit-check.sh` | 커밋 전 필수 검증   | 1-3분    | 매번 커밋 시       |
-| `pre-pr-check.sh`     | PR 전 통합 검증     | 5-15분   | PR 생성 전         |
-| `pre-deploy-check.sh` | 배포 전 완전 검증   | 15-30분  | 릴리스 전          |
-| `protection-check.sh` | 기존 기능 보호 검증 | 3-5분    | 레거시 호환성 확인 |
+| 명령어               | 용도                     | 소요시간  | 실행 시점              |
+| -------------------- | ------------------------ | --------- | ---------------------- |
+| `npm run check:quick` | tsc + unit (빠른 피드백) | 수십 초   | 작업 중 수시로         |
+| `npm run check`      | tsc + unit + build       | 1분 내외  | 커밋/푸시 전           |
+| GitHub Actions CI    | check + build + E2E      | 3-5분     | PR / main push 시 자동 |
 
-### **검증 스크립트 사용법**
+### **검증 명령어 사용법**
 
 ```bash
-# 개발 중 (매번)
-npm run pre-commit
+# 작업 중 빠른 피드백
+npm run check:quick
 
-# 기능 완성 후 (매일)
-npm run pre-pr
+# 커밋/푸시 전
+npm run check
 
-# 릴리스 준비 (릴리스할 시)
-npm run pre-deploy
-
-# 기존 기능 보호 (필요 시)
-npm run prepare-commit
+# PR 올리면 GitHub Actions ci.yml 이 자동으로 검증
 ```
 
 ## 🚀 **NEW** - localStorage 직접 조작 시스템 (2025-09-21 구현)

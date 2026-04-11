@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-11)
+# class-planner file structure (2026-04-12)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 
 class-planner/
@@ -22,7 +22,7 @@ class-planner/
 ├── .env.e2e
 ├── .gitignore
 ├── .github/
-│   └── workflows/deploy.yml
+│   └── workflows/ci.yml
 ├── docs/
 │   ├── adr/                          # (신규) 아키텍처 결정 기록
 │   ├── COMPONENT_GUIDE.md
@@ -58,14 +58,12 @@ class-planner/
 │   └── backups/                          # (신규) user_data 백업 (gitignore)
 ├── scripts/
 │   ├── clear-localstorage.js
-│   ├── performance-monitor.js
-│   ├── pre-commit-check.sh
-│   ├── pre-deploy-check.sh
-│   ├── pre-pr-check.sh
-│   ├── protection-check.sh
+│   ├── detailed-unused-analysis.sh
+│   ├── find-unused-files.sh
+│   ├── find-unused-src-files.sh
 │   ├── server-manager.sh
-│   ├── system-test.js
-│   └── test-cache.js
+│   ├── setup-server.sh
+│   └── system-test.js
 ├── public/
 │   ├── file.svg
 │   ├── globe.svg

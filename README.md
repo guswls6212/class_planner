@@ -190,8 +190,8 @@ npm run lint:fix
 # 코드 포맷팅
 npm run format
 
-# 커밋 전 검증
-npm run prepare-commit
+# 커밋/푸시 전 검증
+npm run check
 ```
 
 ## 🌐 배포

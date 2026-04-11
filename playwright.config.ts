@@ -54,9 +54,11 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev", // 개발 서버 시작
-    url: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
-    reuseExistingServer: false, // 항상 새 서버 시작 (E2E 전용)
-    timeout: E2E_CONFIG.TIMEOUTS.PAGE_LOAD * 6, // 공용 타임아웃 사용 (6배로 설정)
+    command: process.env.CI
+      ? "npm run build && npm run start" // CI: production build 후 서버 시작
+      : "npm run dev",                    // 로컬: Turbopack dev 서버
+    url: E2E_CONFIG.BASE_URL,
+    reuseExistingServer: !process.env.CI, // 로컬은 기존 서버 재사용, CI 는 항상 새로 시작
+    timeout: E2E_CONFIG.TIMEOUTS.PAGE_LOAD * 12, // CI build 포함 타임아웃 (2분)
   },
 });

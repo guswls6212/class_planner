@@ -59,14 +59,16 @@
 
 ## 개발 워크플로우
 ```bash
-# 커밋 전 (1-3분)
-npm run pre-commit
+# 작업 중 빠른 피드백 (tsc + unit, 수십 초)
+npm run check:quick
 
-# PR 전 (5-15분)
-npm run pre-pr
+# 커밋/푸시 전 1회 (tsc + unit + build, 1분 내외)
+npm run check
 
-# 배포 전 (15-30분)
-npm run pre-deploy
+# PR 올리면 GitHub Actions (ci.yml) 가 자동으로 검증
+# — check job: type-check + lint + unit test
+# — build job: production build
+# — e2e job:  Playwright Chromium golden path
 ```
 
 ## UI Verification (class-planner 전용 가이드)
