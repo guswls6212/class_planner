@@ -1,11 +1,13 @@
 /**
  * 🔄 Debounced 서버 동기화 시스템
  *
- * localStorage의 classPlannerData 변경사항을 1분마다 서버와 동기화합니다.
+ * localStorage의 classPlannerData 변경사항을 30초 debounce로 서버와 동기화합니다.
+ * 최대 5분 안전장치로 무한 연기 방지.
  * 사용자 경험을 방해하지 않으면서 데이터 일관성을 보장합니다.
  */
 
 import type { ClassPlannerData } from "./localStorageCrud";
+import { getAccessToken } from "./authUtils";
 import { logger } from "./logger";
 // KST time utils import removed
 
@@ -52,11 +54,7 @@ const syncToServer = async (data: ClassPlannerData): Promise<SyncResult> => {
     }
 
     // 인증 토큰 확인
-    const authToken = localStorage.getItem(
-      "sb-kcyqftasdxtqslrhbctv-auth-token"
-    );
-    const authData = authToken ? JSON.parse(authToken) : null;
-    const accessToken = authData?.access_token;
+    const accessToken = await getAccessToken();
 
     if (!accessToken) {
       throw new Error("인증 토큰이 없습니다. 다시 로그인해주세요.");

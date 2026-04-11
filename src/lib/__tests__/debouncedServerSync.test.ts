@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getAccessToken } from "../authUtils";
 import {
   cleanupSyncSystem,
   forceSyncToServer,
@@ -10,6 +11,10 @@ import {
   initializeSyncSystem,
   scheduleServerSync,
 } from "../debouncedServerSync";
+
+vi.mock("../authUtils", () => ({
+  getAccessToken: vi.fn(),
+}));
 
 // Mock dependencies
 vi.mock("../logger", () => ({
@@ -66,6 +71,8 @@ describe("debouncedServerSync", () => {
     mockAddEventListener.mockClear();
     mockRemoveEventListener.mockClear();
     mockDispatchEvent.mockClear();
+    // 기본 인증 토큰 mock (개별 테스트에서 필요시 override)
+    vi.mocked(getAccessToken).mockResolvedValue("test-token");
   });
 
   afterEach(() => {
@@ -152,9 +159,6 @@ describe("debouncedServerSync", () => {
     it("성공적인 서버 동기화를 처리해야 한다", async () => {
       localStorageMock.getItem.mockImplementation((key) => {
         if (key === "supabase_user_id") return "test-user-id";
-        if (key === "sb-kcyqftasdxtqslrhbctv-auth-token") {
-          return JSON.stringify({ access_token: "test-token" });
-        }
         return null;
       });
 
@@ -213,9 +217,6 @@ describe("debouncedServerSync", () => {
     it("서버 에러 시 실패를 반환해야 한다", async () => {
       localStorageMock.getItem.mockImplementation((key) => {
         if (key === "supabase_user_id") return "test-user-id";
-        if (key === "sb-kcyqftasdxtqslrhbctv-auth-token") {
-          return JSON.stringify({ access_token: "test-token" });
-        }
         return null;
       });
 
