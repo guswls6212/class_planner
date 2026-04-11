@@ -4,7 +4,7 @@
 export const E2E_CONFIG = {
   TEST_USER_ID: "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391",
   TEST_EMAIL: "info365001.e2e.test@gmail.com",
-  SUPABASE_TOKEN_KEY: "sb-kcyqftasdxtqslrhbctv-auth-token",
+  SUPABASE_TOKEN_KEY: "sb-iqzcnyujkagwgshbecpg-auth-token",
   BASE_URL: "http://localhost:3000", // E2E 테스트 전용 포트
   TIMEOUTS: {
     AUTH_WAIT: 15000,
