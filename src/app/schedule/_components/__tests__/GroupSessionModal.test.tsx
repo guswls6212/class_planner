@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import type { GroupSessionData } from "../../../../types/scheduleTypes";
 import GroupSessionModal from "../GroupSessionModal";
@@ -65,6 +65,9 @@ describe("GroupSessionModal - state updates", () => {
         handleEndTimeChange={() => {}}
         groupTimeError=""
         addGroupSession={() => {}}
+        onCreateStudent={() => {}}
+        studentCreating={false}
+        studentCreateError=""
       />
     );
 
@@ -86,5 +89,85 @@ describe("GroupSessionModal - state updates", () => {
     const roomInput = getByLabelText("강의실") as HTMLInputElement;
     fireEvent.change(roomInput, { target: { value: "A-101" } });
     expect(controller.get().room).toBe("A-101");
+  });
+});
+
+describe("GroupSessionModal - 신규 학생 생성 CTA (B-1)", () => {
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const subjects = [{ id: "sub-1", name: "수학" }];
+  const students = [{ id: "stu-1", name: "홍길동" }];
+  const baseData: GroupSessionData = {
+    studentIds: [],
+    subjectId: "",
+    weekday: 1,
+    startTime: "10:00",
+    endTime: "11:00",
+    yPosition: 1,
+    room: "",
+  };
+
+  function renderModal(overrides: Partial<Parameters<typeof GroupSessionModal>[0]> = {}) {
+    const defaults = {
+      isOpen: true,
+      groupModalData: baseData,
+      setGroupModalData: () => {},
+      setShowGroupModal: () => {},
+      removeStudent: () => {},
+      studentInputValue: "이현진",
+      setStudentInputValue: () => {},
+      handleStudentInputKeyDown: () => {},
+      addStudentFromInput: () => {},
+      filteredStudentsForModal: [],
+      addStudent: () => {},
+      subjects,
+      students,
+      weekdays,
+      handleStartTimeChange: () => {},
+      handleEndTimeChange: () => {},
+      groupTimeError: "",
+      addGroupSession: () => {},
+      onCreateStudent: () => {},
+      studentCreating: false,
+      studentCreateError: "",
+    };
+    return render(<GroupSessionModal {...defaults} {...overrides} />);
+  }
+
+  it("존재하지 않는 이름 입력 시 CTA 버튼이 렌더링된다", () => {
+    renderModal({ filteredStudentsForModal: [] });
+    expect(
+      screen.getByText(/새 학생으로 추가/)
+    ).toBeInTheDocument();
+  });
+
+  it("CTA 클릭 시 onCreateStudent가 호출된다", () => {
+    const onCreateStudent = vi.fn();
+    renderModal({ filteredStudentsForModal: [], onCreateStudent });
+    fireEvent.click(screen.getByText(/새 학생으로 추가/));
+    expect(onCreateStudent).toHaveBeenCalledTimes(1);
+  });
+
+  it("studentCreating=true일 때 CTA가 비활성화되고 '추가 중...' 라벨이 표시된다", () => {
+    renderModal({ filteredStudentsForModal: [], studentCreating: true });
+    const cta = screen.getByText("추가 중...") as HTMLButtonElement;
+    expect(cta).toBeDisabled();
+  });
+
+  it("studentCreateError가 있을 때 에러 메시지가 렌더링된다", () => {
+    renderModal({
+      filteredStudentsForModal: [],
+      studentCreateError: "이미 존재하는 이름입니다.",
+    });
+    expect(screen.getByText("이미 존재하는 이름입니다.")).toBeInTheDocument();
+  });
+
+  it("이미 선택에 있는 학생과 정확 일치하면 CTA 대신 '이미 추가된 학생입니다' 메시지가 표시된다", () => {
+    renderModal({
+      groupModalData: { ...baseData, studentIds: ["stu-1"] },
+      studentInputValue: "홍길동",
+      filteredStudentsForModal: [],
+    });
+    expect(screen.getByText("이미 추가된 학생입니다")).toBeInTheDocument();
+    expect(screen.queryByText(/새 학생으로 추가/)).not.toBeInTheDocument();
   });
 });

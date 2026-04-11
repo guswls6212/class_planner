@@ -49,3 +49,6 @@ next-env.d.ts
 ./playwright-mcp/
 # Git worktrees
 .worktrees/
+
+# DB backups (contains real user data)
+migration/backups/
