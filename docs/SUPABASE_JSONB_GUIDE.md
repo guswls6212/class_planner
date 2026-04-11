@@ -26,7 +26,7 @@
 ### 1. Supabase 대시보드에서 테이블 생성
 
 1. **Supabase 대시보드 접속**
-   - URL: https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
+   - URL: https://supabase.com/dashboard/project/your-project-id
    - SQL Editor 메뉴 선택
 
 2. **스키마 실행**
@@ -48,7 +48,7 @@
 
    ```bash
    # frontend/.env.local 파일 생성
-   NEXT_PUBLIC_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
    ```

@@ -9,7 +9,7 @@
 ### 1. Supabase 대시보드 접속
 
 ```
-https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
+https://supabase.com/dashboard/project/your-project-id
 ```
 
 ### 2. API 키 확인
@@ -17,7 +17,7 @@ https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
 1. **왼쪽 메뉴에서 "Settings" 클릭** (⚙️ 아이콘)
 2. **"API" 메뉴 클릭**
 3. **다음 키들을 복사:**
-   - **Project URL**: `https://kcyqftasdxtqslrhbctv.supabase.co`
+   - **Project URL**: `https://your-project-id.supabase.co`
    - **anon public**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (긴 문자열)
    - **service_role**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (긴 문자열)
 
@@ -36,7 +36,7 @@ https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
 
    ```bash
    # Supabase 설정 (Next.js 방식)
-   NEXT_PUBLIC_SUPABASE_URL=https://kcyqftasdxtqslrhbctv.supabase.co
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
    SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
@@ -66,7 +66,7 @@ https://supabase.com/dashboard/project/kcyqftasdxtqslrhbctv
 
    ```
    Name: NEXT_PUBLIC_SUPABASE_URL
-   Value: https://kcyqftasdxtqslrhbctv.supabase.co
+   Value: https://your-project-id.supabase.co
    Environment: Production, Preview, Development (모두 선택)
    ```
 
