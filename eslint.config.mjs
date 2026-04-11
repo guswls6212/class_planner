@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
+import reactHooks from "eslint-plugin-react-hooks";
 
 const eslintConfig = [
   js.configs.recommended,
@@ -30,6 +31,7 @@ const eslintConfig = [
         requestAnimationFrame: "readonly",
         getComputedStyle: "readonly",
         crypto: "readonly",
+        performance: "readonly",
 
         // Node.js globals
         process: "readonly",
@@ -54,6 +56,7 @@ const eslintConfig = [
     },
     plugins: {
       "@typescript-eslint": typescript,
+      "react-hooks": reactHooks,
     },
     rules: {
       ...typescript.configs.recommended.rules,
@@ -87,6 +90,7 @@ const eslintConfig = [
         requestAnimationFrame: "readonly",
         getComputedStyle: "readonly",
         crypto: "readonly",
+        performance: "readonly",
 
         // Node.js globals
         process: "readonly",
@@ -124,6 +128,8 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
       "tests/e2e/**",
+      "scripts/**",       // Node.js CommonJS 유틸 스크립트
+      ".worktrees/**",    // git worktree 임시 공간
     ],
   },
 ];
