@@ -185,6 +185,48 @@ describe("SessionBlock Component", () => {
     );
   });
 
+  it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {
+    render(<SessionBlock {...defaultProps} isDragging={false} isAnyDragging={false} />);
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toHaveStyle({ opacity: "1" });
+  });
+
+  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
+    render(
+      <SessionBlock
+        {...defaultProps}
+        isDragging={false}
+        isAnyDragging={true}
+        draggedSessionId="different-session-id"
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toHaveStyle({ opacity: "0.3" });
+  });
+
+  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
+    render(
+      <SessionBlock
+        {...defaultProps}
+        isDragging={false}
+        isAnyDragging={true}
+        draggedSessionId={mockSession.id}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    expect(sessionBlock).toHaveStyle({ opacity: "0" });
+    expect(sessionBlock).toHaveStyle({ visibility: "hidden" });
+  });
+
   // 엣지 케이스 테스트
   it("session이 null일 때 안전하게 처리되어야 한다", () => {
     render(<SessionBlock {...defaultProps} session={null as any} />);
