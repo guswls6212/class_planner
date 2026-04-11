@@ -38,8 +38,14 @@ yarn-error.log*
 # vercel
 .vercel
 
+# docker / deploy
+nginx/active.conf
+certbot/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
 ./playwright-mcp/
+# Git worktrees
+.worktrees/
