@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# 🛡️ 배포 전 전체 검증 스크립트
+# 🛡️ 개선된 배포 전 전체 검증 스크립트
 # 안정성 중시: 모든 테스트 + 보안 + 성능 검증
+# 서버 관리 및 포트 충돌 문제 해결
 
 set -e
 
@@ -42,6 +43,68 @@ critical() {
     echo -e "${CYAN}🔒 $1${NC}"
 }
 
+# 함수: 사용자 입력 없이 자동 진행 (CI/CD 환경)
+auto_proceed() {
+    local default_choice="${1:-N}"
+    local timeout="${2:-15}"
+    
+    if [ -n "$CI" ] || [ -n "$AUTO_PROCEED" ]; then
+        echo "자동 모드: $default_choice 선택"
+        return 0
+    fi
+    
+    echo -n "계속 진행하시겠습니까? (${default_choice}/n, ${timeout}초 후 자동 ${default_choice}): "
+    
+    if read -t "$timeout" -r response; then
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            return 0
+        elif [[ "$response" =~ ^[Nn]$ ]]; then
+            return 1
+        fi
+    fi
+    
+    echo ""
+    echo "시간 초과. 기본값 $default_choice 선택"
+    return 0
+}
+
+# 함수: 단계별 실행 및 에러 처리
+run_step() {
+    local step_name="$1"
+    local command="$2"
+    local is_critical="${3:-true}"
+    local allow_warning="${4:-false}"
+    local auto_choice="${5:-N}"
+    local env_check="${6:-false}"
+    
+    step "$step_name 실행 중..."
+    
+    # 환경별 체크
+    if [ "$env_check" = "true" ] && [ "$DEPLOY_ENV" = "production" ] && [ "$is_critical" = "false" ]; then
+        is_critical="true"  # 프로덕션에서는 경고도 크리티컬로 처리
+    fi
+    
+    if eval "$command"; then
+        success "$step_name 통과"
+        return 0
+    else
+        if [ "$is_critical" = "true" ]; then
+            error "$step_name 실패"
+        elif [ "$allow_warning" = "true" ]; then
+            warning "$step_name 실패했습니다."
+            if auto_proceed "$auto_choice" 15; then
+                warning "$step_name 실패를 무시하고 계속 진행합니다."
+                return 0
+            else
+                error "사용자가 중단을 선택했습니다."
+            fi
+        else
+            warning "$step_name 실패"
+            return 1
+        fi
+    fi
+}
+
 # 배포 환경 확인
 check_deploy_env() {
     if [ -z "$DEPLOY_ENV" ]; then
@@ -68,7 +131,7 @@ echo ""
 
 step "1단계: PR 검증 실행"
 info "PR 수준의 모든 검증 실행 중..."
-if ! ./scripts/pre-pr-check.sh; then
+if ! ./scripts/pre-pr-check-improved.sh; then
     error "PR 검증이 실패했습니다. 먼저 PR 수준의 문제를 해결하세요."
 fi
 success "PR 검증 통과"
@@ -80,95 +143,102 @@ if ! npm run test:e2e; then
     if [ "$DEPLOY_ENV" = "production" ]; then
         error "프로덕션 배포에서는 E2E 테스트가 필수입니다."
     fi
+    if auto_proceed "Y" 20; then
+        warning "E2E 테스트 실패를 무시하고 계속 진행합니다."
+    else
+        error "E2E 테스트 실패로 인한 중단"
+    fi
 fi
 success "전체 E2E 테스트 단계 완료"
 
-# step "3단계: 브라우저 호환성 완전 검증"
-# info "모든 브라우저 호환성 테스트 실행 중..."
-# if ! npm run test:e2e:browser-compatibility; then
-#     error "브라우저 호환성 테스트가 실패했습니다."
-# fi
-# success "브라우저 호환성 검증 완료"
-info "브라우저 호환성 테스트는 3단계에서 실행됨"
+info "브라우저 호환성 테스트는 2단계 E2E 테스트에 포함됨"
 
-step "4단계: 실제 클라이언트 통합 테스트"
-info "실제 클라이언트 환경 테스트 실행 중..."
-if ! npm run test:real-client; then
-    error "실제 클라이언트 통합 테스트가 실패했습니다."
-fi
-success "실제 클라이언트 통합 테스트 통과"
+step "3단계: 실제 클라이언트 통합 테스트"
+run_step "실제 클라이언트 환경 테스트" "npm run test:real-client" true
 
-step "5단계: 시스템 레벨 테스트"
-info "개발 서버 기동 후 전체 시스템 테스트 실행..."
-# 포트 선점 프로세스 종료
-lsof -ti:3000 | xargs -r kill -9 || true
-# 서버 백그라운드 기동
-npm run dev >/dev/null 2>&1 &
-DEV_SERVER_PID=$!
-# 서버 대기 (최대 30초)
-for i in {1..30}; do
-  if curl -sSf http://localhost:3000 >/dev/null; then
-    break
-  fi
-  sleep 1
-done
-if ! curl -sSf http://localhost:3000 >/dev/null; then
-  warning "개발 서버 기동 실패 또는 지연"
-fi
-if ! npm run test:system; then
-    warning "시스템 테스트가 실패했습니다."
-    if [ "$DEPLOY_ENV" = "production" ]; then
-        error "프로덕션 배포에서는 시스템 테스트가 필수입니다."
+step "4단계: 시스템 레벨 테스트"
+info "기존 서버 사용하여 전체 시스템 테스트 실행..."
+
+# 기존 서버 상태 확인 (프로세스 확인 방식)
+if ps aux | grep "next dev" | grep -v grep > /dev/null 2>&1; then
+    success "✅ Next.js 개발 서버가 이미 실행 중입니다. 기존 서버를 사용합니다."
+    server_started_by_pre_deploy=false
+else
+    warning "⚠️ Next.js 개발 서버가 실행되지 않음. 시스템 테스트용 서버를 시작합니다."
+    if ! ./scripts/server-manager.sh start 45 true; then
+        warning "개발 서버 기동 실패"
+        if [ "$DEPLOY_ENV" = "production" ]; then
+            error "프로덕션 배포에서는 시스템 테스트가 필수입니다."
+        fi
+        if auto_proceed "Y" 15; then
+            warning "서버 기동 실패를 무시하고 계속 진행합니다."
+            skip_system_test=true
+        else
+            error "서버 기동 실패로 인한 중단"
+        fi
+    else
+        server_started_by_pre_deploy=true
     fi
 fi
-success "시스템 테스트 단계 완료"
-# 서버 종료
-kill -9 $DEV_SERVER_PID 2>/dev/null || true
 
-step "6단계: 성능 벤치마크 테스트"
+if [ "$skip_system_test" != "true" ]; then
+    # 시스템 테스트는 독립적으로 서버를 관리 (포트 충돌 방지)
+    run_step "시스템 테스트" "npm run test:system" false true "Y" true
+    
+    # pre-deploy가 시작한 서버만 정리
+    if [ "$server_started_by_pre_deploy" = "true" ]; then
+        info "🧹 pre-deploy가 시작한 서버 정리 중..."
+        ./scripts/server-manager.sh stop
+        success "✅ 서버 정리 완료"
+    else
+        info "ℹ️ 기존 서버를 사용했으므로 종료하지 않습니다."
+    fi
+fi
+
+step "5단계: 성능 벤치마크 테스트"
 info "성능 벤치마크 실행 중..."
 if [ -f "scripts/performance-monitor.js" ]; then
-    if ! node scripts/performance-monitor.js; then
-        warning "성능 벤치마크에서 문제가 발견되었습니다."
-        if [ "$DEPLOY_ENV" = "production" ]; then
-            echo "성능 문제를 무시하고 계속하시겠습니까? (y/N): "
-            read -r response
-            if [[ ! "$response" =~ ^[Yy]$ ]]; then
-                error "성능 문제로 인한 배포 중단"
-            fi
-        fi
-    fi
-    success "성능 벤치마크 통과"
+    run_step "성능 벤치마크" "node scripts/performance-monitor.js" false true "Y" true
 else
     warning "성능 모니터 스크립트를 찾을 수 없습니다."
 fi
 
-step "7단계: 보안 검사"
+step "6단계: 보안 검사"
 critical "보안 취약점 검사 실행 중..."
 
 # npm audit 실행
 if ! npm audit --audit-level=high; then
     warning "보안 취약점이 발견되었습니다."
     if [ "$DEPLOY_ENV" = "production" ]; then
-        echo "보안 취약점을 무시하고 계속하시겠습니까? (y/N): "
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            error "보안 취약점으로 인한 배포 중단"
-        fi
+        error "프로덕션 배포에서는 보안 취약점이 허용되지 않습니다."
+    fi
+    if auto_proceed "Y" 20; then
+        warning "보안 취약점을 무시하고 계속 진행합니다."
+    else
+        error "보안 취약점으로 인한 배포 중단"
     fi
 fi
 success "보안 검사 완료"
 
-step "8단계: 환경 변수 및 설정 검증"
+step "7단계: 환경 변수 및 설정 검증"
 critical "배포 환경 설정 검증 중..."
 
 # 필수 환경 변수 체크
 required_vars=("NEXT_PUBLIC_SUPABASE_URL" "NEXT_PUBLIC_SUPABASE_ANON_KEY")
+missing_vars=()
+
 for var in "${required_vars[@]}"; do
     if [ -z "${!var}" ]; then
-        warning "환경 변수 $var 가 설정되지 않았습니다."
+        missing_vars+=("$var")
     fi
 done
+
+if [ ${#missing_vars[@]} -gt 0 ]; then
+    warning "다음 환경 변수가 설정되지 않았습니다: ${missing_vars[*]}"
+    if [ "$DEPLOY_ENV" = "production" ]; then
+        error "프로덕션 배포에서는 필수 환경 변수가 설정되어야 합니다."
+    fi
+fi
 
 # .env 파일 존재 확인
 if [ "$DEPLOY_ENV" = "production" ]; then
@@ -183,21 +253,14 @@ fi
 
 success "환경 설정 검증 완료"
 
-step "9단계: 데이터베이스 마이그레이션 상태 확인"
-info "데이터베이스 마이그레이션 상태 확인 중..."
-if ! npm run migration:status; then
-    warning "마이그레이션 상태를 확인할 수 없습니다."
-fi
-success "데이터베이스 상태 확인 완료"
+step "8단계: 데이터베이스 마이그레이션 상태 확인"
+run_step "데이터베이스 마이그레이션 상태 확인" "npm run migration:status" false true "Y"
 
-step "10단계: 최종 프로덕션 빌드 검증"
+step "9단계: 최종 프로덕션 빌드 검증"
 critical "최종 프로덕션 빌드 및 최적화 확인 중..."
-if ! npm run build; then
-    error "최종 프로덕션 빌드가 실패했습니다."
-fi
-success "최종 프로덕션 빌드 완료"
+run_step "최종 프로덕션 빌드" "npm run build" true
 
-step "11단계: 빌드 결과물 검증"
+step "10단계: 빌드 결과물 검증"
 info "빌드 결과물 무결성 검사 중..."
 if [ ! -d ".next" ]; then
     error "빌드 결과물이 생성되지 않았습니다."
@@ -206,6 +269,10 @@ fi
 # 빌드 크기 체크
 build_size=$(du -sh .next 2>/dev/null | cut -f1 || echo "unknown")
 info "빌드 크기: $build_size"
+
+# 빌드 파일 개수 확인
+build_file_count=$(find .next -type f | wc -l)
+info "빌드 파일 개수: $build_file_count"
 
 success "빌드 결과물 검증 완료"
 
@@ -221,6 +288,7 @@ critical "🎉 배포 전 전체 검증이 완료되었습니다!"
 echo -e "${CYAN}⏱️  총 소요 시간: ${minutes}분 ${seconds}초${NC}"
 echo -e "${CYAN}🎯 배포 환경: $DEPLOY_ENV${NC}"
 echo -e "${CYAN}📦 빌드 크기: $build_size${NC}"
+echo -e "${CYAN}📄 빌드 파일: $build_file_count개${NC}"
 echo "🛡️ ================================================="
 echo ""
 

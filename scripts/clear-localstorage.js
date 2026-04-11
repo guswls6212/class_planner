@@ -18,7 +18,7 @@ const keysToKeep = [
   "ui:studentsPanelPos",
   "ui:selectedStudent",
   "supabase_user_id",
-  "sb-kcyqftasdxtqslrhbctv-auth-token",
+  "sb-iqzcnyujkagwgshbecpg-auth-token",
 ];
 
 console.log("📋 현재 localStorage 키들:");
