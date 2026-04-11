@@ -7,15 +7,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import StudentsPage from "../page";
 
 // Mock all dependencies
-vi.mock("../../../hooks/useStudentManagement", () => ({
-  useStudentManagementClean: vi.fn(() => ({
+vi.mock("../../../hooks/useStudentManagementLocal", () => ({
+  useStudentManagementLocal: vi.fn(() => ({
     students: [],
     loading: false,
     error: null,
     addStudent: vi.fn(),
     updateStudent: vi.fn(),
     deleteStudent: vi.fn(),
+    getStudent: vi.fn(),
     refreshStudents: vi.fn(),
+    clearError: vi.fn(),
     studentCount: 0,
   })),
 }));
