@@ -3,7 +3,18 @@ import StudentPanel from "../../../components/organisms/StudentPanel";
 
 type Props = {
   selectedStudentId: string;
-  panelState: any;
+  panelState: {
+    position: { x: number; y: number };
+    isDragging: boolean;
+    dragOffset: { x: number; y: number };
+    searchQuery: string;
+    filteredStudents: any[];
+    handleMouseDown: (e: React.MouseEvent) => void;
+    handleStudentClick: (studentId: string) => void;
+    setSearchQuery: (query: string) => void;
+    resetDragState: () => void;
+    setIsDragStarting: (value: boolean) => void;
+  };
   onDragStart: (
     e: React.DragEvent,
     student: { id: string; name: string }

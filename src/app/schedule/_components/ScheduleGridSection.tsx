@@ -10,7 +10,7 @@ import type {
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
   gridVersion: number;
-  sessions: any;
+  sessions: Map<number, Session[]>;
   subjects: Subject[];
   enrollments: Enrollment[];
   students: Student[];
