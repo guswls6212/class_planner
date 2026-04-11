@@ -476,10 +476,29 @@ export async function captureElement(
     element.scrollLeft = 0;
     element.scrollTop = 0;
 
+    // 🆕 캡처 전 상태 저장 (디버깅용)
+    const beforeCaptureState = {
+      scrollLeft: element.scrollLeft,
+      scrollTop: element.scrollTop,
+      scrollWidth: element.scrollWidth,
+      scrollHeight: element.scrollHeight,
+      offsetWidth: element.offsetWidth,
+      offsetHeight: element.offsetHeight,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+      computedStyle: {
+        overflow: getComputedStyle(element).overflow,
+        maxWidth: getComputedStyle(element).maxWidth,
+        maxHeight: getComputedStyle(element).maxHeight,
+        position: getComputedStyle(element).position,
+      },
+    };
+
     // 캡처를 위해 요소 스타일 임시 변경 - 전체 내용이 보이도록 설정
     element.style.overflow = "visible";
     element.style.maxWidth = "none";
     element.style.maxHeight = "none";
+    element.style.height = "auto"; // 🆕 높이를 auto로 설정하여 전체 내용 포함
     element.style.position = "absolute";
     element.style.top = "0";
     element.style.left = "0";
@@ -498,6 +517,27 @@ export async function captureElement(
         requestAnimationFrame(resolve);
       });
     });
+
+    // 🆕 캡처 후 상태 저장 (디버깅용)
+    const afterCaptureState = {
+      scrollLeft: element.scrollLeft,
+      scrollTop: element.scrollTop,
+      scrollWidth: element.scrollWidth,
+      scrollHeight: element.scrollHeight,
+      offsetWidth: element.offsetWidth,
+      offsetHeight: element.offsetHeight,
+      clientWidth: element.clientWidth,
+      clientHeight: element.clientHeight,
+    };
+
+    // 🆕 window 객체에 상태 정보 노출 (개발 환경 전용)
+    if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+      (window as any).__pdfCaptureState = {
+        before: beforeCaptureState,
+        after: afterCaptureState,
+      };
+      console.log("📊 PDF 캡처 전후 상태:", (window as any).__pdfCaptureState);
+    }
 
     // 🆕 세션 범위에 맞는 캡처 너비 계산
     let captureWidth = element.scrollWidth;
@@ -520,7 +560,149 @@ export async function captureElement(
       });
     }
 
-    // html2canvas로 캡처 - 세션 범위에 맞는 너비로 캡처
+    // 🆕 모든 요일(월~일)을 포함하도록 높이 계산
+    // maxHeight 제한을 제거했으므로 scrollHeight가 전체 높이를 반환해야 함
+    // 스타일 변경 후 리플로우를 강제로 트리거하여 정확한 scrollHeight 얻기
+    void element.offsetHeight; // 리플로우 트리거
+
+    // 🆕 모든 요일과 모든 세션셀을 포함하도록 높이 계산
+    // 그리드의 실제 구조를 기반으로 정확한 높이 계산
+    const actualScrollHeight = element.scrollHeight;
+    const actualOffsetHeight = element.offsetHeight;
+    const actualClientHeight = element.clientHeight;
+
+    // 🆕 그리드의 gridTemplateRows를 기반으로 높이 계산
+    // 시간 헤더(40px) + 각 요일 행 높이의 합계
+    const timeHeaderHeight = 40;
+    let totalWeekdayHeight = 0;
+
+    // 요일 라벨들을 찾아서 각 요일 행의 높이 계산
+    // TimeTableRow에서 요일 라벨은 position: sticky, left: 0, gridColumn: "1"로 설정됨
+    const weekdayTexts = ["월", "화", "수", "목", "금", "토", "일"];
+    const weekdayHeights: number[] = [];
+    const foundWeekdays: string[] = [];
+
+    // 방법 1: position: sticky이고 left: 0인 요소 중에서 요일 텍스트를 포함하는 요소 찾기
+    const stickyElements = element.querySelectorAll(
+      '[style*="position"][style*="sticky"], [style*="position: sticky"]'
+    );
+    
+    stickyElements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      const computedStyle = window.getComputedStyle(htmlEl);
+      const textContent = htmlEl.textContent?.trim();
+      
+      // position: sticky이고 left가 0인 요소 확인
+      if (
+        computedStyle.position === "sticky" &&
+        (computedStyle.left === "0px" || computedStyle.left === "0") &&
+        textContent &&
+        weekdayTexts.includes(textContent)
+      ) {
+        if (!foundWeekdays.includes(textContent)) {
+          foundWeekdays.push(textContent);
+          const labelHeight = htmlEl.offsetHeight || htmlEl.getBoundingClientRect().height;
+          if (labelHeight > 0) {
+            weekdayHeights.push(labelHeight);
+            totalWeekdayHeight += labelHeight;
+          }
+        }
+      }
+    });
+
+    // 방법 2: 위 방법으로 찾지 못한 경우, 직접 텍스트로 찾기
+    if (foundWeekdays.length === 0) {
+      weekdayTexts.forEach((text) => {
+        const allElements = element.querySelectorAll("*");
+        allElements.forEach((el) => {
+          if (el.textContent?.trim() === text) {
+            const htmlEl = el as HTMLElement;
+            const computedStyle = window.getComputedStyle(htmlEl);
+            // position: sticky이고 left가 0인 요소 확인
+            if (
+              computedStyle.position === "sticky" &&
+              (computedStyle.left === "0px" || computedStyle.left === "0")
+            ) {
+              if (!foundWeekdays.includes(text)) {
+                foundWeekdays.push(text);
+                const labelHeight = htmlEl.offsetHeight || htmlEl.getBoundingClientRect().height;
+                if (labelHeight > 0) {
+                  weekdayHeights.push(labelHeight);
+                  totalWeekdayHeight += labelHeight;
+                }
+              }
+            }
+          }
+        });
+      });
+    }
+
+    // 🆕 세션셀들의 최대 하단 위치도 확인
+    const sessionBlocks = element.querySelectorAll(
+      "[data-session-id], .session-block, .SessionBlock"
+    );
+    let maxSessionBottom = 0;
+
+    sessionBlocks.forEach((block) => {
+      const blockElement = block as HTMLElement;
+      const rect = blockElement.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const relativeBottom = rect.bottom - elementRect.top;
+      if (relativeBottom > maxSessionBottom) {
+        maxSessionBottom = relativeBottom;
+      }
+    });
+
+    // 최종 높이 = 시간 헤더 + 요일 높이 합계 또는 세션셀 최대 하단 위치 중 더 큰 값
+    // 가상 스크롤바 높이(12px)는 제외하므로 계산에 포함하지 않음
+    const calculatedHeight = Math.max(
+      actualScrollHeight,
+      timeHeaderHeight + totalWeekdayHeight,
+      timeHeaderHeight + maxSessionBottom + 20 // 20px 여유 추가
+    );
+
+    // 🆕 계산된 높이를 요소에 명시적으로 설정하여 html2canvas가 전체 높이를 캡처하도록 함
+    element.style.height = `${calculatedHeight}px`;
+
+    // 🆕 브라우저 콘솔에서 확인할 수 있도록 window 객체에 디버깅 정보 노출
+    if (typeof window !== "undefined") {
+      (window as any).__pdfDebugInfo = {
+        scrollHeight: actualScrollHeight,
+        offsetHeight: actualOffsetHeight,
+        clientHeight: actualClientHeight,
+        timeHeaderHeight,
+        totalWeekdayHeight,
+        weekdayHeights,
+        maxSessionBottom,
+        calculatedHeight,
+        foundWeekdays: foundWeekdays.length,
+        foundWeekdayTexts: foundWeekdays,
+        sessionBlocksCount: sessionBlocks.length,
+        elementRect: element.getBoundingClientRect(),
+      };
+      console.log(
+        "📊 PDF 높이 계산 디버깅 정보:",
+        (window as any).__pdfDebugInfo
+      );
+    }
+
+    logger.info("🆕 모든 요일 및 세션셀 포함 높이 계산:", {
+      scrollHeight: actualScrollHeight,
+      offsetHeight: actualOffsetHeight,
+      clientHeight: actualClientHeight,
+      timeHeaderHeight,
+      totalWeekdayHeight,
+      weekdayHeights,
+      maxSessionBottom,
+      calculatedHeight,
+      foundWeekdays: foundWeekdays.length,
+      foundWeekdayTexts: foundWeekdays,
+      sessionBlocksCount: sessionBlocks.length,
+      note: "그리드 구조 기반 높이 계산, 모든 요일(월~일) 및 세션셀 포함",
+    });
+
+    // 🆕 전체시간표(9)와 동일한 방식으로 캡처
+    // 계산된 높이를 명시적으로 전달하여 모든 세션셀과 요일(토/일 포함)이 포함되도록 함
     const canvas = await html2canvas(element, {
       background: backgroundColor,
       quality: quality, // 🎯 이미지 품질 설정 (2.0 = 인쇄용 고품질, 텍스트와 색상이 매우 선명함)
@@ -528,20 +710,105 @@ export async function captureElement(
       allowTaint: true,
       logging: false,
       width: captureWidth,
-      height: element.scrollHeight,
-      windowWidth: captureWidth,
-      windowHeight: element.scrollHeight,
-      scale: 1, // 스케일을 1로 설정하여 정확한 크기 캡처
+      height: calculatedHeight, // 🆕 계산된 높이를 명시적으로 전달하여 모든 세션셀 포함 보장
+      scale: 1, // 🆕 scale을 1로 설정 (전체시간표(9)와 동일한 선명도)
       foreignObjectRendering: false, // 외부 객체 렌더링 비활성화
       removeContainer: false, // 컨테이너 제거하지 않음
       ignoreElements: (element: Element) => {
         // 스크롤바나 불필요한 요소 제외
         return (
           element.classList.contains("scrollbar") ||
+          element.classList.contains("virtual-scrollbar-container") || // 🆕 가상 스크롤바 제외
           (element as HTMLElement).style.position === "fixed"
         );
       },
     } as Parameters<typeof html2canvas>[1]);
+
+    // 🆕 캔버스 크기 확인 및 자동 디버깅 정보 저장
+    if (typeof window !== "undefined") {
+      // 🆕 세션셀 위치 정보 수집 (디버깅용)
+      const sessionPositions: Array<{
+        id: string;
+        weekday: string;
+        top: number;
+        bottom: number;
+        height: number;
+        relativeBottom: number;
+      }> = [];
+
+      sessionBlocks.forEach((block) => {
+        const blockElement = block as HTMLElement;
+        const rect = blockElement.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const relativeTop = rect.top - elementRect.top;
+        const relativeBottom = rect.bottom - elementRect.top;
+
+        // 요일 정보 찾기
+        let weekday = "알 수 없음";
+        const parentRow = blockElement.closest(".time-table-row");
+        if (parentRow) {
+          const weekdayLabel = parentRow.querySelector(
+            '[style*="position"][style*="sticky"]'
+          );
+          if (weekdayLabel) {
+            weekday = weekdayLabel.textContent?.trim() || "알 수 없음";
+          }
+        }
+
+        sessionPositions.push({
+          id: blockElement.getAttribute("data-session-id") || "unknown",
+          weekday,
+          top: relativeTop,
+          bottom: relativeBottom,
+          height: rect.height,
+          relativeBottom,
+        });
+      });
+
+      const debugInfo = {
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        expectedWidth: captureWidth,
+        expectedHeight: calculatedHeight,
+        scale: 1,
+        elementScrollHeight: element.scrollHeight,
+        elementOffsetHeight: element.offsetHeight,
+        elementClientHeight: element.clientHeight,
+        elementRect: {
+          width: element.getBoundingClientRect().width,
+          height: element.getBoundingClientRect().height,
+          top: element.getBoundingClientRect().top,
+          left: element.getBoundingClientRect().left,
+        },
+        sessionPositions,
+        maxSessionBottom,
+        totalWeekdayHeight,
+        weekdayHeights,
+      };
+
+      console.log("📊 캔버스 크기:", debugInfo);
+      console.log("📊 세션셀 위치 정보:", sessionPositions);
+      (window as any).__canvasDebugInfo = debugInfo;
+
+      // 🆕 자동으로 캔버스를 이미지로 저장 (디버깅용)
+      // 개발 환경에서만 자동 저장
+      if (process.env.NODE_ENV === "development") {
+        try {
+          const canvasDataUrl = canvas.toDataURL("image/png");
+          const link = document.createElement("a");
+          link.download = `pdf-debug-${Date.now()}.png`;
+          link.href = canvasDataUrl;
+          // 자동 다운로드는 사용자 경험을 해칠 수 있으므로 주석 처리
+          // link.click();
+          console.log(
+            "📸 디버깅용 캔버스 이미지 준비됨 (자동 다운로드 비활성화)"
+          );
+          (window as any).__debugCanvasImage = canvasDataUrl;
+        } catch (error) {
+          console.warn("캔버스 이미지 저장 실패:", error);
+        }
+      }
+    }
 
     return canvas;
   } finally {

@@ -163,11 +163,41 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
   test("PDF 다운로드 버튼이 작동해야 한다", async ({ page }) => {
     // Act
     const downloadPromise = page.waitForEvent("download");
-    await page.click('button:has-text("PDF 다운로드")');
+    await page.click('button:has-text("시간표 다운로드")');
     const download = await downloadPromise;
 
     // Assert
-    expect(download.suggestedFilename()).toContain("schedule");
+    expect(download.suggestedFilename()).toContain("시간표");
+  });
+
+  test("PDF 다운로드 시 모든 요일(월~일)이 포함되어야 한다", async ({
+    page,
+  }) => {
+    // Arrange - 콘솔 로그 수집
+    const consoleLogs: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "log") {
+        consoleLogs.push(msg.text());
+      }
+    });
+
+    // Act
+    const downloadPromise = page.waitForEvent("download");
+    await page.click('button:has-text("시간표 다운로드")');
+    await downloadPromise;
+
+    // Assert - 디버깅 정보에서 모든 요일이 찾아졌는지 확인
+    const debugInfoLog = consoleLogs.find((log) =>
+      log.includes("모든 요일 및 세션셀 포함 높이 계산")
+    );
+    expect(debugInfoLog).toBeDefined();
+
+    // foundWeekdays가 7개인지 확인 (월~일)
+    const foundWeekdaysMatch = debugInfoLog?.match(/foundWeekdays":(\d+)/);
+    if (foundWeekdaysMatch) {
+      const foundWeekdaysCount = parseInt(foundWeekdaysMatch[1], 10);
+      expect(foundWeekdaysCount).toBeGreaterThanOrEqual(7);
+    }
   });
 
   test("페이지 새로고침 후에도 수업 데이터가 유지되어야 한다", async ({
@@ -222,5 +252,35 @@ test.describe("Schedule 페이지 E2E 테스트", () => {
     // Assert
     await expect(page.locator('[data-testid="time-table-grid"]')).toBeVisible();
     await expect(page.locator("body")).toHaveClass(/dark/);
+  });
+
+  test("드래그 중이 아닐 때 세션 블록의 opacity는 1.0이어야 한다", async ({
+    page,
+  }) => {
+    // Arrange - 세션이 있는 상태로 만들기
+    await page.goto("http://localhost:3000/students");
+    await page.fill('input[placeholder*="학생 이름 (검색 가능)"]', "opacity학생");
+    await page.click('button:has-text("추가")');
+
+    await page.goto("http://localhost:3000/subjects");
+    await page.fill('input[placeholder*="과목 이름"]', "opacity과목");
+    await page.click('button:has-text("추가")');
+
+    await page.goto("http://localhost:3000/schedule");
+
+    // 수업 추가
+    const studentElement = page.locator("text=opacity학생");
+    const timeSlot = page.locator('[data-testid="time-slot"]').first();
+    await studentElement.dragTo(timeSlot);
+
+    // Assert - 세션 블록의 opacity 확인
+    const sessionBlock = page.locator('[data-session-id]').first();
+    await expect(sessionBlock).toBeVisible();
+    
+    const opacity = await sessionBlock.evaluate((el) => {
+      return window.getComputedStyle(el).opacity;
+    });
+    
+    expect(parseFloat(opacity)).toBe(1.0);
   });
 });
