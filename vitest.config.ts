@@ -14,6 +14,7 @@ export default defineConfig({
       "dist/",
       ".next/",
       "tests/e2e/**", // E2E 테스트 제외
+      ".worktrees/**", // 중첩 worktree 제외
     ],
     coverage: {
       provider: "v8",

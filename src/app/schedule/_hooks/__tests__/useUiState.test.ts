@@ -19,7 +19,6 @@ describe("useUiState", () => {
 
     act(() => {
       // gridVersion 증가 유틸
-      // @ts-ignore
       result.current.bumpGridVersion?.();
     });
     expect(result.current.gridVersion).toBe(3);

@@ -156,7 +156,7 @@ export function getTimeZoneInfo() {
  */
 export function validateTimeSettings() {
   const info = getTimeZoneInfo();
-  console.log("🕐 Time Settings:", info);
+  // console.log("🕐 Time Settings:", info);
 
   // 한국 시간이 UTC보다 9시간 앞서는지 확인
   const utcDate = new Date(info.utc);
@@ -164,7 +164,7 @@ export function validateTimeSettings() {
   const hourDiff = (kstDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60);
 
   if (Math.abs(hourDiff - 9) < 0.1) {
-    console.log("✅ KST 시간 설정이 올바릅니다.");
+    // console.log("✅ KST 시간 설정이 올바릅니다.");
   } else {
     console.warn("⚠️ KST 시간 설정에 문제가 있을 수 있습니다.", { hourDiff });
   }
