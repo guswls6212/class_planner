@@ -27,6 +27,9 @@ interface GroupSessionModalProps {
   handleEndTimeChange: (newEndTime: string) => void;
   groupTimeError: string;
   addGroupSession: (data: GroupSessionData) => void;
+  onCreateStudent: () => void;
+  studentCreating: boolean;
+  studentCreateError: string;
 }
 
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
@@ -48,6 +51,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   handleEndTimeChange,
   groupTimeError,
   addGroupSession,
+  onCreateStudent,
+  studentCreating,
+  studentCreateError,
 }) => {
   if (!isOpen) return null;
 
@@ -99,21 +105,42 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 <button
                   type="button"
                   className={styles.addStudentBtn}
-                  onClick={addStudentFromInput}
-                  disabled={!studentInputValue.trim()}
+                  onClick={
+                    selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
+                      ? onCreateStudent
+                      : addStudentFromInput
+                  }
+                  disabled={!studentInputValue.trim() || studentCreating}
                 >
-                  추가
+                  {selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
+                    ? "새 학생 추가"
+                    : "추가"}
                 </button>
               </div>
               {studentInputValue && (
                 <div className={styles.studentSearchResults}>
                   {selectableStudents.length === 0 ? (
                     <div className={styles.noSearchResults}>
-                      <span>검색 결과가 없습니다</span>
-                      {!studentExistsExact && (
-                        <span className={styles.studentNotFound}>
-                          (존재하지 않는 학생입니다)
-                        </span>
+                      {studentExistsExact ? (
+                        <span>이미 추가된 학생입니다</span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={styles.createStudentCta}
+                            onClick={onCreateStudent}
+                            disabled={studentCreating}
+                          >
+                            {studentCreating
+                              ? "추가 중..."
+                              : `＋ '${studentInputValue.trim()}' 새 학생으로 추가`}
+                          </button>
+                          {studentCreateError && (
+                            <p className={styles.createStudentError}>
+                              {studentCreateError}
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   ) : (

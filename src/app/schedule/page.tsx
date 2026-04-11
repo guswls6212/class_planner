@@ -25,6 +25,7 @@ import AuthGuard from "../../components/atoms/AuthGuard";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
+import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
@@ -428,10 +429,6 @@ function SchedulePageContent(): JSX.Element {
       //   targetYPosition
       // );
       // const maxYPosition = actualMaxYPosition + 1; // 실제 최대값 + 1
-
-      // console.log(
-      //   `📊 해당 요일의 최대 yPosition: ${actualMaxYPosition}, 충돌 해결 최대값: ${maxYPosition}`
-      // );
 
       // 초기 충돌 확인
       let hasCollisions = checkCollisionsAtYPosition(
@@ -880,8 +877,13 @@ function SchedulePageContent(): JSX.Element {
   });
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
 
+  // 학생 생성 훅 (모달에서 신규 학생 추가 시 사용)
+  const { addStudent: createStudent } = useStudentManagementLocal();
+
   // 🆕 학생 입력 관련 상태
   const [studentInputValue, setStudentInputValue] = useState("");
+  const [studentCreating, setStudentCreating] = useState(false);
+  const [studentCreateError, setStudentCreateError] = useState<string>("");
 
   // 🆕 모달용 학생 검색 결과
   const filteredStudentsForModal = useMemo(() => {
@@ -992,6 +994,36 @@ function SchedulePageContent(): JSX.Element {
       }));
     }
     setStudentInputValue("");
+    setStudentCreateError("");
+  };
+
+  // 🆕 신규 학생 생성 함수 (B-1: 이름만, 성별 미설정)
+  const handleCreateStudentFromInput = async () => {
+    const trimmed = studentInputValue.trim();
+    if (!trimmed) return;
+
+    setStudentCreating(true);
+    setStudentCreateError("");
+
+    try {
+      const success = await createStudent(trimmed);
+      if (success) {
+        // 생성 성공 후 localStorage에서 새 학생 ID 조회
+        const data = getClassPlannerData();
+        const newStudent = data.students.find(
+          (s) => s.name.trim() === trimmed
+        );
+        if (newStudent) {
+          addStudent(newStudent.id);
+        }
+      } else {
+        setStudentCreateError("이미 존재하는 이름입니다.");
+      }
+    } catch {
+      setStudentCreateError("학생 생성에 실패했습니다.");
+    } finally {
+      setStudentCreating(false);
+    }
   };
 
   // 🆕 학생 제거 함수
@@ -1002,13 +1034,15 @@ function SchedulePageContent(): JSX.Element {
     }));
   };
 
-  // 🆕 입력창에서 학생 추가 함수 (최대 14명 제한)
+  // 🆕 입력창에서 학생 추가 함수
   const addStudentFromInput = () => {
     const trimmedValue = studentInputValue.trim();
     if (!trimmedValue) return;
 
-    // 정확한 이름으로 학생 찾기
-    const student = students.find((s) => s.name === trimmedValue);
+    // 정확한 이름으로 기존 학생 찾기
+    const student = students.find(
+      (s) => s.name.toLowerCase() === trimmedValue.toLowerCase()
+    );
     if (student && !groupModalData.studentIds.includes(student.id)) {
       // 🆕 최대 14명 제한 확인
       if (groupModalData.studentIds.length >= 14) {
@@ -1016,6 +1050,9 @@ function SchedulePageContent(): JSX.Element {
         return;
       }
       addStudent(student.id);
+    } else if (!student) {
+      // 일치하는 학생 없으면 신규 생성 플로우로 위임
+      handleCreateStudentFromInput();
     }
   };
 
@@ -1024,10 +1061,17 @@ function SchedulePageContent(): JSX.Element {
     if (e.key === "Enter") {
       e.preventDefault();
       addStudentFromInput();
-      // 🆕 입력창 완전 초기화 (이중 보장)
-      setStudentInputValue("");
+      // 입력 초기화는 addStudent/handleCreateStudentFromInput 성공 시에만 수행
     }
   };
+
+  // 🆕 입력값 변경 시 에러 초기화
+  useEffect(() => {
+    if (studentCreateError) {
+      setStudentCreateError("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentInputValue]);
 
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = async (data: GroupSessionData) => {
@@ -1259,6 +1303,9 @@ function SchedulePageContent(): JSX.Element {
         handleEndTimeChange={handleEndTimeChange}
         groupTimeError={groupTimeError}
         addGroupSession={addGroupSession}
+        onCreateStudent={handleCreateStudentFromInput}
+        studentCreating={studentCreating}
+        studentCreateError={studentCreateError}
       />
 
       {/* 세션 편집 모달 (분리) */}
