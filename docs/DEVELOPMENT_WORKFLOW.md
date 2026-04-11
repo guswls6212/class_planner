@@ -27,7 +27,7 @@
 
 ```bash
 ✅ 전체 테스트 스위트 통과
-✅ prepare-commit 실행 성공
+✅ npm run check 통과
 ✅ 브라우저에서 최종 동작 확인
 ```
 
@@ -185,7 +185,7 @@ theme: {
 | `npm run lint`           | 코드 스타일  | ESLint 규칙 검사   |
 | `npm run lint:fix`       | 코드 스타일  | 자동 수정          |
 | `npm run format`         | 코드 포맷    | Prettier 적용      |
-| `npm run prepare-commit` | 커밋 전 검증 | 전체 검증 프로세스 |
+| `npm run check`          | 커밋/푸시 전 검증 | tsc + unit + build |
 
 ## 🚨 문제 해결 가이드
 

@@ -265,54 +265,39 @@ export const E2E_CONFIG = {
 
 ## 🚀 개발 워크플로우
 
-### **1. 개발 중** (매번 커밋 시)
+### **1. 개발 중** (작업 중 / 커밋 전)
 
 ```bash
-npm run pre-commit  # 1-3분 (타입체크, 린트, 핵심테스트, 빌드)
+npm run check:quick  # tsc + unit (수십 초)
+npm run check        # tsc + unit + build (커밋/푸시 전 1회, 1분 내외)
 ```
 
 **포함 검증**:
 
 - TypeScript 타입 체크
-- ESLint 자동 수정 및 검사
-- 핵심 비즈니스 로직 테스트 (Domain + Application)
-- API Routes 테스트
-- 컴포넌트 기본 테스트
-- 빌드 가능 여부 확인
+- 전체 단위 테스트
+- (check 한정) Next.js production build 확인
 
 ### **2. 기능 완성 후** (PR 생성 전)
 
 ```bash
-npm run pre-pr  # 5-15분 (전체테스트, E2E, 통합테스트)
+# PR 올리면 GitHub Actions ci.yml 이 자동으로 실행됨
+# check job: type-check + lint + unit test
+# build job: production build
+# e2e job:   Playwright Chromium golden path
 ```
 
 **포함 검증**:
 
-- 커밋 전 검증 (기본 품질 보장)
+- TypeScript 타입 체크 + lint
 - 전체 단위 테스트
-- 실제 Supabase 통합 테스트
-- 테스트 커버리지 측정
-- 주요 E2E 시나리오 테스트
-- 브라우저 호환성 테스트
-- 프로덕션 빌드 검증
-- 시스템 통합 테스트
+- Next.js production build
+- Playwright E2E (Chromium, final-working-test.spec.ts)
 
 ### **3. 릴리스 준비** (배포 전)
 
-```bash
-npm run pre-deploy  # 15-30분 (보안, 성능, 완전검증)
-```
-
-**포함 검증**:
-
-- PR 검증 (모든 이전 단계 포함)
-- 전체 E2E 테스트 스위트
-- 모든 브라우저 호환성 검증
-- 성능 벤치마크 테스트
-- 보안 취약점 검사 (npm audit)
-- 환경 변수 및 설정 검증
-- 데이터베이스 마이그레이션 상태 확인
-- 최종 프로덕션 빌드 검증
+CI green + 수동 확인. 별도 pre-deploy 스크립트 없음.
+Lightsail 배포 워크플로우는 ADR-001 완결 후 `deploy.yml` 로 추가 예정 (F1).
 
 ### **서버 관리 명령어**
 
@@ -322,15 +307,6 @@ npm run server:stop     # 개발 서버 종료
 npm run server:restart   # 개발 서버 재시작
 npm run server:status    # 서버 상태 확인
 npm run server:clean     # 포트 3000 정리
-```
-
-### **CI/CD 지원**
-
-```bash
-# 자동 진행 모드 활성화
-export AUTO_PROCEED=Y
-npm run pre-pr
-npm run pre-deploy
 ```
 
 ---
@@ -381,9 +357,9 @@ npm run lint:fix            # ESLint 자동 수정
 
 ### **4. 테스트 전략**
 
-- **개발 중**: `pre-commit` 스크립트 사용 (빠른 검증)
-- **기능 완성**: `pre-pr` 스크립트 사용 (통합 검증)
-- **배포 준비**: `pre-deploy` 스크립트 사용 (완전 검증)
+- **개발 중**: `npm run check:quick` (빠른 피드백)
+- **커밋/푸시 전**: `npm run check` (tsc + unit + build)
+- **PR 생성**: GitHub Actions ci.yml 이 자동 검증
 
 ---
 
@@ -429,7 +405,7 @@ git merge --no-ff feature-branch
 ```bash
 # 1. feature 브랜치에서 작업 완료
 git checkout feature/new-feature
-npm run pre-commit && npm run pre-pr  # 검증
+npm run check  # 검증 (tsc + unit + build)
 
 # 2. develop으로 이동
 git checkout develop
