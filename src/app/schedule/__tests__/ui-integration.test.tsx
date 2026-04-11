@@ -141,7 +141,7 @@ describe("스케줄 페이지 UI 통합 테스트", () => {
     vi.clearAllMocks();
     // 테스트에서 인증 우회: 토큰 존재한다고 가정
     localStorage.setItem(
-      "sb-kcyqftasdxtqslrhbctv-auth-token",
+      "sb-iqzcnyujkagwgshbecpg-auth-token",
       JSON.stringify({ access_token: "test", user: { id: "u1" } })
     );
     localStorage.setItem("supabase_user_id", "u1");
