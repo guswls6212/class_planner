@@ -1,10 +1,6 @@
 services:
   class-planner:
-    build:
-      context: .
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    image: ghcr.io/guswls6212/class-planner:latest
     container_name: class-planner
     restart: unless-stopped
     ports:

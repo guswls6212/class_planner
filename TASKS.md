@@ -56,7 +56,7 @@
 - [x] deploy.sh certbot 버그 수정 (`--entrypoint ""` 추가)
 - [x] Supabase OAuth callback URL 확인/업데이트 (Vercel→Lightsail 도메인 변경 반영)
 - [x] 배포된 사이트 기능 검증 (로그인, 데이터 조회/저장, 시간표 CRUD)
-- [ ] CI/CD 구축 (GitHub Actions → Lightsail deploy) — 우선순위 낮음, 수동 배포로도 운영 가능
+- [x] CI/CD 구축 (GitHub Actions → Lightsail deploy) — deploy.yml, ghcr.io 이미지 태그, SHA 기반 롤백 (2026-04-12)
 
 ## Phase 2A: Academy 데이터 모델 + DB 정규화 (진행 중)
 > 사용자가 늘어날 것을 대비해 처음부터 academy_id 기반으로 설계.

@@ -15,7 +15,7 @@
 5. `class-planner/tree.txt` — 현재 파일 구조
 
 ## 기술 스택
-- **Frontend:** Next.js 15.5.2 (App Router), React 19, TypeScript 5
+- **Frontend:** Next.js 15.5.9 (App Router), React 19, TypeScript 5
 - **Styling:** Tailwind CSS 4.0 (인라인 스타일 금지)
 - **Backend:** Next.js API Routes
 - **Database:** PostgreSQL (현재 Supabase JSONB, 정규화 마이그레이션 예정)
@@ -101,6 +101,41 @@ npm run dev
 ### 모바일 뷰포트 확인 (모달 변경 시)
 Playwright MCP 설정에서 viewport를 375×667로 변경 후 재확인.
 
+### 검증 도구 선택
+
+**1차 — Playwright MCP (항상 실행)**
+구조적 검증: 버튼 동작, 폼 입력, API 연동, 라우트 이동.
+`mcp__playwright__navigate` → 클릭/입력 → `mcp__playwright__screenshot`
+
+**2차 — computer-use (시각적 변경 시 추가 실행)**
+탐험적 검증: Playwright 스크립트로 표현하기 어려운 시각적 상호작용.
+
+실행 기준 (하나라도 해당하면 사용):
+- 모달/드로어/팝오버 수정
+- 드래그앤드롭 (시간표 블록 이동 등)
+- 스크롤 위치 보존 관련 변경
+- 반응형 레이아웃 (모바일 뷰포트 영향)
+- CSS 애니메이션/트랜지션 변경
+- 시각적 색상/폰트/간격 변경
+
+Claude Max 구독 내 실행 (추가 API 비용 없음). computer-use tool로 브라우저를 직접 조작하며 시각적 이상을 탐지한다.
+
+### UI Verification Report 포맷
+
+```
+## UI Verification Report
+
+### 1차 — Playwright MCP
+- Flows tested: ...
+- Screenshots: ...
+- Issues found: None / [목록]
+
+### 2차 — computer-use (해당 시)
+- Scope: [어떤 시각적 요소를 탐험했는지]
+- Observations: [발견 사항]
+- Issues found: None / [목록]
+```
+
 ## omni-radar 연동
 class-planner는 Next.js 기반이므로 omni-radar ASGI 미들웨어를 직접 사용할 수 없다. 향후 마이그레이션 시 별도 연동 방식을 설계해야 함 (예: API 레이어에 radar hook 주입, 또는 omni-radar HTTP endpoint로 이벤트 전송).
 
@@ -109,9 +144,15 @@ class-planner는 Next.js 기반이므로 omni-radar ASGI 미들웨어를 직접 
 - **인쇄 품질:** PDF 출력 시 레이아웃이 깨지지 않는가? 종이에 인쇄했을 때 읽을 수 있는가?
 - **오프라인 내성:** 네트워크 불안정 시 데이터 유실 가능성은?
 
-## 마이그레이션 계획 (Vercel/Supabase → AWS Lightsail)
-- Vercel → Docker + Next.js standalone build → Lightsail 컨테이너 배포
-- Supabase PostgreSQL → Self-hosted PostgreSQL (Lightsail 내 또는 별도 RDS)
-- Supabase Auth → NextAuth.js 또는 자체 JWT 기반 인증
-- JSONB 단일 테이블 → 정규화된 테이블 구조 (students, subjects, sessions, enrollments)
-- 모니터링: omni-radar 연동 또는 자체 로깅 + Grafana
+## 배포 현황 (ADR-001 기준, 2026-04-10 완료)
+
+**하이브리드 아키텍처 (확정):**
+- **앱 서버:** AWS Lightsail 1GB (ap-northeast-2) — Docker + Nginx + Let's Encrypt
+- **Auth + DB:** Supabase 유지 (OAuth, PostgreSQL)
+- **도메인:** `class-planner.info365.studio`
+- **CI/CD:** GitHub Actions `ci.yml` (check→build→e2e) + `deploy.yml` (ghcr.io→Lightsail SSH)
+
+**결정된 사항 (변경 없음):**
+- Self-hosted PostgreSQL/NextAuth 전환 기각 (결합도 높음, ADR-001)
+- JSONB → 정규화 마이그레이션은 별도 Phase에서 진행 (ADR-002)
+- 모니터링은 omni-radar 연동 방안 검토 중 (별도 스펙 필요)

@@ -17,12 +17,13 @@ class-planner/
 ├── eslint.config.mjs
 ├── vitest.config.ts
 ├── playwright.config.ts
-├── vercel.json
 ├── .env.local
 ├── .env.e2e
 ├── .gitignore
 ├── .github/
-│   └── workflows/ci.yml
+│   └── workflows/
+│       ├── ci.yml
+│       └── deploy.yml                    # (신규) ghcr.io 빌드 + Lightsail SSH 배포
 ├── docs/
 │   ├── adr/                          # (신규) 아키텍처 결정 기록
 │   ├── COMPONENT_GUIDE.md

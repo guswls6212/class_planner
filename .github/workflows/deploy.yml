@@ -1,0 +1,110 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (commit SHA or 'latest'). Leave empty for latest."
+        required: false
+        default: "latest"
+
+jobs:
+  build-image:
+    name: Build & push Docker image
+    # CI 자동 트리거 시: CI 성공한 경우만 빌드
+    # 수동 dispatch 시: 'latest' 태그를 지정한 경우만 빌드 (특정 SHA 지정 시엔 이미 빌드된 이미지 사용)
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.image_tag == 'latest')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set image tag
+        id: meta
+        run: |
+          SHA=${{ github.event.workflow_run.head_sha || github.sha }}
+          echo "sha_tag=${SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/guswls6212/class-planner:${{ steps.meta.outputs.sha_tag }}
+            ghcr.io/guswls6212/class-planner:latest
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  deploy:
+    name: Deploy to Lightsail
+    needs: build-image
+    # build-image 성공 시 또는 스킵(특정 SHA 롤백) 시 모두 실행
+    if: always() && (needs.build-image.result == 'success' || needs.build-image.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.image_tag }}" != "latest" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ needs.build-image.outputs.image_tag || 'latest' }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/class-planner
+
+            IMAGE_TAG="${{ steps.tag.outputs.tag }}"
+            echo "Deploying: ghcr.io/guswls6212/class-planner:$IMAGE_TAG"
+
+            # docker-compose.yml 의 이미지 태그를 배포 대상으로 교체
+            sed -i "s|image: ghcr.io/guswls6212/class-planner:.*|image: ghcr.io/guswls6212/class-planner:$IMAGE_TAG|g" docker-compose.yml
+
+            # ghcr.io 인증 (GITHUB_TOKEN 대신 서버 로그인 필요 시 별도 시크릿 추가)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null || true
+
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            # 헬스체크 (최대 60초, 6초 간격 × 10회)
+            echo "Waiting for health check..."
+            for i in $(seq 1 10); do
+              if curl -sf http://localhost:3000 > /dev/null 2>&1; then
+                echo "Health check passed (attempt $i)"
+                exit 0
+              fi
+              echo "Attempt $i/10 — retrying in 6s..."
+              sleep 6
+            done
+
+            echo "ERROR: Health check failed after 60s"
+            docker compose logs --tail=50 class-planner
+            exit 1
