@@ -63,6 +63,10 @@ jobs:
     if: always() && (needs.build-image.result == 'success' || needs.build-image.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
       - name: Resolve image tag
         id: tag
         run: |
@@ -71,6 +75,15 @@ jobs:
           else
             echo "tag=${{ needs.build-image.outputs.image_tag || 'latest' }}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Sync docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          source: docker-compose.yml
+          target: ~/class-planner/
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
@@ -85,14 +98,14 @@ jobs:
             IMAGE_TAG="${{ steps.tag.outputs.tag }}"
             echo "Deploying: ghcr.io/guswls6212/class-planner:$IMAGE_TAG"
 
-            # docker-compose.yml 의 이미지 태그를 배포 대상으로 교체
+            # docker-compose.yml의 이미지 태그를 배포 대상으로 교체
             sed -i "s|image: ghcr.io/guswls6212/class-planner:.*|image: ghcr.io/guswls6212/class-planner:$IMAGE_TAG|g" docker-compose.yml
 
-            # ghcr.io 인증 (GITHUB_TOKEN 대신 서버 로그인 필요 시 별도 시크릿 추가)
+            # ghcr.io 인증
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin 2>/dev/null || true
 
             docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose up -d --force-recreate --remove-orphans
 
             # 헬스체크 (최대 60초, 6초 간격 × 10회)
             echo "Waiting for health check..."
