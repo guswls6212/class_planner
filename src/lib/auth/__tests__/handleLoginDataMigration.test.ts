@@ -5,6 +5,7 @@ import {
   applyLocalDataChoice,
 } from "../handleLoginDataMigration";
 import type { ClassPlannerData } from "../../localStorageCrud";
+import { syncStudentCreate, syncSubjectCreate } from "../../apiSync";
 
 // Mock localStorage
 const storage: Record<string, string> = {};
@@ -83,6 +84,12 @@ describe("checkLoginDataConflict", () => {
       expect(result.serverData.students[0].name).toBe("Server Student");
     }
   });
+
+  it("anonymous 키가 malformed JSON이면 use-server", () => {
+    storage["classPlannerData:anonymous"] = "not-valid-json";
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("use-server");
+  });
 });
 
 describe("applyServerChoice", () => {
@@ -100,6 +107,7 @@ describe("applyServerChoice", () => {
 describe("applyLocalDataChoice", () => {
   beforeEach(() => {
     localStorageMock.clear();
+    vi.clearAllMocks();
   });
 
   it("anonymous 데이터를 user-scoped 키로 복사 후 anonymous 삭제", () => {
@@ -107,10 +115,22 @@ describe("applyLocalDataChoice", () => {
     applyLocalDataChoice("user-999");
     expect(storage["classPlannerData:user-999"]).toBe(JSON.stringify(localData));
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
+    // sync 호출 검증
+    expect(syncStudentCreate).toHaveBeenCalledWith("user-999", { name: "Anonymous Student" });
+    expect(syncSubjectCreate).toHaveBeenCalledWith("user-999", { name: "익명 과목", color: "#00ff00" });
   });
 
   it("anonymous 데이터 없으면 아무것도 안 함", () => {
     applyLocalDataChoice("user-999");
     expect(storage["classPlannerData:user-999"]).toBeUndefined();
+  });
+
+  it("anonymous 키가 malformed JSON이면 localStorage 복사는 되지만 sync 호출 안 함", () => {
+    storage["classPlannerData:anonymous"] = "not-valid-json";
+    applyLocalDataChoice("user-888");
+    expect(storage["classPlannerData:user-888"]).toBe("not-valid-json");
+    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
+    expect(syncStudentCreate).not.toHaveBeenCalled();
+    expect(syncSubjectCreate).not.toHaveBeenCalled();
   });
 });
