@@ -60,6 +60,23 @@ export const useGlobalDataInitialization = () => {
 
         setIsInitializing(true);
 
+        // 온보딩 확인: academy 없는 신규 사용자면 자동 생성
+        try {
+          const onboardingRes = await fetch(
+            `/api/onboarding?userId=${encodeURIComponent(userId)}`,
+            { method: "POST" }
+          );
+          const onboardingData = await onboardingRes.json();
+          if (onboardingData.isNew) {
+            logger.info("온보딩 완료 - 신규 사용자", {
+              academyId: onboardingData.academyId,
+            });
+          }
+        } catch (onboardingError) {
+          // 온보딩 실패 시에도 계속 진행 (기존 사용자는 이미 academy 있음)
+          logger.warn("온보딩 호출 실패 (기존 사용자이거나 네트워크 오류)");
+        }
+
         // 4개 API 병렬 fetch
         logger.info("서버에서 데이터를 병렬 조회합니다");
         const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =

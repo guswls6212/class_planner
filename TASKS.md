@@ -76,7 +76,7 @@
 | **S1** | Repository 교체 (JSONB → 정규화 테이블, academy_id 파라미터) | ✅ 완료 (2026-04-12) |
 | **S2** | API Route 재작성 (academy_id 기반 Repository 사용, `/api/data` 폐기) | ✅ 완료 (2026-04-12) |
 | **S3** | 클라이언트 데이터 플로우 전환 (localStorage JSONB → 개별 API 호출) | ✅ 완료 (2026-04-12) |
-| **S4** | 온보딩 플로우 (첫 로그인 → 학원 생성 → owner 부여) | 미착수 |
+| **S4** | 온보딩 플로우 (첫 로그인 → 학원 생성 → owner 부여) | ✅ 완료 (2026-04-12) |
 | **S5** | 레거시 정리 (debouncedServerSync, /api/data, DataApplicationService 제거) | ✅ 완료 (2026-04-12) |
 
 #### S1 완료 내역 (2026-04-12)

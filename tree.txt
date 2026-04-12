@@ -108,6 +108,7 @@ class-planner/
 │   │   │   └── _constants/scheduleConstants.ts
 │   │   └── api/
 │   │       ├── enrollments/route.ts          # (신규, S3) GET/POST/DELETE
+│   │       ├── onboarding/route.ts           # (신규, S4) 신규 사용자 academy 자동 생성
 │   │       ├── students/
 │   │       │   ├── route.ts
 │   │       │   └── [id]/route.ts
