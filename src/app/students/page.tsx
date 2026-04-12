@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import AuthGuard from "../../components/atoms/AuthGuard";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { logger } from "../../lib/logger";
 
 export default function StudentsPage() {
-  return (
-    <AuthGuard requireAuth={true}>
-      <StudentsPageContent />
-    </AuthGuard>
-  );
+  return <StudentsPageContent />;
 }
 
 function StudentsPageContent() {

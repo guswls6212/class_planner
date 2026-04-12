@@ -27,7 +27,24 @@ export interface CrudResult<T> {
 
 // ===== 상수 =====
 
-const STORAGE_KEY = "classPlannerData";
+export const ANONYMOUS_STORAGE_KEY = "classPlannerData:anonymous";
+
+function getStorageKey(): string {
+  if (typeof window === "undefined") return ANONYMOUS_STORAGE_KEY;
+  const userId = localStorage.getItem("supabase_user_id");
+  return userId ? `classPlannerData:${userId}` : ANONYMOUS_STORAGE_KEY;
+}
+
+function migrateUnkeyedStorage(): void {
+  if (typeof window === "undefined") return;
+  const legacy = localStorage.getItem("classPlannerData");
+  if (!legacy) return;
+  const currentKey = getStorageKey();
+  if (!localStorage.getItem(currentKey)) {
+    localStorage.setItem(currentKey, legacy);
+  }
+  localStorage.removeItem("classPlannerData");
+}
 const createDefaultData = (): ClassPlannerData => ({
   students: [],
   subjects: [],
@@ -49,7 +66,8 @@ export const getClassPlannerData = (): ClassPlannerData => {
       return createDefaultData();
     }
 
-    const stored = localStorage.getItem(STORAGE_KEY);
+    migrateUnkeyedStorage();
+    const stored = localStorage.getItem(getStorageKey());
     if (!stored) {
       logger.debug("localStorageCrud - 저장된 데이터 없음, 기본 데이터 반환");
       return createDefaultData();
@@ -112,7 +130,7 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
       ...data,
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    localStorage.setItem(getStorageKey(), JSON.stringify(dataToSave));
 
     logger.debug("localStorageCrud - 데이터 저장 성공", {
       studentCount: dataToSave.students.length,
@@ -153,7 +171,7 @@ export const clearClassPlannerData = (): boolean => {
       return false;
     }
 
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getStorageKey());
     logger.info("localStorageCrud - 데이터 초기화 완료");
 
     // 초기화 이벤트 발생 (실패해도 무시)
@@ -921,6 +939,20 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
       success: false,
       error: error instanceof Error ? error.message : "등록 삭제 실패",
     };
+  }
+};
+
+// ===== 사용자별 데이터 삭제 =====
+
+export const clearUserClassPlannerData = (userId: string): boolean => {
+  try {
+    if (typeof window === "undefined") return false;
+    localStorage.removeItem(`classPlannerData:${userId}`);
+    logger.info("localStorageCrud - 사용자 데이터 삭제 완료", { userId });
+    return true;
+  } catch (error) {
+    logger.error("localStorageCrud - 사용자 데이터 삭제 실패:", undefined, error as Error);
+    return false;
   }
 };
 

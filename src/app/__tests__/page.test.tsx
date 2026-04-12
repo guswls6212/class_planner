@@ -61,7 +61,10 @@ describe("Home Page", () => {
   it("네비게이션 링크들이 있어야 한다", () => {
     render(<HomePage />);
 
-    expect(screen.getAllByText(/로그인/)).toHaveLength(2);
+    // 비로그인 상태: "로그인하기" 보조 링크 1개
+    expect(screen.getAllByText(/로그인/)).toHaveLength(1);
+    // 메인 CTA "바로 시작하기"가 표시되는지 확인
+    expect(screen.getByText("바로 시작하기")).toBeInTheDocument();
   });
 
   it("메인 콘텐츠가 표시되어야 한다", () => {
@@ -74,8 +77,9 @@ describe("Home Page", () => {
   it("로그인 상태에 따른 조건부 렌더링이 작동해야 한다", () => {
     render(<HomePage />);
 
-    // 로그인 버튼이 표시되는지 확인
-    expect(screen.getAllByText(/로그인/)).toHaveLength(2);
+    // 비로그인 상태: "바로 시작하기" 메인 CTA + "로그인하기" 보조 링크
+    expect(screen.getByText("바로 시작하기")).toBeInTheDocument();
+    expect(screen.getByText("로그인하기")).toBeInTheDocument();
   });
 
   it("기능 카드들이 올바른 링크를 가져야 한다", () => {
