@@ -195,8 +195,10 @@ class-planner/
 │   │   │   ├── StudentRepositoryFactory.ts
 │   │   │   └── SubjectRepositoryFactory.ts
 │   │   └── repositories/
-│   │       ├── SupabaseStudentRepository.ts
-│   │       └── SupabaseSubjectRepository.ts
+│   │       ├── SupabaseEnrollmentRepository.ts    # (신규) enrollments 테이블 CRUD
+│   │       ├── SupabaseSessionRepository.ts       # (신규) sessions + session_enrollments 조인
+│   │       ├── SupabaseStudentRepository.ts       # students 테이블 (academy_id 기반)
+│   │       └── SupabaseSubjectRepository.ts       # subjects 테이블 (academy_id 기반)
 │   ├── hooks/
 │   │   ├── useDisplaySessions.ts
 │   │   ├── useGlobalDataInitialization.ts
