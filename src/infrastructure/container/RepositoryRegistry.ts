@@ -51,6 +51,7 @@ export class RepositoryRegistry {
   // 등록
   // -------------------------------------------------------
   static registerAll(): void {
+    this.instances.clear(); // clear stale singleton cache before re-registering
     logger.info("📋 Repository 등록 시작...");
     const config = RepositoryConfigFactory.create();
     this.register(REPOSITORY_KEYS.STUDENT_REPOSITORY, () => config.studentRepository);
@@ -61,6 +62,7 @@ export class RepositoryRegistry {
   }
 
   static registerForTest(): void {
+    this.instances.clear(); // clear stale singleton cache before re-registering
     logger.info("🧪 테스트용 Repository 등록 시작...");
     const config = RepositoryConfigFactory.createForTest();
     this.register(REPOSITORY_KEYS.STUDENT_REPOSITORY, () => config.studentRepository);
@@ -113,7 +115,12 @@ export class RepositoryRegistry {
   // 상태
   // -------------------------------------------------------
   static isRegistered(): boolean {
-    return this.factories.has(REPOSITORY_KEYS.STUDENT_REPOSITORY);
+    return (
+      this.factories.has(REPOSITORY_KEYS.STUDENT_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.SUBJECT_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.SESSION_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY)
+    );
   }
 
   static clear(): void {
