@@ -182,13 +182,10 @@ class-planner/
 │   │       ├── SubjectUseCases.ts
 │   │       └── UpdateStudentUseCase.ts
 │   ├── infrastructure/
-│   │   ├── RepositoryFactory.ts
 │   │   ├── index.ts
 │   │   ├── interfaces.ts
 │   │   ├── config/RepositoryConfig.ts
 │   │   ├── container/
-│   │   │   ├── DIContainer.ts
-│   │   │   ├── RepositoryInitializer.ts
 │   │   │   └── RepositoryRegistry.ts
 │   │   ├── factories/
 │   │   │   ├── EnrollmentRepositoryFactory.ts

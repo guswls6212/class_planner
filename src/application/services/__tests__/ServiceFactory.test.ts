@@ -9,7 +9,7 @@ describe("ServiceFactory", () => {
   });
 
   afterEach(() => {
-    // 각 테스트 후에 정리
+    RepositoryRegistry.clear();
   });
 
   describe("createStudentService", () => {
