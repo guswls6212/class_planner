@@ -3,9 +3,11 @@
  * 스마트 초기화 로직 및 기본 동작을 검증합니다.
  */
 
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useGlobalDataInitialization } from "../useGlobalDataInitialization";
+import { supabase } from "../../utils/supabaseClient";
+import { checkLoginDataConflict } from "../../lib/auth/handleLoginDataMigration";
 
 // Mock dependencies
 vi.mock("../../lib/logger", () => ({
@@ -15,6 +17,12 @@ vi.mock("../../lib/logger", () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock("../../lib/auth/handleLoginDataMigration", () => ({
+  checkLoginDataConflict: vi.fn(() => ({ action: "use-server" })),
+  applyServerChoice: vi.fn(),
+  applyLocalDataChoice: vi.fn(),
 }));
 
 // timeUtils mock removed - using standard Date now
@@ -107,5 +115,91 @@ describe("useGlobalDataInitialization 기본 기능", () => {
 
     // 기본 과목이 추가될 때 lastModified가 갱신되는 로직이 있음을 확인
     // (실제 구현에서는 API 호출에서 lastModified가 갱신됨)
+  });
+});
+
+describe("익명 사용자 초기화", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+
+    // supabase returns no session
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    } as any);
+  });
+
+  it("세션 없으면 anonymous 키로 기본 과목 9개 시딩", async () => {
+    // getItem returns null → no existing anonymous data
+    localStorageMock.getItem.mockReturnValue(null);
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    // setClassPlannerData calls localStorage.setItem("classPlannerData:anonymous", ...)
+    const setItemCalls: string[][] = localStorageMock.setItem.mock.calls;
+    const anonymousCall = setItemCalls.find((args) => args[0] === "classPlannerData:anonymous");
+    expect(anonymousCall).toBeDefined();
+
+    const storedData = JSON.parse(anonymousCall![1]);
+    expect(storedData.subjects.length).toBe(9);
+  });
+
+  it("anonymous 키가 이미 있으면 재초기화 안 함 (기존 데이터 유지)", async () => {
+    const existingData = JSON.stringify({
+      students: [{ id: "s1", name: "Existing" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    // getItem returns existing data for ANONYMOUS_STORAGE_KEY
+    localStorageMock.getItem.mockImplementation((key: string) => {
+      if (key === "classPlannerData:anonymous") return existingData;
+      return null;
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    // setItem should NOT have been called with the anonymous key
+    const setItemCalls: string[][] = localStorageMock.setItem.mock.calls;
+    const anonymousCall = setItemCalls.find((args) => args[0] === "classPlannerData:anonymous");
+    expect(anonymousCall).toBeUndefined();
+  });
+});
+
+describe("로그인 사용자 — 충돌 없음", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: "user-123", email: "test@test.com" } } },
+      error: null,
+    } as any);
+
+    localStorageMock.getItem.mockReturnValue(null);
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: [] }),
+    });
+
+    // no conflict
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+  });
+
+  it("anonymous 데이터 없으면 conflictState null", async () => {
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+    expect(result.current.conflictState).toBeNull();
   });
 });

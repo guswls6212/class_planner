@@ -1,14 +1,25 @@
 /**
  * 전역 사용자 데이터 초기화 훅
  *
- * 로그인한 사용자의 데이터를 개별 API Routes에서 병렬 fetch하여
- * localStorage("classPlannerData")를 서버 데이터로 초기화한다.
- * 과목이 없으면 기본 과목을 서버에 저장 후 localStorage에 반영한다.
+ * - 세션 없음(익명): localStorage:anonymous 초기화 + 기본 과목 시딩
+ * - 세션 있음: 기존 로직 유지 (onboarding → 서버 fetch → localStorage:userId 저장)
+ *   + anonymous 데이터와의 충돌 체크 (DataConflictModal 트리거)
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { syncSubjectCreate } from "../lib/apiSync";
-import { setClassPlannerData } from "../lib/localStorageCrud";
+import {
+  ANONYMOUS_STORAGE_KEY,
+  clearUserClassPlannerData,
+  setClassPlannerData,
+} from "../lib/localStorageCrud";
+import type { ClassPlannerData } from "../lib/localStorageCrud";
+import {
+  checkLoginDataConflict,
+  applyServerChoice,
+  applyLocalDataChoice,
+} from "../lib/auth/handleLoginDataMigration";
+import type { MigrationResult } from "../lib/auth/handleLoginDataMigration";
 import { logger } from "../lib/logger";
 import { supabase } from "../utils/supabaseClient";
 
@@ -24,9 +35,33 @@ const DEFAULT_SUBJECTS = [
   { name: "고등국어", color: "#059669" },
 ];
 
+type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
+
 export const useGlobalDataInitialization = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [conflictState, setConflictState] = useState<ConflictState | null>(null);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingServerData, setPendingServerData] = useState<ClassPlannerData | null>(null);
+
+  const resolveConflict = useCallback(
+    (choice: "server" | "local") => {
+      if (!pendingUserId || !pendingServerData) return;
+
+      if (choice === "server") {
+        applyServerChoice();
+        setClassPlannerData(pendingServerData);
+      } else {
+        applyLocalDataChoice(pendingUserId);
+      }
+
+      setConflictState(null);
+      setPendingUserId(null);
+      setPendingServerData(null);
+      setIsInitialized(true);
+    },
+    [pendingUserId, pendingServerData]
+  );
 
   useEffect(() => {
     const initializeUserData = async () => {
@@ -43,11 +78,32 @@ export const useGlobalDataInitialization = () => {
           return;
         }
 
+        // ===== 익명 사용자 경로 =====
         if (!session?.user) {
-          logger.debug("로그인되지 않은 사용자 - 데이터 초기화 건너뜀");
+          logger.debug("익명 사용자 — anonymous localStorage 초기화");
+          const existing = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
+          if (!existing) {
+            const defaultSubjectsWithId = DEFAULT_SUBJECTS.map((s, i) => ({
+              id: `default-${i + 1}`,
+              ...s,
+            }));
+            setClassPlannerData({
+              students: [],
+              subjects: defaultSubjectsWithId,
+              sessions: [],
+              enrollments: [],
+              version: "1.0",
+              lastModified: new Date().toISOString(),
+            });
+            logger.info("익명 사용자 — 기본 과목 시딩 완료", {
+              count: DEFAULT_SUBJECTS.length,
+            });
+          }
+          setIsInitialized(true);
           return;
         }
 
+        // ===== 로그인 사용자 경로 =====
         const userId = session.user.id;
         logger.info("인증된 사용자 확인", { email: session.user.email });
 
@@ -55,12 +111,15 @@ export const useGlobalDataInitialization = () => {
         const storedUserId = localStorage.getItem("supabase_user_id");
         if (storedUserId && storedUserId !== userId) {
           logger.warn("다른 사용자 데이터 감지 - 기존 데이터 삭제");
-          localStorage.removeItem("classPlannerData");
+          clearUserClassPlannerData(storedUserId);
         }
+
+        // userId 먼저 설정 (getStorageKey()가 올바른 키를 반환하도록)
+        localStorage.setItem("supabase_user_id", userId);
 
         setIsInitializing(true);
 
-        // 온보딩 확인: academy 없는 신규 사용자면 자동 생성
+        // 온보딩 확인
         try {
           const onboardingRes = await fetch(
             `/api/onboarding?userId=${encodeURIComponent(userId)}`,
@@ -72,8 +131,7 @@ export const useGlobalDataInitialization = () => {
               academyId: onboardingData.academyId,
             });
           }
-        } catch (onboardingError) {
-          // 온보딩 실패 시에도 계속 진행 (기존 사용자는 이미 academy 있음)
+        } catch {
           logger.warn("온보딩 호출 실패 (기존 사용자이거나 네트워크 오류)");
         }
 
@@ -102,6 +160,15 @@ export const useGlobalDataInitialization = () => {
         const sessions = await parseJson(sessionsRes);
         const enrollments = await parseJson(enrollmentsRes);
 
+        const serverData: ClassPlannerData = {
+          students,
+          subjects,
+          sessions,
+          enrollments,
+          version: "1.0",
+          lastModified: new Date().toISOString(),
+        };
+
         logger.info("서버 데이터 조회 완료", {
           studentCount: students.length,
           subjectCount: subjects.length,
@@ -109,42 +176,40 @@ export const useGlobalDataInitialization = () => {
           enrollmentCount: enrollments.length,
         });
 
-        // localStorage에 저장
-        setClassPlannerData({
-          students,
-          subjects,
-          sessions,
-          enrollments,
-          version: "1.0",
-          lastModified: new Date().toISOString(),
-        });
+        // 충돌 체크
+        const migrationResult = checkLoginDataConflict(serverData);
 
-        localStorage.setItem("supabase_user_id", userId);
+        if (migrationResult.action === "conflict") {
+          setPendingUserId(userId);
+          setPendingServerData(serverData);
+          setConflictState(migrationResult);
+          return;
+        }
 
-        // 과목이 없으면 기본 과목 추가
+        if (migrationResult.action === "upload-local") {
+          applyLocalDataChoice(userId);
+          setIsInitialized(true);
+          return;
+        }
+
+        // use-server: 정상 경로
         if (subjects.length === 0) {
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
             count: DEFAULT_SUBJECTS.length,
           });
-
-          // 서버에 기본 과목 저장 (fire-and-forget)
           for (const subject of DEFAULT_SUBJECTS) {
             syncSubjectCreate(userId, subject);
           }
-
-          // localStorage에도 즉시 반영 (임시 ID 사용)
           const defaultSubjectsWithId = DEFAULT_SUBJECTS.map((s, i) => ({
             id: `default-${i + 1}`,
             ...s,
           }));
           setClassPlannerData({
-            students,
+            ...serverData,
             subjects: defaultSubjectsWithId,
-            sessions,
-            enrollments,
-            version: "1.0",
-            lastModified: new Date().toISOString(),
           });
+        } else {
+          setClassPlannerData(serverData);
         }
 
         setIsInitialized(true);
@@ -163,5 +228,5 @@ export const useGlobalDataInitialization = () => {
     initializeUserData();
   }, []);
 
-  return { isInitialized, isInitializing };
+  return { isInitialized, isInitializing, conflictState, resolveConflict };
 };
