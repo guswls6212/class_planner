@@ -13,14 +13,15 @@ interface DataConflictModalProps {
 
 const DataConflictModal: React.FC<DataConflictModalProps> = ({
   localData,
+  serverData: _serverData, // reserved for future: display server data summary
   onSelectServer,
   onSelectLocal,
 }) => {
   return (
     <div className={styles.backdrop}>
-      <div className={styles.modal} role="dialog" aria-modal="true">
+      <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="conflict-modal-title">
         <div className={styles.header}>
-          <h2 className={styles.title}>이전 작업 데이터가 있습니다</h2>
+          <h2 id="conflict-modal-title" className={styles.title}>이전 작업 데이터가 있습니다</h2>
         </div>
 
         <div className={styles.body}>
