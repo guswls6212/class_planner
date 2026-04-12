@@ -2,7 +2,6 @@
 
 import type { Subject as DomainSubject } from "@/shared/types/DomainTypes";
 import React, { useEffect, useState } from "react";
-import AuthGuard from "../../components/atoms/AuthGuard";
 import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
 import { useSubjectManagementLocal } from "../../hooks/useSubjectManagementLocal";
 import { logger } from "../../lib/logger";
@@ -10,11 +9,7 @@ import { logger } from "../../lib/logger";
 const SELECTED_SUBJECT_KEY = "selectedSubjectId";
 
 const SubjectsPage: React.FC = () => {
-  return (
-    <AuthGuard requireAuth={true}>
-      <SubjectsPageContent />
-    </AuthGuard>
-  );
+  return <SubjectsPageContent />;
 };
 
 const SubjectsPageContent: React.FC = () => {

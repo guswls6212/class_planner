@@ -21,7 +21,6 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import AuthGuard from "../../components/atoms/AuthGuard";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -89,11 +88,7 @@ import {
  * 인증 가드로 감싼 스케줄 페이지 컨테이너를 노출합니다.
  */
 export default function SchedulePage(): JSX.Element {
-  return (
-    <AuthGuard requireAuth={true}>
-      <SchedulePageContent />
-    </AuthGuard>
-  );
+  return <SchedulePageContent />;
 }
 
 /**
