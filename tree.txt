@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-12, Phase 2B 코드 품질 개선 완료)
+# class-planner file structure (2026-04-12, Phase 2B + 브랜칭 전략 도입 완료)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 
 class-planner/
@@ -58,6 +58,7 @@ class-planner/
 │       └── 018_migrate_jsonb_to_normalized.sql
 │   └── backups/                          # (신규) user_data 백업 (gitignore)
 ├── scripts/
+│   ├── check-stale-branches.sh        # (신규) 미완료 브랜치 감지
 │   ├── clear-localstorage.js
 │   ├── detailed-unused-analysis.sh
 │   ├── find-unused-files.sh
