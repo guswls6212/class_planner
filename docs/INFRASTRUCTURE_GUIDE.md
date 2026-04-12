@@ -16,13 +16,12 @@ src/infrastructure/
 ├── config/             # 환경별 설정
 │   ├── RepositoryConfig.ts
 │   └── EnvironmentConfig.ts
-├── container/          # 의존성 주입 컨테이너
-│   ├── DIContainer.ts
+├── container/          # Repository 레지스트리
 │   └── RepositoryRegistry.ts
 ├── repositories/       # Repository 구현체
 │   ├── SupabaseStudentRepository.ts
 │   └── SupabaseSubjectRepository.ts
-└── RepositoryFactory.ts  # 하위 호환성
+└── index.ts              # 공개 API 진입점
 ```
 
 ## 🚀 사용 방법
@@ -92,19 +91,9 @@ const students = await studentRepo.findAll();
 - SessionRepository: Mock
 - EnrollmentRepository: Mock
 
-## 🔧 의존성 주입 컨테이너
+## 🔧 Repository 레지스트리
 
-```typescript
-import { DIContainer } from "@/infrastructure";
-
-const container = DIContainer.getInstance();
-
-// 의존성 등록
-container.register("myService", () => new MyService(), true);
-
-// 의존성 해결
-const myService = container.resolve("myService");
-```
+`DIContainer`는 제거되었습니다. Repository 등록 및 조회는 `RepositoryRegistry`를 통해 직접 수행합니다. (위의 기본 사용법 및 테스트 환경 섹션 참조)
 
 ## 📊 장점
 

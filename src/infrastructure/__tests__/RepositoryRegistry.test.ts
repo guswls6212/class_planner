@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { RepositoryInitializer } from "../container/RepositoryInitializer";
 import { RepositoryRegistry } from "../container/RepositoryRegistry";
 
 describe("RepositoryRegistry", () => {
   beforeEach(() => {
     // 각 테스트 전에 초기화 상태 리셋
-    RepositoryInitializer.reset();
+    RepositoryRegistry.clear();
   });
 
   afterEach(() => {

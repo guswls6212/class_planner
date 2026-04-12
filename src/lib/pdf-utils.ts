@@ -1,6 +1,19 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { logger } from "./logger";
+import { timeToMinutes, minutesToTime } from "./planner";
+
+declare global {
+  interface Window {
+    __pdfCaptureState?: {
+      before: Record<string, unknown>;
+      after: Record<string, unknown>;
+    };
+    __pdfDebugInfo?: Record<string, unknown>;
+    __canvasDebugInfo?: Record<string, unknown>;
+    __debugCanvasImage?: string;
+  }
+}
 
 /**
  * HTML 요소를 PDF로 변환하여 다운로드하는 유틸리티 함수들
@@ -11,29 +24,6 @@ export interface PDFDownloadOptions {
   format?: "a4" | "letter";
   orientation?: "portrait" | "landscape";
   quality?: number; // 🎯 이미지 품질 (0.1~2.0, 기본값: 2.0 = 인쇄용 고품질)
-}
-
-/**
- * 시간을 분으로 변환하는 함수
- */
-export function timeToMinutes(time: string): number {
-  if (!time || typeof time !== "string") {
-    console.warn("Invalid time format:", time);
-    return 0;
-  }
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-/**
- * 분을 시간으로 변환하는 함수
- */
-export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, "0")}:${mins
-    .toString()
-    .padStart(2, "0")}`;
 }
 
 /**
@@ -532,11 +522,11 @@ export async function captureElement(
 
     // 🆕 window 객체에 상태 정보 노출 (개발 환경 전용)
     if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-      (window as any).__pdfCaptureState = {
+      window.__pdfCaptureState = {
         before: beforeCaptureState,
         after: afterCaptureState,
       };
-      console.log("📊 PDF 캡처 전후 상태:", (window as any).__pdfCaptureState);
+      console.log("📊 PDF 캡처 전후 상태:", window.__pdfCaptureState);
     }
 
     // 🆕 세션 범위에 맞는 캡처 너비 계산
@@ -666,7 +656,7 @@ export async function captureElement(
 
     // 🆕 브라우저 콘솔에서 확인할 수 있도록 window 객체에 디버깅 정보 노출
     if (typeof window !== "undefined") {
-      (window as any).__pdfDebugInfo = {
+      window.__pdfDebugInfo = {
         scrollHeight: actualScrollHeight,
         offsetHeight: actualOffsetHeight,
         clientHeight: actualClientHeight,
@@ -682,7 +672,7 @@ export async function captureElement(
       };
       console.log(
         "📊 PDF 높이 계산 디버깅 정보:",
-        (window as any).__pdfDebugInfo
+        window.__pdfDebugInfo
       );
     }
 
@@ -788,7 +778,7 @@ export async function captureElement(
 
       console.log("📊 캔버스 크기:", debugInfo);
       console.log("📊 세션셀 위치 정보:", sessionPositions);
-      (window as any).__canvasDebugInfo = debugInfo;
+      window.__canvasDebugInfo = debugInfo;
 
       // 🆕 자동으로 캔버스를 이미지로 저장 (디버깅용)
       // 개발 환경에서만 자동 저장
@@ -803,7 +793,7 @@ export async function captureElement(
           console.log(
             "📸 디버깅용 캔버스 이미지 준비됨 (자동 다운로드 비활성화)"
           );
-          (window as any).__debugCanvasImage = canvasDataUrl;
+          window.__debugCanvasImage = canvasDataUrl;
         } catch (error) {
           console.warn("캔버스 이미지 저장 실패:", error);
         }

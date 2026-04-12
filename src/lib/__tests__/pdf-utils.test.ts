@@ -28,14 +28,14 @@ describe("PDF 유틸리티", () => {
   });
 
   it("timeToMinutes 함수가 올바르게 작동해야 한다", async () => {
-    const { timeToMinutes } = await import("../pdf-utils");
+    const { timeToMinutes } = await import("../planner");
 
     expect(timeToMinutes("09:00")).toBe(540);
     expect(timeToMinutes("10:30")).toBe(630);
   });
 
   it("minutesToTime 함수가 올바르게 작동해야 한다", async () => {
-    const { minutesToTime } = await import("../pdf-utils");
+    const { minutesToTime } = await import("../planner");
 
     expect(minutesToTime(540)).toBe("09:00");
     expect(minutesToTime(630)).toBe("10:30");
@@ -55,7 +55,7 @@ describe("PDF 유틸리티", () => {
 
   // 핵심 시간 변환 테스트들만 유지
   it("시간 변환이 양방향으로 정확해야 한다", async () => {
-    const { timeToMinutes, minutesToTime } = await import("../pdf-utils");
+    const { timeToMinutes, minutesToTime } = await import("../planner");
 
     const testCases = [
       { time: "09:00", minutes: 540 },
