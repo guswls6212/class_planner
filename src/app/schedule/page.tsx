@@ -10,7 +10,7 @@
  *    3-1) Data hooks & perf hooks
  *    3-2) Local UI states
  *    3-3) Core callbacks (addSession / updateSession)
- *    3-4) Collision helpers (isTimeOverlapping, findCollidingSessions, ...)
+ *    3-4) Collision helpers (findCollidingSessions, ...)
  *    3-5) DnD handlers & UI event handlers
  *    3-6) Modal wiring (GroupSessionModal / EditSessionModal)
  *    3-7) Render
