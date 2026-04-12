@@ -1,17 +1,14 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
-// import { trackDatabaseError } from "@/lib/errorTracker";
-// import { validateUserAuth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
-// Create a function to get the subject service (for testing purposes)
 export function getSubjectService() {
-  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
   return ServiceFactory.createSubjectService();
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -59,6 +56,8 @@ export async function PUT(
 
     const body = await request.json();
     const { name, color } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (!name) {
       return NextResponse.json(
@@ -67,12 +66,19 @@ export async function PUT(
       );
     }
 
-    // 간단한 userId 추출 (실제 프로젝트에서는 적절한 인증 로직 사용)
-    const userId = "default-user-id";
-    const updatedSubject = await getSubjectService().updateSubject(id, {
-      name,
-      color,
-    }, userId);
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const updatedSubject = await getSubjectService().updateSubject(
+      id,
+      { name, color },
+      academyId
+    );
 
     return NextResponse.json({
       success: true,
@@ -94,6 +100,8 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (!id) {
       return NextResponse.json(
@@ -102,8 +110,15 @@ export async function DELETE(
       );
     }
 
-    // TODO(S2): academyId를 올바르게 조회하여 전달
-    await getSubjectService().deleteSubject(id, "");
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    await getSubjectService().deleteSubject(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Subject deleted successfully",
@@ -116,4 +131,3 @@ export async function DELETE(
     );
   }
 }
-

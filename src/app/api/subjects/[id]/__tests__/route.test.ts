@@ -6,6 +6,10 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, PUT } from "../route";
 
+vi.mock("../../../../../lib/resolveAcademyId", () => ({
+  resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
+}));
+
 // Mock all dependencies
 vi.mock("../../../../../application/services/ServiceFactory", () => ({
   ServiceFactory: {

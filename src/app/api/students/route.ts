@@ -1,43 +1,28 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function createServiceRoleClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "Supabase URL 또는 Service Role Key가 설정되지 않았습니다."
-    );
-  }
-
-  logger.debug("Service Role 클라이언트 생성 중");
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-// Create a function to get the student service (for testing purposes)
 export function getStudentService() {
-  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
   return ServiceFactory.createStudentService();
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "default-user-id";
+    const userId = searchParams.get("userId");
 
-    logger.debug("API GET - 사용자 ID:", { userId });
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
-    const students = await getStudentService().getAllStudents(userId);
+    logger.debug("API GET /api/students", { userId });
+
+    const academyId = await resolveAcademyId(userId);
+    const students = await getStudentService().getAllStudents(academyId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
     logger.error("Error fetching students:", undefined, error as Error);
@@ -51,7 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name } = body; // gender 필드 완전 제거
+    const { name } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -69,7 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newStudent = await getStudentService().addStudent({ name }, userId);
+    const academyId = await resolveAcademyId(userId);
+    const newStudent = await getStudentService().addStudent({ name }, academyId);
     return NextResponse.json(
       { success: true, data: newStudent },
       { status: 201 }
@@ -86,7 +72,9 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name } = body; // gender 필드 완전 제거
+    const { id, name } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (!id || !name) {
       return NextResponse.json(
@@ -95,10 +83,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // URL에서 userId 추출
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
@@ -106,12 +90,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const academyId = await resolveAcademyId(userId);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      {
-        name,
-      },
-      userId
+      { name },
+      academyId
     );
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
@@ -143,7 +126,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await getStudentService().deleteStudent(id, userId);
+    const academyId = await resolveAcademyId(userId);
+    await getStudentService().deleteStudent(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Student deleted successfully",

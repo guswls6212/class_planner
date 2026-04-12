@@ -1,3 +1,8 @@
+/**
+ * @deprecated S2 완료. 이 route는 레거시 JSONB user_data 전체 읽기/쓰기 전용이다.
+ * 클라이언트(useGlobalDataInitialization, debouncedServerSync)가 S3에서
+ * 개별 API Routes(/api/students, /api/subjects, /api/sessions)로 전환되면 S5에서 제거한다.
+ */
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { trackDatabaseError } from "@/lib/errorTracker";
 import { logger } from "@/lib/logger";

@@ -1,16 +1,14 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
-// import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
-// Create a function to get the student service (for testing purposes)
 export function getStudentService() {
-  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
   return ServiceFactory.createStudentService();
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -58,6 +56,8 @@ export async function PUT(
 
     const body = await request.json();
     const { name } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (!name) {
       return NextResponse.json(
@@ -66,13 +66,18 @@ export async function PUT(
       );
     }
 
-    const userId = "default-user-id";
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      {
-        name,
-      },
-      userId
+      { name },
+      academyId
     );
 
     return NextResponse.json({
@@ -95,8 +100,6 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-
-    // URL에서 userId 추출
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -114,7 +117,8 @@ export async function DELETE(
       );
     }
 
-    await getStudentService().deleteStudent(id, userId);
+    const academyId = await resolveAcademyId(userId);
+    await getStudentService().deleteStudent(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Student deleted successfully",

@@ -1,25 +1,32 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
-// import { trackDatabaseError } from "@/lib/errorTracker";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
 
-// Create a function to get the session service (for testing purposes)
 export function getSessionService() {
-  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
   return ServiceFactory.createSessionService();
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
     }
 
-    // TODO(S2): academyId를 올바르게 조회하여 전달
-    const sessions = await getSessionService().getAllSessions("");
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const sessions = await getSessionService().getAllSessions(academyId);
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
     logger.error("Error fetching sessions:", undefined, error as Error);
@@ -32,7 +39,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
@@ -40,6 +46,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { subjectId, startsAt, endsAt, enrollmentIds, weekday } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (
       !subjectId ||
@@ -54,14 +62,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO(S2): academyId를 올바르게 조회하여 전달
-    const newSession = await getSessionService().addSession({
-      subjectId,
-      startsAt: new Date(startsAt),
-      endsAt: new Date(endsAt),
-      enrollmentIds,
-      weekday: Number(weekday),
-    }, "");
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const newSession = await getSessionService().addSession(
+      {
+        subjectId,
+        startsAt: new Date(startsAt),
+        endsAt: new Date(endsAt),
+        enrollmentIds,
+        weekday: Number(weekday),
+      },
+      academyId
+    );
     return NextResponse.json(
       { success: true, data: newSession },
       { status: 201 }
@@ -77,7 +95,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
@@ -119,7 +136,6 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;

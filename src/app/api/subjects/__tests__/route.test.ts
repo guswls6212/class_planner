@@ -6,30 +6,29 @@ import { DELETE, GET, POST } from "../route";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
-// Mock Supabase client
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: vi.fn(() => ({
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({
-            data: { data: { subjects: [] } },
-            error: null,
-          }),
-        })),
-        order: vi.fn(() => ({
-          mockResolvedValue: vi.fn().mockResolvedValue({
-            data: [],
-            error: null,
-          }),
-        })),
-      })),
-      upsert: vi.fn().mockResolvedValue({
-        data: { data: { subjects: [] } },
-        error: null,
+vi.mock("@/lib/resolveAcademyId", () => ({
+  resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
+}));
+
+vi.mock("@/application/services/ServiceFactory", () => ({
+  ServiceFactory: {
+    createSubjectService: () => ({
+      getAllSubjects: vi.fn().mockResolvedValue([]),
+      addSubject: vi.fn().mockResolvedValue({
+        id: "test-subject-id",
+        name: "수학",
+        color: "#ff0000",
+        createdAt: new Date().toISOString(),
       }),
-    })),
-  })),
+      updateSubject: vi.fn().mockResolvedValue({
+        id: "test-subject-id",
+        name: "수학",
+        color: "#ff0000",
+        createdAt: new Date().toISOString(),
+      }),
+      deleteSubject: vi.fn().mockResolvedValue(true),
+    }),
+  },
 }));
 
 describe("/api/subjects API Routes", () => {
@@ -45,9 +44,19 @@ describe("/api/subjects API Routes", () => {
       const response = await GET(request);
       const data = await response.json();
 
-      // API가 응답하는지만 확인 (Mock 복잡성 피하기)
-      expect(typeof response.status).toBe("number");
+      expect(response.status).toBe(200);
       expect(data).toHaveProperty("success");
+      expect(data.success).toBe(true);
+      expect(Array.isArray(data.data)).toBe(true);
+    });
+
+    it("userId가 없으면 400을 반환한다", async () => {
+      const request = new NextRequest("http://localhost:3000/api/subjects");
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
     });
   });
 

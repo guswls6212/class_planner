@@ -1,109 +1,41 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
-// import { validateUserAuth } from "@/lib/auth";
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
-// Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
-function createServiceRoleClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error(
-      "Supabase URL 또는 Service Role Key가 설정되지 않았습니다."
-    );
-  }
-
-  logger.debug("Service Role 클라이언트 생성 중...");
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
-// Create a function to get the subject service (for testing purposes)
 export function getSubjectService() {
-  // 새로운 ServiceFactory 사용 (RepositoryRegistry 자동 초기화됨)
   return ServiceFactory.createSubjectService();
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Service Role 클라이언트 생성 (RLS 우회)
-    const serviceRoleClient = createServiceRoleClient();
-
-    // URL에서 사용자 ID 가져오기
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "default-user-id";
+    const userId = searchParams.get("userId");
 
-    logger.debug("API GET - 사용자 ID:", { userId });
-
-    // Service Role 클라이언트로 직접 데이터 조회
-    const { data, error } = await serviceRoleClient
-      .from("user_data")
-      .select("data")
-      .eq("user_id", userId)
-      .single();
-
-    logger.debug("Service Role 쿼리 결과", { data, error });
-
-    if (error) {
-      logger.error("Service Role 데이터 조회 실패:", undefined, error);
-      if (error.code === "PGRST116") {
-        logger.debug("사용자 데이터가 없음, 빈 과목 목록 반환");
-        return NextResponse.json(
-          { success: true, data: [] },
-          {
-            headers: {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-              "Access-Control-Allow-Headers":
-                "Content-Type, Authorization, X-Requested-With",
-            },
-          }
-        );
-      }
-      throw error;
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
     }
 
-    const userData = data?.data;
-    const subjects = userData?.subjects || [];
+    logger.debug("API GET /api/subjects", { userId });
 
-    return NextResponse.json(
-      { success: true, data: subjects },
-      {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers":
-            "Content-Type, Authorization, X-Requested-With",
-        },
-      }
-    );
+    const academyId = await resolveAcademyId(userId);
+    const subjects = await getSubjectService().getAllSubjects(academyId);
+    return NextResponse.json({ success: true, data: subjects });
   } catch (error) {
     logger.error("Error fetching subjects:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch subjects" },
-      {
-        status: 500,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers":
-            "Content-Type, Authorization, X-Requested-With",
-        },
-      }
+      { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
@@ -128,9 +60,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const academyId = await resolveAcademyId(userId);
     const newSubject = await getSubjectService().addSubject(
       { name, color },
-      userId
+      academyId
     );
     return NextResponse.json(
       { success: true, data: newSubject },
@@ -147,7 +80,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
@@ -155,6 +87,8 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { id, name, color } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (!id || !name || !color) {
       return NextResponse.json(
@@ -163,15 +97,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 간단한 userId 추출 (실제 프로젝트에서는 적절한 인증 로직 사용)
-    const userId = "default-user-id";
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
     const updatedSubject = await getSubjectService().updateSubject(
       id,
-      {
-        name,
-        color,
-      },
-      userId
+      { name, color },
+      academyId
     );
     return NextResponse.json({ success: true, data: updatedSubject });
   } catch (error) {
@@ -185,7 +122,6 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // CORS 검증 (테스트 환경에서는 null 반환 가능)
     const corsResponse = corsMiddleware(request);
     if (corsResponse !== null && corsResponse.status !== 200) {
       return corsResponse;
@@ -193,6 +129,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const userId = searchParams.get("userId");
 
     if (!id) {
       return NextResponse.json(
@@ -201,8 +138,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // TODO(S2): academyId를 올바르게 조회하여 전달
-    await getSubjectService().deleteSubject(id, "");
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    await getSubjectService().deleteSubject(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Subject deleted successfully",
