@@ -74,7 +74,7 @@
 | # | 서브 프로젝트 | 상태 |
 |---|-------------|------|
 | **S1** | Repository 교체 (JSONB → 정규화 테이블, academy_id 파라미터) | ✅ 완료 (2026-04-12) |
-| **S2** | API Route 재작성 (academy_id 기반 Repository 사용, `/api/data` 폐기) | 미착수 |
+| **S2** | API Route 재작성 (academy_id 기반 Repository 사용, `/api/data` 폐기) | ✅ 완료 (2026-04-12) |
 | **S3** | 클라이언트 데이터 플로우 전환 (localStorage JSONB → 개별 API 호출) | 미착수 |
 | **S4** | 온보딩 플로우 (첫 로그인 → 학원 생성 → owner 부여) | 미착수 |
 | **S5** | 운영자 초대 + 레거시 정리 (초대 기능 + user_data 드롭) | 미착수 |
@@ -88,9 +88,16 @@
 - Application Services: userId → academyId 파라미터 리네임
 - SessionRepositoryFactory, EnrollmentRepositoryFactory: Mock → Supabase 구현체
 
-#### S2 이후 (미착수)
+#### S2 완료 내역 (2026-04-12)
+- `src/lib/supabaseServiceRole.ts`: createServiceRoleClient 중복 추출 (4개 route→1곳)
+- `src/lib/resolveAcademyId.ts`: userId → academyId 변환 유틸리티 (academy_members 조회)
+- 모든 API Routes (students, subjects, sessions): userId → resolveAcademyId(userId) 적용
+- subjects GET: user_data JSONB 직접 쿼리 → SubjectService.getAllSubjects 전환
+- `/api/data`: @deprecated 주석 추가 (S5에서 제거 예정)
+- TODO(S2) marker 전체 제거
+
+#### S3 이후 (미착수)
 - [ ] ARCHITECTURE.md 업데이트 (배포 아키텍처 6.2, 데이터 모델 반영)
-- [ ] API Route 재작성 — user → academy_id 조회 로직, `/api/data` 폐기
 - [ ] 클라이언트 리팩터 (익명 우선 localStorage → 로그인 후 DB sync)
 - [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
 - [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
