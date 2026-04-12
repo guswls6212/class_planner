@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
       return corsResponse;
     }
 
-    const sessions = await getSessionService().getAllSessions();
+    // TODO(S2): academyId를 올바르게 조회하여 전달
+    const sessions = await getSessionService().getAllSessions("");
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
     logger.error("Error fetching sessions:", undefined, error as Error);
@@ -53,13 +54,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // TODO(S2): academyId를 올바르게 조회하여 전달
     const newSession = await getSessionService().addSession({
       subjectId,
       startsAt: new Date(startsAt),
       endsAt: new Date(endsAt),
       enrollmentIds,
       weekday: Number(weekday),
-    });
+    }, "");
     return NextResponse.json(
       { success: true, data: newSession },
       { status: 201 }

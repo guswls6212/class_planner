@@ -102,7 +102,8 @@ export async function DELETE(
       );
     }
 
-    await getSubjectService().deleteSubject(id);
+    // TODO(S2): academyId를 올바르게 조회하여 전달
+    await getSubjectService().deleteSubject(id, "");
     return NextResponse.json({
       success: true,
       message: "Subject deleted successfully",

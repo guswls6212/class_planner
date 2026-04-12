@@ -5,9 +5,9 @@ import { SubjectRepository } from "@/infrastructure/interfaces";
 export class SubjectApplicationServiceImpl {
   constructor(private subjectRepository: SubjectRepository) {}
 
-  async getAllSubjects(userId: string): Promise<Subject[]> {
+  async getAllSubjects(academyId: string): Promise<Subject[]> {
     try {
-      return await this.subjectRepository.getAll(userId);
+      return await this.subjectRepository.getAll(academyId);
     } catch (error) {
       logger.error("과목 목록 조회 중 에러 발생:", undefined, error as Error);
       return [];
@@ -24,15 +24,11 @@ export class SubjectApplicationServiceImpl {
   }
 
   async addSubject(
-    subjectData: {
-      name: string;
-      color: string;
-    },
-    userId: string
+    subjectData: { name: string; color: string },
+    academyId: string
   ): Promise<Subject> {
     try {
-      // 중복 체크
-      const existingSubjects = await this.subjectRepository.getAll(userId);
+      const existingSubjects = await this.subjectRepository.getAll(academyId);
       const isDuplicate = existingSubjects.some(
         (subject) => subject.name === subjectData.name
       );
@@ -44,7 +40,7 @@ export class SubjectApplicationServiceImpl {
       const newSubject = Subject.create(subjectData.name, subjectData.color);
       return await this.subjectRepository.create(
         { name: newSubject.name, color: newSubject.color.value },
-        userId
+        academyId
       );
     } catch (error) {
       logger.error("과목 추가 중 에러 발생:", undefined, error as Error);
@@ -55,17 +51,15 @@ export class SubjectApplicationServiceImpl {
   async updateSubject(
     id: string,
     subjectData: { name: string; color: string },
-    userId: string
+    academyId: string
   ): Promise<Subject> {
     try {
-      // 기존 과목 조회
-      const existingSubject = await this.subjectRepository.getById(id, userId);
+      const existingSubject = await this.subjectRepository.getById(id, academyId);
       if (!existingSubject) {
         throw new Error("존재하지 않는 과목입니다.");
       }
 
-      // 중복 체크 (자기 자신 제외)
-      const existingSubjects = await this.subjectRepository.getAll(userId);
+      const existingSubjects = await this.subjectRepository.getAll(academyId);
       const isDuplicate = existingSubjects.some(
         (subject) =>
           subject.name === subjectData.name && subject.id.value !== id
@@ -75,16 +69,16 @@ export class SubjectApplicationServiceImpl {
         throw new Error("이미 존재하는 과목 이름입니다.");
       }
 
-      return await this.subjectRepository.update(id, subjectData);
+      return await this.subjectRepository.update(id, subjectData, academyId);
     } catch (error) {
       logger.error("과목 업데이트 중 에러 발생:", undefined, error as Error);
       throw error;
     }
   }
 
-  async deleteSubject(id: string): Promise<void> {
+  async deleteSubject(id: string, academyId: string): Promise<void> {
     try {
-      return await this.subjectRepository.delete(id);
+      return await this.subjectRepository.delete(id, academyId);
     } catch (error) {
       logger.error("과목 삭제 중 에러 발생:", undefined, error as Error);
       throw error;

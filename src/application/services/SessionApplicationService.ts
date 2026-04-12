@@ -4,27 +4,30 @@ import { SessionRepository } from "@/infrastructure/interfaces";
 export class SessionApplicationServiceImpl {
   constructor(private sessionRepository: SessionRepository) {}
 
-  async getAllSessions(): Promise<Session[]> {
-    return this.sessionRepository.getAll();
+  async getAllSessions(academyId: string): Promise<Session[]> {
+    return this.sessionRepository.getAll(academyId);
   }
 
   async getSessionById(id: string): Promise<Session | null> {
     return this.sessionRepository.getById(id);
   }
 
-  async addSession(sessionData: {
-    subjectId: string;
-    startsAt: Date;
-    endsAt: Date;
-    enrollmentIds: string[];
-    weekday: number;
-  }): Promise<Session> {
+  async addSession(
+    sessionData: {
+      subjectId: string;
+      startsAt: Date;
+      endsAt: Date;
+      enrollmentIds: string[];
+      weekday: number;
+    },
+    academyId: string
+  ): Promise<Session> {
     const sessionToCreate = {
       ...sessionData,
       startsAt: sessionData.startsAt.toISOString().substring(11, 16), // HH:MM 형식
       endsAt: sessionData.endsAt.toISOString().substring(11, 16), // HH:MM 형식
     };
-    return this.sessionRepository.create(sessionToCreate);
+    return this.sessionRepository.create(sessionToCreate, academyId);
   }
 
   async updateSession(

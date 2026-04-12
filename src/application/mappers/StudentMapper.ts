@@ -27,6 +27,7 @@ export class StudentMapper {
     return Student.restore(
       dto.id,
       dto.name,
+      undefined,
       new Date(dto.createdAt),
       new Date(dto.updatedAt)
     );

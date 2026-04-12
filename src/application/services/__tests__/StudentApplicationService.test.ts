@@ -27,13 +27,13 @@ describe("StudentApplicationService", () => {
       vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue(mockStudents);
 
       // Act
-      const result = await service.getAllStudents("test-user-id");
+      const result = await service.getAllStudents("test-academy-id");
 
       // Assert
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe("김철수");
       expect(result[1].name).toBe("이영희");
-      expect(mockStudentRepository.getAll).toHaveBeenCalledWith("test-user-id");
+      expect(mockStudentRepository.getAll).toHaveBeenCalledWith("test-academy-id");
     });
 
     it("학생이 없을 때 빈 배열을 반환해야 한다", async () => {
@@ -41,7 +41,7 @@ describe("StudentApplicationService", () => {
       vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([]);
 
       // Act
-      const result = await service.getAllStudents("test-user-id");
+      const result = await service.getAllStudents("test-academy-id");
 
       // Assert
       expect(result).toHaveLength(0);
@@ -57,13 +57,13 @@ describe("StudentApplicationService", () => {
       vi.spyOn(mockStudentRepository, "create").mockResolvedValue(mockStudent);
 
       // Act
-      const result = await service.addStudent(input, "test-user-id");
+      const result = await service.addStudent(input, "test-academy-id");
 
       // Assert
       expect(result.name).toBe("박민수");
       expect(mockStudentRepository.create).toHaveBeenCalledWith(
         input,
-        "test-user-id"
+        "test-academy-id"
       );
     });
   });
@@ -118,18 +118,19 @@ describe("StudentApplicationService", () => {
       const result = await service.updateStudent(
         studentId,
         updateData,
-        "test-user-id"
+        "test-academy-id"
       );
 
       // Assert
       expect(result.name).toBe("김영희");
       expect(mockStudentRepository.getById).toHaveBeenCalledWith(
         studentId,
-        "test-user-id"
+        "test-academy-id"
       );
       expect(mockStudentRepository.update).toHaveBeenCalledWith(
         studentId,
-        updateData
+        updateData,
+        "test-academy-id"
       );
     });
   });
@@ -141,7 +142,7 @@ describe("StudentApplicationService", () => {
       vi.spyOn(mockStudentRepository, "delete").mockResolvedValue();
 
       // Act
-      const userId = "test-user-id";
+      const userId = "test-academy-id";
       await service.deleteStudent(studentId, userId);
 
       // Assert

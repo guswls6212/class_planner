@@ -30,13 +30,13 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue(mockSubjects);
 
       // Act
-      const result = await service.getAllSubjects("test-user-id");
+      const result = await service.getAllSubjects("test-academy-id");
 
       // Assert
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe("수학");
       expect(result[1].name).toBe("영어");
-      expect(mockSubjectRepository.getAll).toHaveBeenCalledWith("test-user-id");
+      expect(mockSubjectRepository.getAll).toHaveBeenCalledWith("test-academy-id");
     });
 
     it("과목이 없을 때 빈 배열을 반환해야 한다", async () => {
@@ -44,7 +44,7 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([]);
 
       // Act
-      const result = await service.getAllSubjects("test-user-id");
+      const result = await service.getAllSubjects("test-academy-id");
 
       // Assert
       expect(result).toHaveLength(0);
@@ -60,7 +60,7 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "create").mockResolvedValue(mockSubject);
 
       // Act
-      const result = await service.addSubject(input, "test-user-id");
+      const result = await service.addSubject(input, "test-academy-id");
 
       // Assert
       expect(result.name).toBe("과학");
@@ -70,7 +70,7 @@ describe("SubjectApplicationService", () => {
           name: "과학",
           color: "#0000FF",
         },
-        "test-user-id"
+        "test-academy-id"
       );
     });
   });
@@ -125,16 +125,17 @@ describe("SubjectApplicationService", () => {
       const result = await service.updateSubject(
         subjectId,
         updateData,
-        "test-user-id"
+        "test-academy-id"
       );
 
       // Assert
       expect(result.name).toBe("수학");
       expect(result.color.value).toBe("#FF0000");
-      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId, "test-user-id");
+      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId, "test-academy-id");
       expect(mockSubjectRepository.update).toHaveBeenCalledWith(
         subjectId,
-        updateData
+        updateData,
+        "test-academy-id"
       );
     });
   });
@@ -146,10 +147,10 @@ describe("SubjectApplicationService", () => {
       vi.spyOn(mockSubjectRepository, "delete").mockResolvedValue();
 
       // Act
-      await service.deleteSubject(subjectId);
+      await service.deleteSubject(subjectId, "test-academy-id");
 
       // Assert
-      expect(mockSubjectRepository.delete).toHaveBeenCalledWith(subjectId);
+      expect(mockSubjectRepository.delete).toHaveBeenCalledWith(subjectId, "test-academy-id");
     });
   });
 });

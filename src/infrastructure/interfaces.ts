@@ -3,36 +3,35 @@ import { Subject } from "@/domain/entities/Subject";
 import { Enrollment, Session } from "@/shared/types/DomainTypes";
 
 export interface StudentRepository {
-  getAll(userId: string): Promise<Student[]>;
-  getById(id: string, userId?: string): Promise<Student | null>;
-  create(student: {
-    name: string;
-  }, userId: string): Promise<Student>;
+  getAll(academyId: string): Promise<Student[]>;
+  getById(id: string, academyId?: string): Promise<Student | null>;
+  create(student: { name: string; gender?: string }, academyId: string): Promise<Student>;
   update(
     id: string,
-    student: { name: string; },
-    userId?: string
+    student: { name?: string; gender?: string },
+    academyId: string
   ): Promise<Student>;
-  delete(id: string, userId?: string): Promise<void>;
+  delete(id: string, academyId: string): Promise<void>;
 }
 
 export interface SubjectRepository {
-  getAll(userId: string): Promise<Subject[]>;
-  getById(id: string, userId?: string): Promise<Subject | null>;
-  create(subject: { name: string; color: string }, userId: string): Promise<Subject>;
+  getAll(academyId: string): Promise<Subject[]>;
+  getById(id: string, academyId?: string): Promise<Subject | null>;
+  create(subject: { name: string; color: string }, academyId: string): Promise<Subject>;
   update(
     id: string,
     subject: { name: string; color: string },
-    userId?: string
+    academyId: string
   ): Promise<Subject>;
-  delete(id: string, userId?: string): Promise<void>;
+  delete(id: string, academyId: string): Promise<void>;
 }
 
 export interface SessionRepository {
-  getAll(): Promise<Session[]>;
+  getAll(academyId: string): Promise<Session[]>;
   getById(id: string): Promise<Session | null>;
   create(
-    session: Omit<Session, "id" | "createdAt" | "updatedAt">
+    session: Omit<Session, "id" | "createdAt" | "updatedAt">,
+    academyId: string
   ): Promise<Session>;
   update(
     id: string,
@@ -42,10 +41,11 @@ export interface SessionRepository {
 }
 
 export interface EnrollmentRepository {
-  getAll(): Promise<Enrollment[]>;
+  getAll(academyId: string): Promise<Enrollment[]>;
   getById(id: string): Promise<Enrollment | null>;
   create(
-    enrollment: Omit<Enrollment, "id" | "createdAt" | "updatedAt">
+    enrollment: Omit<Enrollment, "id" | "createdAt" | "updatedAt">,
+    academyId: string
   ): Promise<Enrollment>;
   update(
     id: string,

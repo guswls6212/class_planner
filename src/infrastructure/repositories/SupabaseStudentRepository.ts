@@ -2,10 +2,8 @@ import { Student } from "@/domain/entities/Student";
 import type { StudentRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
-import { getKSTTime } from "../../lib/timeUtils";
 
 export class SupabaseStudentRepository implements StudentRepository {
-  // Service Role Key를 사용한 Supabase 클라이언트 생성 (RLS 우회)
   private createServiceRoleClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -24,32 +22,29 @@ export class SupabaseStudentRepository implements StudentRepository {
     });
   }
 
-  async getAll(userId: string): Promise<Student[]> {
+  async getAll(academyId: string): Promise<Student[]> {
     try {
-      const serviceRoleClient = this.createServiceRoleClient();
+      const client = this.createServiceRoleClient();
 
-      const { data, error } = await serviceRoleClient
-        .from("user_data")
-        .select("data")
-        .eq("user_id", userId)
-        .single();
+      const { data, error } = await client
+        .from("students")
+        .select("*")
+        .eq("academy_id", academyId)
+        .order("created_at");
 
       if (error) {
-        if (error.code === "PGRST116") {
-          // 데이터가 없는 경우 빈 배열 반환
-          return [];
-        }
         logger.error("학생 데이터 조회 실패:", undefined, error as Error);
         return [];
       }
 
-      const userData = data?.data as any;
-      if (!userData?.students) {
-        return [];
-      }
-
-      return userData.students.map((studentData: any) =>
-        Student.restore(studentData.id, studentData.name)
+      return (data ?? []).map((row: any) =>
+        Student.restore(
+          row.id,
+          row.name,
+          row.gender ?? undefined,
+          new Date(row.created_at),
+          new Date(row.updated_at)
+        )
       );
     } catch (error) {
       logger.error("학생 데이터 조회 중 오류:", undefined, error as Error);
@@ -57,164 +52,116 @@ export class SupabaseStudentRepository implements StudentRepository {
     }
   }
 
-  async getById(id: string, userId?: string): Promise<Student | null> {
+  async getById(id: string, academyId?: string): Promise<Student | null> {
     try {
-      const students = await this.getAll(userId || "default-user-id");
-      return students.find((student) => student.id.value === id) || null;
+      const client = this.createServiceRoleClient();
+
+      let query = client.from("students").select("*").eq("id", id);
+      if (academyId) {
+        query = query.eq("academy_id", academyId);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error || !data) {
+        return null;
+      }
+
+      return Student.restore(
+        data.id,
+        data.name,
+        data.gender ?? undefined,
+        new Date(data.created_at),
+        new Date(data.updated_at)
+      );
     } catch (error) {
       logger.error("학생 조회 중 오류:", undefined, error as Error);
       return null;
     }
   }
 
-  async create(data: { name: string }, userId: string): Promise<Student> {
+  async create(
+    studentData: { name: string; gender?: string },
+    academyId: string
+  ): Promise<Student> {
     try {
-      const serviceRoleClient = this.createServiceRoleClient();
+      const client = this.createServiceRoleClient();
 
-      const newStudent = Student.create(data.name);
-
-      // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await serviceRoleClient
-        .from("user_data")
-        .select("data")
-        .eq("user_id", userId)
+      const { data, error } = await client
+        .from("students")
+        .insert({
+          academy_id: academyId,
+          name: studentData.name,
+          gender: studentData.gender ?? null,
+        })
+        .select()
         .single();
-
-      let userData: any = {
-        students: [],
-        subjects: [],
-        sessions: [],
-        enrollments: [],
-      };
-
-      if (!fetchError && existingData?.data) {
-        userData = existingData.data as any;
-      }
-
-      // 새 학생 추가
-      userData.students.push({
-        id: newStudent.id.value,
-        name: newStudent.name,
-      });
-
-      // 데이터 저장
-      const { error } = await serviceRoleClient.from("user_data").upsert({
-        user_id: userId,
-        data: userData,
-        updated_at: getKSTTime(),
-      });
 
       if (error) {
         logger.error("학생 생성 실패:", undefined, error as Error);
         throw error;
       }
 
-      return newStudent;
+      return Student.restore(
+        data.id,
+        data.name,
+        data.gender ?? undefined,
+        new Date(data.created_at),
+        new Date(data.updated_at)
+      );
     } catch (error) {
       logger.error("학생 생성 중 오류:", undefined, error as Error);
       throw error;
     }
   }
 
-  async update(id: string, data: { name?: string }): Promise<Student> {
+  async update(
+    id: string,
+    studentData: { name?: string; gender?: string },
+    academyId: string
+  ): Promise<Student> {
     try {
-      const serviceRoleClient = this.createServiceRoleClient();
+      const client = this.createServiceRoleClient();
 
-      // 현재 사용자 ID 가져오기 (localStorage에서)
-      const userId =
-        typeof window !== "undefined"
-          ? localStorage.getItem("supabase_user_id")
-          : null;
+      const updates: Record<string, unknown> = {};
+      if (studentData.name !== undefined) updates.name = studentData.name;
+      if (studentData.gender !== undefined) updates.gender = studentData.gender;
 
-      if (!userId) {
-        throw new Error("사용자 ID가 없습니다. 로그인이 필요합니다.");
-      }
-
-      // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await serviceRoleClient
-        .from("user_data")
-        .select("data")
-        .eq("user_id", userId)
+      const { data, error } = await client
+        .from("students")
+        .update(updates)
+        .eq("id", id)
+        .eq("academy_id", academyId)
+        .select()
         .single();
-
-      if (fetchError || !existingData?.data) {
-        throw new Error("사용자 데이터를 찾을 수 없습니다.");
-      }
-
-      const userData = existingData.data as any;
-      const studentIndex = userData.students.findIndex((s: any) => s.id === id);
-
-      if (studentIndex === -1) {
-        throw new Error("학생을 찾을 수 없습니다.");
-      }
-
-      // 학생 정보 업데이트
-      if (data.name) userData.students[studentIndex].name = data.name;
-
-      // 데이터 저장
-      const { error } = await serviceRoleClient.from("user_data").upsert({
-        user_id: userId,
-        data: userData,
-        updated_at: getKSTTime(),
-      });
 
       if (error) {
         logger.error("학생 업데이트 실패:", undefined, error as Error);
         throw error;
       }
 
-      return Student.restore(id, userData.students[studentIndex].name);
+      return Student.restore(
+        data.id,
+        data.name,
+        data.gender ?? undefined,
+        new Date(data.created_at),
+        new Date(data.updated_at)
+      );
     } catch (error) {
       logger.error("학생 업데이트 중 오류:", undefined, error as Error);
       throw error;
     }
   }
 
-  async delete(id: string, userId?: string): Promise<void> {
+  async delete(id: string, academyId: string): Promise<void> {
     try {
-      const serviceRoleClient = this.createServiceRoleClient();
+      const client = this.createServiceRoleClient();
 
-      // userId가 제공되지 않으면 에러
-      if (!userId) {
-        throw new Error("사용자 ID가 필요합니다.");
-      }
-
-      // 기존 데이터 조회
-      const { data: existingData, error: fetchError } = await serviceRoleClient
-        .from("user_data")
-        .select("data")
-        .eq("user_id", userId)
-        .single();
-
-      if (fetchError || !existingData?.data) {
-        throw new Error("사용자 데이터를 찾을 수 없습니다.");
-      }
-
-      const userData = existingData.data as any;
-
-      // 학생 삭제
-      userData.students = userData.students.filter((s: any) => s.id !== id);
-
-      // 관련 세션과 수강신청도 삭제
-      userData.sessions = userData.sessions.filter(
-        (s: any) =>
-          !s.enrollmentIds.some(
-            (eId: string) =>
-              userData.enrollments.find((e: any) => e.id === eId)?.studentId ===
-              id
-          )
-      );
-
-      userData.enrollments = userData.enrollments.filter(
-        (e: any) => e.studentId !== id
-      );
-
-      // 데이터 저장
-      const { error } = await serviceRoleClient.from("user_data").upsert({
-        user_id: userId,
-        data: userData,
-        updated_at: getKSTTime(),
-      });
+      const { error } = await client
+        .from("students")
+        .delete()
+        .eq("id", id)
+        .eq("academy_id", academyId);
 
       if (error) {
         logger.error("학생 삭제 실패:", undefined, error as Error);

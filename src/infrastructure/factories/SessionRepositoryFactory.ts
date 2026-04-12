@@ -1,30 +1,16 @@
 import { SessionRepository } from "../interfaces";
+import { SupabaseSessionRepository } from "../repositories/SupabaseSessionRepository";
 
 /**
  * SessionRepository Factory
  * 환경에 따라 적절한 SessionRepository 구현체를 생성합니다.
  */
 export class SessionRepositoryFactory {
-  /**
-   * SessionRepository 인스턴스를 생성합니다.
-   * @returns SessionRepository 구현체
-   */
   static create(): SessionRepository {
-    // 환경에 따라 다른 구현체 선택
-    switch (process.env.NODE_ENV) {
-      case "test":
-        // 테스트 환경에서는 Mock 구현체 사용
-        return new MockSessionRepository();
-      case "development":
-        // 개발 환경에서는 Mock 구현체 사용 (아직 Supabase 구현체 없음)
-        return new MockSessionRepository();
-      case "production":
-        // 프로덕션 환경에서는 Mock 구현체 사용 (아직 Supabase 구현체 없음)
-        return new MockSessionRepository();
-      default:
-        // 기본적으로 Mock 구현체 사용
-        return new MockSessionRepository();
+    if (process.env.NODE_ENV === "test") {
+      return new MockSessionRepository();
     }
+    return new SupabaseSessionRepository();
   }
 }
 
@@ -32,48 +18,15 @@ export class SessionRepositoryFactory {
  * 테스트용 Mock SessionRepository 구현체
  */
 class MockSessionRepository implements SessionRepository {
-  async getAll(): Promise<any[]> {
-    return [
-      {
-        id: "550e8400-e29b-41d4-a716-446655440201",
-        subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: new Date("2024-01-01T09:00:00"),
-        endsAt: new Date("2024-01-01T10:00:00"),
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-        weekday: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: "550e8400-e29b-41d4-a716-446655440202",
-        subjectId: "550e8400-e29b-41d4-a716-446655440102",
-        startsAt: new Date("2024-01-01T10:00:00"),
-        endsAt: new Date("2024-01-01T11:00:00"),
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
-        weekday: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
+  async getAll(_academyId: string): Promise<any[]> {
+    return [];
   }
 
-  async getById(id: string): Promise<any | null> {
-    if (id === "550e8400-e29b-41d4-a716-446655440201") {
-      return {
-        id: "550e8400-e29b-41d4-a716-446655440201",
-        subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: new Date("2024-01-01T09:00:00"),
-        endsAt: new Date("2024-01-01T10:00:00"),
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-        weekday: 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }
+  async getById(_id: string): Promise<any | null> {
     return null;
   }
 
-  async create(data: any): Promise<any> {
+  async create(data: any, _academyId: string): Promise<any> {
     return {
       ...data,
       id: "new-session-id",
@@ -91,8 +44,7 @@ class MockSessionRepository implements SessionRepository {
     };
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(_id: string): Promise<void> {
     // Mock에서는 아무것도 하지 않음
   }
 }
-
