@@ -6,7 +6,13 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { scheduleServerSync } from "../lib/debouncedServerSync";
+import {
+  syncEnrollmentCreate,
+  syncEnrollmentDelete,
+  syncSessionCreate,
+  syncSessionDelete,
+  syncSessionUpdate,
+} from "../lib/apiSync";
 import {
   addEnrollmentToLocal,
   addSessionToLocal,
@@ -146,9 +152,6 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          scheduleServerSync(result.data);
-
           logger.info("useIntegratedDataLocal - 전체 데이터 업데이트 성공");
 
           return true;
@@ -193,9 +196,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          const updatedData = getClassPlannerData();
-          scheduleServerSync(updatedData);
+          // 서버 동기화 (fire-and-forget)
+          const userId = localStorage.getItem("supabase_user_id");
+          syncSessionCreate(userId, sessionData);
 
           logger.info("useIntegratedDataLocal - 세션 추가 성공", {
             sessionId: result.data.id,
@@ -241,9 +244,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          const updatedData = getClassPlannerData();
-          scheduleServerSync(updatedData);
+          // 서버 동기화 (fire-and-forget)
+          const userId = localStorage.getItem("supabase_user_id");
+          syncSessionUpdate(userId, id, updates);
 
           logger.info("useIntegratedDataLocal - 세션 수정 성공", {
             id,
@@ -284,9 +287,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          const updatedData = getClassPlannerData();
-          scheduleServerSync(updatedData);
+          // 서버 동기화 (fire-and-forget)
+          const userId = localStorage.getItem("supabase_user_id");
+          syncSessionDelete(userId, id);
 
           logger.info("useIntegratedDataLocal - 세션 삭제 성공", { id });
 
@@ -329,9 +332,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          const updatedData = getClassPlannerData();
-          scheduleServerSync(updatedData);
+          // 서버 동기화 (fire-and-forget)
+          const userId = localStorage.getItem("supabase_user_id");
+          syncEnrollmentCreate(userId, { studentId, subjectId });
 
           logger.info("useIntegratedDataLocal - 등록 추가 성공", {
             enrollmentId: result.data.id,
@@ -373,9 +376,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 예약 (debounce)
-          const updatedData = getClassPlannerData();
-          scheduleServerSync(updatedData);
+          // 서버 동기화 (fire-and-forget)
+          const userId = localStorage.getItem("supabase_user_id");
+          syncEnrollmentDelete(userId, id);
 
           logger.info("useIntegratedDataLocal - 등록 삭제 성공", { id });
 

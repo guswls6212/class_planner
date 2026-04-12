@@ -6,12 +6,15 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { scheduleServerSync } from "../lib/debouncedServerSync";
+import {
+  syncStudentCreate,
+  syncStudentDelete,
+  syncStudentUpdate,
+} from "../lib/apiSync";
 import {
   addStudentToLocal,
   deleteStudentFromLocal,
   getAllStudentsFromLocal,
-  getClassPlannerData,
   getStudentFromLocal,
   updateStudentInLocal,
 } from "../lib/localStorageCrud";
@@ -123,9 +126,9 @@ export const useStudentManagementLocal =
             // UI 즉시 업데이트
             loadStudentsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncStudentCreate(userId, { name });
 
             logger.info("useStudentManagementLocal - 학생 추가 성공", {
               name,
@@ -177,9 +180,9 @@ export const useStudentManagementLocal =
             // UI 즉시 업데이트
             loadStudentsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncStudentUpdate(userId, id, updates);
 
             logger.info("useStudentManagementLocal - 학생 수정 성공", {
               id,
@@ -225,9 +228,9 @@ export const useStudentManagementLocal =
             // UI 즉시 업데이트
             loadStudentsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncStudentDelete(userId, id);
 
             logger.info("useStudentManagementLocal - 학생 삭제 성공", { id });
 

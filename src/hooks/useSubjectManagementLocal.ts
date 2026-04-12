@@ -6,12 +6,15 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { scheduleServerSync } from "../lib/debouncedServerSync";
+import {
+  syncSubjectCreate,
+  syncSubjectDelete,
+  syncSubjectUpdate,
+} from "../lib/apiSync";
 import {
   addSubjectToLocal,
   deleteSubjectFromLocal,
   getAllSubjectsFromLocal,
-  getClassPlannerData,
   getSubjectFromLocal,
   updateSubjectInLocal,
 } from "../lib/localStorageCrud";
@@ -151,9 +154,9 @@ export const useSubjectManagementLocal =
             // UI 즉시 업데이트
             loadSubjectsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncSubjectCreate(userId, { name, color });
 
             logger.info("useSubjectManagementLocal - 과목 추가 성공", {
               name,
@@ -203,9 +206,9 @@ export const useSubjectManagementLocal =
             // UI 즉시 업데이트
             loadSubjectsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncSubjectUpdate(userId, id, updates);
 
             logger.info("useSubjectManagementLocal - 과목 수정 성공", {
               id,
@@ -248,9 +251,9 @@ export const useSubjectManagementLocal =
             // UI 즉시 업데이트
             loadSubjectsFromLocal();
 
-            // 서버 동기화 예약 (debounce)
-            const updatedData = getClassPlannerData();
-            scheduleServerSync(updatedData);
+            // 서버 동기화 (fire-and-forget)
+            const userId = localStorage.getItem("supabase_user_id");
+            syncSubjectDelete(userId, id);
 
             logger.info("useSubjectManagementLocal - 과목 삭제 성공", { id });
 

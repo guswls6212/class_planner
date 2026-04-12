@@ -5,6 +5,7 @@
 
 import { RepositoryRegistry } from "@/infrastructure";
 import { DataApplicationServiceImpl } from "./DataApplicationService";
+import { EnrollmentApplicationServiceImpl } from "./EnrollmentApplicationService";
 import { SessionApplicationServiceImpl } from "./SessionApplicationService";
 import { StudentApplicationServiceImpl } from "./StudentApplicationService";
 import { SubjectApplicationServiceImpl } from "./SubjectApplicationService";
@@ -42,6 +43,15 @@ export class ServiceFactory {
   }
 
   /**
+   * EnrollmentApplicationService 인스턴스를 생성합니다.
+   * @returns EnrollmentApplicationService 인스턴스
+   */
+  static createEnrollmentService(): EnrollmentApplicationServiceImpl {
+    const enrollmentRepository = RepositoryRegistry.getEnrollmentRepository() as import('@/infrastructure/interfaces').EnrollmentRepository;
+    return new EnrollmentApplicationServiceImpl(enrollmentRepository);
+  }
+
+  /**
    * DataApplicationService 인스턴스를 생성합니다.
    * @returns DataApplicationService 인스턴스
    */
@@ -58,6 +68,7 @@ export class ServiceFactory {
       studentService: this.createStudentService(),
       subjectService: this.createSubjectService(),
       sessionService: this.createSessionService(),
+      enrollmentService: this.createEnrollmentService(),
       dataService: this.createDataService(),
     };
   }

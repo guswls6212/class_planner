@@ -1,6 +1,9 @@
 /**
  * 리셋 디바운스 서버 동기화 시스템 통합 테스트
  * localStorage와의 통합 동작 검증
+ *
+ * @deprecated S3에서 debouncedServerSync가 no-op으로 전환됨.
+ * S5에서 이 테스트 파일을 제거한다.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -19,7 +22,7 @@ import {
 // Mock fetch
 globalThis.fetch = vi.fn();
 
-describe("리셋 디바운스 + localStorage 통합 테스트", () => {
+describe.skip("리셋 디바운스 + localStorage 통합 테스트", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cleanupSyncSystem();

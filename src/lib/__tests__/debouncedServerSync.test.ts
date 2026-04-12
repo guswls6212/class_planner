@@ -1,5 +1,8 @@
 /**
  * debounced 서버 동기화 시스템 테스트
+ *
+ * @deprecated S3에서 debouncedServerSync가 no-op으로 전환됨.
+ * S5에서 이 테스트 파일을 제거한다.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +66,7 @@ global.fetch = vi.fn();
 // Mock timers
 vi.useFakeTimers();
 
-describe("debouncedServerSync", () => {
+describe.skip("debouncedServerSync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.clearAllTimers();
