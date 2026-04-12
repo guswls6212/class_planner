@@ -31,12 +31,22 @@
 ✅ 브라우저에서 최종 동작 확인
 ```
 
-### 4. 배포
+### 4. PR 및 배포
 
 ```bash
-✅ 커밋 및 푸시
-✅ GitHub Pages 배포
+# 작업 브랜치 → dev PR 생성
+git push -u origin feature/xxx
+gh pr create --base dev --title "feat: ..." --body "..."
+
+# CI 통과 후 머지 (GitHub에서)
+# dev → main PR은 릴리스 준비 시 생성
+
+✅ 작업 브랜치 → dev PR 생성
+✅ CI 통과 확인
+✅ 머지 후 로컬 브랜치 삭제
 ```
+
+> 브랜치 전략 상세: `docs/VERSION_MANAGEMENT.md`
 
 ## 🛡️ 에러 방지 가이드
 

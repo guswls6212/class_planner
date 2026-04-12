@@ -48,6 +48,14 @@
 - Clean Architecture 계층 분리 위반 금지
 - Merge commit 필수 (`git merge --no-ff`)
 
+### 브랜치 규칙 (Non-negotiable)
+- `main`/`dev` 직접 push/commit 금지
+- 모든 작업은 `dev`에서 분기한 작업 브랜치에서 진행
+- 작업 브랜치 → `dev` PR → CI 통과 → 머지
+- `dev` → `main` PR → CI 통과 → 머지 → 자동 배포
+- hotfix 예외: `main`에서 분기 → `main` + `dev` 양쪽에 PR
+- 상세: `docs/VERSION_MANAGEMENT.md`
+
 ## 테스트 전략
 | 계층 | 목표 커버리지 | 도구 |
 |------|-------------|------|
@@ -58,18 +66,38 @@
 | E2E | 주요 시나리오 | Playwright |
 
 ## 개발 워크플로우
+
+### 브랜치 플로우
+```
+dev에서 분기 → 작업 → PR to dev → CI 통과 → 머지 → dev→main PR → 배포
+```
+
+### 로컬 검증
 ```bash
 # 작업 중 빠른 피드백 (tsc + unit, 수십 초)
 npm run check:quick
 
 # 커밋/푸시 전 1회 (tsc + unit + build, 1분 내외)
 npm run check
-
-# PR 올리면 GitHub Actions (ci.yml) 가 자동으로 검증
-# — check job: type-check + lint + unit test
-# — build job: production build
-# — e2e job:  Playwright Chromium golden path
 ```
+
+### CI/CD (GitHub Actions)
+- **ci.yml**: PR 생성 또는 main/dev push 시 자동 실행
+  - check job: type-check + lint + unit test
+  - build job: production build
+  - e2e job: Playwright Chromium golden path
+- **deploy.yml**: main CI 성공 시 자동 배포 (ghcr.io → Lightsail)
+
+### 세션 완료 체크리스트
+- [ ] `npm run check:quick` 통과
+- [ ] 작업 브랜치 → dev PR 생성 (CI 통과 확인)
+- [ ] 로컬 작업 브랜치 삭제 (`git branch -d <branch>`)
+- [ ] worktree 사용 시 제거 (`git worktree remove <path>`)
+- [ ] 로컬에 main, dev 외 브랜치 없음 확인
+
+### 세션 중단 감지
+로컬에 남아있는 작업 브랜치 = 이전 세션에서 중단된 작업.
+`bash scripts/check-stale-branches.sh`로 확인 가능.
 
 ## UI Verification (class-planner 전용 가이드)
 
