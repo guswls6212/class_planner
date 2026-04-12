@@ -33,6 +33,15 @@ const eslintConfig = [
         crypto: "readonly",
         performance: "readonly",
 
+        // Fetch API
+        fetch: "readonly",
+        Request: "readonly",
+        Response: "readonly",
+        Headers: "readonly",
+        FormData: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
+
         // Node.js globals
         process: "readonly",
         global: "readonly",
@@ -91,6 +100,15 @@ const eslintConfig = [
         getComputedStyle: "readonly",
         crypto: "readonly",
         performance: "readonly",
+
+        // Fetch API
+        fetch: "readonly",
+        Request: "readonly",
+        Response: "readonly",
+        Headers: "readonly",
+        FormData: "readonly",
+        URL: "readonly",
+        URLSearchParams: "readonly",
 
         // Node.js globals
         process: "readonly",
