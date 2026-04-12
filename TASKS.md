@@ -96,9 +96,12 @@
 - `/api/data`: @deprecated 주석 추가 (S5에서 제거 예정)
 - TODO(S2) marker 전체 제거
 
-#### S3 이후 (미착수)
+#### S3 이후
+- [x] 익명 우선 기능 (Anonymous-First) ✅ 완료 (2026-04-12)
+  - 로그인 전 localStorage에 시간표 작성 가능
+  - 로그인 시 자동 데이터 마이그레이션 (handleLoginDataMigration.ts)
+  - 충돌 감지 및 사용자 선택 UI (DataConflictModal.tsx)
 - [ ] ARCHITECTURE.md 업데이트 (배포 아키텍처 6.2, 데이터 모델 반영)
-- [ ] 클라이언트 리팩터 (익명 우선 localStorage → 로그인 후 DB sync)
 - [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
 - [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
 - [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)

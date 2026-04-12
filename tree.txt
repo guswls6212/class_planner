@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-12, Phase 2B + 브랜칭 전략 도입 완료)
+# class-planner file structure (2026-04-12, Phase 2A + 익명 우선 기능 완료)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 
 class-planner/
@@ -135,6 +135,7 @@ class-planner/
 │   │   │   └── ThemeToggle.tsx
 │   │   ├── molecules/
 │   │   │   ├── ConfirmModal.tsx (+.module.css)
+│   │   │   ├── DataConflictModal.tsx (+.module.css) # (신규, 익명 우선) 로그인 시 충돌 해결
 │   │   │   ├── DropZone.tsx
 │   │   │   ├── PDFDownloadButton.tsx
 │   │   │   ├── ScheduleHeader.tsx
@@ -216,6 +217,8 @@ class-planner/
 │   │   └── useUserTracking.ts
 │   ├── lib/
 │   │   ├── apiSync.ts                    # (신규, S3) per-entity fire-and-forget
+│   │   ├── auth/
+│   │   │   └── handleLoginDataMigration.ts # (신규, 익명 우선) localStorage→DB 마이그레이션
 │   │   ├── errorTracker.ts
 │   │   ├── localStorageCrud.ts
 │   │   ├── logger.ts
