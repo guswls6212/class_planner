@@ -40,8 +40,7 @@ const AboutPageLayout: React.FC = () => {
   return (
     <div
       data-testid="about-page"
-      className="min-h-screen py-10 px-5"
-      style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+      className="min-h-screen py-10 px-5 bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]"
     >
       <div className="max-w-6xl mx-auto">
         <HeroSection />

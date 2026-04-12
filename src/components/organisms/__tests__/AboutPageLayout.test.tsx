@@ -68,9 +68,9 @@ describe("AboutPageLayout", () => {
     render(<AboutPageLayout />);
 
     const aboutPage = screen.getByTestId("about-page");
-    expect(aboutPage).toHaveStyle({
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    });
+    expect(aboutPage.className).toContain(
+      "bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]"
+    );
   });
 
   it("최대 너비가 설정되어야 한다", () => {

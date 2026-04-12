@@ -1,6 +1,6 @@
 import React from "react";
 
-interface FeatureDetailProps {
+export interface FeatureDetailProps {
   selectedFeature: string;
   onClose: () => void;
 }
