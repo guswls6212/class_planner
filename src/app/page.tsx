@@ -88,20 +88,15 @@ function HomeContent({ isLoggedIn }: { isLoggedIn: boolean }) {
               className="mb-12"
               style={{
                 marginBottom: "48px",
+                display: "flex",
+                gap: "16px",
+                justifyContent: "center",
+                alignItems: "center",
+                flexWrap: "wrap",
               }}
             >
-              <p
-                className="text-lg mb-6"
-                style={{
-                  fontSize: "1.125rem",
-                  color: "rgba(255, 255, 255, 0.8)",
-                  margin: "0 0 24px 0",
-                }}
-              >
-                시작하려면 로그인해주세요
-              </p>
               <Link
-                href="/login"
+                href="/schedule"
                 className="inline-block px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105"
                 style={{
                   backgroundColor: "white",
@@ -111,6 +106,16 @@ function HomeContent({ isLoggedIn }: { isLoggedIn: boolean }) {
                   textDecoration: "none",
                   boxShadow: "0 8px 25px rgba(0, 0, 0, 0.2)",
                   fontWeight: "600",
+                }}
+              >
+                바로 시작하기
+              </Link>
+              <Link
+                href="/login"
+                style={{
+                  color: "rgba(255, 255, 255, 0.75)",
+                  textDecoration: "underline",
+                  fontSize: "0.875rem",
                 }}
               >
                 로그인하기

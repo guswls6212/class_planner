@@ -74,12 +74,7 @@ vi.mock("../../../hooks/useTimeValidation", () => ({
   })),
 }));
 
-// Mock components
-vi.mock("../../../components/atoms/AuthGuard", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="auth-guard">{children}</div>
-  ),
-}));
+// Mock components removed: AuthGuard no longer wraps SchedulePage
 
 vi.mock("../../../components/organisms/TimeTableGrid", () => ({
   default: () => <div data-testid="time-table-grid">TimeTableGrid</div>,
@@ -102,7 +97,6 @@ describe("Schedule Page", () => {
     render(<SchedulePage />);
 
     await waitFor(() => {
-      expect(screen.getByTestId("auth-guard")).toBeInTheDocument();
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
       expect(screen.getByTestId("student-panel")).toBeInTheDocument();
       expect(screen.getByTestId("pdf-download-button")).toBeInTheDocument();
@@ -146,7 +140,7 @@ describe("Schedule Page", () => {
 
     render(<SchedulePage />);
 
-    expect(screen.getByTestId("auth-guard")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
@@ -177,6 +171,6 @@ describe("Schedule Page", () => {
 
     render(<SchedulePage />);
 
-    expect(screen.getByTestId("auth-guard")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 });

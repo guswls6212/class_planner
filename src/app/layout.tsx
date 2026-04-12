@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
+import DataConflictModal from "../components/molecules/DataConflictModal";
 import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
@@ -143,8 +144,7 @@ function Footer() {
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  // 전역 사용자 데이터 초기화
-  const { isInitializing } = useGlobalDataInitialization();
+  const { isInitializing, conflictState, resolveConflict } = useGlobalDataInitialization();
 
   return (
     <ErrorBoundary>
@@ -152,15 +152,20 @@ function AppContent({ children }: { children: React.ReactNode }) {
       <main style={{ paddingBottom: "60px" }}>
         {isInitializing && (
           <div className="loading-overlay">
-            {/* 로딩 스피너 */}
             <div className="loading-spinner" />
-
-            {/* 애니메이션 텍스트 */}
             <span className="loading-text">
               사용자 데이터를 불러오는 중
               <span className="loading-dots">...</span>
             </span>
           </div>
+        )}
+        {conflictState && (
+          <DataConflictModal
+            localData={conflictState.localData}
+            serverData={conflictState.serverData}
+            onSelectServer={() => resolveConflict("server")}
+            onSelectLocal={() => resolveConflict("local")}
+          />
         )}
         {children}
       </main>
