@@ -148,6 +148,10 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     }
 
     try {
+      // TODO: Replace manual token scrubbing with await supabase.auth.signOut()
+      // The current approach deletes tokens manually which causes onAuthStateChange
+      // to fire SIGNED_OUT, triggering a second clearUserClassPlannerData call (harmless).
+      // Tracked as a pre-existing issue, not introduced by this PR.
       logger.info("Supabase 로그아웃 시도 중...");
 
       // 🛡️ 보안 강화: 사용자 데이터 완전 삭제

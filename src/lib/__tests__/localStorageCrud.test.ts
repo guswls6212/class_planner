@@ -670,6 +670,20 @@ describe("migrateUnkeyedStorage", () => {
     getClassPlannerData();
     expect(localStorageMock.getItem("classPlannerData")).toBeNull();
   });
+
+  it("로그인 사용자인 경우 user-scoped 키로 마이그레이션", () => {
+    const legacyData = '{"students":[{"id":"s1","name":"LoggedInUser"}],"subjects":[],"sessions":[],"enrollments":[],"version":"1.0","lastModified":"2025-01-01T00:00:00.000Z"}';
+    storage["classPlannerData"] = legacyData;
+    localStorageMock.setItem("supabase_user_id", "user-789");
+    const result = getClassPlannerData();
+    expect(result.students[0].name).toBe("LoggedInUser");
+    // 레거시 키 삭제
+    expect(localStorageMock.getItem("classPlannerData")).toBeNull();
+    // user-scoped 키로 이동
+    expect(localStorageMock.getItem("classPlannerData:user-789")).not.toBeNull();
+    // anonymous 키에는 저장 안 됨
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).toBeNull();
+  });
 });
 
 describe("clearUserClassPlannerData", () => {
