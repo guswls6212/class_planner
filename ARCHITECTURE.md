@@ -88,9 +88,9 @@ src/application/
 src/infrastructure/
 ├── repositories/      # SupabaseStudentRepository, SupabaseSubjectRepository
 ├── factories/         # 각 Repository Factory
-├── container/         # DIContainer, RepositoryRegistry, RepositoryInitializer
+├── container/         # RepositoryRegistry
 ├── config/            # RepositoryConfig
-└── RepositoryFactory.ts  # 메인 팩토리 (진입점)
+└── index.ts              # 공개 API 진입점
 ```
 
 ### 2.6 Shared Utilities

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
-import LoginButton from "../components/atoms/LoginButton";
+import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../hooks/useGlobalDataInitialization";

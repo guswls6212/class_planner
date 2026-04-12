@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-12, S5 레거시 정리 완료)
+# class-planner file structure (2026-04-12, Phase 2B 코드 품질 개선 완료)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 
 class-planner/
@@ -126,11 +126,9 @@ class-planner/
 │   │   ├── atoms/
 │   │   │   ├── AuthGuard.tsx
 │   │   │   ├── Button.tsx (+.module.css)
-│   │   │   ├── E2ETestAuthGuard.tsx
 │   │   │   ├── ErrorBoundary.tsx
 │   │   │   ├── Input.tsx (+.module.css)
 │   │   │   ├── Label.tsx (+.module.css)
-│   │   │   ├── LoginButton.tsx (+.module.css)
 │   │   │   ├── StudentListItem.tsx (+.module.css)
 │   │   │   ├── SubjectListItem.tsx (+.module.css)
 │   │   │   └── ThemeToggle.tsx
@@ -148,12 +146,17 @@ class-planner/
 │   │   │   └── TimeTableRow.tsx
 │   │   └── organisms/
 │   │       ├── AboutPageLayout.tsx
+│   │       ├── LoginButton.tsx (+.module.css)
 │   │       ├── StudentManagementSection.tsx
 │   │       ├── StudentPanel.tsx
 │   │       ├── StudentsPageLayout.tsx
 │   │       ├── SubjectManagementSection.tsx
 │   │       ├── SubjectsPageLayout.tsx
-│   │       └── TimeTableGrid.tsx
+│   │       ├── TimeTableGrid.tsx
+│   │       └── about/                       # (신규, Phase 2B)
+│   │           ├── FeatureCard.tsx
+│   │           ├── FeatureDetail.tsx
+│   │           └── HeroSection.tsx
 │   ├── domain/
 │   │   ├── entities/
 │   │   │   ├── Student.ts
@@ -182,13 +185,10 @@ class-planner/
 │   │       ├── SubjectUseCases.ts
 │   │       └── UpdateStudentUseCase.ts
 │   ├── infrastructure/
-│   │   ├── RepositoryFactory.ts
 │   │   ├── index.ts
 │   │   ├── interfaces.ts
 │   │   ├── config/RepositoryConfig.ts
 │   │   ├── container/
-│   │   │   ├── DIContainer.ts
-│   │   │   ├── RepositoryInitializer.ts
 │   │   │   └── RepositoryRegistry.ts
 │   │   ├── factories/
 │   │   │   ├── EnrollmentRepositoryFactory.ts
@@ -226,7 +226,6 @@ class-planner/
 │   │   ├── timeUtils.ts
 │   │   └── yPositionMigration.ts
 │   ├── contexts/
-│   │   ├── AuthContext.tsx
 │   │   └── ThemeContext.tsx
 │   ├── middleware/
 │   │   ├── cors.ts

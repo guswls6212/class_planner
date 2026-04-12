@@ -1,10 +1,12 @@
 import { logger } from "../../lib/logger";
 import { RepositoryConfigFactory } from "../config/RepositoryConfig";
-import { DIContainer } from "./DIContainer";
+import type {
+  EnrollmentRepository,
+  SessionRepository,
+  StudentRepository,
+  SubjectRepository,
+} from "../interfaces";
 
-/**
- * Repository 등록 키 상수
- */
 export const REPOSITORY_KEYS = {
   STUDENT_REPOSITORY: "studentRepository",
   SUBJECT_REPOSITORY: "subjectRepository",
@@ -12,152 +14,94 @@ export const REPOSITORY_KEYS = {
   ENROLLMENT_REPOSITORY: "enrollmentRepository",
 } as const;
 
+type RepositoryKey = (typeof REPOSITORY_KEYS)[keyof typeof REPOSITORY_KEYS];
+
 /**
- * Repository 등록 관리 클래스
- * DIContainer에 Repository들을 등록하고 관리합니다.
+ * Repository 등록·조회 클래스
+ * 이전 DIContainer 추상화를 제거하고 Map 기반 lazy singleton을 직접 관리한다.
  */
 export class RepositoryRegistry {
-  private static container: DIContainer = DIContainer.getInstance();
+  private static factories = new Map<RepositoryKey, () => unknown>();
+  private static instances = new Map<RepositoryKey, unknown>();
 
-  /**
-   * 모든 Repository를 DIContainer에 등록합니다.
-   */
+  // -------------------------------------------------------
+  // 내부 헬퍼
+  // -------------------------------------------------------
+  private static register(key: RepositoryKey, factory: () => unknown): void {
+    this.factories.set(key, factory);
+    logger.debug("Repository 등록", { key });
+  }
+
+  private static resolve<T>(key: RepositoryKey): T {
+    if (this.instances.has(key)) {
+      return this.instances.get(key) as T;
+    }
+    const factory = this.factories.get(key);
+    if (!factory) {
+      throw new Error(
+        `Repository ${key} not found. 등록된 키: ${[...this.factories.keys()].join(", ")}`
+      );
+    }
+    const instance = factory() as T;
+    this.instances.set(key, instance);
+    return instance;
+  }
+
+  // -------------------------------------------------------
+  // 등록
+  // -------------------------------------------------------
   static registerAll(): void {
+    this.instances.clear(); // clear stale singleton cache before re-registering
     logger.info("📋 Repository 등록 시작...");
-
     const config = RepositoryConfigFactory.create();
-
-    // 각 Repository를 싱글톤으로 등록
-    this.container.register(
-      REPOSITORY_KEYS.STUDENT_REPOSITORY,
-      () => config.studentRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.SUBJECT_REPOSITORY,
-      () => config.subjectRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.SESSION_REPOSITORY,
-      () => config.sessionRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.ENROLLMENT_REPOSITORY,
-      () => config.enrollmentRepository,
-      true
-    );
-
+    this.register(REPOSITORY_KEYS.STUDENT_REPOSITORY, () => config.studentRepository);
+    this.register(REPOSITORY_KEYS.SUBJECT_REPOSITORY, () => config.subjectRepository);
+    this.register(REPOSITORY_KEYS.SESSION_REPOSITORY, () => config.sessionRepository);
+    this.register(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY, () => config.enrollmentRepository);
     logger.info("✅ 모든 Repository 등록 완료");
-    this.container.logStatus();
   }
 
-  /**
-   * 테스트용 Repository를 등록합니다.
-   */
   static registerForTest(): void {
+    this.instances.clear(); // clear stale singleton cache before re-registering
     logger.info("🧪 테스트용 Repository 등록 시작...");
-
     const config = RepositoryConfigFactory.createForTest();
-
-    // 각 Repository를 싱글톤으로 등록
-    this.container.register(
-      REPOSITORY_KEYS.STUDENT_REPOSITORY,
-      () => config.studentRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.SUBJECT_REPOSITORY,
-      () => config.subjectRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.SESSION_REPOSITORY,
-      () => config.sessionRepository,
-      true
-    );
-
-    this.container.register(
-      REPOSITORY_KEYS.ENROLLMENT_REPOSITORY,
-      () => config.enrollmentRepository,
-      true
-    );
-
+    this.register(REPOSITORY_KEYS.STUDENT_REPOSITORY, () => config.studentRepository);
+    this.register(REPOSITORY_KEYS.SUBJECT_REPOSITORY, () => config.subjectRepository);
+    this.register(REPOSITORY_KEYS.SESSION_REPOSITORY, () => config.sessionRepository);
+    this.register(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY, () => config.enrollmentRepository);
     logger.info("✅ 테스트용 Repository 등록 완료");
-    this.container.logStatus();
   }
 
-  /**
-   * 특정 Repository를 가져옵니다.
-   * @param key Repository 키
-   * @returns Repository 인스턴스
-   */
-  static getRepository<T>(key: string): T {
-    return this.container.resolve<T>(key);
-  }
-
-  /**
-   * StudentRepository를 가져옵니다.
-   * @returns StudentRepository 인스턴스
-   */
-  static getStudentRepository() {
-    // Repository가 등록되지 않은 경우 자동 등록
+  // -------------------------------------------------------
+  // 조회
+  // -------------------------------------------------------
+  private static autoRegisterIfNeeded(): void {
     if (!this.isRegistered()) {
       logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
       this.registerAll();
     }
-    return this.getRepository(REPOSITORY_KEYS.STUDENT_REPOSITORY);
   }
 
-  /**
-   * SubjectRepository를 가져옵니다.
-   * @returns SubjectRepository 인스턴스
-   */
-  static getSubjectRepository() {
-    // Repository가 등록되지 않은 경우 자동 등록
-    if (!this.isRegistered()) {
-      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
-      this.registerAll();
-    }
-    return this.getRepository(REPOSITORY_KEYS.SUBJECT_REPOSITORY);
+  static getStudentRepository(): StudentRepository {
+    this.autoRegisterIfNeeded();
+    return this.resolve<StudentRepository>(REPOSITORY_KEYS.STUDENT_REPOSITORY);
   }
 
-  /**
-   * SessionRepository를 가져옵니다.
-   * @returns SessionRepository 인스턴스
-   */
-  static getSessionRepository() {
-    // Repository가 등록되지 않은 경우 자동 등록
-    if (!this.isRegistered()) {
-      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
-      this.registerAll();
-    }
-    return this.getRepository(REPOSITORY_KEYS.SESSION_REPOSITORY);
+  static getSubjectRepository(): SubjectRepository {
+    this.autoRegisterIfNeeded();
+    return this.resolve<SubjectRepository>(REPOSITORY_KEYS.SUBJECT_REPOSITORY);
   }
 
-  /**
-   * EnrollmentRepository를 가져옵니다.
-   * @returns EnrollmentRepository 인스턴스
-   */
-  static getEnrollmentRepository() {
-    // Repository가 등록되지 않은 경우 자동 등록
-    if (!this.isRegistered()) {
-      logger.info("⚠️ Repository가 등록되지 않음. 자동 등록 시도...");
-      this.registerAll();
-    }
-    return this.getRepository(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY);
+  static getSessionRepository(): SessionRepository {
+    this.autoRegisterIfNeeded();
+    return this.resolve<SessionRepository>(REPOSITORY_KEYS.SESSION_REPOSITORY);
   }
 
-  /**
-   * 모든 Repository를 가져옵니다.
-   * @returns 모든 Repository 인스턴스
-   */
+  static getEnrollmentRepository(): EnrollmentRepository {
+    this.autoRegisterIfNeeded();
+    return this.resolve<EnrollmentRepository>(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY);
+  }
+
   static getAllRepositories() {
     return {
       studentRepository: this.getStudentRepository(),
@@ -167,33 +111,21 @@ export class RepositoryRegistry {
     };
   }
 
-  /**
-   * Repository 등록 상태를 확인합니다.
-   * @returns 등록 상태
-   */
+  // -------------------------------------------------------
+  // 상태
+  // -------------------------------------------------------
   static isRegistered(): boolean {
-    return this.container.isRegistered(REPOSITORY_KEYS.STUDENT_REPOSITORY);
+    return (
+      this.factories.has(REPOSITORY_KEYS.STUDENT_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.SUBJECT_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.SESSION_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY)
+    );
   }
 
-  /**
-   * 모든 Repository를 초기화합니다.
-   */
   static clear(): void {
-    this.container.clear();
+    this.factories.clear();
+    this.instances.clear();
     logger.info("🧹 Repository 등록 초기화 완료");
-  }
-
-  /**
-   * 환경 정보를 출력합니다.
-   */
-  static logEnvironmentInfo(): void {
-    const environment =
-      process.env.NODE_ENV === "production" ? "production" : "development";
-    logger.info("🌍 환경 정보", {
-      environment,
-      nodeEnv: process.env.NODE_ENV,
-      isClient: typeof window !== "undefined",
-      isServer: typeof window === "undefined",
-    });
   }
 }

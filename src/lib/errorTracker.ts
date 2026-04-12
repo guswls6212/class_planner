@@ -128,8 +128,8 @@ class ErrorTracker {
     errorsByCategory: Record<ErrorCategory, number>;
     errorsBySeverity: Record<ErrorSeverity, number>;
   } {
-    const errorsByCategory: Record<ErrorCategory, number> = {} as any;
-    const errorsBySeverity: Record<ErrorSeverity, number> = {} as any;
+    const errorsByCategory = {} as Record<ErrorCategory, number>;
+    const errorsBySeverity = {} as Record<ErrorSeverity, number>;
 
     // 카테고리별 통계
     Object.values(ErrorCategory).forEach((category) => {

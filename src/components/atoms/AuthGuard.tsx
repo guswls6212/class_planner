@@ -61,7 +61,10 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
         const {
           data: { session },
           error,
-        } = (await Promise.race([sessionPromise, timeoutPromise])) as any;
+        } = (await Promise.race([
+          sessionPromise,
+          timeoutPromise,
+        ])) as Awaited<ReturnType<typeof supabase.auth.getSession>>;
 
         if (error) {
           logger.error("세션 확인 중 오류:", undefined, error as Error);
