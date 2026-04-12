@@ -7,6 +7,7 @@ import {
   addStudentToLocal,
   addSubjectToLocal,
   clearClassPlannerData,
+  clearUserClassPlannerData,
   deleteStudentFromLocal,
   deleteSubjectFromLocal,
   getAllStudentsFromLocal,
@@ -126,7 +127,7 @@ describe("localStorage CRUD 유틸리티", () => {
 
       expect(result).toBe(true);
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        "classPlannerData",
+        "classPlannerData:anonymous",
         expect.stringContaining("김철수")
       );
       expect(mockDispatchEvent).toHaveBeenCalledWith(
@@ -141,7 +142,7 @@ describe("localStorage CRUD 유틸리티", () => {
 
       expect(result).toBe(true);
       expect(localStorageMock.removeItem).toHaveBeenCalledWith(
-        "classPlannerData"
+        "classPlannerData:anonymous"
       );
       expect(mockDispatchEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -244,7 +245,7 @@ describe("localStorage CRUD 유틸리티", () => {
         version: "1.0",
         lastModified: new Date().toISOString(),
       };
-      localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(initial));
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(initial));
 
       const res = deleteStudentFromLocal("student-1");
       expect(res.success).toBe(true);
@@ -291,7 +292,7 @@ describe("localStorage CRUD 유틸리티", () => {
         version: "1.0",
         lastModified: new Date().toISOString(),
       };
-      localStorageMock.getItem.mockReturnValueOnce(JSON.stringify(initial));
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(initial));
 
       const res = deleteStudentFromLocal("student-1");
       expect(res.success).toBe(true);
@@ -603,5 +604,84 @@ describe("localStorage CRUD 유틸리티", () => {
         new Date(beforeTime).getTime()
       );
     });
+  });
+});
+
+// ===== 키 스코프 분리 테스트 =====
+
+describe("getStorageKey / scoped storage", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it("supabase_user_id 없으면 anonymous 키에 저장", () => {
+    setClassPlannerData({
+      students: [{ id: "s1", name: "Alice" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
+    expect(localStorageMock.getItem("classPlannerData")).toBeNull();
+  });
+
+  it("supabase_user_id 있으면 user-scoped 키에 저장", () => {
+    localStorageMock.setItem("supabase_user_id", "user-123");
+    setClassPlannerData({
+      students: [{ id: "s1", name: "Bob" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    expect(localStorageMock.getItem("classPlannerData:user-123")).not.toBeNull();
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).toBeNull();
+  });
+
+  it("clearClassPlannerData는 현재 스코프 키만 삭제", () => {
+    localStorageMock.setItem("supabase_user_id", "user-123");
+    storage["classPlannerData:user-123"] = '{"students":[],"subjects":[],"sessions":[],"enrollments":[],"version":"1.0","lastModified":"2025-01-01T00:00:00.000Z"}';
+    storage["classPlannerData:anonymous"] = '{"students":[{"id":"a1","name":"Anon"}],"subjects":[],"sessions":[],"enrollments":[],"version":"1.0","lastModified":"2025-01-01T00:00:00.000Z"}';
+    clearClassPlannerData();
+    expect(localStorageMock.getItem("classPlannerData:user-123")).toBeNull();
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
+  });
+});
+
+describe("migrateUnkeyedStorage", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it("레거시 classPlannerData가 있으면 현재 스코프 키로 마이그레이션", () => {
+    const legacyData = '{"students":[{"id":"s1","name":"Legacy"}],"subjects":[],"sessions":[],"enrollments":[],"version":"1.0","lastModified":"2025-01-01T00:00:00.000Z"}';
+    storage["classPlannerData"] = legacyData;
+    const result = getClassPlannerData();
+    expect(result.students[0].name).toBe("Legacy");
+    expect(localStorageMock.getItem("classPlannerData")).toBeNull();
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
+  });
+
+  it("레거시 키 없으면 아무것도 안 함", () => {
+    storage["classPlannerData:anonymous"] = '{"students":[],"subjects":[],"sessions":[],"enrollments":[],"version":"1.0","lastModified":"2025-01-01T00:00:00.000Z"}';
+    getClassPlannerData();
+    expect(localStorageMock.getItem("classPlannerData")).toBeNull();
+  });
+});
+
+describe("clearUserClassPlannerData", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it("명시적 userId의 스코프 키 삭제", () => {
+    storage["classPlannerData:user-456"] = '{"students":[]}';
+    storage["classPlannerData:anonymous"] = '{"students":[{"id":"a1","name":"Anon"}]}';
+    clearUserClassPlannerData("user-456");
+    expect(localStorageMock.getItem("classPlannerData:user-456")).toBeNull();
+    expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
   });
 });

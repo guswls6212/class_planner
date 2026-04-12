@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useUserTracking } from "../../hooks/useUserTracking";
+import { clearUserClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
 import styles from "./LoginButton.module.css";
@@ -80,8 +81,11 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         setUser(null);
 
         // 🛡️ 보안 강화: 사용자 데이터 완전 삭제
+        const currentUserId = localStorage.getItem("supabase_user_id");
+        if (currentUserId) {
+          clearUserClassPlannerData(currentUserId);
+        }
         localStorage.removeItem("supabase_user_id");
-        localStorage.removeItem("classPlannerData");
         logger.info("🛡️ onAuthStateChange - 사용자 데이터 완전 삭제");
 
         // 사용자 추적 시스템에서 사용자 ID 제거
@@ -158,7 +162,10 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
       });
 
       // 2. 🚨 사용자 데이터 완전 삭제 (보안 중요!)
-      localStorage.removeItem("classPlannerData");
+      const currentUserId = localStorage.getItem("supabase_user_id");
+      if (currentUserId) {
+        clearUserClassPlannerData(currentUserId);
+      }
       localStorage.removeItem("supabase_user_id");
       logger.info("🛡️ 사용자 데이터 완전 삭제 완료");
 
