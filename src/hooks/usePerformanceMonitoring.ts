@@ -12,6 +12,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import { trackPerformance } from "./useUserTracking";
 
+interface ChromeMemoryInfo {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
 export interface PerformanceMetrics {
   pageLoadTime: number;
   apiCallTimes: Record<string, number>;
@@ -113,7 +119,7 @@ class PerformanceMonitor {
   measureMemoryUsage() {
     if (typeof window === "undefined" || !globalThis.performance || !("memory" in globalThis.performance)) return;
 
-    const memory = (globalThis.performance as any).memory;
+    const memory = (globalThis.performance as Performance & { memory?: ChromeMemoryInfo }).memory;
     if (memory) {
       const memoryUsage = {
         usedJSHeapSize: memory.usedJSHeapSize,
