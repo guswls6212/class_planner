@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-12)
+# class-planner file structure (2026-04-12, S5 레거시 정리 완료)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 
 class-planner/
@@ -107,7 +107,7 @@ class-planner/
 │   │   │   │   └── sessionSaveUtils.ts
 │   │   │   └── _constants/scheduleConstants.ts
 │   │   └── api/
-│   │       ├── data/route.ts
+│   │       ├── enrollments/route.ts          # (신규, S3) GET/POST/DELETE
 │   │       ├── students/
 │   │       │   ├── route.ts
 │   │       │   └── [id]/route.ts
@@ -169,7 +169,7 @@ class-planner/
 │   │   │   ├── StudentMapper.ts
 │   │   │   └── SubjectMapper.ts
 │   │   ├── services/
-│   │   │   ├── DataApplicationService.ts
+│   │   │   ├── EnrollmentApplicationService.ts  # (신규, S3)
 │   │   │   ├── ServiceFactory.ts
 │   │   │   ├── SessionApplicationService.ts
 │   │   │   ├── StudentApplicationService.ts
@@ -213,13 +213,15 @@ class-planner/
 │   │   ├── useTimeValidation.ts
 │   │   └── useUserTracking.ts
 │   ├── lib/
-│   │   ├── debouncedServerSync.ts
+│   │   ├── apiSync.ts                    # (신규, S3) per-entity fire-and-forget
 │   │   ├── errorTracker.ts
 │   │   ├── localStorageCrud.ts
 │   │   ├── logger.ts
 │   │   ├── pdf-utils.ts
 │   │   ├── planner.ts
+│   │   ├── resolveAcademyId.ts           # (신규, S2) userId→academyId 변환
 │   │   ├── sessionCollisionUtils.ts
+│   │   ├── supabaseServiceRole.ts        # (신규, S2) Service Role 클라이언트 싱글톤
 │   │   ├── timeUtils.ts
 │   │   └── yPositionMigration.ts
 │   ├── contexts/

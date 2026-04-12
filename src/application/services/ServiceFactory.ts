@@ -4,7 +4,6 @@
  */
 
 import { RepositoryRegistry } from "@/infrastructure";
-import { DataApplicationServiceImpl } from "./DataApplicationService";
 import { EnrollmentApplicationServiceImpl } from "./EnrollmentApplicationService";
 import { SessionApplicationServiceImpl } from "./SessionApplicationService";
 import { StudentApplicationServiceImpl } from "./StudentApplicationService";
@@ -52,14 +51,6 @@ export class ServiceFactory {
   }
 
   /**
-   * DataApplicationService 인스턴스를 생성합니다.
-   * @returns DataApplicationService 인스턴스
-   */
-  static createDataService(): DataApplicationServiceImpl {
-    return new DataApplicationServiceImpl();
-  }
-
-  /**
    * 모든 Application Services를 생성합니다.
    * @returns 모든 서비스 인스턴스
    */
@@ -69,32 +60,7 @@ export class ServiceFactory {
       subjectService: this.createSubjectService(),
       sessionService: this.createSessionService(),
       enrollmentService: this.createEnrollmentService(),
-      dataService: this.createDataService(),
     };
   }
 }
 
-/**
- * 하위 호환성을 위한 함수형 인터페이스
- * @deprecated ServiceFactory 클래스를 사용하세요.
- */
-export function createStudentService(): StudentApplicationServiceImpl {
-  console.warn(
-    "⚠️ createStudentService()는 deprecated입니다. ServiceFactory.createStudentService()를 사용하세요."
-  );
-  return ServiceFactory.createStudentService();
-}
-
-export function createSubjectService(): SubjectApplicationServiceImpl {
-  console.warn(
-    "⚠️ createSubjectService()는 deprecated입니다. ServiceFactory.createSubjectService()를 사용하세요."
-  );
-  return ServiceFactory.createSubjectService();
-}
-
-export function createSessionService(): SessionApplicationServiceImpl {
-  console.warn(
-    "⚠️ createSessionService()는 deprecated입니다. ServiceFactory.createSessionService()를 사용하세요."
-  );
-  return ServiceFactory.createSessionService();
-}

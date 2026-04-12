@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../lib/logger";
-import { getKSTTime } from "../lib/timeUtils";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -27,29 +26,6 @@ if (typeof window !== "undefined") {
 export interface Database {
   public: {
     Tables: {
-      user_data: {
-        Row: {
-          id: string;
-          user_id: string;
-          data: unknown;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          data: unknown;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          data?: unknown;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
       user_profiles: {
         Row: {
           id: string;
@@ -193,42 +169,6 @@ export const supabaseUtils = {
 
     if (error && error.code !== "PGRST116") {
       logger.error("사용자 프로필 조회 실패:", undefined, error);
-      throw error;
-    }
-
-    return data;
-  },
-
-  // 사용자 데이터 저장
-  async saveUserData(userId: string, data: unknown) {
-    const { data: result, error } = await supabase
-      .from("user_data")
-      .upsert({
-        user_id: userId,
-        data,
-        updated_at: getKSTTime(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logger.error("사용자 데이터 저장 실패:", undefined, error);
-      throw error;
-    }
-
-    return result;
-  },
-
-  // 사용자 데이터 조회
-  async getUserData(userId: string) {
-    const { data, error } = await supabase
-      .from("user_data")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (error && error.code !== "PGRST116") {
-      logger.error("사용자 데이터 조회 실패:", undefined, error);
       throw error;
     }
 

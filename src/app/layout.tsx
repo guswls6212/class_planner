@@ -10,7 +10,6 @@ import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../hooks/useGlobalDataInitialization";
 import { useUserTracking } from "../hooks/useUserTracking";
-import { initializeSyncSystem } from "../lib/debouncedServerSync";
 import { logger } from "../lib/logger";
 import "./globals.css";
 
@@ -146,12 +145,6 @@ function Footer() {
 function AppContent({ children }: { children: React.ReactNode }) {
   // 전역 사용자 데이터 초기화
   const { isInitializing } = useGlobalDataInitialization();
-
-  // 🚀 동기화 시스템 초기화
-  useEffect(() => {
-    initializeSyncSystem();
-    logger.info("AppContent - localStorage 동기화 시스템 초기화 완료");
-  }, []);
 
   return (
     <ErrorBoundary>
