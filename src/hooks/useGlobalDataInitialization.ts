@@ -48,22 +48,26 @@ export const useGlobalDataInitialization = () => {
     (choice: "server" | "local") => {
       if (!pendingUserId || !pendingServerData) return;
 
-      if (choice === "server") {
-        applyServerChoice();
-        setClassPlannerData(pendingServerData);
-      } else {
-        applyLocalDataChoice(pendingUserId);
+      try {
+        if (choice === "server") {
+          applyServerChoice();
+          setClassPlannerData(pendingServerData);
+        } else {
+          applyLocalDataChoice(pendingUserId);
+        }
+      } finally {
+        setConflictState(null);
+        setPendingUserId(null);
+        setPendingServerData(null);
+        setIsInitialized(true);
       }
-
-      setConflictState(null);
-      setPendingUserId(null);
-      setPendingServerData(null);
-      setIsInitialized(true);
     },
     [pendingUserId, pendingServerData]
   );
 
   useEffect(() => {
+    let mounted = true;
+
     const initializeUserData = async () => {
       try {
         logger.debug("사용자 인증 상태를 확인합니다");
@@ -99,7 +103,7 @@ export const useGlobalDataInitialization = () => {
               count: DEFAULT_SUBJECTS.length,
             });
           }
-          setIsInitialized(true);
+          if (mounted) setIsInitialized(true);
           return;
         }
 
@@ -117,7 +121,7 @@ export const useGlobalDataInitialization = () => {
         // userId 먼저 설정 (getStorageKey()가 올바른 키를 반환하도록)
         localStorage.setItem("supabase_user_id", userId);
 
-        setIsInitializing(true);
+        if (mounted) setIsInitializing(true);
 
         // 온보딩 확인
         try {
@@ -180,15 +184,17 @@ export const useGlobalDataInitialization = () => {
         const migrationResult = checkLoginDataConflict(serverData);
 
         if (migrationResult.action === "conflict") {
-          setPendingUserId(userId);
-          setPendingServerData(serverData);
-          setConflictState(migrationResult);
+          if (mounted) {
+            setPendingUserId(userId);
+            setPendingServerData(serverData);
+            setConflictState(migrationResult);
+          }
           return;
         }
 
         if (migrationResult.action === "upload-local") {
           applyLocalDataChoice(userId);
-          setIsInitialized(true);
+          if (mounted) setIsInitialized(true);
           return;
         }
 
@@ -212,7 +218,7 @@ export const useGlobalDataInitialization = () => {
           setClassPlannerData(serverData);
         }
 
-        setIsInitialized(true);
+        if (mounted) setIsInitialized(true);
         logger.info("사용자 데이터 초기화 완료");
       } catch (error) {
         logger.error(
@@ -221,11 +227,15 @@ export const useGlobalDataInitialization = () => {
           error as Error
         );
       } finally {
-        setIsInitializing(false);
+        if (mounted) setIsInitializing(false);
       }
     };
 
     initializeUserData();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { isInitialized, isInitializing, conflictState, resolveConflict };

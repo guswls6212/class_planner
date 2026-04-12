@@ -203,3 +203,112 @@ describe("로그인 사용자 — 충돌 없음", () => {
     expect(result.current.conflictState).toBeNull();
   });
 });
+
+describe("로그인 사용자 — 충돌 처리", () => {
+  const anonymousData = {
+    students: [{ id: "a1", name: "Anon" }],
+    subjects: [{ id: "as1", name: "익명과목", color: "#fff" }],
+    sessions: [],
+    enrollments: [],
+    version: "1.0",
+    lastModified: new Date().toISOString(),
+  };
+
+  const serverData = {
+    students: [{ id: "s1", name: "ServerStudent" }],
+    subjects: [{ id: "ss1", name: "서버과목", color: "#000" }],
+    sessions: [],
+    enrollments: [],
+    version: "1.0",
+    lastModified: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: "user-456", email: "user@test.com" } } },
+      error: null,
+    } as any);
+
+    // anonymous data present in localStorage
+    localStorageMock.getItem.mockImplementation((key: string) => {
+      if (key === "classPlannerData:anonymous")
+        return JSON.stringify(anonymousData);
+      return null;
+    });
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, data: [] }),
+    });
+  });
+
+  it("anonymous + server 모두 있으면 conflictState 설정, isInitialized false", async () => {
+    vi.mocked(checkLoginDataConflict).mockReturnValue({
+      action: "conflict",
+      localData: anonymousData,
+      serverData,
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    await waitFor(() => expect(result.current.conflictState).not.toBeNull());
+
+    expect(result.current.conflictState?.action).toBe("conflict");
+    expect(result.current.isInitialized).toBe(false);
+  });
+
+  it("anonymous 있고 서버 비어있으면 upload-local 자동 처리, isInitialized true", async () => {
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "upload-local" });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    expect(result.current.conflictState).toBeNull();
+  });
+
+  it("resolveConflict('server') 호출 시 isInitialized true, conflictState null", async () => {
+    vi.mocked(checkLoginDataConflict).mockReturnValue({
+      action: "conflict",
+      localData: anonymousData,
+      serverData,
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    // Wait for conflict state to be set
+    await waitFor(() => expect(result.current.conflictState).not.toBeNull());
+    expect(result.current.isInitialized).toBe(false);
+
+    // Resolve with server choice
+    result.current.resolveConflict("server");
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+    expect(result.current.conflictState).toBeNull();
+  });
+
+  it("resolveConflict('local') 호출 시 isInitialized true, conflictState null", async () => {
+    vi.mocked(checkLoginDataConflict).mockReturnValue({
+      action: "conflict",
+      localData: anonymousData,
+      serverData,
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    // Wait for conflict state to be set
+    await waitFor(() => expect(result.current.conflictState).not.toBeNull());
+    expect(result.current.isInitialized).toBe(false);
+
+    // Resolve with local choice
+    result.current.resolveConflict("local");
+
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+    expect(result.current.conflictState).toBeNull();
+  });
+});
