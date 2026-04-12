@@ -1,6 +1,7 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { logger } from "./logger";
+import { timeToMinutes, minutesToTime } from "./planner";
 
 declare global {
   interface Window {
@@ -23,29 +24,6 @@ export interface PDFDownloadOptions {
   format?: "a4" | "letter";
   orientation?: "portrait" | "landscape";
   quality?: number; // 🎯 이미지 품질 (0.1~2.0, 기본값: 2.0 = 인쇄용 고품질)
-}
-
-/**
- * 시간을 분으로 변환하는 함수
- */
-export function timeToMinutes(time: string): number {
-  if (!time || typeof time !== "string") {
-    console.warn("Invalid time format:", time);
-    return 0;
-  }
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-/**
- * 분을 시간으로 변환하는 함수
- */
-export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, "0")}:${mins
-    .toString()
-    .padStart(2, "0")}`;
 }
 
 /**
