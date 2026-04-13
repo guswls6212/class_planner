@@ -73,9 +73,9 @@ export async function migrateLocalDataToServer(
       } else {
         // 이름 중복 오류 → 서버에서 같은 이름 학생 찾아 ID 재사용
         const isNameConflict =
-          !res.ok ||
-          (typeof json.message === "string" &&
-            json.message.includes("이미 존재하는 학생 이름"));
+          res.status === 400 &&
+          typeof json.message === "string" &&
+          json.message.includes("이미 존재하는 학생 이름");
         if (isNameConflict) {
           const fallback = serverData.students.find(
             (s) => s.name === student.name
