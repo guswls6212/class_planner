@@ -20,13 +20,14 @@ vi.mock("../../logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// fullDataMigration をモック — always resolves with success
+// fullDataMigration mock — default: success with synced data
+const migrateLocalDataToServerMock = vi.fn().mockResolvedValue({
+  success: true,
+  syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
+  errors: [],
+});
 vi.mock("../fullDataMigration", () => ({
-  migrateLocalDataToServer: vi.fn().mockResolvedValue({
-    success: true,
-    syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
-    errors: [],
-  }),
+  migrateLocalDataToServer: (...args: unknown[]) => migrateLocalDataToServerMock(...args),
 }));
 
 const emptyData: ClassPlannerData = {
@@ -111,6 +112,11 @@ describe("applyLocalDataChoice", () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
+    migrateLocalDataToServerMock.mockResolvedValue({
+      success: true,
+      syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
+      errors: [],
+    });
   });
 
   it("anonymous 데이터 없으면 아무것도 안 함", async () => {
@@ -139,6 +145,33 @@ describe("applyLocalDataChoice", () => {
     expect(storage["supabase_user_id"]).toBe("user-999");
     // re-fetch 4번 호출 확인 (students, subjects, sessions, enrollments)
     expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("전체 마이그레이션 실패 시 (totalSynced=0) anonymous 키 보존", async () => {
+    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
+
+    // mock: 완전 실패 — 0건 동기화
+    migrateLocalDataToServerMock.mockResolvedValueOnce({
+      success: false,
+      syncedCounts: { students: 0, subjects: 0, enrollments: 0, sessions: 0 },
+      errors: [{ entity: "student", localId: "anon-s1", message: "네트워크 오류" }],
+    });
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyLocalDataChoice("user-999", emptyData);
+
+    // anonymous 키가 보존되어야 함
+    expect(storage["classPlannerData:anonymous"]).toBe(JSON.stringify(localData));
 
     vi.unstubAllGlobals();
   });

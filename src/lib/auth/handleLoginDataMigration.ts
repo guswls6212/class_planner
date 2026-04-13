@@ -117,8 +117,19 @@ export async function applyLocalDataChoice(
     lastModified: new Date().toISOString(),
   });
 
-  // 5. anonymous 키 삭제
-  localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
+  // 5. anonymous 키 삭제 — 전혀 동기화된 데이터가 없으면 보존
+  const totalSynced =
+    result.syncedCounts.students +
+    result.syncedCounts.subjects +
+    result.syncedCounts.enrollments +
+    result.syncedCounts.sessions;
+  if (totalSynced > 0 || anonymousData.students.length === 0) {
+    localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
+  } else {
+    logger.warn("handleLoginDataMigration - 동기화된 데이터 없음, anonymous 키 보존", {
+      errors: result.errors,
+    });
+  }
 
   logger.info("handleLoginDataMigration - 로컬 데이터 선택 완료", { userId });
 }

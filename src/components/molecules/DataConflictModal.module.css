@@ -373,6 +373,11 @@
   pointer-events: none;
 }
 
+/* ── Section Label Clickable ── */
+.sectionLabelClickable {
+  cursor: pointer;
+}
+
 /* ── Expand Icon ── */
 .expandIcon {
   font-size: 0.5rem;

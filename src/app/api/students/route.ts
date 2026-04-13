@@ -61,6 +61,12 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof Error && error.message.includes("이미 존재하는 학생 이름")) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 409 }
+      );
+    }
     logger.error("Error adding student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to add student" },

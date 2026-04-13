@@ -266,7 +266,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     vi.clearAllMocks();
   });
 
-  it("400 name-conflict + 서버에 같은 이름 학생 → 서버 ID 재사용", async () => {
+  it("409 name-conflict + 서버에 같은 이름 학생 → 서버 ID 재사용", async () => {
     // 서버에 이미 홍길동 학생이 있음
     const serverStudent = { id: "srv-s1", name: "홍길동", gender: "male", birthDate: "2010-01-01" };
 
@@ -289,7 +289,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
       lastModified: new Date().toISOString(),
     };
 
-    // 학생 POST 호출 시 400 name-conflict 반환
+    // 학생 POST 호출 시 409 name-conflict 반환
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
@@ -300,7 +300,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
               message: "이미 존재하는 학생 이름입니다.",
             }),
             {
-              status: 400,
+              status: 409,
               headers: { "Content-Type": "application/json" },
             }
           )
@@ -319,7 +319,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     vi.unstubAllGlobals();
   });
 
-  it("400 name-conflict + 서버 학생 폴백 + 수강 정상 추가", async () => {
+  it("409 name-conflict + 서버 학생 폴백 + 수강 정상 추가", async () => {
     // 서버: 홍길동 학생 (male, 2010-01-01), 수학 과목
     const serverStudent = { id: "srv-s1", name: "홍길동", gender: "male", birthDate: "2010-01-01" };
     const serverSubject = { id: "srv-sub1", name: "수학", color: "#ff0000" };
@@ -335,7 +335,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
 
     // 로컬: 홍길동 학생 (female, 2010-01-01) — 이름만 같고 성별이 다름
     // findDuplicateStudent는 name+gender+birthDate 모두 일치해야 중복으로 판단하므로,
-    // 성별이 다르면 POST를 시도하고, 그때 서버가 400 name-conflict 반환
+    // 성별이 다르면 POST를 시도하고, 그때 서버가 409 name-conflict 반환
     // 그러면 fallback으로 서버의 홍길동을 찾아서 ID 재사용
     const localData: ClassPlannerData = {
       students: [{ id: "loc-s1", name: "홍길동", gender: "female", birthDate: "2010-01-01" }],
@@ -350,13 +350,13 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       callCount++;
       if (callCount === 1) {
-        // 학생 POST: 400 name-conflict
+        // 학생 POST: 409 name-conflict
         return new Response(
           JSON.stringify({
             success: false,
             message: "이미 존재하는 학생 이름입니다.",
           }),
-          { status: 400, headers: { "Content-Type": "application/json" } }
+          { status: 409, headers: { "Content-Type": "application/json" } }
         );
       } else if (callCount === 2) {
         // 과목 POST: 영어 과목 추가
@@ -401,7 +401,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     vi.clearAllMocks();
   });
 
-  it("400 name-conflict + 서버에 매칭 학생 없음 → 오류 기록, 수강/수업 건너뜀", async () => {
+  it("409 name-conflict + 서버에 매칭 학생 없음 → 오류 기록, 수강/수업 건너뜀", async () => {
     const localData: ClassPlannerData = {
       students: [{ id: "loc-s1", name: "김철수", gender: "female", birthDate: "2012-03-15" }],
       subjects: [{ id: "loc-sub1", name: "수학", color: "#ff0000" }],
@@ -422,7 +422,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
-        // 학생 POST: 400 name-conflict 오류
+        // 학생 POST: 409 name-conflict 오류
         Promise.resolve(
           new Response(
             JSON.stringify({
@@ -430,7 +430,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
               message: "이미 존재하는 학생 이름입니다.",
             }),
             {
-              status: 400,
+              status: 409,
               headers: { "Content-Type": "application/json" },
             }
           )

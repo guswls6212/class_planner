@@ -274,8 +274,8 @@ const NameSection: React.FC<NameSectionProps> = ({ label, names, unit = "명" })
     </div>
     {names.length > 0 && (
       <ul className={styles.nameList}>
-        {names.map((name, i) => (
-          <li key={i} className={styles.nameItem}>
+        {names.map((name) => (
+          <li key={name} className={styles.nameItem}>
             {name}
           </li>
         ))}
@@ -302,9 +302,8 @@ const SessionSection: React.FC<SessionSectionProps> = ({
   return (
     <div className={styles.section}>
       <div
-        className={styles.sectionLabel}
+        className={`${styles.sectionLabel} ${sessions.length > 0 ? styles.sectionLabelClickable : ""}`}
         onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-        style={{ cursor: sessions.length > 0 ? "pointer" : "default" }}
         role={sessions.length > 0 ? "button" : undefined}
         aria-expanded={sessions.length > 0 ? expanded : undefined}
       >
