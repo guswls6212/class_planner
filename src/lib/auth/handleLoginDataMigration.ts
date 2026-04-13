@@ -3,15 +3,16 @@
  *
  * - checkLoginDataConflict: 어떤 상황인지 판단
  * - applyServerChoice: 서버 데이터 사용 (anonymous 삭제)
- * - applyLocalDataChoice: 로컬 데이터 사용 (anonymous → user-scoped 복사)
+ * - applyLocalDataChoice: 로컬 데이터 전체를 서버에 동기화 (full-sync 파이프라인 실행)
  *
- * NOTE(v1): applyLocalDataChoice는 students/subjects만 서버에 업로드한다.
- * sessions/enrollments는 ID 재매핑 복잡도로 인해 별도 Phase에서 full-sync 구현 예정.
+ * NOTE(v2): applyLocalDataChoice는 students/subjects/enrollments/sessions 전체를
+ * 서버에 업로드한다. ID 재매핑 + 중복 제거 로직은 fullDataMigration.ts에 위임.
+ * 마이그레이션 완료 후 서버 데이터를 re-fetch하여 localStorage를 최신 상태로 갱신한다.
  */
 
-import { ANONYMOUS_STORAGE_KEY } from "../localStorageCrud";
+import { ANONYMOUS_STORAGE_KEY, setClassPlannerData } from "../localStorageCrud";
 import type { ClassPlannerData } from "../localStorageCrud";
-import { syncStudentCreate, syncSubjectCreate } from "../apiSync";
+import { migrateLocalDataToServer } from "./fullDataMigration";
 import { logger } from "../logger";
 
 export type MigrationResult =
@@ -59,33 +60,65 @@ export function applyServerChoice(): void {
   logger.info("handleLoginDataMigration - 서버 데이터 선택, anonymous 삭제");
 }
 
-export function applyLocalDataChoice(userId: string): void {
+export async function applyLocalDataChoice(
+  userId: string,
+  serverData: ClassPlannerData
+): Promise<void> {
   if (typeof window === "undefined") return;
 
-  const raw = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
-  if (!raw) {
+  const anonymousData = getAnonymousData();
+  if (!anonymousData) {
     logger.warn("handleLoginDataMigration - applyLocalDataChoice 호출 시 anonymous 데이터 없음");
     return;
   }
 
-  // 1. user-scoped 키로 복사
-  localStorage.setItem(`classPlannerData:${userId}`, raw);
+  // 1. 전체 마이그레이션 파이프라인 실행
+  const result = await migrateLocalDataToServer(userId, anonymousData, serverData);
+  logger.info("handleLoginDataMigration - 마이그레이션 결과", {
+    success: result.success,
+    syncedCounts: result.syncedCounts,
+    errorCount: result.errors.length,
+  });
 
-  // 2. anonymous 키 삭제
+  // 2. 서버에서 최신 데이터 re-fetch (병렬)
+  const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =
+    await Promise.allSettled([
+      fetch(`/api/students?userId=${userId}`),
+      fetch(`/api/subjects?userId=${userId}`),
+      fetch(`/api/sessions?userId=${userId}`),
+      fetch(`/api/enrollments?userId=${userId}`),
+    ]);
+
+  const parseJson = async (settled: PromiseSettledResult<Response>) => {
+    if (settled.status === "rejected") return [];
+    try {
+      const json = await settled.value.json();
+      return json.success ? (json.data ?? []) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const students = await parseJson(studentsRes);
+  const subjects = await parseJson(subjectsRes);
+  const sessions = await parseJson(sessionsRes);
+  const enrollments = await parseJson(enrollmentsRes);
+
+  // 3. supabase_user_id 설정 (getStorageKey()가 올바른 키를 반환하도록)
+  localStorage.setItem("supabase_user_id", userId);
+
+  // 4. 서버 최신 데이터를 localStorage에 저장
+  setClassPlannerData({
+    students,
+    subjects,
+    sessions,
+    enrollments,
+    version: "1.0",
+    lastModified: new Date().toISOString(),
+  });
+
+  // 5. anonymous 키 삭제
   localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
-
-  // 3. 서버 업로드 (fire-and-forget)
-  try {
-    const data = JSON.parse(raw) as ClassPlannerData;
-    for (const student of data.students) {
-      syncStudentCreate(userId, { name: student.name });
-    }
-    for (const subject of data.subjects) {
-      syncSubjectCreate(userId, { name: subject.name, color: subject.color || "#3b82f6" });
-    }
-  } catch {
-    logger.warn("handleLoginDataMigration - 서버 업로드 중 오류 (무시, localStorage는 정상)");
-  }
 
   logger.info("handleLoginDataMigration - 로컬 데이터 선택 완료", { userId });
 }

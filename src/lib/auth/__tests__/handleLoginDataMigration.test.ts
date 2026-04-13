@@ -5,7 +5,6 @@ import {
   applyLocalDataChoice,
 } from "../handleLoginDataMigration";
 import type { ClassPlannerData } from "../../localStorageCrud";
-import { syncStudentCreate, syncSubjectCreate } from "../../apiSync";
 
 // Mock localStorage
 const storage: Record<string, string> = {};
@@ -21,9 +20,13 @@ vi.mock("../../logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("../../apiSync", () => ({
-  syncStudentCreate: vi.fn(),
-  syncSubjectCreate: vi.fn(),
+// fullDataMigration をモック — always resolves with success
+vi.mock("../fullDataMigration", () => ({
+  migrateLocalDataToServer: vi.fn().mockResolvedValue({
+    success: true,
+    syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
+    errors: [],
+  }),
 }));
 
 const emptyData: ClassPlannerData = {
@@ -110,27 +113,33 @@ describe("applyLocalDataChoice", () => {
     vi.clearAllMocks();
   });
 
-  it("anonymous 데이터를 user-scoped 키로 복사 후 anonymous 삭제", () => {
-    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
-    applyLocalDataChoice("user-999");
-    expect(storage["classPlannerData:user-999"]).toBe(JSON.stringify(localData));
-    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
-    // sync 호출 검증
-    expect(syncStudentCreate).toHaveBeenCalledWith("user-999", { name: "Anonymous Student" });
-    expect(syncSubjectCreate).toHaveBeenCalledWith("user-999", { name: "익명 과목", color: "#00ff00" });
-  });
-
-  it("anonymous 데이터 없으면 아무것도 안 함", () => {
-    applyLocalDataChoice("user-999");
+  it("anonymous 데이터 없으면 아무것도 안 함", async () => {
+    await applyLocalDataChoice("user-999", emptyData);
     expect(storage["classPlannerData:user-999"]).toBeUndefined();
   });
 
-  it("anonymous 키가 malformed JSON이면 localStorage 복사는 되지만 sync 호출 안 함", () => {
-    storage["classPlannerData:anonymous"] = "not-valid-json";
-    applyLocalDataChoice("user-888");
-    expect(storage["classPlannerData:user-888"]).toBe("not-valid-json");
+  it("마이그레이션 완료 후 anonymous 키 삭제, supabase_user_id 설정", async () => {
+    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
+
+    // re-fetch mock: GET 엔드포인트들
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyLocalDataChoice("user-999", emptyData);
+
+    // anonymous 삭제 확인
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
-    expect(syncStudentCreate).not.toHaveBeenCalled();
-    expect(syncSubjectCreate).not.toHaveBeenCalled();
+    // supabase_user_id 설정 확인
+    expect(storage["supabase_user_id"]).toBe("user-999");
+    // re-fetch 4번 호출 확인 (students, subjects, sessions, enrollments)
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    vi.unstubAllGlobals();
   });
 });
