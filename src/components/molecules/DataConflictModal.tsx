@@ -61,9 +61,15 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   migrationError,
 }) => {
   const [activeTab, setActiveTab] = useState<"local" | "server">("local");
+  const [selectedSide, setSelectedSide] = useState<"local" | "server" | null>(null);
 
   const localSubjects = filterNonDefaultSubjects(localData.subjects);
   const serverSubjects = filterNonDefaultSubjects(serverData.subjects);
+
+  const handleConfirm = () => {
+    if (selectedSide === "local") onSelectLocal();
+    else if (selectedSide === "server") onSelectServer();
+  };
 
   return (
     <div
@@ -103,7 +109,8 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             sourceLabel="이 기기의 데이터"
             data={localData}
             filteredSubjects={localSubjects}
-            onClick={onSelectLocal}
+            selected={selectedSide === "local"}
+            onSelect={() => setSelectedSide("local")}
             disabled={isMigrating}
           />
           <DataCard
@@ -111,9 +118,21 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             sourceLabel="내 계정의 데이터"
             data={serverData}
             filteredSubjects={serverSubjects}
-            onClick={onSelectServer}
+            selected={selectedSide === "server"}
+            onSelect={() => setSelectedSide("server")}
             disabled={isMigrating}
           />
+        </div>
+
+        {/* 데스크탑: 확인 버튼 */}
+        <div className={styles.confirmRow}>
+          <button
+            className={styles.confirmBtn}
+            onClick={handleConfirm}
+            disabled={!selectedSide || isMigrating}
+          >
+            {isMigrating ? "저장 중..." : "선택한 데이터로 시작"}
+          </button>
         </div>
 
         {/* 모바일: 탭 전환 */}
@@ -209,7 +228,8 @@ interface DataCardProps {
   sourceLabel: string;
   data: ClassPlannerData;
   filteredSubjects: Subject[];
-  onClick: () => void;
+  selected: boolean;
+  onSelect: () => void;
   disabled?: boolean;
 }
 
@@ -218,32 +238,27 @@ const DataCard: React.FC<DataCardProps> = ({
   sourceLabel,
   data,
   filteredSubjects,
-  onClick,
+  selected,
+  onSelect,
   disabled,
 }) => {
-  const [selected, setSelected] = useState(false);
-
-  const handleClick = () => {
-    if (disabled) return;
-    setSelected(true);
-    onClick();
-  };
-
   return (
     <div
       className={`${styles.dataCard} ${selected ? styles.dataCardSelected : ""} ${disabled ? styles.dataCardDisabled : ""}`}
       data-testid={testId}
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") handleClick();
-      }}
     >
-      <div className={styles.cardSource}>
-        <span className={styles.cardSourceDot} />
-        {sourceLabel}
-      </div>
+      <label className={styles.cardHeader}>
+        <input
+          type="radio"
+          name="dataSelection"
+          checked={selected}
+          onChange={onSelect}
+          className={styles.radioInput}
+          disabled={disabled}
+          aria-label={sourceLabel}
+        />
+        <span className={styles.cardLabel}>{sourceLabel}</span>
+      </label>
       <NameSection label="학생" names={data.students.map((s) => s.name)} />
       <NameSection label="과목" names={filteredSubjects.map((s) => s.name)} unit="개" />
       <SessionSection
@@ -252,10 +267,6 @@ const DataCard: React.FC<DataCardProps> = ({
         students={data.students}
         subjects={data.subjects}
       />
-      <div className={styles.selectHint}>
-        <CheckIcon selected={selected} />
-        <span>{selected ? "✓ 선택됨" : "클릭하여 선택"}</span>
-      </div>
     </div>
   );
 };
@@ -303,7 +314,7 @@ const SessionSection: React.FC<SessionSectionProps> = ({
     <div className={styles.section}>
       <div
         className={`${styles.sectionLabel} ${sessions.length > 0 ? styles.sectionLabelClickable : ""}`}
-        onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        onClick={() => { setExpanded(!expanded); }}
         role={sessions.length > 0 ? "button" : undefined}
         aria-expanded={sessions.length > 0 ? expanded : undefined}
       >
@@ -325,19 +336,5 @@ const SessionSection: React.FC<SessionSectionProps> = ({
     </div>
   );
 };
-
-const CheckIcon: React.FC<{ selected: boolean }> = ({ selected }) => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke={selected ? "#6366f1" : "currentColor"}
-    strokeWidth="1.5"
-  >
-    <circle cx="8" cy="8" r="6.5" />
-    {selected && <path d="M5.5 8l2 2 3-3" />}
-  </svg>
-);
 
 export default DataConflictModal;

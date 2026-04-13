@@ -76,7 +76,7 @@ describe("DataConflictModal", () => {
     expect(screen.getAllByText("미술").length).toBeGreaterThan(0);    // server subject
   });
 
-  it("로컬 카드 클릭 시 onSelectLocal 호출", () => {
+  it("로컬 라디오 선택 후 확인 버튼 클릭 시 onSelectLocal 호출", () => {
     const onSelectLocal = vi.fn();
     render(
       <DataConflictModal
@@ -86,11 +86,13 @@ describe("DataConflictModal", () => {
         onSelectLocal={onSelectLocal}
       />
     );
-    fireEvent.click(screen.getAllByTestId("card-local")[0]);
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]); // 로컬 라디오 선택
+    fireEvent.click(screen.getByRole("button", { name: "선택한 데이터로 시작" }));
     expect(onSelectLocal).toHaveBeenCalledTimes(1);
   });
 
-  it("서버 카드 클릭 시 onSelectServer 호출", () => {
+  it("서버 라디오 선택 후 확인 버튼 클릭 시 onSelectServer 호출", () => {
     const onSelectServer = vi.fn();
     render(
       <DataConflictModal
@@ -100,8 +102,22 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
-    fireEvent.click(screen.getAllByTestId("card-server")[0]);
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[1]); // 서버 라디오 선택
+    fireEvent.click(screen.getByRole("button", { name: "선택한 데이터로 시작" }));
     expect(onSelectServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("라디오 미선택 시 확인 버튼이 비활성화된다", () => {
+    render(
+      <DataConflictModal
+        localData={localData}
+        serverData={serverData}
+        onSelectServer={vi.fn()}
+        onSelectLocal={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: "선택한 데이터로 시작" })).toBeDisabled();
   });
 
   it("backdrop 클릭해도 닫히지 않음", () => {

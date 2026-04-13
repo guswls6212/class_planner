@@ -61,26 +61,13 @@
   border: 1.5px solid rgba(148, 163, 184, 0.15);
   border-radius: 12px;
   padding: 20px;
-  cursor: pointer;
+  cursor: default;
   transition:
     border-color 0.18s ease,
     background 0.18s ease,
-    transform 0.18s ease,
     box-shadow 0.18s ease;
   background: rgba(255, 255, 255, 0.02);
   outline: none;
-}
-
-.dataCard:hover {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.dataCard:focus-visible {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
 }
 
 .dataCardSelected {
@@ -89,29 +76,64 @@
   box-shadow: 0 0 0 1px #6366f1, 0 8px 24px rgba(99, 102, 241, 0.2);
 }
 
-/* ── Card Source Label ── */
-.cardSource {
+/* ── Card Header (radio + label) ── */
+.cardHeader {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.radioInput {
+  width: 15px;
+  height: 15px;
+  accent-color: #6366f1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cardLabel {
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-secondary, #475569);
-  margin-bottom: 14px;
+  transition: color 0.18s;
 }
 
-.dataCardSelected .cardSource {
+.dataCardSelected .cardLabel {
   color: #818cf8;
 }
 
-.cardSourceDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
+/* ── Confirm Button (desktop only) ── */
+.confirmRow {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0 4px;
+}
+
+.confirmBtn {
+  padding: 11px 36px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+  letter-spacing: -0.01em;
+}
+
+.confirmBtn:hover:not(:disabled) {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+.confirmBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ── Sections ── */
@@ -173,28 +195,6 @@
   border-radius: 50%;
   background: var(--color-text-secondary, #475569);
   flex-shrink: 0;
-}
-
-/* ── Select Hint (desktop card bottom) ── */
-.selectHint {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary, #475569);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: color 0.18s;
-}
-
-.dataCard:hover .selectHint {
-  color: var(--color-text-primary, #94a3b8);
-}
-
-.dataCardSelected .selectHint {
-  color: #818cf8;
 }
 
 /* ── Tabs (mobile) ── */
@@ -415,6 +415,10 @@
   }
 
   .cardsGrid {
+    display: none;
+  }
+
+  .confirmRow {
     display: none;
   }
 
