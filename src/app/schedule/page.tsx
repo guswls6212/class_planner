@@ -687,7 +687,7 @@ function SchedulePageContent(): JSX.Element {
 
   // 🆕 입력창 키보드 이벤트 처리
   const handleStudentInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       e.preventDefault();
       addStudentFromInput();
       // 입력 초기화는 addStudent/handleCreateStudentFromInput 성공 시에만 수행
@@ -974,7 +974,7 @@ function SchedulePageContent(): JSX.Element {
           setEditStudentInputValue(value);
         }}
         onEditStudentInputKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
             e.preventDefault();
             logger.debug("Enter 키로 학생 추가 시도");
             handleEditStudentAdd();
