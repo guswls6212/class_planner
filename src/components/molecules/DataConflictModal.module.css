@@ -273,6 +273,25 @@
   margin-top: 1px;
 }
 
+/* ── Info Banner ── */
+.infoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: #818cf8;
+  line-height: 1.5;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 639px) {
   .modal {

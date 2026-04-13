@@ -66,7 +66,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         <div className={styles.cardsGrid}>
             <DataCard
               testId="card-local"
-              sourceLabel="로컬 데이터"
+              sourceLabel="이 기기의 데이터"
               students={localData.students.map((s) => s.name)}
               subjects={localSubjects.map((s) => s.name)}
               sessionCount={localData.sessions.length}
@@ -74,7 +74,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             />
             <DataCard
               testId="card-server"
-              sourceLabel="서버 데이터"
+              sourceLabel="내 계정의 데이터"
               students={serverData.students.map((s) => s.name)}
               subjects={serverSubjects.map((s) => s.name)}
               sessionCount={serverData.sessions.length}
@@ -91,7 +91,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
                 className={`${styles.tab} ${activeTab === "local" ? styles.tabActive : ""}`}
                 onClick={() => setActiveTab("local")}
               >
-                로컬 데이터
+                이 기기의 데이터
               </button>
               <button
                 role="tab"
@@ -99,7 +99,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
                 className={`${styles.tab} ${activeTab === "server" ? styles.tabActive : ""}`}
                 onClick={() => setActiveTab("server")}
               >
-                서버 데이터
+                내 계정의 데이터
               </button>
             </div>
 
@@ -114,7 +114,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
                     data-testid="card-local"
                     onClick={onSelectLocal}
                   >
-                    로컬 데이터로 시작
+                    이 기기의 데이터로 시작
                   </button>
                 </>
               ) : (
@@ -127,19 +127,18 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
                     data-testid="card-server"
                     onClick={onSelectServer}
                   >
-                    서버 데이터로 시작
+                    내 계정의 데이터로 시작
                   </button>
                 </>
               )}
             </div>
           </div>
 
-        {/* 세션 미동기 경고 */}
-        <div className={styles.warningBanner} role="alert">
-          <span className={styles.warningIcon}>⚠</span>
+        {/* 안내 배너 */}
+        <div className={styles.infoBanner} role="note">
+          <span className={styles.infoIcon}>ℹ</span>
           <span>
-            로컬 데이터 선택 시 학생·과목은 서버에 동기화되지만,{" "}
-            <strong>수업 일정은 이번 로그인에서 동기화되지 않습니다.</strong>
+            선택한 데이터가 내 계정에 저장되며, 양쪽에 같은 데이터가 있으면 내 계정의 데이터가 유지됩니다.
           </span>
         </div>
       </div>

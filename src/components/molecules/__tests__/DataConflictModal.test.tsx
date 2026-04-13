@@ -139,7 +139,7 @@ describe("DataConflictModal", () => {
     expect(screen.queryByText("초등수학")).toBeNull();
   });
 
-  it("세션 경고 배너가 렌더된다", () => {
+  it("안내 배너가 렌더된다", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -148,6 +148,6 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
-    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toBeInTheDocument();
   });
 });
