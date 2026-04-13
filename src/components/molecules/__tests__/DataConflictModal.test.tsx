@@ -6,7 +6,7 @@ import type { ClassPlannerData } from "../../../lib/localStorageCrud";
 const makeData = (
   students: { id: string; name: string }[],
   subjects: { id: string; name: string; color?: string }[],
-  sessions: { id: string; weekday: number; startsAt: string; endsAt: string }[]
+  sessions: { id: string; weekday: number; startsAt: string; endsAt: string; enrollmentIds?: string[] }[]
 ): ClassPlannerData => ({
   students,
   subjects,
@@ -150,5 +150,142 @@ describe("DataConflictModal", () => {
     );
     expect(screen.getByRole("note")).toBeInTheDocument();
     expect(screen.getByText(/선택한 데이터가 내 계정에 저장되며/)).toBeInTheDocument();
+  });
+
+  describe("SessionSection expand/collapse", () => {
+    it("수업 개수가 표시된다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      // localData has 1 session, serverData has 0
+      expect(screen.getAllByText("1개").length).toBeGreaterThan(0);
+    });
+
+    it("수업이 있을 때 펼치기 아이콘이 표시된다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      // ▶ icon visible for the local data card (1 session)
+      expect(screen.getAllByText("▶").length).toBeGreaterThan(0);
+    });
+
+    it("수업 섹션 클릭 시 세션 목록이 펼쳐진다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      // Find the expand icon buttons (▶) — only local data card has sessions (1 session)
+      const expandIcons = screen.getAllByText("▶");
+      fireEvent.click(expandIcons[0]);
+      // After expand, session detail should be shown: 월 09:00~10:00
+      expect(screen.getAllByText("월 09:00~10:00").length).toBeGreaterThan(0);
+    });
+
+    it("수업 섹션 두 번 클릭 시 접힌다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      const expandIcons = screen.getAllByText("▶");
+      fireEvent.click(expandIcons[0]);
+      // Now expanded — should show ▼
+      expect(screen.getAllByText("▼").length).toBeGreaterThan(0);
+      const collapseIcons = screen.getAllByText("▼");
+      fireEvent.click(collapseIcons[0]);
+      // Now collapsed — ▶ should be back
+      expect(screen.getAllByText("▶").length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("isMigrating prop", () => {
+    it("isMigrating=true 시 로딩 오버레이가 렌더된다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+          isMigrating={true}
+        />
+      );
+      expect(screen.getByText("데이터를 동기화하는 중...")).toBeInTheDocument();
+    });
+
+    it("isMigrating=false 시 로딩 오버레이가 렌더되지 않는다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+          isMigrating={false}
+        />
+      );
+      expect(screen.queryByText("데이터를 동기화하는 중...")).toBeNull();
+    });
+  });
+
+  describe("migrationError prop", () => {
+    it("migrationError가 있으면 에러 배너와 다시 시도 버튼이 렌더된다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+          migrationError="동기화에 실패했습니다."
+        />
+      );
+      expect(screen.getByText("동기화에 실패했습니다.")).toBeInTheDocument();
+      expect(screen.getByText("다시 시도")).toBeInTheDocument();
+    });
+
+    it("다시 시도 버튼 클릭 시 onSelectLocal 호출", () => {
+      const onSelectLocal = vi.fn();
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={onSelectLocal}
+          migrationError="동기화에 실패했습니다."
+        />
+      );
+      fireEvent.click(screen.getByText("다시 시도"));
+      expect(onSelectLocal).toHaveBeenCalledTimes(1);
+    });
+
+    it("isMigrating=true 이면 에러 배너가 숨겨진다", () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+          isMigrating={true}
+          migrationError="동기화에 실패했습니다."
+        />
+      );
+      expect(screen.queryByText("동기화에 실패했습니다.")).toBeNull();
+      expect(screen.getByText("데이터를 동기화하는 중...")).toBeInTheDocument();
+    });
   });
 });

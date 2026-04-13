@@ -12,6 +12,7 @@
 
 /* ── Modal ── */
 .modal {
+  position: relative;
   background: var(--color-bg-primary, #1e293b);
   border-radius: 16px;
   padding: 32px;
@@ -290,6 +291,114 @@
 .infoIcon {
   flex-shrink: 0;
   margin-top: 1px;
+}
+
+/* ── Migration Overlay ── */
+.migrationOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 16px;
+  z-index: 10;
+}
+
+.migrationSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(99, 102, 241, 0.3);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.migrationText {
+  font-size: 0.875rem;
+  color: var(--color-text-primary, #e2e8f0);
+  font-weight: 500;
+}
+
+/* ── Error Banner ── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.errorText {
+  font-size: 0.75rem;
+  color: #f87171;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.retryBtn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.retryBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+/* ── Data Card Disabled ── */
+.dataCardDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Expand Icon ── */
+.expandIcon {
+  font-size: 0.5rem;
+  color: var(--color-text-secondary, #475569);
+  margin-left: 2px;
+}
+
+/* ── Session List ── */
+.sessionList {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+}
+
+.sessionItem {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #64748b);
+  padding: 2px 4px;
+  line-height: 1.4;
 }
 
 /* ── Responsive ── */
