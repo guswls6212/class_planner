@@ -5,10 +5,10 @@ import { Enrollment, Session } from "@/shared/types/DomainTypes";
 export interface StudentRepository {
   getAll(academyId: string): Promise<Student[]>;
   getById(id: string, academyId?: string): Promise<Student | null>;
-  create(student: { name: string; gender?: string }, academyId: string): Promise<Student>;
+  create(student: { name: string; gender?: string; birthDate?: string }, academyId: string): Promise<Student>;
   update(
     id: string,
-    student: { name?: string; gender?: string },
+    student: { name?: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student>;
   delete(id: string, academyId: string): Promise<void>;

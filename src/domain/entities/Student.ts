@@ -11,6 +11,7 @@ export class Student {
   private readonly _id: StudentId;
   private readonly _name: string;
   private readonly _gender?: string;
+  private readonly _birthDate?: string;
   private readonly _createdAt: Date;
   private readonly _updatedAt: Date;
 
@@ -18,12 +19,14 @@ export class Student {
     id: StudentId,
     name: string,
     gender?: string,
+    birthDate?: string,
     createdAt: Date = new Date(),
     updatedAt: Date = new Date()
   ) {
     this._id = id;
     this._name = name;
     this._gender = gender;
+    this._birthDate = birthDate;
     this._createdAt = createdAt;
     this._updatedAt = updatedAt;
     this.validate();
@@ -34,11 +37,11 @@ export class Student {
   /**
    * 새로운 학생을 생성합니다.
    */
-  static create(name: string, gender?: string): Student {
+  static create(name: string, gender?: string, birthDate?: string): Student {
     const trimmedName = name.trim();
     const studentId = StudentId.generate();
 
-    return new Student(studentId, trimmedName, gender);
+    return new Student(studentId, trimmedName, gender, birthDate);
   }
 
   /**
@@ -48,6 +51,7 @@ export class Student {
     id: string,
     name: string,
     gender?: string,
+    birthDate?: string,
     createdAt?: Date,
     updatedAt?: Date
   ): Student {
@@ -55,7 +59,7 @@ export class Student {
     const created = createdAt || new Date();
     const updated = updatedAt || new Date();
 
-    return new Student(studentId, name, gender, created, updated);
+    return new Student(studentId, name, gender, birthDate, created, updated);
   }
 
   // ===== 비즈니스 로직 =====
@@ -74,6 +78,7 @@ export class Student {
       this._id,
       trimmedName,
       this._gender,
+      this._birthDate,
       this._createdAt,
       new Date() // updatedAt 업데이트
     );
@@ -177,6 +182,10 @@ export class Student {
     return this._gender;
   }
 
+  get birthDate(): string | undefined {
+    return this._birthDate;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -195,6 +204,7 @@ export class Student {
       id: this._id.value,
       name: this._name,
       gender: this._gender,
+      birthDate: this._birthDate,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -208,6 +218,7 @@ export class Student {
       id: this._id.value,
       name: this._name,
       gender: this._gender,
+      birthDate: this._birthDate,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -221,6 +232,7 @@ export class Student {
       json.id,
       json.name,
       json.gender,
+      json.birthDate,
       new Date(json.createdAt),
       new Date(json.updatedAt)
     );
@@ -254,6 +266,7 @@ export interface StudentDto {
   id: string;
   name: string;
   gender?: string;
+  birthDate?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -262,6 +275,7 @@ export interface StudentJson {
   id: string;
   name: string;
   gender?: string;
+  birthDate?: string;
   createdAt: string;
   updatedAt: string;
 }
