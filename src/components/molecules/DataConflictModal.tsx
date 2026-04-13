@@ -40,7 +40,13 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   const serverSubjects = filterNonDefaultSubjects(serverData.subjects);
 
   return (
-    <div className={styles.backdrop}>
+    <div
+      className={styles.backdrop}
+      onClick={(e) => {
+        // 백드롭 클릭으로 모달이 닫히지 않음 — 의도적으로 처리하지 않음
+        if (e.target === e.currentTarget) return;
+      }}
+    >
       <div
         className={styles.modal}
         role="dialog"
@@ -101,7 +107,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
               {activeTab === "local" ? (
                 <>
                   <NameSection label="학생" names={localData.students.map((s) => s.name)} />
-                  <NameSection label="과목" names={localSubjects.map((s) => s.name)} />
+                  <NameSection label="과목" names={localSubjects.map((s) => s.name)} unit="개" />
                   <SessionCount count={localData.sessions.length} />
                   <button
                     className={styles.mobileSelectBtn}
@@ -114,7 +120,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
               ) : (
                 <>
                   <NameSection label="학생" names={serverData.students.map((s) => s.name)} />
-                  <NameSection label="과목" names={serverSubjects.map((s) => s.name)} />
+                  <NameSection label="과목" names={serverSubjects.map((s) => s.name)} unit="개" />
                   <SessionCount count={serverData.sessions.length} />
                   <button
                     className={styles.mobileSelectBtn}
@@ -183,7 +189,7 @@ const DataCard: React.FC<DataCardProps> = ({
         {sourceLabel}
       </div>
       <NameSection label="학생" names={students} />
-      <NameSection label="과목" names={subjects} />
+      <NameSection label="과목" names={subjects} unit="개" />
       <SessionCount count={sessionCount} />
       <div className={styles.selectHint}>
         <CheckIcon selected={selected} />
@@ -196,18 +202,19 @@ const DataCard: React.FC<DataCardProps> = ({
 interface NameSectionProps {
   label: string;
   names: string[];
+  unit?: string;
 }
 
-const NameSection: React.FC<NameSectionProps> = ({ label, names }) => (
+const NameSection: React.FC<NameSectionProps> = ({ label, names, unit = "명" }) => (
   <div className={styles.section}>
     <div className={styles.sectionLabel}>
       {label}
-      <span className={styles.countBadge}>{names.length}명</span>
+      <span className={styles.countBadge}>{names.length}{unit}</span>
     </div>
     {names.length > 0 && (
       <ul className={styles.nameList}>
-        {names.map((name) => (
-          <li key={name} className={styles.nameItem}>
+        {names.map((name, i) => (
+          <li key={i} className={styles.nameItem}>
             {name}
           </li>
         ))}
