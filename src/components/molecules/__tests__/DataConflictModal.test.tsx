@@ -149,5 +149,6 @@ describe("DataConflictModal", () => {
       />
     );
     expect(screen.getByRole("note")).toBeInTheDocument();
+    expect(screen.getByText(/선택한 데이터가 내 계정에 저장되며/)).toBeInTheDocument();
   });
 });
