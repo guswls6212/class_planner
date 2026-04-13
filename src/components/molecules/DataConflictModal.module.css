@@ -1,99 +1,291 @@
+/* ── Backdrop ── */
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
+  padding: 16px;
 }
 
+/* ── Modal ── */
 .modal {
-  background: var(--color-bg-primary, #ffffff);
-  border-radius: 12px;
+  background: var(--color-bg-primary, #1e293b);
+  border-radius: 16px;
   padding: 32px;
-  max-width: 420px;
-  width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 660px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* ── Header ── */
 .header {
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-text-primary, #1f2937);
-  margin: 0;
+  color: var(--color-text-primary, #f1f5f9);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
 }
 
-.body {
-  margin-bottom: 24px;
-}
-
-.description {
+.subtitle {
   font-size: 0.875rem;
-  color: var(--color-text-secondary, #6b7280);
-  margin: 0 0 8px 0;
+  color: var(--color-text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.5;
 }
 
-.summary {
+/* ── Desktop: Cards Grid ── */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+/* ── Mobile: Tabs ── */
+.tabsContainer {
+  display: none;
+  margin-bottom: 16px;
+}
+
+/* ── Data Card ── */
+.dataCard {
+  border: 1.5px solid rgba(148, 163, 184, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+  background: rgba(255, 255, 255, 0.02);
+  outline: none;
+}
+
+.dataCard:hover {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.dataCard:focus-visible {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+}
+
+.dataCardSelected {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  box-shadow: 0 0 0 1px #6366f1, 0 8px 24px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Card Source Label ── */
+.cardSource {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #475569);
+  margin-bottom: 14px;
+}
+
+.dataCardSelected .cardSource {
+  color: #818cf8;
+}
+
+.cardSourceDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Sections ── */
+.section {
+  margin-top: 12px;
+}
+
+.section:first-of-type {
+  margin-top: 0;
+}
+
+.sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary, #475569);
+  margin-bottom: 6px;
+}
+
+.countBadge {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #475569);
+  background: rgba(71, 85, 105, 0.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ── Name List ── */
+.nameList {
   list-style: none;
   padding: 0;
-  margin: 0 0 16px 0;
-}
-
-.summary li {
-  font-size: 0.875rem;
-  color: var(--color-text-primary, #1f2937);
-  padding: 2px 0;
-}
-
-.summary li::before {
-  content: "• ";
-  color: var(--color-primary, #667eea);
-}
-
-.question {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #6b7280);
   margin: 0;
-}
-
-.actions {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 96px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
 }
 
-.serverButton {
-  flex: 1;
-  padding: 10px 16px;
+.nameItem {
+  font-size: 0.8125rem;
+  color: var(--color-text-primary, #cbd5e1);
+  padding: 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nameItem::before {
+  content: "";
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-text-secondary, #475569);
+  flex-shrink: 0;
+}
+
+/* ── Select Hint (desktop card bottom) ── */
+.selectHint {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #475569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: color 0.18s;
+}
+
+.dataCard:hover .selectHint {
+  color: var(--color-text-primary, #94a3b8);
+}
+
+.dataCardSelected .selectHint {
+  color: #818cf8;
+}
+
+/* ── Tabs (mobile) ── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  background: var(--color-bg-secondary, #f9fafb);
-  color: var(--color-text-primary, #1f2937);
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #64748b);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.tabActive {
+  background: #334155;
+  color: var(--color-text-primary, #e2e8f0);
+}
+
+.tabContent {
+  min-height: 140px;
+}
+
+/* ── Mobile Select Button ── */
+.mobileSelectBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1.5px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-text-primary, #e2e8f0);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 
-.serverButton:hover {
-  background: var(--color-bg-hover, #f3f4f6);
+.mobileSelectBtn:hover {
+  border-color: #6366f1;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.06);
 }
 
-.localButton {
-  flex: 1;
-  padding: 10px 16px;
+/* ── Warning Banner ── */
+.warningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(251, 191, 36, 0.06);
+  border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 8px;
-  border: none;
-  background: var(--color-primary, #667eea);
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
+  font-size: 0.75rem;
+  color: #fbbf24;
+  line-height: 1.5;
 }
 
-.localButton:hover {
-  opacity: 0.9;
+.warningIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 639px) {
+  .modal {
+    padding: 24px;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .cardsGrid {
+    display: none;
+  }
+
+  .tabsContainer {
+    display: block;
+  }
 }
