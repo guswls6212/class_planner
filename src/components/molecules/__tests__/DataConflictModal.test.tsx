@@ -3,35 +3,40 @@ import { describe, expect, it, vi } from "vitest";
 import DataConflictModal from "../DataConflictModal";
 import type { ClassPlannerData } from "../../../lib/localStorageCrud";
 
-const localData: ClassPlannerData = {
-  students: [
-    { id: "s1", name: "A" },
-    { id: "s2", name: "B" },
-    { id: "s3", name: "C" },
-  ],
-  subjects: [
-    { id: "sub1", name: "수학", color: "#ff0" },
-    { id: "sub2", name: "영어", color: "#00f" },
-  ],
-  sessions: [
-    { id: "sess1", enrollmentIds: ["e1"], weekday: 0, startsAt: "09:00", endsAt: "10:00" },
-  ],
-  enrollments: [{ id: "e1", studentId: "s1", subjectId: "sub1" }],
-  version: "1.0",
-  lastModified: new Date().toISOString(),
-};
-
-const serverData: ClassPlannerData = {
-  students: [{ id: "ss1", name: "Server" }],
-  subjects: [],
-  sessions: [],
+const makeData = (
+  students: { id: string; name: string }[],
+  subjects: { id: string; name: string; color?: string }[],
+  sessions: { id: string; weekday: number; startsAt: string; endsAt: string }[]
+): ClassPlannerData => ({
+  students,
+  subjects,
+  sessions,
   enrollments: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
-};
+});
+
+const localData = makeData(
+  [
+    { id: "s1", name: "김철수" },
+    { id: "s2", name: "이영희" },
+    { id: "s3", name: "박민준" },
+  ],
+  [
+    { id: "sub1", name: "피아노", color: "#f00" },
+    { id: "default-1", name: "초등수학", color: "#fbbf24" },
+  ],
+  [{ id: "sess1", weekday: 0, startsAt: "09:00", endsAt: "10:00" }]
+);
+
+const serverData = makeData(
+  [{ id: "ss1", name: "서버학생" }],
+  [{ id: "ssub1", name: "미술", color: "#00f" }],
+  []
+);
 
 describe("DataConflictModal", () => {
-  it("로컬 데이터 요약 표시 (학생 3명, 과목 2개, 수업 1개)", () => {
+  it("로컬 카드에 학생 이름 목록이 렌더된다", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -40,12 +45,12 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
-    expect(screen.getByText(/학생 3명/)).toBeInTheDocument();
-    expect(screen.getByText(/과목 2개/)).toBeInTheDocument();
-    expect(screen.getByText(/수업 1개/)).toBeInTheDocument();
+    expect(screen.getAllByText("김철수").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("이영희").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("박민준").length).toBeGreaterThan(0);
   });
 
-  it("닫기 버튼 없음 (강제 선택)", () => {
+  it("서버 카드에 서버 학생 이름이 렌더된다", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -54,24 +59,24 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
-    expect(screen.queryByRole("button", { name: /닫기|close|×/i })).toBeNull();
+    expect(screen.getByText("서버학생")).toBeInTheDocument();
   });
 
-  it('"서버 데이터 사용" 클릭 시 onSelectServer 호출', () => {
-    const onSelectServer = vi.fn();
+  it("디폴트 과목(초등수학 등)은 과목 목록에 표시되지 않는다", () => {
     render(
       <DataConflictModal
         localData={localData}
         serverData={serverData}
-        onSelectServer={onSelectServer}
+        onSelectServer={vi.fn()}
         onSelectLocal={vi.fn()}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /서버 데이터 사용/ }));
-    expect(onSelectServer).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("초등수학")).toBeNull();
+    expect(screen.getAllByText("피아노").length).toBeGreaterThan(0);  // local subject
+    expect(screen.getAllByText("미술").length).toBeGreaterThan(0);    // server subject
   });
 
-  it('"로컬 데이터 사용" 클릭 시 onSelectLocal 호출', () => {
+  it("로컬 카드 클릭 시 onSelectLocal 호출", () => {
     const onSelectLocal = vi.fn();
     render(
       <DataConflictModal
@@ -81,8 +86,22 @@ describe("DataConflictModal", () => {
         onSelectLocal={onSelectLocal}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /로컬 데이터 사용/ }));
+    fireEvent.click(screen.getAllByTestId("card-local")[0]);
     expect(onSelectLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it("서버 카드 클릭 시 onSelectServer 호출", () => {
+    const onSelectServer = vi.fn();
+    render(
+      <DataConflictModal
+        localData={localData}
+        serverData={serverData}
+        onSelectServer={onSelectServer}
+        onSelectLocal={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId("card-server")[0]);
+    expect(onSelectServer).toHaveBeenCalledTimes(1);
   });
 
   it("backdrop 클릭해도 닫히지 않음", () => {
@@ -96,7 +115,6 @@ describe("DataConflictModal", () => {
         onSelectLocal={onSelectLocal}
       />
     );
-    // Click the outermost div (backdrop)
     if (container.firstElementChild) {
       fireEvent.click(container.firstElementChild);
     }
@@ -104,25 +122,32 @@ describe("DataConflictModal", () => {
     expect(onSelectLocal).not.toHaveBeenCalled();
   });
 
-  it("localData가 비어있으면 항목 표시 안 함", () => {
-    const emptyLocalData: ClassPlannerData = {
-      students: [],
-      subjects: [],
-      sessions: [],
-      enrollments: [],
-      version: "1.0",
-      lastModified: new Date().toISOString(),
-    };
+  it("디폴트 과목만 있고 추가 과목이 없으면 과목 섹션에 항목 없음", () => {
+    const onlyDefaultSubjects = makeData(
+      [{ id: "s1", name: "김철수" }],
+      [{ id: "default-1", name: "초등수학", color: "#fbbf24" }],
+      []
+    );
     render(
       <DataConflictModal
-        localData={emptyLocalData}
+        localData={onlyDefaultSubjects}
         serverData={serverData}
         onSelectServer={vi.fn()}
         onSelectLocal={vi.fn()}
       />
     );
-    expect(screen.queryByText(/학생/)).toBeNull();
-    expect(screen.queryByText(/과목/)).toBeNull();
-    expect(screen.queryByText(/수업/)).toBeNull();
+    expect(screen.queryByText("초등수학")).toBeNull();
+  });
+
+  it("세션 경고 배너가 렌더된다", () => {
+    render(
+      <DataConflictModal
+        localData={localData}
+        serverData={serverData}
+        onSelectServer={vi.fn()}
+        onSelectLocal={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 });
