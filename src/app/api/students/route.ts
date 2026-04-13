@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name } = body;
+    const { name, gender, birthDate } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -55,12 +55,18 @@ export async function POST(request: NextRequest) {
     }
 
     const academyId = await resolveAcademyId(userId);
-    const newStudent = await getStudentService().addStudent({ name }, academyId);
+    const newStudent = await getStudentService().addStudent({ name, gender, birthDate }, academyId);
     return NextResponse.json(
       { success: true, data: newStudent },
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof Error && error.message.includes("이미 존재하는 학생 이름")) {
+      return NextResponse.json(
+        { success: false, message: error.message },
+        { status: 409 }
+      );
+    }
     logger.error("Error adding student:", undefined, error as Error);
     return NextResponse.json(
       { success: false, error: "Failed to add student" },
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name } = body;
+    const { id, name, gender, birthDate } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -93,7 +99,7 @@ export async function PUT(request: NextRequest) {
     const academyId = await resolveAcademyId(userId);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      { name },
+      { name, gender, birthDate },
       academyId
     );
     return NextResponse.json({ success: true, data: updatedStudent });

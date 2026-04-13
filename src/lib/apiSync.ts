@@ -29,14 +29,14 @@ function fireAndForget(promise: Promise<Response>, context: string): void {
 
 export function syncStudentCreate(
   userId: string | null,
-  data: { name: string }
+  data: { name: string; gender?: string; birthDate?: string }
 ): void {
   if (!userId) return;
   fireAndForget(
     fetch(`/api/students?userId=${encodeURIComponent(userId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name: data.name, gender: data.gender, birthDate: data.birthDate }),
     }),
     "student:create"
   );
@@ -45,14 +45,14 @@ export function syncStudentCreate(
 export function syncStudentUpdate(
   userId: string | null,
   id: string,
-  data: { name?: string }
+  data: { name?: string; gender?: string; birthDate?: string }
 ): void {
   if (!userId) return;
   fireAndForget(
     fetch(`/api/students/${id}?userId=${encodeURIComponent(userId)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name: data.name, gender: data.gender, birthDate: data.birthDate }),
     }),
     "student:update"
   );

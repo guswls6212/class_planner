@@ -24,7 +24,7 @@ export class StudentApplicationServiceImpl {
   }
 
   async addStudent(
-    studentData: { name: string; gender?: string },
+    studentData: { name: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -46,7 +46,7 @@ export class StudentApplicationServiceImpl {
 
   async updateStudent(
     id: string,
-    studentData: { name?: string; gender?: string },
+    studentData: { name?: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {

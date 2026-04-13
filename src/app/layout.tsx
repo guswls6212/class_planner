@@ -144,7 +144,7 @@ function Footer() {
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { isInitializing, conflictState, resolveConflict } = useGlobalDataInitialization();
+  const { isInitializing, conflictState, resolveConflict, isMigrating, migrationError } = useGlobalDataInitialization();
 
   return (
     <ErrorBoundary>
@@ -165,6 +165,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
             serverData={conflictState.serverData}
             onSelectServer={() => resolveConflict("server")}
             onSelectLocal={() => resolveConflict("local")}
+            isMigrating={isMigrating}
+            migrationError={migrationError}
           />
         )}
         {children}

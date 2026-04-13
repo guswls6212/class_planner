@@ -43,23 +43,36 @@ export const useGlobalDataInitialization = () => {
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [pendingServerData, setPendingServerData] = useState<ClassPlannerData | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationError, setMigrationError] = useState<string | null>(null);
 
   const resolveConflict = useCallback(
-    (choice: "server" | "local") => {
+    async (choice: "server" | "local") => {
       if (!pendingUserId || !pendingServerData) return;
+
+      setMigrationError(null);
 
       try {
         if (choice === "server") {
           applyServerChoice();
           setClassPlannerData(pendingServerData);
         } else {
-          applyLocalDataChoice(pendingUserId);
+          setIsMigrating(true);
+          await applyLocalDataChoice(pendingUserId, pendingServerData);
         }
-      } finally {
         setConflictState(null);
         setPendingUserId(null);
         setPendingServerData(null);
         setIsInitialized(true);
+      } catch (error) {
+        const msg =
+          error instanceof Error
+            ? error.message
+            : "데이터 동기화 중 오류가 발생했습니다.";
+        setMigrationError(msg);
+        // 오류 시 모달을 닫지 않음 — 사용자가 재시도 가능
+      } finally {
+        setIsMigrating(false);
       }
     },
     [pendingUserId, pendingServerData]
@@ -193,7 +206,7 @@ export const useGlobalDataInitialization = () => {
         }
 
         if (migrationResult.action === "upload-local") {
-          applyLocalDataChoice(userId);
+          await applyLocalDataChoice(userId, serverData);
           if (mounted) setIsInitialized(true);
           return;
         }
@@ -238,5 +251,5 @@ export const useGlobalDataInitialization = () => {
     };
   }, []);
 
-  return { isInitialized, isInitializing, conflictState, resolveConflict };
+  return { isInitialized, isInitializing, conflictState, resolveConflict, isMigrating, migrationError };
 };
