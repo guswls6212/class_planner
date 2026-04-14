@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-14, Phase 2A 완료 + 문서 구조화)
+# class-planner file structure (2026-04-14, Phase 2A 완료 + 문서 구조화 + 컨벤션 정비)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 12개 | Archived docs: 9개 (docs/archive/)
 
@@ -31,6 +31,7 @@ class-planner/
 │       └── deploy.yml            # main CI 성공 시 ghcr.io 빌드 → Lightsail SSH 배포
 │
 ├── docs/
+│   ├── code-convention.md        # class-planner 전용 코딩 규칙 (글로벌: ../docs/code-convention.md)
 │   ├── COMPONENT_GUIDE.md        # 컴포넌트 + 훅 상세 가이드
 │   ├── DEVELOPMENT_WORKFLOW.md   # 개발 프로세스, 코드 품질
 │   ├── E2E_AUTH_SETUP.md         # E2E 테스트 인증 설정
@@ -173,7 +174,6 @@ class-planner/
     │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
     │   │   ├── DropZone.tsx
     │   │   ├── PDFDownloadButton.tsx
-    │   │   ├── ScheduleHeader.tsx
     │   │   ├── SessionBlock.tsx (+utils.ts)           # 시간표 수업 블록
     │   │   ├── SessionForm.tsx
     │   │   ├── StudentInputSection.tsx (+.module.css)

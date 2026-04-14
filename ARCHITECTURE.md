@@ -62,7 +62,7 @@ src/app/api/
 ├── students/       # 학생 CRUD (GET, POST, [id] PUT/DELETE)
 ├── subjects/       # 과목 CRUD (GET, POST, [id] PUT/DELETE)
 ├── sessions/       # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
-├── enrollments/    # 수강 등록 CRUD (GET, POST, [id] DELETE)
+├── enrollments/    # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
 ├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
 └── user-settings/  # 사용자 설정
 ```
@@ -92,7 +92,8 @@ src/infrastructure/
 ├── factories/         # 각 Repository Factory
 ├── container/         # RepositoryRegistry
 ├── config/            # RepositoryConfig
-└── index.ts              # 공개 API 진입점
+├── interfaces.ts      # Repository 인터페이스 타입 정의
+└── index.ts           # 공개 API 진입점
 ```
 
 ### 2.6 Shared Utilities

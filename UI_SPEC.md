@@ -209,7 +209,7 @@ AboutPage
 | `DataConflictModal` | `DataConflictModal.tsx` | `localData`, `serverData`, `onSelectServer`, `onSelectLocal`, `isMigrating?`, `migrationError?` | 로그인 시 로컬/서버 데이터 충돌 해결 모달. 데스크탑: 사이드바이사이드 카드 + 라디오. 모바일: 탭. 섹션(학생/과목/수업) 접기/펼치기 |
 | `DropZone` | `DropZone.tsx` | `onDrop`, `weekday`, `time` | 시간표 셀의 드롭 수신 영역 |
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
-| `ScheduleHeader` | `ScheduleHeader.tsx` | 내부 상태만 | 시간표 페이지 상단 헤더 |
+| `ScheduleHeader` | `_components/ScheduleHeader.tsx` (schedule 전용) | `dataLoading`, `error?`, `selectedStudentName?` | 시간표 페이지 상단 헤더. `src/components/molecules/`가 아닌 `schedule/_components/`에 위치 |
 | `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 시간표 셀 내 수업 블록. 과목색 배경, 과목명+시간+학생명 표시, 드래그 이동 가능 |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
 | `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
@@ -346,7 +346,7 @@ AboutPage
 
 - 인라인 스타일 금지 (불가피한 경우 주석 필요)
 - 모든 색상/간격은 Tailwind 클래스 또는 CSS 변수 사용
-- CSS Module (`*.module.css`)과 Tailwind 혼용 가능 (특히 organisms)
+- CSS Module (`*.module.css`)은 기존 파일 유지. 신규 컴포넌트는 Tailwind 전용. (atoms/molecules에 기존 12개 CSS Module 파일 존재)
 
 ---
 

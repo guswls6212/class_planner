@@ -45,7 +45,6 @@
 - `DataConflictModal.tsx` - 로그인 시 로컬/서버 데이터 충돌 해결 모달
 - `DropZone.tsx` - 드래그 앤 드롭 영역 (시간표 셀)
 - `PDFDownloadButton.tsx` - PDF 다운로드 버튼
-- `ScheduleHeader.tsx` - 시간표 페이지 헤더
 - `SessionBlock.tsx` - 세션 블록 (시간표 내 수업 표시)
 - `SessionForm.tsx` - 수업 추가/수정 폼
 - `StudentInputSection.tsx` - 학생 입력 섹션
