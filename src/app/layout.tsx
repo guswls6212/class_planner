@@ -10,6 +10,7 @@ import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../hooks/useGlobalDataInitialization";
+import { Toaster } from "sonner";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { logger } from "../lib/logger";
 import "./globals.css";
@@ -203,6 +204,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AppContent>{children}</AppContent>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

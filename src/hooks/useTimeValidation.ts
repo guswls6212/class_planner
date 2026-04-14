@@ -2,6 +2,7 @@ import type {
   EditModalTimeData,
   GroupSessionData,
 } from "../types/scheduleTypes";
+import { showError } from "../lib/toast";
 
 export const useTimeValidation = () => {
   // 시간 유효성 검사 함수
@@ -42,15 +43,6 @@ export const useTimeValidation = () => {
       .padStart(2, "0")}`;
   };
 
-  // 토스트 이벤트 트리거 유틸
-  const dispatchToast = (type: "error" | "success", message: string) => {
-    window.dispatchEvent(
-      new CustomEvent("toast", {
-        detail: { type, message },
-      })
-    );
-  };
-
   // 시간 검증 + 토스트 트리거 (그룹 모달용)
   const validateAndToastGroup = (
     startTime: string,
@@ -75,11 +67,11 @@ export const useTimeValidation = () => {
     endTime: string
   ): boolean => {
     if (!validateTimeRange(startTime, endTime)) {
-      dispatchToast("error", "종료 시간은 시작 시간보다 늦어야 합니다.");
+      showError("종료 시간은 시작 시간보다 늦어야 합니다.");
       return false;
     }
     if (!validateDurationWithinLimit(startTime, endTime, 480)) {
-      dispatchToast("error", "세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+      showError("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
       return false;
     }
     return true;
@@ -89,7 +81,6 @@ export const useTimeValidation = () => {
     validateTimeRange,
     validateDurationWithinLimit,
     getNextHour,
-    dispatchToast,
     validateAndToastGroup,
     validateAndToastEdit,
   };
