@@ -4,6 +4,13 @@ vi.mock("../../../../lib/logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 }));
 
+vi.mock("../../../../lib/toast", () => ({
+  showError: vi.fn(),
+  showToast: vi.fn(),
+}));
+
+import { showError } from "../../../../lib/toast";
+
 import {
   buildOpenGroupModalHandler,
   buildHandleDrop,
@@ -127,10 +134,9 @@ describe("buildHandleSessionDrop", () => {
     expect(setGridVersion).toHaveBeenCalled();
   });
 
-  it("updateSessionPosition 실패 시 alert를 표시한다", async () => {
+  it("updateSessionPosition 실패 시 showError를 표시한다", async () => {
     const updateSessionPosition = vi.fn().mockRejectedValue(new Error("fail"));
     const setGridVersion = vi.fn();
-    vi.stubGlobal("alert", vi.fn());
 
     const handler = buildHandleSessionDrop({
       updateSessionPosition,
@@ -140,6 +146,6 @@ describe("buildHandleSessionDrop", () => {
     await handler("sess-1", 1, "09:00", 2);
 
     expect(setGridVersion).not.toHaveBeenCalled();
-    expect(alert).toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith("세션 이동에 실패했습니다.");
   });
 });

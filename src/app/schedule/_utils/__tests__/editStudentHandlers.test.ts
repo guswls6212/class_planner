@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "../../../../lib/planner";
+
+vi.mock("../../../../lib/toast", () => ({
+  showError: vi.fn(),
+  showToast: vi.fn(),
+}));
+
+import { showToast } from "../../../../lib/toast";
 import {
   buildEditStudentAdd,
   buildEditStudentAddClick,
@@ -178,20 +185,16 @@ describe("editStudentHandlers", () => {
         setEditModalData,
       });
 
-      // alert 모킹
-      const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
-
       getEditStudentInputValue.mockReturnValue("박민수");
       handler();
 
-      expect(alertSpy).toHaveBeenCalledWith(
+      expect(showToast).toHaveBeenCalledWith(
+        "warning",
         "최대 14명까지 추가할 수 있습니다."
       );
       // 14명 제한에 걸리면 tempEnrollments는 추가되지 않아야 함
       expect(setTempEnrollments).not.toHaveBeenCalled();
       expect(setEditModalData).not.toHaveBeenCalled();
-
-      alertSpy.mockRestore();
     });
   });
 
