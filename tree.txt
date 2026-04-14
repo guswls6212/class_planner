@@ -1,6 +1,6 @@
-# class-planner file structure (2026-04-14, Phase 2A 완료 + 문서 구조화 + 컨벤션 정비)
+# class-planner file structure (2026-04-14, 문서 통합 축소 + 고아 파일 정리)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
-# Active docs: 12개 | Archived docs: 9개 (docs/archive/)
+# Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
 class-planner/
 ├── ARCHITECTURE.md               # 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
@@ -32,14 +32,8 @@ class-planner/
 │
 ├── docs/
 │   ├── code-convention.md        # class-planner 전용 코딩 규칙 (글로벌: ../docs/code-convention.md)
-│   ├── COMPONENT_GUIDE.md        # 컴포넌트 + 훅 상세 가이드
-│   ├── DEVELOPMENT_WORKFLOW.md   # 개발 프로세스, 코드 품질
-│   ├── E2E_AUTH_SETUP.md         # E2E 테스트 인증 설정
-│   ├── ENVIRONMENT_SETUP.md      # 환경 변수 설정 (로컬 + Lightsail)
-│   ├── TESTING_COMMANDS.md       # 검증 명령어 (check:quick, check)
-│   ├── TESTING_STRATEGY.md       # 테스트 전략, 계층별 커버리지
-│   ├── VERSION_MANAGEMENT.md     # Git 브랜치 전략, PR 규칙
-│   ├── deployment-guide.md       # 배포 절차, Lightsail, Nginx, SSL
+│   ├── development-guide.md      # 통합: 개발 프로세스 + 테스트 + 검증 + E2E + 브랜치/CI
+│   ├── deployment-guide.md       # 통합: 배포 절차 + 환경 변수 설정
 │   ├── adr/
 │   │   ├── 001-migrate-to-aws-lightsail.md
 │   │   └── 002-academy-multitenant-architecture.md
@@ -181,7 +175,7 @@ class-planner/
     │   │   ├── SubjectInputSection.tsx (+.module.css)
     │   │   ├── SubjectList.tsx (+.module.css)
     │   │   ├── TimeTableRow.tsx
-    │   │   └── __tests__/ (16 test files)
+    │   │   └── __tests__/ (12 test files)
     │   └── organisms/
     │       ├── AboutPageLayout.tsx
     │       ├── LoginButton.tsx (+.module.css)         # Google OAuth 모달 + 드롭다운
