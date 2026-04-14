@@ -100,6 +100,7 @@ class-planner/
 │
 └── src/
     ├── setupTests.ts
+    ├── middleware.ts                     # 온보딩 가드 — /students /subjects /schedule 보호
     │
     ├── app/                              # Next.js App Router
     │   ├── page.tsx                      # / → /schedule redirect
@@ -110,6 +111,7 @@ class-planner/
     │   ├── login/
     │   │   ├── page.tsx
     │   │   └── Login.module.css
+    │   ├── onboarding/page.tsx               # 첫 로그인 온보딩 (학원명 + 역할)
     │   ├── students/page.tsx
     │   ├── subjects/page.tsx
     │   ├── schedule/                     # 가장 복잡한 페이지
@@ -137,7 +139,9 @@ class-planner/
     │   │   └── _constants/scheduleConstants.ts
     │   └── api/                          # Next.js API Routes
     │       ├── enrollments/route.ts      # GET/POST/DELETE enrollments
-    │       ├── onboarding/route.ts       # 신규 사용자 academy 자동 생성
+    │       ├── onboarding/
+    │       │   ├── route.ts              # POST — academyName + role 입력, onboarded 쿠키 설정
+    │       │   └── status/route.ts       # GET — academy 존재 여부 확인
     │       ├── students/
     │       │   ├── route.ts
     │       │   └── [id]/route.ts
