@@ -112,7 +112,7 @@
 - [x] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여) ✅ 완료 (2026-04-14, PR#20)
 - [x] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로) ✅ 완료 (2026-04-14, PR#19)
 - [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
-- [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
+- [x] `019_drop_user_data.sql` 적용 ✅ 완료 (2026-04-14) — user_data 테이블 + 전용 함수 제거, real-supabase.test.ts 삭제
 
 ## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
@@ -160,3 +160,4 @@
 | 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
 | 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
 | 2026-04-14 | PR#16 머지 (문서 구조화). PR#17 머지 (코딩 규칙 문서화, dead code 제거, 컨벤션 정비). PR#18 머지 (docs/ 9→3 통합 축소, 불일치 6건 수정, 고아 테스트 삭제) |
+| 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 |
