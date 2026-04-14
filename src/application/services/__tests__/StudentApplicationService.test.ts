@@ -1,5 +1,6 @@
 import { Student } from "@/domain/entities/Student";
 import { StudentRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudentApplicationServiceImpl } from "../StudentApplicationService";
 
@@ -46,6 +47,14 @@ describe("StudentApplicationService", () => {
       // Assert
       expect(result).toHaveLength(0);
     });
+
+    it("repository 에러 시 에러를 전파해야 한다 (silent fail 금지)", async () => {
+      vi.spyOn(mockStudentRepository, "getAll").mockRejectedValue(
+        new Error("DB connection failed")
+      );
+
+      await expect(service.getAllStudents("test-academy-id")).rejects.toThrow();
+    });
   });
 
   describe("addStudent", () => {
@@ -53,7 +62,7 @@ describe("StudentApplicationService", () => {
       // Arrange
       const input = { name: "박민수" };
       const mockStudent = Student.create(input.name);
-
+      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([]);
       vi.spyOn(mockStudentRepository, "create").mockResolvedValue(mockStudent);
 
       // Act
@@ -65,6 +74,20 @@ describe("StudentApplicationService", () => {
         input,
         "test-academy-id"
       );
+    });
+
+    it("중복 이름 추가 시 STUDENT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
+      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([
+        Student.create("박민수"),
+      ]);
+
+      const error = await service
+        .addStudent({ name: "박민수" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("STUDENT_NAME_DUPLICATE");
+      expect(error.statusHint).toBe(409);
     });
   });
 
@@ -95,6 +118,14 @@ describe("StudentApplicationService", () => {
       // Assert
       expect(result).toBeNull();
     });
+
+    it("repository 에러 시 에러를 전파해야 한다 (silent fail 금지)", async () => {
+      vi.spyOn(mockStudentRepository, "getById").mockRejectedValue(
+        new Error("DB connection failed")
+      );
+
+      await expect(service.getStudentById("any-id")).rejects.toThrow();
+    });
   });
 
   describe("updateStudent", () => {
@@ -105,33 +136,47 @@ describe("StudentApplicationService", () => {
       const existingStudent = Student.create("김철수");
       const updatedStudent = Student.create(updateData.name);
 
-      // Mock: 기존 학생이 존재한다고 설정
-      vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(
-        existingStudent
-      );
-      // Mock: 업데이트 결과 설정
-      vi.spyOn(mockStudentRepository, "update").mockResolvedValue(
-        updatedStudent
-      );
+      vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(existingStudent);
+      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([existingStudent]);
+      vi.spyOn(mockStudentRepository, "update").mockResolvedValue(updatedStudent);
 
       // Act
-      const result = await service.updateStudent(
-        studentId,
-        updateData,
-        "test-academy-id"
-      );
+      const result = await service.updateStudent(studentId, updateData, "test-academy-id");
 
       // Assert
       expect(result.name).toBe("김영희");
-      expect(mockStudentRepository.getById).toHaveBeenCalledWith(
-        studentId,
-        "test-academy-id"
-      );
-      expect(mockStudentRepository.update).toHaveBeenCalledWith(
-        studentId,
-        updateData,
-        "test-academy-id"
-      );
+      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId, "test-academy-id");
+      expect(mockStudentRepository.update).toHaveBeenCalledWith(studentId, updateData, "test-academy-id");
+    });
+
+    it("존재하지 않는 학생 업데이트 시 STUDENT_NOT_FOUND AppError를 throw해야 한다", async () => {
+      vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(null);
+
+      const error = await service
+        .updateStudent("non-existent", { name: "새이름" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("STUDENT_NOT_FOUND");
+      expect(error.statusHint).toBe(404);
+    });
+
+    it("이름 변경 시 중복 이름이면 STUDENT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
+      const existingStudent = Student.create("김철수");
+      const otherStudent = Student.create("이영희");
+      vi.spyOn(mockStudentRepository, "getById").mockResolvedValue(existingStudent);
+      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([
+        existingStudent,
+        otherStudent,
+      ]);
+
+      const error = await service
+        .updateStudent("some-id", { name: "이영희" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("STUDENT_NAME_DUPLICATE");
+      expect(error.statusHint).toBe(409);
     });
   });
 

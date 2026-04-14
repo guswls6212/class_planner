@@ -1,82 +1,126 @@
-/**
- * EnrollmentApplicationService 대량 테스트
- */
+import { EnrollmentRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
+import { Enrollment } from "@/shared/types/DomainTypes";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EnrollmentApplicationServiceImpl } from "../EnrollmentApplicationService";
 
-import { describe, expect, it, vi } from "vitest";
-
-// Mock all dependencies
-vi.mock("../../../infrastructure/interfaces", () => ({
-  EnrollmentRepository: vi.fn(),
-}));
-
-vi.mock("../../../lib/logger", () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-describe("EnrollmentApplicationService", () => {
-  it("수강신청 애플리케이션 서비스가 기본 구조를 가져야 한다", () => {
-    expect(typeof "enrollment").toBe("string");
-  });
-
-  it("수강신청 조회가 있어야 한다", () => {
-    expect(typeof "get").toBe("string");
-  });
-
-  it("수강신청 생성이 있어야 한다", () => {
-    expect(typeof "create").toBe("string");
-  });
-
-  it("수강신청 업데이트가 있어야 한다", () => {
-    expect(typeof "update").toBe("string");
-  });
-
-  it("수강신청 삭제가 있어야 한다", () => {
-    expect(typeof "delete").toBe("string");
-  });
-
-  it("수강신청 목록이 있어야 한다", () => {
-    expect(typeof "list").toBe("string");
-  });
-
-  it("수강신청 검색이 있어야 한다", () => {
-    expect(typeof "search").toBe("string");
-  });
-
-  it("수강신청 필터가 있어야 한다", () => {
-    expect(typeof "filter").toBe("string");
-  });
-
-  it("수강신청 정렬이 있어야 한다", () => {
-    expect(typeof "sort").toBe("string");
-  });
-
-  it("수강신청 통계가 있어야 한다", () => {
-    expect(typeof "statistics").toBe("string");
-  });
-
-  it("수강신청 관계가 있어야 한다", () => {
-    expect(typeof "relation").toBe("string");
-  });
-
-  it("수강신청 상태가 있어야 한다", () => {
-    expect(typeof "status").toBe("string");
-  });
-
-  it("수강신청 이력이 있어야 한다", () => {
-    expect(typeof "history").toBe("string");
-  });
-
-  it("수강신청 알림이 있어야 한다", () => {
-    expect(typeof "notification").toBe("string");
-  });
-
-  it("수강신청 보고서가 있어야 한다", () => {
-    expect(typeof "report").toBe("string");
-  });
+const makeEnrollment = (id: string): Enrollment => ({
+  id,
+  studentId: "student-1",
+  subjectId: "subject-1",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 });
 
+const mockEnrollmentRepository: EnrollmentRepository = {
+  getAll: vi.fn(),
+  getById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+};
 
+describe("EnrollmentApplicationService", () => {
+  let service: EnrollmentApplicationServiceImpl;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new EnrollmentApplicationServiceImpl(mockEnrollmentRepository);
+  });
+
+  describe("getAllEnrollments", () => {
+    it("모든 수강신청을 성공적으로 조회해야 한다", async () => {
+      const enrollments = [makeEnrollment("e1"), makeEnrollment("e2")];
+      vi.spyOn(mockEnrollmentRepository, "getAll").mockResolvedValue(enrollments);
+
+      const result = await service.getAllEnrollments("test-academy-id");
+
+      expect(result).toHaveLength(2);
+      expect(mockEnrollmentRepository.getAll).toHaveBeenCalledWith("test-academy-id");
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "getAll").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.getAllEnrollments("test-academy-id")).rejects.toThrow();
+    });
+  });
+
+  describe("getEnrollmentById", () => {
+    it("ID로 수강신청을 성공적으로 조회해야 한다", async () => {
+      const enrollment = makeEnrollment("e1");
+      vi.spyOn(mockEnrollmentRepository, "getById").mockResolvedValue(enrollment);
+
+      const result = await service.getEnrollmentById("e1");
+
+      expect(result?.id).toBe("e1");
+    });
+
+    it("존재하지 않는 수강신청 조회 시 null을 반환해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "getById").mockResolvedValue(null);
+
+      const result = await service.getEnrollmentById("non-existent");
+
+      expect(result).toBeNull();
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "getById").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.getEnrollmentById("e1")).rejects.toThrow();
+    });
+  });
+
+  describe("addEnrollment", () => {
+    it("수강신청을 성공적으로 생성해야 한다", async () => {
+      const enrollment = makeEnrollment("e1");
+      vi.spyOn(mockEnrollmentRepository, "create").mockResolvedValue(enrollment);
+
+      const result = await service.addEnrollment(
+        { studentId: "student-1", subjectId: "subject-1" },
+        "test-academy-id"
+      );
+
+      expect(result.id).toBe("e1");
+      expect(mockEnrollmentRepository.create).toHaveBeenCalledWith(
+        { studentId: "student-1", subjectId: "subject-1" },
+        "test-academy-id"
+      );
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "create").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(
+        service.addEnrollment(
+          { studentId: "student-1", subjectId: "subject-1" },
+          "test-academy-id"
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("deleteEnrollment", () => {
+    it("수강신청을 성공적으로 삭제해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "delete").mockResolvedValue();
+
+      await service.deleteEnrollment("e1");
+
+      expect(mockEnrollmentRepository.delete).toHaveBeenCalledWith("e1");
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockEnrollmentRepository, "delete").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.deleteEnrollment("e1")).rejects.toThrow();
+    });
+  });
+});

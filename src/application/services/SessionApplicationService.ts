@@ -1,5 +1,6 @@
 import { Session } from "@/shared/types/DomainTypes";
 import { SessionRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 
 export class SessionApplicationServiceImpl {
   constructor(private sessionRepository: SessionRepository) {}
@@ -45,7 +46,7 @@ export class SessionApplicationServiceImpl {
   ): Promise<Session> {
     const session = await this.sessionRepository.getById(id);
     if (!session) {
-      throw new Error("Session not found");
+      throw new AppError("SESSION_NOT_FOUND", { statusHint: 404 });
     }
 
     return this.sessionRepository.update(id, {
