@@ -199,6 +199,25 @@ LoginPage (src/app/login/page.tsx, 309줄)
 - 미로그인 상태: "로그인" 버튼 → `/login`으로 이동
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
 
+### 2.7 온보딩 (`/onboarding`)
+
+**컴포넌트 트리:**
+```
+OnboardingPage (src/app/onboarding/page.tsx)
+  └── 카드형 중앙 정렬 UI (login과 동일 스타일)
+        ├── "학원 정보 설정" 타이틀
+        ├── 환영 메시지 (사용자 이름)
+        ├── 학원명 입력 (필수, 2글자 이상, placeholder: "예: 해피수학학원")
+        ├── 역할 선택 (라디오: 원장/강사/직원)
+        └── "시작하기" 버튼 → /students 리디렉트
+```
+
+**동작:**
+- 비로그인 접근 → `/login` 리디렉트
+- 이미 온보딩 완료 사용자 → `/schedule` 리디렉트
+- 제출 성공 → `onboarded=1` 쿠키 설정 (서버) + `/students` 이동
+- Middleware(`src/middleware.ts`)가 `/students`, `/subjects`, `/schedule` 접근 시 쿠키 없는 로그인 사용자를 이 페이지로 가드
+
 ---
 
 ## 3. 컴포넌트 인벤토리
@@ -451,6 +470,8 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/app/subjects/**` | `/subjects` |
 | `src/app/about/**` | `/about` |
 | `src/app/login/**` | `/login` |
+| `src/app/onboarding/**` | `/onboarding` |
+| `src/middleware.ts` | `/students`, `/subjects`, `/schedule` (가드 동작) |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
 | `src/components/molecules/SessionBlock*` | `/schedule` |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |

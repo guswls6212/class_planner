@@ -46,6 +46,7 @@ src/app/
 ├── page.tsx              # 랜딩 페이지
 ├── layout.tsx            # 루트 레이아웃 (Nav + Footer)
 ├── login/page.tsx        # OAuth 로그인
+├── onboarding/page.tsx   # 첫 로그인 온보딩 (학원명 + 역할 입력)
 ├── students/page.tsx     # 학생 관리
 ├── subjects/page.tsx     # 과목 관리
 ├── schedule/             # 시간표 관리 (가장 복잡)
@@ -56,6 +57,12 @@ src/app/
 │   └── _constants/       # 페이지 전용 상수
 └── about/page.tsx        # 소개 페이지
 ```
+
+### 2.1.1 Middleware (`src/middleware.ts`)
+
+온보딩 가드. 로그인한 사용자가 데이터 페이지(`/students`, `/subjects`, `/schedule`) 접근 시 `onboarded` 쿠키를 확인한다. 쿠키 없음 → `/onboarding` 리디렉트. 비로그인 사용자는 Anonymous-First 정책으로 통과.
+
+matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`
 
 ### 2.2 API Routes
 ```

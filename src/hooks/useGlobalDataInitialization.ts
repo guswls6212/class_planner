@@ -136,22 +136,6 @@ export const useGlobalDataInitialization = () => {
 
         if (mounted) setIsInitializing(true);
 
-        // 온보딩 확인
-        try {
-          const onboardingRes = await fetch(
-            `/api/onboarding?userId=${encodeURIComponent(userId)}`,
-            { method: "POST" }
-          );
-          const onboardingData = await onboardingRes.json();
-          if (onboardingData.isNew) {
-            logger.info("온보딩 완료 - 신규 사용자", {
-              academyId: onboardingData.academyId,
-            });
-          }
-        } catch {
-          logger.warn("온보딩 호출 실패 (기존 사용자이거나 네트워크 오류)");
-        }
-
         // 4개 API 병렬 fetch
         logger.info("서버에서 데이터를 병렬 조회합니다");
         const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =

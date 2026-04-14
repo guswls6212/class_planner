@@ -109,10 +109,10 @@
   - GET /api/sessions 403 버그 수정 (corsMiddleware 위치 오류)
   - fetch 에러 vs 빈 데이터 구분 (기본 과목 중복 생성 방지)
 - [x] ARCHITECTURE.md 업데이트 ✅ 완료 (2026-04-14)
-- [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
+- [x] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여) ✅ 완료 (2026-04-14, PR#20)
+- [x] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로) ✅ 완료 (2026-04-14, PR#19)
 - [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
 - [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
-- [ ] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로)
 
 ## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
