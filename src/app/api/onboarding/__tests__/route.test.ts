@@ -6,7 +6,6 @@ import { POST } from "../route";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
-const mockGetById = vi.fn();
 const mockAcademyInsert = vi.fn();
 const mockMemberInsert = vi.fn();
 const mockMemberSelect = vi.fn();
@@ -36,11 +35,6 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
         };
       }
       return {};
-    },
-    auth: {
-      admin: {
-        getUserById: mockGetById,
-      },
     },
   }),
 }));
@@ -72,7 +66,23 @@ describe("POST /api/onboarding", () => {
     expect(data.error).toBe("User ID is required");
   });
 
-  it("이미 academy가 있는 사용자는 isNew: false를 반환해야 한다", async () => {
+  it("academyName이 없으면 400을 반환해야 한다", async () => {
+    mockMemberSelect.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/onboarding?userId=new-user-id",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+  });
+
+  it("이미 academy가 있는 사용자는 isNew: false + Set-Cookie를 반환해야 한다", async () => {
     mockMemberSelect.mockResolvedValue({
       data: { academy_id: "existing-academy-id" },
       error: null,
@@ -90,23 +100,12 @@ describe("POST /api/onboarding", () => {
     expect(data.success).toBe(true);
     expect(data.academyId).toBe("existing-academy-id");
     expect(data.isNew).toBe(false);
+    expect(response.headers.get("set-cookie")).toContain("onboarded=1");
   });
 
-  it("신규 사용자는 academy를 생성하고 isNew: true를 반환해야 한다", async () => {
+  it("신규 사용자는 academy를 생성하고 isNew: true + Set-Cookie를 반환해야 한다", async () => {
     // academy_member 없음
     mockMemberSelect.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
-
-    // 사용자 메타데이터
-    mockGetById.mockResolvedValue({
-      data: {
-        user: {
-          id: "new-user-id",
-          email: "newuser@example.com",
-          user_metadata: { full_name: "김신규" },
-        },
-      },
-      error: null,
-    });
 
     // academy INSERT 성공
     mockAcademyInsert.mockResolvedValue({
@@ -119,7 +118,11 @@ describe("POST /api/onboarding", () => {
 
     const request = new NextRequest(
       "http://localhost:3000/api/onboarding?userId=new-user-id",
-      { method: "POST" }
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ academyName: "테스트학원", role: "owner" }),
+      }
     );
 
     const response = await POST(request);
@@ -129,5 +132,6 @@ describe("POST /api/onboarding", () => {
     expect(data.success).toBe(true);
     expect(data.academyId).toBe("new-academy-id");
     expect(data.isNew).toBe(true);
+    expect(response.headers.get("set-cookie")).toContain("onboarded=1");
   });
 });
