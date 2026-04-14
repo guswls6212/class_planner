@@ -10,11 +10,8 @@ export function getSessionService() {
 
 export async function GET(request: NextRequest) {
   try {
-    const corsResponse = corsMiddleware(request);
-    if (corsResponse !== null && corsResponse.status !== 200) {
-      return corsResponse;
-    }
-
+    // corsMiddleware는 POST/PUT/DELETE에만 적용 — GET은 same-origin 브라우저 요청이
+    // Origin 헤더를 보내지 않으므로 403이 발생함 (students/enrollments와 동일 패턴)
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
