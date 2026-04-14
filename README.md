@@ -62,7 +62,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-상세: [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md)
+상세: [docs/deployment-guide.md](docs/deployment-guide.md) § 환경 변수 설정
 
 ## 테스트
 
