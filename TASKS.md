@@ -114,18 +114,119 @@
 - [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
 - [ ] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로)
 
-## Phase 2B: 코드 품질 개선 (계획)
+## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
+> 2026-04-14 감사 결과 기반으로 세부 태스크 구체화.
 
-- [ ] Repository 패턴 추상화 (Supabase 직접 호출 → 인터페이스 분리)
+### 2B-1: Dead Code / 고아 파일 정리 ✅ (PR#17)
+- [x] `src/components/molecules/ScheduleHeader.tsx` 삭제 (dead code, schedule/_components/ 버전만 사용)
+- [x] `src/components/molecules/__tests__/ScheduleHeader.test.tsx` 삭제
+- [x] `src/app/api/auth/__tests__/route.test.ts` 삭제 (auth route 삭제됨, 테스트만 잔존)
+- [x] `src/hooks/__tests__/useDebounce.test.ts` 삭제 (hook 삭제됨)
+- [x] `src/hooks/__tests__/useForm.test.ts` 삭제 (hook 삭제됨)
+- [x] `src/app/schedule/page.tsx.backup` 삭제
+
+### 2B-2: 추가 고아 테스트 파일 정리
+> 감사에서 발견된 소스 없는 테스트 파일. 삭제 전 소스 존재 여부 재확인 필수.
+- [ ] `src/components/atoms/__tests__/SearchBox.test.tsx`
+- [ ] `src/components/atoms/__tests__/FilterPanel.test.tsx`
+- [ ] `src/components/atoms/__tests__/Pagination.test.tsx`
+- [ ] `src/components/atoms/__tests__/Modal.test.tsx`
+- [ ] `src/components/atoms/__tests__/Loading.test.tsx`
+- [ ] `src/components/atoms/__tests__/Checkbox.test.tsx`
+- [ ] `src/lib/__tests__/scrollPositionManager.test.ts`
+- [ ] `src/lib/__tests__/scrollPositionStorage.test.ts`
+- [ ] `src/domain/services/__tests__/SubjectDomainService.test.ts`
+- [ ] `src/domain/services/__tests__/SessionDomainService.test.ts`
+- [ ] `src/app/api/auth/` 빈 디렉터리 삭제 확인
+
+### 2B-3: 문서 깨진 링크 수정
+> 활성 문서에서 `docs/archive/`로 이동된 파일을 가리키는 링크 9건.
+- [ ] `docs/DEVELOPMENT_WORKFLOW.md` — PROJECT_STRUCTURE.md, SECURITY_GUIDE.md, LOGGING_GUIDE.md 링크 수정 또는 제거
+- [ ] `docs/TESTING_STRATEGY.md` — LOGGING_GUIDE.md, INFRASTRUCTURE_GUIDE.md 링크 수정 또는 제거
+- [ ] `docs/TESTING_COMMANDS.md` — PROJECT_STRUCTURE.md 링크 수정 또는 제거
+
+### 2B-4: ARCHITECTURE.md 완성도 보강
+> 현재 §2에 누락된 src/ 하위 디렉터리 5개 추가.
+- [ ] `src/middleware/` (cors.ts, logging.ts) 섹션 추가
+- [ ] `src/shared/` (constants/, types/) 섹션 추가
+- [ ] `src/types/` (scheduleTypes.ts) 섹션 추가 또는 shared/types와 관계 명시
+- [ ] `src/utils/` (supabaseClient.ts) 섹션 추가
+- [ ] `src/contexts/` 이미 있으나 설명 보강
+
+### 2B-5: Infrastructure 테스트 커버리지 (50% → 80%)
+> 현재 팩토리 4개 + config + index.ts 전부 미테스트.
+- [ ] `infrastructure/factories/StudentRepositoryFactory.ts` 테스트
+- [ ] `infrastructure/factories/SubjectRepositoryFactory.ts` 테스트
+- [ ] `infrastructure/factories/SessionRepositoryFactory.ts` 테스트
+- [ ] `infrastructure/factories/EnrollmentRepositoryFactory.ts` 테스트
+- [ ] `infrastructure/config/RepositoryConfig.ts` 테스트
+- [ ] `infrastructure/index.ts` 테스트
+
+### 2B-6: Lib 테스트 커버리지 보강 (60% → 80%)
+> 핵심 유틸리티 중 미테스트 파일.
+- [ ] `lib/apiSync.ts` 테스트
+- [ ] `lib/authUtils.ts` 테스트
+- [ ] `lib/resolveAcademyId.ts` 테스트
+- [ ] `lib/supabaseServiceRole.ts` 테스트
+- [ ] `lib/timeUtils.ts` 테스트
+- [ ] `lib/yPositionMigration.ts` 테스트
+
+### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지
+> schedule/_components 5개, _utils 5개 미테스트.
+- [ ] `schedule/_components/EditSessionModal.tsx` 테스트
+- [ ] `schedule/_components/PdfDownloadSection.tsx` 테스트
+- [ ] `schedule/_components/ScheduleGridSection.tsx` 테스트
+- [ ] `schedule/_components/ScheduleHeader.tsx` 테스트
+- [ ] `schedule/_components/StudentPanelSection.tsx` 테스트
+- [ ] `schedule/_utils/dndHelpers.ts` 테스트
+- [ ] `schedule/_utils/collisionHelpers.ts` 테스트
+- [ ] `schedule/_utils/collisionQueries.ts` 테스트
+- [ ] `schedule/_utils/editSaveHandlers.ts` 테스트
+- [ ] `schedule/_utils/modalHandlers.ts` 테스트
+
+### 2B-8: 대형 파일 분할 (300줄 초과)
+> code-convention.md 기준. 기존 위반 파일 점진적 리팩토링.
+- [ ] `schedule/page.tsx` (1032줄) — 섹션별 분리 (이미 _components 존재, 로직 추출 여지)
+- [ ] `lib/localStorageCrud.ts` (1006줄) — CRUD 함수별 모듈 분리
+- [ ] `lib/pdf-utils.ts` (995줄) — 생성/스타일/유틸 분리
+- [ ] `organisms/TimeTableGrid.tsx` (563줄) — 렌더/이벤트/상태 분리
+- [ ] `molecules/DataConflictModal.tsx` (476줄) — 섹션 컴포넌트 추출
+- [ ] `hooks/useIntegratedDataLocal.ts` (452줄) — 도메인별 훅 분리
+- [ ] `hooks/useScheduleSessionManagement.ts` (421줄)
+- [ ] `hooks/useGlobalDataInitialization.ts` (412줄)
+- [ ] `hooks/useScheduleDragAndDrop.ts` (393줄)
+- [ ] `lib/auth/handleLoginDataMigration.ts` (371줄)
+- [ ] `lib/auth/fullDataMigration.ts` (369줄)
+- [ ] `organisms/StudentPanel.tsx` (340줄)
+- [ ] `schedule/_components/EditSessionModal.tsx` (339줄)
+- [ ] `lib/sessionCollisionUtils.ts` (332줄)
+- [ ] `organisms/LoginButton.tsx` (325줄)
+- [ ] `schedule/_components/GroupSessionModal.tsx` (318줄)
+- [ ] `app/login/page.tsx` (309줄)
+
+### 2B-9: 인라인 스타일 → Tailwind 마이그레이션
+> code-convention.md: 신규 컴포넌트 Tailwind 전용. 기존 파일은 수정 시 점진 전환.
+- [ ] `schedule/page.tsx` (~35건)
+- [ ] `login/page.tsx` (~18건)
+- [ ] `layout.tsx` (~10건)
+- [ ] `molecules/SessionBlock.tsx`
+- [ ] `molecules/TimeTableRow.tsx`
+- [ ] `organisms/TimeTableGrid.tsx`
+- [ ] `organisms/StudentPanel.tsx`
+- [ ] `organisms/LoginButton.tsx`
+- [ ] `atoms/ThemeToggle.tsx`
+- [ ] 기타 인라인 스타일 포함 파일 (수정 시 점진 전환)
+
+### 2B-10: 기타 코드 품질
+- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts `HH:MM` → ISO, fullDataMigration.ts 일관성)
 - [ ] 에러 핸들링 체계화
 - [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
-- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts, fullDataMigration.ts 일관성)
 
 ## Phase 3: 디자인 리뉴얼 (계획)
-> Phase 2 완료 후 안정된 구조 위에서 진행.
+> Phase 2B 안정화 후 진행.
 
 - [ ] UI/UX 감사 (현재 디자인 문제점 정리)
 - [ ] 디자인 시스템 정의 (색상, 타이포그래피, 간격)
@@ -143,6 +244,19 @@
 
 ---
 
+## 실행 우선순위 가이드
+
+| 우선순위 | 태스크 | 이유 |
+|---------|--------|------|
+| **P0** | 2B-2, 2B-3 | Dead code/깨진 링크 — CI 영향 가능, 빠른 수정 |
+| **P1** | 2B-4 | ARCHITECTURE.md 완성 — AI 컨텍스트 품질 향상 |
+| **P2** | 2B-5, 2B-6 | 테스트 커버리지 — 안정성 기반 |
+| **P3** | 2B-7 | Schedule 테스트 — 가장 복잡한 페이지 안정화 |
+| **P4** | 2B-8, 2B-9 | 리팩토링 — 코드 수정 시 점진적으로 병행 |
+| **P5** | 2B-10 | 기타 품질 — 장기 과제 |
+
+---
+
 ## 변경 이력
 | 날짜 | 내용 |
 |------|------|
@@ -152,3 +266,4 @@
 | 2026-04-11 | Phase 1-G 완료. Phase 순서 재편 (2↔3 스왑, 2A/2B 분리). Academy 멀티테넌트 구조 도입 결정 |
 | 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
 | 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
+| 2026-04-14 | PR#17 (convention refactor + cleanup). Phase 2B 세부 태스크 구체화 (감사 결과 기반 10개 서브태스크) |
