@@ -114,15 +114,22 @@
 - [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
 - [ ] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로)
 
-## Phase 2B: 코드 품질 개선 (계획)
+## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
 
-- [ ] Repository 패턴 추상화 (Supabase 직접 호출 → 인터페이스 분리)
+### 완료
+- [x] 코딩 규칙 문서화 (`docs/code-convention.md` 신규, PR#17)
+- [x] Dead code 제거: molecules/ScheduleHeader.tsx, auth route.test, useDebounce.test, useForm.test, page.tsx.backup (PR#17)
+- [x] 고아 테스트 파일 삭제: FilterPanel, Pagination, SearchBox (PR#18)
+- [x] 문서 구조화: UI_SPEC.md 신규 작성, ARCHITECTURE.md 현행화, 문서 archive (PR#16)
+- [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정 (PR#18)
+
+### 남은 항목
+- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts, fullDataMigration.ts 일관성)
 - [ ] 에러 핸들링 체계화
 - [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
-- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts, fullDataMigration.ts 일관성)
 
 ## Phase 3: 디자인 리뉴얼 (계획)
 > Phase 2 완료 후 안정된 구조 위에서 진행.
@@ -152,3 +159,4 @@
 | 2026-04-11 | Phase 1-G 완료. Phase 순서 재편 (2↔3 스왑, 2A/2B 분리). Academy 멀티테넌트 구조 도입 결정 |
 | 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
 | 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
+| 2026-04-14 | PR#16 머지 (문서 구조화). PR#17 머지 (코딩 규칙 문서화, dead code 제거, 컨벤션 정비). PR#18 머지 (docs/ 9→3 통합 축소, 불일치 6건 수정, 고아 테스트 삭제) |
