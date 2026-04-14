@@ -242,15 +242,9 @@ npm run lint:fix
 
 ## 📚 관련 문서
 
-- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
 - [컴포넌트 가이드](./COMPONENT_GUIDE.md)
 - [테스트 전략 가이드](./TESTING_STRATEGY.md)
 - [테스트 실행 명령어 가이드](./TESTING_COMMANDS.md)
 - [환경 설정 가이드](./ENVIRONMENT_SETUP.md)
-- [로깅 가이드](./LOGGING_GUIDE.md)
-- [보안 가이드](./SECURITY_GUIDE.md)
-- [문서 가이드](./README.md)
-
----
-
-_이 문서는 개발 프로세스와 코드 품질 관리 방법을 설명합니다. 프로젝트 구조에 대한 자세한 내용은 [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)를 참조하세요._
+- [코딩 규칙](./code-convention.md)
+- [버전 관리](./VERSION_MANAGEMENT.md)

@@ -137,11 +137,11 @@
 - [x] `src/domain/services/__tests__/SessionDomainService.test.ts` 삭제
 - [x] `src/app/api/auth/` 빈 디렉터리 삭제
 
-### 2B-3: 문서 깨진 링크 수정
-> 활성 문서에서 `docs/archive/`로 이동된 파일을 가리키는 링크 9건.
-- [ ] `docs/DEVELOPMENT_WORKFLOW.md` — PROJECT_STRUCTURE.md, SECURITY_GUIDE.md, LOGGING_GUIDE.md 링크 수정 또는 제거
-- [ ] `docs/TESTING_STRATEGY.md` — LOGGING_GUIDE.md, INFRASTRUCTURE_GUIDE.md 링크 수정 또는 제거
-- [ ] `docs/TESTING_COMMANDS.md` — PROJECT_STRUCTURE.md 링크 수정 또는 제거
+### 2B-3: 문서 깨진 링크 수정 ✅
+> 활성 문서에서 `docs/archive/`로 이동된 파일을 가리키는 링크 제거/교체.
+- [x] `docs/DEVELOPMENT_WORKFLOW.md` — PROJECT_STRUCTURE, LOGGING_GUIDE, SECURITY_GUIDE, README 링크 제거, code-convention/VERSION_MANAGEMENT로 교체
+- [x] `docs/TESTING_STRATEGY.md` — PROJECT_STRUCTURE, README 링크 제거. Infrastructure 커버리지 상태 수정 (✅→⚠️ 50%)
+- [x] `docs/TESTING_COMMANDS.md` — PROJECT_STRUCTURE 링크 제거, TESTING_STRATEGY/DEVELOPMENT_WORKFLOW로 교체
 
 ### 2B-4: ARCHITECTURE.md 완성도 보강
 > 현재 §2에 누락된 src/ 하위 디렉터리 5개 추가.

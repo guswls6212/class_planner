@@ -282,7 +282,7 @@ test.describe("Students 페이지 E2E 테스트", () => {
 - **목표**: 80% 이상
 - **중요도**: 중간
 - **이유**: 외부 의존성으로 인한 제약
-- **현재 상태**: ✅ 완료
+- **현재 상태**: ⚠️ ~50% (factories/config 미테스트, TASKS.md 2B-5 참조)
 
 ### Presentation 계층
 
@@ -415,12 +415,6 @@ afterEach(() => {
 ## 📚 관련 문서
 
 - [테스트 실행 명령어 가이드](./TESTING_COMMANDS.md)
-- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
 - [개발 워크플로우 가이드](./DEVELOPMENT_WORKFLOW.md)
 - [컴포넌트 가이드](./COMPONENT_GUIDE.md)
 - [환경 설정 가이드](./ENVIRONMENT_SETUP.md)
-- [문서 가이드](./README.md)
-
----
-
-_이 문서는 테스트 전략과 계층별 테스트 방법을 설명합니다. 테스트 실행 방법은 [테스트 실행 명령어 가이드](./TESTING_COMMANDS.md)를 참조하세요._

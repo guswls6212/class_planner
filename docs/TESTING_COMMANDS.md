@@ -106,5 +106,5 @@ rm -rf .next && npm run build
 
 ## 📚 관련 문서
 
-- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
-- [3-Layer 설계 스펙](../../docs/superpowers/specs/2026-04-12-pre-star-decomposition-design.md)
+- [테스트 전략 가이드](./TESTING_STRATEGY.md)
+- [개발 워크플로우 가이드](./DEVELOPMENT_WORKFLOW.md)
