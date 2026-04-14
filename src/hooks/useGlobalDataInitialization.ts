@@ -162,24 +162,28 @@ export const useGlobalDataInitialization = () => {
             fetch(`/api/enrollments?userId=${userId}`),
           ]);
 
-        const parseJson = async (result: PromiseSettledResult<Response>) => {
-          if (result.status === "rejected") return [];
+        /** fetch 에러와 "데이터 없음"을 구분: null=에러, []=정상 빈 배열 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parseJson = async (result: PromiseSettledResult<Response>): Promise<any[] | null> => {
+          if (result.status === "rejected") return null;
           try {
+            if (!result.value.ok) return null;
             const json = await result.value.json();
-            return json.success ? (json.data ?? []) : [];
+            return json.success ? (json.data ?? []) : null;
           } catch {
-            return [];
+            return null;
           }
         };
 
-        const students = await parseJson(studentsRes);
+        const students = (await parseJson(studentsRes)) ?? [];
         const subjects = await parseJson(subjectsRes);
-        const sessions = await parseJson(sessionsRes);
-        const enrollments = await parseJson(enrollmentsRes);
+        const subjectsFetched = subjects !== null;
+        const sessions = (await parseJson(sessionsRes)) ?? [];
+        const enrollments = (await parseJson(enrollmentsRes)) ?? [];
 
         const serverData: ClassPlannerData = {
           students,
-          subjects,
+          subjects: subjects ?? [],
           sessions,
           enrollments,
           version: "1.0",
@@ -188,7 +192,7 @@ export const useGlobalDataInitialization = () => {
 
         logger.info("서버 데이터 조회 완료", {
           studentCount: students.length,
-          subjectCount: subjects.length,
+          subjectCount: serverData.subjects.length,
           sessionCount: sessions.length,
           enrollmentCount: enrollments.length,
         });
@@ -212,7 +216,8 @@ export const useGlobalDataInitialization = () => {
         }
 
         // use-server: 정상 경로
-        if (subjects.length === 0) {
+        // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
+        if (subjectsFetched && serverData.subjects.length === 0) {
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
             count: DEFAULT_SUBJECTS.length,
           });

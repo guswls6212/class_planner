@@ -42,11 +42,13 @@
   line-height: 1.5;
 }
 
-/* ── Desktop: Cards Grid ── */
+/* ── Desktop: Cards Grid (subgrid로 좌우 카드 섹션 높이 동기화) ── */
 .cardsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-rows: repeat(4, auto); /* header, 학생, 과목, 수업 */
+  column-gap: 12px;
+  row-gap: 0;
   margin-bottom: 16px;
 }
 
@@ -56,8 +58,11 @@
   margin-bottom: 16px;
 }
 
-/* ── Data Card ── */
+/* ── Data Card (subgrid로 섹션 높이 동기화) ── */
 .dataCard {
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
   border: 1.5px solid rgba(148, 163, 184, 0.15);
   border-radius: 12px;
   padding: 20px;
@@ -68,6 +73,7 @@
     box-shadow 0.18s ease;
   background: rgba(255, 255, 255, 0.02);
   outline: none;
+  align-content: start;
 }
 
 .dataCardSelected {
