@@ -125,7 +125,6 @@
 - [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정 (PR#18)
 
 ### 남은 항목
-- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts, fullDataMigration.ts 일관성)
 - [ ] 에러 핸들링 체계화
 - [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
