@@ -36,7 +36,7 @@ const serverData = makeData(
 );
 
 describe("DataConflictModal", () => {
-  it("로컬 카드에 학생 이름 목록이 렌더된다", () => {
+  it("로컬 카드에 학생 이름 목록이 렌더된다 (접기/펼치기)", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -45,12 +45,17 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
+    // 초기 상태: 접힌 상태 — 이름이 보이지 않음
+    expect(screen.queryByText("김철수")).toBeNull();
+    // 학생 섹션 펼치기 (학생 3명 라벨 클릭)
+    const studentLabels = screen.getAllByText("3명");
+    fireEvent.click(studentLabels[0]);
     expect(screen.getAllByText("김철수").length).toBeGreaterThan(0);
     expect(screen.getAllByText("이영희").length).toBeGreaterThan(0);
     expect(screen.getAllByText("박민준").length).toBeGreaterThan(0);
   });
 
-  it("서버 카드에 서버 학생 이름이 렌더된다", () => {
+  it("서버 카드에 서버 학생 이름이 렌더된다 (접기/펼치기)", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -59,10 +64,13 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
+    // 서버 카드의 학생 섹션 펼치기
+    const studentLabels = screen.getAllByText("1명");
+    fireEvent.click(studentLabels[0]);
     expect(screen.getByText("서버학생")).toBeInTheDocument();
   });
 
-  it("디폴트 과목(초등수학 등)은 과목 목록에 표시되지 않는다", () => {
+  it("과목 섹션 펼치면 사용자 추가 과목이 보이고 기본 과목은 힌트로 표시", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -71,9 +79,12 @@ describe("DataConflictModal", () => {
         onSelectLocal={vi.fn()}
       />
     );
-    expect(screen.queryByText("초등수학")).toBeNull();
-    expect(screen.getAllByText("피아노").length).toBeGreaterThan(0);  // local subject
-    expect(screen.getAllByText("미술").length).toBeGreaterThan(0);    // server subject
+    // 로컬 카드의 과목 섹션 펼치기
+    const subjectLabels = screen.getAllByText("2개");
+    fireEvent.click(subjectLabels[0]);
+    expect(screen.getAllByText("피아노").length).toBeGreaterThan(0);
+    // 기본 과목은 힌트 텍스트로 표시
+    expect(screen.getByText(/기본 과목 1개/)).toBeInTheDocument();
   });
 
   it("로컬 라디오 선택 후 확인 버튼 클릭 시 onSelectLocal 호출", () => {
@@ -204,11 +215,13 @@ describe("DataConflictModal", () => {
           onSelectLocal={vi.fn()}
         />
       );
-      // Find the expand icon buttons (▶) — only local data card has sessions (1 session)
+      // Find the expand icon buttons (▶) — all sections start collapsed
       const expandIcons = screen.getAllByText("▶");
-      fireEvent.click(expandIcons[0]);
-      // After expand, session detail should be shown: 월 09:00~10:00
-      expect(screen.getAllByText("월 09:00~10:00").length).toBeGreaterThan(0);
+      // 수업 섹션의 ▶ 클릭 (학생/과목/수업 순서이므로 마지막)
+      fireEvent.click(expandIcons[expandIcons.length - 1]);
+      // After expand, session detail should be shown with separate weekday and time spans
+      expect(screen.getAllByText("월").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("09:00~10:00").length).toBeGreaterThan(0);
     });
 
     it("수업 섹션 두 번 클릭 시 접힌다", () => {

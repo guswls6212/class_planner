@@ -76,7 +76,7 @@
   box-shadow: 0 0 0 1px #6366f1, 0 8px 24px rgba(99, 102, 241, 0.2);
 }
 
-/* ── Card Header (radio + label) ── */
+/* ── Card Header (radio + label + lastModified) ── */
 .cardHeader {
   display: flex;
   align-items: center;
@@ -104,6 +104,14 @@
 
 .dataCardSelected .cardLabel {
   color: #818cf8;
+}
+
+.lastModified {
+  margin-left: auto;
+  font-size: 0.625rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.7;
+  white-space: nowrap;
 }
 
 /* ── Confirm Button (desktop only) ── */
@@ -155,6 +163,7 @@
   text-transform: uppercase;
   color: var(--color-text-secondary, #475569);
   margin-bottom: 6px;
+  user-select: none;
 }
 
 .countBadge {
@@ -195,6 +204,49 @@
   border-radius: 50%;
   background: var(--color-text-secondary, #475569);
   flex-shrink: 0;
+}
+
+/* ── Subject Section ── */
+.subjectDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subjectMeta {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.8;
+  display: inline-block;
+}
+
+.subjectMeta + .subjectMeta {
+  margin-left: 8px;
+}
+
+.subjectDetail .subjectMeta:first-child {
+  display: flex;
+  gap: 8px;
+}
+
+.subjectDetail > .nameList {
+  margin-top: 2px;
+}
+
+.subjectDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 기본과목 접힌 상태 힌트 */
+.defaultSubjectHint {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.6;
+  padding: 2px 0;
+  list-style: none;
 }
 
 /* ── Tabs (mobile) ── */
@@ -376,6 +428,14 @@
 /* ── Section Label Clickable ── */
 .sectionLabelClickable {
   cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.12s;
+}
+
+.sectionLabelClickable:hover {
+  background: rgba(148, 163, 184, 0.08);
 }
 
 /* ── Expand Icon ── */
@@ -383,16 +443,17 @@
   font-size: 0.5rem;
   color: var(--color-text-secondary, #475569);
   margin-left: 2px;
+  transition: transform 0.15s ease;
 }
 
-/* ── Session List ── */
+/* ── Session List (improved) ── */
 .sessionList {
   list-style: none;
   padding: 0;
   margin: 4px 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   max-height: 200px;
   overflow-y: auto;
   scrollbar-width: thin;
@@ -400,10 +461,50 @@
 }
 
 .sessionItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
   color: var(--color-text-secondary, #64748b);
-  padding: 2px 4px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
   line-height: 1.4;
+  flex-wrap: wrap;
+}
+
+.sessionWeekday {
+  font-weight: 600;
+  color: var(--color-text-primary, #cbd5e1);
+  flex-shrink: 0;
+}
+
+.sessionTime {
+  color: var(--color-text-secondary, #64748b);
+  flex-shrink: 0;
+}
+
+.sessionSubject {
+  font-weight: 500;
+  color: var(--color-text-primary, #94a3b8);
+  flex-shrink: 0;
+}
+
+.groupBadge {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.sessionStudents {
+  color: var(--color-text-secondary, #64748b);
+  opacity: 0.8;
 }
 
 /* ── Responsive ── */

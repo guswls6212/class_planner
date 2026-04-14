@@ -31,25 +31,52 @@ function filterNonDefaultSubjects(subjects: Subject[]): Subject[] {
   return subjects.filter((s) => !DEFAULT_SUBJECT_NAMES.has(s.name));
 }
 
+/** 그룹 수업을 과목 기준으로 포맷. 예: "월 09:30~10:30 중등수학 · 이현진, 강지원" */
 function formatSessionDisplay(
   session: Session,
   enrollments: Enrollment[],
   students: { id: string; name: string }[],
   subjects: Subject[]
-): string {
+): { weekday: string; time: string; subject: string; studentNames: string[]; isGroup: boolean } {
   const weekday = weekdays[session.weekday] ?? "?";
   const time = `${session.startsAt}~${session.endsAt}`;
-  const details = (session.enrollmentIds ?? [])
-    .map((eId) => {
-      const enrollment = enrollments.find((e) => e.id === eId);
-      if (!enrollment) return null;
-      const student = students.find((s) => s.id === enrollment.studentId);
+
+  const studentNames: string[] = [];
+  let subjectName = "";
+
+  for (const eId of session.enrollmentIds ?? []) {
+    const enrollment = enrollments.find((e) => e.id === eId);
+    if (!enrollment) continue;
+    const student = students.find((s) => s.id === enrollment.studentId);
+    if (student) studentNames.push(student.name);
+    if (!subjectName) {
       const subject = subjects.find((s) => s.id === enrollment.subjectId);
-      return `${student?.name ?? "?"}/${subject?.name ?? "?"}`;
-    })
-    .filter((x): x is string => x !== null)
-    .join(", ");
-  return details ? `${weekday} ${time} ${details}` : `${weekday} ${time}`;
+      subjectName = subject?.name ?? "";
+    }
+  }
+
+  return {
+    weekday,
+    time,
+    subject: subjectName || "?",
+    studentNames,
+    isGroup: studentNames.length > 1,
+  };
+}
+
+function formatLastModified(isoString: string | undefined): string {
+  if (!isoString) return "";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    const hours = d.getHours().toString().padStart(2, "0");
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+    return `${month}/${day} ${hours}:${minutes}`;
+  } catch {
+    return "";
+  }
 }
 
 const DataConflictModal: React.FC<DataConflictModalProps> = ({
@@ -75,7 +102,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
     <div
       className={styles.backdrop}
       onClick={(e) => {
-        // 백드롭 클릭으로 모달이 닫히지 않음 — 의도적으로 처리하지 않음
         if (e.target === e.currentTarget) return;
       }}
     >
@@ -85,7 +111,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         aria-modal="true"
         aria-labelledby="conflict-modal-title"
       >
-        {/* 마이그레이션 로딩 오버레이 */}
         {isMigrating && (
           <div className={styles.migrationOverlay} aria-live="polite">
             <div className={styles.migrationSpinner} />
@@ -159,8 +184,8 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
           <div className={styles.tabContent}>
             {activeTab === "local" ? (
               <>
-                <NameSection label="학생" names={localData.students.map((s) => s.name)} />
-                <NameSection label="과목" names={localSubjects.map((s) => s.name)} unit="개" />
+                <CollapsibleNameSection label="학생" names={localData.students.map((s) => s.name)} />
+                <SubjectSection subjects={localData.subjects} filteredSubjects={localSubjects} />
                 <SessionSection
                   sessions={localData.sessions}
                   enrollments={localData.enrollments}
@@ -178,8 +203,8 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
               </>
             ) : (
               <>
-                <NameSection label="학생" names={serverData.students.map((s) => s.name)} />
-                <NameSection label="과목" names={serverSubjects.map((s) => s.name)} unit="개" />
+                <CollapsibleNameSection label="학생" names={serverData.students.map((s) => s.name)} />
+                <SubjectSection subjects={serverData.subjects} filteredSubjects={serverSubjects} />
                 <SessionSection
                   sessions={serverData.sessions}
                   enrollments={serverData.enrollments}
@@ -242,6 +267,8 @@ const DataCard: React.FC<DataCardProps> = ({
   onSelect,
   disabled,
 }) => {
+  const lastModified = formatLastModified(data.lastModified);
+
   return (
     <div
       className={`${styles.dataCard} ${selected ? styles.dataCardSelected : ""} ${disabled ? styles.dataCardDisabled : ""}`}
@@ -258,9 +285,12 @@ const DataCard: React.FC<DataCardProps> = ({
           aria-label={sourceLabel}
         />
         <span className={styles.cardLabel}>{sourceLabel}</span>
+        {lastModified && (
+          <span className={styles.lastModified}>{lastModified}</span>
+        )}
       </label>
-      <NameSection label="학생" names={data.students.map((s) => s.name)} />
-      <NameSection label="과목" names={filteredSubjects.map((s) => s.name)} unit="개" />
+      <CollapsibleNameSection label="학생" names={data.students.map((s) => s.name)} />
+      <SubjectSection subjects={data.subjects} filteredSubjects={filteredSubjects} />
       <SessionSection
         sessions={data.sessions}
         enrollments={data.enrollments}
@@ -271,29 +301,102 @@ const DataCard: React.FC<DataCardProps> = ({
   );
 };
 
-interface NameSectionProps {
+/* ── CollapsibleNameSection: 접기/펼치기 가능한 이름 목록 ── */
+
+interface CollapsibleNameSectionProps {
   label: string;
   names: string[];
   unit?: string;
 }
 
-const NameSection: React.FC<NameSectionProps> = ({ label, names, unit = "명" }) => (
-  <div className={styles.section}>
-    <div className={styles.sectionLabel}>
-      {label}
-      <span className={styles.countBadge}>{names.length}{unit}</span>
+const CollapsibleNameSection: React.FC<CollapsibleNameSectionProps> = ({ label, names, unit = "명" }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className={styles.section}>
+      <div
+        className={`${styles.sectionLabel} ${names.length > 0 ? styles.sectionLabelClickable : ""}`}
+        onClick={() => { if (names.length > 0) setExpanded(!expanded); }}
+        role={names.length > 0 ? "button" : undefined}
+        aria-expanded={names.length > 0 ? expanded : undefined}
+      >
+        {label}
+        <span className={styles.countBadge}>{names.length}{unit}</span>
+        {names.length > 0 && (
+          <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
+        )}
+      </div>
+      {expanded && names.length > 0 && (
+        <ul className={styles.nameList}>
+          {names.map((name, idx) => (
+            <li key={`${name}-${idx}`} className={styles.nameItem}>
+              {name}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
-    {names.length > 0 && (
-      <ul className={styles.nameList}>
-        {names.map((name, idx) => (
-          <li key={`${name}-${idx}`} className={styles.nameItem}>
-            {name}
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-);
+  );
+};
+
+/* ── SubjectSection: 과목 섹션 (기본 과목 안내 포함) ── */
+
+interface SubjectSectionProps {
+  subjects: Subject[];
+  filteredSubjects: Subject[];
+}
+
+const SubjectSection: React.FC<SubjectSectionProps> = ({ subjects, filteredSubjects }) => {
+  const [expanded, setExpanded] = useState(false);
+  const defaultCount = subjects.length - filteredSubjects.length;
+  const customCount = filteredSubjects.length;
+
+  return (
+    <div className={styles.section}>
+      <div
+        className={`${styles.sectionLabel} ${subjects.length > 0 ? styles.sectionLabelClickable : ""}`}
+        onClick={() => { if (subjects.length > 0) setExpanded(!expanded); }}
+        role={subjects.length > 0 ? "button" : undefined}
+        aria-expanded={subjects.length > 0 ? expanded : undefined}
+      >
+        과목
+        <span className={styles.countBadge}>{subjects.length}개</span>
+        {subjects.length > 0 && (
+          <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
+        )}
+      </div>
+      {expanded && subjects.length > 0 && (
+        <div className={styles.subjectDetail}>
+          {defaultCount > 0 && (
+            <span className={styles.subjectMeta}>
+              기본 {defaultCount}개
+            </span>
+          )}
+          {customCount > 0 && (
+            <span className={styles.subjectMeta}>
+              추가 {customCount}개
+            </span>
+          )}
+          <ul className={styles.nameList}>
+            {filteredSubjects.map((s) => (
+              <li key={s.id} className={styles.nameItem}>
+                {s.color && <span className={styles.subjectDot} style={{ background: s.color }} />}
+                {s.name}
+              </li>
+            ))}
+            {defaultCount > 0 && (
+              <li className={styles.defaultSubjectHint}>
+                + 기본 과목 {defaultCount}개 (초등수학, 중등수학 등)
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── SessionSection: 수업 섹션 (그룹 수업 개선) ── */
 
 interface SessionSectionProps {
   sessions: Session[];
@@ -326,11 +429,22 @@ const SessionSection: React.FC<SessionSectionProps> = ({
       </div>
       {expanded && sessions.length > 0 && (
         <ul className={styles.sessionList}>
-          {sessions.map((session) => (
-            <li key={session.id} className={styles.sessionItem}>
-              {formatSessionDisplay(session, enrollments, students, subjects)}
-            </li>
-          ))}
+          {sessions.map((session) => {
+            const info = formatSessionDisplay(session, enrollments, students, subjects);
+            return (
+              <li key={session.id} className={styles.sessionItem}>
+                <span className={styles.sessionWeekday}>{info.weekday}</span>
+                <span className={styles.sessionTime}>{info.time}</span>
+                <span className={styles.sessionSubject}>{info.subject}</span>
+                {info.isGroup && (
+                  <span className={styles.groupBadge}>그룹</span>
+                )}
+                <span className={styles.sessionStudents}>
+                  {info.studentNames.join(", ") || "?"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
