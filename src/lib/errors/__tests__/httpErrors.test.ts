@@ -1,14 +1,19 @@
 // src/lib/errors/__tests__/httpErrors.test.ts
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import { toErrorResponse } from "../httpErrors";
 import { AppError } from "../AppError";
 import { ErrorCodes } from "../codes";
+import { logger } from "../../logger";
 
 vi.mock("../../logger", () => ({
   logger: { error: vi.fn() },
 }));
 
 describe("toErrorResponse", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -37,6 +42,17 @@ describe("toErrorResponse", () => {
     expect(body.error.details.cause.message).toBe("DB connection failed");
   });
 
+  it("AppError — production에서 cause가 details에 미포함", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    const cause = new Error("DB password");
+    const err = new AppError(ErrorCodes.INTERNAL_ERROR, { statusHint: 500, cause });
+    const res = toErrorResponse(err);
+
+    const body = await res.json();
+    expect(body.error.details).toBeUndefined();
+  });
+
   it("generic Error — INTERNAL_ERROR 500 반환", async () => {
     const err = new Error("Unexpected failure");
     const res = toErrorResponse(err);
@@ -46,6 +62,7 @@ describe("toErrorResponse", () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe("INTERNAL_ERROR");
     expect(body.error.message).toBe("서버 오류가 발생했습니다.");
+    expect(vi.mocked(logger.error)).toHaveBeenCalledOnce();
   });
 
   it("generic Error — production에서 details 미포함", async () => {
