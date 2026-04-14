@@ -150,23 +150,21 @@
 - [x] `src/types/` (scheduleTypes.ts) 섹션 추가 — shared/types로 점진 통합 예정 명시
 - [x] `src/utils/` (supabaseClient.ts) 섹션 추가
 
-### 2B-5: Infrastructure 테스트 커버리지 (50% → 80%)
-> 현재 팩토리 4개 + config + index.ts 전부 미테스트.
-- [ ] `infrastructure/factories/StudentRepositoryFactory.ts` 테스트
-- [ ] `infrastructure/factories/SubjectRepositoryFactory.ts` 테스트
-- [ ] `infrastructure/factories/SessionRepositoryFactory.ts` 테스트
-- [ ] `infrastructure/factories/EnrollmentRepositoryFactory.ts` 테스트
-- [ ] `infrastructure/config/RepositoryConfig.ts` 테스트
-- [ ] `infrastructure/index.ts` 테스트
+### 2B-5: Infrastructure 테스트 커버리지 (50% → 80%) ✅
+> factories 4개 + config + registry + index 테스트 추가. 71 tests all passing.
+- [x] `infrastructure/factories/` 4개 팩토리 테스트 (env 분기 검증)
+- [x] `infrastructure/config/RepositoryConfig.ts` 테스트 (create/test/dev/prod)
+- [x] `infrastructure/container/RepositoryRegistry.ts` 테스트 (register/resolve/singleton/autoRegister)
+- [x] `infrastructure/index.ts` 테스트 (re-export 검증)
 
-### 2B-6: Lib 테스트 커버리지 보강 (60% → 80%)
-> 핵심 유틸리티 중 미테스트 파일.
-- [ ] `lib/apiSync.ts` 테스트
-- [ ] `lib/authUtils.ts` 테스트
-- [ ] `lib/resolveAcademyId.ts` 테스트
-- [ ] `lib/supabaseServiceRole.ts` 테스트
-- [ ] `lib/timeUtils.ts` 테스트
-- [ ] `lib/yPositionMigration.ts` 테스트
+### 2B-6: Lib 테스트 커버리지 보강 (60% → 80%) ✅
+> 핵심 유틸리티 6개 파일 테스트 추가. 49 tests all passing.
+- [x] `lib/apiSync.ts` 테스트 (16 tests: CRUD fire-and-forget, anonymous skip, error handling)
+- [x] `lib/authUtils.ts` 테스트 (3 tests: session/token/error)
+- [x] `lib/resolveAcademyId.ts` 테스트 (2 tests: success/not-found)
+- [x] `lib/supabaseServiceRole.ts` 테스트 (3 tests: env/singleton/missing-env)
+- [x] `lib/timeUtils.ts` 테스트 (11 tests: KST conversions, formatting)
+- [x] `lib/yPositionMigration.ts` 테스트 (14 tests: pixel↔logical, migration)
 
 ### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지
 > schedule/_components 5개, _utils 5개 미테스트.
