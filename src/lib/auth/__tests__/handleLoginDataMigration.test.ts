@@ -119,8 +119,10 @@ describe("applyLocalDataChoice", () => {
     });
   });
 
-  it("anonymous 데이터 없으면 아무것도 안 함", async () => {
-    await applyLocalDataChoice("user-999", emptyData);
+  it("anonymous 데이터 없으면 에러 throw", async () => {
+    await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
+      "로컬 데이터를 찾을 수 없습니다"
+    );
     expect(storage["classPlannerData:user-999"]).toBeUndefined();
   });
 
@@ -149,30 +151,22 @@ describe("applyLocalDataChoice", () => {
     vi.unstubAllGlobals();
   });
 
-  it("전체 마이그레이션 실패 시 (totalSynced=0) anonymous 키 보존", async () => {
+  it("마이그레이션 실패 시 에러 throw 및 anonymous 키 보존", async () => {
     storage["classPlannerData:anonymous"] = JSON.stringify(localData);
 
-    // mock: 완전 실패 — 0건 동기화
+    // mock: 실패 — 에러 발생
     migrateLocalDataToServerMock.mockResolvedValueOnce({
       success: false,
       syncedCounts: { students: 0, subjects: 0, enrollments: 0, sessions: 0 },
       errors: [{ entity: "student", localId: "anon-s1", message: "네트워크 오류" }],
     });
 
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ success: true, data: [] }), {
-          headers: { "Content-Type": "application/json" },
-        })
-      );
-    vi.stubGlobal("fetch", fetchMock);
+    // throw하므로 fetch(re-fetch)는 호출되지 않음
+    await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
+      "데이터 동기화에 실패했습니다"
+    );
 
-    await applyLocalDataChoice("user-999", emptyData);
-
-    // anonymous 키가 보존되어야 함
+    // anonymous 키는 throw 전에 삭제되지 않으므로 보존됨
     expect(storage["classPlannerData:anonymous"]).toBe(JSON.stringify(localData));
-
-    vi.unstubAllGlobals();
   });
 });
