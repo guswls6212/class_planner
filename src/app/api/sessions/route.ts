@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     const newSession = await getSessionService().addSession(
       {
         subjectId,
-        startsAt: new Date(startsAt),
-        endsAt: new Date(endsAt),
+        startsAt,
+        endsAt,
         enrollmentIds,
         weekday: Number(weekday),
       },
@@ -116,8 +116,8 @@ export async function PUT(request: NextRequest) {
 
     const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
-      startsAt: new Date(startsAt),
-      endsAt: new Date(endsAt),
+      startsAt,
+      endsAt,
       enrollmentIds,
       weekday: Number(weekday),
     });
