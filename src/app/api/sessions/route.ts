@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,11 +27,7 @@ export async function GET(request: NextRequest) {
     const sessions = await getSessionService().getAllSessions(academyId);
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
-    logger.error("Error fetching sessions:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch sessions" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -82,11 +79,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to add session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -123,11 +116,7 @@ export async function PUT(request: NextRequest) {
     });
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
-    logger.error("Error updating session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -154,11 +143,7 @@ export async function DELETE(request: NextRequest) {
       message: "Session deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 

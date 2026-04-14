@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getStudentService() {
@@ -25,11 +26,7 @@ export async function GET(request: NextRequest) {
     const students = await getStudentService().getAllStudents(academyId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
-    logger.error("Error fetching students:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch students" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -61,17 +58,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes("이미 존재하는 학생 이름")) {
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 409 }
-      );
-    }
-    logger.error("Error adding student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to add student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -104,11 +91,7 @@ export async function PUT(request: NextRequest) {
     );
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
-    logger.error("Error updating student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -139,10 +122,6 @@ export async function DELETE(request: NextRequest) {
       message: "Student deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

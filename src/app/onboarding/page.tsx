@@ -85,7 +85,7 @@ export default function OnboardingPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setError(data.error || "학원 생성에 실패했습니다.");
+        setError(data.error?.message || "학원 생성에 실패했습니다.");
         setIsSubmitting(false);
         return;
       }

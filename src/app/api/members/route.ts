@@ -1,6 +1,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -37,7 +38,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: members });
   } catch (error) {
-    logger.error("GET /api/members 오류", undefined, error as Error);
-    return NextResponse.json({ success: false, error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

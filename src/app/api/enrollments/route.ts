@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getEnrollmentService() {
@@ -23,11 +24,7 @@ export async function GET(request: NextRequest) {
     const enrollments = await getEnrollmentService().getAllEnrollments(academyId);
     return NextResponse.json({ success: true, data: enrollments });
   } catch (error) {
-    logger.error("Error fetching enrollments:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch enrollments" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -62,11 +59,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding enrollment:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to add enrollment" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -98,10 +91,6 @@ export async function DELETE(request: NextRequest) {
       message: "Enrollment deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting enrollment:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete enrollment" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

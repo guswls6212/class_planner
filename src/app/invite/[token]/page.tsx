@@ -95,7 +95,7 @@ export default function InvitePage({
         logger.info("초대 수락 완료", { academyId: data.academyId });
         router.push("/schedule");
       } else {
-        setAcceptError(data.error || "초대 수락에 실패했습니다.");
+        setAcceptError(data.error?.message || "초대 수락에 실패했습니다.");
       }
     } catch {
       setAcceptError("네트워크 연결을 확인해주세요.");

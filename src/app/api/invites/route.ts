@@ -1,6 +1,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 function canManageInvites(role: string): boolean {
@@ -39,8 +40,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: data ?? [] });
   } catch (error) {
-    logger.error("GET /api/invites 오류", undefined, error as Error);
-    return NextResponse.json({ success: false, error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return toErrorResponse(error);
   }
 }
 
@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
-    logger.error("POST /api/invites 오류", undefined, error as Error);
-    return NextResponse.json({ success: false, error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return toErrorResponse(error);
   }
 }
