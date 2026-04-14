@@ -4,7 +4,7 @@
 > UI 컴포넌트를 수정하기 전에 여기서 기대 동작을 확인하세요.
 > UI를 변경한 후에는 이 문서를 업데이트하세요.
 >
-> 관련 문서: [CLAUDE.md](CLAUDE.md) § UI Verification Protocol · [docs/COMPONENT_GUIDE.md](docs/COMPONENT_GUIDE.md)
+> 관련 문서: [CLAUDE.md](CLAUDE.md) § UI Verification Protocol · [docs/development-guide.md](docs/development-guide.md)
 
 ---
 
@@ -50,7 +50,7 @@ RootLayout
 
 - `conflictState`가 있을 때 모달 표시
 - `useGlobalDataInitialization` 훅에서 관리
-- 상세: [§ 6.3 Data Conflict Resolution](#63-data-conflict-resolution)
+- 상세: [§ 5.5 Data Conflict Resolution](#55-data-conflict-resolution-로그인-시)
 
 ---
 
@@ -176,12 +176,17 @@ AboutPage
 - 정적 마케팅 페이지
 - 인증 불필요, 익명 접근 가능
 
-### 2.6 로그인 (LoginButton 모달)
+### 2.6 로그인 (`/login`)
 
-- 독립 페이지 없음 — `LoginButton` organism이 nav bar 내에서 모달 관리
+**독립 페이지** (`src/app/login/page.tsx`, 309줄):
+
+- 이미 로그인된 사용자: 세션 감지 후 `redirectAfterLogin` URL 또는 `/`로 리다이렉트
+- 미로그인 상태: Google / Kakao OAuth 버튼 표시
+- OAuth 완료 후 `/`로 리다이렉트 (혹은 `localStorage.redirectAfterLogin` 참조)
+
+**NavBar 로그인 (LoginButton organism):**
 - 미로그인 상태: "로그인" 버튼 → 클릭 시 모달 오픈
 - 모달 내용: "Google 계정으로 간편하게 로그인하세요" + Google 로그인 버튼
-- OAuth 완료 후 `/students`로 리다이렉트
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
 
 ---
@@ -209,7 +214,6 @@ AboutPage
 | `DataConflictModal` | `DataConflictModal.tsx` | `localData`, `serverData`, `onSelectServer`, `onSelectLocal`, `isMigrating?`, `migrationError?` | 로그인 시 로컬/서버 데이터 충돌 해결 모달. 데스크탑: 사이드바이사이드 카드 + 라디오. 모바일: 탭. 섹션(학생/과목/수업) 접기/펼치기 |
 | `DropZone` | `DropZone.tsx` | `onDrop`, `weekday`, `time` | 시간표 셀의 드롭 수신 영역 |
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
-| `ScheduleHeader` | `_components/ScheduleHeader.tsx` (schedule 전용) | `dataLoading`, `error?`, `selectedStudentName?` | 시간표 페이지 상단 헤더. `src/components/molecules/`가 아닌 `schedule/_components/`에 위치 |
 | `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 시간표 셀 내 수업 블록. 과목색 배경, 과목명+시간+학생명 표시, 드래그 이동 가능 |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
 | `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
@@ -217,6 +221,8 @@ AboutPage
 | `SubjectInputSection` | `SubjectInputSection.tsx` | `onAdd`, `errorMessage?` | 과목 추가 입력 + 색상 선택 |
 | `SubjectList` | `SubjectList.tsx` | `subjects`, `selectedSubjectId`, `onSelect`, `onDelete`, `onUpdate` | 과목 목록 (SubjectListItem 반복) |
 | `TimeTableRow` | `TimeTableRow.tsx` | `weekday`, `height`, `sessions`, `subjects`, `enrollments`, `students`, ... | TimeTableGrid 내 1개 요일 행. SessionBlock + DropZone 조합 |
+
+> `ScheduleHeader`는 `src/components/molecules/`에 없음 — `src/app/schedule/_components/`에만 존재 (§3.4 참조)
 
 ### 3.3 Organisms (`src/components/organisms/`)
 
@@ -247,9 +253,56 @@ AboutPage
 
 ---
 
-## 4. 인터랙션 패턴
+## 4. Custom Hooks (상태 관리)
 
-### 4.1 수업 추가 Flow (Golden Path)
+`src/hooks/` 위치. **신규 기능은 반드시 `useXxxLocal` 훅 사용** (레거시 API 기반 훅 금지).
+
+### 4.1 전역 / 통합
+
+| 훅 | 위치 | 역할 |
+|----|------|------|
+| `useGlobalDataInitialization` | `hooks/useGlobalDataInitialization.ts` | 로그인 후 모든 데이터 초기화, 기본 과목 생성. RootLayout에서 전역 실행 |
+| `useIntegratedDataLocal` | `hooks/useIntegratedDataLocal.ts` | localStorage 기반 students/subjects/sessions/enrollments 통합 관리 (local-first SSOT) |
+
+### 4.2 개별 도메인
+
+| 훅 | 역할 |
+|----|------|
+| `useStudentManagementLocal` | 학생 CRUD (localStorage 즉시 반영 + fire-and-forget 서버 동기화) |
+| `useSubjectManagementLocal` | 과목 CRUD (동일 패턴) |
+| `useDisplaySessions` | 세션 데이터 필터링/정렬 (selectedStudentId 기반) |
+| `useStudentPanel` | 학생 패널 상태 및 드래그 상호작용 |
+| `useTimeValidation` | 시간 입력 검증 유틸리티 |
+| `useLocal` | localStorage 기반 UI 상태 (선택 학생, 테마 등) |
+
+### 4.3 Schedule 페이지 전용
+
+| 훅 | 위치 | 역할 |
+|----|------|------|
+| `useEditModalState` | `schedule/_hooks/useEditModalState.ts` | 편집 모달 상태 묶음 |
+| `useUiState` | `schedule/_hooks/useUiState.ts` | 드래그 상태, gridVersion |
+| `useScheduleSessionManagement` | `schedule/_hooks/` | 세션 추가/수정/삭제 |
+| `useScheduleDragAndDrop` | `schedule/_hooks/` | 드래그앤드롭 이벤트 처리 |
+
+### 4.4 Schedule 페이지 사용 패턴
+
+```typescript
+import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
+import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useStudentPanel } from "../../hooks/useStudentPanel";
+import { useLocal } from "../../hooks/useLocal";
+
+const { students, subjects, sessions, enrollments } = useIntegratedDataLocal();
+const { sessions: displaySessions } = useDisplaySessions(sessions, enrollments, selectedStudentId);
+const studentPanelState = useStudentPanel(students, selectedStudentId, setSelectedStudentId);
+const [selectedStudentId, setSelectedStudentId] = useLocal("ui:selectedStudent", "");
+```
+
+---
+
+## 5. 인터랙션 패턴
+
+### 5.1 수업 추가 Flow (Golden Path)
 
 ```
 1. /schedule 접속
@@ -268,7 +321,7 @@ AboutPage
 2. 학생 선택 + 과목 선택 → "추가"
 ```
 
-### 4.2 수업 수정/삭제
+### 5.2 수업 수정/삭제
 
 ```
 1. 기존 SessionBlock 클릭
@@ -278,7 +331,7 @@ AboutPage
 4. "삭제" → ConfirmModal → 삭제 후 SessionBlock 제거
 ```
 
-### 4.3 세션 드래그앤드롭 (시간표 내 이동)
+### 5.3 세션 드래그앤드롭 (시간표 내 이동)
 
 ```
 1. SessionBlock 드래그 시작 → 해당 블록 opacity: 0.5
@@ -288,7 +341,7 @@ AboutPage
    → localStorage 즉시 반영 → 스크롤 위치 복원
 ```
 
-### 4.4 학생 추가 (학생 페이지)
+### 5.4 학생 추가 (학생 페이지)
 
 ```
 1. 이름 입력 → Enter 또는 "+" 버튼 클릭
@@ -297,7 +350,7 @@ AboutPage
 4. 성공: 목록에 즉시 추가 → 서버 동기화
 ```
 
-### 4.5 Data Conflict Resolution (로그인 시)
+### 5.5 Data Conflict Resolution (로그인 시)
 
 ```
 1. 로그인 완료
@@ -314,7 +367,7 @@ AboutPage
 4. 완료: 모달 닫힘 → 정상 사용
 ```
 
-### 4.6 Anonymous-First Flow
+### 5.6 Anonymous-First Flow
 
 ```
 익명 (비로그인) 상태:
@@ -332,9 +385,9 @@ AboutPage
 
 ---
 
-## 5. 테마 시스템
+## 6. 테마 시스템
 
-### 5.1 Dark / Light 모드
+### 6.1 Dark / Light 모드
 
 - `ThemeContext` (`src/contexts/ThemeContext.tsx`)로 전역 관리
 - CSS 변수 기반: `--color-bg-primary`, `--color-bg-secondary`, `--color-text-primary`, `--color-text-secondary`, `--color-border`, `--color-primary` 등
@@ -342,7 +395,7 @@ AboutPage
 - ThemeToggle: 로그인 사용자만 Nav bar에 표시 (`size="small"`, `variant="both"`)
 - localStorage에 테마 저장 (key: `theme`)
 
-### 5.2 Tailwind CSS 규칙
+### 6.2 Tailwind CSS 규칙
 
 - 인라인 스타일 금지 (불가피한 경우 주석 필요)
 - 모든 색상/간격은 Tailwind 클래스 또는 CSS 변수 사용
@@ -350,21 +403,21 @@ AboutPage
 
 ---
 
-## 6. 반응형 & 접근성
+## 7. 반응형 & 접근성
 
-### 6.1 뷰포트 기준
+### 7.1 뷰포트 기준
 
 | 범위 | 설명 |
 |------|------|
 | 640px 이상 (desktop) | 기본 레이아웃. TimeTableGrid 풀 사이즈, StudentPanel 플로팅 |
 | 640px 미만 (mobile) | DataConflictModal 탭 뷰 전환. TimeTableGrid 가로 스크롤. StudentPanel 접힘 |
 
-### 6.2 주요 반응형 동작
+### 7.2 주요 반응형 동작
 
 - **DataConflictModal**: 640px 미만에서 `.cardsGrid` 숨김 → `.tabsContainer` 표시 (탭 전환 + 선택 버튼)
 - **TimeTableGrid**: 가로 스크롤, 가상 스크롤바
 
-### 6.3 접근성
+### 7.3 접근성
 
 - ConfirmModal, DataConflictModal: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
 - DataConflictModal 섹션: `role="button"`, `aria-expanded` (접기/펼치기)
@@ -374,7 +427,7 @@ AboutPage
 
 ---
 
-## 7. 검증 라우트 매핑
+## 8. 검증 라우트 매핑
 
 UI 파일 변경 시 아래 라우트를 확인하세요.
 
@@ -384,6 +437,7 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/app/students/**` | `/students` |
 | `src/app/subjects/**` | `/subjects` |
 | `src/app/about/**` | `/about` |
+| `src/app/login/**` | `/login` |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
 | `src/components/molecules/SessionBlock*` | `/schedule` |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |
@@ -395,7 +449,7 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 
 ---
 
-## 8. 알려진 제약 & 주의 사항
+## 9. 알려진 제약 & 주의 사항
 
 | 항목 | 내용 |
 |------|------|

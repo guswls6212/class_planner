@@ -52,7 +52,8 @@ src/app/
 │   ├── page.tsx
 │   ├── _components/      # 페이지 전용 컴포넌트
 │   ├── _hooks/           # 페이지 전용 훅
-│   └── _utils/           # 페이지 전용 유틸리티
+│   ├── _utils/           # 페이지 전용 유틸리티
+│   └── _constants/       # 페이지 전용 상수
 └── about/page.tsx        # 소개 페이지
 ```
 
