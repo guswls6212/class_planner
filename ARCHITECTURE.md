@@ -144,6 +144,26 @@ src/hooks/             # 커스텀 React 훅
 
 src/contexts/          # React Context
 └── ThemeContext.tsx    # 테마 (Dark/Light)
+
+src/middleware/         # API Route 미들웨어
+├── cors.ts            # CORS 헤더 (POST/PUT/DELETE에만 적용)
+└── logging.ts         # 요청 로깅
+
+src/shared/            # 계층 간 공유 타입/상수
+├── constants/
+│   └── sessionConstants.ts  # 세션 관련 상수 (시간 범위, 요일 등)
+└── types/
+    ├── ApplicationTypes.ts  # Application 계층 DTO
+    ├── CommonTypes.ts       # 공통 타입 (ID, Timestamp 등)
+    ├── DomainTypes.ts       # Domain 계층 인터페이스
+    ├── index.ts             # 재export
+    └── scheduleTypes.ts     # Schedule 전용 타입
+
+src/types/             # 레거시 타입 (shared/types로 점진 통합 예정)
+└── scheduleTypes.ts   # Schedule 관련 타입
+
+src/utils/             # 클라이언트 유틸리티
+└── supabaseClient.ts  # Supabase 브라우저 클라이언트 싱글톤
 ```
 
 ## 3. 데이터 모델

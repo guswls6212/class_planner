@@ -55,7 +55,10 @@ class-planner/
 │       └── specs/
 │           ├── 2026-04-12-branching-strategy-design.md
 │           ├── 2026-04-12-phase2b-code-quality-design.md
-│           └── 2026-04-13-data-conflict-modal-redesign.md
+│           ├── 2026-04-13-data-conflict-modal-redesign.md
+│           ├── 2026-04-14-member-invite-design.md
+│           ├── 2026-04-14-onboarding-flow-design.md
+│           └── 2026-04-15-error-handling-design.md
 │
 ├── migration/
 │   ├── MIGRATION_GUIDE.md
@@ -179,7 +182,7 @@ class-planner/
     │   │   ├── StudentListItem.tsx (+.module.css)
     │   │   ├── SubjectListItem.tsx (+.module.css)
     │   │   ├── ThemeToggle.tsx
-    │   │   └── __tests__/ (11 test files)
+    │   │   └── __tests__/ (8 test files)
     │   ├── molecules/
     │   │   ├── ConfirmModal.tsx (+.module.css)
     │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달

@@ -251,6 +251,8 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `SubjectList` | `SubjectList.tsx` | `subjects`, `selectedSubjectId`, `onSelect`, `onDelete`, `onUpdate` | 과목 목록 (SubjectListItem 반복) |
 | `TimeTableRow` | `TimeTableRow.tsx` | `weekday`, `height`, `sessions`, `subjects`, `enrollments`, `students`, ... | TimeTableGrid 내 1개 요일 행. SessionBlock + DropZone 조합 |
 
+> `ScheduleHeader`는 `src/components/molecules/`에 없음 — `src/app/schedule/_components/`에만 존재 (§3.4 참조)
+
 ### 3.3 Organisms (`src/components/organisms/`)
 
 | 컴포넌트 | 파일 | 설명 |

@@ -116,13 +116,18 @@
 
 ## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
+> 2026-04-14 감사 결과 기반으로 세부 태스크 구체화.
 
 ### 완료
 - [x] 코딩 규칙 문서화 (`docs/code-convention.md` 신규, PR#17)
 - [x] Dead code 제거: molecules/ScheduleHeader.tsx, auth route.test, useDebounce.test, useForm.test, page.tsx.backup (PR#17)
-- [x] 고아 테스트 파일 삭제: FilterPanel, Pagination, SearchBox (PR#18)
+- [x] 고아 테스트 파일 삭제: FilterPanel, Pagination, SearchBox, Modal, Loading, Checkbox, scrollPositionManager, scrollPositionStorage, SubjectDomainService, SessionDomainService (PR#18)
 - [x] 문서 구조화: UI_SPEC.md 신규 작성, ARCHITECTURE.md 현행화, 문서 archive (PR#16)
-- [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정 (PR#18)
+- [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정
+- [x] ARCHITECTURE.md §2.6 누락 디렉터리 추가 (src/middleware, src/shared, src/types, src/utils)
+- [x] Infrastructure 테스트 커버리지 50% → 80% (factories, config, registry, index — 71 tests)
+- [x] Lib 테스트 커버리지 60% → 80% (apiSync, authUtils, resolveAcademyId, supabaseServiceRole, timeUtils, yPositionMigration — 49 tests)
+- [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
 
 ### 남은 항목
 - [ ] 에러 핸들링 체계화
@@ -131,7 +136,7 @@
 - [ ] 접근성(a11y) 개선
 
 ## Phase 3: 디자인 리뉴얼 (계획)
-> Phase 2 완료 후 안정된 구조 위에서 진행.
+> Phase 2B 안정화 후 진행.
 
 - [ ] UI/UX 감사 (현재 디자인 문제점 정리)
 - [ ] 디자인 시스템 정의 (색상, 타이포그래피, 간격)
@@ -146,6 +151,19 @@
 - [ ] 출석 관리 기능
 - [ ] 월별/주별 시간표 뷰
 - [ ] 시간표 템플릿 기능
+
+---
+
+## 실행 우선순위 가이드
+
+| 우선순위 | 태스크 | 이유 |
+|---------|--------|------|
+| **P0** | 2B-2, 2B-3 | Dead code/깨진 링크 — CI 영향 가능, 빠른 수정 |
+| **P1** | 2B-4 | ARCHITECTURE.md 완성 — AI 컨텍스트 품질 향상 |
+| **P2** | 2B-5, 2B-6 | 테스트 커버리지 — 안정성 기반 |
+| **P3** | 2B-7 | Schedule 테스트 — 가장 복잡한 페이지 안정화 |
+| **P4** | 2B-8, 2B-9 | 리팩토링 — 코드 수정 시 점진적으로 병행 |
+| **P5** | 2B-10 | 기타 품질 — 장기 과제 |
 
 ---
 

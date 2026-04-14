@@ -26,6 +26,7 @@
 | 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
 | AI 워크플로우 (Superpowers, 훅, opusplan) | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | AI 도구/모드 사용 시 |
 | 기능 설계 문서 | [docs/superpowers/specs/](docs/superpowers/specs/) | 기능 배경 이해 시 |
+| AI 워크플로우, 도구 선택 기준 | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | Superpowers/도구 사용 시 |
 
 ## 기술 스택
 - **Frontend:** Next.js 15.5.9 (App Router), React 19, TypeScript 5
