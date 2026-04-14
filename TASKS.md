@@ -166,18 +166,18 @@
 - [x] `lib/timeUtils.ts` 테스트 (11 tests: KST conversions, formatting)
 - [x] `lib/yPositionMigration.ts` 테스트 (14 tests: pixel↔logical, migration)
 
-### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지
-> schedule/_components 5개, _utils 5개 미테스트.
-- [ ] `schedule/_components/EditSessionModal.tsx` 테스트
-- [ ] `schedule/_components/PdfDownloadSection.tsx` 테스트
-- [ ] `schedule/_components/ScheduleGridSection.tsx` 테스트
-- [ ] `schedule/_components/ScheduleHeader.tsx` 테스트
-- [ ] `schedule/_components/StudentPanelSection.tsx` 테스트
-- [ ] `schedule/_utils/dndHelpers.ts` 테스트
-- [ ] `schedule/_utils/collisionHelpers.ts` 테스트
-- [ ] `schedule/_utils/collisionQueries.ts` 테스트
-- [ ] `schedule/_utils/editSaveHandlers.ts` 테스트
-- [ ] `schedule/_utils/modalHandlers.ts` 테스트
+### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지 (유틸 완료)
+> _utils 5개 테스트 완료. _components 5개는 RTL 필요하므로 별도 진행.
+- [ ] `schedule/_components/EditSessionModal.tsx` 테스트 (RTL)
+- [ ] `schedule/_components/PdfDownloadSection.tsx` 테스트 (RTL)
+- [ ] `schedule/_components/ScheduleGridSection.tsx` 테스트 (RTL)
+- [ ] `schedule/_components/ScheduleHeader.tsx` 테스트 (RTL)
+- [ ] `schedule/_components/StudentPanelSection.tsx` 테스트 (RTL)
+- [x] `schedule/_utils/dndHelpers.ts` 테스트 (8 tests)
+- [x] `schedule/_utils/collisionHelpers.ts` 테스트 (6 tests)
+- [x] `schedule/_utils/collisionQueries.ts` 테스트 (8 tests)
+- [x] `schedule/_utils/editSaveHandlers.ts` 테스트 (4 tests)
+- [x] `schedule/_utils/modalHandlers.ts` 테스트 (7 tests)
 
 ### 2B-8: 대형 파일 분할 (300줄 초과)
 > code-convention.md 기준. 기존 위반 파일 점진적 리팩토링.
