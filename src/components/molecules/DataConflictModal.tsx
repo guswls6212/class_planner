@@ -285,8 +285,8 @@ const NameSection: React.FC<NameSectionProps> = ({ label, names, unit = "명" })
     </div>
     {names.length > 0 && (
       <ul className={styles.nameList}>
-        {names.map((name) => (
-          <li key={name} className={styles.nameItem}>
+        {names.map((name, idx) => (
+          <li key={`${name}-${idx}`} className={styles.nameItem}>
             {name}
           </li>
         ))}
