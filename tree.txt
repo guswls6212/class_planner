@@ -323,7 +323,6 @@ tests/
 └── integration/
     ├── api-integration.test.ts
     ├── mock-supabase.test.ts
-    ├── real-supabase.test.ts
     └── schedule-features.test.ts
 
 # __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 100+ 테스트 파일, 위 구조에서 생략)
