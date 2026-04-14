@@ -1,26 +1,17 @@
 import { Subject } from "@/domain/entities/Subject";
 import { logger } from "../../lib/logger";
 import { SubjectRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 
 export class SubjectApplicationServiceImpl {
   constructor(private subjectRepository: SubjectRepository) {}
 
   async getAllSubjects(academyId: string): Promise<Subject[]> {
-    try {
-      return await this.subjectRepository.getAll(academyId);
-    } catch (error) {
-      logger.error("과목 목록 조회 중 에러 발생:", undefined, error as Error);
-      return [];
-    }
+    return this.subjectRepository.getAll(academyId);
   }
 
   async getSubjectById(id: string): Promise<Subject | null> {
-    try {
-      return await this.subjectRepository.getById(id);
-    } catch (error) {
-      logger.error("과목 조회 중 에러 발생:", undefined, error as Error);
-      return null;
-    }
+    return this.subjectRepository.getById(id);
   }
 
   async addSubject(
@@ -34,7 +25,7 @@ export class SubjectApplicationServiceImpl {
       );
 
       if (isDuplicate) {
-        throw new Error("이미 존재하는 과목 이름입니다.");
+        throw new AppError("SUBJECT_NAME_DUPLICATE", { statusHint: 409 });
       }
 
       const newSubject = Subject.create(subjectData.name, subjectData.color);
@@ -56,7 +47,7 @@ export class SubjectApplicationServiceImpl {
     try {
       const existingSubject = await this.subjectRepository.getById(id, academyId);
       if (!existingSubject) {
-        throw new Error("존재하지 않는 과목입니다.");
+        throw new AppError("SUBJECT_NOT_FOUND", { statusHint: 404 });
       }
 
       const existingSubjects = await this.subjectRepository.getAll(academyId);
@@ -66,7 +57,7 @@ export class SubjectApplicationServiceImpl {
       );
 
       if (isDuplicate) {
-        throw new Error("이미 존재하는 과목 이름입니다.");
+        throw new AppError("SUBJECT_NAME_DUPLICATE", { statusHint: 409 });
       }
 
       return await this.subjectRepository.update(id, subjectData, academyId);

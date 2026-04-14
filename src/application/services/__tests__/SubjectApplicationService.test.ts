@@ -1,5 +1,6 @@
 import { Subject } from "@/domain/entities/Subject";
 import { SubjectRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubjectApplicationServiceImpl } from "../SubjectApplicationService";
 
@@ -49,6 +50,14 @@ describe("SubjectApplicationService", () => {
       // Assert
       expect(result).toHaveLength(0);
     });
+
+    it("repository 에러 시 에러를 전파해야 한다 (silent fail 금지)", async () => {
+      vi.spyOn(mockSubjectRepository, "getAll").mockRejectedValue(
+        new Error("DB connection failed")
+      );
+
+      await expect(service.getAllSubjects("test-academy-id")).rejects.toThrow();
+    });
   });
 
   describe("addSubject", () => {
@@ -56,7 +65,7 @@ describe("SubjectApplicationService", () => {
       // Arrange
       const input = { name: "과학", color: "#0000FF" };
       const mockSubject = Subject.create(input.name, input.color);
-
+      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([]);
       vi.spyOn(mockSubjectRepository, "create").mockResolvedValue(mockSubject);
 
       // Act
@@ -66,12 +75,23 @@ describe("SubjectApplicationService", () => {
       expect(result.name).toBe("과학");
       expect(result.color.value).toBe("#0000FF");
       expect(mockSubjectRepository.create).toHaveBeenCalledWith(
-        {
-          name: "과학",
-          color: "#0000FF",
-        },
+        { name: "과학", color: "#0000FF" },
         "test-academy-id"
       );
+    });
+
+    it("중복 이름 추가 시 SUBJECT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
+      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([
+        Subject.create("수학", "#FF0000"),
+      ]);
+
+      const error = await service
+        .addSubject({ name: "수학", color: "#FF0000" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("SUBJECT_NAME_DUPLICATE");
+      expect(error.statusHint).toBe(409);
     });
   });
 
@@ -102,6 +122,14 @@ describe("SubjectApplicationService", () => {
       // Assert
       expect(result).toBeNull();
     });
+
+    it("repository 에러 시 에러를 전파해야 한다 (silent fail 금지)", async () => {
+      vi.spyOn(mockSubjectRepository, "getById").mockRejectedValue(
+        new Error("DB connection failed")
+      );
+
+      await expect(service.getSubjectById("any-id")).rejects.toThrow();
+    });
   });
 
   describe("updateSubject", () => {
@@ -112,31 +140,48 @@ describe("SubjectApplicationService", () => {
       const existingSubject = Subject.create("영어", "#0000FF");
       const updatedSubject = Subject.create(updateData.name, updateData.color);
 
-      // Mock: 기존 과목이 존재한다고 설정
-      vi.spyOn(mockSubjectRepository, "getById").mockResolvedValue(
-        existingSubject
-      );
-      // Mock: 업데이트 결과 설정
-      vi.spyOn(mockSubjectRepository, "update").mockResolvedValue(
-        updatedSubject
-      );
+      vi.spyOn(mockSubjectRepository, "getById").mockResolvedValue(existingSubject);
+      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([existingSubject]);
+      vi.spyOn(mockSubjectRepository, "update").mockResolvedValue(updatedSubject);
 
       // Act
-      const result = await service.updateSubject(
-        subjectId,
-        updateData,
-        "test-academy-id"
-      );
+      const result = await service.updateSubject(subjectId, updateData, "test-academy-id");
 
       // Assert
       expect(result.name).toBe("수학");
       expect(result.color.value).toBe("#FF0000");
       expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId, "test-academy-id");
-      expect(mockSubjectRepository.update).toHaveBeenCalledWith(
-        subjectId,
-        updateData,
-        "test-academy-id"
-      );
+      expect(mockSubjectRepository.update).toHaveBeenCalledWith(subjectId, updateData, "test-academy-id");
+    });
+
+    it("존재하지 않는 과목 업데이트 시 SUBJECT_NOT_FOUND AppError를 throw해야 한다", async () => {
+      vi.spyOn(mockSubjectRepository, "getById").mockResolvedValue(null);
+
+      const error = await service
+        .updateSubject("non-existent", { name: "수학", color: "#FF0000" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("SUBJECT_NOT_FOUND");
+      expect(error.statusHint).toBe(404);
+    });
+
+    it("이름 변경 시 중복 이름이면 SUBJECT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
+      const existingSubject = Subject.create("영어", "#0000FF");
+      const otherSubject = Subject.create("수학", "#FF0000");
+      vi.spyOn(mockSubjectRepository, "getById").mockResolvedValue(existingSubject);
+      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([
+        existingSubject,
+        otherSubject,
+      ]);
+
+      const error = await service
+        .updateSubject("some-id", { name: "수학", color: "#FF0000" }, "test-academy-id")
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("SUBJECT_NAME_DUPLICATE");
+      expect(error.statusHint).toBe(409);
     });
   });
 
