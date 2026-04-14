@@ -144,19 +144,9 @@ src/contexts/          # React Context
 
 ## 3. 데이터 모델
 
-### 3.1 현재 구조 (Supabase JSONB)
-`user_data` 테이블에 사용자별 전체 데이터를 단일 JSONB 컬럼에 저장:
-```typescript
-interface ClassPlannerData {
-  students: Student[];      // { id, name, gender? }
-  subjects: Subject[];      // { id, name, color? }
-  sessions: Session[];      // { id, enrollmentIds?, weekday, startsAt, endsAt, room?, yPosition? }
-  enrollments: Enrollment[]; // { id, studentId, subjectId }
-}
-```
-
-### 3.2 마이그레이션 목표 (정규화 + Academy 멀티테넌트)
-> ADR-002 참조. 정규화와 Academy 기반 멀티테넌트 구조를 Phase 2A에서 동시에 도입.
+### 3.1 현재 구조 (정규화 + Academy 멀티테넌트)
+> Phase 2A 완료 (2026-04-14). ADR-002 참조.
+> 레거시 `user_data` JSONB 테이블은 마이그레이션 019로 제거됨.
 
 ```sql
 -- 학원 (테넌트 단위)

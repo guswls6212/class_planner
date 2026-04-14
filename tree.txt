@@ -74,7 +74,8 @@ class-planner/
 │       ├── 015_refactor_user_data_table.sql
 │       ├── 016_create_academy_tables.sql
 │       ├── 017_rls_academy_based.sql
-│       └── 018_migrate_jsonb_to_normalized.sql
+│       ├── 018_migrate_jsonb_to_normalized.sql
+│       └── 019_drop_user_data.sql
 │
 ├── nginx/
 │   ├── default.conf
@@ -309,7 +310,6 @@ tests/
 └── integration/
     ├── api-integration.test.ts
     ├── mock-supabase.test.ts
-    ├── real-supabase.test.ts
     └── schedule-features.test.ts
 
 # __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 100+ 테스트 파일, 위 구조에서 생략)
