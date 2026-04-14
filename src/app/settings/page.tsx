@@ -115,7 +115,9 @@ export default function SettingsPage() {
   };
 
   const handleCopyLink = async (link: string) => {
-    await navigator.clipboard.writeText(link);
+    if (typeof window !== "undefined" && window.navigator?.clipboard) {
+      await window.navigator.clipboard.writeText(link);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
