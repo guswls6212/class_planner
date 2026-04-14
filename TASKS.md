@@ -143,13 +143,12 @@
 - [x] `docs/TESTING_STRATEGY.md` — PROJECT_STRUCTURE, README 링크 제거. Infrastructure 커버리지 상태 수정 (✅→⚠️ 50%)
 - [x] `docs/TESTING_COMMANDS.md` — PROJECT_STRUCTURE 링크 제거, TESTING_STRATEGY/DEVELOPMENT_WORKFLOW로 교체
 
-### 2B-4: ARCHITECTURE.md 완성도 보강
-> 현재 §2에 누락된 src/ 하위 디렉터리 5개 추가.
-- [ ] `src/middleware/` (cors.ts, logging.ts) 섹션 추가
-- [ ] `src/shared/` (constants/, types/) 섹션 추가
-- [ ] `src/types/` (scheduleTypes.ts) 섹션 추가 또는 shared/types와 관계 명시
-- [ ] `src/utils/` (supabaseClient.ts) 섹션 추가
-- [ ] `src/contexts/` 이미 있으나 설명 보강
+### 2B-4: ARCHITECTURE.md 완성도 보강 ✅
+> §2.6에 누락된 src/ 하위 디렉터리 추가.
+- [x] `src/middleware/` (cors.ts, logging.ts) 섹션 추가
+- [x] `src/shared/` (constants/, types/) 섹션 추가
+- [x] `src/types/` (scheduleTypes.ts) 섹션 추가 — shared/types로 점진 통합 예정 명시
+- [x] `src/utils/` (supabaseClient.ts) 섹션 추가
 
 ### 2B-5: Infrastructure 테스트 커버리지 (50% → 80%)
 > 현재 팩토리 4개 + config + index.ts 전부 미테스트.
