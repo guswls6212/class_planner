@@ -166,13 +166,13 @@
 - [x] `lib/timeUtils.ts` 테스트 (11 tests: KST conversions, formatting)
 - [x] `lib/yPositionMigration.ts` 테스트 (14 tests: pixel↔logical, migration)
 
-### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지 (유틸 완료)
-> _utils 5개 테스트 완료. _components 5개는 RTL 필요하므로 별도 진행.
-- [ ] `schedule/_components/EditSessionModal.tsx` 테스트 (RTL)
-- [ ] `schedule/_components/PdfDownloadSection.tsx` 테스트 (RTL)
-- [ ] `schedule/_components/ScheduleGridSection.tsx` 테스트 (RTL)
-- [ ] `schedule/_components/ScheduleHeader.tsx` 테스트 (RTL)
-- [ ] `schedule/_components/StudentPanelSection.tsx` 테스트 (RTL)
+### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지 ✅
+> _utils 5개 + _components 5개 테스트 완료. 총 56 new tests.
+- [x] `schedule/_components/EditSessionModal.tsx` 테스트 (12 tests: 렌더링, 학생태그, 과목, 시간에러, 버튼)
+- [x] `schedule/_components/PdfDownloadSection.tsx` 테스트 (2 tests: prop 전달, 로딩 상태)
+- [x] `schedule/_components/ScheduleGridSection.tsx` 테스트 (3 tests: 렌더링, prop 전달, ref)
+- [x] `schedule/_components/ScheduleHeader.tsx` 테스트 (6 tests: 제목, 로딩, 에러, 학생 선택)
+- [x] `schedule/_components/StudentPanelSection.tsx` 테스트 (2 tests: 렌더링, prop 전달)
 - [x] `schedule/_utils/dndHelpers.ts` 테스트 (8 tests)
 - [x] `schedule/_utils/collisionHelpers.ts` 테스트 (6 tests)
 - [x] `schedule/_utils/collisionQueries.ts` 테스트 (8 tests)
