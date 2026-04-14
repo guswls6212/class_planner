@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { logger } from "../../../lib/logger";
+import { showError } from "../../../lib/toast";
 import type { Enrollment, Session, Student } from "../../../lib/planner";
 
 // page.tsx와 동일한 로거 인스턴스를 사용
@@ -238,7 +239,7 @@ export function buildHandleSessionDrop(params: {
       setGridVersion((v) => v + 1);
     } catch (error) {
       logger.error("세션 위치 업데이트 실패", { sessionId }, error as Error);
-      alert("세션 이동에 실패했습니다.");
+      showError("세션 이동에 실패했습니다.");
     }
   };
 }

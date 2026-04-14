@@ -30,6 +30,7 @@ import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
+import { showError, showToast } from "../../lib/toast";
 import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
@@ -613,7 +614,7 @@ function SchedulePageContent(): JSX.Element {
     if (!groupModalData.studentIds.includes(studentId)) {
       // 🆕 최대 14명 제한 확인
       if (groupModalData.studentIds.length >= 14) {
-        alert("최대 14명까지 추가할 수 있습니다.");
+        showToast("warning", "최대 14명까지 추가할 수 있습니다.");
         return;
       }
 
@@ -675,7 +676,7 @@ function SchedulePageContent(): JSX.Element {
     if (student && !groupModalData.studentIds.includes(student.id)) {
       // 🆕 최대 14명 제한 확인
       if (groupModalData.studentIds.length >= 14) {
-        alert("최대 14명까지 추가할 수 있습니다.");
+        showToast("warning", "최대 14명까지 추가할 수 있습니다.");
         return;
       }
       addStudent(student.id);
@@ -718,7 +719,7 @@ function SchedulePageContent(): JSX.Element {
     // 🆕 과목 선택 검증
     if (!data.subjectId) {
       logger.warn("과목 선택 검증 실패");
-      alert(ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
+      showToast("warning", ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
       return;
     }
     logger.debug("과목 선택 검증 통과");
@@ -726,7 +727,7 @@ function SchedulePageContent(): JSX.Element {
     // 🆕 학생 선택 검증
     if (!data.studentIds || data.studentIds.length === 0) {
       logger.warn("학생 선택 검증 실패");
-      alert(ERROR_MESSAGES.STUDENT_NOT_SELECTED);
+      showToast("warning", ERROR_MESSAGES.STUDENT_NOT_SELECTED);
       return;
     }
     logger.debug("학생 선택 검증 통과");
@@ -756,7 +757,7 @@ function SchedulePageContent(): JSX.Element {
       logger.debug("세션 추가 완료");
     } catch (error) {
       logger.error("세션 추가 실패", undefined, error as Error);
-      alert("세션 추가에 실패했습니다.");
+      showError("세션 추가에 실패했습니다.");
     }
   };
 

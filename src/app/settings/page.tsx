@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
+import { showError } from "../../lib/toast";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "원장",
@@ -71,6 +72,7 @@ export default function SettingsPage() {
       }
     } catch (err) {
       logger.error("설정 데이터 로드 실패", undefined, err as Error);
+      showError("설정 데이터 로드에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -94,9 +96,12 @@ export default function SettingsPage() {
         const link = `${window.location.origin}/invite/${data.data.token}`;
         setGeneratedLink(link);
         await fetchData();
+      } else {
+        showError(data.error?.message ?? "초대 링크 생성에 실패했습니다.");
       }
     } catch (err) {
       logger.error("초대 링크 생성 실패", undefined, err as Error);
+      showError("초대 링크 생성에 실패했습니다.");
     } finally {
       setIsCreatingInvite(false);
     }
