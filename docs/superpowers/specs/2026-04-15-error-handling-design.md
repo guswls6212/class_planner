@@ -1,8 +1,62 @@
 # F3: 에러 핸들링 체계화 설계 문서
 
 **작성일:** 2026-04-15  
-**상태:** 설계 초안 (구현 미착수)  
+**상태:** 설계 확정 (구현 대기)  
 **연관 TASKS.md:** Phase 2B — 에러 핸들링 체계화
+
+---
+
+## 🎯 확정된 설계 결정 (2026-04-15)
+
+> 아래 결정은 § 7 오픈 질문에 대한 최종 확정 사항이며, 마이그레이션(§ 5) 구현 시 반드시 준수한다.
+
+### D1. 에러 메시지 언어 정책 — **코드 기반 i18n (ko 우선)**
+- **Domain / Application / Infrastructure 레이어:** 에러 코드만 throw/전파. 사용자 표시용 메시지를 내부에서 생성하지 않는다.
+- **API Response:** 서버가 내려주는 메시지(사전 정의된 ko)를 **UI는 그대로 사용**한다. 클라이언트는 이를 다시 i18n 매핑하지 않는다 (이중 관리 방지).
+- **순수 프론트 validation 에러** (폼 입력값 검증 등 서버 왕복 없는 경우)만 클라이언트 i18n 매핑 파일(`src/lib/errors/messages.ko.ts` 예정)을 사용.
+- **경계 원칙:** 서버를 경유한 에러 → 서버 message 신뢰. 경유 없는 프론트 전용 validation → 클라이언트 매핑. 둘을 섞지 않는다.
+
+### D2. fireAndForget 연속 실패 알림 — **3회 연속 실패 시 toast 1회 + 재시도**
+- **재시도 전략:** exponential backoff (1s → 2s → 4s → … , **최대 간격 30초**).
+- **상한:** 최대 **10회 재시도** 후 큐 유지 + 사용자 수동 액션 대기 상태로 전환.
+- **토스트 메시지:** `서버 동기화 지연 중 — 로컬 데이터는 안전합니다.`
+- **토스트 빈도:** 실패가 지속돼도 토스트는 3회 연속 실패 시점에 1회만. 재성공 시 상태 리셋.
+
+### D3. errorTracker 활성화 범위 — **§ 7의 원래 질문은 이 차원이 아니라 § 5 Step 6의 스코프 문제**
+→ 별도 결정 보류. Step 3~5 완료 후 효과 평가 기반으로 결정.
+
+### D4. Toast UI — **sonner + 래퍼 (`src/lib/toast.ts`)**
+- **라이브러리:** [sonner](https://sonner.emilkowal.ski/) 명령형 API 사용.
+- **의존성 격리:** sonner를 직접 import하지 않는다. 전역 래퍼 `src/lib/toast.ts`가 `showToast`, `showError`, `showSuccess` 등을 export하고, 코드베이스 전체는 `import { showToast } from '@/lib/toast'`로만 접근.
+- **목적:** 추후 라이브러리 교체 시 래퍼 하나만 수정하면 되도록 의존성 격리.
+- **기존 CustomEvent 방식 폐기:** `useTimeValidation.ts:45-86`의 `dispatchToast`는 sonner 래퍼 호출로 리팩토링 (P5 버그 해소는 이 단계에서 자동 해결).
+
+### D5. API 에러 응답 포맷 — **code + message 모두 노출, details는 dev only**
+```jsonc
+// 성공
+{ "success": true, "data": T }
+
+// 에러
+{
+  "success": false,
+  "error": {
+    "code": "STUDENT_NAME_DUPLICATE",          // 기계 판독용
+    "message": "이미 존재하는 학생 이름입니다."  // 사전 정의된 사용자 메시지
+    // "details": { ... }  // dev 환경에서만 포함 (원인 에러 요약)
+  }
+}
+```
+- `message`는 **사전 정의된 사용자용 메시지**만 포함. `catch`된 원본 `e.message`를 그대로 담지 않는다 (정보 유출 + 번역 불일치 방지).
+- `details`는 `process.env.NODE_ENV === 'development'` 일 때만 포함.
+
+### D6. 에러 코드 네이밍 컨벤션 — **`{ENTITY}_{FIELD}_{RULE}` SNAKE_CASE**
+- 예: `STUDENT_NAME_REQUIRED`, `STUDENT_NAME_DUPLICATE`, `ACADEMY_MEMBER_LIMIT_EXCEEDED`, `INVITE_TOKEN_EXPIRED`.
+- 새 에러 코드를 추가할 때는 **반드시 `src/lib/errors/messages.ko.ts` 매핑도 같은 PR에 동반**한다. 매핑 없는 코드는 UI 공백 렌더 위험.
+
+### D7. 추후 작업 기록 원칙
+- 현재 스코프 밖 개선 아이디어(예: 동기화 상태 아이콘 UI, ja.ts 다국어 파일, 동기화 큐 상태 관리)는 **코드 내 `// TODO:` 주석을 남기지 않는다**.
+- 대신 `docs/superpowers/specs/` 또는 프로젝트 적절한 위치에 **별도 TODO/FUTURE 문서**로 기록.
+- 각 항목: 무엇/왜/어떤 방향/발견 경위를 명시해 이후 세션에서 맥락 복원 가능하도록.
 
 ---
 
@@ -299,14 +353,20 @@ function toErrorResponse(error: unknown): NextResponse {
 
 > **원칙:** 한 레이어씩. 각 단계는 독립된 PR. 테스트 먼저.
 
-### Step 1 — Toast 버그 수정 (P5, 즉시)
-- `src/app/layout.tsx`에 `CustomEvent("toast")` 리스너 추가
-- 별도 ToastProvider 컴포넌트 또는 레이아웃 내 상태로 구현
-- 기존 `useTimeValidation.ts` 코드 변경 불필요
+### Step 1 — Toast 시스템 교체 (sonner + 래퍼)
+- `sonner` 패키지 추가, `src/lib/toast.ts` 래퍼 생성 (`showToast`, `showError`, `showSuccess`).
+- `src/app/layout.tsx`에 `<Toaster />` 마운트.
+- `src/hooks/useTimeValidation.ts:45-86`의 `dispatchToast` → `showError` 호출로 리팩토링 (P5 버그 자동 해소).
+- sonner 직접 import는 **`src/lib/toast.ts` 내부에서만** 허용 (다른 파일은 전부 래퍼 경유).
+- 테스트: 시간 검증 실패 시 실제 토스트 렌더 확인 (Playwright).
 
-### Step 2 — `src/lib/errors/` 신규 (AppError, DomainErrors, httpErrors)
+### Step 2 — `src/lib/errors/` 신규 (AppError, DomainErrors, messages.ko, httpErrors)
+- `AppError.ts` — code + statusHint + cause 보유하는 기본 클래스 (message는 messages.ko에서 조회).
+- `codes.ts` — 모든 에러 코드 상수 (SNAKE_CASE, `{ENTITY}_{FIELD}_{RULE}`).
+- `messages.ko.ts` — `Record<ErrorCode, string>` ko 매핑. 미매핑 코드 fallback 처리 포함.
+- `httpErrors.ts` — `toErrorResponse(error): NextResponse` (code/message/details dev-only).
 - 기존 코드 변경 없음. 유틸만 추가.
-- 테스트: AppError 직렬화, toErrorResponse 동작 검증
+- 테스트: AppError 생성/직렬화, messages.ko 매핑 조회, toErrorResponse 분기.
 
 ### Step 3 — Application Services 통일
 - StudentApplicationService: 패턴 A(throw)를 AppError로 교체, 패턴 B(silent fail) 제거
@@ -319,11 +379,12 @@ function toErrorResponse(error: unknown): NextResponse {
 - 상태 코드 정합성 수정 (subjects 중복 → 409)
 - `error`/`message`/`reason` 키 → `error.code` + `error.message` 통일
 
-### Step 5 — UI 에러 피드백 추가
-- settings/page.tsx, students/page.tsx: catch 블록에 토스트/setError 추가
-- PDFDownloadButton: 에러 시 사용자 알림
+### Step 5 — UI 에러 피드백 추가 & apiSync 재시도 큐
+- settings/page.tsx, students/page.tsx, schedule/page.tsx: catch 블록에 `showError(code)` 추가.
+- PDFDownloadButton: 에러 시 사용자 알림.
+- **apiSync 재시도 큐 도입** (D2): exponential backoff (1s→2s→4s→…, max 30s, 10회). 3회 연속 실패 시 `showToast("warning", "서버 동기화 지연 중 — 로컬 데이터는 안전합니다.")` 1회. 재성공 시 상태 리셋.
 
-### Step 6 — errorTracker 활성화 (선택)
+### Step 6 — errorTracker 활성화 (보류, D3)
 - API routes의 catch 블록에서 trackError 호출
 - 에러 카테고리 정보 함께 전달
 
@@ -357,15 +418,15 @@ function toErrorResponse(error: unknown): NextResponse {
 
 ---
 
-## 7. 오픈 질문 (사용자 결정 필요)
+## 7. 오픈 질문 → 확정 기록 (2026-04-15 결정)
 
-| # | 질문 | 선택지 |
+| # | 원 질문 | 결정 |
 |---|---|---|
-| Q1 | AppError 에러 메시지 언어 정책 | (A) 한국어 (사용자 표시용, 클라이언트로 전달) / (B) 영어 (code만 전달, 프론트에서 i18n 메시지 매핑) |
-| Q2 | fireAndForget 연속 실패 알림 기준 | (A) 현행 유지 (logger만) / (B) N회 연속 실패 시 토스트 표시 (N=?) |
-| Q3 | errorTracker 활성화 범위 | (A) Step 6 포함 (API route 전체) / (B) 선택적 (CRITICAL 에러만) / (C) 다음 Phase로 연기 |
-| Q4 | Toast UI 구현 방식 | (A) layout에 전역 CustomEvent 리스너 (기존 useTimeValidation 호환) / (B) React Context 기반 ToastProvider 신규 |
-| Q5 | API 에러 응답에서 `message` 클라이언트 노출 | (A) 항상 노출 (한국어 UX 편의) / (B) 개발 환경만 노출 / (C) 노출 안 함 (code로만) |
+| Q1 | 에러 메시지 언어 정책 | 코드 기반 i18n (ko 우선). 서버 경유 에러는 서버 message 사용, 프론트 validation만 클라이언트 매핑. D1 참조. |
+| Q2 | fireAndForget 연속 실패 알림 | 3회 연속 실패 시 toast 1회 + exponential backoff 재시도 (max 30s, 10회). D2 참조. |
+| Q3 | errorTracker 활성화 범위 | 보류 (Step 3~5 완료 후 재검토). |
+| Q4 | Toast UI 구현 방식 | sonner + `src/lib/toast.ts` 래퍼. D4 참조. |
+| Q5 | API 에러 응답 message 노출 | code + 사전정의 message 모두 노출, details는 dev only. D5 참조. |
 
 ---
 
