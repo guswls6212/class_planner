@@ -15,6 +15,11 @@ import {
 } from "./deduplication";
 import { logger } from "../logger";
 
+/** "HH:MM" → "2000-01-01THH:MM:00Z" — API가 new Date()로 파싱할 수 있는 형식 */
+function toISOTimeString(hhmm: string): string {
+  return `2000-01-01T${hhmm}:00Z`;
+}
+
 export type MigrationSyncResult = {
   success: boolean;
   syncedCounts: {
@@ -274,8 +279,9 @@ export async function migrateLocalDataToServer(
           subjectId,
           enrollmentIds: newEnrollmentIds,
           weekday: session.weekday,
-          startsAt: session.startsAt,
-          endsAt: session.endsAt,
+          // API route가 new Date(startsAt)하므로 "HH:MM" → ISO 형식으로 변환
+          startsAt: toISOTimeString(session.startsAt),
+          endsAt: toISOTimeString(session.endsAt),
           room: session.room,
           yPosition: session.yPosition,
         }),
