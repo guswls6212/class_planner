@@ -126,19 +126,16 @@
 - [x] `src/hooks/__tests__/useForm.test.ts` 삭제 (hook 삭제됨)
 - [x] `src/app/schedule/page.tsx.backup` 삭제
 
-### 2B-2: 추가 고아 테스트 파일 정리
-> 감사에서 발견된 소스 없는 테스트 파일. 삭제 전 소스 존재 여부 재확인 필수.
-- [ ] `src/components/atoms/__tests__/SearchBox.test.tsx`
-- [ ] `src/components/atoms/__tests__/FilterPanel.test.tsx`
-- [ ] `src/components/atoms/__tests__/Pagination.test.tsx`
-- [ ] `src/components/atoms/__tests__/Modal.test.tsx`
-- [ ] `src/components/atoms/__tests__/Loading.test.tsx`
-- [ ] `src/components/atoms/__tests__/Checkbox.test.tsx`
-- [ ] `src/lib/__tests__/scrollPositionManager.test.ts`
-- [ ] `src/lib/__tests__/scrollPositionStorage.test.ts`
-- [ ] `src/domain/services/__tests__/SubjectDomainService.test.ts`
-- [ ] `src/domain/services/__tests__/SessionDomainService.test.ts`
-- [ ] `src/app/api/auth/` 빈 디렉터리 삭제 확인
+### 2B-2: 추가 고아 테스트 파일 정리 ✅
+> 감사에서 발견된 소스 없는 테스트 파일. SearchBox/FilterPanel/Pagination은 이미 삭제됨.
+- [x] `src/components/atoms/__tests__/Modal.test.tsx` 삭제
+- [x] `src/components/atoms/__tests__/Loading.test.tsx` 삭제
+- [x] `src/components/atoms/__tests__/Checkbox.test.tsx` 삭제
+- [x] `src/lib/__tests__/scrollPositionManager.test.ts` 삭제
+- [x] `src/lib/__tests__/scrollPositionStorage.test.ts` 삭제
+- [x] `src/domain/services/__tests__/SubjectDomainService.test.ts` 삭제
+- [x] `src/domain/services/__tests__/SessionDomainService.test.ts` 삭제
+- [x] `src/app/api/auth/` 빈 디렉터리 삭제
 
 ### 2B-3: 문서 깨진 링크 수정
 > 활성 문서에서 `docs/archive/`로 이동된 파일을 가리키는 링크 9건.
