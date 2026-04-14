@@ -178,16 +178,45 @@ AboutPage
 
 ### 2.6 로그인 (`/login`)
 
-**독립 페이지** (`src/app/login/page.tsx`, 309줄):
+**컴포넌트 트리:**
+```
+LoginPage (src/app/login/page.tsx, 309줄)
+  └── 카드형 로그인 UI (중앙 정렬)
+        ├── 로고 + "클래스 플래너" 타이틀
+        ├── "시간표 관리를 더 쉽게" 설명 텍스트
+        ├── Google 로그인 버튼 (아이콘 + 텍스트)
+        ├── Kakao 로그인 버튼 (아이콘 + 텍스트)
+        ├── 구분선 ("또는")
+        └── "로그인 없이 사용하기" 링크 → /schedule
+```
 
-- 이미 로그인된 사용자: 세션 감지 후 `redirectAfterLogin` URL 또는 `/`로 리다이렉트
-- 미로그인 상태: Google / Kakao OAuth 버튼 표시
-- OAuth 완료 후 `/`로 리다이렉트 (혹은 `localStorage.redirectAfterLogin` 참조)
+**동작:**
+- Google/Kakao OAuth: `supabase.auth.signInWithOAuth()` → 콜백 후 `/schedule` 리다이렉트
+- 이미 로그인 상태: 자동으로 `/schedule` 리다이렉트
+- 로그인 없이 사용: 익명 모드로 `/schedule` 진입
 
-**NavBar 로그인 (LoginButton organism):**
-- 미로그인 상태: "로그인" 버튼 → 클릭 시 모달 오픈
-- 모달 내용: "Google 계정으로 간편하게 로그인하세요" + Google 로그인 버튼
+**Nav bar LoginButton (organism):**
+- 미로그인 상태: "로그인" 버튼 → `/login`으로 이동
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
+
+### 2.7 온보딩 (`/onboarding`)
+
+**컴포넌트 트리:**
+```
+OnboardingPage (src/app/onboarding/page.tsx)
+  └── 카드형 중앙 정렬 UI (login과 동일 스타일)
+        ├── "학원 정보 설정" 타이틀
+        ├── 환영 메시지 (사용자 이름)
+        ├── 학원명 입력 (필수, 2글자 이상, placeholder: "예: 해피수학학원")
+        ├── 역할 선택 (라디오: 원장/강사/직원)
+        └── "시작하기" 버튼 → /students 리디렉트
+```
+
+**동작:**
+- 비로그인 접근 → `/login` 리디렉트
+- 이미 온보딩 완료 사용자 → `/schedule` 리디렉트
+- 제출 성공 → `onboarded=1` 쿠키 설정 (서버) + `/students` 이동
+- Middleware(`src/middleware.ts`)가 `/students`, `/subjects`, `/schedule` 접근 시 쿠키 없는 로그인 사용자를 이 페이지로 가드
 
 ---
 
@@ -253,50 +282,55 @@ AboutPage
 
 ---
 
-## 4. Custom Hooks (상태 관리)
+## 4. Custom Hooks
 
-`src/hooks/` 위치. **신규 기능은 반드시 `useXxxLocal` 훅 사용** (레거시 API 기반 훅 금지).
+### 4.1 전역 / 통합 데이터
 
-### 4.1 전역 / 통합
-
-| 훅 | 위치 | 역할 |
+| 훅 | 파일 | 역할 |
 |----|------|------|
-| `useGlobalDataInitialization` | `hooks/useGlobalDataInitialization.ts` | 로그인 후 모든 데이터 초기화, 기본 과목 생성. RootLayout에서 전역 실행 |
-| `useIntegratedDataLocal` | `hooks/useIntegratedDataLocal.ts` | localStorage 기반 students/subjects/sessions/enrollments 통합 관리 (local-first SSOT) |
+| `useGlobalDataInitialization` | `src/hooks/useGlobalDataInitialization.ts` | 앱 초기화. 익명/로그인 분기, 서버 fetch, 충돌 감지 (DataConflictModal 트리거) |
+| `useIntegratedDataLocal` | `src/hooks/useIntegratedDataLocal.ts` | 학생+과목+수강+세션 통합 Local-first 데이터 관리. 대부분의 페이지에서 사용 |
+| `useLocal` | `src/hooks/useLocal.ts` | localStorage 기반 범용 CRUD 훅. 다른 useXxxLocal 훅의 기반 |
 
 ### 4.2 개별 도메인
 
-| 훅 | 역할 |
-|----|------|
-| `useStudentManagementLocal` | 학생 CRUD (localStorage 즉시 반영 + fire-and-forget 서버 동기화) |
-| `useSubjectManagementLocal` | 과목 CRUD (동일 패턴) |
-| `useDisplaySessions` | 세션 데이터 필터링/정렬 (selectedStudentId 기반) |
-| `useStudentPanel` | 학생 패널 상태 및 드래그 상호작용 |
-| `useTimeValidation` | 시간 입력 검증 유틸리티 |
-| `useLocal` | localStorage 기반 UI 상태 (선택 학생, 테마 등) |
-
-### 4.3 Schedule 페이지 전용
-
-| 훅 | 위치 | 역할 |
+| 훅 | 파일 | 역할 |
 |----|------|------|
-| `useEditModalState` | `schedule/_hooks/useEditModalState.ts` | 편집 모달 상태 묶음 |
-| `useUiState` | `schedule/_hooks/useUiState.ts` | 드래그 상태, gridVersion |
-| `useScheduleSessionManagement` | `schedule/_hooks/` | 세션 추가/수정/삭제 |
-| `useScheduleDragAndDrop` | `schedule/_hooks/` | 드래그앤드롭 이벤트 처리 |
+| `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync) |
+| `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync) |
+| `useStudentPanel` | `src/hooks/useStudentPanel.ts` | StudentPanel 상태 관리 (검색, 선택, 드래그 소스) |
+| `useTimeValidation` | `src/hooks/useTimeValidation.ts` | 시간 유효성 검사 (시작 < 종료, 범위 체크) |
 
-### 4.4 Schedule 페이지 사용 패턴
+### 4.3 Schedule 전용
 
-```typescript
-import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
-import { useDisplaySessions } from "../../hooks/useDisplaySessions";
-import { useStudentPanel } from "../../hooks/useStudentPanel";
-import { useLocal } from "../../hooks/useLocal";
+| 훅 | 파일 | 역할 |
+|----|------|------|
+| `useScheduleSessionManagement` | `src/hooks/useScheduleSessionManagement.ts` | 세션 CRUD + 충돌 해결 (repositionSessions 연동) |
+| `useScheduleDragAndDrop` | `src/hooks/useScheduleDragAndDrop.ts` | 드래그앤드롭 이벤트 처리, DragPreview, 위치 계산 |
+| `useDisplaySessions` | `src/hooks/useDisplaySessions.ts` | 표시용 세션 데이터 가공 (필터링, 정렬, yPosition 계산) |
+| `useEditModalState` | `src/app/schedule/_hooks/useEditModalState.ts` | EditSessionModal 열기/닫기 상태 |
+| `useUiState` | `src/app/schedule/_hooks/useUiState.ts` | Schedule 페이지 UI 상태 (선택, 하이라이트 등) |
 
-const { students, subjects, sessions, enrollments } = useIntegratedDataLocal();
-const { sessions: displaySessions } = useDisplaySessions(sessions, enrollments, selectedStudentId);
-const studentPanelState = useStudentPanel(students, selectedStudentId, setSelectedStudentId);
-const [selectedStudentId, setSelectedStudentId] = useLocal("ui:selectedStudent", "");
+### 4.4 관측 / 유틸
+
+| 훅 | 파일 | 역할 |
+|----|------|------|
+| `usePerformanceMonitoring` | `src/hooks/usePerformanceMonitoring.ts` | 렌더 성능 측정 |
+| `useUserTracking` | `src/hooks/useUserTracking.ts` | 사용자 행동 추적 |
+
+### 4.5 사용 패턴
+
 ```
+SchedulePage
+  ├── useGlobalDataInitialization()  → 초기화 + 충돌 감지
+  ├── useIntegratedDataLocal()       → students, subjects, enrollments, sessions
+  ├── useScheduleSessionManagement() → 세션 CRUD
+  ├── useScheduleDragAndDrop()       → 드래그앤드롭
+  ├── useDisplaySessions()           → 표시용 세션 가공
+  └── useStudentPanel()              → 패널 상태
+```
+
+**신규 기능 훅 규칙:** `useXxxLocal` 패턴 사용. 레거시 API 기반 훅 사용 금지 (CLAUDE.md 참조).
 
 ---
 
@@ -438,6 +472,8 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/app/subjects/**` | `/subjects` |
 | `src/app/about/**` | `/about` |
 | `src/app/login/**` | `/login` |
+| `src/app/onboarding/**` | `/onboarding` |
+| `src/middleware.ts` | `/students`, `/subjects`, `/schedule` (가드 동작) |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
 | `src/components/molecules/SessionBlock*` | `/schedule` |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |

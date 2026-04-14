@@ -19,11 +19,12 @@
 | 토픽 | 문서 | 언제 읽을지 |
 |------|------|------------|
 | 계층 구조, 데이터 모델, 배포 | [ARCHITECTURE.md](ARCHITECTURE.md) | 구조적 변경 전 |
-| UI 컴포넌트, 인터랙션, 훅, 검증 라우트 | [UI_SPEC.md](UI_SPEC.md) | **UI/컴포넌트 수정 전 필독** |
-| 개발 프로세스, 테스트 전략, 브랜치 전략 | [docs/development-guide.md](docs/development-guide.md) | 개발/테스트 작업 시 |
-| 배포 절차, Lightsail, 환경 변수 | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포/환경설정 시 |
+| UI 컴포넌트, 훅, 인터랙션, 검증 라우트 | [UI_SPEC.md](UI_SPEC.md) | **UI/컴포넌트 수정 전 필독** |
+| 개발 프로세스, 테스트, 검증, E2E, 브랜치/CI | [docs/development-guide.md](docs/development-guide.md) | 개발/테스트/커밋 시 |
+| 배포 절차, 환경 변수, Lightsail | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포/환경설정 시 |
 | 코딩 규칙 (파일크기, 언어, 스타일) | [docs/code-convention.md](docs/code-convention.md) | 코드 작성/리뷰 시 |
 | 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
+| AI 워크플로우 (Superpowers, 훅, opusplan) | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | AI 도구/모드 사용 시 |
 | 기능 설계 문서 | [docs/superpowers/specs/](docs/superpowers/specs/) | 기능 배경 이해 시 |
 | AI 워크플로우, 도구 선택 기준 | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | Superpowers/도구 사용 시 |
 
@@ -70,7 +71,7 @@
 - 작업 브랜치 → `dev` PR → CI 통과 → 머지
 - `dev` → `main` PR → CI 통과 → 머지 → 자동 배포
 - hotfix 예외: `main`에서 분기 → `main` + `dev` 양쪽에 PR
-- 상세: [docs/development-guide.md](docs/development-guide.md) § 브랜치 전략
+- 상세: `docs/development-guide.md` § 브랜치 전략 & CI/CD
 
 ## 테스트 전략
 | 계층 | 목표 커버리지 | 도구 |
@@ -118,23 +119,16 @@ npm run check
 
 ## Claude Code 훅 시스템
 
-세션 시작/종료 시 자동으로 실행되는 훅들. 설정: `~/.claude/settings.json`.
+dev-pack 전체에서 공유하는 Claude Code 훅. 상세: [`../docs/ai-workflow-guide.md`](../docs/ai-workflow-guide.md)
 
-| 훅 | 실행 시점 | 역할 |
-|----|----------|------|
-| `session-start-reset.sh` | SessionStart | UI/dirty 센티넬 파일 초기화 + 레포 dirty 상태 baseline 스냅샷 |
-| `check-stale-branches.sh` | SessionStart | 미완료 작업 브랜치 감지 → 경고 주입 |
-| `dirty-tree-stop-hook.sh` | Stop | 세션에서 새로 생긴 uncommitted 파일이 있으면 세션 종료 차단 |
-| `ui-verify-stop-hook.sh` | Stop | UI 파일 변경 후 Playwright MCP 검증 없으면 세션 종료 차단 |
+| 훅 | 트리거 | 역할 | 위치 |
+|----|--------|------|------|
+| `session-start-reset.sh` | 세션 시작 | 이전 세션 센티넬 삭제, stale 브랜치 감지, baseline 저장 | `scripts/hooks/` |
+| `dirty-tree-stop-hook.sh` | 세션 종료 | 커밋되지 않은 변경 파일이 있으면 종료 차단 | `scripts/hooks/` |
+| `ui-verify-stop-hook.sh` | 세션 종료 | UI 파일 변경 시 브라우저 검증 없으면 종료 차단 | `scripts/hooks/` |
+| `check-stale-branches.sh` | 수동/세션 시작 | 로컬에 남아있는 작업 브랜치(중단된 세션) 감지 | `scripts/` |
 
-**bypass 방법:**
-```bash
-printf '%s\n%s\n' '<session_id>' '<이유>' > .claude/dirty-ok   # dirty-tree 차단 우회
-printf '%s\n%s\n' '<session_id>' '<이유>' > .claude/ui-verified # ui-verify 차단 우회
-```
-센티넬 파일은 다음 SessionStart에서 자동 삭제됨.
-
-AI 워크플로우 전체 가이드: [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md)
+**Bypass:** `.claude/dirty-ok` (dirty-tree), `.claude/ui-verified` (ui-verify) — 센티넬은 다음 세션 시작 시 자동 삭제.
 
 ## UI Verification (class-planner 전용 가이드)
 

@@ -1,13 +1,16 @@
 /**
  * POST /api/onboarding
  *
- * 신규 사용자 첫 로그인 시 academy + academy_member(owner)를 자동 생성한다.
+ * 신규 사용자 첫 로그인 시 academy + academy_member를 생성한다.
  * 멱등성 보장: 이미 academy가 있으면 생성 없이 기존 academyId를 반환한다.
+ * 두 경우 모두 onboarded 쿠키를 설정한다.
  */
 
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
+
+const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,37 +39,34 @@ export async function POST(request: NextRequest) {
         userId,
         academyId: existing.academy_id,
       });
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         academyId: existing.academy_id,
         isNew: false,
       });
+      response.headers.set("set-cookie", ONBOARDED_COOKIE);
+      return response;
     }
 
-    // 2. 사용자 메타데이터로 학원명 생성
-    const { data: userRecord, error: userError } =
-      await client.auth.admin.getUserById(userId);
+    // 2. 요청 본문에서 academyName, role 추출
+    const body = await request.json().catch(() => ({}));
+    const { academyName, role } = body as { academyName?: string; role?: string };
 
-    if (userError || !userRecord?.user) {
-      logger.error("온보딩 - 사용자 조회 실패", { userId }, userError as Error);
+    if (!academyName || academyName.trim().length < 2) {
       return NextResponse.json(
-        { success: false, error: "사용자 정보를 조회할 수 없습니다." },
-        { status: 500 }
+        { success: false, error: "학원명은 2글자 이상 입력해주세요." },
+        { status: 400 }
       );
     }
 
-    const { user } = userRecord;
-    const displayName =
-      user.user_metadata?.full_name ||
-      user.email?.split("@")[0] ||
-      "사용자";
-    const academyName = `${displayName}의 학원`;
+    const validRoles = ["owner", "admin", "member"];
+    const selectedRole = validRoles.includes(role ?? "") ? role! : "owner";
 
     // 3. academy INSERT
     const { data: academy, error: academyError } = await client
       .from("academies")
       .insert({
-        name: academyName,
+        name: academyName.trim(),
         created_by: userId,
       })
       .select("id")
@@ -80,13 +80,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. academy_members INSERT (owner)
+    // 4. academy_members INSERT
     const { error: memberError } = await client
       .from("academy_members")
       .insert({
         academy_id: academy.id,
         user_id: userId,
-        role: "owner",
+        role: selectedRole,
         invited_by: null,
       });
 
@@ -105,10 +105,10 @@ export async function POST(request: NextRequest) {
     logger.info("온보딩 완료 - 신규 academy 생성", {
       userId,
       academyId: academy.id,
-      academyName,
+      academyName: academyName.trim(),
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         academyId: academy.id,
@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+    response.headers.set("set-cookie", ONBOARDED_COOKIE);
+    return response;
   } catch (error) {
     logger.error("온보딩 처리 중 오류", undefined, error as Error);
     return NextResponse.json(

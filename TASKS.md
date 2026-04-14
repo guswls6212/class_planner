@@ -109,111 +109,27 @@
   - GET /api/sessions 403 버그 수정 (corsMiddleware 위치 오류)
   - fetch 에러 vs 빈 데이터 구분 (기본 과목 중복 생성 방지)
 - [x] ARCHITECTURE.md 업데이트 ✅ 완료 (2026-04-14)
-- [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
-- [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
-- [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
-- [ ] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로)
+- [x] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여) ✅ 완료 (2026-04-14, PR#20)
+- [x] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로) ✅ 완료 (2026-04-14, PR#19)
+- [x] 운영자 초대 기능 ✅ 완료 (2026-04-15, PR#22) — 초대 링크(1회용+7일만료), /settings 페이지, /invite/[token] 수락 페이지
+- [x] `019_drop_user_data.sql` 적용 ✅ 완료 (2026-04-14) — user_data 테이블 + 전용 함수 제거, real-supabase.test.ts 삭제
 
 ## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
 > 2026-04-14 감사 결과 기반으로 세부 태스크 구체화.
 
-### 2B-1: Dead Code / 고아 파일 정리 ✅ (PR#17)
-- [x] `src/components/molecules/ScheduleHeader.tsx` 삭제 (dead code, schedule/_components/ 버전만 사용)
-- [x] `src/components/molecules/__tests__/ScheduleHeader.test.tsx` 삭제
-- [x] `src/app/api/auth/__tests__/route.test.ts` 삭제 (auth route 삭제됨, 테스트만 잔존)
-- [x] `src/hooks/__tests__/useDebounce.test.ts` 삭제 (hook 삭제됨)
-- [x] `src/hooks/__tests__/useForm.test.ts` 삭제 (hook 삭제됨)
-- [x] `src/app/schedule/page.tsx.backup` 삭제
+### 완료
+- [x] 코딩 규칙 문서화 (`docs/code-convention.md` 신규, PR#17)
+- [x] Dead code 제거: molecules/ScheduleHeader.tsx, auth route.test, useDebounce.test, useForm.test, page.tsx.backup (PR#17)
+- [x] 고아 테스트 파일 삭제: FilterPanel, Pagination, SearchBox, Modal, Loading, Checkbox, scrollPositionManager, scrollPositionStorage, SubjectDomainService, SessionDomainService (PR#18)
+- [x] 문서 구조화: UI_SPEC.md 신규 작성, ARCHITECTURE.md 현행화, 문서 archive (PR#16)
+- [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정
+- [x] ARCHITECTURE.md §2.6 누락 디렉터리 추가 (src/middleware, src/shared, src/types, src/utils)
+- [x] Infrastructure 테스트 커버리지 50% → 80% (factories, config, registry, index — 71 tests)
+- [x] Lib 테스트 커버리지 60% → 80% (apiSync, authUtils, resolveAcademyId, supabaseServiceRole, timeUtils, yPositionMigration — 49 tests)
+- [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
 
-### 2B-2: 추가 고아 테스트 파일 정리 ✅
-> 감사에서 발견된 소스 없는 테스트 파일. SearchBox/FilterPanel/Pagination은 이미 삭제됨.
-- [x] `src/components/atoms/__tests__/Modal.test.tsx` 삭제
-- [x] `src/components/atoms/__tests__/Loading.test.tsx` 삭제
-- [x] `src/components/atoms/__tests__/Checkbox.test.tsx` 삭제
-- [x] `src/lib/__tests__/scrollPositionManager.test.ts` 삭제
-- [x] `src/lib/__tests__/scrollPositionStorage.test.ts` 삭제
-- [x] `src/domain/services/__tests__/SubjectDomainService.test.ts` 삭제
-- [x] `src/domain/services/__tests__/SessionDomainService.test.ts` 삭제
-- [x] `src/app/api/auth/` 빈 디렉터리 삭제
-
-### 2B-3: 문서 깨진 링크 수정 ✅
-> 활성 문서에서 `docs/archive/`로 이동된 파일을 가리키는 링크 제거/교체.
-- [x] `docs/DEVELOPMENT_WORKFLOW.md` — PROJECT_STRUCTURE, LOGGING_GUIDE, SECURITY_GUIDE, README 링크 제거, code-convention/VERSION_MANAGEMENT로 교체
-- [x] `docs/TESTING_STRATEGY.md` — PROJECT_STRUCTURE, README 링크 제거. Infrastructure 커버리지 상태 수정 (✅→⚠️ 50%)
-- [x] `docs/TESTING_COMMANDS.md` — PROJECT_STRUCTURE 링크 제거, TESTING_STRATEGY/DEVELOPMENT_WORKFLOW로 교체
-
-### 2B-4: ARCHITECTURE.md 완성도 보강 ✅
-> §2.6에 누락된 src/ 하위 디렉터리 추가.
-- [x] `src/middleware/` (cors.ts, logging.ts) 섹션 추가
-- [x] `src/shared/` (constants/, types/) 섹션 추가
-- [x] `src/types/` (scheduleTypes.ts) 섹션 추가 — shared/types로 점진 통합 예정 명시
-- [x] `src/utils/` (supabaseClient.ts) 섹션 추가
-
-### 2B-5: Infrastructure 테스트 커버리지 (50% → 80%) ✅
-> factories 4개 + config + registry + index 테스트 추가. 71 tests all passing.
-- [x] `infrastructure/factories/` 4개 팩토리 테스트 (env 분기 검증)
-- [x] `infrastructure/config/RepositoryConfig.ts` 테스트 (create/test/dev/prod)
-- [x] `infrastructure/container/RepositoryRegistry.ts` 테스트 (register/resolve/singleton/autoRegister)
-- [x] `infrastructure/index.ts` 테스트 (re-export 검증)
-
-### 2B-6: Lib 테스트 커버리지 보강 (60% → 80%) ✅
-> 핵심 유틸리티 6개 파일 테스트 추가. 49 tests all passing.
-- [x] `lib/apiSync.ts` 테스트 (16 tests: CRUD fire-and-forget, anonymous skip, error handling)
-- [x] `lib/authUtils.ts` 테스트 (3 tests: session/token/error)
-- [x] `lib/resolveAcademyId.ts` 테스트 (2 tests: success/not-found)
-- [x] `lib/supabaseServiceRole.ts` 테스트 (3 tests: env/singleton/missing-env)
-- [x] `lib/timeUtils.ts` 테스트 (11 tests: KST conversions, formatting)
-- [x] `lib/yPositionMigration.ts` 테스트 (14 tests: pixel↔logical, migration)
-
-### 2B-7: Schedule 컴포넌트/유틸 테스트 커버리지 ✅
-> _utils 5개 + _components 5개 테스트 완료. 총 56 new tests.
-- [x] `schedule/_components/EditSessionModal.tsx` 테스트 (12 tests: 렌더링, 학생태그, 과목, 시간에러, 버튼)
-- [x] `schedule/_components/PdfDownloadSection.tsx` 테스트 (2 tests: prop 전달, 로딩 상태)
-- [x] `schedule/_components/ScheduleGridSection.tsx` 테스트 (3 tests: 렌더링, prop 전달, ref)
-- [x] `schedule/_components/ScheduleHeader.tsx` 테스트 (6 tests: 제목, 로딩, 에러, 학생 선택)
-- [x] `schedule/_components/StudentPanelSection.tsx` 테스트 (2 tests: 렌더링, prop 전달)
-- [x] `schedule/_utils/dndHelpers.ts` 테스트 (8 tests)
-- [x] `schedule/_utils/collisionHelpers.ts` 테스트 (6 tests)
-- [x] `schedule/_utils/collisionQueries.ts` 테스트 (8 tests)
-- [x] `schedule/_utils/editSaveHandlers.ts` 테스트 (4 tests)
-- [x] `schedule/_utils/modalHandlers.ts` 테스트 (7 tests)
-
-### 2B-8: 대형 파일 분할 (300줄 초과)
-> code-convention.md 기준. 기존 위반 파일 점진적 리팩토링.
-- [ ] `schedule/page.tsx` (1032줄) — 섹션별 분리 (이미 _components 존재, 로직 추출 여지)
-- [ ] `lib/localStorageCrud.ts` (1006줄) — CRUD 함수별 모듈 분리
-- [ ] `lib/pdf-utils.ts` (995줄) — 생성/스타일/유틸 분리
-- [ ] `organisms/TimeTableGrid.tsx` (563줄) — 렌더/이벤트/상태 분리
-- [ ] `molecules/DataConflictModal.tsx` (476줄) — 섹션 컴포넌트 추출
-- [ ] `hooks/useIntegratedDataLocal.ts` (452줄) — 도메인별 훅 분리
-- [ ] `hooks/useScheduleSessionManagement.ts` (421줄)
-- [ ] `hooks/useGlobalDataInitialization.ts` (412줄)
-- [ ] `hooks/useScheduleDragAndDrop.ts` (393줄)
-- [ ] `lib/auth/handleLoginDataMigration.ts` (371줄)
-- [ ] `lib/auth/fullDataMigration.ts` (369줄)
-- [ ] `organisms/StudentPanel.tsx` (340줄)
-- [ ] `schedule/_components/EditSessionModal.tsx` (339줄)
-- [ ] `lib/sessionCollisionUtils.ts` (332줄)
-- [ ] `organisms/LoginButton.tsx` (325줄)
-- [ ] `schedule/_components/GroupSessionModal.tsx` (318줄)
-- [ ] `app/login/page.tsx` (309줄)
-
-### 2B-9: 인라인 스타일 → Tailwind 마이그레이션
-> code-convention.md: 신규 컴포넌트 Tailwind 전용. 기존 파일은 수정 시 점진 전환.
-- [ ] `schedule/page.tsx` (~35건)
-- [ ] `login/page.tsx` (~18건)
-- [ ] `layout.tsx` (~10건)
-- [ ] `molecules/SessionBlock.tsx`
-- [ ] `molecules/TimeTableRow.tsx`
-- [ ] `organisms/TimeTableGrid.tsx`
-- [ ] `organisms/StudentPanel.tsx`
-- [ ] `organisms/LoginButton.tsx`
-- [ ] `atoms/ThemeToggle.tsx`
-- [ ] 기타 인라인 스타일 포함 파일 (수정 시 점진 전환)
-
-### 2B-10: 기타 코드 품질
-- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts `HH:MM` → ISO, fullDataMigration.ts 일관성)
+### 남은 항목
 - [ ] 에러 핸들링 체계화
 - [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
@@ -260,4 +176,6 @@
 | 2026-04-11 | Phase 1-G 완료. Phase 순서 재편 (2↔3 스왑, 2A/2B 분리). Academy 멀티테넌트 구조 도입 결정 |
 | 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
 | 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
-| 2026-04-14 | PR#17 (convention refactor + cleanup). Phase 2B 세부 태스크 구체화 (감사 결과 기반 10개 서브태스크) |
+| 2026-04-14 | PR#16 머지 (문서 구조화). PR#17 머지 (코딩 규칙 문서화, dead code 제거, 컨벤션 정비). PR#18 머지 (docs/ 9→3 통합 축소, 불일치 6건 수정, 고아 테스트 삭제) |
+| 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
+| 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |

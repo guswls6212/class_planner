@@ -1,0 +1,2 @@
+1776172177
+computer-use browser allowlist blocks Chrome screenshot; verified via curl: /onboarding 200, middleware 307 redirect, onboarded cookie pass-through, anonymous-first all correct. Build + 1095 tests pass.

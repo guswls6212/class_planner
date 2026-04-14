@@ -46,8 +46,11 @@ src/app/
 ├── page.tsx              # 랜딩 페이지
 ├── layout.tsx            # 루트 레이아웃 (Nav + Footer)
 ├── login/page.tsx        # OAuth 로그인
+├── onboarding/page.tsx   # 첫 로그인 온보딩 (학원명 + 역할 입력)
 ├── students/page.tsx     # 학생 관리
 ├── subjects/page.tsx     # 과목 관리
+├── settings/page.tsx     # 학원 설정 (멤버 목록 + 초대 관리)
+├── invite/[token]/page.tsx # 초대 수락 페이지 (비로그인/로그인 분기)
 ├── schedule/             # 시간표 관리 (가장 복잡)
 │   ├── page.tsx
 │   ├── _components/      # 페이지 전용 컴포넌트
@@ -57,6 +60,12 @@ src/app/
 └── about/page.tsx        # 소개 페이지
 ```
 
+### 2.1.1 Middleware (`src/middleware.ts`)
+
+온보딩 가드. 로그인한 사용자가 데이터 페이지(`/students`, `/subjects`, `/schedule`) 접근 시 `onboarded` 쿠키를 확인한다. 쿠키 없음 → `/onboarding` 리디렉트. 비로그인 사용자는 Anonymous-First 정책으로 통과.
+
+matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`
+
 ### 2.2 API Routes
 ```
 src/app/api/
@@ -65,6 +74,8 @@ src/app/api/
 ├── sessions/       # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
 ├── enrollments/    # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
 ├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
+├── invites/        # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
+├── members/        # 멤버 관리 (GET 목록, [userId] DELETE 제거)
 └── user-settings/  # 사용자 설정
 ```
 모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
@@ -157,19 +168,9 @@ src/utils/             # 클라이언트 유틸리티
 
 ## 3. 데이터 모델
 
-### 3.1 현재 구조 (Supabase JSONB)
-`user_data` 테이블에 사용자별 전체 데이터를 단일 JSONB 컬럼에 저장:
-```typescript
-interface ClassPlannerData {
-  students: Student[];      // { id, name, gender? }
-  subjects: Subject[];      // { id, name, color? }
-  sessions: Session[];      // { id, enrollmentIds?, weekday, startsAt, endsAt, room?, yPosition? }
-  enrollments: Enrollment[]; // { id, studentId, subjectId }
-}
-```
-
-### 3.2 마이그레이션 목표 (정규화 + Academy 멀티테넌트)
-> ADR-002 참조. 정규화와 Academy 기반 멀티테넌트 구조를 Phase 2A에서 동시에 도입.
+### 3.1 현재 구조 (정규화 + Academy 멀티테넌트)
+> Phase 2A 완료 (2026-04-14). ADR-002 참조.
+> 레거시 `user_data` JSONB 테이블은 마이그레이션 019로 제거됨.
 
 ```sql
 -- 학원 (테넌트 단위)
@@ -177,6 +178,9 @@ academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ)
 
 -- 학원 구성원 (운영자 ↔ 학원, role: owner/admin/member)
 academy_members (academy_id UUID FK, user_id UUID FK, role TEXT, invited_by UUID FK, joined_at TIMESTAMPTZ)
+
+-- 초대 토큰 (1회용 + 7일 만료)
+invite_tokens      (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, role TEXT, created_by UUID FK, expires_at TIMESTAMPTZ, used_by UUID FK NULL, used_at TIMESTAMPTZ NULL)
 
 -- 비즈니스 데이터: academy_id FK로 소유권 부여
 students           (id UUID PK, academy_id UUID FK, name TEXT, gender TEXT)
@@ -228,3 +232,4 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 - 2026-04-09: dev-pack으로 이전. ARCHITECTURE.md 초기 작성.
 - 2026-04-11: 배포 아키텍처 업데이트 (self-hosted 폐기, Lightsail 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
 - 2026-04-14: API Routes 현행화 (enrollments, onboarding 추가, data/auth 제거). lib/ 현행화 (apiSync, auth/, resolveAcademyId 등 추가, debouncedServerSync 제거). AuthContext.tsx 제거 (ThemeContext.tsx만 유지). Vercel 다이어그램 제거.
+- 2026-04-15: invite_tokens 테이블 추가 (020 migration). /api/invites + /api/members API Routes 추가. /settings, /invite/[token] 페이지 추가. resolveAcademyMembership 헬퍼 추가.
