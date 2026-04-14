@@ -8,6 +8,7 @@
 
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
@@ -74,10 +75,7 @@ export async function POST(request: NextRequest) {
 
     if (academyError || !academy) {
       logger.error("온보딩 - academy 생성 실패", { userId }, academyError as Error);
-      return NextResponse.json(
-        { success: false, error: "학원 생성에 실패했습니다." },
-        { status: 500 }
-      );
+      return toErrorResponse(new AppError("INTERNAL_ERROR", { statusHint: 500 }));
     }
 
     // 4. academy_members INSERT
@@ -96,10 +94,7 @@ export async function POST(request: NextRequest) {
         { userId, academyId: academy.id },
         memberError as Error
       );
-      return NextResponse.json(
-        { success: false, error: "학원 멤버 등록에 실패했습니다." },
-        { status: 500 }
-      );
+      return toErrorResponse(new AppError("INTERNAL_ERROR", { statusHint: 500 }));
     }
 
     logger.info("온보딩 완료 - 신규 academy 생성", {
@@ -119,10 +114,6 @@ export async function POST(request: NextRequest) {
     response.headers.set("set-cookie", ONBOARDED_COOKIE);
     return response;
   } catch (error) {
-    logger.error("온보딩 처리 중 오류", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "온보딩 처리에 실패했습니다." },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

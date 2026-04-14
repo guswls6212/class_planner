@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getSubjectService() {
@@ -32,11 +33,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: subject });
   } catch (error) {
-    logger.error("Error fetching subject:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch subject" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -86,11 +83,7 @@ export async function PUT(
       message: "Subject updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating subject:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update subject" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -124,10 +117,6 @@ export async function DELETE(
       message: "Subject deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting subject:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete subject" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

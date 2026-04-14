@@ -1,6 +1,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function DELETE(
@@ -42,7 +43,6 @@ export async function DELETE(
     logger.info("멤버 제거 완료", { requesterId, targetUserId, academyId });
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("DELETE /api/members/[userId] 오류", undefined, error as Error);
-    return NextResponse.json({ success: false, error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

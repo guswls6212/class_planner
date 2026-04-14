@@ -1,5 +1,6 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
@@ -30,15 +31,15 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (tokenError || !inviteData) {
-      return NextResponse.json({ success: false, error: "유효하지 않은 초대 링크입니다." }, { status: 404 });
+      return toErrorResponse(new AppError("VALIDATION_FAILED", { statusHint: 404 }));
     }
 
     if (inviteData.used_by) {
-      return NextResponse.json({ success: false, error: "이미 사용된 초대 링크입니다." }, { status: 410 });
+      return toErrorResponse(new AppError("INVITE_TOKEN_USED", { statusHint: 410 }));
     }
 
     if (new Date(inviteData.expires_at) < new Date()) {
-      return NextResponse.json({ success: false, error: "만료된 초대 링크입니다." }, { status: 410 });
+      return toErrorResponse(new AppError("INVITE_TOKEN_EXPIRED", { statusHint: 410 }));
     }
 
     // 2. 이미 멤버인지 확인 (멱등)
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       logger.error("멤버 가입 실패", { userId, academyId: inviteData.academy_id }, insertError as Error);
-      return NextResponse.json({ success: false, error: "멤버 등록에 실패했습니다." }, { status: 500 });
+      return toErrorResponse(new AppError("INVITE_MEMBER_INSERT_FAILED", { statusHint: 500 }));
     }
 
     // 4. 토큰 사용 처리
@@ -94,7 +95,6 @@ export async function POST(request: NextRequest) {
     response.headers.set("set-cookie", ONBOARDED_COOKIE);
     return response;
   } catch (error) {
-    logger.error("POST /api/invites/accept 오류", undefined, error as Error);
-    return NextResponse.json({ success: false, error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return toErrorResponse(error);
   }
 }
