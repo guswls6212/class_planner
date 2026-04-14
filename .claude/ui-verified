@@ -1,2 +1,0 @@
-current-session
-Sonner Toaster section[aria-label=Notifications] confirmed in DOM at layout.tsx:207. App loads clean, student panel visible. Full toast E2E (EditSessionModal time-validation) requires drag-and-drop to create session first — not automatable via Playwright MCP. Toaster mount confirmed via Next.js dev overlay stack trace.
