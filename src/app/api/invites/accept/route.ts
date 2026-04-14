@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       academyId: inviteData.academy_id,
-      academyName: (inviteData.academies as { name: string } | null)?.name ?? "",
+      academyName: (inviteData.academies as unknown as { name: string } | null)?.name ?? "",
     });
     response.headers.set("set-cookie", ONBOARDED_COOKIE);
     return response;

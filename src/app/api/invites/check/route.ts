@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ valid: false, reason: "expired" });
     }
 
-    const academyName = (data.academies as { name: string } | null)?.name ?? "";
+    const academyName = (data.academies as unknown as { name: string } | null)?.name ?? "";
 
     return NextResponse.json({
       valid: true,
