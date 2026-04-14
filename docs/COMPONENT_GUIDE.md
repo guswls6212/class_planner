@@ -23,10 +23,11 @@
 - `ErrorBoundary.tsx` - 에러 바운더리 컴포넌트
 - `Input.tsx` - 입력 필드
 - `Label.tsx` - 라벨
-- `LoginButton.tsx` - 로그인 버튼 컴포넌트
 - `StudentListItem.tsx` - 학생 목록 아이템
 - `SubjectListItem.tsx` - 과목 목록 아이템
 - `ThemeToggle.tsx` - 테마 토글 컴포넌트
+
+> `LoginButton.tsx`는 **Organisms**로 이동됨 (복잡한 상태 관리 포함).
 
 ### 🧬 Molecules (분자 컴포넌트)
 
@@ -40,15 +41,20 @@
 
 **예시:**
 
-- `ConfirmModal.tsx` - 확인 모달
-- `DropZone.tsx` - 드래그 앤 드롭 영역
+- `ConfirmModal.tsx` - 확인 모달 (삭제 확인 등 이진 선택)
+- `DataConflictModal.tsx` - 로그인 시 로컬/서버 데이터 충돌 해결 모달
+- `DropZone.tsx` - 드래그 앤 드롭 영역 (시간표 셀)
 - `PDFDownloadButton.tsx` - PDF 다운로드 버튼
-- `SessionBlock.tsx` - 세션 블록
+- `ScheduleHeader.tsx` - 시간표 페이지 헤더
+- `SessionBlock.tsx` - 세션 블록 (시간표 내 수업 표시)
+- `SessionForm.tsx` - 수업 추가/수정 폼
 - `StudentInputSection.tsx` - 학생 입력 섹션
 - `StudentList.tsx` - 학생 목록
 - `SubjectInputSection.tsx` - 과목 입력 섹션
 - `SubjectList.tsx` - 과목 목록
 - `TimeTableRow.tsx` - 시간표 행
+
+> 각 컴포넌트의 Props와 동작 상세: [UI_SPEC.md § 3.2](../UI_SPEC.md#32-molecules-srccomponentsmolecules)
 
 ### 🦠 Organisms (유기체 컴포넌트)
 
@@ -63,12 +69,14 @@
 **예시:**
 
 - `AboutPageLayout.tsx` - 소개 페이지 레이아웃
+- `LoginButton.tsx` - Nav bar 로그인 버튼 (Google OAuth 모달, 로그인 상태 드롭다운)
 - `StudentManagementSection.tsx` - 학생 관리 섹션
-- `StudentPanel.tsx` - 학생 패널
-- `StudentsPageLayout.tsx` - 학생 페이지 레이아웃
+- `StudentPanel.tsx` - 시간표 플로팅 학생 패널 (드래그 가능)
+- `StudentsPageLayout.tsx` - 학생 페이지 레이아웃 (2열: 340px | 1fr)
 - `SubjectManagementSection.tsx` - 과목 관리 섹션
-- `SubjectsPageLayout.tsx` - 과목 페이지 레이아웃
-- `TimeTableGrid.tsx` - 시간표 그리드
+- `SubjectsPageLayout.tsx` - 과목 페이지 레이아웃 (2열: 340px | 1fr)
+- `TimeTableGrid.tsx` - 주간 시간표 그리드 (드래그앤드롭, 스크롤 보존, 가상 스크롤바)
+- `about/FeatureCard.tsx`, `about/FeatureDetail.tsx`, `about/HeroSection.tsx` - 소개 페이지 섹션
 
 ### 🧩 Schedule 페이지 분리 컴포넌트 (app/schedule/\_components)
 
@@ -115,32 +123,26 @@
   - Supabase Auth 보안 강화 (토큰 탈취 공격 방지)
   - 초기화 중 애니메이션 로딩 표시
 
-#### **🚀 통합 데이터 관리 훅 (권장)**
+#### **🚀 통합 데이터 관리 훅 (현행)**
 
-**`useIntegratedData`**
+**`useIntegratedDataLocal`**
 
-- **위치**: `src/hooks/useIntegratedData.ts`
-- **용도**: JSONB 구조를 활용한 효율적인 통합 데이터 관리
-- **사용 시점**: Schedule 페이지 등 여러 데이터가 동시에 필요한 곳
-- **특징**:
-  - 한 번의 API 호출로 students, subjects, sessions, enrollments 모두 조회
-  - 네트워크 요청 66% 감소 (3회 → 1회)
-  - 데이터 일관성 100% 보장 (동일한 시점의 데이터)
-  - 통합 업데이트 기능 제공
+- **위치**: `src/hooks/useIntegratedDataLocal.ts`
+- **용도**: localStorage 기반 통합 데이터 관리 (Local-first)
+- **사용 시점**: Schedule 페이지 등 students/subjects/sessions/enrollments 동시에 필요한 곳
+- **특징**: localStorage를 SSOT로, 서버 동기화는 fire-and-forget (apiSync.ts)
 
 #### **개별 데이터 관리 훅**
 
-**`useStudentManagement`**
+**`useStudentManagementLocal`**
 
-- **위치**: `src/hooks/useStudentManagement.ts`
-- **용도**: 학생 데이터 CRUD (API Routes 기반)
-- **사용 시점**: 학생 관리 페이지 등 개별 데이터 관리가 필요한 곳
+- **위치**: `src/hooks/useStudentManagementLocal.ts`
+- **용도**: 학생 CRUD (localStorage 즉시 반영 + 서버 동기화)
 
-**`useSubjectManagement`**
+**`useSubjectManagementLocal`**
 
-- **위치**: `src/hooks/useSubjectManagement.ts`
-- **용도**: 과목 데이터 CRUD (API Routes 기반)
-- **사용 시점**: 과목 관리 페이지 등 개별 데이터 관리가 필요한 곳
+- **위치**: `src/hooks/useSubjectManagementLocal.ts`
+- **용도**: 과목 CRUD (localStorage 즉시 반영 + 서버 동기화)
 
 **`usePerformanceMonitoring`**
 
@@ -180,22 +182,17 @@
 
 ### 훅 사용 시나리오별 가이드
 
-#### **Schedule 페이지에서 (권장 - 통합 데이터 사용):**
+#### **Schedule 페이지에서 (현행):**
 
 ```typescript
-// ✅ 권장 사용법 - 통합 데이터 관리
-import { useIntegratedData } from "../../hooks/useIntegratedData";
+// ✅ 현행 사용법 - Local-first 통합 데이터 관리
+import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useStudentPanel } from "../../hooks/useStudentPanel";
 import { useLocal } from "../../hooks/useLocal";
 
-// 통합 데이터 관리 (JSONB 기반)
-const {
-  data: { students, subjects, sessions, enrollments },
-  loading,
-  error,
-  updateData,
-} = useIntegratedData();
+// 통합 데이터 관리 (localStorage 기반)
+const { students, subjects, sessions, enrollments } = useIntegratedDataLocal();
 
 // 세션 표시 로직
 const { sessions: displaySessions } = useDisplaySessions(
@@ -218,15 +215,12 @@ const [selectedStudentId, setSelectedStudentId] = useLocal(
 );
 ```
 
-### 표시 규칙 업데이트 (2025-09-22)
+### 표시 규칙 (현행)
 
-- 세션 셀 학생 이름 표시: 최대 3명까지 이름을 그대로 표기하고, 4명 이상일 경우 "외 N명" 형식으로 요약 표시합니다.
-  - 구현 위치: `src/components/molecules/SessionBlock.utils.ts`의 `getGroupStudentDisplayText`
-  - 예: "학생1, 학생2, 학생3 외 2명"
-  - 관련 테스트:
-    - 단위: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`
-    - 단위(UI): `src/components/molecules/__tests__/SessionBlock.test.tsx`
-    - E2E: `tests/e2e/schedule-student-names.spec.ts`
+- 세션 셀 학생 이름 표시: 최대 8명까지 이름 표시, 초과 시 "외 N명" 형식으로 요약
+  - 폰트 크기 동적 조정: 3명 이하 14px → 9명+ 5px
+  - 구현 위치: `src/components/molecules/SessionBlock.tsx`
+  - 관련 테스트: `src/components/molecules/__tests__/SessionBlock.utils.test.ts`, `tests/e2e/schedule-student-names.spec.ts`
 
 ### 시간 겹침/충돌 및 재배치 정책 (2025-09-22)
 
@@ -243,16 +237,10 @@ const [selectedStudentId, setSelectedStudentId] = useLocal(
 - 테스트:
   - `src/lib/__tests__/sessionCollisionUtils.test.ts` (드래그/편집 체인 전파 검증)
 
-#### **개별 세션 관리가 필요한 경우:**
+#### **개별 세션 관리:**
 
-```typescript
-// ✅ 개별 세션 관리
-import { useSessionManagement } from "../../hooks/useSessionManagement";
-
-// API Routes 기반 세션 관리
-const { sessions, addSession, updateSession, deleteSession, isLoading } =
-  useSessionManagement(students, subjects);
-```
+- `useScheduleSessionManagement.ts`: 세션 추가/수정/삭제 (localStorage + apiSync)
+- `useScheduleDragAndDrop.ts`: 드래그앤드롭 이벤트 처리
 
 ## 📝 Types (타입 정의)
 
@@ -339,13 +327,9 @@ export default Component;
 
 ## 📚 관련 문서
 
-- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
+- [UI_SPEC.md](../UI_SPEC.md) — UI 동작 소스 오브 트루스 (컴포넌트 Props, 페이지 레이아웃, 검증 라우트)
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — 프로젝트 계층 구조
 - [개발 워크플로우 가이드](./DEVELOPMENT_WORKFLOW.md)
 - [테스트 전략 가이드](./TESTING_STRATEGY.md)
 - [테스트 실행 명령어 가이드](./TESTING_COMMANDS.md)
 - [환경 설정 가이드](./ENVIRONMENT_SETUP.md)
-- [문서 가이드](./README.md)
-
----
-
-_이 문서는 컴포넌트 개발과 Atomic Design 패턴 사용 방법을 설명합니다. 프로젝트 구조에 대한 자세한 내용은 [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)를 참조하세요._

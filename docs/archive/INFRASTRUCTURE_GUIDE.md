@@ -1,3 +1,5 @@
+> **ARCHIVED:** 이 문서는 최신이 아닙니다. 현행 문서는 [CLAUDE.md](../../CLAUDE.md)를 참조하세요.
+
 # Infrastructure 계층 - 새로운 Repository 구조
 
 ## 🎯 개요

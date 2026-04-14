@@ -27,9 +27,11 @@
 - Infrastructure는 Domain의 Repository 인터페이스를 구현한다.
 
 ### 1.2 Local-First Architecture
-- UI 조작 → localStorage 즉시 반영 (0ms) → 30초 debounce 서버 동기화
+- UI 조작 → localStorage 즉시 반영 (0ms)
+- 서버 동기화: `apiSync.ts`의 fire-and-forget 함수 (syncStudentCreate, syncSubjectCreate 등)
+- 익명 사용자: localStorage만 사용 (서버 호출 없음)
+- 로그인 사용자: localStorage → 서버 양방향 동기화
 - 네트워크 불안정 시에도 UX 유지
-- 최대 5분 강제 동기화 안전장치
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
@@ -57,14 +59,14 @@ src/app/
 ### 2.2 API Routes
 ```
 src/app/api/
-├── data/           # 통합 데이터 (JSONB 전체 읽기/쓰기)
-├── students/       # 학생 CRUD
-├── subjects/       # 과목 CRUD
-├── sessions/       # 세션 CRUD + position 업데이트
-├── user-settings/  # 사용자 설정
-└── auth/           # 인증
+├── students/       # 학생 CRUD (GET, POST, [id] PUT/DELETE)
+├── subjects/       # 과목 CRUD (GET, POST, [id] PUT/DELETE)
+├── sessions/       # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
+├── enrollments/    # 수강 등록 CRUD (GET, POST, [id] DELETE)
+├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
+└── user-settings/  # 사용자 설정
 ```
-모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어 적용.
+모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
 
 ### 2.3 Domain Layer
 ```
@@ -96,27 +98,38 @@ src/infrastructure/
 ### 2.6 Shared Utilities
 ```
 src/lib/               # 핵심 유틸리티
-├── localStorageCrud.ts        # localStorage CRUD 시스템
-├── debouncedServerSync.ts     # 서버 동기화 (30s debounce, 5min 안전장치)
+├── localStorageCrud.ts        # localStorage CRUD 시스템 (Anonymous/User 키 분리)
+├── apiSync.ts                 # fire-and-forget 서버 동기화 (syncStudentCreate 등)
 ├── sessionCollisionUtils.ts   # 세션 충돌 감지 및 재배치
 ├── logger.ts                  # 로깅 시스템
 ├── errorTracker.ts            # 에러 추적
 ├── planner.ts                 # 핵심 데이터 타입 정의
 ├── pdf-utils.ts               # PDF 생성 유틸리티
-└── timeUtils.ts               # 시간 관련 유틸리티
+├── timeUtils.ts               # 시간 관련 유틸리티
+├── authUtils.ts               # 인증 관련 유틸리티
+├── resolveAcademyId.ts        # Academy ID 조회 (온보딩 체크)
+├── supabaseServiceRole.ts     # Service Role 클라이언트 (서버 전용)
+├── yPositionMigration.ts      # yPosition 마이그레이션 유틸리티
+└── auth/                      # 로그인 데이터 마이그레이션
+    ├── handleLoginDataMigration.ts  # 로그인 시 로컬/서버 충돌 감지
+    ├── fullDataMigration.ts         # 로컬 전체 데이터 서버 업로드
+    └── deduplication.ts             # 중복 데이터 제거
 
 src/hooks/             # 커스텀 React 훅
-├── useStudentManagementLocal.ts   # ✅ 학생 관리 (Local-first)
-├── useSubjectManagementLocal.ts   # ✅ 과목 관리 (Local-first)
-├── useIntegratedDataLocal.ts      # ✅ 통합 데이터 (Local-first)
-├── useGlobalDataInitialization.ts # 앱 초기화 (보안 강화)
+├── useStudentManagementLocal.ts   # 학생 관리 (Local-first)
+├── useSubjectManagementLocal.ts   # 과목 관리 (Local-first)
+├── useIntegratedDataLocal.ts      # 통합 데이터 (Local-first)
+├── useGlobalDataInitialization.ts # 앱 초기화 (익명/로그인 분기, 충돌 감지)
 ├── useScheduleDragAndDrop.ts      # 드래그앤드롭
 ├── useScheduleSessionManagement.ts # 세션 관리
 ├── useDisplaySessions.ts          # 세션 표시 로직
-└── ...
+├── useLocal.ts                    # localStorage 기반 범용 훅
+├── useStudentPanel.ts             # StudentPanel 상태 관리
+├── useTimeValidation.ts           # 시간 유효성 검사
+├── useUserTracking.ts             # 사용자 행동 추적
+└── usePerformanceMonitoring.ts    # 성능 모니터링
 
 src/contexts/          # React Context
-├── AuthContext.tsx     # 인증 상태 관리
 └── ThemeContext.tsx    # 테마 (Dark/Light)
 ```
 
@@ -176,25 +189,20 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
 ### 5.3 그룹 수업
 - 하나의 Session에 여러 Enrollment 연결
-- SessionBlock에 학생명 표시 (최대 3명 + "외 N명")
+- SessionBlock에 학생명 표시 (최대 8명, 초과 시 "외 N명")
 
 ## 6. 배포 아키텍처
 
-### 6.1 현재 (Vercel + Supabase)
-```
-[User] → [Vercel Edge] → [Next.js SSR/API] → [Supabase PostgreSQL]
-                                              → [Supabase Auth]
-```
-
-### 6.2 현재 (AWS Lightsail + Supabase 하이브리드) ✅
+### 6.1 현재 (AWS Lightsail + Supabase 하이브리드) ✅
 > ADR-001 참조. Self-hosted PostgreSQL + NextAuth.js 전환 계획은 폐기. Supabase 무료 티어 유지.
 
 ```
 [User] → [Lightsail / Docker / Nginx] → [Next.js Standalone]
                                        → [Supabase PostgreSQL]
-                                       → [Supabase Auth (Google/Kakao OAuth)]
+                                       → [Supabase Auth (Google OAuth)]
 ```
 
 ## 7. 변경 기록
 - 2026-04-09: dev-pack으로 이전. ARCHITECTURE.md 초기 작성.
-- 2026-04-11: 배포 아키텍처 6.2 업데이트 (self-hosted 폐기, 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
+- 2026-04-11: 배포 아키텍처 업데이트 (self-hosted 폐기, Lightsail 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
+- 2026-04-14: API Routes 현행화 (enrollments, onboarding 추가, data/auth 제거). lib/ 현행화 (apiSync, auth/, resolveAcademyId 등 추가, debouncedServerSync 제거). AuthContext.tsx 제거 (ThemeContext.tsx만 유지). Vercel 다이어그램 제거.

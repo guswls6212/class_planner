@@ -8,11 +8,28 @@
 - **핵심 가치:** 시간표 구성 속도, 인쇄 가능한 PDF 출력, 직관적 UI
 
 ## SSOT 참조 우선순위
-1. `class-planner/ARCHITECTURE.md` — 프로젝트 헌법
-2. `class-planner/docs/adr/` — 아키텍처 결정 기록
-3. `docs/code-convention.md` — dev-pack 공용 코딩 규칙
-4. `class-planner/TASKS.md` — 단계별 진행 현황
-5. `class-planner/tree.txt` — 현재 파일 구조
+1. `ARCHITECTURE.md` — 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
+2. `UI_SPEC.md` — UI 동작 소스 오브 트루스 (컴포넌트, 인터랙션, 검증 라우트)
+3. `docs/adr/` — 아키텍처 결정 기록 (왜 이 결정을 했는지)
+4. `../docs/code-convention.md` — dev-pack 공용 코딩 규칙
+5. `TASKS.md` — 단계별 진행 현황
+
+## 문서 맵 (Documentation Map)
+
+| 토픽 | 문서 | 언제 읽을지 |
+|------|------|------------|
+| 계층 구조, 데이터 모델, 배포 | [ARCHITECTURE.md](ARCHITECTURE.md) | 구조적 변경 전 |
+| UI 컴포넌트, 인터랙션, 검증 라우트 | [UI_SPEC.md](UI_SPEC.md) | **UI/컴포넌트 수정 전 필독** |
+| 컴포넌트 상세 API, 훅 가이드 | [docs/COMPONENT_GUIDE.md](docs/COMPONENT_GUIDE.md) | 컴포넌트 추가/수정 시 |
+| 테스트 전략, 계층별 커버리지 | [docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md) | 테스트 작성 전 |
+| 검증 명령어 (`check:quick`, `check`) | [docs/TESTING_COMMANDS.md](docs/TESTING_COMMANDS.md) | 커밋 전 |
+| 배포 절차, Lightsail, Nginx, SSL | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포 작업 시 |
+| Git 브랜치 전략, PR 규칙 | [docs/VERSION_MANAGEMENT.md](docs/VERSION_MANAGEMENT.md) | 브랜치 작업 시 |
+| 개발 프로세스, 코드 품질 | [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) | 개발 방식 참조 시 |
+| E2E 테스트 인증 설정 | [docs/E2E_AUTH_SETUP.md](docs/E2E_AUTH_SETUP.md) | E2E 테스트 작성 시 |
+| 환경 변수 설정 | [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) | 환경 설정 시 |
+| 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
+| 기능 설계 문서 | [docs/superpowers/specs/](docs/superpowers/specs/) | 기능 배경 이해 시 |
 
 ## 기술 스택
 - **Frontend:** Next.js 15.5.9 (App Router), React 19, TypeScript 5
@@ -32,13 +49,16 @@
 - **Presentation:** React 컴포넌트 (Atomic Design: atoms → molecules → organisms).
 
 ### Atomic Design 컴포넌트 분류
-- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle
-- **Molecules:** SessionBlock, TimeTableRow, ConfirmModal, DropZone, PDFDownloadButton
-- **Organisms:** TimeTableGrid, StudentPanel, StudentsPageLayout, SubjectsPageLayout
+- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, StudentListItem, SubjectListItem
+- **Molecules:** SessionBlock, TimeTableRow, ConfirmModal, DropZone, PDFDownloadButton, DataConflictModal, ScheduleHeader, SessionForm, StudentInputSection, StudentList, SubjectInputSection, SubjectList
+- **Organisms:** TimeTableGrid, StudentPanel, StudentsPageLayout, SubjectsPageLayout, LoginButton, StudentManagementSection, SubjectManagementSection, AboutPageLayout
+- 상세 컴포넌트 인벤토리: [UI_SPEC.md](UI_SPEC.md) § 3
 
 ### 데이터 관리 패턴
 - **Local-first:** localStorage 직접 조작으로 즉시 반응 (0ms)
-- **Debounced sync:** 30초 debounce로 서버 자동 동기화, 최대 5분 안전장치
+- **Fire-and-forget sync:** `src/lib/apiSync.ts`의 `syncXxxCreate/Delete` 함수로 서버에 비동기 동기화. 실패해도 localStorage는 유지.
+- **익명 사용자:** localStorage만 사용 (key: `class_planner_anonymous`). 서버 호출 없음.
+- **로그인 후:** localStorage (key: `class_planner_{userId}`) + 서버 양방향 동기화
 - **useLocal 훅 우선:** 신규 기능은 반드시 `useXxxLocal` 훅 사용 (레거시 API 기반 훅 사용 금지)
 
 ## 코딩 규칙

@@ -1,3 +1,5 @@
+> **ARCHIVED:** 이 문서는 최신이 아닙니다. 현행 문서는 [CLAUDE.md](../../CLAUDE.md)를 참조하세요.
+
 # 🚀 Future TODO - 시스템 개선 및 최적화 계획
 
 ## 📋 개요

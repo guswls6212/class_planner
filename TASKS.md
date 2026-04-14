@@ -101,20 +101,28 @@
   - 로그인 전 localStorage에 시간표 작성 가능
   - 로그인 시 자동 데이터 마이그레이션 (handleLoginDataMigration.ts)
   - 충돌 감지 및 사용자 선택 UI (DataConflictModal.tsx)
-- [ ] ARCHITECTURE.md 업데이트 (배포 아키텍처 6.2, 데이터 모델 반영)
+- [x] DataConflictModal UI/UX 개선 ✅ 완료 (2026-04-14, PR#15)
+  - 라디오 + 확인 버튼 UX 분리
+  - 학생/과목/수업 섹션 접기/펼치기
+  - 그룹 수업 표시 개선 (학생 이름, 성별, 생년월일 표시)
+  - CSS subgrid로 카드 높이 동기화
+  - GET /api/sessions 403 버그 수정 (corsMiddleware 위치 오류)
+  - fetch 에러 vs 빈 데이터 구분 (기본 과목 중복 생성 방지)
+- [x] ARCHITECTURE.md 업데이트 ✅ 완료 (2026-04-14)
 - [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
 - [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
 - [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
+- [ ] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로)
 
 ## Phase 2B: 코드 품질 개선 (계획)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
 
 - [ ] Repository 패턴 추상화 (Supabase 직접 호출 → 인터페이스 분리)
-- [ ] 레거시 훅 제거 (useStudentManagement, useSubjectManagement, useIntegratedData)
 - [ ] 에러 핸들링 체계화
 - [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
+- [ ] `syncSessionCreate` 시간 형식 통일 (apiSync.ts, fullDataMigration.ts 일관성)
 
 ## Phase 3: 디자인 리뉴얼 (계획)
 > Phase 2 완료 후 안정된 구조 위에서 진행.
@@ -142,3 +150,5 @@
 | 2026-04-10 | Phase 1-A~F 완료 (인프라+Docker+SSL+배포+문서). 하이브리드 전략 확정 |
 | 2026-04-10 | Phase 1-G 부분 완료: .env.local 업데이트, deploy.sh certbot 버그 수정 |
 | 2026-04-11 | Phase 1-G 완료. Phase 순서 재편 (2↔3 스왑, 2A/2B 분리). Academy 멀티테넌트 구조 도입 결정 |
+| 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
+| 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
