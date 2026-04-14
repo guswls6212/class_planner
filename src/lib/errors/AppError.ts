@@ -21,6 +21,8 @@ export class AppError extends Error {
     this.name = "AppError";
     this.code = code;
     this.statusHint = options.statusHint ?? 500;
-    this.cause = options.cause;
+    if (options.cause !== undefined) {
+      this.cause = options.cause;
+    }
   }
 }
