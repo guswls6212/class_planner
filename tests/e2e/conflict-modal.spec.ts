@@ -207,6 +207,78 @@ test.describe("DataConflictModal", () => {
     ).not.toBeVisible({ timeout: 15_000 });
   });
 
+  test("로컬 수업 데이터 포함 → session POST에 subjectId 전달되어 에러 없이 모달 닫힘", async ({ page }) => {
+    // 모달이 이미 떠 있는 상태 (beforeEach에서 학생/과목만 있는 데이터로 로드됨)
+    await expect(
+      page.getByRole("heading", { name: "데이터 충돌이 감지되었습니다" })
+    ).toBeVisible({ timeout: 10_000 });
+
+    // applyLocalDataChoice는 클릭 시점에 localStorage를 다시 읽으므로,
+    // 확인 클릭 전에 수업 데이터를 추가하면 migration이 세션을 처리한다
+    await page.evaluate(({ key }) => {
+      const data = {
+        students: [{ id: "loc-s1", name: "TestStudent", academyId: "anonymous" }],
+        subjects: [{ id: "loc-sub1", name: "Math", academyId: "anonymous" }],
+        enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+        sessions: [
+          { id: "loc-sess1", weekday: 1, startsAt: "10:00", endsAt: "11:00", enrollmentIds: ["loc-en1"] },
+          { id: "loc-sess2", weekday: 2, startsAt: "10:30", endsAt: "11:30", enrollmentIds: ["loc-en1"] },
+        ],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    }, { key: ANONYMOUS_KEY });
+
+    // migration POST mock (beforeEach GET 핸들러 위에 POST 전용 핸들러 추가)
+    const sessionPostBodies: Array<{ subjectId?: string }> = [];
+    await page.route("**/api/students**", (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({ json: { success: true, data: { id: "srv-s1", name: "TestStudent" } } });
+      } else {
+        route.continue();
+      }
+    });
+    await page.route("**/api/subjects**", (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({ json: { success: true, data: { id: "srv-sub1", name: "Math" } } });
+      } else {
+        route.continue();
+      }
+    });
+    await page.route("**/api/enrollments**", (route) => {
+      if (route.request().method() === "POST") {
+        route.fulfill({ json: { success: true, data: { id: "srv-en1", studentId: "srv-s1", subjectId: "srv-sub1" } } });
+      } else {
+        route.continue();
+      }
+    });
+    await page.route("**/api/sessions**", async (route) => {
+      if (route.request().method() === "POST") {
+        const body = JSON.parse(route.request().postData() ?? "{}") as { subjectId?: string };
+        sessionPostBodies.push(body);
+        await route.fulfill({ json: { success: true, data: { id: "srv-sess-new" } } });
+      } else {
+        await route.continue();
+      }
+    });
+
+    const localRadio = page.getByRole("radio", { name: "이 기기의 데이터" });
+    await localRadio.click();
+    await page.getByRole("button", { name: "선택한 데이터로 시작" }).click();
+
+    // 모달이 닫혀야 함 (subjectId 전달 성공으로 세션 마이그레이션 완료)
+    await expect(
+      page.getByRole("heading", { name: "데이터 충돌이 감지되었습니다" })
+    ).not.toBeVisible({ timeout: 15_000 });
+
+    // session POST body에 subjectId가 포함됐는지 확인
+    expect(sessionPostBodies.length).toBe(2);
+    for (const body of sessionPostBodies) {
+      expect(body.subjectId).toBeTruthy();
+    }
+  });
+
   test("스크린샷 — 초기 모달 상태", async ({ page }) => {
     await expect(
       page.getByRole("heading", { name: "데이터 충돌이 감지되었습니다" })

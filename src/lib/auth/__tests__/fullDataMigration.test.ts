@@ -83,10 +83,11 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
     expect(enrollmentBody.studentId).toBe("srv-s1");
     expect(enrollmentBody.subjectId).toBe("srv-sub1");
 
-    // session POST에 매핑된 서버 enrollment ID가 사용됐는지 확인
+    // session POST에 매핑된 서버 enrollment ID와 subjectId가 사용됐는지 확인
     const sessionCall = fetchMock.mock.calls[3];
     const sessionBody = JSON.parse(sessionCall[1].body);
     expect(sessionBody.enrollmentIds).toContain("srv-en1");
+    expect(sessionBody.subjectId).toBe("srv-sub1"); // API 필수 필드
 
     vi.unstubAllGlobals();
   });

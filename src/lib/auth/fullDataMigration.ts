@@ -246,11 +246,32 @@ export async function migrateLocalDataToServer(
       continue;
     }
 
+    // Session 도메인 모델에 subjectId 필드가 없으므로, 첫 번째 enrollment를 통해 추출
+    const firstLocalEnrollmentId = (session.enrollmentIds ?? []).find((id) =>
+      enrollmentIdMap.has(id)
+    );
+    const localEnrollment = firstLocalEnrollmentId
+      ? localData.enrollments.find((e) => e.id === firstLocalEnrollmentId)
+      : undefined;
+    const subjectId = localEnrollment
+      ? (subjectIdMap.get(localEnrollment.subjectId) ?? localEnrollment.subjectId)
+      : undefined;
+
+    if (!subjectId) {
+      const message = "수업의 과목 ID를 찾을 수 없음 (no subjectId mapping)";
+      errors.push({ entity: "session", localId: session.id, message });
+      logger.warn("fullDataMigration - 수업 과목 ID 누락, 건너뜀", {
+        localId: session.id,
+      });
+      continue;
+    }
+
     try {
       const res = await fetch(`/api/sessions?userId=${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          subjectId,
           enrollmentIds: newEnrollmentIds,
           weekday: session.weekday,
           startsAt: session.startsAt,
