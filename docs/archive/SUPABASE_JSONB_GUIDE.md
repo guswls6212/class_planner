@@ -1,3 +1,5 @@
+> **ARCHIVED:** 이 문서는 최신이 아닙니다. 현행 문서는 [CLAUDE.md](../../CLAUDE.md)를 참조하세요.
+
 # Supabase JSONB 데이터베이스 설정 가이드
 
 ## 🎯 완료된 작업

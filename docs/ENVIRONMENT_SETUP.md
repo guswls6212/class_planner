@@ -45,42 +45,23 @@ https://supabase.com/dashboard/project/your-project-id
    TEST_PASSWORD=your-test-password
    ```
 
-### Vercel 배포 환경
+### 프로덕션 배포 환경 (.env.production)
 
-1. **Vercel 대시보드 접속**
+> **배포 플랫폼: AWS Lightsail + Docker** (Vercel이 아님)
+> 상세: [docs/deployment-guide.md](./deployment-guide.md)
 
-   ```
-   https://vercel.com/dashboard
-   ```
+1. **서버에 `.env.production` 파일 생성**
 
-2. **프로젝트 선택**
-
-   - class-planner 프로젝트 클릭
-
-3. **Settings > Environment Variables**
-
-   - Settings 탭 클릭
-   - "Environment Variables" 섹션 찾기
-
-4. **환경 변수 추가 (3개 모두)**
-
-   ```
-   Name: NEXT_PUBLIC_SUPABASE_URL
-   Value: https://your-project-id.supabase.co
-   Environment: Production, Preview, Development (모두 선택)
+   ```bash
+   # Lightsail 서버에서 (프로젝트 루트)
+   cat > .env.production << 'EOF'
+   NEXT_PUBLIC_SUPABASE_URL=https://iqzcnyujkagwgshbecpg.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   EOF
    ```
 
-   ```
-   Name: NEXT_PUBLIC_SUPABASE_ANON_KEY
-   Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   Environment: Production, Preview, Development (모두 선택)
-   ```
-
-   ```
-   Name: SUPABASE_SERVICE_ROLE_KEY
-   Value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-   Environment: Production, Preview, Development (모두 선택)
-   ```
+2. **Docker Compose에서 자동 주입** (`docker-compose.yml`의 `env_file: .env.production`)
 
 ## 🔐 키 종류 설명
 
@@ -106,7 +87,7 @@ https://supabase.com/dashboard/project/your-project-id
 
 1. **service_role 키는 절대 프론트엔드에 노출하지 마세요**
 2. **.env.local 파일은 Git에 커밋하지 마세요**
-3. **Vercel에서 환경 변수 설정 시 모든 환경(Production, Preview, Development)에 설정하세요**
+3. **.env.production 파일은 서버에만 보관 (Git에 커밋하지 마세요)**
 
 ## ✅ 설정 확인
 
@@ -120,10 +101,15 @@ npm run dev
 console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)
 ```
 
-### Vercel에서 확인
+### Lightsail 서버에서 확인
 
-- Vercel 대시보드 > 프로젝트 > Settings > Environment Variables
-- 설정된 변수들이 모두 표시되는지 확인
+```bash
+# 서버 접속
+ssh class-planner
+
+# 환경 변수 파일 확인
+cat /app/.env.production | grep NEXT_PUBLIC_SUPABASE_URL
+```
 
 ## 🚀 다음 단계
 
@@ -138,17 +124,18 @@ console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)
 2. **테스트 실행**
 
    ```bash
-   npm run test
-   npm run test:e2e
+   npm run check:quick   # tsc + unit (빠른 피드백)
+   npm run check         # tsc + unit + build
    ```
 
-3. **Vercel 배포**
+3. **프로덕션 배포**
 
    ```bash
-   vercel --prod
+   bash scripts/deploy.sh
+   # 또는 GitHub Actions deploy.yml 자동 트리거 (main 브랜치 push)
    ```
 
-4. **프로덕션 환경 테스트**
+4. **프로덕션 환경 확인**: https://class-planner.info365.studio
 
 ## 🔧 Next.js 환경 변수 특징
 
@@ -166,9 +153,7 @@ console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)
 
 ## 📚 관련 문서
 
-- [프로젝트 구조 가이드](./PROJECT_STRUCTURE.md)
-- [Supabase 가이드](./SUPABASE_JSONB_GUIDE.md)
-- [문서 가이드](./README.md)
+- [deployment-guide.md](./deployment-guide.md) — Lightsail 전체 배포 절차
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — 배포 아키텍처 섹션
 - [Next.js 환경 변수 문서](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables)
 - [Supabase 클라이언트 설정](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs)
-- [Vercel 환경 변수 설정](https://vercel.com/docs/projects/environment-variables)
