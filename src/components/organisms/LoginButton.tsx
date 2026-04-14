@@ -171,6 +171,8 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         clearUserClassPlannerData(currentUserId);
       }
       localStorage.removeItem("supabase_user_id");
+      // onboarded 쿠키 삭제 (다음 로그인 시 온보딩 가드 정상 동작)
+      document.cookie = "onboarded=; Path=/; Max-Age=0";
       logger.info("🛡️ 사용자 데이터 완전 삭제 완료");
 
       // 3. UI 설정은 유지 (테마, 언어 설정 등)
