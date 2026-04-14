@@ -42,11 +42,13 @@
   line-height: 1.5;
 }
 
-/* ── Desktop: Cards Grid ── */
+/* ── Desktop: Cards Grid (subgrid로 좌우 카드 섹션 높이 동기화) ── */
 .cardsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-rows: repeat(4, auto); /* header, 학생, 과목, 수업 */
+  column-gap: 12px;
+  row-gap: 0;
   margin-bottom: 16px;
 }
 
@@ -56,31 +58,22 @@
   margin-bottom: 16px;
 }
 
-/* ── Data Card ── */
+/* ── Data Card (subgrid로 섹션 높이 동기화) ── */
 .dataCard {
+  display: grid;
+  grid-row: span 4;
+  grid-template-rows: subgrid;
   border: 1.5px solid rgba(148, 163, 184, 0.15);
   border-radius: 12px;
   padding: 20px;
-  cursor: pointer;
+  cursor: default;
   transition:
     border-color 0.18s ease,
     background 0.18s ease,
-    transform 0.18s ease,
     box-shadow 0.18s ease;
   background: rgba(255, 255, 255, 0.02);
   outline: none;
-}
-
-.dataCard:hover {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(255, 255, 255, 0.06);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.dataCard:focus-visible {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.4);
+  align-content: start;
 }
 
 .dataCardSelected {
@@ -89,29 +82,72 @@
   box-shadow: 0 0 0 1px #6366f1, 0 8px 24px rgba(99, 102, 241, 0.2);
 }
 
-/* ── Card Source Label ── */
-.cardSource {
+/* ── Card Header (radio + label + lastModified) ── */
+.cardHeader {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.radioInput {
+  width: 15px;
+  height: 15px;
+  accent-color: #6366f1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cardLabel {
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-secondary, #475569);
-  margin-bottom: 14px;
+  transition: color 0.18s;
 }
 
-.dataCardSelected .cardSource {
+.dataCardSelected .cardLabel {
   color: #818cf8;
 }
 
-.cardSourceDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
+.lastModified {
+  margin-left: auto;
+  font-size: 0.625rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+/* ── Confirm Button (desktop only) ── */
+.confirmRow {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0 4px;
+}
+
+.confirmBtn {
+  padding: 11px 36px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, transform 0.1s;
+  letter-spacing: -0.01em;
+}
+
+.confirmBtn:hover:not(:disabled) {
+  background: #4f46e5;
+  transform: translateY(-1px);
+}
+
+.confirmBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ── Sections ── */
@@ -133,6 +169,7 @@
   text-transform: uppercase;
   color: var(--color-text-secondary, #475569);
   margin-bottom: 6px;
+  user-select: none;
 }
 
 .countBadge {
@@ -143,27 +180,49 @@
   padding: 1px 5px;
 }
 
-/* ── Name List ── */
+/* ── Data List (students, subjects 등 공통) ── */
+.dataList,
 .nameList {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 4px 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  max-height: 96px;
+  gap: 2px;
+  max-height: 120px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
+.dataItem,
 .nameItem {
-  font-size: 0.8125rem;
-  color: var(--color-text-primary, #cbd5e1);
-  padding: 2px 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #94a3b8);
+  padding: 3px 6px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.dataItem:hover,
+.nameItem:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dataItemName {
+  font-weight: 500;
+  color: var(--color-text-primary, #cbd5e1);
+}
+
+.dataItemMeta {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #64748b);
+  opacity: 0.8;
 }
 
 .nameItem::before {
@@ -175,26 +234,52 @@
   flex-shrink: 0;
 }
 
-/* ── Select Hint (desktop card bottom) ── */
-.selectHint {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.75rem;
-  color: var(--color-text-secondary, #475569);
+/* ── Subject Section ── */
+.subjectDetail {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition: color 0.18s;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
-.dataCard:hover .selectHint {
-  color: var(--color-text-primary, #94a3b8);
+.subjectMeta {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.8;
+  display: inline-block;
 }
 
-.dataCardSelected .selectHint {
-  color: #818cf8;
+.subjectMeta + .subjectMeta {
+  margin-left: 8px;
+}
+
+.subjectDetail .subjectMeta:first-child {
+  display: flex;
+  gap: 8px;
+}
+
+.subjectDetail > .nameList {
+  margin-top: 2px;
+  padding-left: 0;
+  border-left: none;
+}
+
+.subjectDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* 기본과목 접힌 상태 힌트 */
+.defaultSubjectHint {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #475569);
+  opacity: 0.6;
+  padding: 2px 0;
+  list-style: none;
 }
 
 /* ── Tabs (mobile) ── */
@@ -376,6 +461,14 @@
 /* ── Section Label Clickable ── */
 .sectionLabelClickable {
   cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.12s;
+}
+
+.sectionLabelClickable:hover {
+  background: rgba(148, 163, 184, 0.08);
 }
 
 /* ── Expand Icon ── */
@@ -383,27 +476,70 @@
   font-size: 0.5rem;
   color: var(--color-text-secondary, #475569);
   margin-left: 2px;
+  transition: transform 0.15s ease;
 }
 
-/* ── Session List ── */
+/* ── Session List (improved) ── */
 .sessionList {
   list-style: none;
   padding: 0;
   margin: 4px 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   max-height: 200px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
 .sessionItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.75rem;
   color: var(--color-text-secondary, #64748b);
-  padding: 2px 4px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
   line-height: 1.4;
+  flex-wrap: wrap;
+}
+
+.sessionWeekday {
+  font-weight: 600;
+  color: var(--color-text-primary, #cbd5e1);
+  flex-shrink: 0;
+}
+
+.sessionTime {
+  color: var(--color-text-secondary, #64748b);
+  flex-shrink: 0;
+}
+
+.sessionSubject {
+  font-weight: 500;
+  color: var(--color-text-primary, #94a3b8);
+  flex-shrink: 0;
+}
+
+.groupBadge {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.sessionStudents {
+  color: var(--color-text-secondary, #64748b);
+  opacity: 0.8;
 }
 
 /* ── Responsive ── */
@@ -415,6 +551,10 @@
   }
 
   .cardsGrid {
+    display: none;
+  }
+
+  .confirmRow {
     display: none;
   }
 

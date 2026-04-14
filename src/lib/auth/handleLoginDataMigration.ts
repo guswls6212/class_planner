@@ -68,8 +68,7 @@ export async function applyLocalDataChoice(
 
   const anonymousData = getAnonymousData();
   if (!anonymousData) {
-    logger.warn("handleLoginDataMigration - applyLocalDataChoice 호출 시 anonymous 데이터 없음");
-    return;
+    throw new Error("로컬 데이터를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
   }
 
   // 1. 전체 마이그레이션 파이프라인 실행
@@ -79,6 +78,11 @@ export async function applyLocalDataChoice(
     syncedCounts: result.syncedCounts,
     errorCount: result.errors.length,
   });
+
+  if (!result.success) {
+    const failedEntities = result.errors.map((e) => `${e.entity}: ${e.message}`).join(", ");
+    throw new Error(`데이터 동기화에 실패했습니다: ${failedEntities}`);
+  }
 
   // 2. 서버에서 최신 데이터 re-fetch (병렬)
   const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =
