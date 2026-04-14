@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-14, Phase 2A 완료 + 문서 구조화 + 컨벤션 정비)
+# class-planner file structure (2026-04-14, Phase 2B 고아 파일 정리 + 문서 링크 수정)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 12개 | Archived docs: 9개 (docs/archive/)
 
@@ -155,8 +155,7 @@ class-planner/
     │       │   └── [id]/
     │       │       ├── route.ts
     │       │       └── position/route.ts
-    │       ├── user-settings/route.ts
-    │       └── auth/                     # Supabase Auth callback
+    │       └── user-settings/route.ts
     │
     ├── components/                       # Atomic Design
     │   ├── atoms/
