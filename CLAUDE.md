@@ -11,7 +11,7 @@
 1. `ARCHITECTURE.md` — 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
 2. `UI_SPEC.md` — UI 동작 소스 오브 트루스 (컴포넌트, 인터랙션, 검증 라우트)
 3. `docs/adr/` — 아키텍처 결정 기록 (왜 이 결정을 했는지)
-4. `../docs/code-convention.md` — dev-pack 공용 코딩 규칙
+4. `docs/code-convention.md` — class-planner 코딩 규칙 (글로벌: `../docs/code-convention.md`)
 5. `TASKS.md` — 단계별 진행 현황
 
 ## 문서 맵 (Documentation Map)
@@ -28,6 +28,7 @@
 | 개발 프로세스, 코드 품질 | [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) | 개발 방식 참조 시 |
 | E2E 테스트 인증 설정 | [docs/E2E_AUTH_SETUP.md](docs/E2E_AUTH_SETUP.md) | E2E 테스트 작성 시 |
 | 환경 변수 설정 | [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) | 환경 설정 시 |
+| 코딩 규칙 (파일크기, 언어, 스타일) | [docs/code-convention.md](docs/code-convention.md) | 코드 작성/리뷰 시 |
 | 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
 | 기능 설계 문서 | [docs/superpowers/specs/](docs/superpowers/specs/) | 기능 배경 이해 시 |
 
@@ -83,6 +84,7 @@
 | Application | 90%+ | Vitest (Mock Repository) |
 | Infrastructure | 80%+ | Vitest (실제 외부 의존성) |
 | Presentation | 70%+ | Vitest + RTL |
+| API Routes | 90%+ | Vitest (Mock Supabase) |
 | E2E | 주요 시나리오 | Playwright |
 
 ## 개발 워크플로우
