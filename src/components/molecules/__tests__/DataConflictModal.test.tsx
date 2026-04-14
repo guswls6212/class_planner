@@ -4,7 +4,7 @@ import DataConflictModal from "../DataConflictModal";
 import type { ClassPlannerData } from "../../../lib/localStorageCrud";
 
 const makeData = (
-  students: { id: string; name: string }[],
+  students: { id: string; name: string; gender?: string; birthDate?: string }[],
   subjects: { id: string; name: string; color?: string }[],
   sessions: { id: string; weekday: number; startsAt: string; endsAt: string; enrollmentIds?: string[] }[]
 ): ClassPlannerData => ({
@@ -18,8 +18,8 @@ const makeData = (
 
 const localData = makeData(
   [
-    { id: "s1", name: "김철수" },
-    { id: "s2", name: "이영희" },
+    { id: "s1", name: "김철수", gender: "male", birthDate: "2010-03-15" },
+    { id: "s2", name: "이영희", gender: "female" },
     { id: "s3", name: "박민준" },
   ],
   [
@@ -36,7 +36,7 @@ const serverData = makeData(
 );
 
 describe("DataConflictModal", () => {
-  it("로컬 카드에 학생 이름 목록이 렌더된다 (접기/펼치기)", () => {
+  it("로컬 카드에 학생 정보가 렌더된다 (접기/펼치기, 이름+성별+생년월일)", () => {
     render(
       <DataConflictModal
         localData={localData}

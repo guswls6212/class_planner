@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import type { ClassPlannerData } from "../../lib/localStorageCrud";
-import type { Subject, Enrollment, Session } from "../../lib/planner";
+import type { Student, Subject, Enrollment, Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
 import styles from "./DataConflictModal.module.css";
 
@@ -184,7 +184,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
           <div className={styles.tabContent}>
             {activeTab === "local" ? (
               <>
-                <CollapsibleNameSection label="학생" names={localData.students.map((s) => s.name)} />
+                <StudentSection students={localData.students} />
                 <SubjectSection subjects={localData.subjects} filteredSubjects={localSubjects} />
                 <SessionSection
                   sessions={localData.sessions}
@@ -203,7 +203,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
               </>
             ) : (
               <>
-                <CollapsibleNameSection label="학생" names={serverData.students.map((s) => s.name)} />
+                <StudentSection students={serverData.students} />
                 <SubjectSection subjects={serverData.subjects} filteredSubjects={serverSubjects} />
                 <SessionSection
                   sessions={serverData.sessions}
@@ -289,7 +289,7 @@ const DataCard: React.FC<DataCardProps> = ({
           <span className={styles.lastModified}>{lastModified}</span>
         )}
       </label>
-      <CollapsibleNameSection label="학생" names={data.students.map((s) => s.name)} />
+      <StudentSection students={data.students} />
       <SubjectSection subjects={data.subjects} filteredSubjects={filteredSubjects} />
       <SessionSection
         sessions={data.sessions}
@@ -301,38 +301,60 @@ const DataCard: React.FC<DataCardProps> = ({
   );
 };
 
-/* ── CollapsibleNameSection: 접기/펼치기 가능한 이름 목록 ── */
+/* ── StudentSection: 학생 섹션 (이름, 성별, 생년월일 표시) ── */
 
-interface CollapsibleNameSectionProps {
-  label: string;
-  names: string[];
-  unit?: string;
+function formatGender(gender: string | undefined): string {
+  if (!gender) return "";
+  if (gender === "male" || gender === "남") return "남";
+  if (gender === "female" || gender === "여") return "여";
+  return gender;
 }
 
-const CollapsibleNameSection: React.FC<CollapsibleNameSectionProps> = ({ label, names, unit = "명" }) => {
+function formatBirthDate(birthDate: string | undefined): string {
+  if (!birthDate) return "";
+  try {
+    const d = new Date(birthDate);
+    if (isNaN(d.getTime())) return birthDate;
+    return `${d.getFullYear().toString().slice(2)}.${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+  } catch {
+    return birthDate;
+  }
+}
+
+interface StudentSectionProps {
+  students: Student[];
+}
+
+const StudentSection: React.FC<StudentSectionProps> = ({ students }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className={styles.section}>
       <div
-        className={`${styles.sectionLabel} ${names.length > 0 ? styles.sectionLabelClickable : ""}`}
-        onClick={() => { if (names.length > 0) setExpanded(!expanded); }}
-        role={names.length > 0 ? "button" : undefined}
-        aria-expanded={names.length > 0 ? expanded : undefined}
+        className={`${styles.sectionLabel} ${students.length > 0 ? styles.sectionLabelClickable : ""}`}
+        onClick={() => { if (students.length > 0) setExpanded(!expanded); }}
+        role={students.length > 0 ? "button" : undefined}
+        aria-expanded={students.length > 0 ? expanded : undefined}
       >
-        {label}
-        <span className={styles.countBadge}>{names.length}{unit}</span>
-        {names.length > 0 && (
+        학생
+        <span className={styles.countBadge}>{students.length}명</span>
+        {students.length > 0 && (
           <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
         )}
       </div>
-      {expanded && names.length > 0 && (
-        <ul className={styles.nameList}>
-          {names.map((name, idx) => (
-            <li key={`${name}-${idx}`} className={styles.nameItem}>
-              {name}
-            </li>
-          ))}
+      {expanded && students.length > 0 && (
+        <ul className={styles.dataList}>
+          {students.map((student, idx) => {
+            const gender = formatGender(student.gender);
+            const birth = formatBirthDate(student.birthDate);
+            const meta = [gender, birth].filter(Boolean).join(" · ");
+            return (
+              <li key={`${student.id}-${idx}`} className={styles.dataItem}>
+                <span className={styles.dataItemName}>{student.name}</span>
+                {meta && <span className={styles.dataItemMeta}>{meta}</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

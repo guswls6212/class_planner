@@ -174,27 +174,49 @@
   padding: 1px 5px;
 }
 
-/* ── Name List ── */
+/* ── Data List (students, subjects 등 공통) ── */
+.dataList,
 .nameList {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 4px 0 0 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  max-height: 96px;
+  gap: 2px;
+  max-height: 120px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
+.dataItem,
 .nameItem {
-  font-size: 0.8125rem;
-  color: var(--color-text-primary, #cbd5e1);
-  padding: 2px 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #94a3b8);
+  padding: 3px 6px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.dataItem:hover,
+.nameItem:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dataItemName {
+  font-weight: 500;
+  color: var(--color-text-primary, #cbd5e1);
+}
+
+.dataItemMeta {
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary, #64748b);
+  opacity: 0.8;
 }
 
 .nameItem::before {
@@ -210,7 +232,10 @@
 .subjectDetail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
 .subjectMeta {
@@ -231,6 +256,8 @@
 
 .subjectDetail > .nameList {
   margin-top: 2px;
+  padding-left: 0;
+  border-left: none;
 }
 
 .subjectDot {
@@ -458,6 +485,8 @@
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+  padding-left: 10px;
+  border-left: 2px solid rgba(99, 102, 241, 0.15);
 }
 
 .sessionItem {
