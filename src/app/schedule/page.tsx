@@ -354,7 +354,7 @@ function SchedulePageContent(): JSX.Element {
       // 기존 세션의 지속 시간 계산
       const existingSession = sessions.find((s) => s.id === sessionId);
       if (!existingSession) {
-        console.error("세션을 찾을 수 없습니다:", sessionId);
+        logger.error("세션을 찾을 수 없습니다", { sessionId });
         return;
       }
 

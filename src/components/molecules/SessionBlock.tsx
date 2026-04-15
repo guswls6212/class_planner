@@ -112,7 +112,7 @@ function SessionBlock({
 
   // 🆕 디버깅 정보 추가
   if (!subject) {
-    console.warn("🔍 SessionBlock 렌더링: 과목 정보 없음", {
+    logger.warn("SessionBlock: 과목 정보 없음", {
       sessionId: session.id,
       enrollmentIds: session.enrollmentIds || [],
       subjectsCount: subjects.length,

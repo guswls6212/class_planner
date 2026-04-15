@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Enrollment, Session } from "../lib/planner";
+import { logger } from "../lib/logger";
 import type { DisplaySessions } from "../types/scheduleTypes";
 
 export const useDisplaySessions = (
@@ -17,7 +18,7 @@ export const useDisplaySessions = (
         session.weekday === undefined ||
         session.weekday === null
       ) {
-        console.warn("🔍 불완전한 세션 필터링됨 (필수 속성 누락):", {
+        logger.warn("불완전한 세션 필터링됨 (필수 속성 누락)", {
           sessionId: session.id,
           startsAt: session.startsAt,
           endsAt: session.endsAt,
@@ -32,7 +33,7 @@ export const useDisplaySessions = (
         !Array.isArray(session.enrollmentIds) ||
         session.enrollmentIds.length === 0
       ) {
-        console.warn("🔍 불완전한 세션 필터링됨 (enrollmentIds 누락):", {
+        logger.warn("불완전한 세션 필터링됨 (enrollmentIds 누락)", {
           sessionId: session.id,
           enrollmentIds: session.enrollmentIds,
         });
@@ -45,7 +46,7 @@ export const useDisplaySessions = (
       );
 
       if (validEnrollments.length === 0) {
-        console.warn("🔍 불완전한 세션 필터링됨 (유효한 enrollment 없음):", {
+        logger.warn("불완전한 세션 필터링됨 (유효한 enrollment 없음)", {
           sessionId: session.id,
           enrollmentIds: session.enrollmentIds,
           availableEnrollments: enrollments.map((e) => e.id),

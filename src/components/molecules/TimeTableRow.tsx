@@ -1,5 +1,6 @@
 import React from "react";
 import type { Session, Subject } from "../../lib/planner";
+import { logger } from "../../lib/logger";
 
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import DropZone from "./DropZone";
@@ -66,7 +67,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // 🆕 시간을 분으로 변환하는 헬퍼 함수
   const timeToMinutes = React.useCallback((time: string): number => {
     if (!time || typeof time !== "string") {
-      console.warn("Invalid time format:", time);
+      logger.warn("Invalid time format", { time });
       return 0;
     }
     const [hours, minutes] = time.split(":").map(Number);

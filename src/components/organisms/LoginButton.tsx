@@ -45,7 +45,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
           setUser(user);
         }
       } catch (error) {
-        console.warn("Supabase 인증 확인 실패:", error);
+        logger.warn("Supabase 인증 확인 실패", undefined, error instanceof Error ? error : undefined);
       }
     };
     checkUser();
