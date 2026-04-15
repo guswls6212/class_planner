@@ -72,7 +72,7 @@ const eslintConfig = [
       ...typescript.configs.recommended.rules,
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "no-console": "warn",
+      "no-console": "error",
       "prefer-const": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "no-useless-escape": "warn",
@@ -135,10 +135,21 @@ const eslintConfig = [
     },
     rules: {
       "no-unused-vars": "warn",
-      "no-console": "warn",
+      "no-console": "error",
       "prefer-const": "warn",
       "no-useless-escape": "warn",
     },
+  },
+  {
+    // logger.ts 내부에서만 console.* 사용 허용 (stdout 최종 출력 지점)
+    // 테스트 파일은 console을 mock/restore하므로 허용
+    files: [
+      "src/lib/logger.ts",
+      "**/__tests__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: { "no-console": "off" },
   },
   {
     ignores: [
