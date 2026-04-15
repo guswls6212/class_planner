@@ -65,7 +65,9 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
   return (
     <div className={`${styles.container} ${className}`} style={style}>
       <div className={styles.input}>
+        <label htmlFor="student-name-input" className="sr-only">학생 이름</label>
         <Input
+          id="student-name-input"
           placeholder="학생 이름 (검색 가능)"
           value={newStudentName}
           onChange={handleInputChange}

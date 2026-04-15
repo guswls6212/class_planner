@@ -95,6 +95,22 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveAttribute("data-ends-at", "10:00");
   });
 
+  it("button role로 렌더링되어야 한다 (키보드 접근성)", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const sessionBlock = screen.getByRole("button");
+    expect(sessionBlock).toBeInTheDocument();
+  });
+
+  it("aria-label에 학생명과 과목명이 포함되어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const sessionBlock = screen.getByRole("button");
+    const label = sessionBlock.getAttribute("aria-label");
+    expect(label).toContain("수학");
+    expect(label).toContain("김철수");
+  });
+
   it("과목명이 올바르게 표시되어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 

@@ -94,6 +94,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
               <div className={styles.studentInputContainer}>
                 <input
+                  id="edit-modal-students"
                   type="text"
                   placeholder="학생 이름을 입력하세요"
                   className="form-input"
@@ -165,7 +166,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">요일</label>
+              <label htmlFor="edit-modal-weekday" className="form-label">요일</label>
               <select
                 id="edit-modal-weekday"
                 className="form-select"
@@ -180,7 +181,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">시작 시간</label>
+              <label htmlFor="edit-modal-start-time" className="form-label">시작 시간</label>
               <input
                 id="edit-modal-start-time"
                 type="time"
@@ -190,7 +191,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">종료 시간</label>
+              <label htmlFor="edit-modal-end-time" className="form-label">종료 시간</label>
               <input
                 id="edit-modal-end-time"
                 type="time"

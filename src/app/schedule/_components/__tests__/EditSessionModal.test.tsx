@@ -136,5 +136,23 @@ describe("EditSessionModal", () => {
       fireEvent.keyDown(document, { key: "Escape" });
       expect(onCancel).toHaveBeenCalled();
     });
+
+    it("요일 select는 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const weekdaySelect = screen.getByLabelText("요일");
+      expect(weekdaySelect).toBeInTheDocument();
+    });
+
+    it("시작 시간 input은 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const startTimeInput = screen.getByLabelText("시작 시간");
+      expect(startTimeInput).toBeInTheDocument();
+    });
+
+    it("종료 시간 input은 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const endTimeInput = screen.getByLabelText("종료 시간");
+      expect(endTimeInput).toBeInTheDocument();
+    });
   });
 });

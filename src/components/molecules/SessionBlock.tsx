@@ -15,9 +15,7 @@ const getDynamicFontSize = (studentCount: number): string => {
   if (studentCount <= 4) return "12px"; // 4명: 12px
   if (studentCount <= 5) return "9px"; // 5명: 약 45px (충분)
   if (studentCount <= 6) return "8px"; // 6명: 약 48px (충분)
-  if (studentCount <= 7) return "7px"; // 7명: 약 49px (충분)
-  if (studentCount <= 8) return "6px"; // 8명: 약 48px (충분)
-  return "5px"; // 9명 이상: 더 작은 글자로 최대한 표시
+  return "8px"; // 7명 이상: WCAG 1.4.4 최소 폰트 사이즈 8px 유지
 };
 
 // 🆕 학생이름 표시 로직 개선 - 더 많은 학생 표시 가능
@@ -186,8 +184,16 @@ function SessionBlock({
   // 🆕 드래그 중인 세션인지 확인
   const isDraggedSession = session.id === draggedSessionId;
 
+  const ariaLabel = [
+    studentNames.join(", ") || "학생 없음",
+    subject?.name || "과목 없음",
+    session.startsAt,
+    session.endsAt,
+  ].join(" ");
+
   return (
-    <div
+    <button
+      type="button"
       style={{
         ...styles,
         cursor: "move", // 🆕 드래그 가능함을 나타내는 커서
@@ -197,6 +203,7 @@ function SessionBlock({
             opacity: 0.5,
           }),
       }}
+      aria-label={ariaLabel}
       onClick={handleClick}
       draggable={true} // 🆕 드래그 가능하도록 설정
       onDragStart={handleDragStart} // 🆕 드래그 시작 이벤트
@@ -289,7 +296,7 @@ function SessionBlock({
           </div>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
