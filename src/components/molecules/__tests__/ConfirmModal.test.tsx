@@ -56,7 +56,8 @@ describe("ConfirmModal Component", () => {
   it("백드롭을 클릭하면 onCancel이 호출되어야 한다", () => {
     render(<ConfirmModal {...defaultProps} />);
 
-    const backdrop = screen.getByRole("dialog");
+    // role="dialog" is on the inner modal div; the backdrop is targeted by testid
+    const backdrop = screen.getByTestId("confirm-modal-backdrop");
     fireEvent.click(backdrop);
 
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);

@@ -1,5 +1,4 @@
 import React from "react";
-import { downloadTimetableAsPDF } from "../../lib/pdf-utils";
 import { showError } from "../../lib/toast";
 import type { Student } from "../../lib/planner";
 import Button from "../atoms/Button";
@@ -25,6 +24,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
     onDownloadStart();
     try {
       const studentName = selectedStudent?.name;
+      const { downloadTimetableAsPDF } = await import("../../lib/pdf-utils");
       await downloadTimetableAsPDF(timeTableRef.current, studentName);
     } catch (error) {
       showError("PDF 다운로드에 실패했습니다.");
@@ -34,7 +34,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   };
 
   return (
-    <div style={{ marginBottom: "16px", textAlign: "right" }}>
+    <div className="mb-4 text-right">
       <Button
         variant="primary"
         onClick={handlePDFDownload}

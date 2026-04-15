@@ -27,6 +27,21 @@ describe("SubjectInputSection Component", () => {
     expect(screen.getByDisplayValue("#f59e0b")).toBeInTheDocument();
   });
 
+  it("과목 이름 입력 필드는 label과 연결되어야 한다 (a11y)", () => {
+    render(<SubjectInputSection {...mockProps} />);
+
+    const input = screen.getByLabelText("과목 이름");
+    expect(input).toBeInTheDocument();
+  });
+
+  it("과목 색상 입력 필드는 label과 연결되어야 한다 (a11y)", () => {
+    render(<SubjectInputSection {...mockProps} />);
+
+    const colorInput = screen.getByLabelText("과목 색상");
+    expect(colorInput).toBeInTheDocument();
+    expect(colorInput).toHaveAttribute("type", "color");
+  });
+
   it("과목 이름을 입력하고 추가 버튼을 클릭하면 onAddSubject가 호출되어야 한다", async () => {
     // Arrange
     render(<SubjectInputSection {...mockProps} />);

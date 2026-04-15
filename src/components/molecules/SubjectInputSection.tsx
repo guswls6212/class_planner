@@ -86,7 +86,9 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
   return (
     <div className={`${styles.container} ${className}`} style={style}>
       <div className={styles.input}>
+        <label htmlFor="subject-name-input" className="sr-only">과목 이름</label>
         <Input
+          id="subject-name-input"
           placeholder="과목 이름 (검색 가능)"
           value={subjectName}
           onChange={handleInputChange}
@@ -100,7 +102,9 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
         />
       </div>
       <div className={styles.colorPicker}>
+        <label htmlFor="subject-color-input" className="sr-only">과목 색상</label>
         <input
+          id="subject-color-input"
           type="color"
           className={styles.colorInput}
           value={subjectColor}

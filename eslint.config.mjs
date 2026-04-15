@@ -2,9 +2,33 @@ import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const eslintConfig = [
   js.configs.recommended,
+  // jsx-a11y: recommended rules at warn level (errors promoted to warn so legacy issues
+  // don't block CI; will escalate to error in Phase 3 after visual redesign)
+  {
+    files: ["**/*.{tsx,jsx}"],
+    plugins: {
+      "jsx-a11y": jsxA11y,
+    },
+    rules: {
+      ...Object.fromEntries(
+        Object.entries(
+          jsxA11y.flatConfigs?.recommended?.rules ??
+            jsxA11y.configs.recommended.rules
+        ).map(([key, val]) => {
+          // Downgrade error → warn; handles both string ("error") and array (["error", opts]) forms
+          if (Array.isArray(val)) {
+            const [sev, ...rest] = val;
+            return [key, [sev === "error" || sev === 2 ? "warn" : sev, ...rest]];
+          }
+          return [key, val === "error" || val === 2 ? "warn" : val];
+        })
+      ),
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {

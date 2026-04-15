@@ -2,6 +2,7 @@
 import React from "react";
 import Button from "../../../components/atoms/Button";
 import Label from "../../../components/atoms/Label";
+import { useModalA11y } from "../../../hooks/useModalA11y";
 import styles from "../Schedule.module.css";
 
 type StudentOption = { id: string; name: string };
@@ -56,13 +57,21 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   onCancel,
   onSave,
 }) => {
+  const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
+
   if (!isOpen) return null;
 
   return (
     <div className="modal-backdrop">
       <div className={styles.modalOverlay}>
-        <div className={styles.modalContent}>
-          <h4 className={styles.modalTitle}>수업 편집</h4>
+        <div
+          className={styles.modalContent}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-session-modal-title"
+          ref={containerRef}
+        >
+          <h4 id="edit-session-modal-title" className={styles.modalTitle}>수업 편집</h4>
           <div className={styles.modalForm}>
             <div className="form-group">
               <Label htmlFor="edit-modal-students" required>
@@ -85,6 +94,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
               <div className={styles.studentInputContainer}>
                 <input
+                  id="edit-modal-students"
                   type="text"
                   placeholder="학생 이름을 입력하세요"
                   className="form-input"
@@ -123,13 +133,14 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                     </div>
                   ) : (
                     editSearchResults.map((student) => (
-                      <div
+                      <button
                         key={student.id}
+                        type="button"
                         className={styles.studentSearchItem}
                         onClick={() => onSelectSearchStudent(student.id)}
                       >
                         {student.name}
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -156,7 +167,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">요일</label>
+              <label htmlFor="edit-modal-weekday" className="form-label">요일</label>
               <select
                 id="edit-modal-weekday"
                 className="form-select"
@@ -171,7 +182,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">시작 시간</label>
+              <label htmlFor="edit-modal-start-time" className="form-label">시작 시간</label>
               <input
                 id="edit-modal-start-time"
                 type="time"
@@ -181,7 +192,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">종료 시간</label>
+              <label htmlFor="edit-modal-end-time" className="form-label">종료 시간</label>
               <input
                 id="edit-modal-end-time"
                 type="time"

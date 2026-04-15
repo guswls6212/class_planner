@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { ClassPlannerData } from "../../lib/localStorageCrud";
 import type { Student, Subject, Enrollment, Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import styles from "./DataConflictModal.module.css";
 
 interface DataConflictModalProps {
@@ -90,6 +91,11 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   const [activeTab, setActiveTab] = useState<"local" | "server">("local");
   const [selectedSide, setSelectedSide] = useState<"local" | "server" | null>(null);
 
+  // DataConflictModal must be explicitly resolved — Escape is intentionally a no-op
+  // isOpen is always true here because DataConflictModal is only rendered when needed
+  // (parent controls conditional render). onClose is a no-op — user must resolve conflict.
+  const { containerRef } = useModalA11y({ isOpen: true, onClose: () => {} });
+
   const localSubjects = filterNonDefaultSubjects(localData.subjects);
   const serverSubjects = filterNonDefaultSubjects(serverData.subjects);
 
@@ -99,17 +105,16 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   };
 
   return (
+    /* No backdrop click handler — modal must be explicitly resolved via the buttons below */
     <div
       className={styles.backdrop}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) return;
-      }}
     >
       <div
         className={styles.modal}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="conflict-modal-title"
+        aria-labelledby="data-conflict-modal-title"
+        ref={containerRef}
       >
         {isMigrating && (
           <div className={styles.migrationOverlay} aria-live="polite">
@@ -119,7 +124,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         )}
 
         <div className={styles.header}>
-          <h2 id="conflict-modal-title" className={styles.title}>
+          <h2 id="data-conflict-modal-title" className={styles.title}>
             데이터 충돌이 감지되었습니다
           </h2>
           <p className={styles.subtitle}>
@@ -330,18 +335,23 @@ const StudentSection: React.FC<StudentSectionProps> = ({ students }) => {
 
   return (
     <div className={styles.section}>
-      <div
-        className={`${styles.sectionLabel} ${students.length > 0 ? styles.sectionLabelClickable : ""}`}
-        onClick={() => { if (students.length > 0) setExpanded(!expanded); }}
-        role={students.length > 0 ? "button" : undefined}
-        aria-expanded={students.length > 0 ? expanded : undefined}
-      >
-        학생
-        <span className={styles.countBadge}>{students.length}명</span>
-        {students.length > 0 && (
+      {students.length > 0 ? (
+        <button
+          type="button"
+          className={`${styles.sectionLabel} ${styles.sectionLabelClickable}`}
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          학생
+          <span className={styles.countBadge}>{students.length}명</span>
           <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
-        )}
-      </div>
+        </button>
+      ) : (
+        <div className={styles.sectionLabel}>
+          학생
+          <span className={styles.countBadge}>{students.length}명</span>
+        </div>
+      )}
       {expanded && students.length > 0 && (
         <ul className={styles.dataList}>
           {students.map((student, idx) => {
@@ -375,18 +385,23 @@ const SubjectSection: React.FC<SubjectSectionProps> = ({ subjects, filteredSubje
 
   return (
     <div className={styles.section}>
-      <div
-        className={`${styles.sectionLabel} ${subjects.length > 0 ? styles.sectionLabelClickable : ""}`}
-        onClick={() => { if (subjects.length > 0) setExpanded(!expanded); }}
-        role={subjects.length > 0 ? "button" : undefined}
-        aria-expanded={subjects.length > 0 ? expanded : undefined}
-      >
-        과목
-        <span className={styles.countBadge}>{subjects.length}개</span>
-        {subjects.length > 0 && (
+      {subjects.length > 0 ? (
+        <button
+          type="button"
+          className={`${styles.sectionLabel} ${styles.sectionLabelClickable}`}
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          과목
+          <span className={styles.countBadge}>{subjects.length}개</span>
           <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
-        )}
-      </div>
+        </button>
+      ) : (
+        <div className={styles.sectionLabel}>
+          과목
+          <span className={styles.countBadge}>{subjects.length}개</span>
+        </div>
+      )}
       {expanded && subjects.length > 0 && (
         <div className={styles.subjectDetail}>
           {defaultCount > 0 && (
@@ -437,18 +452,23 @@ const SessionSection: React.FC<SessionSectionProps> = ({
 
   return (
     <div className={styles.section}>
-      <div
-        className={`${styles.sectionLabel} ${sessions.length > 0 ? styles.sectionLabelClickable : ""}`}
-        onClick={() => { setExpanded(!expanded); }}
-        role={sessions.length > 0 ? "button" : undefined}
-        aria-expanded={sessions.length > 0 ? expanded : undefined}
-      >
-        수업
-        <span className={styles.countBadge}>{sessions.length}개</span>
-        {sessions.length > 0 && (
+      {sessions.length > 0 ? (
+        <button
+          type="button"
+          className={`${styles.sectionLabel} ${styles.sectionLabelClickable}`}
+          onClick={() => setExpanded(!expanded)}
+          aria-expanded={expanded}
+        >
+          수업
+          <span className={styles.countBadge}>{sessions.length}개</span>
           <span className={styles.expandIcon}>{expanded ? "▼" : "▶"}</span>
-        )}
-      </div>
+        </button>
+      ) : (
+        <div className={styles.sectionLabel}>
+          수업
+          <span className={styles.countBadge}>{sessions.length}개</span>
+        </div>
+      )}
       {expanded && sessions.length > 0 && (
         <ul className={styles.sessionList}>
           {sessions.map((session) => {

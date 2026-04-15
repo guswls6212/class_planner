@@ -143,6 +143,16 @@ describe("Schedule Page", () => {
     expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
+  it("schedule modals return null when closed (lazy-load boundary test)", () => {
+    render(<SchedulePage />);
+    // EditSessionModal and GroupSessionModal both return null when isOpen=false.
+    // They are also lazy-loaded via next/dynamic; neither should produce any DOM
+    // output on cold render. The modal-backdrop div is the outermost element each
+    // modal renders when open — its absence confirms the closed state.
+    // (The build-chunk split is the ground truth for lazy-loading itself.)
+    expect(document.querySelector(".modal-backdrop")).toBeNull();
+  });
+
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 에러 상태로 변경
     vi.mocked(useIntegratedDataModule.useIntegratedDataLocal).mockReturnValue({

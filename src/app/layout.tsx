@@ -1,12 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
 import GlobalErrorHandlers from "../components/atoms/GlobalErrorHandlers";
-import DataConflictModal from "../components/molecules/DataConflictModal";
 import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
@@ -15,6 +15,11 @@ import { Toaster } from "sonner";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { logger } from "../lib/logger";
 import "./globals.css";
+
+const DataConflictModal = dynamic(
+  () => import("../components/molecules/DataConflictModal"),
+  { ssr: false, loading: () => null }
+);
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -207,6 +212,13 @@ export default function RootLayout({
         <ThemeProvider>
           <AppContent>{children}</AppContent>
           <Toaster richColors position="top-right" />
+          {/*
+           * SR live region — placeholder for future programmatic announcements.
+           * Currently unwired: Sonner (<Toaster>) handles toast SR output.
+           * Future use: write textContent to announce async feedback to screen readers
+           * (e.g. save-success, sync-error) that fall outside Sonner's scope.
+           */}
+          <div aria-live="polite" aria-atomic="true" id="app-live-region" className="sr-only" />
         </ThemeProvider>
       </body>
     </html>

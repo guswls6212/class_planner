@@ -159,8 +159,18 @@
         — `no-console` rule `"warn"` → `"error"` 승격, logger.ts+테스트 파일 override 추가
         — `src/` 전수 치환 (lib 3개 + components 4개 + hooks 2개 + app 2개 파일)
         — 테스트 spy 4개 `console.warn` → `logger.warn` 업데이트
-- [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
-- [ ] 접근성(a11y) 개선
+- [x] 성능 최적화 (번들 사이즈, 초기 로딩) — 완료 (PR#TBD)
+      — react-router-dom/uid/template SVGs 제거 (dead deps cleanup)
+      — PDF 스택(jspdf+html2canvas) dynamic import → 클릭 시 온디맨드 로드
+      — 3개 모달 next/dynamic { ssr: false } + experimental.optimizePackageImports: ["sonner"]
+      — /schedule First Load JS: **385 kB → 200 kB (−48%)**
+- [x] 접근성(a11y) 개선 — 완료 (PR#TBD)
+      — useModalA11y 훅 신규: Escape, Tab 포커스 트랩, return-focus
+      — EditSessionModal/GroupSessionModal/DataConflictModal: role=dialog + aria-modal + aria-labelledby
+      — SessionBlock: div → button + aria-label(학생/과목/요일/시간) + focus-visible 아웃라인
+      — StudentInputSection/SubjectInputSection/EditSessionModal: label/htmlFor 연결
+      — eslint-plugin-jsx-a11y (recommended/warn 레벨) + aria-live 플레이스홀더
+      — 테스트 +29개 (1255 → 1284)
 
 ## Phase 3: 디자인 리뉴얼 (계획)
 > Phase 2B 안정화 후 진행.
@@ -213,3 +223,5 @@
 | 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |
 | 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
 | 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
+| 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
+| 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
