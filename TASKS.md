@@ -130,8 +130,28 @@
 - [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
 
 ### 남은 항목
-- [ ] 에러 핸들링 체계화
-- [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
+- [x] 에러 핸들링 체계화 (F3 Step 1~4 완료, PR#25~28 → dev 머지 완료)
+- [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
+  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
+  - [ ] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
+        — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
+        — RLS: insert는 service_role만, select는 owner role만
+        — TTL: 30일 자동 삭제 함수 (선택)
+  - [ ] Step 3: 서버 logger → app_logs 영구화
+        — `logger.error/warn` 호출 시 service-role client로 비동기 insert (실패해도 stdout 유지)
+        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출
+        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact)
+  - [ ] Step 4: 클라이언트 에러 ingest 엔드포인트
+        — `POST /api/logs/client` — rate-limit, payload schema 검증
+        — `window.onerror` + `unhandledrejection` 글로벌 핸들러 (top-level client component)
+        — `app/global-error.tsx` Next.js 글로벌 폴백
+        — `ErrorBoundary` / `useUserTracking.trackError` → ingest 연동
+  - [ ] Step 5: 관리자 로그 뷰어 `/settings/logs`
+        — owner role만 접근 (academy_members 검증)
+        — 최근 N건 조회, level/source/code 필터, 페이지네이션
+  - [ ] Step 6: `console.*` 사용 금지 ESLint rule + 38개 sweep
+        — `no-console` rule 추가 (logger.* 강제)
+        — `src/` 전수 치환, 테스트 픽스처 제외
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
 
@@ -179,3 +199,4 @@
 | 2026-04-14 | PR#16 머지 (문서 구조화). PR#17 머지 (코딩 규칙 문서화, dead code 제거, 컨벤션 정비). PR#18 머지 (docs/ 9→3 통합 축소, 불일치 6건 수정, 고아 테스트 삭제) |
 | 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
 | 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
+| 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |

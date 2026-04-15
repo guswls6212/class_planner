@@ -13,6 +13,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   nginx:
     image: nginx:alpine
@@ -27,6 +32,11 @@ services:
       - ./certbot/www:/var/www/certbot
     depends_on:
       - class-planner
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   certbot:
     image: certbot/certbot
@@ -35,3 +45,8 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
