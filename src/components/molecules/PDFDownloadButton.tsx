@@ -34,7 +34,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   };
 
   return (
-    <div style={{ marginBottom: "16px", textAlign: "right" }}>
+    <div className="mb-4 text-right">
       <Button
         variant="primary"
         onClick={handlePDFDownload}

@@ -15,13 +15,23 @@ import PDFDownloadButton from "../PDFDownloadButton";
 // 경로는 컴포넌트가 실제로 import 하는 경로와 일치해야 한다 (vitest 모듈 ID 기준)
 const mockDownloadTimetableAsPDF = vi.fn().mockResolvedValue(undefined);
 
+// Component imports via relative path "../../lib/pdf-utils".
+// Vitest resolves both the alias and relative forms to the same module ID,
+// so this alias-form mock applies correctly to the dynamic import inside the component.
 vi.mock("@/lib/pdf-utils", () => ({
   downloadTimetableAsPDF: mockDownloadTimetableAsPDF,
+}));
+
+const mockShowError = vi.fn();
+vi.mock("@/lib/toast", () => ({
+  showError: (...args: unknown[]) => mockShowError(...args),
+  showToast: vi.fn(),
 }));
 
 describe("PDFDownloadButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockShowError.mockClear();
   });
 
   it("초기 렌더 시 에러 없이 렌더링되어야 한다", () => {
@@ -187,5 +197,7 @@ describe("PDFDownloadButton", () => {
     await vi.waitFor(() => {
       expect(onDownloadEnd).toHaveBeenCalledTimes(1);
     });
+
+    expect(mockShowError).toHaveBeenCalledWith("PDF 다운로드에 실패했습니다.");
   });
 });
