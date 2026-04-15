@@ -105,7 +105,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   return (
     <div
       className={styles.backdrop}
-      ref={containerRef}
       onClick={(e) => {
         if (e.target === e.currentTarget) return;
       }}
@@ -115,6 +114,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="data-conflict-modal-title"
+        ref={containerRef}
       >
         {isMigrating && (
           <div className={styles.migrationOverlay} aria-live="polite">

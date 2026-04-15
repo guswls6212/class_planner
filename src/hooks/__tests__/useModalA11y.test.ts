@@ -61,6 +61,11 @@ describe("useModalA11y", () => {
     container.appendChild(btn2);
     document.body.appendChild(container);
 
+    // jsdom does not implement layout engine — offsetParent is always null.
+    // Mock it to simulate visible elements so getFocusableElements includes them.
+    Object.defineProperty(btn1, "offsetParent", { value: container, configurable: true });
+    Object.defineProperty(btn2, "offsetParent", { value: container, configurable: true });
+
     // Attach the ref
     Object.defineProperty(result.current.containerRef, "current", {
       value: container,
@@ -96,6 +101,11 @@ describe("useModalA11y", () => {
     container.appendChild(btn2);
     document.body.appendChild(container);
 
+    // jsdom does not implement layout engine — offsetParent is always null.
+    // Mock it to simulate visible elements so getFocusableElements includes them.
+    Object.defineProperty(btn1, "offsetParent", { value: container, configurable: true });
+    Object.defineProperty(btn2, "offsetParent", { value: container, configurable: true });
+
     Object.defineProperty(result.current.containerRef, "current", {
       value: container,
       writable: true,
@@ -130,16 +140,23 @@ describe("useModalA11y", () => {
     triggerBtn.focus();
     expect(document.activeElement).toBe(triggerBtn);
 
-    const { unmount } = renderHook(() =>
-      useModalA11y({ isOpen: true, onClose })
+    const { rerender } = renderHook(
+      ({ isOpen }: { isOpen: boolean }) =>
+        useModalA11y({ isOpen, onClose }),
+      { initialProps: { isOpen: true } }
     );
 
     act(() => {
       vi.runAllTimers();
     });
 
-    // Unmount (simulates modal close)
-    unmount();
+    // Capture focus state before close
+    expect(document.activeElement).not.toBe(null);
+
+    // Simulate modal close via isOpen toggle (real usage pattern, not unmount)
+    act(() => {
+      rerender({ isOpen: false });
+    });
 
     expect(document.activeElement).toBe(triggerBtn);
 

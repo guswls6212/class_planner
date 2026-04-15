@@ -62,13 +62,14 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" ref={containerRef}>
+    <div className="modal-backdrop">
       <div className={styles.modalOverlay}>
         <div
           className={styles.modalContent}
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-session-modal-title"
+          ref={containerRef}
         >
           <h4 id="edit-session-modal-title" className={styles.modalTitle}>수업 편집</h4>
           <div className={styles.modalForm}>

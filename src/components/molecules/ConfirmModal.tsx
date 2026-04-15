@@ -31,6 +31,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }
   };
 
+  // TODO: migrate to useModalA11y hook — this modal predates the centralized
+  // focus management pattern (src/hooks/useModalA11y.ts).
+  // Note: ConfirmModal lacks a focus trap and return-focus; useModalA11y provides both.
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       onCancel();

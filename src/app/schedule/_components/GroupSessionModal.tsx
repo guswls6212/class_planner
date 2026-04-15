@@ -72,13 +72,14 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   );
 
   return (
-    <div className="modal-backdrop" ref={containerRef}>
+    <div className="modal-backdrop">
       <div className={styles.modalOverlay}>
         <div
           className={styles.modalContent}
           role="dialog"
           aria-modal="true"
           aria-labelledby="group-session-modal-title"
+          ref={containerRef}
         >
           <h4 id="group-session-modal-title" className={styles.modalTitle}>수업 추가</h4>
           <div className={styles.modalForm}>

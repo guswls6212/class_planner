@@ -66,6 +66,9 @@ function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     )
   ).filter(
-    (el) => !el.hasAttribute("disabled") && !el.getAttribute("aria-hidden")
+    (el) =>
+      !el.hasAttribute("disabled") &&
+      !el.closest("[aria-hidden='true']") &&
+      el.offsetParent !== null
   );
 }
