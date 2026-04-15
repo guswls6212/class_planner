@@ -19,10 +19,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      // Ping the logs API with limit=0 to verify developer access
+      // Ping the logs API to verify developer access
+      // limit=0은 API에서 1로 클램핑되므로 limit=1로 전송 (인증 확인 전용)
       const res = await fetch("/api/admin/logs?limit=1&offset=0", {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      await res.text(); // 응답 body 소비 (keep-alive 연결 스트림 방지)
 
       if (cancelled) return;
 

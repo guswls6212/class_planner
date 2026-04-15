@@ -227,31 +227,28 @@ export default function AdminLogsPage() {
     }
   }, [selectedLevels, selectedSources, codeFilter, messageFilter, academyIdFilter, limit]);
 
-  // Fetch when filters change — reset offset
+  // 필터 변경 시 offset 리셋 (offset 자체는 deps에서 제외)
   useEffect(() => {
     setOffset(0);
-    fetchLogs(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLevels, selectedSources, codeFilter, messageFilter, academyIdFilter, limit]);
 
-  // Fetch when pagination changes
+  // offset 변경 시 fetch (필터 변경 → setOffset(0) → 이 effect 실행)
   useEffect(() => {
-    fetchLogs(offset);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset]);
+    void fetchLogs(offset);
+  }, [offset, fetchLogs]);
 
   function toggleLevel(level: LogLevel) {
     setSelectedLevels((prev) =>
       prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
     );
-    setOffset(0);
+    // setOffset(0)은 위 필터 useEffect에서 담당
   }
 
   function toggleSource(source: LogSource) {
     setSelectedSources((prev) =>
       prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
     );
-    setOffset(0);
+    // setOffset(0)은 위 필터 useEffect에서 담당
   }
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
