@@ -69,7 +69,7 @@ export const getSessionSubject = (
 ): Subject | null => {
   // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
-    console.warn("🔍 SessionBlock: enrollmentIds가 비어있음", session.id);
+    logger.warn("SessionBlock: enrollmentIds가 비어있음", { sessionId: session.id });
     return null;
   }
 
@@ -77,7 +77,7 @@ export const getSessionSubject = (
   const enrollmentIds = session.enrollmentIds || [];
   const firstEnrollment = enrollments?.find((e) => e.id === enrollmentIds[0]);
   if (!firstEnrollment) {
-    console.warn("🔍 SessionBlock: enrollment를 찾을 수 없음", {
+    logger.warn("SessionBlock: enrollment를 찾을 수 없음", {
       sessionId: session.id,
       enrollmentId: enrollmentIds[0],
       availableEnrollments: enrollments?.map((e) => e.id),
@@ -87,7 +87,7 @@ export const getSessionSubject = (
 
   const subject = subjects?.find((s) => s.id === firstEnrollment.subjectId);
   if (!subject) {
-    console.warn("🔍 SessionBlock: 과목을 찾을 수 없음", {
+    logger.warn("SessionBlock: 과목을 찾을 수 없음", {
       sessionId: session.id,
       enrollmentId: firstEnrollment.id,
       subjectId: firstEnrollment.subjectId,

@@ -5,6 +5,8 @@
  * UTC+9 시간대를 기준으로 합니다.
  */
 
+import { logger } from "./logger";
+
 // 한국/일본 시간대 (UTC+9)
 const KST_TIMEZONE = "Asia/Seoul"; // 또는 'Asia/Tokyo'
 const KST_OFFSET = 9 * 60; // 9시간을 분으로 변환
@@ -156,17 +158,13 @@ export function getTimeZoneInfo() {
  */
 export function validateTimeSettings() {
   const info = getTimeZoneInfo();
-  // console.log("🕐 Time Settings:", info);
-
   // 한국 시간이 UTC보다 9시간 앞서는지 확인
   const utcDate = new Date(info.utc);
   const kstDate = new Date(info.kst);
   const hourDiff = (kstDate.getTime() - utcDate.getTime()) / (1000 * 60 * 60);
 
-  if (Math.abs(hourDiff - 9) < 0.1) {
-    // console.log("✅ KST 시간 설정이 올바릅니다.");
-  } else {
-    console.warn("⚠️ KST 시간 설정에 문제가 있을 수 있습니다.", { hourDiff });
+  if (Math.abs(hourDiff - 9) >= 0.1) {
+    logger.warn("KST 시간 설정 경고", { hourDiff });
   }
 
   return Math.abs(hourDiff - 9) < 0.1;

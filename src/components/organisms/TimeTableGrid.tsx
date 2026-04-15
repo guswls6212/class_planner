@@ -210,7 +210,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         );
       } catch (error) {
         // localStorage 에러는 무시
-        // console.warn('스크롤 위치 저장 실패:', error);
       }
     }, []);
 

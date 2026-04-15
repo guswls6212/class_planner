@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { logger } from "../../../../lib/logger";
 import {
   buildGroupTimeChangeHandlers,
   buildEditTimeChangeHandlers,
@@ -55,7 +56,7 @@ describe("buildGroupTimeChangeHandlers", () => {
   });
 
   it("유효하지 않은 시간 범위에서 경고를 출력한다", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     const validateTimeRange = vi.fn().mockReturnValue(false);
     const setGroupModalData = vi.fn();
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Student } from "../lib/planner";
+import { logger } from "../lib/logger";
 import type { DragOffset, StudentPanelState } from "../types/scheduleTypes";
 
 export const useStudentPanel = (
@@ -31,7 +32,7 @@ export const useStudentPanel = (
           const parsed = JSON.parse(savedPosition);
           setPosition(parsed);
         } catch (error) {
-          console.warn("패널 위치 파싱 실패:", error);
+          logger.warn("패널 위치 파싱 실패", undefined, error instanceof Error ? error : undefined);
         }
       }
     }

@@ -526,7 +526,7 @@ export async function captureElement(
         before: beforeCaptureState,
         after: afterCaptureState,
       };
-      console.log("📊 PDF 캡처 전후 상태:", window.__pdfCaptureState);
+      logger.debug("PDF 캡처 전후 상태", { pdfCaptureState: window.__pdfCaptureState });
     }
 
     // 🆕 세션 범위에 맞는 캡처 너비 계산
@@ -670,10 +670,7 @@ export async function captureElement(
         sessionBlocksCount: sessionBlocks.length,
         elementRect: element.getBoundingClientRect(),
       };
-      console.log(
-        "📊 PDF 높이 계산 디버깅 정보:",
-        window.__pdfDebugInfo
-      );
+      logger.debug("PDF 높이 계산 디버깅 정보", { pdfDebugInfo: window.__pdfDebugInfo });
     }
 
     logger.info("🆕 모든 요일 및 세션셀 포함 높이 계산:", {
@@ -776,8 +773,8 @@ export async function captureElement(
         weekdayHeights,
       };
 
-      console.log("📊 캔버스 크기:", debugInfo);
-      console.log("📊 세션셀 위치 정보:", sessionPositions);
+      logger.debug("캔버스 크기", { debugInfo });
+      logger.debug("세션셀 위치 정보", { sessionPositions });
       window.__canvasDebugInfo = debugInfo;
 
       // 🆕 자동으로 캔버스를 이미지로 저장 (디버깅용)
@@ -790,12 +787,10 @@ export async function captureElement(
           link.href = canvasDataUrl;
           // 자동 다운로드는 사용자 경험을 해칠 수 있으므로 주석 처리
           // link.click();
-          console.log(
-            "📸 디버깅용 캔버스 이미지 준비됨 (자동 다운로드 비활성화)"
-          );
+          logger.debug("디버깅용 캔버스 이미지 준비됨 (자동 다운로드 비활성화)");
           window.__debugCanvasImage = canvasDataUrl;
         } catch (error) {
-          console.warn("캔버스 이미지 저장 실패:", error);
+          logger.warn("캔버스 이미지 저장 실패", undefined, error instanceof Error ? error : undefined);
         }
       }
     }

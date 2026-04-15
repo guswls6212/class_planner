@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "./logger";
 
 const supabaseClient =
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -17,7 +18,7 @@ export async function getAuthenticatedEmail(
   request: NextRequest
 ): Promise<string | null> {
   if (!supabaseClient) {
-    console.error("[adminGuard] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set");
+    logger.error("NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set", { module: "adminGuard" });
     return null;
   }
 

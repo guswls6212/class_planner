@@ -1,4 +1,5 @@
 import type { GroupSessionData } from "../../../types/scheduleTypes";
+import { logger } from "../../../lib/logger";
 
 export function buildGroupTimeChangeHandlers(
   validateTimeRange: (startTime: string, endTime: string) => boolean,
@@ -14,9 +15,7 @@ export function buildGroupTimeChangeHandlers(
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        console.warn(
-          "시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요."
-        );
+        logger.warn("시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.");
       }
       return { ...prev, startTime: newStartTime };
     });
@@ -30,9 +29,7 @@ export function buildGroupTimeChangeHandlers(
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        console.warn(
-          "종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요."
-        );
+        logger.warn("종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.");
       }
       return { ...prev, endTime: newEndTime };
     });

@@ -1,3 +1,5 @@
+import { logger } from "./logger";
+
 export type Student = {
   id: string;
   name: string;
@@ -50,7 +52,7 @@ export const SLOT_PX = 16;
 
 export function timeToMinutes(t: string): number {
   if (!t || typeof t !== "string") {
-    console.warn("Invalid time format:", t);
+    logger.warn("Invalid time format", { time: t });
     return 0;
   }
   const [h, m] = t.split(":").map(Number);
