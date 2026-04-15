@@ -141,11 +141,15 @@
         — `logger.error/warn` 호출 시 service-role client로 비동기 insert (실패해도 stdout 유지)
         — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출 (이미 logger.error 호출 중 — 추가 변경 없음)
         — PII 마스킹 (이메일/토큰/비밀번호 필드 redact), maskPII 유틸 + 19개 단위 테스트
-  - [ ] Step 4: 클라이언트 에러 ingest 엔드포인트
-        — `POST /api/logs/client` — rate-limit, payload schema 검증
-        — `window.onerror` + `unhandledrejection` 글로벌 핸들러 (top-level client component)
-        — `app/global-error.tsx` Next.js 글로벌 폴백
-        — `ErrorBoundary` / `useUserTracking.trackError` → ingest 연동
+  - [x] Step 4: 클라이언트 에러 ingest 엔드포인트
+        — `POST /api/logs/client` — in-memory rate-limit (30/min/IP, 60s window), payload schema 검증
+        — `src/lib/rateLimit.ts` 신규 (IP별 토큰 버킷, Lightsail 단일 인스턴스 전제)
+        — `logger.persistFromBrowser` — 브라우저에서 logger.error/warn 호출 시 fire-and-forget POST
+        — `GlobalErrorHandlers.tsx` — window.onerror + unhandledrejection 글로벌 핸들러 (AppContent 마운트)
+        — `app/global-error.tsx` — Next.js 글로벌 에러 폴백 (자체 html/body)
+        — ErrorBoundary / useUserTracking.trackError → logger.error 경유로 자동 연동 (수정 없음)
+        — 서버사이드 PII 마스킹 후 insert, UUID FK 보호
+        — 5개 rateLimit + 9개 route + 2개 logger.browser 단위 테스트
   - [ ] Step 5: 관리자 로그 뷰어 `/settings/logs`
         — owner role만 접근 (academy_members 검증)
         — 최근 N건 조회, level/source/code 필터, 페이지네이션
