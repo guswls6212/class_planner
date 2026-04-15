@@ -32,6 +32,7 @@ const eslintConfig = [
         getComputedStyle: "readonly",
         crypto: "readonly",
         performance: "readonly",
+        navigator: "readonly",
 
         // Fetch API
         fetch: "readonly",
@@ -100,6 +101,7 @@ const eslintConfig = [
         getComputedStyle: "readonly",
         crypto: "readonly",
         performance: "readonly",
+        navigator: "readonly",
 
         // Fetch API
         fetch: "readonly",

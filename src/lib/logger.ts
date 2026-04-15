@@ -132,7 +132,11 @@ class Logger {
   ): void {
     this.output(LogLevel.ERROR, message, context, error, metadata);
     if (this.shouldLog(LogLevel.ERROR)) {
-      persistToAppLogs("error", message, context, error);
+      if (typeof window === "undefined") {
+        persistToAppLogs("error", message, context, error);
+      } else {
+        persistFromBrowser("error", message, context, error);
+      }
     }
   }
 
@@ -143,7 +147,11 @@ class Logger {
   ): void {
     this.output(LogLevel.WARN, message, context, undefined, metadata);
     if (this.shouldLog(LogLevel.WARN)) {
-      persistToAppLogs("warn", message, context, undefined);
+      if (typeof window === "undefined") {
+        persistToAppLogs("warn", message, context, undefined);
+      } else {
+        persistFromBrowser("warn", message, context, undefined);
+      }
     }
   }
 
@@ -262,6 +270,36 @@ export function maskPII(value: unknown): unknown {
     return result;
   }
   return value;
+}
+
+// ─── app_logs 영구화 (브라우저 → ingest 엔드포인트) ─────────────────────────
+
+function persistFromBrowser(
+  level: "error" | "warn",
+  message: string,
+  context?: LogContext,
+  error?: Error
+): void {
+  // keepalive: true — 페이지 unload 중 전송 보장 (payload < 64KB 제약 주의)
+  fetch("/api/logs/client", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    body: JSON.stringify({
+      level,
+      message,
+      code: (error as Record<string, unknown> | undefined)?.code ?? undefined,
+      context: context ?? undefined,
+      stack: error?.stack ?? undefined,
+      userId: context?.userId ?? undefined,
+      academyId: context?.academyId ?? undefined,
+      url: typeof window !== "undefined" ? window.location?.href : undefined,
+      userAgent:
+        typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+    }),
+  }).catch(() => {
+    // 전송 실패는 조용히 삼킴 — logger 재호출 금지 (무한 루프 방지)
+  });
 }
 
 // ─── app_logs 영구화 (fire-and-forget, 서버 전용) ────────────────────────────

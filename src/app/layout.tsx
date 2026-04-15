@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { ErrorBoundary } from "../components/atoms/ErrorBoundary";
+import GlobalErrorHandlers from "../components/atoms/GlobalErrorHandlers";
 import DataConflictModal from "../components/molecules/DataConflictModal";
 import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
@@ -150,6 +151,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
+      <GlobalErrorHandlers />
       <Navigation />
       <main style={{ paddingBottom: "60px" }}>
         {isInitializing && (
