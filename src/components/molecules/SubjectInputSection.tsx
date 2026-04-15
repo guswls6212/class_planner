@@ -110,7 +110,6 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           value={subjectColor}
           onChange={(e) => setSubjectColor(e.target.value)}
           title="과목 색상 선택"
-          aria-label="과목 색상"
         />
       </div>
       <div className={styles.button}>

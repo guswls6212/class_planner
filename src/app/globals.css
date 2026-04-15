@@ -744,6 +744,25 @@ body {
   animation: modalFadeIn 0.2s ease-out;
 }
 
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* SessionBlock keyboard focus ring (Tailwind v4 preflight resets outline) */
+.session-block:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
 /* Button Component Styles */
 .button {
   display: inline-flex;

@@ -102,13 +102,31 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("aria-label에 학생명과 과목명이 포함되어야 한다", () => {
+  it("aria-label이 '학생명, 과목명, 요일, 시간' 형식으로 구성되어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 
     const sessionBlock = screen.getByRole("button");
     const label = sessionBlock.getAttribute("aria-label");
-    expect(label).toContain("수학");
-    expect(label).toContain("김철수");
+    expect(label).toBe("김철수, 이영희 수학 월 09:00–10:00");
+  });
+
+  it("학생이 없을 때 aria-label에 '학생 없음'이 포함되어야 한다", () => {
+    const sessionWithoutEnrollments = {
+      ...mockSession,
+      enrollmentIds: [],
+    };
+
+    render(
+      <SessionBlock
+        {...defaultProps}
+        session={sessionWithoutEnrollments}
+        enrollments={[]}
+      />
+    );
+
+    const sessionBlock = screen.getByRole("button");
+    const label = sessionBlock.getAttribute("aria-label");
+    expect(label).toContain("학생 없음");
   });
 
   it("과목명이 올바르게 표시되어야 한다", () => {

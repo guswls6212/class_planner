@@ -15,7 +15,7 @@ const getDynamicFontSize = (studentCount: number): string => {
   if (studentCount <= 4) return "12px"; // 4명: 12px
   if (studentCount <= 5) return "9px"; // 5명: 약 45px (충분)
   if (studentCount <= 6) return "8px"; // 6명: 약 48px (충분)
-  return "8px"; // 7명 이상: WCAG 1.4.4 최소 폰트 사이즈 8px 유지
+  return "8px"; // 가독성 보장: 8px 미만 폰트는 밀집된 셀에서도 판독 불가 (Phase 3에서 레이아웃 개선 예정)
 };
 
 // 🆕 학생이름 표시 로직 개선 - 더 많은 학생 표시 가능
@@ -184,11 +184,13 @@ function SessionBlock({
   // 🆕 드래그 중인 세션인지 확인
   const isDraggedSession = session.id === draggedSessionId;
 
+  const weekdayLabel =
+    ["월", "화", "수", "목", "금", "토", "일"][session.weekday] ?? "";
   const ariaLabel = [
-    studentNames.join(", ") || "학생 없음",
-    subject?.name || "과목 없음",
-    session.startsAt,
-    session.endsAt,
+    studentNames.length > 0 ? studentNames.join(", ") : "학생 없음",
+    subject?.name ?? "과목 없음",
+    weekdayLabel,
+    `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
   return (
