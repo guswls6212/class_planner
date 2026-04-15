@@ -150,9 +150,11 @@
         — ErrorBoundary / useUserTracking.trackError → logger.error 경유로 자동 연동 (수정 없음)
         — 서버사이드 PII 마스킹 후 insert, UUID FK 보호
         — 5개 rateLimit + 9개 route + 2개 logger.browser 단위 테스트
-  - [ ] Step 5: 관리자 로그 뷰어 `/settings/logs`
-        — owner role만 접근 (academy_members 검증)
-        — 최근 N건 조회, level/source/code 필터, 페이지네이션
+  - [x] Step 5: 개발자 로그 뷰어 `/admin/logs`
+        — ADMIN_EMAILS 화이트리스트 (env 기반 게이트, academy_members 무관)
+        — 전체 학원 횡단 조회, level/source/code/q/academyId 필터, 페이지네이션
+        — 레벨 뱃지, 상세 모달 (stack trace 포함)
+        — 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP
   - [ ] Step 6: `console.*` 사용 금지 ESLint rule + 38개 sweep
         — `no-console` rule 추가 (logger.* 강제)
         — `src/` 전수 치환, 테스트 픽스처 제외
@@ -190,6 +192,10 @@
 | **P5** | 2B-10 | 기타 품질 — 장기 과제 |
 
 ---
+
+### Deferred / 백로그
+- 학원장용 활동 히스토리 (audit_events 테이블) + 개발자 공지 시스템 — 별도 Phase 예정
+  (app_logs는 개발자 전용으로 재정의. 학원장이 필요한 것은 멤버 초대/등급 변경 등의 audit log)
 
 ## 변경 이력
 | 날짜 | 내용 |
