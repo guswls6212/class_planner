@@ -137,10 +137,10 @@
         — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
         — RLS: insert는 service_role만, select는 owner role만
         — TTL: 30일 자동 삭제 함수 (선택)
-  - [ ] Step 3: 서버 logger → app_logs 영구화
+  - [x] Step 3: 서버 logger → app_logs 영구화
         — `logger.error/warn` 호출 시 service-role client로 비동기 insert (실패해도 stdout 유지)
-        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출
-        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact)
+        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출 (이미 logger.error 호출 중 — 추가 변경 없음)
+        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact), maskPII 유틸 + 19개 단위 테스트
   - [ ] Step 4: 클라이언트 에러 ingest 엔드포인트
         — `POST /api/logs/client` — rate-limit, payload schema 검증
         — `window.onerror` + `unhandledrejection` 글로벌 핸들러 (top-level client component)
