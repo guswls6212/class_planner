@@ -143,6 +143,13 @@ describe("Schedule Page", () => {
     expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
+  it("does not render modals on initial mount", () => {
+    render(<SchedulePage />);
+    // EditSessionModal and GroupSessionModal are lazy-loaded via next/dynamic
+    // and only mounted when the user opens them — dialog role must be absent on cold render
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
     // Mock을 에러 상태로 변경
     vi.mocked(useIntegratedDataModule.useIntegratedDataLocal).mockReturnValue({

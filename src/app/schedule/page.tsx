@@ -37,8 +37,15 @@ import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionC
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import dynamic from "next/dynamic";
-import EditSessionModal from "./_components/EditSessionModal";
-import GroupSessionModal from "./_components/GroupSessionModal";
+
+const EditSessionModal = dynamic(
+  () => import("./_components/EditSessionModal"),
+  { ssr: false, loading: () => null }
+);
+const GroupSessionModal = dynamic(
+  () => import("./_components/GroupSessionModal"),
+  { ssr: false, loading: () => null }
+);
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentPanelSection from "./_components/StudentPanelSection";
