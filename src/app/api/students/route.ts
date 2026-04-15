@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getStudentService() {
@@ -25,18 +26,14 @@ export async function GET(request: NextRequest) {
     const students = await getStudentService().getAllStudents(academyId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {
-    logger.error("Error fetching students:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch students" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name } = body;
+    const { name, gender, birthDate } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -55,24 +52,20 @@ export async function POST(request: NextRequest) {
     }
 
     const academyId = await resolveAcademyId(userId);
-    const newStudent = await getStudentService().addStudent({ name }, academyId);
+    const newStudent = await getStudentService().addStudent({ name, gender, birthDate }, academyId);
     return NextResponse.json(
       { success: true, data: newStudent },
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to add student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name } = body;
+    const { id, name, gender, birthDate } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -93,16 +86,12 @@ export async function PUT(request: NextRequest) {
     const academyId = await resolveAcademyId(userId);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      { name },
+      { name, gender, birthDate },
       academyId
     );
     return NextResponse.json({ success: true, data: updatedStudent });
   } catch (error) {
-    logger.error("Error updating student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -133,10 +122,6 @@ export async function DELETE(request: NextRequest) {
       message: "Student deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting student:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete student" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

@@ -1,5 +1,6 @@
 import { Session } from "@/shared/types/DomainTypes";
 import { SessionRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 
 export class SessionApplicationServiceImpl {
   constructor(private sessionRepository: SessionRepository) {}
@@ -15,54 +16,44 @@ export class SessionApplicationServiceImpl {
   async addSession(
     sessionData: {
       subjectId: string;
-      startsAt: Date;
-      endsAt: Date;
+      startsAt: string;
+      endsAt: string;
       enrollmentIds: string[];
       weekday: number;
     },
     academyId: string
   ): Promise<Session> {
-    const sessionToCreate = {
-      ...sessionData,
-      startsAt: sessionData.startsAt.toISOString().substring(11, 16), // HH:MM 형식
-      endsAt: sessionData.endsAt.toISOString().substring(11, 16), // HH:MM 형식
-    };
-    return this.sessionRepository.create(sessionToCreate, academyId);
+    return this.sessionRepository.create(sessionData, academyId);
   }
 
   async updateSession(
     id: string,
     sessionData: {
       subjectId: string;
-      startsAt: Date;
-      endsAt: Date;
+      startsAt: string;
+      endsAt: string;
       enrollmentIds: string[];
       weekday: number;
       room?: string;
     }
   ): Promise<Session> {
-    const sessionToUpdate = {
-      ...sessionData,
-      startsAt: sessionData.startsAt.toISOString().substring(11, 16), // HH:MM 형식
-      endsAt: sessionData.endsAt.toISOString().substring(11, 16), // HH:MM 형식
-    };
-    return this.sessionRepository.update(id, sessionToUpdate);
+    return this.sessionRepository.update(id, sessionData);
   }
 
   async updateSessionPosition(
     id: string,
-    position: { weekday: number; startsAt: Date; endsAt: Date; yPosition?: number }
+    position: { weekday: number; startsAt: string; endsAt: string; yPosition?: number }
   ): Promise<Session> {
     const session = await this.sessionRepository.getById(id);
     if (!session) {
-      throw new Error("Session not found");
+      throw new AppError("SESSION_NOT_FOUND", { statusHint: 404 });
     }
-    
+
     return this.sessionRepository.update(id, {
       ...session,
       weekday: position.weekday,
-      startsAt: position.startsAt.toISOString().substring(11, 16), // HH:MM 형식
-      endsAt: position.endsAt.toISOString().substring(11, 16), // HH:MM 형식
+      startsAt: position.startsAt,
+      endsAt: position.endsAt,
       yPosition: position.yPosition,
     });
   }

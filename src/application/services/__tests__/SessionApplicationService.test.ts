@@ -1,82 +1,159 @@
-/**
- * SessionApplicationService 대량 테스트
- */
+import { SessionRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
+import { Session } from "@/shared/types/DomainTypes";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SessionApplicationServiceImpl } from "../SessionApplicationService";
 
-import { describe, expect, it, vi } from "vitest";
-
-// Mock all dependencies
-vi.mock("../../../infrastructure/interfaces", () => ({
-  SessionRepository: vi.fn(),
-}));
-
-vi.mock("../../../lib/logger", () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-describe("SessionApplicationService", () => {
-  it("세션 애플리케이션 서비스가 기본 구조를 가져야 한다", () => {
-    expect(typeof "session").toBe("string");
-  });
-
-  it("세션 조회가 있어야 한다", () => {
-    expect(typeof "get").toBe("string");
-  });
-
-  it("세션 생성이 있어야 한다", () => {
-    expect(typeof "create").toBe("string");
-  });
-
-  it("세션 업데이트가 있어야 한다", () => {
-    expect(typeof "update").toBe("string");
-  });
-
-  it("세션 삭제가 있어야 한다", () => {
-    expect(typeof "delete").toBe("string");
-  });
-
-  it("세션 목록이 있어야 한다", () => {
-    expect(typeof "list").toBe("string");
-  });
-
-  it("세션 검색이 있어야 한다", () => {
-    expect(typeof "search").toBe("string");
-  });
-
-  it("세션 필터가 있어야 한다", () => {
-    expect(typeof "filter").toBe("string");
-  });
-
-  it("세션 정렬이 있어야 한다", () => {
-    expect(typeof "sort").toBe("string");
-  });
-
-  it("세션 페이지네이션이 있어야 한다", () => {
-    expect(typeof "pagination").toBe("string");
-  });
-
-  it("세션 통계가 있어야 한다", () => {
-    expect(typeof "statistics").toBe("string");
-  });
-
-  it("세션 내보내기가 있어야 한다", () => {
-    expect(typeof "export").toBe("string");
-  });
-
-  it("세션 가져오기가 있어야 한다", () => {
-    expect(typeof "import").toBe("string");
-  });
-
-  it("세션 백업이 있어야 한다", () => {
-    expect(typeof "backup").toBe("string");
-  });
-
-  it("세션 복원이 있어야 한다", () => {
-    expect(typeof "restore").toBe("string");
-  });
+const makeSession = (id: string): Session => ({
+  id,
+  subjectId: "subject-1",
+  enrollmentIds: [],
+  weekday: 1,
+  startsAt: "09:00",
+  endsAt: "10:00",
+  createdAt: new Date(),
+  updatedAt: new Date(),
 });
 
+const mockSessionRepository: SessionRepository = {
+  getAll: vi.fn(),
+  getById: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+};
 
+describe("SessionApplicationService", () => {
+  let service: SessionApplicationServiceImpl;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    service = new SessionApplicationServiceImpl(mockSessionRepository);
+  });
+
+  describe("getAllSessions", () => {
+    it("모든 세션을 성공적으로 조회해야 한다", async () => {
+      const sessions = [makeSession("s1"), makeSession("s2")];
+      vi.spyOn(mockSessionRepository, "getAll").mockResolvedValue(sessions);
+
+      const result = await service.getAllSessions("test-academy-id");
+
+      expect(result).toHaveLength(2);
+      expect(mockSessionRepository.getAll).toHaveBeenCalledWith("test-academy-id");
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "getAll").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.getAllSessions("test-academy-id")).rejects.toThrow();
+    });
+  });
+
+  describe("getSessionById", () => {
+    it("ID로 세션을 성공적으로 조회해야 한다", async () => {
+      const session = makeSession("s1");
+      vi.spyOn(mockSessionRepository, "getById").mockResolvedValue(session);
+
+      const result = await service.getSessionById("s1");
+
+      expect(result?.id).toBe("s1");
+    });
+
+    it("존재하지 않는 세션 조회 시 null을 반환해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "getById").mockResolvedValue(null);
+
+      const result = await service.getSessionById("non-existent");
+
+      expect(result).toBeNull();
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "getById").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.getSessionById("s1")).rejects.toThrow();
+    });
+  });
+
+  describe("addSession", () => {
+    it("세션을 성공적으로 생성해야 한다", async () => {
+      const session = makeSession("s1");
+      const sessionData = {
+        subjectId: "subject-1",
+        startsAt: "09:00",
+        endsAt: "10:00",
+        enrollmentIds: [],
+        weekday: 1,
+      };
+      vi.spyOn(mockSessionRepository, "create").mockResolvedValue(session);
+
+      const result = await service.addSession(sessionData, "test-academy-id");
+
+      expect(result.id).toBe("s1");
+      expect(mockSessionRepository.create).toHaveBeenCalledWith(sessionData, "test-academy-id");
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "create").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(
+        service.addSession(
+          { subjectId: "s", startsAt: "09:00", endsAt: "10:00", enrollmentIds: [], weekday: 1 },
+          "test-academy-id"
+        )
+      ).rejects.toThrow();
+    });
+  });
+
+  describe("updateSessionPosition", () => {
+    it("세션 위치를 성공적으로 업데이트해야 한다", async () => {
+      const session = makeSession("s1");
+      const updatedSession = { ...session, weekday: 3, startsAt: "14:00", endsAt: "15:00" };
+      vi.spyOn(mockSessionRepository, "getById").mockResolvedValue(session);
+      vi.spyOn(mockSessionRepository, "update").mockResolvedValue(updatedSession);
+
+      const result = await service.updateSessionPosition("s1", {
+        weekday: 3,
+        startsAt: "14:00",
+        endsAt: "15:00",
+      });
+
+      expect(result.weekday).toBe(3);
+    });
+
+    it("존재하지 않는 세션 위치 업데이트 시 SESSION_NOT_FOUND AppError를 throw해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "getById").mockResolvedValue(null);
+
+      const error = await service
+        .updateSessionPosition("non-existent", { weekday: 1, startsAt: "09:00", endsAt: "10:00" })
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.code).toBe("SESSION_NOT_FOUND");
+      expect(error.statusHint).toBe(404);
+    });
+  });
+
+  describe("deleteSession", () => {
+    it("세션을 성공적으로 삭제해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "delete").mockResolvedValue();
+
+      await service.deleteSession("s1");
+
+      expect(mockSessionRepository.delete).toHaveBeenCalledWith("s1");
+    });
+
+    it("repository 에러 시 에러를 전파해야 한다", async () => {
+      vi.spyOn(mockSessionRepository, "delete").mockRejectedValue(
+        new Error("DB error")
+      );
+
+      await expect(service.deleteSession("s1")).rejects.toThrow();
+    });
+  });
+});

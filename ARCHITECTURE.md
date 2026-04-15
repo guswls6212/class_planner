@@ -27,9 +27,11 @@
 - Infrastructure는 Domain의 Repository 인터페이스를 구현한다.
 
 ### 1.2 Local-First Architecture
-- UI 조작 → localStorage 즉시 반영 (0ms) → 30초 debounce 서버 동기화
+- UI 조작 → localStorage 즉시 반영 (0ms)
+- 서버 동기화: `apiSync.ts`의 fire-and-forget 함수 (syncStudentCreate, syncSubjectCreate 등)
+- 익명 사용자: localStorage만 사용 (서버 호출 없음)
+- 로그인 사용자: localStorage → 서버 양방향 동기화
 - 네트워크 불안정 시에도 UX 유지
-- 최대 5분 강제 동기화 안전장치
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
@@ -44,27 +46,39 @@ src/app/
 ├── page.tsx              # 랜딩 페이지
 ├── layout.tsx            # 루트 레이아웃 (Nav + Footer)
 ├── login/page.tsx        # OAuth 로그인
+├── onboarding/page.tsx   # 첫 로그인 온보딩 (학원명 + 역할 입력)
 ├── students/page.tsx     # 학생 관리
 ├── subjects/page.tsx     # 과목 관리
+├── settings/page.tsx     # 학원 설정 (멤버 목록 + 초대 관리)
+├── invite/[token]/page.tsx # 초대 수락 페이지 (비로그인/로그인 분기)
 ├── schedule/             # 시간표 관리 (가장 복잡)
 │   ├── page.tsx
 │   ├── _components/      # 페이지 전용 컴포넌트
 │   ├── _hooks/           # 페이지 전용 훅
-│   └── _utils/           # 페이지 전용 유틸리티
+│   ├── _utils/           # 페이지 전용 유틸리티
+│   └── _constants/       # 페이지 전용 상수
 └── about/page.tsx        # 소개 페이지
 ```
+
+### 2.1.1 Middleware (`src/middleware.ts`)
+
+온보딩 가드. 로그인한 사용자가 데이터 페이지(`/students`, `/subjects`, `/schedule`) 접근 시 `onboarded` 쿠키를 확인한다. 쿠키 없음 → `/onboarding` 리디렉트. 비로그인 사용자는 Anonymous-First 정책으로 통과.
+
+matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`
 
 ### 2.2 API Routes
 ```
 src/app/api/
-├── data/           # 통합 데이터 (JSONB 전체 읽기/쓰기)
-├── students/       # 학생 CRUD
-├── subjects/       # 과목 CRUD
-├── sessions/       # 세션 CRUD + position 업데이트
-├── user-settings/  # 사용자 설정
-└── auth/           # 인증
+├── students/       # 학생 CRUD (GET, POST, [id] PUT/DELETE)
+├── subjects/       # 과목 CRUD (GET, POST, [id] PUT/DELETE)
+├── sessions/       # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
+├── enrollments/    # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
+├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
+├── invites/        # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
+├── members/        # 멤버 관리 (GET 목록, [userId] DELETE 제거)
+└── user-settings/  # 사용자 설정
 ```
-모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어 적용.
+모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
 
 ### 2.3 Domain Layer
 ```
@@ -90,51 +104,73 @@ src/infrastructure/
 ├── factories/         # 각 Repository Factory
 ├── container/         # RepositoryRegistry
 ├── config/            # RepositoryConfig
-└── index.ts              # 공개 API 진입점
+├── interfaces.ts      # Repository 인터페이스 타입 정의
+└── index.ts           # 공개 API 진입점
 ```
 
 ### 2.6 Shared Utilities
 ```
 src/lib/               # 핵심 유틸리티
-├── localStorageCrud.ts        # localStorage CRUD 시스템
-├── debouncedServerSync.ts     # 서버 동기화 (30s debounce, 5min 안전장치)
+├── localStorageCrud.ts        # localStorage CRUD 시스템 (Anonymous/User 키 분리)
+├── apiSync.ts                 # fire-and-forget 서버 동기화 (syncStudentCreate 등)
 ├── sessionCollisionUtils.ts   # 세션 충돌 감지 및 재배치
 ├── logger.ts                  # 로깅 시스템
 ├── errorTracker.ts            # 에러 추적
 ├── planner.ts                 # 핵심 데이터 타입 정의
 ├── pdf-utils.ts               # PDF 생성 유틸리티
-└── timeUtils.ts               # 시간 관련 유틸리티
+├── timeUtils.ts               # 시간 관련 유틸리티
+├── authUtils.ts               # 인증 관련 유틸리티
+├── resolveAcademyId.ts        # Academy ID 조회 (온보딩 체크)
+├── supabaseServiceRole.ts     # Service Role 클라이언트 (서버 전용)
+├── yPositionMigration.ts      # yPosition 마이그레이션 유틸리티
+└── auth/                      # 로그인 데이터 마이그레이션
+    ├── handleLoginDataMigration.ts  # 로그인 시 로컬/서버 충돌 감지
+    ├── fullDataMigration.ts         # 로컬 전체 데이터 서버 업로드
+    └── deduplication.ts             # 중복 데이터 제거
 
 src/hooks/             # 커스텀 React 훅
-├── useStudentManagementLocal.ts   # ✅ 학생 관리 (Local-first)
-├── useSubjectManagementLocal.ts   # ✅ 과목 관리 (Local-first)
-├── useIntegratedDataLocal.ts      # ✅ 통합 데이터 (Local-first)
-├── useGlobalDataInitialization.ts # 앱 초기화 (보안 강화)
+├── useStudentManagementLocal.ts   # 학생 관리 (Local-first)
+├── useSubjectManagementLocal.ts   # 과목 관리 (Local-first)
+├── useIntegratedDataLocal.ts      # 통합 데이터 (Local-first)
+├── useGlobalDataInitialization.ts # 앱 초기화 (익명/로그인 분기, 충돌 감지)
 ├── useScheduleDragAndDrop.ts      # 드래그앤드롭
 ├── useScheduleSessionManagement.ts # 세션 관리
 ├── useDisplaySessions.ts          # 세션 표시 로직
-└── ...
+├── useLocal.ts                    # localStorage 기반 범용 훅
+├── useStudentPanel.ts             # StudentPanel 상태 관리
+├── useTimeValidation.ts           # 시간 유효성 검사
+├── useUserTracking.ts             # 사용자 행동 추적
+└── usePerformanceMonitoring.ts    # 성능 모니터링
 
 src/contexts/          # React Context
-├── AuthContext.tsx     # 인증 상태 관리
 └── ThemeContext.tsx    # 테마 (Dark/Light)
+
+src/middleware/         # API Route 미들웨어
+├── cors.ts            # CORS 헤더 (POST/PUT/DELETE에만 적용)
+└── logging.ts         # 요청 로깅
+
+src/shared/            # 계층 간 공유 타입/상수
+├── constants/
+│   └── sessionConstants.ts  # 세션 관련 상수 (시간 범위, 요일 등)
+└── types/
+    ├── ApplicationTypes.ts  # Application 계층 DTO
+    ├── CommonTypes.ts       # 공통 타입 (ID, Timestamp 등)
+    ├── DomainTypes.ts       # Domain 계층 인터페이스
+    ├── index.ts             # 재export
+    └── scheduleTypes.ts     # Schedule 전용 타입
+
+src/types/             # 레거시 타입 (shared/types로 점진 통합 예정)
+└── scheduleTypes.ts   # Schedule 관련 타입
+
+src/utils/             # 클라이언트 유틸리티
+└── supabaseClient.ts  # Supabase 브라우저 클라이언트 싱글톤
 ```
 
 ## 3. 데이터 모델
 
-### 3.1 현재 구조 (Supabase JSONB)
-`user_data` 테이블에 사용자별 전체 데이터를 단일 JSONB 컬럼에 저장:
-```typescript
-interface ClassPlannerData {
-  students: Student[];      // { id, name, gender? }
-  subjects: Subject[];      // { id, name, color? }
-  sessions: Session[];      // { id, enrollmentIds?, weekday, startsAt, endsAt, room?, yPosition? }
-  enrollments: Enrollment[]; // { id, studentId, subjectId }
-}
-```
-
-### 3.2 마이그레이션 목표 (정규화 + Academy 멀티테넌트)
-> ADR-002 참조. 정규화와 Academy 기반 멀티테넌트 구조를 Phase 2A에서 동시에 도입.
+### 3.1 현재 구조 (정규화 + Academy 멀티테넌트)
+> Phase 2A 완료 (2026-04-14). ADR-002 참조.
+> 레거시 `user_data` JSONB 테이블은 마이그레이션 019로 제거됨.
 
 ```sql
 -- 학원 (테넌트 단위)
@@ -142,6 +178,9 @@ academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ)
 
 -- 학원 구성원 (운영자 ↔ 학원, role: owner/admin/member)
 academy_members (academy_id UUID FK, user_id UUID FK, role TEXT, invited_by UUID FK, joined_at TIMESTAMPTZ)
+
+-- 초대 토큰 (1회용 + 7일 만료)
+invite_tokens      (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, role TEXT, created_by UUID FK, expires_at TIMESTAMPTZ, used_by UUID FK NULL, used_at TIMESTAMPTZ NULL)
 
 -- 비즈니스 데이터: academy_id FK로 소유권 부여
 students           (id UUID PK, academy_id UUID FK, name TEXT, gender TEXT)
@@ -176,25 +215,21 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
 ### 5.3 그룹 수업
 - 하나의 Session에 여러 Enrollment 연결
-- SessionBlock에 학생명 표시 (최대 3명 + "외 N명")
+- SessionBlock에 학생명 표시 (최대 8명, 초과 시 "외 N명")
 
 ## 6. 배포 아키텍처
 
-### 6.1 현재 (Vercel + Supabase)
-```
-[User] → [Vercel Edge] → [Next.js SSR/API] → [Supabase PostgreSQL]
-                                              → [Supabase Auth]
-```
-
-### 6.2 현재 (AWS Lightsail + Supabase 하이브리드) ✅
+### 6.1 현재 (AWS Lightsail + Supabase 하이브리드) ✅
 > ADR-001 참조. Self-hosted PostgreSQL + NextAuth.js 전환 계획은 폐기. Supabase 무료 티어 유지.
 
 ```
 [User] → [Lightsail / Docker / Nginx] → [Next.js Standalone]
                                        → [Supabase PostgreSQL]
-                                       → [Supabase Auth (Google/Kakao OAuth)]
+                                       → [Supabase Auth (Google OAuth)]
 ```
 
 ## 7. 변경 기록
 - 2026-04-09: dev-pack으로 이전. ARCHITECTURE.md 초기 작성.
-- 2026-04-11: 배포 아키텍처 6.2 업데이트 (self-hosted 폐기, 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
+- 2026-04-11: 배포 아키텍처 업데이트 (self-hosted 폐기, Lightsail 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
+- 2026-04-14: API Routes 현행화 (enrollments, onboarding 추가, data/auth 제거). lib/ 현행화 (apiSync, auth/, resolveAcademyId 등 추가, debouncedServerSync 제거). AuthContext.tsx 제거 (ThemeContext.tsx만 유지). Vercel 다이어그램 제거.
+- 2026-04-15: invite_tokens 테이블 추가 (020 migration). /api/invites + /api/members API Routes 추가. /settings, /invite/[token] 페이지 추가. resolveAcademyMembership 헬퍼 추가.

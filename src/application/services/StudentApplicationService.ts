@@ -1,30 +1,21 @@
 import { Student } from "@/domain/entities/Student";
 import { StudentRepository } from "@/infrastructure/interfaces";
+import { AppError } from "@/lib/errors/AppError";
 import { logger } from "../../lib/logger";
 
 export class StudentApplicationServiceImpl {
   constructor(private studentRepository: StudentRepository) {}
 
   async getAllStudents(academyId: string): Promise<Student[]> {
-    try {
-      return await this.studentRepository.getAll(academyId);
-    } catch (error) {
-      logger.error("학생 목록 조회 중 에러 발생:", undefined, error as Error);
-      return [];
-    }
+    return this.studentRepository.getAll(academyId);
   }
 
   async getStudentById(id: string): Promise<Student | null> {
-    try {
-      return await this.studentRepository.getById(id);
-    } catch (error) {
-      logger.error("학생 조회 중 에러 발생:", undefined, error as Error);
-      return null;
-    }
+    return this.studentRepository.getById(id);
   }
 
   async addStudent(
-    studentData: { name: string; gender?: string },
+    studentData: { name: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -34,7 +25,7 @@ export class StudentApplicationServiceImpl {
       );
 
       if (isDuplicate) {
-        throw new Error("이미 존재하는 학생 이름입니다.");
+        throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
       }
 
       return await this.studentRepository.create(studentData, academyId);
@@ -46,13 +37,13 @@ export class StudentApplicationServiceImpl {
 
   async updateStudent(
     id: string,
-    studentData: { name?: string; gender?: string },
+    studentData: { name?: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
       const existingStudent = await this.studentRepository.getById(id, academyId);
       if (!existingStudent) {
-        throw new Error("존재하지 않는 학생입니다.");
+        throw new AppError("STUDENT_NOT_FOUND", { statusHint: 404 });
       }
 
       if (studentData.name !== undefined) {
@@ -63,7 +54,7 @@ export class StudentApplicationServiceImpl {
         );
 
         if (isDuplicate) {
-          throw new Error("이미 존재하는 학생 이름입니다.");
+          throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
         }
       }
 

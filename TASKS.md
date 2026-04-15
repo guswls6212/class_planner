@@ -101,23 +101,62 @@
   - 로그인 전 localStorage에 시간표 작성 가능
   - 로그인 시 자동 데이터 마이그레이션 (handleLoginDataMigration.ts)
   - 충돌 감지 및 사용자 선택 UI (DataConflictModal.tsx)
-- [ ] ARCHITECTURE.md 업데이트 (배포 아키텍처 6.2, 데이터 모델 반영)
-- [ ] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여)
-- [ ] 운영자 초대 기능 (초대 링크 또는 이메일, academy_members INSERT/DELETE 정책 추가)
-- [ ] `019_drop_user_data.sql` 적용 (Phase 2B에서 user_data 테이블 제거)
+- [x] DataConflictModal UI/UX 개선 ✅ 완료 (2026-04-14, PR#15)
+  - 라디오 + 확인 버튼 UX 분리
+  - 학생/과목/수업 섹션 접기/펼치기
+  - 그룹 수업 표시 개선 (학생 이름, 성별, 생년월일 표시)
+  - CSS subgrid로 카드 높이 동기화
+  - GET /api/sessions 403 버그 수정 (corsMiddleware 위치 오류)
+  - fetch 에러 vs 빈 데이터 구분 (기본 과목 중복 생성 방지)
+- [x] ARCHITECTURE.md 업데이트 ✅ 완료 (2026-04-14)
+- [x] 온보딩 플로우 구현 (첫 로그인 → 학원명 입력 → 학원 자동 생성 → owner 부여) ✅ 완료 (2026-04-14, PR#20)
+- [x] `syncSessionCreate` 시간 형식 버그 수정 (`HH:MM` → ISO 변환, 일반 UI 수업 추가 경로) ✅ 완료 (2026-04-14, PR#19)
+- [x] 운영자 초대 기능 ✅ 완료 (2026-04-15, PR#22) — 초대 링크(1회용+7일만료), /settings 페이지, /invite/[token] 수락 페이지
+- [x] `019_drop_user_data.sql` 적용 ✅ 완료 (2026-04-14) — user_data 테이블 + 전용 함수 제거, real-supabase.test.ts 삭제
 
-## Phase 2B: 코드 품질 개선 (계획)
+## Phase 2B: 코드 품질 개선 (진행 중)
 > Phase 2A 완료 후 진행. academy_id 기반 구조 위에서 코드 정리.
+> 2026-04-14 감사 결과 기반으로 세부 태스크 구체화.
 
-- [ ] Repository 패턴 추상화 (Supabase 직접 호출 → 인터페이스 분리)
-- [ ] 레거시 훅 제거 (useStudentManagement, useSubjectManagement, useIntegratedData)
-- [ ] 에러 핸들링 체계화
-- [ ] 로깅/모니터링 연동 (omni-radar 또는 자체 솔루션)
+### 완료
+- [x] 코딩 규칙 문서화 (`docs/code-convention.md` 신규, PR#17)
+- [x] Dead code 제거: molecules/ScheduleHeader.tsx, auth route.test, useDebounce.test, useForm.test, page.tsx.backup (PR#17)
+- [x] 고아 테스트 파일 삭제: FilterPanel, Pagination, SearchBox, Modal, Loading, Checkbox, scrollPositionManager, scrollPositionStorage, SubjectDomainService, SessionDomainService (PR#18)
+- [x] 문서 구조화: UI_SPEC.md 신규 작성, ARCHITECTURE.md 현행화, 문서 archive (PR#16)
+- [x] 문서 통합 축소: docs/ 9개 → 3개 (development-guide, deployment-guide, code-convention), 불일치 6건 수정
+- [x] ARCHITECTURE.md §2.6 누락 디렉터리 추가 (src/middleware, src/shared, src/types, src/utils)
+- [x] Infrastructure 테스트 커버리지 50% → 80% (factories, config, registry, index — 71 tests)
+- [x] Lib 테스트 커버리지 60% → 80% (apiSync, authUtils, resolveAcademyId, supabaseServiceRole, timeUtils, yPositionMigration — 49 tests)
+- [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
+
+### 남은 항목
+- [x] 에러 핸들링 체계화 (F3 Step 1~4 완료, PR#25~28 → dev 머지 완료)
+- [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
+  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
+  - [ ] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
+        — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
+        — RLS: insert는 service_role만, select는 owner role만
+        — TTL: 30일 자동 삭제 함수 (선택)
+  - [ ] Step 3: 서버 logger → app_logs 영구화
+        — `logger.error/warn` 호출 시 service-role client로 비동기 insert (실패해도 stdout 유지)
+        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출
+        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact)
+  - [ ] Step 4: 클라이언트 에러 ingest 엔드포인트
+        — `POST /api/logs/client` — rate-limit, payload schema 검증
+        — `window.onerror` + `unhandledrejection` 글로벌 핸들러 (top-level client component)
+        — `app/global-error.tsx` Next.js 글로벌 폴백
+        — `ErrorBoundary` / `useUserTracking.trackError` → ingest 연동
+  - [ ] Step 5: 관리자 로그 뷰어 `/settings/logs`
+        — owner role만 접근 (academy_members 검증)
+        — 최근 N건 조회, level/source/code 필터, 페이지네이션
+  - [ ] Step 6: `console.*` 사용 금지 ESLint rule + 38개 sweep
+        — `no-console` rule 추가 (logger.* 강제)
+        — `src/` 전수 치환, 테스트 픽스처 제외
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
 
 ## Phase 3: 디자인 리뉴얼 (계획)
-> Phase 2 완료 후 안정된 구조 위에서 진행.
+> Phase 2B 안정화 후 진행.
 
 - [ ] UI/UX 감사 (현재 디자인 문제점 정리)
 - [ ] 디자인 시스템 정의 (색상, 타이포그래피, 간격)
@@ -135,6 +174,19 @@
 
 ---
 
+## 실행 우선순위 가이드
+
+| 우선순위 | 태스크 | 이유 |
+|---------|--------|------|
+| **P0** | 2B-2, 2B-3 | Dead code/깨진 링크 — CI 영향 가능, 빠른 수정 |
+| **P1** | 2B-4 | ARCHITECTURE.md 완성 — AI 컨텍스트 품질 향상 |
+| **P2** | 2B-5, 2B-6 | 테스트 커버리지 — 안정성 기반 |
+| **P3** | 2B-7 | Schedule 테스트 — 가장 복잡한 페이지 안정화 |
+| **P4** | 2B-8, 2B-9 | 리팩토링 — 코드 수정 시 점진적으로 병행 |
+| **P5** | 2B-10 | 기타 품질 — 장기 과제 |
+
+---
+
 ## 변경 이력
 | 날짜 | 내용 |
 |------|------|
@@ -142,3 +194,9 @@
 | 2026-04-10 | Phase 1-A~F 완료 (인프라+Docker+SSL+배포+문서). 하이브리드 전략 확정 |
 | 2026-04-10 | Phase 1-G 부분 완료: .env.local 업데이트, deploy.sh certbot 버그 수정 |
 | 2026-04-11 | Phase 1-G 완료. Phase 순서 재편 (2↔3 스왑, 2A/2B 분리). Academy 멀티테넌트 구조 도입 결정 |
+| 2026-04-12 | Phase 2A S1~S5 완료 (정규화 마이그레이션, Anonymous-First, 레거시 정리) |
+| 2026-04-14 | PR#15 머지 (DataConflictModal 개선, sessions 403 수정, 기본과목 중복 방지). 문서 구조화 (UI_SPEC.md 신규, ARCHITECTURE.md 현행화, 문서 archive) |
+| 2026-04-14 | PR#16 머지 (문서 구조화). PR#17 머지 (코딩 규칙 문서화, dead code 제거, 컨벤션 정비). PR#18 머지 (docs/ 9→3 통합 축소, 불일치 6건 수정, 고아 테스트 삭제) |
+| 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
+| 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
+| 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |

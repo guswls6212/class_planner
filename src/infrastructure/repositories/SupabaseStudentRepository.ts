@@ -42,6 +42,7 @@ export class SupabaseStudentRepository implements StudentRepository {
           row.id,
           row.name,
           row.gender ?? undefined,
+          row.birth_date ?? undefined,
           new Date(row.created_at),
           new Date(row.updated_at)
         )
@@ -71,6 +72,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         data.id,
         data.name,
         data.gender ?? undefined,
+        data.birth_date ?? undefined,
         new Date(data.created_at),
         new Date(data.updated_at)
       );
@@ -81,7 +83,7 @@ export class SupabaseStudentRepository implements StudentRepository {
   }
 
   async create(
-    studentData: { name: string; gender?: string },
+    studentData: { name: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -93,6 +95,7 @@ export class SupabaseStudentRepository implements StudentRepository {
           academy_id: academyId,
           name: studentData.name,
           gender: studentData.gender ?? null,
+          birth_date: studentData.birthDate ?? null,
         })
         .select()
         .single();
@@ -106,6 +109,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         data.id,
         data.name,
         data.gender ?? undefined,
+        data.birth_date ?? undefined,
         new Date(data.created_at),
         new Date(data.updated_at)
       );
@@ -117,7 +121,7 @@ export class SupabaseStudentRepository implements StudentRepository {
 
   async update(
     id: string,
-    studentData: { name?: string; gender?: string },
+    studentData: { name?: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -126,6 +130,7 @@ export class SupabaseStudentRepository implements StudentRepository {
       const updates: Record<string, unknown> = {};
       if (studentData.name !== undefined) updates.name = studentData.name;
       if (studentData.gender !== undefined) updates.gender = studentData.gender;
+      if (studentData.birthDate !== undefined) updates.birth_date = studentData.birthDate;
 
       const { data, error } = await client
         .from("students")
@@ -144,6 +149,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         data.id,
         data.name,
         data.gender ?? undefined,
+        data.birth_date ?? undefined,
         new Date(data.created_at),
         new Date(data.updated_at)
       );

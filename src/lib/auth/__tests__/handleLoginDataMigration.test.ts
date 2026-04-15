@@ -5,7 +5,6 @@ import {
   applyLocalDataChoice,
 } from "../handleLoginDataMigration";
 import type { ClassPlannerData } from "../../localStorageCrud";
-import { syncStudentCreate, syncSubjectCreate } from "../../apiSync";
 
 // Mock localStorage
 const storage: Record<string, string> = {};
@@ -21,9 +20,14 @@ vi.mock("../../logger", () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("../../apiSync", () => ({
-  syncStudentCreate: vi.fn(),
-  syncSubjectCreate: vi.fn(),
+// fullDataMigration mock — default: success with synced data
+const migrateLocalDataToServerMock = vi.fn().mockResolvedValue({
+  success: true,
+  syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
+  errors: [],
+});
+vi.mock("../fullDataMigration", () => ({
+  migrateLocalDataToServer: (...args: unknown[]) => migrateLocalDataToServerMock(...args),
 }));
 
 const emptyData: ClassPlannerData = {
@@ -108,29 +112,61 @@ describe("applyLocalDataChoice", () => {
   beforeEach(() => {
     localStorageMock.clear();
     vi.clearAllMocks();
+    migrateLocalDataToServerMock.mockResolvedValue({
+      success: true,
+      syncedCounts: { students: 1, subjects: 1, enrollments: 0, sessions: 0 },
+      errors: [],
+    });
   });
 
-  it("anonymous 데이터를 user-scoped 키로 복사 후 anonymous 삭제", () => {
-    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
-    applyLocalDataChoice("user-999");
-    expect(storage["classPlannerData:user-999"]).toBe(JSON.stringify(localData));
-    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
-    // sync 호출 검증
-    expect(syncStudentCreate).toHaveBeenCalledWith("user-999", { name: "Anonymous Student" });
-    expect(syncSubjectCreate).toHaveBeenCalledWith("user-999", { name: "익명 과목", color: "#00ff00" });
-  });
-
-  it("anonymous 데이터 없으면 아무것도 안 함", () => {
-    applyLocalDataChoice("user-999");
+  it("anonymous 데이터 없으면 에러 throw", async () => {
+    await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
+      "로컬 데이터를 찾을 수 없습니다"
+    );
     expect(storage["classPlannerData:user-999"]).toBeUndefined();
   });
 
-  it("anonymous 키가 malformed JSON이면 localStorage 복사는 되지만 sync 호출 안 함", () => {
-    storage["classPlannerData:anonymous"] = "not-valid-json";
-    applyLocalDataChoice("user-888");
-    expect(storage["classPlannerData:user-888"]).toBe("not-valid-json");
+  it("마이그레이션 완료 후 anonymous 키 삭제, supabase_user_id 설정", async () => {
+    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
+
+    // re-fetch mock: GET 엔드포인트들
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyLocalDataChoice("user-999", emptyData);
+
+    // anonymous 삭제 확인
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
-    expect(syncStudentCreate).not.toHaveBeenCalled();
-    expect(syncSubjectCreate).not.toHaveBeenCalled();
+    // supabase_user_id 설정 확인
+    expect(storage["supabase_user_id"]).toBe("user-999");
+    // re-fetch 4번 호출 확인 (students, subjects, sessions, enrollments)
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("마이그레이션 실패 시 에러 throw 및 anonymous 키 보존", async () => {
+    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
+
+    // mock: 실패 — 에러 발생
+    migrateLocalDataToServerMock.mockResolvedValueOnce({
+      success: false,
+      syncedCounts: { students: 0, subjects: 0, enrollments: 0, sessions: 0 },
+      errors: [{ entity: "student", localId: "anon-s1", message: "네트워크 오류" }],
+    });
+
+    // throw하므로 fetch(re-fetch)는 호출되지 않음
+    await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
+      "데이터 동기화에 실패했습니다"
+    );
+
+    // anonymous 키는 throw 전에 삭제되지 않으므로 보존됨
+    expect(storage["classPlannerData:anonymous"]).toBe(JSON.stringify(localData));
   });
 });

@@ -2,6 +2,7 @@ export type Student = {
   id: string;
   name: string;
   gender?: string;
+  birthDate?: string;
 };
 
 export type Subject = {

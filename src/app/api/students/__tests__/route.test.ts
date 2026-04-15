@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors/AppError";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE } from "../[id]/route";
@@ -11,22 +12,31 @@ vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
 }));
 
-// Simple mock for ServiceFactory
+// Use hoisted fn refs so individual tests can override behaviour
+const mockGetAllStudents = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const mockAddStudent = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    id: "test-student-id",
+    name: "김철수",
+    createdAt: new Date().toISOString(),
+  })
+);
+const mockUpdateStudent = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({
+    id: "test-student-id",
+    name: "김철수",
+    createdAt: new Date().toISOString(),
+  })
+);
+const mockDeleteStudent = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+
 vi.mock("@/application/services/ServiceFactory", () => ({
   ServiceFactory: {
     createStudentService: () => ({
-      getAllStudents: vi.fn().mockResolvedValue([]),
-      addStudent: vi.fn().mockResolvedValue({
-        id: "test-student-id",
-        name: "김철수",
-        createdAt: new Date().toISOString(),
-      }),
-      updateStudent: vi.fn().mockResolvedValue({
-        id: "test-student-id",
-        name: "김철수",
-        createdAt: new Date().toISOString(),
-      }),
-      deleteStudent: vi.fn().mockResolvedValue(true),
+      getAllStudents: mockGetAllStudents,
+      addStudent: mockAddStudent,
+      updateStudent: mockUpdateStudent,
+      deleteStudent: mockDeleteStudent,
     }),
   },
 }));
@@ -34,6 +44,19 @@ vi.mock("@/application/services/ServiceFactory", () => ({
 describe("/api/students API Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset to default successful behavior
+    mockGetAllStudents.mockResolvedValue([]);
+    mockAddStudent.mockResolvedValue({
+      id: "test-student-id",
+      name: "김철수",
+      createdAt: new Date().toISOString(),
+    });
+    mockUpdateStudent.mockResolvedValue({
+      id: "test-student-id",
+      name: "김철수",
+      createdAt: new Date().toISOString(),
+    });
+    mockDeleteStudent.mockResolvedValue(true);
   });
 
   describe("GET /api/students", () => {
@@ -85,6 +108,29 @@ describe("/api/students API Routes", () => {
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
       expect(data.error).toBe("Name is required");
+    });
+
+    it("중복 학생 시 AppError가 구조화된 에러 포맷(409)으로 반환되어야 한다", async () => {
+      mockAddStudent.mockRejectedValueOnce(
+        new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/students?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({ name: "김철수" }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe("STUDENT_NAME_DUPLICATE");
+      expect(typeof data.error.message).toBe("string");
     });
   });
 

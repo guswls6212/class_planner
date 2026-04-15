@@ -10,6 +10,7 @@ import LoginButton from "../components/organisms/LoginButton";
 import ThemeToggle from "../components/atoms/ThemeToggle";
 import { ThemeProvider } from "../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../hooks/useGlobalDataInitialization";
+import { Toaster } from "sonner";
 import { useUserTracking } from "../hooks/useUserTracking";
 import { logger } from "../lib/logger";
 import "./globals.css";
@@ -33,6 +34,7 @@ function Navigation() {
     { href: "/students", label: "학생" },
     { href: "/subjects", label: "과목" },
     { href: "/schedule", label: "시간표" },
+    { href: "/settings", label: "설정" },
     { href: "/about", label: "소개" },
   ];
 
@@ -144,7 +146,7 @@ function Footer() {
 }
 
 function AppContent({ children }: { children: React.ReactNode }) {
-  const { isInitializing, conflictState, resolveConflict } = useGlobalDataInitialization();
+  const { isInitializing, conflictState, resolveConflict, isMigrating, migrationError } = useGlobalDataInitialization();
 
   return (
     <ErrorBoundary>
@@ -165,6 +167,8 @@ function AppContent({ children }: { children: React.ReactNode }) {
             serverData={conflictState.serverData}
             onSelectServer={() => resolveConflict("server")}
             onSelectLocal={() => resolveConflict("local")}
+            isMigrating={isMigrating}
+            migrationError={migrationError}
           />
         )}
         {children}
@@ -200,6 +204,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AppContent>{children}</AppContent>
+          <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>
     </html>

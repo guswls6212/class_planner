@@ -43,23 +43,36 @@ export const useGlobalDataInitialization = () => {
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [pendingServerData, setPendingServerData] = useState<ClassPlannerData | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationError, setMigrationError] = useState<string | null>(null);
 
   const resolveConflict = useCallback(
-    (choice: "server" | "local") => {
+    async (choice: "server" | "local") => {
       if (!pendingUserId || !pendingServerData) return;
+
+      setMigrationError(null);
 
       try {
         if (choice === "server") {
           applyServerChoice();
           setClassPlannerData(pendingServerData);
         } else {
-          applyLocalDataChoice(pendingUserId);
+          setIsMigrating(true);
+          await applyLocalDataChoice(pendingUserId, pendingServerData);
         }
-      } finally {
         setConflictState(null);
         setPendingUserId(null);
         setPendingServerData(null);
         setIsInitialized(true);
+      } catch (error) {
+        const msg =
+          error instanceof Error
+            ? error.message
+            : "데이터 동기화 중 오류가 발생했습니다.";
+        setMigrationError(msg);
+        // 오류 시 모달을 닫지 않음 — 사용자가 재시도 가능
+      } finally {
+        setIsMigrating(false);
       }
     },
     [pendingUserId, pendingServerData]
@@ -123,22 +136,6 @@ export const useGlobalDataInitialization = () => {
 
         if (mounted) setIsInitializing(true);
 
-        // 온보딩 확인
-        try {
-          const onboardingRes = await fetch(
-            `/api/onboarding?userId=${encodeURIComponent(userId)}`,
-            { method: "POST" }
-          );
-          const onboardingData = await onboardingRes.json();
-          if (onboardingData.isNew) {
-            logger.info("온보딩 완료 - 신규 사용자", {
-              academyId: onboardingData.academyId,
-            });
-          }
-        } catch {
-          logger.warn("온보딩 호출 실패 (기존 사용자이거나 네트워크 오류)");
-        }
-
         // 4개 API 병렬 fetch
         logger.info("서버에서 데이터를 병렬 조회합니다");
         const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =
@@ -149,24 +146,28 @@ export const useGlobalDataInitialization = () => {
             fetch(`/api/enrollments?userId=${userId}`),
           ]);
 
-        const parseJson = async (result: PromiseSettledResult<Response>) => {
-          if (result.status === "rejected") return [];
+        /** fetch 에러와 "데이터 없음"을 구분: null=에러, []=정상 빈 배열 */
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parseJson = async (result: PromiseSettledResult<Response>): Promise<any[] | null> => {
+          if (result.status === "rejected") return null;
           try {
+            if (!result.value.ok) return null;
             const json = await result.value.json();
-            return json.success ? (json.data ?? []) : [];
+            return json.success ? (json.data ?? []) : null;
           } catch {
-            return [];
+            return null;
           }
         };
 
-        const students = await parseJson(studentsRes);
+        const students = (await parseJson(studentsRes)) ?? [];
         const subjects = await parseJson(subjectsRes);
-        const sessions = await parseJson(sessionsRes);
-        const enrollments = await parseJson(enrollmentsRes);
+        const subjectsFetched = subjects !== null;
+        const sessions = (await parseJson(sessionsRes)) ?? [];
+        const enrollments = (await parseJson(enrollmentsRes)) ?? [];
 
         const serverData: ClassPlannerData = {
           students,
-          subjects,
+          subjects: subjects ?? [],
           sessions,
           enrollments,
           version: "1.0",
@@ -175,7 +176,7 @@ export const useGlobalDataInitialization = () => {
 
         logger.info("서버 데이터 조회 완료", {
           studentCount: students.length,
-          subjectCount: subjects.length,
+          subjectCount: serverData.subjects.length,
           sessionCount: sessions.length,
           enrollmentCount: enrollments.length,
         });
@@ -193,13 +194,14 @@ export const useGlobalDataInitialization = () => {
         }
 
         if (migrationResult.action === "upload-local") {
-          applyLocalDataChoice(userId);
+          await applyLocalDataChoice(userId, serverData);
           if (mounted) setIsInitialized(true);
           return;
         }
 
         // use-server: 정상 경로
-        if (subjects.length === 0) {
+        // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
+        if (subjectsFetched && serverData.subjects.length === 0) {
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
             count: DEFAULT_SUBJECTS.length,
           });
@@ -238,5 +240,5 @@ export const useGlobalDataInitialization = () => {
     };
   }, []);
 
-  return { isInitialized, isInitializing, conflictState, resolveConflict };
+  return { isInitialized, isInitializing, conflictState, resolveConflict, isMigrating, migrationError };
 };

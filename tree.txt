@@ -1,13 +1,17 @@
-# class-planner file structure (2026-04-12, Phase 2A + 익명 우선 기능 완료)
+# class-planner file structure (2026-04-14, 문서 통합 축소 + 고아 파일 정리)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
+# Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
 class-planner/
-├── ARCHITECTURE.md
-├── CLAUDE.md
-├── TASKS.md
-├── tree.txt
+├── ARCHITECTURE.md               # 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
+├── CLAUDE.md                     # AI 진입점 (Documentation Map + 개발 규칙)
+├── UI_SPEC.md                    # UI 소스 오브 트루스 (컴포넌트, 인터랙션, 검증 라우트)
+├── TASKS.md                      # Phase별 진행 현황
+├── tree.txt                      # 파일 구조 (이 파일)
 ├── LICENSE
 ├── README.md
+├── Dockerfile
+├── docker-compose.yml
 ├── package.json
 ├── tsconfig.json
 ├── next.config.ts
@@ -17,250 +21,311 @@ class-planner/
 ├── eslint.config.mjs
 ├── vitest.config.ts
 ├── playwright.config.ts
-├── .env.local
-├── .env.e2e
 ├── .gitignore
+├── .env.local                    # 로컬 환경 변수 (gitignore)
+├── .env.e2e                      # E2E 테스트 환경 변수
+│
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml
-│       └── deploy.yml                    # (신규) ghcr.io 빌드 + Lightsail SSH 배포
+│       ├── ci.yml                # PR/push 시 type-check + lint + unit + build + e2e
+│       └── deploy.yml            # main CI 성공 시 ghcr.io 빌드 → Lightsail SSH 배포
+│
 ├── docs/
-│   ├── adr/                          # (신규) 아키텍처 결정 기록
-│   ├── COMPONENT_GUIDE.md
-│   ├── E2E_AUTH_SETUP.md
-│   ├── ENVIRONMENT_SETUP.md
-│   ├── FOR_AI.md
-│   └── README.md
-├── prompts/                          # (신규) 구현 프롬프트
-│   └── archive/
+│   ├── code-convention.md        # class-planner 전용 코딩 규칙 (글로벌: ../docs/code-convention.md)
+│   ├── development-guide.md      # 통합: 개발 프로세스 + 테스트 + 검증 + E2E + 브랜치/CI
+│   ├── deployment-guide.md       # 통합: 배포 절차 + 환경 변수 설정
+│   ├── adr/
+│   │   ├── 001-migrate-to-aws-lightsail.md
+│   │   └── 002-academy-multitenant-architecture.md
+│   ├── archive/                  # Stale 문서 보관 (참조하지 말 것)
+│   │   ├── FOR_AI.md
+│   │   ├── FUTURE_TODO.md
+│   │   ├── INFRASTRUCTURE_GUIDE.md
+│   │   ├── LOGGING_GUIDE.md
+│   │   ├── PROJECT_STRUCTURE.md
+│   │   ├── README.md
+│   │   ├── SECURITY_GUIDE.md
+│   │   ├── SUPABASE_JSONB_GUIDE.md
+│   │   └── SYSTEM_TEST_README.md
+│   └── superpowers/
+│       ├── plans/
+│       │   ├── 2026-04-12-branching-strategy.md
+│       │   ├── 2026-04-12-phase2b-code-quality.md
+│       │   └── 2026-04-13-data-conflict-modal-redesign.md
+│       └── specs/
+│           ├── 2026-04-12-branching-strategy-design.md
+│           ├── 2026-04-12-phase2b-code-quality-design.md
+│           ├── 2026-04-13-data-conflict-modal-redesign.md
+│           ├── 2026-04-14-member-invite-design.md
+│           ├── 2026-04-14-onboarding-flow-design.md
+│           └── 2026-04-15-error-handling-design.md
+│
 ├── migration/
 │   ├── MIGRATION_GUIDE.md
 │   ├── check-migration-status.sh
 │   ├── run-migration.sh
+│   ├── backups/                  # user_data 백업 (gitignore)
+│   │   └── user_data_20260411-2300.json
 │   └── migrations/
 │       ├── 000_migration_system_setup.sql
 │       ├── 001_supabase_cross_browser_sync_setup.sql
 │       ├── 002_user_management_tables.sql
 │       ├── 003_integrate_legacy_schema.sql
-│       ├── 005_convert_timestamps_to_kst.sql
-│       ├── 006_fix_korean_timezone_conversion.sql
-│       ├── 007_cleanup_and_fix_timezone.sql
-│       ├── 008_correct_korean_timezone.sql
-│       ├── 009_safe_korean_timezone.sql
-│       ├── 010_fix_user_data_rls_policies.sql
-│       ├── 011_disable_user_data_rls_temporarily.sql
-│       ├── 012_cleanup_duplicate_user_data.sql
-│       ├── 013_restore_user_data_rls.sql
+│       ├── 005~009_timezone_fixes.sql
+│       ├── 010~013_rls_fixes.sql
 │       ├── 014_create_session_crud_tables.sql
 │       ├── 015_refactor_user_data_table.sql
 │       ├── 016_create_academy_tables.sql
 │       ├── 017_rls_academy_based.sql
-│       └── 018_migrate_jsonb_to_normalized.sql
-│   └── backups/                          # (신규) user_data 백업 (gitignore)
+│       ├── 018_migrate_jsonb_to_normalized.sql
+│       ├── 019_drop_user_data.sql
+│       ├── 020_create_invite_tokens.sql
+│       └── 021_academy_members_delete_policy.sql
+│
+├── nginx/
+│   ├── default.conf
+│   └── init-ssl.conf
+│
 ├── scripts/
-│   ├── check-stale-branches.sh        # (신규) 미완료 브랜치 감지
+│   ├── check-stale-branches.sh   # 미완료 브랜치 감지
+│   ├── deploy.sh                 # 수동 배포 (빌드→HTTP→SSL→HTTPS)
+│   ├── setup-server.sh           # 서버 초기 설정 (Docker, Compose, Git)
 │   ├── clear-localstorage.js
 │   ├── detailed-unused-analysis.sh
 │   ├── find-unused-files.sh
 │   ├── find-unused-src-files.sh
 │   ├── server-manager.sh
-│   ├── setup-server.sh
 │   └── system-test.js
+│
 ├── public/
 │   ├── file.svg
 │   ├── globe.svg
 │   ├── next.svg
 │   ├── vercel.svg
 │   └── window.svg
-├── src/
-│   ├── app/
-│   │   ├── page.tsx                  # 랜딩 페이지
-│   │   ├── layout.tsx                # 루트 레이아웃
-│   │   ├── globals.css
-│   │   ├── favicon.ico
-│   │   ├── about/page.tsx
-│   │   ├── login/
-│   │   │   ├── page.tsx
-│   │   │   └── Login.module.css
-│   │   ├── students/page.tsx
-│   │   ├── subjects/page.tsx
-│   │   ├── schedule/
-│   │   │   ├── page.tsx
-│   │   │   ├── Schedule.module.css
-│   │   │   ├── _components/
-│   │   │   │   ├── EditSessionModal.tsx
-│   │   │   │   ├── GroupSessionModal.tsx
-│   │   │   │   ├── PdfDownloadSection.tsx
-│   │   │   │   ├── ScheduleGridSection.tsx
-│   │   │   │   ├── ScheduleHeader.tsx
-│   │   │   │   └── StudentPanelSection.tsx
-│   │   │   ├── _hooks/
-│   │   │   │   ├── useEditModalState.ts
-│   │   │   │   └── useUiState.ts
-│   │   │   ├── _utils/
-│   │   │   │   ├── collisionHelpers.ts
-│   │   │   │   ├── collisionQueries.ts
-│   │   │   │   ├── dndHelpers.ts
-│   │   │   │   ├── editSaveHandlers.ts
-│   │   │   │   ├── editStudentHandlers.ts
-│   │   │   │   ├── modalHandlers.ts
-│   │   │   │   ├── scheduleSelectors.ts
-│   │   │   │   └── sessionSaveUtils.ts
-│   │   │   └── _constants/scheduleConstants.ts
-│   │   └── api/
-│   │       ├── enrollments/route.ts          # (신규, S3) GET/POST/DELETE
-│   │       ├── onboarding/route.ts           # (신규, S4) 신규 사용자 academy 자동 생성
-│   │       ├── students/
-│   │       │   ├── route.ts
-│   │       │   └── [id]/route.ts
-│   │       ├── subjects/
-│   │       │   ├── route.ts
-│   │       │   └── [id]/route.ts
-│   │       ├── sessions/
-│   │       │   ├── route.ts
-│   │       │   └── [id]/
-│   │       │       ├── route.ts
-│   │       │       └── position/route.ts
-│   │       ├── user-settings/route.ts
-│   │       └── auth/
-│   ├── components/
-│   │   ├── atoms/
-│   │   │   ├── AuthGuard.tsx
-│   │   │   ├── Button.tsx (+.module.css)
-│   │   │   ├── ErrorBoundary.tsx
-│   │   │   ├── Input.tsx (+.module.css)
-│   │   │   ├── Label.tsx (+.module.css)
-│   │   │   ├── StudentListItem.tsx (+.module.css)
-│   │   │   ├── SubjectListItem.tsx (+.module.css)
-│   │   │   └── ThemeToggle.tsx
-│   │   ├── molecules/
-│   │   │   ├── ConfirmModal.tsx (+.module.css)
-│   │   │   ├── DataConflictModal.tsx (+.module.css) # (신규, 익명 우선) 로그인 시 충돌 해결
-│   │   │   ├── DropZone.tsx
-│   │   │   ├── PDFDownloadButton.tsx
-│   │   │   ├── ScheduleHeader.tsx
-│   │   │   ├── SessionBlock.tsx (+utils.ts)
-│   │   │   ├── SessionForm.tsx
-│   │   │   ├── StudentInputSection.tsx (+.module.css)
-│   │   │   ├── StudentList.tsx (+.module.css)
-│   │   │   ├── SubjectInputSection.tsx (+.module.css)
-│   │   │   ├── SubjectList.tsx (+.module.css)
-│   │   │   └── TimeTableRow.tsx
-│   │   └── organisms/
-│   │       ├── AboutPageLayout.tsx
-│   │       ├── LoginButton.tsx (+.module.css)
-│   │       ├── StudentManagementSection.tsx
-│   │       ├── StudentPanel.tsx
-│   │       ├── StudentsPageLayout.tsx
-│   │       ├── SubjectManagementSection.tsx
-│   │       ├── SubjectsPageLayout.tsx
-│   │       ├── TimeTableGrid.tsx
-│   │       └── about/                       # (신규, Phase 2B)
-│   │           ├── FeatureCard.tsx
-│   │           ├── FeatureDetail.tsx
-│   │           └── HeroSection.tsx
-│   ├── domain/
-│   │   ├── entities/
-│   │   │   ├── Student.ts
-│   │   │   └── Subject.ts
-│   │   ├── value-objects/
-│   │   │   ├── Color.ts
-│   │   │   ├── StudentId.ts
-│   │   │   └── SubjectId.ts
-│   │   ├── repositories/index.ts
-│   │   └── services/StudentDomainService.ts
-│   ├── application/
-│   │   ├── index.ts
-│   │   ├── mappers/
-│   │   │   ├── StudentMapper.ts
-│   │   │   └── SubjectMapper.ts
-│   │   ├── services/
-│   │   │   ├── EnrollmentApplicationService.ts  # (신규, S3)
-│   │   │   ├── ServiceFactory.ts
-│   │   │   ├── SessionApplicationService.ts
-│   │   │   ├── StudentApplicationService.ts
-│   │   │   └── SubjectApplicationService.ts
-│   │   └── use-cases/
-│   │       ├── AddStudentUseCase.ts
-│   │       ├── DeleteStudentUseCase.ts
-│   │       ├── GetStudentUseCase.ts
-│   │       ├── SubjectUseCases.ts
-│   │       └── UpdateStudentUseCase.ts
-│   ├── infrastructure/
-│   │   ├── index.ts
-│   │   ├── interfaces.ts
-│   │   ├── config/RepositoryConfig.ts
-│   │   ├── container/
-│   │   │   └── RepositoryRegistry.ts
-│   │   ├── factories/
-│   │   │   ├── EnrollmentRepositoryFactory.ts
-│   │   │   ├── SessionRepositoryFactory.ts
-│   │   │   ├── StudentRepositoryFactory.ts
-│   │   │   └── SubjectRepositoryFactory.ts
-│   │   └── repositories/
-│   │       ├── SupabaseEnrollmentRepository.ts    # (신규) enrollments 테이블 CRUD
-│   │       ├── SupabaseSessionRepository.ts       # (신규) sessions + session_enrollments 조인
-│   │       ├── SupabaseStudentRepository.ts       # students 테이블 (academy_id 기반)
-│   │       └── SupabaseSubjectRepository.ts       # subjects 테이블 (academy_id 기반)
-│   ├── hooks/
-│   │   ├── useDisplaySessions.ts
-│   │   ├── useGlobalDataInitialization.ts
-│   │   ├── useIntegratedDataLocal.ts     # ✅ Local-first
-│   │   ├── useLocal.ts
-│   │   ├── usePerformanceMonitoring.ts
-│   │   ├── useScheduleDragAndDrop.ts
-│   │   ├── useScheduleSessionManagement.ts
-│   │   ├── useStudentManagementLocal.ts  # ✅ Local-first
-│   │   ├── useStudentPanel.ts
-│   │   ├── useSubjectManagementLocal.ts  # ✅ Local-first
-│   │   ├── useTimeValidation.ts
-│   │   └── useUserTracking.ts
-│   ├── lib/
-│   │   ├── apiSync.ts                    # (신규, S3) per-entity fire-and-forget
-│   │   ├── auth/
-│   │   │   └── handleLoginDataMigration.ts # (신규, 익명 우선) localStorage→DB 마이그레이션
-│   │   ├── errorTracker.ts
-│   │   ├── localStorageCrud.ts
-│   │   ├── logger.ts
-│   │   ├── pdf-utils.ts
-│   │   ├── planner.ts
-│   │   ├── resolveAcademyId.ts           # (신규, S2) userId→academyId 변환
-│   │   ├── sessionCollisionUtils.ts
-│   │   ├── supabaseServiceRole.ts        # (신규, S2) Service Role 클라이언트 싱글톤
-│   │   ├── timeUtils.ts
-│   │   └── yPositionMigration.ts
-│   ├── contexts/
-│   │   └── ThemeContext.tsx
-│   ├── middleware/
-│   │   ├── cors.ts
-│   │   └── logging.ts
-│   ├── shared/
-│   │   ├── constants/sessionConstants.ts
-│   │   └── types/
-│   │       ├── ApplicationTypes.ts
-│   │       ├── CommonTypes.ts
-│   │       ├── DomainTypes.ts
-│   │       ├── index.ts
-│   │       └── scheduleTypes.ts
-│   ├── types/scheduleTypes.ts
-│   ├── utils/supabaseClient.ts
-│   └── setupTests.ts
-└── tests/
-    ├── e2e/
-    │   ├── config/e2e-config.ts
-    │   ├── browser-compatibility.spec.ts
-    │   ├── final-working-test.spec.ts
-    │   ├── real-user-scenarios.spec.ts
-    │   ├── schedule-student-names.spec.ts
-    │   ├── schedule.spec.ts
-    │   ├── scroll-position-preservation.spec.ts
-    │   ├── simple-ui-test.spec.ts
-    │   ├── students.spec.ts
-    │   └── subjects.spec.ts
-    └── integration/
-        ├── api-integration.test.ts
-        ├── mock-supabase.test.ts
-        ├── real-supabase.test.ts
-        └── schedule-features.test.ts
+│
+└── src/
+    ├── setupTests.ts
+    ├── middleware.ts                     # 온보딩 가드 — /students /subjects /schedule 보호
+    │
+    ├── app/                              # Next.js App Router
+    │   ├── page.tsx                      # / → /schedule redirect
+    │   ├── layout.tsx                    # RootLayout (ThemeProvider, GlobalDataInit)
+    │   ├── globals.css
+    │   ├── favicon.ico
+    │   ├── about/page.tsx
+    │   ├── login/
+    │   │   ├── page.tsx
+    │   │   └── Login.module.css
+    │   ├── onboarding/page.tsx               # 첫 로그인 온보딩 (학원명 + 역할)
+    │   ├── settings/page.tsx                 # 학원 설정 (멤버 목록 + 초대 관리)
+    │   ├── invite/[token]/page.tsx           # 초대 수락 페이지
+    │   ├── students/page.tsx
+    │   ├── subjects/page.tsx
+    │   ├── schedule/                     # 가장 복잡한 페이지
+    │   │   ├── page.tsx
+    │   │   ├── Schedule.module.css
+    │   │   ├── _components/              # 페이지 전용 섹션 컴포넌트
+    │   │   │   ├── EditSessionModal.tsx
+    │   │   │   ├── GroupSessionModal.tsx
+    │   │   │   ├── PdfDownloadSection.tsx
+    │   │   │   ├── ScheduleGridSection.tsx
+    │   │   │   ├── ScheduleHeader.tsx
+    │   │   │   └── StudentPanelSection.tsx
+    │   │   ├── _hooks/
+    │   │   │   ├── useEditModalState.ts
+    │   │   │   └── useUiState.ts
+    │   │   ├── _utils/
+    │   │   │   ├── collisionHelpers.ts
+    │   │   │   ├── collisionQueries.ts
+    │   │   │   ├── dndHelpers.ts
+    │   │   │   ├── editSaveHandlers.ts
+    │   │   │   ├── editStudentHandlers.ts
+    │   │   │   ├── modalHandlers.ts
+    │   │   │   ├── scheduleSelectors.ts
+    │   │   │   └── sessionSaveUtils.ts
+    │   │   └── _constants/scheduleConstants.ts
+    │   └── api/                          # Next.js API Routes
+    │       ├── enrollments/route.ts      # GET/POST/DELETE enrollments
+    │       ├── onboarding/
+    │       │   ├── route.ts              # POST — academyName + role 입력, onboarded 쿠키 설정
+    │       │   └── status/route.ts       # GET — academy 존재 여부 확인
+    │       ├── students/
+    │       │   ├── route.ts
+    │       │   └── [id]/route.ts
+    │       ├── subjects/
+    │       │   ├── route.ts
+    │       │   └── [id]/route.ts
+    │       ├── sessions/
+    │       │   ├── route.ts
+    │       │   └── [id]/
+    │       │       ├── route.ts
+    │       │       └── position/route.ts
+    │       ├── invites/                  # 초대 토큰 CRUD
+    │       │   ├── route.ts              # GET (목록), POST (생성)
+    │       │   ├── [id]/route.ts         # DELETE (취소)
+    │       │   ├── check/route.ts        # GET (공개 조회)
+    │       │   └── accept/route.ts       # POST (수락)
+    │       ├── members/                  # 멤버 관리
+    │       │   ├── route.ts              # GET (목록)
+    │       │   └── [userId]/route.ts     # DELETE (제거)
+    │       ├── user-settings/route.ts
+    │       └── auth/                     # Supabase Auth callback
+    │
+    ├── components/                       # Atomic Design
+    │   ├── atoms/
+    │   │   ├── AuthGuard.tsx
+    │   │   ├── Button.tsx (+.module.css)
+    │   │   ├── ErrorBoundary.tsx
+    │   │   ├── Input.tsx (+.module.css)
+    │   │   ├── Label.tsx (+.module.css)
+    │   │   ├── StudentListItem.tsx (+.module.css)
+    │   │   ├── SubjectListItem.tsx (+.module.css)
+    │   │   ├── ThemeToggle.tsx
+    │   │   └── __tests__/ (8 test files)
+    │   ├── molecules/
+    │   │   ├── ConfirmModal.tsx (+.module.css)
+    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
+    │   │   ├── DropZone.tsx
+    │   │   ├── PDFDownloadButton.tsx
+    │   │   ├── SessionBlock.tsx (+utils.ts)           # 시간표 수업 블록
+    │   │   ├── SessionForm.tsx
+    │   │   ├── StudentInputSection.tsx (+.module.css)
+    │   │   ├── StudentList.tsx (+.module.css)
+    │   │   ├── SubjectInputSection.tsx (+.module.css)
+    │   │   ├── SubjectList.tsx (+.module.css)
+    │   │   ├── TimeTableRow.tsx
+    │   │   └── __tests__/ (12 test files)
+    │   └── organisms/
+    │       ├── AboutPageLayout.tsx
+    │       ├── LoginButton.tsx (+.module.css)         # Google OAuth 모달 + 드롭다운
+    │       ├── StudentManagementSection.tsx
+    │       ├── StudentPanel.tsx                       # 플로팅 학생 패널 (드래그 가능)
+    │       ├── StudentsPageLayout.tsx
+    │       ├── SubjectManagementSection.tsx
+    │       ├── SubjectsPageLayout.tsx
+    │       ├── TimeTableGrid.tsx                      # 주간 시간표 그리드 (DnD)
+    │       ├── __tests__/ (8 test files)
+    │       └── about/
+    │           ├── FeatureCard.tsx
+    │           ├── FeatureDetail.tsx
+    │           └── HeroSection.tsx
+    │
+    ├── contexts/
+    │   └── ThemeContext.tsx
+    │
+    ├── domain/                           # Clean Architecture — Domain Layer
+    │   ├── entities/
+    │   │   ├── Student.ts
+    │   │   └── Subject.ts
+    │   ├── value-objects/
+    │   │   ├── Color.ts
+    │   │   ├── StudentId.ts
+    │   │   └── SubjectId.ts
+    │   ├── repositories/index.ts         # Repository interfaces
+    │   └── services/StudentDomainService.ts
+    │
+    ├── application/                      # Clean Architecture — Application Layer
+    │   ├── index.ts
+    │   ├── mappers/
+    │   │   ├── StudentMapper.ts
+    │   │   └── SubjectMapper.ts
+    │   ├── services/
+    │   │   ├── EnrollmentApplicationService.ts
+    │   │   ├── ServiceFactory.ts
+    │   │   ├── SessionApplicationService.ts
+    │   │   ├── StudentApplicationService.ts
+    │   │   └── SubjectApplicationService.ts
+    │   └── use-cases/
+    │       ├── AddStudentUseCase.ts
+    │       ├── DeleteStudentUseCase.ts
+    │       ├── GetStudentUseCase.ts
+    │       ├── SubjectUseCases.ts
+    │       └── UpdateStudentUseCase.ts
+    │
+    ├── infrastructure/                   # Clean Architecture — Infrastructure Layer
+    │   ├── index.ts
+    │   ├── interfaces.ts
+    │   ├── config/RepositoryConfig.ts
+    │   ├── container/RepositoryRegistry.ts
+    │   ├── factories/
+    │   │   ├── EnrollmentRepositoryFactory.ts
+    │   │   ├── SessionRepositoryFactory.ts
+    │   │   ├── StudentRepositoryFactory.ts
+    │   │   └── SubjectRepositoryFactory.ts
+    │   └── repositories/
+    │       ├── SupabaseEnrollmentRepository.ts   # enrollments 테이블 CRUD
+    │       ├── SupabaseSessionRepository.ts      # sessions + session_enrollments 조인
+    │       ├── SupabaseStudentRepository.ts      # students 테이블 (academy_id 기반)
+    │       └── SupabaseSubjectRepository.ts      # subjects 테이블 (academy_id 기반)
+    │
+    ├── hooks/                            # Custom React Hooks
+    │   ├── useDisplaySessions.ts
+    │   ├── useGlobalDataInitialization.ts
+    │   ├── useIntegratedDataLocal.ts     # 통합 데이터 관리 (Local-first SSOT)
+    │   ├── useLocal.ts
+    │   ├── usePerformanceMonitoring.ts
+    │   ├── useScheduleDragAndDrop.ts
+    │   ├── useScheduleSessionManagement.ts
+    │   ├── useStudentManagementLocal.ts
+    │   ├── useStudentPanel.ts
+    │   ├── useSubjectManagementLocal.ts
+    │   ├── useTimeValidation.ts
+    │   ├── useUserTracking.ts
+    │   └── __tests__/ (12 test files)
+    │
+    ├── lib/                              # 핵심 유틸리티
+    │   ├── apiSync.ts                    # Fire-and-forget 서버 동기화
+    │   ├── authUtils.ts
+    │   ├── errorTracker.ts
+    │   ├── localStorageCrud.ts           # localStorage SSOT 연산
+    │   ├── logger.ts
+    │   ├── pdf-utils.ts
+    │   ├── planner.ts
+    │   ├── resolveAcademyId.ts           # userId → academyId 변환
+    │   ├── resolveAcademyMembership.ts   # userId → { academyId, role } 변환
+    │   ├── sessionCollisionUtils.ts      # 시간 충돌 감지 및 yPosition 재배치
+    │   ├── supabaseServiceRole.ts        # Service Role 클라이언트 싱글톤
+    │   ├── timeUtils.ts
+    │   ├── yPositionMigration.ts
+    │   ├── auth/
+    │   │   ├── deduplication.ts
+    │   │   ├── fullDataMigration.ts
+    │   │   └── handleLoginDataMigration.ts  # 로그인 시 localStorage → DB 마이그레이션
+    │   └── __tests__/
+    │
+    ├── middleware/
+    │   ├── cors.ts
+    │   └── logging.ts
+    │
+    ├── shared/
+    │   ├── constants/sessionConstants.ts
+    │   └── types/
+    │       ├── ApplicationTypes.ts
+    │       ├── CommonTypes.ts
+    │       ├── DomainTypes.ts
+    │       ├── index.ts
+    │       └── scheduleTypes.ts
+    │
+    ├── types/scheduleTypes.ts
+    └── utils/supabaseClient.ts
+
+# tests/ (co-located __tests__/ 제외 별도 위치)
+tests/
+├── e2e/                                  # Playwright E2E
+│   ├── config/e2e-config.ts
+│   ├── browser-compatibility.spec.ts
+│   ├── conflict-modal.spec.ts
+│   ├── real-user-scenarios.spec.ts
+│   ├── schedule-student-names.spec.ts
+│   ├── schedule.spec.ts
+│   ├── scroll-position-preservation.spec.ts
+│   ├── simple-ui-test.spec.ts
+│   ├── students.spec.ts
+│   └── subjects.spec.ts
+└── integration/
+    ├── api-integration.test.ts
+    ├── mock-supabase.test.ts
+    └── schedule-features.test.ts
 
 # __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 100+ 테스트 파일, 위 구조에서 생략)

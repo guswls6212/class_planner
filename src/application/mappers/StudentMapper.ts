@@ -28,6 +28,7 @@ export class StudentMapper {
       dto.id,
       dto.name,
       undefined,
+      undefined,
       new Date(dto.createdAt),
       new Date(dto.updatedAt)
     );

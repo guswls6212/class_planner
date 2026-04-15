@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { logger } from "../../../lib/logger";
+import { showToast } from "../../../lib/toast";
 import type { Session } from "../../../lib/planner";
 import type { TempEnrollment } from "./sessionSaveUtils";
 
@@ -89,7 +90,7 @@ export function buildEditStudentAdd(params: {
     ) {
       const currentCount = editModalData.enrollmentIds?.length || 0;
       if (currentCount >= 14) {
-        alert("최대 14명까지 추가할 수 있습니다.");
+        showToast("warning", "최대 14명까지 추가할 수 있습니다.");
         return;
       }
     }

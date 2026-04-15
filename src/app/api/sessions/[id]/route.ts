@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -34,11 +35,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: session });
   } catch (error) {
-    logger.error("Error fetching session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -87,11 +84,7 @@ export async function PUT(
       message: "Session updated successfully",
     });
   } catch (error) {
-    logger.error("Error updating session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -115,11 +108,7 @@ export async function DELETE(
       message: "Session deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 

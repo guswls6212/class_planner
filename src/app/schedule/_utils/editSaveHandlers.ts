@@ -1,4 +1,5 @@
 import { logger } from "../../../lib/logger";
+import { showError } from "../../../lib/toast";
 import type { Enrollment, Session } from "../../../lib/planner";
 import type { TempEnrollment } from "./sessionSaveUtils";
 
@@ -156,8 +157,8 @@ export function buildEditOnSave(params: {
       setTempEnrollments([]);
       logger.debug("세션 업데이트 완료");
     } catch (error) {
-      console.error("세션 업데이트 실패:", error);
-      alert("세션 업데이트에 실패했습니다.");
+      logger.error("세션 업데이트 실패", undefined, error as Error);
+      showError("세션 업데이트에 실패했습니다.");
     }
   };
 }
@@ -175,8 +176,8 @@ export function buildEditOnDelete(params: {
         setShowEditModal(false);
         logger.debug("세션 삭제 완료");
       } catch (error) {
-        console.error("세션 삭제 실패:", error);
-        alert("세션 삭제에 실패했습니다.");
+        logger.error("세션 삭제 실패", undefined, error as Error);
+        showError("세션 삭제에 실패했습니다.");
       }
     }
   };

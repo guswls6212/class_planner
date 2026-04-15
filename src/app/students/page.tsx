@@ -5,6 +5,7 @@ import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { logger } from "../../lib/logger";
+import { showError } from "../../lib/toast";
 
 export default function StudentsPage() {
   return <StudentsPageContent />;
@@ -39,6 +40,7 @@ function StudentsPageContent() {
       }
     } catch (error) {
       logger.error("학생 추가 실패:", undefined, error as Error);
+      showError("학생 추가 중 오류가 발생했습니다.");
     }
   };
 
@@ -60,6 +62,7 @@ function StudentsPageContent() {
       }
     } catch (error) {
       logger.error("학생 삭제 실패:", undefined, error as Error);
+      showError("학생 삭제 중 오류가 발생했습니다.");
     }
   };
 

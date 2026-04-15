@@ -1,6 +1,7 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { toErrorResponse } from "@/lib/errors";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -10,11 +11,8 @@ export function getSessionService() {
 
 export async function GET(request: NextRequest) {
   try {
-    const corsResponse = corsMiddleware(request);
-    if (corsResponse !== null && corsResponse.status !== 200) {
-      return corsResponse;
-    }
-
+    // corsMiddleware는 POST/PUT/DELETE에만 적용 — GET은 same-origin 브라우저 요청이
+    // Origin 헤더를 보내지 않으므로 403이 발생함 (students/enrollments와 동일 패턴)
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -29,11 +27,7 @@ export async function GET(request: NextRequest) {
     const sessions = await getSessionService().getAllSessions(academyId);
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
-    logger.error("Error fetching sessions:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch sessions" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -73,8 +67,8 @@ export async function POST(request: NextRequest) {
     const newSession = await getSessionService().addSession(
       {
         subjectId,
-        startsAt: new Date(startsAt),
-        endsAt: new Date(endsAt),
+        startsAt,
+        endsAt,
         enrollmentIds,
         weekday: Number(weekday),
       },
@@ -85,11 +79,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Error adding session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to add session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -119,18 +109,14 @@ export async function PUT(request: NextRequest) {
 
     const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
-      startsAt: new Date(startsAt),
-      endsAt: new Date(endsAt),
+      startsAt,
+      endsAt,
       enrollmentIds,
       weekday: Number(weekday),
     });
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
-    logger.error("Error updating session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -157,11 +143,7 @@ export async function DELETE(request: NextRequest) {
       message: "Session deleted successfully",
     });
   } catch (error) {
-    logger.error("Error deleting session:", undefined, error as Error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete session" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 

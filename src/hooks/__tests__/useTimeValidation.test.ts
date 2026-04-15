@@ -1,16 +1,16 @@
 /**
- * useTimeValidation 테스트 (67줄)
+ * useTimeValidation 테스트
  */
 
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTimeValidation } from "../useTimeValidation";
 
-// Mock logger
-vi.mock("../../lib/logger", () => ({
-  logger: {
-    warn: vi.fn(),
-  },
+// sonner를 mock — toast.error가 호출됐는지 확인
+vi.mock("../../lib/toast", () => ({
+  showError: vi.fn(),
+  showSuccess: vi.fn(),
+  showToast: vi.fn(),
 }));
 
 describe("useTimeValidation", () => {
@@ -41,12 +41,6 @@ describe("useTimeValidation", () => {
     const { result } = renderHook(() => useTimeValidation());
 
     expect(typeof result.current.getNextHour).toBe("function");
-  });
-
-  it("dispatchToast 함수가 존재해야 한다", () => {
-    const { result } = renderHook(() => useTimeValidation());
-
-    expect(typeof result.current.dispatchToast).toBe("function");
   });
 
   it("validateAndToastGroup 함수가 존재해야 한다", () => {
@@ -93,19 +87,24 @@ describe("useTimeValidation", () => {
     expect(setError).toHaveBeenCalledWith("");
   });
 
-  it("validateAndToastEdit: 잘못된 시간에 토스트 이벤트 발생", () => {
+  it("validateAndToastEdit: 잘못된 시간 범위 시 showError 호출", async () => {
+    const { showError } = await import("../../lib/toast");
     const { result } = renderHook(() => useTimeValidation());
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent").mockImplementation(() => true);
 
-    // 잘못된 시간 범위
     expect(result.current.validateAndToastEdit("12:00", "11:00")).toBe(false);
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: "toast",
-        detail: { type: "error", message: "종료 시간은 시작 시간보다 늦어야 합니다." }
-      })
-    );
+    expect(showError).toHaveBeenCalledWith("종료 시간은 시작 시간보다 늦어야 합니다.");
+  });
 
-    dispatchEventSpy.mockRestore();
+  it("validateAndToastEdit: 8시간 초과 시 showError 호출", async () => {
+    const { showError } = await import("../../lib/toast");
+    const { result } = renderHook(() => useTimeValidation());
+
+    expect(result.current.validateAndToastEdit("09:00", "18:00")).toBe(false);
+    expect(showError).toHaveBeenCalledWith("세션 시간은 최대 8시간까지 설정할 수 있습니다.");
+  });
+
+  it("validateAndToastEdit: 유효한 시간은 true 반환", () => {
+    const { result } = renderHook(() => useTimeValidation());
+    expect(result.current.validateAndToastEdit("10:00", "11:00")).toBe(true);
   });
 });

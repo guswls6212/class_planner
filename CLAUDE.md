@@ -8,11 +8,25 @@
 - **핵심 가치:** 시간표 구성 속도, 인쇄 가능한 PDF 출력, 직관적 UI
 
 ## SSOT 참조 우선순위
-1. `class-planner/ARCHITECTURE.md` — 프로젝트 헌법
-2. `class-planner/docs/adr/` — 아키텍처 결정 기록
-3. `docs/code-convention.md` — dev-pack 공용 코딩 규칙
-4. `class-planner/TASKS.md` — 단계별 진행 현황
-5. `class-planner/tree.txt` — 현재 파일 구조
+1. `ARCHITECTURE.md` — 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
+2. `UI_SPEC.md` — UI 동작 소스 오브 트루스 (컴포넌트, 인터랙션, 검증 라우트)
+3. `docs/adr/` — 아키텍처 결정 기록 (왜 이 결정을 했는지)
+4. `docs/code-convention.md` — class-planner 코딩 규칙 (글로벌: `../docs/code-convention.md`)
+5. `TASKS.md` — 단계별 진행 현황
+
+## 문서 맵 (Documentation Map)
+
+| 토픽 | 문서 | 언제 읽을지 |
+|------|------|------------|
+| 계층 구조, 데이터 모델, 배포 | [ARCHITECTURE.md](ARCHITECTURE.md) | 구조적 변경 전 |
+| UI 컴포넌트, 훅, 인터랙션, 검증 라우트 | [UI_SPEC.md](UI_SPEC.md) | **UI/컴포넌트 수정 전 필독** |
+| 개발 프로세스, 테스트, 검증, E2E, 브랜치/CI | [docs/development-guide.md](docs/development-guide.md) | 개발/테스트/커밋 시 |
+| 배포 절차, 환경 변수, Lightsail | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포/환경설정 시 |
+| 코딩 규칙 (파일크기, 언어, 스타일) | [docs/code-convention.md](docs/code-convention.md) | 코드 작성/리뷰 시 |
+| 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
+| AI 워크플로우 (Superpowers, 훅, opusplan) | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | AI 도구/모드 사용 시 |
+| 기능 설계 문서 | [docs/superpowers/specs/](docs/superpowers/specs/) | 기능 배경 이해 시 |
+| AI 워크플로우, 도구 선택 기준 | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | Superpowers/도구 사용 시 |
 
 ## 기술 스택
 - **Frontend:** Next.js 15.5.9 (App Router), React 19, TypeScript 5
@@ -32,13 +46,16 @@
 - **Presentation:** React 컴포넌트 (Atomic Design: atoms → molecules → organisms).
 
 ### Atomic Design 컴포넌트 분류
-- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle
-- **Molecules:** SessionBlock, TimeTableRow, ConfirmModal, DropZone, PDFDownloadButton
-- **Organisms:** TimeTableGrid, StudentPanel, StudentsPageLayout, SubjectsPageLayout
+- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, StudentListItem, SubjectListItem
+- **Molecules:** SessionBlock, TimeTableRow, ConfirmModal, DropZone, PDFDownloadButton, DataConflictModal, SessionForm, StudentInputSection, StudentList, SubjectInputSection, SubjectList
+- **Organisms:** TimeTableGrid, StudentPanel, StudentsPageLayout, SubjectsPageLayout, LoginButton, StudentManagementSection, SubjectManagementSection, AboutPageLayout
+- 상세 컴포넌트 인벤토리: [UI_SPEC.md](UI_SPEC.md) § 3
 
 ### 데이터 관리 패턴
 - **Local-first:** localStorage 직접 조작으로 즉시 반응 (0ms)
-- **Debounced sync:** 30초 debounce로 서버 자동 동기화, 최대 5분 안전장치
+- **Fire-and-forget sync:** `src/lib/apiSync.ts`의 `syncXxxCreate/Delete` 함수로 서버에 비동기 동기화. 실패해도 localStorage는 유지.
+- **익명 사용자:** localStorage만 사용 (key: `class_planner_anonymous`). 서버 호출 없음.
+- **로그인 후:** localStorage (key: `class_planner_{userId}`) + 서버 양방향 동기화
 - **useLocal 훅 우선:** 신규 기능은 반드시 `useXxxLocal` 훅 사용 (레거시 API 기반 훅 사용 금지)
 
 ## 코딩 규칙
@@ -54,7 +71,7 @@
 - 작업 브랜치 → `dev` PR → CI 통과 → 머지
 - `dev` → `main` PR → CI 통과 → 머지 → 자동 배포
 - hotfix 예외: `main`에서 분기 → `main` + `dev` 양쪽에 PR
-- 상세: `docs/VERSION_MANAGEMENT.md`
+- 상세: `docs/development-guide.md` § 브랜치 전략 & CI/CD
 
 ## 테스트 전략
 | 계층 | 목표 커버리지 | 도구 |
@@ -63,6 +80,7 @@
 | Application | 90%+ | Vitest (Mock Repository) |
 | Infrastructure | 80%+ | Vitest (실제 외부 의존성) |
 | Presentation | 70%+ | Vitest + RTL |
+| API Routes | 90%+ | Vitest (Mock Supabase) |
 | E2E | 주요 시나리오 | Playwright |
 
 ## 개발 워크플로우
@@ -98,6 +116,19 @@ npm run check
 ### 세션 중단 감지
 로컬에 남아있는 작업 브랜치 = 이전 세션에서 중단된 작업.
 `bash scripts/check-stale-branches.sh`로 확인 가능.
+
+## Claude Code 훅 시스템
+
+dev-pack 전체에서 공유하는 Claude Code 훅. 상세: [`../docs/ai-workflow-guide.md`](../docs/ai-workflow-guide.md)
+
+| 훅 | 트리거 | 역할 | 위치 |
+|----|--------|------|------|
+| `session-start-reset.sh` | 세션 시작 | 이전 세션 센티넬 삭제, stale 브랜치 감지, baseline 저장 | `scripts/hooks/` |
+| `dirty-tree-stop-hook.sh` | 세션 종료 | 커밋되지 않은 변경 파일이 있으면 종료 차단 | `scripts/hooks/` |
+| `ui-verify-stop-hook.sh` | 세션 종료 | UI 파일 변경 시 브라우저 검증 없으면 종료 차단 | `scripts/hooks/` |
+| `check-stale-branches.sh` | 수동/세션 시작 | 로컬에 남아있는 작업 브랜치(중단된 세션) 감지 | `scripts/` |
+
+**Bypass:** `.claude/dirty-ok` (dirty-tree), `.claude/ui-verified` (ui-verify) — 센티넬은 다음 세션 시작 시 자동 삭제.
 
 ## UI Verification (class-planner 전용 가이드)
 
