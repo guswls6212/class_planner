@@ -293,6 +293,8 @@ class-planner/
     │   │   ├── fullDataMigration.ts
     │   │   └── handleLoginDataMigration.ts  # 로그인 시 localStorage → DB 마이그레이션
     │   └── __tests__/
+    │       ├── logger.test.ts               # maskPII + app_logs insert (19 tests)
+    │       └── ... (16 other test files)
     │
     ├── middleware/
     │   ├── cors.ts

@@ -19,6 +19,7 @@ export enum LogLevel {
 
 export interface LogContext {
   userId?: string;
+  academyId?: string;
   requestId?: string;
   endpoint?: string;
   method?: string;
@@ -130,6 +131,9 @@ class Logger {
     metadata?: Record<string, any>
   ): void {
     this.output(LogLevel.ERROR, message, context, error, metadata);
+    if (this.shouldLog(LogLevel.ERROR)) {
+      persistToAppLogs("error", message, context, error);
+    }
   }
 
   warn(
@@ -138,6 +142,9 @@ class Logger {
     metadata?: Record<string, any>
   ): void {
     this.output(LogLevel.WARN, message, context, undefined, metadata);
+    if (this.shouldLog(LogLevel.WARN)) {
+      persistToAppLogs("warn", message, context, undefined);
+    }
   }
 
   info(
@@ -233,6 +240,69 @@ class Logger {
   ): void {
     this.info(`Business Event: ${event}`, context, metadata);
   }
+}
+
+// ─── PII 마스킹 ──────────────────────────────────────────────────────────────
+
+const PII_KEYS = /^(email|token|password|access_token|refresh_token|authorization)$/i;
+const EMAIL_PATTERN = /[\w.+\-]+@[\w.\-]+\.[a-z]{2,}/gi;
+
+export function maskPII(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.replace(EMAIL_PATTERN, "[REDACTED_EMAIL]");
+  }
+  if (Array.isArray(value)) {
+    return value.map(maskPII);
+  }
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      result[k] = PII_KEYS.test(k) ? "[REDACTED]" : maskPII(v);
+    }
+    return result;
+  }
+  return value;
+}
+
+// ─── app_logs 영구화 (fire-and-forget, 서버 전용) ────────────────────────────
+
+function persistToAppLogs(
+  level: "error" | "warn",
+  message: string,
+  context?: LogContext,
+  error?: Error
+): void {
+  // 브라우저에서는 no-op (서버 전용)
+  if (typeof window !== "undefined") return;
+
+  (async () => {
+    try {
+      const { getServiceRoleClient } = await import("./supabaseServiceRole");
+      const client = getServiceRoleClient();
+
+      const maskedContext = context
+        ? (maskPII(context) as Record<string, unknown>)
+        : null;
+      const maskedStack =
+        error?.stack ? (maskPII(error.stack) as string) : null;
+
+      await client.from("app_logs").insert({
+        level,
+        source: "server",
+        code: (error as Record<string, unknown> | undefined)?.code ?? null,
+        message,
+        context: maskedContext,
+        user_id: context?.userId ?? null,
+        academy_id: context?.academyId ?? null,
+        request_id: context?.requestId ?? null,
+        user_agent: context?.userAgent ?? null,
+        url: context?.endpoint ?? null,
+        stack: maskedStack,
+      });
+    } catch {
+      // insert 실패는 조용히 삼킴 — stdout 출력에는 영향 없음
+    }
+  })();
 }
 
 // 싱글톤 인스턴스
