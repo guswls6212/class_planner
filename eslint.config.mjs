@@ -12,10 +12,13 @@ const eslintConfig = [
     },
     rules: {
       ...Object.fromEntries(
-        Object.entries(jsxA11y.configs.recommended.rules).map(([key, val]) => [
-          key,
-          val === "error" ? "warn" : val,
-        ])
+        Object.entries(jsxA11y.configs.recommended.rules).map(([key, val]) => {
+          // Rules can be string ("error") or array (["error", {...options}])
+          if (Array.isArray(val)) {
+            return [key, [val[0] === "error" ? "warn" : val[0], ...val.slice(1)]];
+          }
+          return [key, val === "error" ? "warn" : val];
+        })
       ),
     },
   },
