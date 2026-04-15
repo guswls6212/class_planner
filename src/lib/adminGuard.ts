@@ -1,6 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 
+const supabaseClient =
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : null;
+
 /**
  * JWT에서 이메일을 추출한다 (서버 사이드).
  * Authorization: Bearer <jwt> 헤더를 파싱하여 Supabase로 검증.
@@ -9,6 +16,11 @@ import { NextRequest, NextResponse } from "next/server";
 export async function getAuthenticatedEmail(
   request: NextRequest
 ): Promise<string | null> {
+  if (!supabaseClient) {
+    console.error("[adminGuard] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not set");
+    return null;
+  }
+
   const authHeader = request.headers.get("authorization");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -16,18 +28,7 @@ export async function getAuthenticatedEmail(
 
   const jwt = authHeader.slice("Bearer ".length);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !anonKey) {
-    return null;
-  }
-
-  const client = createClient(supabaseUrl, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  const { data, error } = await client.auth.getUser(jwt);
+  const { data, error } = await supabaseClient.auth.getUser(jwt);
 
   if (error || !data.user?.email) {
     return null;
@@ -41,7 +42,7 @@ export async function getAuthenticatedEmail(
  * process.env.ADMIN_EMAILS를 콤마로 split, trim, lowercase 처리 후 비교.
  * env 누락 또는 email이 null이면 false (fail-closed).
  */
-export function isDeveloperEmail(email: string | null): boolean {
+export function isDeveloperEmail(email: string | null): email is string {
   if (!email) return false;
 
   const raw = process.env.ADMIN_EMAILS;
@@ -76,5 +77,5 @@ export async function requireDeveloper(
     };
   }
 
-  return { ok: true, email: email as string };
+  return { ok: true, email };
 }

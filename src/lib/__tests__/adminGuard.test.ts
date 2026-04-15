@@ -1,8 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// @supabase/supabase-js를 모듈 레벨에서 mock
+// vi.hoisted()로 선언해야 vi.mock factory 안에서 안전하게 참조할 수 있다.
+// (vi.mock은 파일 최상단으로 hoisted되므로 일반 const보다 먼저 실행됨)
+const { mockGetUser } = vi.hoisted(() => ({
+  mockGetUser: vi.fn(),
+}));
+
+// @supabase/supabase-js를 모듈 레벨에서 mock.
+// createClient는 hoisted되어 모듈 싱글턴 초기화 전에 적용됨.
+// 반환 객체에 mockGetUser를 고정하여 테스트마다 mockGetUser 구현만 교체.
 vi.mock("@supabase/supabase-js", () => ({
-  createClient: vi.fn(),
+  createClient: vi.fn(() => ({
+    auth: { getUser: mockGetUser },
+  })),
 }));
 
 // next/server mock — NextRequest / NextResponse
@@ -35,7 +45,6 @@ vi.mock("next/server", () => {
   return { NextRequest: MockNextRequest, NextResponse };
 });
 
-import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import {
   getAuthenticatedEmail,
@@ -102,12 +111,9 @@ describe("getAuthenticatedEmail", () => {
   });
 
   it("Supabase getUser 성공 시 email을 반환한다", async () => {
-    const mockGetUser = vi.fn().mockResolvedValue({
+    mockGetUser.mockResolvedValue({
       data: { user: { email: "dev@example.com" } },
       error: null,
-    });
-    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
-      auth: { getUser: mockGetUser },
     });
 
     const req = makeRequest("Bearer valid-jwt-token");
@@ -118,12 +124,9 @@ describe("getAuthenticatedEmail", () => {
   });
 
   it("Supabase getUser 실패 시 null을 반환한다", async () => {
-    const mockGetUser = vi.fn().mockResolvedValue({
+    mockGetUser.mockResolvedValue({
       data: { user: null },
       error: { message: "invalid jwt" },
-    });
-    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
-      auth: { getUser: mockGetUser },
     });
 
     const req = makeRequest("Bearer bad-jwt-token");
@@ -162,12 +165,9 @@ describe("requireDeveloper", () => {
   });
 
   it("이메일 인증 성공, 비화이트리스트 → { ok: false, response: 403 }", async () => {
-    const mockGetUser = vi.fn().mockResolvedValue({
+    mockGetUser.mockResolvedValue({
       data: { user: { email: "notallowed@example.com" } },
       error: null,
-    });
-    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
-      auth: { getUser: mockGetUser },
     });
 
     const req = makeRequest("Bearer valid-jwt");
@@ -180,12 +180,9 @@ describe("requireDeveloper", () => {
   });
 
   it("이메일 인증 성공, 화이트리스트 → { ok: true, email }", async () => {
-    const mockGetUser = vi.fn().mockResolvedValue({
+    mockGetUser.mockResolvedValue({
       data: { user: { email: "dev@example.com" } },
       error: null,
-    });
-    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
-      auth: { getUser: mockGetUser },
     });
 
     const req = makeRequest("Bearer valid-jwt");
