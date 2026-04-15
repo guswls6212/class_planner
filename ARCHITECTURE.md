@@ -50,6 +50,9 @@ src/app/
 ├── students/page.tsx     # 학생 관리
 ├── subjects/page.tsx     # 과목 관리
 ├── settings/page.tsx     # 학원 설정 (멤버 목록 + 초대 관리)
+├── admin/
+│   ├── layout.tsx        # ADMIN_EMAILS env 화이트리스트 게이트
+│   └── logs/page.tsx     # 개발자 전용 로그 뷰어 (전체 학원 횡단 조회)
 ├── invite/[token]/page.tsx # 초대 수락 페이지 (비로그인/로그인 분기)
 ├── schedule/             # 시간표 관리 (가장 복잡)
 │   ├── page.tsx
@@ -76,6 +79,8 @@ src/app/api/
 ├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
 ├── invites/        # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
 ├── members/        # 멤버 관리 (GET 목록, [userId] DELETE 제거)
+├── admin/
+│   └── logs/       # GET — 개발자 전용 (ADMIN_EMAILS 화이트리스트), 전체 학원 횡단 조회, 필터/페이지네이션
 └── user-settings/  # 사용자 설정
 ```
 모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
@@ -121,6 +126,7 @@ src/lib/               # 핵심 유틸리티
 ├── timeUtils.ts               # 시간 관련 유틸리티
 ├── authUtils.ts               # 인증 관련 유틸리티
 ├── resolveAcademyId.ts        # Academy ID 조회 (온보딩 체크)
+├── adminGuard.ts              # ADMIN_EMAILS env 화이트리스트 검증 유틸리티
 ├── supabaseServiceRole.ts     # Service Role 클라이언트 (서버 전용)
 ├── yPositionMigration.ts      # yPosition 마이그레이션 유틸리티
 └── auth/                      # 로그인 데이터 마이그레이션
@@ -233,3 +239,4 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 - 2026-04-11: 배포 아키텍처 업데이트 (self-hosted 폐기, Lightsail 하이브리드 확정). 데이터 모델 3.2 업데이트 (Academy 멀티테넌트 구조 반영, ADR-002).
 - 2026-04-14: API Routes 현행화 (enrollments, onboarding 추가, data/auth 제거). lib/ 현행화 (apiSync, auth/, resolveAcademyId 등 추가, debouncedServerSync 제거). AuthContext.tsx 제거 (ThemeContext.tsx만 유지). Vercel 다이어그램 제거.
 - 2026-04-15: invite_tokens 테이블 추가 (020 migration). /api/invites + /api/members API Routes 추가. /settings, /invite/[token] 페이지 추가. resolveAcademyMembership 헬퍼 추가.
+- 2026-04-15: Step 5 개발자 로그 뷰어 추가. /admin/logs 페이지 + /api/admin/logs Route (ADMIN_EMAILS 화이트리스트). adminGuard.ts 신규. 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP.

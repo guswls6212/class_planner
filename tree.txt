@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-14, 문서 통합 축소 + 고아 파일 정리)
+# class-planner file structure (2026-04-15, Step 5 개발자 로그 뷰어 반영)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
@@ -80,7 +80,8 @@ class-planner/
 │       ├── 018_migrate_jsonb_to_normalized.sql
 │       ├── 019_drop_user_data.sql
 │       ├── 020_create_invite_tokens.sql
-│       └── 021_academy_members_delete_policy.sql
+│       ├── 021_academy_members_delete_policy.sql
+│       └── 023_drop_app_logs_owner_select_policy.sql
 │
 ├── nginx/
 │   ├── default.conf
@@ -118,6 +119,9 @@ class-planner/
     │   │   ├── page.tsx
     │   │   └── Login.module.css
     │   ├── onboarding/page.tsx               # 첫 로그인 온보딩 (학원명 + 역할)
+    │   ├── admin/
+    │   │   ├── layout.tsx                    # ADMIN_EMAILS env 화이트리스트 게이트
+    │   │   └── logs/page.tsx                 # 개발자 전용 로그 뷰어
     │   ├── settings/page.tsx                 # 학원 설정 (멤버 목록 + 초대 관리)
     │   ├── invite/[token]/page.tsx           # 초대 수락 페이지
     │   ├── students/page.tsx
@@ -169,6 +173,11 @@ class-planner/
     │       ├── members/                  # 멤버 관리
     │       │   ├── route.ts              # GET (목록)
     │       │   └── [userId]/route.ts     # DELETE (제거)
+    │       ├── admin/
+    │       │   └── logs/
+    │       │       ├── route.ts          # GET — ADMIN_EMAILS 게이트, 전체 학원 횡단 조회
+    │       │       └── __tests__/
+    │       │           └── route.test.ts
     │       ├── user-settings/route.ts
     │       └── auth/                     # Supabase Auth callback
     │
@@ -284,6 +293,7 @@ class-planner/
     │   ├── planner.ts
     │   ├── resolveAcademyId.ts           # userId → academyId 변환
     │   ├── resolveAcademyMembership.ts   # userId → { academyId, role } 변환
+    │   ├── adminGuard.ts                 # ADMIN_EMAILS env 화이트리스트 검증
     │   ├── sessionCollisionUtils.ts      # 시간 충돌 감지 및 yPosition 재배치
     │   ├── supabaseServiceRole.ts        # Service Role 클라이언트 싱글톤
     │   ├── timeUtils.ts
@@ -294,6 +304,7 @@ class-planner/
     │   │   └── handleLoginDataMigration.ts  # 로그인 시 localStorage → DB 마이그레이션
     │   └── __tests__/
     │       ├── logger.test.ts               # maskPII + app_logs insert (19 tests)
+    │       ├── adminGuard.test.ts           # ADMIN_EMAILS 화이트리스트 검증
     │       └── ... (16 other test files)
     │
     ├── middleware/
