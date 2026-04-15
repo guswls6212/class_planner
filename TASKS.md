@@ -155,9 +155,10 @@
         — 전체 학원 횡단 조회, level/source/code/q/academyId 필터, 페이지네이션
         — 레벨 뱃지, 상세 모달 (stack trace 포함)
         — 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP
-  - [ ] Step 6: `console.*` 사용 금지 ESLint rule + 38개 sweep
-        — `no-console` rule 추가 (logger.* 강제)
-        — `src/` 전수 치환, 테스트 픽스처 제외
+  - [x] Step 6: `console.*` 사용 금지 ESLint rule + 17개 sweep (production 코드, logger.ts/테스트 제외)
+        — `no-console` rule `"warn"` → `"error"` 승격, logger.ts+테스트 파일 override 추가
+        — `src/` 전수 치환 (lib 3개 + components 4개 + hooks 2개 + app 2개 파일)
+        — 테스트 spy 4개 `console.warn` → `logger.warn` 업데이트
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
 
@@ -210,3 +211,5 @@
 | 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
 | 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
 | 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |
+| 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
+| 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
