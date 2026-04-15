@@ -1,3 +1,10 @@
+/* Tailwind CSS v4 — theme 변수 포함 전체 임포트 (색상 CSS 변수 정의 필요) */
+@import "tailwindcss";
+/* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
+@custom-variant dark (&:where(body[data-theme=dark] *, body[data-theme=dark]));
+/* 명시적 소스 스캔: src 하위 모든 파일 */
+@source "../";
+
 /* ===== 전역 CSS - 디자인 시스템 및 유틸리티 ===== */
 
 /* 색상 변수 */
