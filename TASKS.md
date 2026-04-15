@@ -162,22 +162,32 @@
 - [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
 - [ ] 접근성(a11y) 개선
 
-## Phase 3: 디자인 리뉴얼 (계획)
+## Phase 3: 디자인 리뉴얼 (진행 중)
 > Phase 2B 안정화 후 진행.
+> 스펙: `docs/superpowers/specs/2026-04-15-phase3-design-system-design.md`
+> **Dual-Mode 아키텍처:** Admin(Amber 다크, 관리 영역) + Surface(Q Pastel, 시간표 그리드/PDF)
 
-- [ ] UI/UX 감사 (현재 디자인 문제점 정리)
-- [ ] 디자인 시스템 정의 (색상, 타이포그래피, 간격)
-- [ ] 랜딩 페이지 리디자인
-- [ ] 시간표 그리드 UI 개선
-- [ ] 학생/과목 관리 페이지 UI 개선
-- [ ] 모바일 반응형 강화
-- [ ] PDF 출력 레이아웃 개선
+- [x] UI/UX 감사 (현재 디자인 문제점 정리) — 스펙 §5 감사 결과 참조 (2026-04-15)
+- [x] 디자인 시스템 정의 (색상, 타이포그래피, 간격) — @theme SSOT 설계 완료 (2026-04-15)
+- [ ] 토큰 SSOT 구현 (`globals.css @theme` 통합, `tailwind.config.ts` 하드코드 제거)
+- [ ] 랜딩 페이지 리디자인 (별도 스펙)
+- [ ] 시간표 그리드 UI 개선 (별도 스펙)
+- [ ] 학생/과목 관리 페이지 UI 개선 (별도 스펙)
+- [ ] 모바일 반응형 강화 (별도 스펙)
+- [ ] PDF 출력 레이아웃 개선 (별도 스펙)
 
 ## Phase 4: 기능 확장 (계획)
 - [ ] 학원생 자동 알림 (시간표 변경 시)
 - [ ] 출석 관리 기능
 - [ ] 월별/주별 시간표 뷰
 - [ ] 시간표 템플릿 기능
+
+### Phase 4 후보 — 디자인 시스템 스코프 2 이월 (Phase 3에서 미포함)
+> Teacher 데이터 모델 구축 후 순차 진행. 맥락: `docs/superpowers/specs/2026-04-15-phase3-design-system-design.md §6`
+- [ ] 강사(Teacher) 뷰 — Teacher 엔티티, 강사별 로그인, 강사 뷰 페이지, `colorBy='student'` SessionBlock
+- [ ] 공유 링크 페이지 (`/share/{token}`) — 학생/학부모용 읽기 전용 Surface 모드 (현재는 PDF만)
+- [ ] Color-by 토글 UI — 원장 뷰에서 과목/학생/강사 색상 기준 전환 버튼
+- [ ] CSS Modules → Tailwind 전면 이관 — 14개 모듈 점진적 교체
 
 ---
 
