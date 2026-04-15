@@ -2,6 +2,7 @@
 import React from "react";
 import Button from "../../../components/atoms/Button";
 import Label from "../../../components/atoms/Label";
+import { useModalA11y } from "../../../hooks/useModalA11y";
 import styles from "../Schedule.module.css";
 
 type StudentOption = { id: string; name: string };
@@ -56,13 +57,20 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   onCancel,
   onSave,
 }) => {
+  const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
+
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" ref={containerRef}>
       <div className={styles.modalOverlay}>
-        <div className={styles.modalContent}>
-          <h4 className={styles.modalTitle}>수업 편집</h4>
+        <div
+          className={styles.modalContent}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-session-modal-title"
+        >
+          <h4 id="edit-session-modal-title" className={styles.modalTitle}>수업 편집</h4>
           <div className={styles.modalForm}>
             <div className="form-group">
               <Label htmlFor="edit-modal-students" required>

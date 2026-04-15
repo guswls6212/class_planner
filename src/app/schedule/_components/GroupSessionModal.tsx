@@ -3,6 +3,7 @@ import React from "react";
 import Button from "../../../components/atoms/Button";
 import Label from "../../../components/atoms/Label";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
+import { useModalA11y } from "../../../hooks/useModalA11y";
 import styles from "../Schedule.module.css";
 
 type SubjectOption = { id: string; name: string; color?: string };
@@ -55,6 +56,11 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   studentCreating,
   studentCreateError,
 }) => {
+  const { containerRef } = useModalA11y({
+    isOpen,
+    onClose: () => setShowGroupModal(false),
+  });
+
   if (!isOpen) return null;
 
   const selectableStudents = filteredStudentsForModal.filter(
@@ -66,10 +72,15 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   );
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" ref={containerRef}>
       <div className={styles.modalOverlay}>
-        <div className={styles.modalContent}>
-          <h4 className={styles.modalTitle}>수업 추가</h4>
+        <div
+          className={styles.modalContent}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="group-session-modal-title"
+        >
+          <h4 id="group-session-modal-title" className={styles.modalTitle}>수업 추가</h4>
           <div className={styles.modalForm}>
             <div className="form-group">
               <Label htmlFor="modal-student" required>

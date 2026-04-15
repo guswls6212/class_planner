@@ -244,6 +244,48 @@ describe("DataConflictModal", () => {
     });
   });
 
+  describe("접근성 (a11y)", () => {
+    it('role="dialog"가 존재한다', () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it('aria-modal="true"가 존재한다', () => {
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={vi.fn()}
+          onSelectLocal={vi.fn()}
+        />
+      );
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+    });
+
+    it("Escape 키 입력 시 모달이 닫히지 않는다 (강제 해결 모달)", () => {
+      const onSelectServer = vi.fn();
+      const onSelectLocal = vi.fn();
+      render(
+        <DataConflictModal
+          localData={localData}
+          serverData={serverData}
+          onSelectServer={onSelectServer}
+          onSelectLocal={onSelectLocal}
+        />
+      );
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(onSelectServer).not.toHaveBeenCalled();
+      expect(onSelectLocal).not.toHaveBeenCalled();
+    });
+  });
+
   describe("isMigrating prop", () => {
     it("isMigrating=true 시 로딩 오버레이가 렌더된다", () => {
       render(

@@ -118,4 +118,23 @@ describe("EditSessionModal", () => {
     );
     expect(screen.getByText("김민수")).toBeInTheDocument();
   });
+
+  describe("접근성 (a11y)", () => {
+    it('isOpen=true일 때 role="dialog"가 존재한다', () => {
+      render(<EditSessionModal {...defaultProps} />);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it('isOpen=true일 때 aria-modal="true"가 존재한다', () => {
+      render(<EditSessionModal {...defaultProps} />);
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+    });
+
+    it("Escape 키 입력 시 onCancel을 호출한다", () => {
+      const onCancel = vi.fn();
+      render(<EditSessionModal {...defaultProps} onCancel={onCancel} />);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(onCancel).toHaveBeenCalled();
+    });
+  });
 });

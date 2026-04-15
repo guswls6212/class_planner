@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import type { ClassPlannerData } from "../../lib/localStorageCrud";
 import type { Student, Subject, Enrollment, Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import styles from "./DataConflictModal.module.css";
 
 interface DataConflictModalProps {
@@ -90,6 +91,9 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   const [activeTab, setActiveTab] = useState<"local" | "server">("local");
   const [selectedSide, setSelectedSide] = useState<"local" | "server" | null>(null);
 
+  // DataConflictModal must be explicitly resolved — Escape is intentionally a no-op
+  const { containerRef } = useModalA11y({ isOpen: true, onClose: () => {} });
+
   const localSubjects = filterNonDefaultSubjects(localData.subjects);
   const serverSubjects = filterNonDefaultSubjects(serverData.subjects);
 
@@ -101,6 +105,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   return (
     <div
       className={styles.backdrop}
+      ref={containerRef}
       onClick={(e) => {
         if (e.target === e.currentTarget) return;
       }}
@@ -109,7 +114,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         className={styles.modal}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="conflict-modal-title"
+        aria-labelledby="data-conflict-modal-title"
       >
         {isMigrating && (
           <div className={styles.migrationOverlay} aria-live="polite">
@@ -119,7 +124,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         )}
 
         <div className={styles.header}>
-          <h2 id="conflict-modal-title" className={styles.title}>
+          <h2 id="data-conflict-modal-title" className={styles.title}>
             데이터 충돌이 감지되었습니다
           </h2>
           <p className={styles.subtitle}>
