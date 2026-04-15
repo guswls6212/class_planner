@@ -212,7 +212,12 @@ export default function RootLayout({
         <ThemeProvider>
           <AppContent>{children}</AppContent>
           <Toaster richColors position="top-right" />
-          {/* Screen reader live region for programmatic announcements */}
+          {/*
+           * SR live region — placeholder for future programmatic announcements.
+           * Currently unwired: Sonner (<Toaster>) handles toast SR output.
+           * Future use: write textContent to announce async feedback to screen readers
+           * (e.g. save-success, sync-error) that fall outside Sonner's scope.
+           */}
           <div aria-live="polite" aria-atomic="true" id="app-live-region" className="sr-only" />
         </ThemeProvider>
       </body>

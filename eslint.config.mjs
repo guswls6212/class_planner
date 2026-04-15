@@ -6,18 +6,25 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const eslintConfig = [
   js.configs.recommended,
+  // jsx-a11y: recommended rules at warn level (errors promoted to warn so legacy issues
+  // don't block CI; will escalate to error in Phase 3 after visual redesign)
   {
+    files: ["**/*.{tsx,jsx}"],
     plugins: {
       "jsx-a11y": jsxA11y,
     },
     rules: {
       ...Object.fromEntries(
-        Object.entries(jsxA11y.configs.recommended.rules).map(([key, val]) => {
-          // Rules can be string ("error") or array (["error", {...options}])
+        Object.entries(
+          jsxA11y.flatConfigs?.recommended?.rules ??
+            jsxA11y.configs.recommended.rules
+        ).map(([key, val]) => {
+          // Downgrade error → warn; handles both string ("error") and array (["error", opts]) forms
           if (Array.isArray(val)) {
-            return [key, [val[0] === "error" ? "warn" : val[0], ...val.slice(1)]];
+            const [sev, ...rest] = val;
+            return [key, [sev === "error" || sev === 2 ? "warn" : sev, ...rest]];
           }
-          return [key, val === "error" ? "warn" : val];
+          return [key, val === "error" || val === 2 ? "warn" : val];
         })
       ),
     },
