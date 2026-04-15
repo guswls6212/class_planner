@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
-    optimizePackageImports: ["sonner", "@supabase/supabase-js"],
+    optimizePackageImports: ["sonner"],
   },
   eslint: {
     ignoreDuringBuilds: true,
