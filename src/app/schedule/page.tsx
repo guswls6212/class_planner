@@ -36,10 +36,15 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
+import dynamic from "next/dynamic";
 import EditSessionModal from "./_components/EditSessionModal";
 import GroupSessionModal from "./_components/GroupSessionModal";
-import PdfDownloadSection from "./_components/PdfDownloadSection";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
+
+const PdfDownloadSection = dynamic(
+  () => import("./_components/PdfDownloadSection"),
+  { ssr: false }
+);
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentPanelSection from "./_components/StudentPanelSection";
 import {
