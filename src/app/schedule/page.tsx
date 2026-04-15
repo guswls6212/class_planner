@@ -18,6 +18,7 @@
  * 주의: 본 리팩토링은 비기능적(가독성) 수정으로, 로직 변경 없음
  */
 
+import dynamic from "next/dynamic";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,16 +37,6 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
-import dynamic from "next/dynamic";
-
-const EditSessionModal = dynamic(
-  () => import("./_components/EditSessionModal"),
-  { ssr: false, loading: () => null }
-);
-const GroupSessionModal = dynamic(
-  () => import("./_components/GroupSessionModal"),
-  { ssr: false, loading: () => null }
-);
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentPanelSection from "./_components/StudentPanelSection";
@@ -91,6 +82,14 @@ import {
   processTempEnrollments,
 } from "./_utils/sessionSaveUtils";
 
+const EditSessionModal = dynamic(
+  () => import("./_components/EditSessionModal"),
+  { ssr: false, loading: () => null }
+);
+const GroupSessionModal = dynamic(
+  () => import("./_components/GroupSessionModal"),
+  { ssr: false, loading: () => null }
+);
 const PdfDownloadSection = dynamic(
   () => import("./_components/PdfDownloadSection"),
   { ssr: false, loading: () => null }
