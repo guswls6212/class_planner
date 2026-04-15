@@ -157,13 +157,14 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                     </div>
                   ) : (
                     selectableStudents.map((student) => (
-                      <div
+                      <button
                         key={student.id}
+                        type="button"
                         className={styles.studentSearchItem}
                         onClick={() => addStudent(student.id)}
                       >
                         {student.name}
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>

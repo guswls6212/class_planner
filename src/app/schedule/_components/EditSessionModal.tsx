@@ -133,13 +133,14 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                     </div>
                   ) : (
                     editSearchResults.map((student) => (
-                      <div
+                      <button
                         key={student.id}
+                        type="button"
                         className={styles.studentSearchItem}
                         onClick={() => onSelectSearchStudent(student.id)}
                       >
                         {student.name}
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>

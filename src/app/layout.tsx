@@ -212,6 +212,8 @@ export default function RootLayout({
         <ThemeProvider>
           <AppContent>{children}</AppContent>
           <Toaster richColors position="top-right" />
+          {/* Screen reader live region for programmatic announcements */}
+          <div aria-live="polite" aria-atomic="true" id="app-live-region" className="sr-only" />
         </ThemeProvider>
       </body>
     </html>

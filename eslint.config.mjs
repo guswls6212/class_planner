@@ -2,9 +2,23 @@ import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const eslintConfig = [
   js.configs.recommended,
+  {
+    plugins: {
+      "jsx-a11y": jsxA11y,
+    },
+    rules: {
+      ...Object.fromEntries(
+        Object.entries(jsxA11y.configs.recommended.rules).map(([key, val]) => [
+          key,
+          val === "error" ? "warn" : val,
+        ])
+      ),
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
