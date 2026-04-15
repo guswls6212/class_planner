@@ -148,8 +148,6 @@ function SessionBlock({
 
   // 🆕 드래그 시작 핸들러
   const handleDragStart = (e: React.DragEvent) => {
-    const actualYPosition = yPosition || 1; // 기본값 1 설정
-
     // 드래그 데이터 설정
     try {
       e.dataTransfer.setData("text/plain", `session:${session.id}`);

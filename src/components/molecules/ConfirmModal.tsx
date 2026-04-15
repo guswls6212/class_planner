@@ -43,14 +43,17 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div
       className={styles.backdrop}
+      data-testid="confirm-modal-backdrop"
       onClick={handleBackdropClick}
       onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-      aria-describedby="confirm-modal-message"
     >
-      <div className={styles.modal}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-message"
+      >
         <div className={styles.header}>
           <h3 id="confirm-modal-title" className={styles.title}>
             {title}
