@@ -133,7 +133,7 @@
 - [x] 에러 핸들링 체계화 (F3 Step 1~4 완료, PR#25~28 → dev 머지 완료)
 - [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
   - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
-  - [ ] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
+  - [x] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
         — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
         — RLS: insert는 service_role만, select는 owner role만
         — TTL: 30일 자동 삭제 함수 (선택)
