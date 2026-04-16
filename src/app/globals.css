@@ -45,6 +45,19 @@
   --shadow-admin-sm: 0 1px 2px rgba(0,0,0,.06);
   --shadow-admin-md: 0 4px 12px rgba(0,0,0,.08);
   --shadow-admin-lg: 0 12px 32px rgba(0,0,0,.12);
+
+  /* --- Brand Colors (login buttons) --- */
+  --color-brand-google: #4285F4;
+  --color-brand-kakao-bg: #FEE500;
+  --color-brand-kakao-text: #191919;
+
+  /* --- Legacy Primary/Secondary (기존 컴포넌트 호환) --- */
+  --color-primary: #3b82f6;
+  --color-primary-light: #dbeafe;
+  --color-primary-dark: #2563eb;
+  --color-secondary: #6b7280;
+  --color-secondary-light: #9ca3af;
+  --color-secondary-dark: #4b5563;
 }
 
 /* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
@@ -98,24 +111,6 @@
   --color-border-grid-lighter: #d1d5db;
 
   /* 그림자 */
-
-  /* 리스트 불릿 완전 제거 */
-  ul,
-  ol,
-  li {
-    list-style: none !important;
-    list-style-type: none !important;
-    list-style-image: none !important;
-  }
-
-  ul::before,
-  ol::before,
-  li::before,
-  ul::after,
-  ol::after,
-  li::after {
-    content: none !important;
-  }
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -167,6 +162,24 @@
   --color-grid-line-minor:  #F4F4F5;
   --color-grid-header-text: #71717A;
   --color-grid-time-text:   #A1A1AA;
+}
+
+/* 리스트 불릿 완전 제거 */
+ul,
+ol,
+li {
+  list-style: none !important;
+  list-style-type: none !important;
+  list-style-image: none !important;
+}
+
+ul::before,
+ol::before,
+li::before,
+ul::after,
+ol::after,
+li::after {
+  content: none !important;
 }
 
 /* 라이트모드 테마 */
@@ -236,10 +249,6 @@ body {
     color var(--transition-normal);
 }
 
-/* 공통 유틸리티 클래스 */
-.flex {
-  display: flex;
-}
 
 /* 커스텀 스크롤바 스타일 */
 .custom-scrollbar::-webkit-scrollbar {
