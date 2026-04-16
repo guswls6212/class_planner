@@ -64,4 +64,29 @@ describe("useSessionStatus", () => {
     unmount();
     expect(clearIntervalSpy).toHaveBeenCalled();
   });
+
+  it("returns in-progress at exact start boundary (currentMinutes === startMinutes)", () => {
+    // now = 15:30, session 15:30–16:30 on Thursday (weekday 3)
+    const { result } = renderHook(() =>
+      useSessionStatus("15:30", "16:30", 3)
+    );
+    expect(result.current).toBe("in-progress");
+  });
+
+  it("returns completed at exact end boundary (currentMinutes === endMinutes)", () => {
+    // now = 15:30, session 14:00–15:30 on Thursday (weekday 3)
+    const { result } = renderHook(() =>
+      useSessionStatus("14:00", "15:30", 3)
+    );
+    expect(result.current).toBe("completed");
+  });
+
+  it("handles Sunday weekday (getDay()=0 → (0+6)%7=6)", () => {
+    // Override system time to Sunday 2026-04-19 15:30
+    vi.setSystemTime(new Date("2026-04-19T15:30:00")); // Sunday → getDay()=0
+    const { result } = renderHook(() =>
+      useSessionStatus("14:00", "16:00", 6) // weekday 6 = Sunday
+    );
+    expect(result.current).toBe("in-progress");
+  });
 });

@@ -266,12 +266,7 @@ function SessionBlock({
       {/* 진행 중 배지 */}
       {sessionStatus === "in-progress" && !hasConflict && (
         <span
-          className="absolute top-0.5 right-0.5 rounded-sm px-1 font-semibold leading-tight"
-          style={{
-            background: "#FBBF24",
-            color: "#1a1a1a",
-            fontSize: "8px",
-          }}
+          className="absolute top-0.5 right-0.5 rounded-sm px-1 font-semibold leading-tight bg-amber-400 text-[#1a1a1a] text-[8px]"
           aria-label="진행 중"
         >
           진행중
@@ -281,8 +276,7 @@ function SessionBlock({
       {/* 충돌 경고 아이콘 */}
       {hasConflict && (
         <span
-          className="absolute top-0.5 right-0.5"
-          style={{ fontSize: "10px", color: "#EF4444", lineHeight: 1 }}
+          className="absolute top-0.5 right-0.5 text-[10px] text-red-500 leading-none"
           aria-label="시간 충돌"
         >
           ⚠️
