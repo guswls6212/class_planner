@@ -5,6 +5,7 @@ import type {
   SessionRepository,
   StudentRepository,
   SubjectRepository,
+  TeacherRepository,
 } from "../interfaces";
 
 export const REPOSITORY_KEYS = {
@@ -12,6 +13,7 @@ export const REPOSITORY_KEYS = {
   SUBJECT_REPOSITORY: "subjectRepository",
   SESSION_REPOSITORY: "sessionRepository",
   ENROLLMENT_REPOSITORY: "enrollmentRepository",
+  TEACHER_REPOSITORY: "teacherRepository",
 } as const;
 
 type RepositoryKey = (typeof REPOSITORY_KEYS)[keyof typeof REPOSITORY_KEYS];
@@ -58,6 +60,7 @@ export class RepositoryRegistry {
     this.register(REPOSITORY_KEYS.SUBJECT_REPOSITORY, () => config.subjectRepository);
     this.register(REPOSITORY_KEYS.SESSION_REPOSITORY, () => config.sessionRepository);
     this.register(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY, () => config.enrollmentRepository);
+    this.register(REPOSITORY_KEYS.TEACHER_REPOSITORY, () => config.teacherRepository);
     logger.info("✅ 모든 Repository 등록 완료");
   }
 
@@ -69,6 +72,7 @@ export class RepositoryRegistry {
     this.register(REPOSITORY_KEYS.SUBJECT_REPOSITORY, () => config.subjectRepository);
     this.register(REPOSITORY_KEYS.SESSION_REPOSITORY, () => config.sessionRepository);
     this.register(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY, () => config.enrollmentRepository);
+    this.register(REPOSITORY_KEYS.TEACHER_REPOSITORY, () => config.teacherRepository);
     logger.info("✅ 테스트용 Repository 등록 완료");
   }
 
@@ -102,12 +106,18 @@ export class RepositoryRegistry {
     return this.resolve<EnrollmentRepository>(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY);
   }
 
+  static getTeacherRepository(): TeacherRepository {
+    this.autoRegisterIfNeeded();
+    return this.resolve<TeacherRepository>(REPOSITORY_KEYS.TEACHER_REPOSITORY);
+  }
+
   static getAllRepositories() {
     return {
       studentRepository: this.getStudentRepository(),
       subjectRepository: this.getSubjectRepository(),
       sessionRepository: this.getSessionRepository(),
       enrollmentRepository: this.getEnrollmentRepository(),
+      teacherRepository: this.getTeacherRepository(),
     };
   }
 
@@ -119,7 +129,8 @@ export class RepositoryRegistry {
       this.factories.has(REPOSITORY_KEYS.STUDENT_REPOSITORY) &&
       this.factories.has(REPOSITORY_KEYS.SUBJECT_REPOSITORY) &&
       this.factories.has(REPOSITORY_KEYS.SESSION_REPOSITORY) &&
-      this.factories.has(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY)
+      this.factories.has(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY) &&
+      this.factories.has(REPOSITORY_KEYS.TEACHER_REPOSITORY)
     );
   }
 

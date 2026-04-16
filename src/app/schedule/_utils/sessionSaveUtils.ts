@@ -10,6 +10,7 @@ export interface SessionSaveData {
   enrollmentIds: string[];
   studentIds: string[];
   subjectId: string;
+  teacherId?: string;
   weekday: number;
   startTime: string;
   endTime: string;
@@ -81,12 +82,14 @@ export const buildSessionSaveData = (
   weekday: number,
   startTime: string,
   endTime: string,
-  room: string
+  room: string,
+  teacherId?: string
 ): SessionSaveData => {
   return {
     enrollmentIds: currentEnrollmentIds,
     studentIds: currentStudentIds,
     subjectId: currentSubjectId,
+    ...(teacherId !== undefined && { teacherId }),
     weekday,
     startTime,
     endTime,

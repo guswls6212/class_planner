@@ -31,6 +31,7 @@ const emptyServerData: ClassPlannerData = {
   subjects: [],
   sessions: [],
   enrollments: [],
+  teachers: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
 };
@@ -55,6 +56,7 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
           enrollmentIds: ["loc-en1"],
         },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -116,6 +118,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
       subjects: [serverSubject],
       enrollments: [serverEnrollment],
       sessions: [serverSession],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -133,6 +136,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
           enrollmentIds: ["loc-en1"],
         },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -177,6 +181,7 @@ describe("migrateLocalDataToServer — student upload error cascades", () => {
           enrollmentIds: ["loc-en1"],
         },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -243,6 +248,7 @@ describe("migrateLocalDataToServer — session with unmapped enrollments", () =>
           enrollmentIds: ["orphan-en1"], // 매핑 테이블에 없음
         },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -276,6 +282,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
       subjects: [],
       enrollments: [],
       sessions: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -286,6 +293,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
       subjects: [],
       enrollments: [],
       sessions: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -330,6 +338,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
       subjects: [serverSubject],
       enrollments: [],
       sessions: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -343,6 +352,7 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
       subjects: [{ id: "loc-sub1", name: "영어", color: "#00ff00" }],
       enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
       sessions: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };
@@ -416,6 +426,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
           enrollmentIds: ["loc-en1"],
         },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     };

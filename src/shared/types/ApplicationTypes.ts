@@ -5,7 +5,7 @@
  * 도메인 엔티티와 외부 레이어 간의 변환을 담당합니다.
  */
 
-import type { Enrollment, Session, Student, Subject } from "./DomainTypes";
+import type { Enrollment, Session, Student, Subject, Teacher } from "./DomainTypes";
 
 // ===== DTO (Data Transfer Objects) =====
 
@@ -43,6 +43,15 @@ export interface EnrollmentDto {
   updatedAt: string;
 }
 
+export interface TeacherDto {
+  id: string;
+  name: string;
+  color: string;
+  userId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface UserDto {
   id: string;
   email: string;
@@ -63,6 +72,19 @@ export interface UpdateStudentRequest {
   id: string;
   name: string;
   gender: "male" | "female";
+}
+
+export interface AddTeacherRequest {
+  name: string;
+  color: string;
+  userId?: string | null;
+}
+
+export interface UpdateTeacherRequest {
+  id: string;
+  name?: string;
+  color?: string;
+  userId?: string | null;
 }
 
 export interface AddSubjectRequest {

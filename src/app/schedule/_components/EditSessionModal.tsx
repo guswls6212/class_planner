@@ -6,6 +6,7 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 
 type StudentOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string };
+type TeacherOption = { id: string; name: string; color: string };
 
 interface EditSessionModalProps {
   isOpen: boolean;
@@ -18,8 +19,11 @@ interface EditSessionModalProps {
   editSearchResults: StudentOption[];
   onSelectSearchStudent: (studentId: string) => void;
   subjects: SubjectOption[];
+  teachers: TeacherOption[];
   tempSubjectId: string;
   onSubjectChange: (subjectId: string) => void;
+  tempTeacherId: string;
+  onTeacherChange: (teacherId: string) => void;
   weekdays: string[];
   defaultWeekday: number;
   startTime: string;
@@ -43,8 +47,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   editSearchResults,
   onSelectSearchStudent,
   subjects,
+  teachers,
   tempSubjectId,
   onSubjectChange,
+  tempTeacherId,
+  onTeacherChange,
   weekdays,
   defaultWeekday,
   startTime,
@@ -154,6 +161,25 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 ))}
               </select>
             </div>
+
+            {teachers.length > 0 && (
+              <div className="form-group">
+                <label htmlFor="edit-modal-teacher" className="form-label">강사</label>
+                <select
+                  id="edit-modal-teacher"
+                  className="form-select"
+                  value={tempTeacherId}
+                  onChange={(e) => onTeacherChange(e.target.value)}
+                >
+                  <option value="">강사 선택 (선택사항)</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label htmlFor="edit-modal-weekday" className="form-label">요일</label>

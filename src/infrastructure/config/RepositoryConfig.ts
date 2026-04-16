@@ -3,11 +3,13 @@ import { EnrollmentRepositoryFactory } from "../factories/EnrollmentRepositoryFa
 import { SessionRepositoryFactory } from "../factories/SessionRepositoryFactory";
 import { StudentRepositoryFactory } from "../factories/StudentRepositoryFactory";
 import { SubjectRepositoryFactory } from "../factories/SubjectRepositoryFactory";
+import { TeacherRepositoryFactory } from "../factories/TeacherRepositoryFactory";
 import {
   EnrollmentRepository,
   SessionRepository,
   StudentRepository,
   SubjectRepository,
+  TeacherRepository,
 } from "../interfaces";
 
 /**
@@ -19,6 +21,7 @@ export interface RepositoryConfig {
   subjectRepository: SubjectRepository;
   sessionRepository: SessionRepository;
   enrollmentRepository: EnrollmentRepository;
+  teacherRepository: TeacherRepository;
 }
 
 /**
@@ -40,6 +43,7 @@ export class RepositoryConfigFactory {
       subjectRepository: SubjectRepositoryFactory.create(),
       sessionRepository: SessionRepositoryFactory.create(),
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
+      teacherRepository: TeacherRepositoryFactory.create(),
     };
 
     logger.info("✅ Repository 설정 생성 완료", {
@@ -64,6 +68,7 @@ export class RepositoryConfigFactory {
       subjectRepository: SubjectRepositoryFactory.create(),
       sessionRepository: SessionRepositoryFactory.create(),
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
+      teacherRepository: TeacherRepositoryFactory.create(),
     };
 
     logger.info("✅ 테스트용 Repository 설정 생성 완료");
@@ -82,6 +87,7 @@ export class RepositoryConfigFactory {
       subjectRepository: SubjectRepositoryFactory.create(),
       sessionRepository: SessionRepositoryFactory.create(),
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
+      teacherRepository: TeacherRepositoryFactory.create(),
     };
 
     logger.info("✅ 개발용 Repository 설정 생성 완료");
@@ -100,6 +106,7 @@ export class RepositoryConfigFactory {
       subjectRepository: SubjectRepositoryFactory.create(),
       sessionRepository: SessionRepositoryFactory.create(),
       enrollmentRepository: EnrollmentRepositoryFactory.create(),
+      teacherRepository: TeacherRepositoryFactory.create(),
     };
 
     logger.info("✅ 프로덕션용 Repository 설정 생성 완료");

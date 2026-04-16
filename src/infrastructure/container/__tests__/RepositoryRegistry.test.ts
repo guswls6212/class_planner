@@ -46,9 +46,10 @@ describe("RepositoryRegistry", () => {
     expect(RepositoryRegistry.getSubjectRepository()).toBeDefined();
     expect(RepositoryRegistry.getSessionRepository()).toBeDefined();
     expect(RepositoryRegistry.getEnrollmentRepository()).toBeDefined();
+    expect(RepositoryRegistry.getTeacherRepository()).toBeDefined();
   });
 
-  it("getAllRepositories()가 4개 repository를 반환한다", async () => {
+  it("getAllRepositories()가 5개 repository를 반환한다", async () => {
     const { RepositoryRegistry } = await import("../RepositoryRegistry");
     RepositoryRegistry.registerAll();
 
@@ -57,6 +58,7 @@ describe("RepositoryRegistry", () => {
     expect(repos.subjectRepository).toBeDefined();
     expect(repos.sessionRepository).toBeDefined();
     expect(repos.enrollmentRepository).toBeDefined();
+    expect(repos.teacherRepository).toBeDefined();
   });
 
   it("미등록 시 자동 등록된다 (autoRegisterIfNeeded)", async () => {
@@ -77,13 +79,14 @@ describe("RepositoryRegistry", () => {
     expect(repo.getAll).toBeInstanceOf(Function);
   });
 
-  it("REPOSITORY_KEYS가 4개 키를 갖는다", async () => {
+  it("REPOSITORY_KEYS가 5개 키를 갖는다", async () => {
     const { REPOSITORY_KEYS } = await import("../RepositoryRegistry");
-    expect(Object.keys(REPOSITORY_KEYS)).toHaveLength(4);
+    expect(Object.keys(REPOSITORY_KEYS)).toHaveLength(5);
     expect(REPOSITORY_KEYS.STUDENT_REPOSITORY).toBe("studentRepository");
     expect(REPOSITORY_KEYS.SUBJECT_REPOSITORY).toBe("subjectRepository");
     expect(REPOSITORY_KEYS.SESSION_REPOSITORY).toBe("sessionRepository");
     expect(REPOSITORY_KEYS.ENROLLMENT_REPOSITORY).toBe("enrollmentRepository");
+    expect(REPOSITORY_KEYS.TEACHER_REPOSITORY).toBe("teacherRepository");
   });
 
   it("resolve 시 싱글톤 인스턴스를 반환한다", async () => {

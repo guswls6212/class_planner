@@ -44,6 +44,7 @@ function Navigation() {
   const navItems = [
     { href: "/students", label: "학생" },
     { href: "/subjects", label: "과목" },
+    { href: "/teachers", label: "강사" },
     { href: "/schedule", label: "시간표" },
     { href: "/settings", label: "설정" },
     { href: "/about", label: "소개" },

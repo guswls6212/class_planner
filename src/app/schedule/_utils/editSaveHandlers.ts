@@ -32,6 +32,7 @@ export function buildEditOnSave(params: {
     enrollmentIds: string[],
     allEnrollments: Enrollment[]
   ) => string[];
+  tempTeacherId?: string;
   buildSessionSaveData: (
     currentEnrollmentIds: string[],
     currentStudentIds: string[],
@@ -39,11 +40,13 @@ export function buildEditOnSave(params: {
     weekday: number,
     startTime: string,
     endTime: string,
-    room: string
+    room: string,
+    teacherId?: string
   ) => {
     enrollmentIds: string[];
     studentIds: string[];
     subjectId: string;
+    teacherId?: string;
     weekday: number;
     startTime: string;
     endTime: string;
@@ -55,6 +58,7 @@ export function buildEditOnSave(params: {
       enrollmentIds: string[];
       studentIds: string[];
       subjectId: string;
+      teacherId?: string;
       weekday: number;
       startTime: string;
       endTime: string;
@@ -65,11 +69,13 @@ export function buildEditOnSave(params: {
   setShowEditModal: (open: boolean) => void;
   setTempSubjectId: (id: string) => void;
   setTempEnrollments: (v: TempEnrollment[]) => void;
+  onSaveComplete?: () => void;
 }) {
   const {
     editModalData,
     editModalTimeData,
     tempSubjectId,
+    tempTeacherId,
     tempEnrollments,
     enrollments,
     addEnrollment,
@@ -83,6 +89,7 @@ export function buildEditOnSave(params: {
     setShowEditModal,
     setTempSubjectId,
     setTempEnrollments,
+    onSaveComplete,
   } = params;
 
   return async () => {
@@ -133,20 +140,29 @@ export function buildEditOnSave(params: {
           )
         : { enrollmentIds: mergedEnrollmentIds as string[] };
 
+      const resolvedSubjectId =
+        tempSubjectId ||
+        ((): string => {
+          const first = enrollments.find(
+            (e) => e.id === editModalData.enrollmentIds?.[0]
+          );
+          return first?.subjectId || "";
+        })();
+
+      const resolvedTeacherId =
+        tempTeacherId !== undefined
+          ? tempTeacherId || undefined
+          : editModalData.teacherId;
+
       const sessionData = buildSessionSaveData(
         ensured.enrollmentIds,
         currentStudentIds,
-        tempSubjectId ||
-          ((): string => {
-            const first = enrollments.find(
-              (e) => e.id === editModalData.enrollmentIds?.[0]
-            );
-            return first?.subjectId || "";
-          })(),
+        resolvedSubjectId,
         weekday,
         startTime,
         endTime,
-        editModalData.room || ""
+        editModalData.room || "",
+        resolvedTeacherId
       );
 
       await updateSession(editModalData.id, sessionData);
@@ -155,6 +171,7 @@ export function buildEditOnSave(params: {
       setShowEditModal(false);
       setTempSubjectId("");
       setTempEnrollments([]);
+      onSaveComplete?.();
       logger.debug("세션 업데이트 완료");
     } catch (error) {
       logger.error("세션 업데이트 실패", undefined, error as Error);
@@ -186,10 +203,12 @@ export function buildEditOnDelete(params: {
 export function buildEditOnCancel(params: {
   setShowEditModal: (open: boolean) => void;
   setTempSubjectId: (id: string) => void;
+  onCancel?: () => void;
 }) {
-  const { setShowEditModal, setTempSubjectId } = params;
+  const { setShowEditModal, setTempSubjectId, onCancel } = params;
   return () => {
     setShowEditModal(false);
     setTempSubjectId("");
+    onCancel?.();
   };
 }

@@ -210,6 +210,7 @@ describe("로그인 사용자 — 충돌 처리", () => {
     subjects: [{ id: "as1", name: "익명과목", color: "#fff" }],
     sessions: [],
     enrollments: [],
+    teachers: [],
     version: "1.0",
     lastModified: new Date().toISOString(),
   };
@@ -219,6 +220,7 @@ describe("로그인 사용자 — 충돌 처리", () => {
     subjects: [{ id: "ss1", name: "서버과목", color: "#000" }],
     sessions: [],
     enrollments: [],
+    teachers: [],
     version: "1.0",
     lastModified: new Date().toISOString(),
   };

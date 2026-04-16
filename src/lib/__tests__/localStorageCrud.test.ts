@@ -119,6 +119,7 @@ describe("localStorage CRUD 유틸리티", () => {
         subjects: [],
         sessions: [],
         enrollments: [],
+        teachers: [],
         version: "1.0",
         lastModified: new Date().toISOString(),
       };
@@ -452,6 +453,7 @@ describe("localStorage CRUD 유틸리티", () => {
         subjects: [],
         sessions: [],
         enrollments: [],
+        teachers: [],
         version: "1.0",
         lastModified: new Date().toISOString(),
       };
@@ -620,6 +622,7 @@ describe("getStorageKey / scoped storage", () => {
       subjects: [],
       sessions: [],
       enrollments: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     });
@@ -634,6 +637,7 @@ describe("getStorageKey / scoped storage", () => {
       subjects: [],
       sessions: [],
       enrollments: [],
+      teachers: [],
       version: "1.0",
       lastModified: new Date().toISOString(),
     });

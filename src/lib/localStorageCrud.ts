@@ -6,7 +6,7 @@
  */
 
 import { logger } from "./logger";
-import type { Enrollment, Session, Student, Subject } from "./planner";
+import type { Enrollment, Session, Student, Subject, Teacher } from "./planner";
 
 // ===== 타입 정의 =====
 
@@ -15,6 +15,7 @@ export interface ClassPlannerData {
   subjects: Subject[];
   sessions: Session[];
   enrollments: Enrollment[];
+  teachers: Teacher[];
   version: string;
   lastModified: string;
 }
@@ -50,6 +51,7 @@ const createDefaultData = (): ClassPlannerData => ({
   subjects: [],
   sessions: [],
   enrollments: [],
+  teachers: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
 });
@@ -87,6 +89,7 @@ export const getClassPlannerData = (): ClassPlannerData => {
       subjects: parsed.subjects || [],
       sessions: parsed.sessions || [],
       enrollments: parsed.enrollments || [],
+      teachers: parsed.teachers || [],
       version: parsed.version || "1.0",
       lastModified: parsed.lastModified || new Date().toISOString(),
     };
@@ -651,6 +654,170 @@ export const getAllSubjectsFromLocal = (): Subject[] => {
       undefined,
       error as Error
     );
+    return [];
+  }
+};
+
+// ===== Teachers CRUD =====
+
+/**
+ * 강사 추가
+ */
+export const addTeacherToLocal = (
+  name: string,
+  color: string,
+  userId?: string | null
+): CrudResult<Teacher> => {
+  try {
+    const data = getClassPlannerData();
+
+    const isDuplicate = data.teachers.some((t) => t.name === name.trim());
+    if (isDuplicate) {
+      return {
+        success: false,
+        error: "이미 같은 이름의 강사가 존재합니다.",
+      };
+    }
+
+    const newTeacher: Teacher = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      color,
+      userId: userId ?? null,
+    };
+
+    data.teachers.push(newTeacher);
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - 강사 추가 성공", {
+        teacherId: newTeacher.id,
+        name: newTeacher.name,
+      });
+      return { success: true, data: newTeacher };
+    }
+    return { success: false, error: "localStorage 저장 실패" };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사 추가 실패:", undefined, error as Error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "강사 추가 실패",
+    };
+  }
+};
+
+/**
+ * 강사 수정
+ */
+export const updateTeacherInLocal = (
+  id: string,
+  updates: { name?: string; color?: string; userId?: string | null }
+): CrudResult<Teacher> => {
+  try {
+    const data = getClassPlannerData();
+    const teacherIndex = data.teachers.findIndex((t) => t.id === id);
+
+    if (teacherIndex === -1) {
+      return { success: false, error: "강사를 찾을 수 없습니다." };
+    }
+
+    if (updates.name) {
+      const isDuplicate = data.teachers.some(
+        (t, index) => t.name === updates.name!.trim() && index !== teacherIndex
+      );
+      if (isDuplicate) {
+        return { success: false, error: "이미 같은 이름의 강사가 존재합니다." };
+      }
+    }
+
+    const updatedTeacher: Teacher = {
+      ...data.teachers[teacherIndex],
+      ...(updates.name !== undefined && { name: updates.name.trim() }),
+      ...(updates.color !== undefined && { color: updates.color }),
+      ...(updates.userId !== undefined && { userId: updates.userId }),
+    };
+
+    data.teachers[teacherIndex] = updatedTeacher;
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - 강사 수정 성공", { teacherId: id, updates });
+      return { success: true, data: updatedTeacher };
+    }
+    return { success: false, error: "localStorage 저장 실패" };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사 수정 실패:", undefined, error as Error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "강사 수정 실패",
+    };
+  }
+};
+
+/**
+ * 강사 삭제 (관련 sessions의 teacherId를 null로 설정)
+ */
+export const deleteTeacherFromLocal = (id: string): CrudResult<boolean> => {
+  try {
+    const data = getClassPlannerData();
+    const teacherIndex = data.teachers.findIndex((t) => t.id === id);
+
+    if (teacherIndex === -1) {
+      return { success: false, error: "강사를 찾을 수 없습니다." };
+    }
+
+    const deletedTeacher = data.teachers[teacherIndex];
+    data.teachers.splice(teacherIndex, 1);
+
+    // 해당 강사가 배정된 세션의 teacherId를 null로 초기화
+    data.sessions = data.sessions.map((session) => {
+      if (session.teacherId === id) {
+        return { ...session, teacherId: undefined };
+      }
+      return session;
+    });
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - 강사 삭제 성공", {
+        teacherId: id,
+        name: deletedTeacher.name,
+      });
+      return { success: true, data: true };
+    }
+    return { success: false, error: "localStorage 저장 실패" };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사 삭제 실패:", undefined, error as Error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "강사 삭제 실패",
+    };
+  }
+};
+
+/**
+ * 강사 조회
+ */
+export const getTeacherFromLocal = (id: string): Teacher | null => {
+  try {
+    const data = getClassPlannerData();
+    return data.teachers.find((t) => t.id === id) || null;
+  } catch (error) {
+    logger.error("localStorageCrud - 강사 조회 실패:", undefined, error as Error);
+    return null;
+  }
+};
+
+/**
+ * 모든 강사 조회
+ */
+export const getAllTeachersFromLocal = (): Teacher[] => {
+  try {
+    const data = getClassPlannerData();
+    return data.teachers;
+  } catch (error) {
+    logger.error("localStorageCrud - 강사 목록 조회 실패:", undefined, error as Error);
     return [];
   }
 };

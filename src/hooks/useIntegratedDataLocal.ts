@@ -12,18 +12,24 @@ import {
   syncSessionCreate,
   syncSessionDelete,
   syncSessionUpdate,
+  syncTeacherCreate,
+  syncTeacherDelete,
+  syncTeacherUpdate,
 } from "../lib/apiSync";
 import {
   addEnrollmentToLocal,
   addSessionToLocal,
+  addTeacherToLocal,
   deleteEnrollmentFromLocal,
   deleteSessionFromLocal,
+  deleteTeacherFromLocal,
   getClassPlannerData,
   updateClassPlannerData,
   updateSessionInLocal,
+  updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import type { Enrollment, Session, Student, Subject } from "../lib/planner";
+import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
 
 // ===== 타입 정의 =====
 
@@ -32,6 +38,7 @@ export interface IntegratedData {
   subjects: Subject[];
   sessions: Session[];
   enrollments: Enrollment[];
+  teachers: Teacher[];
   version: string;
 }
 
@@ -60,11 +67,17 @@ export interface UseIntegratedDataLocalReturn {
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>;
   deleteEnrollment: (id: string) => Promise<boolean>;
 
+  // 강사 관련 액션
+  addTeacher: (name: string, color: string, userId?: string | null) => Promise<boolean>;
+  updateTeacher: (id: string, updates: { name?: string; color?: string; userId?: string | null }) => Promise<boolean>;
+  deleteTeacher: (id: string) => Promise<boolean>;
+
   // 통계
   studentCount: number;
   subjectCount: number;
   sessionCount: number;
   enrollmentCount: number;
+  teacherCount: number;
 }
 
 // ===== 훅 구현 =====
@@ -76,6 +89,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     subjects: [],
     sessions: [],
     enrollments: [],
+    teachers: [],
     version: "1.0",
   });
   const [loading, setLoading] = useState(false);
@@ -95,6 +109,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           subjectCount: localData.subjects.length,
           sessionCount: localData.sessions.length,
           enrollmentCount: localData.enrollments.length,
+          teacherCount: localData.teachers.length,
         }
       );
     } catch (err) {
@@ -402,6 +417,83 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     [loadDataFromLocal]
   );
 
+  // ===== 강사 관련 액션 =====
+
+  const addTeacher = useCallback(
+    async (name: string, color: string, userId?: string | null): Promise<boolean> => {
+      try {
+        setError(null);
+        const result = addTeacherToLocal(name, color, userId);
+        if (result.success && result.data) {
+          loadDataFromLocal();
+          const currentUserId = localStorage.getItem("supabase_user_id");
+          syncTeacherCreate(currentUserId, { name, color, userId });
+          return true;
+        } else {
+          setError(result.error || "강사 추가 실패");
+          return false;
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "강사 추가 실패";
+        setError(errorMessage);
+        logger.error("useIntegratedDataLocal - 강사 추가 실패:", undefined, err as Error);
+        return false;
+      }
+    },
+    [loadDataFromLocal]
+  );
+
+  const updateTeacher = useCallback(
+    async (
+      id: string,
+      updates: { name?: string; color?: string; userId?: string | null }
+    ): Promise<boolean> => {
+      try {
+        setError(null);
+        const result = updateTeacherInLocal(id, updates);
+        if (result.success && result.data) {
+          loadDataFromLocal();
+          const userId = localStorage.getItem("supabase_user_id");
+          syncTeacherUpdate(userId, id, updates);
+          return true;
+        } else {
+          setError(result.error || "강사 수정 실패");
+          return false;
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "강사 수정 실패";
+        setError(errorMessage);
+        logger.error("useIntegratedDataLocal - 강사 수정 실패:", undefined, err as Error);
+        return false;
+      }
+    },
+    [loadDataFromLocal]
+  );
+
+  const deleteTeacher = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        setError(null);
+        const result = deleteTeacherFromLocal(id);
+        if (result.success) {
+          loadDataFromLocal();
+          const userId = localStorage.getItem("supabase_user_id");
+          syncTeacherDelete(userId, id);
+          return true;
+        } else {
+          setError(result.error || "강사 삭제 실패");
+          return false;
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "강사 삭제 실패";
+        setError(errorMessage);
+        logger.error("useIntegratedDataLocal - 강사 삭제 실패:", undefined, err as Error);
+        return false;
+      }
+    },
+    [loadDataFromLocal]
+  );
+
   // ===== 데이터 새로고침 =====
 
   const refreshData = useCallback(() => {
@@ -420,6 +512,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
   const subjectCount = data.subjects.length;
   const sessionCount = data.sessions.length;
   const enrollmentCount = data.enrollments.length;
+  const teacherCount = data.teachers.length;
 
   // ===== 반환값 =====
 
@@ -443,10 +536,16 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     addEnrollment,
     deleteEnrollment,
 
+    // 강사 관련 액션
+    addTeacher,
+    updateTeacher,
+    deleteTeacher,
+
     // 통계
     studentCount,
     subjectCount,
     sessionCount,
     enrollmentCount,
+    teacherCount,
   };
 };
