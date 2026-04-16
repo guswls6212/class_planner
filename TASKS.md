@@ -197,7 +197,7 @@
 - [ ] 강사(Teacher) 뷰 — Teacher 엔티티, 강사별 로그인, 강사 뷰 페이지, `colorBy='student'` SessionBlock
 - [ ] 공유 링크 페이지 (`/share/{token}`) — 학생/학부모용 읽기 전용 Surface 모드 (현재는 PDF만)
 - [ ] Color-by 토글 UI — 원장 뷰에서 과목/학생/강사 색상 기준 전환 버튼
-- [ ] CSS Modules → Tailwind 전면 이관 — 14개 모듈 점진적 교체
+- [x] CSS Modules → Tailwind 전면 이관 — 14개 모듈 삭제 완료 (PR#44)
 
 ---
 
@@ -232,6 +232,7 @@
 | 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
 | 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |
 | 2026-04-16 | F3 Step 5 완료 확인 — user feedback toast + apiSync retry queue (PR#29 → dev 머지 완료) |
+| 2026-04-16 | Token SSOT 완성 — @theme 확장, 14개 CSS Module 삭제, hex→CSS var 전환, TSX inline hex 정리 (PR#44 → dev 머지 완료) |
 | 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
 | 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
 | 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
