@@ -68,6 +68,7 @@ export function drawSessionBlock(
   let textY = cell.y + padding + 3;
 
   // Subject name
+  doc.setFont("Pretendard", "normal");
   doc.setFontSize(7);
   doc.text(data.subjectName, textX, textY);
   textY += 3.5;

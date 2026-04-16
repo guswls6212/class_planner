@@ -8,6 +8,7 @@ interface PDFDownloadButtonProps {
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
+  viewLabel?: string;
 }
 
 const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
@@ -15,6 +16,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   isDownloading,
   onDownloadStart,
   onDownloadEnd,
+  viewLabel = "시간표",
 }) => {
   const handlePDFDownload = async () => {
     onDownloadStart();
@@ -34,7 +36,7 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
         onClick={handlePDFDownload}
         disabled={isDownloading}
       >
-        {isDownloading ? "다운로드 중..." : "시간표 다운로드"}
+        {isDownloading ? "다운로드 중..." : `${viewLabel} PDF 다운로드`}
       </Button>
     </div>
   );

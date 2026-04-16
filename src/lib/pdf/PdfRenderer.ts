@@ -6,6 +6,8 @@ import {
 } from "./PdfGridLayout";
 import { drawHeader, drawFooter } from "./PdfHeader";
 import { drawSessionBlock } from "./PdfSessionBlock";
+import { PRETENDARD_REGULAR_BASE64 } from "./fonts/pretendard-regular";
+import { PRETENDARD_BOLD_BASE64 } from "./fonts/pretendard-bold";
 import type {
   Session,
   Subject,
@@ -50,6 +52,14 @@ function getStudentNames(
   });
 }
 
+function registerPretendardFont(doc: jsPDF): void {
+  doc.addFileToVFS("Pretendard-Regular.ttf", PRETENDARD_REGULAR_BASE64);
+  doc.addFont("Pretendard-Regular.ttf", "Pretendard", "normal");
+  doc.addFileToVFS("Pretendard-Bold.ttf", PRETENDARD_BOLD_BASE64);
+  doc.addFont("Pretendard-Bold.ttf", "Pretendard", "bold");
+  doc.setFont("Pretendard", "normal");
+}
+
 export function renderSchedulePdf(
   sessions: Session[],
   subjects: Subject[],
@@ -59,6 +69,7 @@ export function renderSchedulePdf(
   options: PdfRenderOptions = {}
 ): void {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  registerPretendardFont(doc);
 
   // Determine which weekdays are used — use max index+1 so columns cover all used days
   const usedWeekdays = new Set(sessions.map((s) => s.weekday));

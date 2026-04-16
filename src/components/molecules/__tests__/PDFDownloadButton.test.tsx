@@ -77,7 +77,7 @@ describe("PDFDownloadButton", () => {
     expect(screen.getByText("다운로드 중...")).toBeDefined();
   });
 
-  it("isDownloading=false 일 때 '시간표 다운로드' 텍스트를 표시해야 한다", () => {
+  it("isDownloading=false 일 때 '시간표 PDF 다운로드' 텍스트를 표시해야 한다", () => {
     render(
       <PDFDownloadButton
         onDownload={vi.fn()}
@@ -87,7 +87,7 @@ describe("PDFDownloadButton", () => {
       />
     );
 
-    expect(screen.getByText("시간표 다운로드")).toBeDefined();
+    expect(screen.getByText("시간표 PDF 다운로드")).toBeDefined();
   });
 
   it("버튼 클릭 시 onDownloadStart와 onDownload가 호출되어야 한다", async () => {

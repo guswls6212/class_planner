@@ -6,6 +6,7 @@ type Props = {
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
+  viewLabel?: string;
 };
 
 export default function PdfDownloadSection({
@@ -13,6 +14,7 @@ export default function PdfDownloadSection({
   isDownloading,
   onDownloadStart,
   onDownloadEnd,
+  viewLabel,
 }: Props) {
   return (
     <PDFDownloadButton
@@ -20,6 +22,7 @@ export default function PdfDownloadSection({
       isDownloading={isDownloading}
       onDownloadStart={onDownloadStart}
       onDownloadEnd={onDownloadEnd}
+      viewLabel={viewLabel}
     />
   );
 }
