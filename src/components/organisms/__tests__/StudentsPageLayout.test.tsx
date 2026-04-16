@@ -55,7 +55,7 @@ describe("StudentsPageLayout Component", () => {
 
     // Assert
     const selectedStudent = screen.getByText("김철수").closest("div");
-    expect(selectedStudent).toHaveClass("_selected_65db5e");
+    expect(selectedStudent?.className).toContain("bg-[--color-primary-light]");
   });
 
   it("학생을 클릭하면 선택되어야 한다", async () => {
