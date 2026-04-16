@@ -200,7 +200,7 @@ npm run dev
 
 **변경:**
 - `src/components/organisms/ScheduleDailyView.tsx`, `ScheduleMonthlyView.tsx`의 최상위 컨테이너에 `data-surface="surface"` 속성 추가.
-- Daily 뷰 내부의 Tailwind 리터럴 색상(`bg-green-500`, `bg-yellow-400` 등) → `bg-[var(--color-subject-*)]` 또는 `SessionBlock` 재사용으로 제거.
+- Daily 뷰 내부의 Tailwind 리터럴 색상(`bg-green-500`, `bg-yellow-400` 등) → CSS 변수 기반 subject 색상 토큰(예: `--color-subject-blue-bg`) 또는 `SessionBlock` 재사용으로 제거.
 - Monthly 뷰 `MonthDayCell`이 쓰는 독자 subject 토큰 → 공통 subject 토큰으로 통일.
 
 ### B-3. 공통 `SubjectChip` primitive (이슈 4, 6)

@@ -65,8 +65,8 @@
 
 /* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
 @custom-variant dark (&:where(body[data-theme=dark] *, body[data-theme=dark]));
-/* 명시적 소스 스캔: src 하위 모든 파일 */
-@source "../";
+/* 명시적 소스 스캔: src 하위 TS/TSX/JS 파일만 (docs/ 마크다운 제외) */
+@source "../**/*.{ts,tsx,js,jsx}";
 
 /* ===== 전역 CSS - 디자인 시스템 및 유틸리티 ===== */
 
