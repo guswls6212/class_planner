@@ -51,6 +51,11 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
           showDetail ? "hidden lg:flex" : "flex"
         }`}
       >
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">과목 목록</h2>
+        </div>
+
         {/* Add subject */}
         <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
           <input
@@ -58,15 +63,16 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="과목 이름"
+            placeholder="과목 이름 (검색 가능)"
             className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
           />
           <button
             onClick={handleAdd}
-            className="p-2 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
             aria-label="과목 추가"
           >
-            <Plus size={16} strokeWidth={1.5} />
+            <Plus size={14} strokeWidth={1.5} />
+            추가
           </button>
         </div>
 

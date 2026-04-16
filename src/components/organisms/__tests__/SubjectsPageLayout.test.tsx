@@ -63,7 +63,7 @@ describe("SubjectsPageLayout", () => {
 
   it("과목 추가 — 입력 후 버튼 클릭 시 onAddSubject가 호출된다", async () => {
     render(<SubjectsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("과목 이름");
+    const input = screen.getByPlaceholderText("과목 이름 (검색 가능)");
     const addButton = screen.getByRole("button", { name: /과목 추가/ });
 
     fireEvent.change(input, { target: { value: "과학" } });
@@ -76,7 +76,7 @@ describe("SubjectsPageLayout", () => {
 
   it("과목 추가 — Enter 키 입력 시 onAddSubject가 호출된다", async () => {
     render(<SubjectsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("과목 이름");
+    const input = screen.getByPlaceholderText("과목 이름 (검색 가능)");
 
     fireEvent.change(input, { target: { value: "영어" } });
     fireEvent.keyDown(input, { key: "Enter" });
