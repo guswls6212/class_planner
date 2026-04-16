@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-15, Step 5 개발자 로그 뷰어 반영)
+# class-planner file structure (2026-04-16, Phase 3 랜딩 페이지 반영)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
@@ -110,7 +110,7 @@ class-planner/
     ├── middleware.ts                     # 온보딩 가드 — /students /subjects /schedule 보호
     │
     ├── app/                              # Next.js App Router
-    │   ├── page.tsx                      # / → /schedule redirect
+    │   ├── page.tsx                      # / 랜딩 (비로그인: Product-Led 랜딩, 로그인: /schedule 리디렉트)
     │   ├── layout.tsx                    # RootLayout (ThemeProvider, GlobalDataInit)
     │   ├── globals.css
     │   ├── favicon.ico

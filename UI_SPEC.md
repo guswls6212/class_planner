@@ -56,10 +56,22 @@ RootLayout
 
 ## 2. 페이지별 UI
 
-### 2.1 Landing (`/`)
+### 2.1 랜딩 페이지 (`/`)
 
-- `src/app/page.tsx` → `/schedule`로 리다이렉트 (별도 랜딩 UI 없음)
-- 익명 사용자도 바로 시간표 페이지로 진입
+**구성:** Product-Led 랜딩 페이지 — 시간표 목업 중심 전환 유도
+
+**섹션 구조:**
+1. **HeroSection** — Split 레이아웃 (md↑: 좌측 텍스트/CTA + 우측 시간표 목업, sm: 수직 스택)
+2. **StepsSection** (`id="how-it-works"`) — "이렇게 만들어집니다" 3단계 카드 (학생·과목 등록 → 시간표 배치 → PDF 출력)
+3. **BottomCTA** — 다크 배경(`#1a1a1a`) + Amber CTA
+
+**로그인 상태 처리:**
+- 비로그인: 랜딩 페이지 렌더
+- 로그인: `router.replace("/schedule")` 즉시 리디렉트
+
+**Navigation:** 랜딩 전용 간소 Nav (로고 + 로그인 링크 + "무료로 시작" CTA). 내부 링크/ThemeToggle 없음.
+
+**디자인 토큰:** Phase 3 `@theme` 토큰 전용 (`text-hero`, `bg-accent`, `rounded-admin-*`, 과목 팔레트 CSS vars).
 
 ### 2.2 시간표 (`/schedule`)
 
@@ -509,6 +521,7 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 
 | 변경 파일 패턴 | 확인할 라우트 |
 |----------------|---------------|
+| `src/app/page.tsx` | `/` (랜딩 — 비로그인 상태) |
 | `src/app/schedule/**` | `/schedule` |
 | `src/app/students/**` | `/students` |
 | `src/app/subjects/**` | `/subjects` |
