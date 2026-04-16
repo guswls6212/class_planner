@@ -24,6 +24,8 @@ import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useScheduleView } from "../../hooks/useScheduleView";
+import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
@@ -95,6 +97,10 @@ const PdfDownloadSection = dynamic(
   () => import("./_components/PdfDownloadSection"),
   { ssr: false, loading: () => null }
 );
+const ScheduleDailyView = dynamic(
+  () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
+  { ssr: false, loading: () => null }
+);
 
 /**
  * 페이지 엔트리 컴포넌트
@@ -120,6 +126,17 @@ function SchedulePageContent(): JSX.Element {
 
   // Color-by 토글
   const { colorBy, setColorBy } = useColorBy();
+
+  // 뷰 모드 (일별/주간) 및 날짜 선택
+  const {
+    viewMode,
+    setViewMode,
+    selectedDate,
+    selectedWeekday,
+    goToNextDay,
+    goToPrevDay,
+    setSelectedDate,
+  } = useScheduleView();
 
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
@@ -901,7 +918,23 @@ function SchedulePageContent(): JSX.Element {
         }
         colorBy={colorBy}
         onColorByChange={setColorBy}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
+
+      {/* 일별 뷰: 요일 칩 바 */}
+      {viewMode === "daily" && (
+        <DayChipBar
+          selectedWeekday={selectedWeekday}
+          onSelectWeekday={(wd) => {
+            const monday = new Date(selectedDate);
+            const currentWd = (monday.getDay() + 6) % 7;
+            monday.setDate(monday.getDate() - currentWd + wd);
+            setSelectedDate(monday);
+          }}
+          baseDate={selectedDate}
+        />
+      )}
 
       {/* PDF 다운로드 버튼 */}
       <PdfDownloadSection
@@ -912,23 +945,44 @@ function SchedulePageContent(): JSX.Element {
         onDownloadEnd={() => setIsDownloading(false)}
       />
 
-      {/* 🆕 시간표 그리드 */}
-      <ScheduleGridSection
-        containerRef={timeTableRef}
-        gridVersion={gridVersion}
-        sessions={displaySessions}
-        subjects={subjects}
-        enrollments={enrollments}
-        students={students}
-        onSessionClick={handleSessionClick}
-        onDrop={handleDrop}
-        onSessionDrop={handleSessionDrop}
-        onEmptySpaceClick={handleEmptySpaceClick}
-        selectedStudentId={selectedStudentId}
-        isStudentDragging={isStudentDragging}
-        teachers={teachers}
-        colorBy={colorBy}
-      />
+      {/* 시간표 뷰 (일별/주간 조건부 렌더링) */}
+      {viewMode === "daily" ? (
+        <ScheduleDailyView
+          sessions={displaySessions}
+          subjects={subjects}
+          students={students}
+          enrollments={enrollments}
+          teachers={teachers}
+          selectedWeekday={selectedWeekday}
+          colorBy={colorBy}
+          onSessionClick={handleSessionClick}
+          onAddSession={() => {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+            openGroupModal(selectedWeekday, currentTime, 1);
+          }}
+          onSwipeLeft={goToNextDay}
+          onSwipeRight={goToPrevDay}
+        />
+      ) : (
+        /* 🆕 시간표 그리드 */
+        <ScheduleGridSection
+          containerRef={timeTableRef}
+          gridVersion={gridVersion}
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          students={students}
+          onSessionClick={handleSessionClick}
+          onDrop={handleDrop}
+          onSessionDrop={handleSessionDrop}
+          onEmptySpaceClick={handleEmptySpaceClick}
+          selectedStudentId={selectedStudentId}
+          isStudentDragging={isStudentDragging}
+          teachers={teachers}
+          colorBy={colorBy}
+        />
+      )}
 
       {/* 🆕 학생 패널 */}
       <StudentPanelSection
