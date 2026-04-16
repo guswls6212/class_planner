@@ -576,6 +576,102 @@ describe("SessionBlock Component", () => {
   });
 });
 
+describe("컨텍스트 메뉴 — onDelete prop", () => {
+  const contextMenuSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const contextMenuSubjects = [
+    { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
+  ];
+  const contextMenuEnrollments = [
+    { id: "550e8400-e29b-41d4-a716-446655440301", studentId: "550e8400-e29b-41d4-a716-446655440001", subjectId: "550e8400-e29b-41d4-a716-446655440101" },
+  ];
+  const contextMenuStudents = [
+    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
+  ];
+  const baseContextProps = {
+    session: contextMenuSession,
+    subjects: contextMenuSubjects,
+    enrollments: contextMenuEnrollments,
+    students: contextMenuStudents,
+    yPosition: 0,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("onDelete가 제공되면 컨텍스트 메뉴 삭제 버튼 클릭 시 onDelete가 호출되어야 한다", async () => {
+    const mockOnClick = vi.fn();
+    const mockOnDelete = vi.fn();
+
+    const { act } = await import("@testing-library/react");
+
+    render(
+      <SessionBlock
+        {...baseContextProps}
+        onClick={mockOnClick}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+
+    // 롱프레스 시뮬레이션 (300ms 타임아웃)
+    fireEvent.touchStart(sessionBlock);
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    // 컨텍스트 메뉴가 나타나야 함
+    const deleteButton = screen.getByRole("menuitem", { name: "삭제" });
+    fireEvent.click(deleteButton);
+
+    expect(mockOnDelete).toHaveBeenCalledTimes(1);
+    expect(mockOnClick).not.toHaveBeenCalled();
+  });
+
+  it("onDelete가 없으면 컨텍스트 메뉴 삭제 버튼 클릭 시 onClick이 호출되어야 한다 (하위 호환)", async () => {
+    const mockOnClick = vi.fn();
+
+    const { act } = await import("@testing-library/react");
+
+    render(
+      <SessionBlock
+        {...baseContextProps}
+        onClick={mockOnClick}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+
+    fireEvent.touchStart(sessionBlock);
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    const deleteButton = screen.getByRole("menuitem", { name: "삭제" });
+    fireEvent.click(deleteButton);
+
+    expect(mockOnClick).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("SessionBlock Utility Functions", () => {
   describe("validateSessionBlockProps", () => {
     it("유효한 props일 때 true를 반환해야 한다", () => {

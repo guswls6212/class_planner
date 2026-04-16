@@ -147,53 +147,35 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     }
 
     try {
-      // TODO: Replace manual token scrubbing with await supabase.auth.signOut()
-      // The current approach deletes tokens manually which causes onAuthStateChange
-      // to fire SIGNED_OUT, triggering a second clearUserClassPlannerData call (harmless).
-      // Tracked as a pre-existing issue, not introduced by this PR.
       logger.info("Supabase 로그아웃 시도 중...");
-
-      // 🛡️ 보안 강화: 사용자 데이터 완전 삭제
-      logger.info("로컬 스토리지에서 사용자 데이터 완전 삭제 중...");
-
-      // 1. Supabase 관련 토큰 삭제
+      await supabase.auth.signOut();
+      // onAuthStateChange SIGNED_OUT handler handles data/state cleanup automatically.
+      // onboarded 쿠키 삭제 (다음 로그인 시 온보딩 가드 정상 동작)
+      document.cookie = "onboarded=; Path=/; Max-Age=0";
+      // 페이지 새로고침으로 모든 상태 초기화
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      logger.info("✅ 로그아웃 완료");
+    } catch (error) {
+      logger.error("로그아웃 처리 중 오류:", undefined, error as Error);
+      // Fallback: manual scrub in case signOut network call fails
       Object.keys(localStorage).forEach((key) => {
         if (key.startsWith("sb-") || key.includes("supabase")) {
           localStorage.removeItem(key);
-          logger.info("Supabase 토큰 제거됨:", { key });
         }
       });
-
-      // 2. 🚨 사용자 데이터 완전 삭제 (보안 중요!)
       const currentUserId = localStorage.getItem("supabase_user_id");
       if (currentUserId) {
         clearUserClassPlannerData(currentUserId);
       }
       localStorage.removeItem("supabase_user_id");
-      // onboarded 쿠키 삭제 (다음 로그인 시 온보딩 가드 정상 동작)
       document.cookie = "onboarded=; Path=/; Max-Age=0";
-      logger.info("🛡️ 사용자 데이터 완전 삭제 완료");
-
-      // 3. UI 설정은 유지 (테마, 언어 설정 등)
-
-      // 로컬 상태 즉시 업데이트
-      logger.info("로컬 상태 즉시 업데이트");
       setIsLoggedIn(false);
       setUser(null);
-
-      // 로그인 모달창 닫기
-      setShowLoginModal(false);
-
-      // 페이지 새로고침으로 모든 상태 초기화
-      logger.info("페이지 새로고침으로 상태 초기화");
       setTimeout(() => {
         window.location.reload();
       }, 500);
-
-      logger.info("✅ 로컬 로그아웃 완료");
-    } catch (error) {
-      logger.error("로그아웃 처리 중 오류:", undefined, error as Error);
-      // 에러가 있어도 로컬 상태는 이미 업데이트됨
     }
   };
 

@@ -24,6 +24,7 @@ interface TimeTableRowProps {
   students: Array<{ id: string; name: string }>;
   sessionYPositions: Map<string, number>;
   onSessionClick: (session: Session) => void;
+  onSessionDelete?: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onSessionDrop?: (
     sessionId: string,
@@ -55,6 +56,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   students,
   sessionYPositions,
   onSessionClick,
+  onSessionDelete,
   onDrop,
   onSessionDrop, // 🆕 세션 드롭 핸들러
   onEmptySpaceClick,
@@ -267,6 +269,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             width={session.width}
             yOffset={session.yOffset}
             onClick={() => onSessionClick(session.session)}
+            onDelete={onSessionDelete ? () => onSessionDelete(session.session) : undefined}
             onDragStart={(e, session) => {
               if (onDragStart) {
                 onDragStart(session);
