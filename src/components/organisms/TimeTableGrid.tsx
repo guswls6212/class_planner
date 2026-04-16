@@ -42,6 +42,7 @@ interface TimeTableGridProps {
   isStudentDragging?: boolean; // 🆕 학생 드래그 상태 추가
   teachers?: Teacher[];
   colorBy?: ColorByMode;
+  isReadOnly?: boolean;
 }
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
@@ -62,6 +63,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       isStudentDragging = false, // 🆕 학생 드래그 상태 추가
       teachers = [],
       colorBy = "subject",
+      isReadOnly = false,
     },
     ref
   ) => {
@@ -508,10 +510,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 enrollments={enrollments}
                 students={students}
                 sessionYPositions={getSessionYPositions(weekday)}
-                onSessionClick={onSessionClick}
-                onDrop={onDrop}
-                onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
-                onEmptySpaceClick={onEmptySpaceClick}
+                onSessionClick={isReadOnly ? () => {} : onSessionClick}
+                onDrop={isReadOnly ? () => {} : onDrop}
+                onSessionDrop={isReadOnly ? undefined : onSessionDrop}
+                onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
                 selectedStudentId={selectedStudentId}
                 isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
                 teachers={teachers}

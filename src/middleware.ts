@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
  * /onboarding 페이지에서 GET /api/onboarding/status를 호출하여 쿠키를 복구한다.
  */
 
-const GUARDED_PATHS = ["/students", "/subjects", "/teachers", "/schedule"];
+const GUARDED_PATHS = ["/students", "/subjects", "/teachers", "/schedule", "/teacher-schedule"];
 
 function isGuardedPath(pathname: string): boolean {
   return GUARDED_PATHS.some(
@@ -49,5 +49,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/students/:path*", "/subjects/:path*", "/teachers/:path*", "/schedule/:path*"],
+  matcher: ["/students/:path*", "/subjects/:path*", "/teachers/:path*", "/schedule/:path*", "/teacher-schedule/:path*"],
 };
