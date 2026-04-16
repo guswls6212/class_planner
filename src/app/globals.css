@@ -264,6 +264,15 @@ body {
 }
 
 
+/* Brand gradient — used by login, onboarding, invite pages */
+.bg-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-gradient-from) 0%,
+    var(--color-brand-gradient-to) 100%
+  );
+}
+
 /* Login button shimmer effect (pseudo-element, cannot be Tailwind inline) */
 .login-btn-shimmer {
   position: relative;

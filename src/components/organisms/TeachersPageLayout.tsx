@@ -25,12 +25,7 @@ const TeachersPageLayout: React.FC<TeachersPageLayoutProps> = ({
   return (
     <div
       data-testid="teachers-page"
-      className="grid"
-      style={{
-        gridTemplateColumns: "340px 1fr",
-        gap: 16,
-        padding: 16,
-      }}
+      className="grid gap-4 p-4 [grid-template-columns:340px_1fr]"
     >
       <TeacherManagementSection
         teachers={teachers}

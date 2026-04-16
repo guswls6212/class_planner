@@ -63,35 +63,35 @@ export const validateThemeToggleVariant = (variant: string): boolean => {
   return validVariants.includes(variant);
 };
 
+const SIZE_CLASSES: Record<string, string> = {
+  small: "px-2 py-1.5 text-xs",
+  medium: "px-3 py-2 text-sm",
+  large: "px-4 py-3 text-base",
+};
+
+const ICON_SIZE_CLASSES: Record<string, string> = {
+  small: "text-sm",
+  medium: "text-base",
+  large: "text-xl",
+};
+
 export default function ThemeToggle({
   size = "medium",
   variant = "both",
 }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
 
-  const sizeStyles = getSizeStyles(size);
-  const iconStyles = getIconStyles(size);
+  const sizeClass = SIZE_CLASSES[size] ?? SIZE_CLASSES.medium;
+  const iconSizeClass = ICON_SIZE_CLASSES[size] ?? ICON_SIZE_CLASSES.medium;
 
   return (
     <button
       onClick={toggleTheme}
-      className="theme-toggle"
-      style={{
-        ...sizeStyles,
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        border: "none",
-        borderRadius: "6px",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        background: "var(--color-gray-200)",
-        color: "var(--color-gray-800)",
-      }}
+      className={`theme-toggle inline-flex items-center gap-1.5 rounded-[6px] border-none cursor-pointer transition-all duration-200 bg-gray-200 text-gray-800 ${sizeClass}`}
       title={getThemeTitle(theme)}
     >
       {shouldShowIcon(variant) && (
-        <span style={iconStyles}>{getThemeIcon(theme)}</span>
+        <span className={iconSizeClass}>{getThemeIcon(theme)}</span>
       )}
       {shouldShowText(variant) && <span>{getThemeText(theme)}</span>}
     </button>

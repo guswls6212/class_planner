@@ -37,7 +37,7 @@ export default function TeacherSchedulePage() {
   const [isDownloading, setIsDownloading] = useState(false);
 
   return (
-    <div style={{ padding: 16 }}>
+    <div className="p-4">
       <div className="mb-4 flex items-center justify-between border-b border-[--color-border] pb-3">
         <div>
           <h2 className="text-2xl font-semibold text-[--color-text-primary]">

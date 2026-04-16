@@ -22,36 +22,19 @@ export default function GlobalError({
 
   return (
     <html lang="ko">
-      <body
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          fontFamily: "sans-serif",
-          gap: "16px",
-        }}
-      >
-        <h1 style={{ fontSize: "1.5rem", fontWeight: "bold" }}>
-          오류가 발생했습니다
-        </h1>
-        <p style={{ color: "#666" }}>
-          예기치 않은 문제가 생겼습니다. 다시 시도해 주세요.
-        </p>
-        <button
-          onClick={reset}
-          style={{
-            padding: "8px 20px",
-            background: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
-        >
-          다시 시도
-        </button>
+      <body>
+        <div className="flex flex-col items-center justify-center min-h-screen font-sans gap-4">
+          <h1 className="text-2xl font-bold">오류가 발생했습니다</h1>
+          <p className="text-[#666]">
+            예기치 않은 문제가 생겼습니다. 다시 시도해 주세요.
+          </p>
+          <button
+            onClick={reset}
+            className="px-5 py-2 bg-[#2563eb] text-white border-none rounded-[6px] cursor-pointer"
+          >
+            다시 시도
+          </button>
+        </div>
       </body>
     </html>
   );

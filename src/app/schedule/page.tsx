@@ -907,7 +907,7 @@ function SchedulePageContent(): JSX.Element {
     onDragEndStudent(e, setIsStudentDragging, studentPanelState.resetDragState);
 
   return (
-    <div className="timetable-container" style={{ padding: 16 }}>
+    <div className="timetable-container p-4">
       <ScheduleHeader
         dataLoading={dataLoading}
         error={error ?? undefined}
