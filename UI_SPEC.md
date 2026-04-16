@@ -419,25 +419,67 @@ SchedulePage
 
 ---
 
-## 6. 테마 시스템
+## 6. 테마 시스템 (Dual-Mode)
 
-### 6.1 Dark / Light 모드
+### 아키텍처
+두 개의 시각 언어가 하나의 토큰 체계 위에서 공존한다. 페이지 단위가 아닌 **표면(surface) 단위**로 모드가 결정된다.
 
-- `ThemeContext` (`src/contexts/ThemeContext.tsx`)로 전역 관리
-- CSS 변수 기반: `--color-bg-primary`, `--color-bg-secondary`, `--color-text-primary`, `--color-text-secondary`, `--color-border`, `--color-primary` 등
-- `globals.css`에서 `[data-theme="dark"]` / `[data-theme="light"]` 셀렉터로 정의
-- ThemeToggle: 로그인 사용자만 Nav bar에 표시 (`size="small"`, `variant="both"`)
-- localStorage에 테마 저장 (key: `theme`)
+| 모드 | 적용 영역 | 다크모드 |
+|---|---|---|
+| **Admin (A)** | 랜딩·관리 페이지·`/schedule` chrome | 라이트/다크 전환 지원 |
+| **Surface (C)** | `/schedule` 그리드, SessionBlock, PDF 출력물 | **라이트 고정** |
 
-### 6.2 Tailwind CSS 규칙
+### 구현
+- `ThemeProvider`: `document.body.setAttribute("data-theme", theme)` — dark/light 전환
+- `[data-surface="surface"]` 속성: Surface 컨테이너에 적용. CSS 커스텀 프로퍼티를 라이트 값으로 고정하여 다크모드 상속을 차단.
+- 현재 적용된 컴포넌트: `ScheduleGridSection` (`data-surface="surface"`)
 
+### 토큰 SSOT
+`src/app/globals.css`의 `@theme` 블록이 Phase 3 신규 토큰의 단일 소스.
+- **Admin 토큰**: `--color-accent (#FBBF24)`, `--font-sans (Pretendard)`, `--text-hero/page/section/label/caption`, `--radius-admin-sm/md/lg`, `--shadow-admin-sm/md/lg`
+- **Surface 과목 팔레트**: `:root`의 `--color-subject-{color}-{bg|fg|accent}` (8색 × 3 tone)
+- **Surface 그리드 토큰**: `--color-grid-canvas/line-major/line-minor/header-text/time-text`
+- **레거시 토큰** (`:root` + `[data-theme]`): 기존 컴포넌트가 참조 중. 컴포넌트별 리뉴얼 시 점진 교체.
+
+### 다크모드 동작
+- `body[data-theme="dark"]` → Admin 영역 전체 다크 적용 (`@custom-variant dark` in globals.css)
+- `[data-surface="surface"]` 하위 요소 → 라이트 고정 (`[data-surface="surface"]` 블록이 상속된 다크 CSS 변수를 오버라이드)
+
+### Tailwind CSS 규칙
 - 인라인 스타일 금지 (불가피한 경우 주석 필요)
 - 모든 색상/간격은 Tailwind 클래스 또는 CSS 변수 사용
 - CSS Module (`*.module.css`)은 기존 파일 유지. 신규 컴포넌트는 Tailwind 전용. (atoms/molecules에 기존 12개 CSS Module 파일 존재)
 
 ---
 
-## 7. 반응형 & 접근성
+## 7. 타이포그래피 시스템
+
+### 폰트
+- **Primary**: Pretendard Variable (CDN: jsdelivr.net/gh/orioncactus/pretendard)
+- **Fallback**: `-apple-system`, `SF Pro Display`, `Segoe UI`, `sans-serif`
+- **적용**: `font-sans` Tailwind 클래스 (Phase 3 신규 컴포넌트부터). 레거시 컴포넌트는 기존 system font 유지.
+
+### 스케일 (`@theme` 정의)
+
+| 클래스 | 크기 | 굵기 | Letter-spacing | 용도 |
+|---|---|---|---|---|
+| `text-hero` | 48px (3rem) | 800 | −3.5% | 랜딩 Hero 헤드라인 |
+| `text-page` | 32px (2rem) | 800 | −3.5% | 페이지 타이틀 |
+| `text-section` | 22px (1.375rem) | 700 | −2% | 섹션 헤더 |
+| `text-label` | 13px (0.8125rem) | 500 | −2% | 라벨·메타 |
+| `text-caption` | 11px (0.6875rem) | 600 | −2% | 오버라인·캡션 |
+| (Tailwind 기본 `text-base`) | 16px | 400 | −2% | 본문 (기본 유지) |
+
+> **Note:** `font-weight`와 `letter-spacing`은 `@theme`으로 자동 생성되지 않으므로 컴포넌트에서 직접 지정. 예: `className="text-hero font-[800] tracking-[-0.035em]"`
+
+### 카피 보이스 가이드 (Admin 영역)
+- 헤드라인: 따뜻한 2인칭, 구체적 가치 — "원장님의 1시간을 아껴드립니다"
+- 버튼: 동사 중심, 간결 — "무료로 시작", "시간표 만들기"
+- 에러: 비난하지 않는 톤 — "충돌이 있어요. 한 번 확인해주세요"
+
+---
+
+## 8. 반응형 & 접근성
 
 ### 7.1 뷰포트 기준
 
@@ -461,7 +503,7 @@ SchedulePage
 
 ---
 
-## 8. 검증 라우트 매핑
+## 9. 검증 라우트 매핑
 
 UI 파일 변경 시 아래 라우트를 확인하세요.
 
