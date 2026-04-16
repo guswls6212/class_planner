@@ -23,6 +23,7 @@ import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useColorBy } from "../../hooks/useColorBy";
+import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
@@ -111,6 +112,10 @@ const ApplyTemplateModal = dynamic(
 );
 const ScheduleDailyView = dynamic(
   () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
+  { ssr: false, loading: () => null }
+);
+const AttendanceSheet = dynamic(
+  () => import("../../components/molecules/AttendanceSheet"),
   { ssr: false, loading: () => null }
 );
 const ScheduleMonthlyView = dynamic(
@@ -914,7 +919,9 @@ function SchedulePageContent(): JSX.Element {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 🆕 템플릿 기능
+  // ================================
+  // 🎯 템플릿 기능
+  // ================================
   const [userId, setUserId] = useState<string | null>(null);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
@@ -925,7 +932,7 @@ function SchedulePageContent(): JSX.Element {
     });
   }, []);
 
-  const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates, saveTemplate } = useTemplates(userId);
+  const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate } = useTemplates(userId);
 
   // 현재 세션 → TemplateData 변환
   const buildTemplateData = useCallback((): TemplateData => {
@@ -934,7 +941,6 @@ function SchedulePageContent(): JSX.Element {
     return {
       version: "1.0",
       sessions: sessionsData.map((session) => {
-        // Session has enrollmentIds → enrollment → subjectId → subject
         const firstEnrollment = enrollments.find(
           (e) => (session.enrollmentIds ?? []).includes(e.id)
         );
@@ -965,7 +971,6 @@ function SchedulePageContent(): JSX.Element {
       let skipped = 0;
 
       for (const tplSession of templateSessions) {
-        // 1. 과목 매칭 (없으면 생성)
         let subject = subjects.find((s) => s.name === tplSession.subjectName);
         if (!subject) {
           const newSubjectId = crypto.randomUUID();
@@ -973,7 +978,6 @@ function SchedulePageContent(): JSX.Element {
           await updateData({ subjects: [...subjects, subject] });
         }
 
-        // 2. 학생 매칭
         const studentIds: string[] = [];
         for (const name of tplSession.studentNames) {
           const student = students.find((s) => s.name === name);
@@ -986,7 +990,6 @@ function SchedulePageContent(): JSX.Element {
 
         if (studentIds.length === 0) continue;
 
-        // 3. 세션 생성
         await addSession({
           subjectId: subject.id,
           studentIds,
@@ -1007,6 +1010,34 @@ function SchedulePageContent(): JSX.Element {
     },
     [subjects, students, enrollments, sessions, updateData, addSession]
   );
+
+  // ================================
+  // 🎯 출석 관리 섹션
+  // ================================
+  const [attendanceSession, setAttendanceSession] = useState<Session | null>(null);
+  const { attendance, fetchAttendance, markAttendance, markAllPresent } =
+    useAttendance(userId);
+
+  const handleOpenAttendance = useCallback(
+    async (session: Session) => {
+      setAttendanceSession(session);
+      const dateStr = selectedDate.toISOString().slice(0, 10);
+      await fetchAttendance(session.id, dateStr);
+    },
+    [selectedDate, fetchAttendance]
+  );
+
+  const attendanceStudents = useMemo(() => {
+    if (!attendanceSession) return [];
+    const eIds = attendanceSession.enrollmentIds ?? [];
+    return eIds.flatMap((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      if (!enrollment) return [];
+      const student = students.find((s) => s.id === enrollment.studentId);
+      return student ? [{ id: student.id, name: student.name }] : [];
+    });
+  }, [attendanceSession, enrollments, students]);
+
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
@@ -1085,7 +1116,7 @@ function SchedulePageContent(): JSX.Element {
               템플릿으로 저장
             </button>
             <button
-              onClick={() => { fetchTemplates(); setShowApplyTemplateModal(true); }}
+              onClick={() => { _fetchTemplates(); setShowApplyTemplateModal(true); }}
               className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
             >
               템플릿 적용
@@ -1112,6 +1143,7 @@ function SchedulePageContent(): JSX.Element {
           }}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
+          onAttendanceClick={handleOpenAttendance}
         />
       ) : viewMode === "monthly" ? (
         <ScheduleMonthlyView
@@ -1181,6 +1213,33 @@ function SchedulePageContent(): JSX.Element {
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
       />
+
+      {/* 출석 시트 */}
+      {attendanceSession && (
+        <AttendanceSheet
+          isOpen={!!attendanceSession}
+          onClose={() => setAttendanceSession(null)}
+          sessionId={attendanceSession.id}
+          date={selectedDate.toISOString().slice(0, 10)}
+          students={attendanceStudents}
+          attendance={attendance[attendanceSession.id] ?? {}}
+          onMarkAttendance={(studentId, status) =>
+            markAttendance(
+              attendanceSession.id,
+              studentId,
+              selectedDate.toISOString().slice(0, 10),
+              status
+            )
+          }
+          onMarkAllPresent={() =>
+            markAllPresent(
+              attendanceSession.id,
+              attendanceStudents.map((s) => s.id),
+              selectedDate.toISOString().slice(0, 10)
+            )
+          }
+        />
+      )}
 
       {/* 세션 편집 모달 (분리) */}
       <EditSessionModal
