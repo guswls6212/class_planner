@@ -5,7 +5,9 @@ import type {
   Session,
   Student,
   Subject,
+  Teacher,
 } from "../../../lib/planner";
+import type { ColorByMode } from "../../../hooks/useColorBy";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -34,6 +36,8 @@ type Props = {
   ) => void;
   selectedStudentId: string;
   isStudentDragging: boolean;
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
 };
 
 export default function ScheduleGridSection({
@@ -49,6 +53,8 @@ export default function ScheduleGridSection({
   onEmptySpaceClick,
   selectedStudentId,
   isStudentDragging,
+  teachers = [],
+  colorBy = "subject",
 }: Props) {
   return (
     <div ref={containerRef} data-surface="surface">
@@ -64,6 +70,8 @@ export default function ScheduleGridSection({
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentId={selectedStudentId}
         isStudentDragging={isStudentDragging}
+        teachers={teachers}
+        colorBy={colorBy}
       />
     </div>
   );

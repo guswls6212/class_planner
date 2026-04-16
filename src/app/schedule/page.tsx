@@ -22,6 +22,7 @@ import dynamic from "next/dynamic";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useColorBy } from "../../hooks/useColorBy";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -116,6 +117,9 @@ function SchedulePageContent(): JSX.Element {
     updateData,
     addEnrollment,
   } = useIntegratedDataLocal();
+
+  // Color-by 토글
+  const { colorBy, setColorBy } = useColorBy();
 
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
@@ -895,6 +899,8 @@ function SchedulePageContent(): JSX.Element {
               undefined
             : undefined
         }
+        colorBy={colorBy}
+        onColorByChange={setColorBy}
       />
 
       {/* PDF 다운로드 버튼 */}
@@ -920,6 +926,8 @@ function SchedulePageContent(): JSX.Element {
         onEmptySpaceClick={handleEmptySpaceClick}
         selectedStudentId={selectedStudentId}
         isStudentDragging={isStudentDragging}
+        teachers={teachers}
+        colorBy={colorBy}
       />
 
       {/* 🆕 학생 패널 */}

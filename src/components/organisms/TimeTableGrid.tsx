@@ -8,7 +8,8 @@ import React, {
   useState,
 } from "react";
 import { logger } from "../../lib/logger";
-import type { Session, Subject } from "../../lib/planner";
+import type { Session, Subject, Teacher } from "../../lib/planner";
+import type { ColorByMode } from "../../hooks/useColorBy";
 import TimeTableRow from "../molecules/TimeTableRow";
 
 // 🆕 드래그 상태 타입 정의 (간소화)
@@ -39,6 +40,8 @@ interface TimeTableGridProps {
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   isStudentDragging?: boolean; // 🆕 학생 드래그 상태 추가
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
 }
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
@@ -57,6 +60,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       selectedStudentId, // 🆕 선택된 학생 ID 추가
       isAnyDragging = false, // 🆕 전역 드래그 상태 추가
       isStudentDragging = false, // 🆕 학생 드래그 상태 추가
+      teachers = [],
+      colorBy = "subject",
     },
     ref
   ) => {
@@ -509,6 +514,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onEmptySpaceClick={onEmptySpaceClick}
                 selectedStudentId={selectedStudentId}
                 isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
+                teachers={teachers}
+                colorBy={colorBy}
                 // 🆕 드래그 핸들러들 전달
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}

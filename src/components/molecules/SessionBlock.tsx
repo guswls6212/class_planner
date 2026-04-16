@@ -1,9 +1,11 @@
 import React from "react";
 import { logger } from "../../lib/logger";
 import {
+  type ColorByMode,
   getGroupStudentNames,
   getSessionBlockStyles,
   getSessionSubject,
+  resolveSessionColor,
 } from "./SessionBlock.utils";
 
 // 🆕 다이나믹 글자크기 함수 - 학생이름 4글자 기준으로 최적화
@@ -37,6 +39,7 @@ type Session = {
   startsAt: string;
   endsAt: string;
   room?: string;
+  teacherId?: string;
 };
 
 type Subject = {
@@ -50,6 +53,8 @@ interface SessionBlockProps {
   subjects: Subject[];
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
   students: Array<{ id: string; name: string }>;
+  teachers?: Array<{ id: string; name: string; color: string }>;
+  colorBy?: ColorByMode;
   yPosition: number;
   left: number;
   width: number;
@@ -82,6 +87,8 @@ function SessionBlock({
   subjects,
   enrollments,
   students,
+  teachers = [],
+  colorBy = "subject",
   yPosition,
   left,
   width,
@@ -108,6 +115,19 @@ function SessionBlock({
     selectedStudentId
   );
 
+  // 🆕 colorBy에 따라 블록 색상 결정
+  const blockColor = resolveSessionColor(
+    session,
+    colorBy,
+    enrollments || [],
+    subjects || [],
+    students || [],
+    teachers
+  );
+
+  // 🆕 강사 정보
+  const teacher = teachers.find((t) => t.id === session.teacherId);
+
   // 🆕 디버깅 정보 추가
   if (!subject) {
     logger.warn("SessionBlock: 과목 정보 없음", {
@@ -123,7 +143,7 @@ function SessionBlock({
     left,
     width,
     yOffset,
-    subject?.color,
+    blockColor,
     isDragging, // 🆕 드래그 상태 전달
     session.id === draggedSessionId, // 🆕 현재 세션이 드래그된 세션인지
     isAnyDragging // 🆕 전역 드래그 상태 전달
@@ -224,7 +244,7 @@ function SessionBlock({
           justifyContent: "space-between", // 🆕 상하 공간 분배
         }}
       >
-        {/* 첫 번째 줄: 과목명(왼쪽) + 시간(오른쪽) */}
+        {/* 첫 번째 줄: 주요 레이블(왼쪽) + 시간(오른쪽) */}
         <div
           style={{
             display: "flex",
@@ -234,7 +254,7 @@ function SessionBlock({
             overflow: "hidden",
           }}
         >
-          {/* 과목명 - 왼쪽 */}
+          {/* Top-left: colorBy에 따라 과목명 | 학생명 | 강사명 */}
           <span
             style={{
               color: "white",
@@ -249,7 +269,11 @@ function SessionBlock({
               whiteSpace: "nowrap",
             }}
           >
-            {subject?.name || "과목 없음"}
+            {colorBy === "student"
+              ? studentNames[0] || "학생 없음"
+              : colorBy === "teacher"
+                ? teacher?.name || "강사 없음"
+                : subject?.name || "과목 없음"}
           </span>
 
           {/* 시간 - 오른쪽 */}
@@ -268,33 +292,33 @@ function SessionBlock({
           </span>
         </div>
 
-        {/* 두 번째 줄: 학생명 - 오른쪽 아래 */}
-        {studentNames.length > 0 && (
-          <div
+        {/* 두 번째 줄: Bottom-right - colorBy에 따라 학생명 | 과목명 | 학생명 */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "flex-end",
+            height: "14px",
+            overflow: "hidden",
+          }}
+        >
+          <span
             style={{
-              display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "flex-end",
-              height: "14px",
+              color: "rgba(255, 255, 255, 0.9)",
+              fontSize: getDynamicFontSize(studentNames.length),
+              textAlign: "right",
+              letterSpacing: "-0.3px",
+              lineHeight: "1.1",
               overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            <span
-              style={{
-                color: "rgba(255, 255, 255, 0.9)",
-                fontSize: getDynamicFontSize(studentNames.length),
-                textAlign: "right",
-                letterSpacing: "-0.3px",
-                lineHeight: "1.1",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {getImprovedStudentDisplayText(studentNames)}
-            </span>
-          </div>
-        )}
+            {colorBy === "student"
+              ? subject?.name || ""
+              : getImprovedStudentDisplayText(studentNames)}
+          </span>
+        </div>
       </div>
     </button>
   );
