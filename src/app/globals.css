@@ -124,6 +124,49 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.2s ease;
   --transition-slow: 0.3s ease;
+
+  /* --- Surface Mode: Subject Palette (Q Pastel Soft) ---
+     8 colors × 3 tones (bg / fg / accent).
+     Used by SessionBlock via colorKey lookup.
+     Keep as CSS vars (not @theme) — assigned dynamically at runtime. */
+  --color-subject-blue-bg:       #DBEAFE;
+  --color-subject-blue-fg:       #1E40AF;
+  --color-subject-blue-accent:   #3B82F6;
+
+  --color-subject-red-bg:        #FEE2E2;
+  --color-subject-red-fg:        #991B1B;
+  --color-subject-red-accent:    #EF4444;
+
+  --color-subject-violet-bg:     #EDE9FE;
+  --color-subject-violet-fg:     #5B21B6;
+  --color-subject-violet-accent: #8B5CF6;
+
+  --color-subject-emerald-bg:    #D1FAE5;
+  --color-subject-emerald-fg:    #065F46;
+  --color-subject-emerald-accent:#10B981;
+
+  --color-subject-amber-bg:      #FEF3C7;
+  --color-subject-amber-fg:      #92400E;
+  --color-subject-amber-accent:  #F59E0B;
+
+  --color-subject-pink-bg:       #FCE7F3;
+  --color-subject-pink-fg:       #9D174D;
+  --color-subject-pink-accent:   #EC4899;
+
+  --color-subject-teal-bg:       #CCFBF1;
+  --color-subject-teal-fg:       #115E59;
+  --color-subject-teal-accent:   #14B8A6;
+
+  --color-subject-orange-bg:     #FFEDD5;
+  --color-subject-orange-fg:     #9A3412;
+  --color-subject-orange-accent: #F97316;
+
+  /* --- Surface Grid Tokens --- */
+  --color-grid-canvas:      #FAFAFA;
+  --color-grid-line-major:  #E4E4E7;
+  --color-grid-line-minor:  #F4F4F5;
+  --color-grid-header-text: #71717A;
+  --color-grid-time-text:   #A1A1AA;
 }
 
 /* 라이트모드 테마 */
@@ -158,6 +201,23 @@
   --color-border-grid: #6b7280;
   --color-border-grid-light: #9ca3af;
   --color-border-grid-lighter: #d1d5db;
+}
+
+/* Surface Mode — schedule grid + PDF output.
+   Overrides inherited dark-mode vars.
+   Always light regardless of body[data-theme]. */
+[data-surface="surface"] {
+  --color-bg-primary:          #FAFAFA;
+  --color-bg-secondary:        #FFFFFF;
+  --color-bg-tertiary:         #F4F4F5;
+  --color-text-primary:        #18181B;
+  --color-text-secondary:      #3F3F46;
+  --color-text-muted:          #71717A;
+  --color-border:              #E4E4E7;
+  --color-border-light:        #F4F4F5;
+  --color-border-grid:         #E4E4E7;
+  --color-border-grid-light:   #EFEFEF;
+  --color-border-grid-lighter: #F8F8F8;
 }
 
 /* 기본 리셋 */
