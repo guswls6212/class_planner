@@ -201,7 +201,8 @@ src/utils/             # 클라이언트 유틸리티
 
 ```sql
 -- 학원 (테넌트 단위)
-academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ)
+-- 029: schedule_updated_at 추가 (sessions INSERT/UPDATE/DELETE trigger로 자동 갱신)
+academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ, schedule_updated_at TIMESTAMPTZ)
 
 -- 학원 구성원 (운영자 ↔ 학원, role: owner/admin/member)
 academy_members (academy_id UUID FK, user_id UUID FK, role TEXT, invited_by UUID FK, joined_at TIMESTAMPTZ)
@@ -216,8 +217,9 @@ enrollments        (id UUID PK, student_id UUID FK, subject_id UUID FK)
 sessions           (id UUID PK, academy_id UUID FK, weekday INT, starts_at TIME, ends_at TIME, room TEXT, y_position INT)
 session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
--- 공유 링크 (W3 — supabase/migrations/026)
-share_tokens       (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, label TEXT, filter_student_id UUID FK NULL, expires_at TIMESTAMPTZ, created_by UUID FK, revoked_at TIMESTAMPTZ NULL)
+-- 공유 링크 (W3 — supabase/migrations/026 + 029)
+-- 029: last_viewed_at 추가 (방문 기준선 per-token)
+share_tokens       (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, label TEXT, filter_student_id UUID FK NULL, expires_at TIMESTAMPTZ, created_by UUID FK, revoked_at TIMESTAMPTZ NULL, last_viewed_at TIMESTAMPTZ NULL)
 
 -- 시간표 템플릿 (W4 — supabase/migrations/027)
 templates          (id UUID PK, academy_id UUID FK, name TEXT, description TEXT, template_data JSONB, created_by UUID FK, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)
@@ -271,3 +273,4 @@ attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_
 - 2026-04-15: invite_tokens 테이블 추가 (020 migration). /api/invites + /api/members API Routes 추가. /settings, /invite/[token] 페이지 추가. resolveAcademyMembership 헬퍼 추가.
 - 2026-04-15: Step 5 개발자 로그 뷰어 추가. /admin/logs 페이지 + /api/admin/logs Route (ADMIN_EMAILS 화이트리스트). adminGuard.ts 신규. 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP.
 - 2026-04-17: Phase 3 Full Redesign 완료 (AppShell, ScheduleDailyView, BottomTabBar, Sidebar, TopBar, DayChipBar, useModalA11y 등). Phase 4 Teacher 뷰 + Color-by 토글 완료 (teachers 페이지 + API, teacher-schedule 뷰, useColorBy, useTeacherManagementLocal 등). W2 월별 뷰 (ScheduleMonthlyView, MonthDayCell, useScheduleView). W3 공유 링크 (share/[token] 페이지, share-tokens API, migration 026). W4 시간표 템플릿 (templates API, SaveTemplateModal, ApplyTemplateModal, useTemplates, templateTypes, migration 027). W5 출석 관리 (attendance API + bulk, AttendanceSheet, useAttendance, migration 028).
+- 2026-04-17: Phase 4 마지막 — 시간표 변경 배지 (migration 029: academies.schedule_updated_at + sessions trigger + share_tokens.last_viewed_at). /share/[token] 페이지에 ScheduleChangeBanner molecule 추가.

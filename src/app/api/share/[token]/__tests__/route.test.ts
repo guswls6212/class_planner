@@ -12,10 +12,16 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
   getServiceRoleClient: () => ({ from: mockFrom }),
 }));
 
+vi.mock("@/lib/logger", () => ({
+  logger: { info: vi.fn(), error: vi.fn() },
+}));
+
 import { GET } from "../route";
 
 const FUTURE = new Date(Date.now() + 86400 * 1000 * 30).toISOString();
 const PAST = new Date(Date.now() - 1000).toISOString();
+
+const SCHEDULE_UPDATED_AT = "2026-04-10T10:00:00.000Z";
 
 function makeTokenRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -26,18 +32,28 @@ function makeTokenRow(overrides: Partial<Record<string, unknown>> = {}) {
     filter_student_id: null,
     expires_at: FUTURE,
     revoked_at: null,
+    last_viewed_at: null,
     ...overrides,
   };
 }
 
-function buildFromMock(tokenRow: Record<string, unknown> | null, academyRow = { name: "테스트학원" }) {
+function buildFromMock(
+  tokenRow: Record<string, unknown> | null,
+  academyRow = { name: "테스트학원", schedule_updated_at: SCHEDULE_UPDATED_AT }
+) {
   return (table: string) => {
     if (table === "share_tokens") {
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: tokenRow, error: tokenRow ? null : { message: "not found" } }),
+            single: vi.fn().mockResolvedValue({
+              data: tokenRow,
+              error: tokenRow ? null : { message: "not found" },
+            }),
           }),
+        }),
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
         }),
       };
     }
@@ -75,6 +91,44 @@ describe("GET /api/share/[token]", () => {
     expect(body.success).toBe(true);
     expect(body.data).toBeDefined();
     expect(body.data.academyName).toBe("테스트학원");
+  });
+
+  it("최초 방문(last_viewed_at=null)이면 hasChanges=false — 배너 미표시 의도", async () => {
+    mockFrom.mockImplementation(buildFromMock(makeTokenRow({ last_viewed_at: null })));
+
+    const req = new NextRequest("http://localhost/api/share/abc123");
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+    const body = await res.json();
+
+    expect(body.success).toBe(true);
+    expect(body.data.hasChanges).toBe(false);
+    expect(body.data.lastViewedAt).toBeNull();
+    expect(body.data.scheduleUpdatedAt).toBe(SCHEDULE_UPDATED_AT);
+  });
+
+  it("schedule_updated_at > last_viewed_at 이면 hasChanges=true", async () => {
+    mockFrom.mockImplementation(
+      buildFromMock(makeTokenRow({ last_viewed_at: "2026-04-09T00:00:00.000Z" }))
+    );
+
+    const req = new NextRequest("http://localhost/api/share/abc123");
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+    const body = await res.json();
+
+    expect(body.data.hasChanges).toBe(true);
+    expect(body.data.lastViewedAt).toBe("2026-04-09T00:00:00.000Z");
+  });
+
+  it("schedule_updated_at <= last_viewed_at 이면 hasChanges=false", async () => {
+    mockFrom.mockImplementation(
+      buildFromMock(makeTokenRow({ last_viewed_at: "2026-04-11T00:00:00.000Z" }))
+    );
+
+    const req = new NextRequest("http://localhost/api/share/abc123");
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+    const body = await res.json();
+
+    expect(body.data.hasChanges).toBe(false);
   });
 
   it("존재하지 않는 토큰 → 404", async () => {

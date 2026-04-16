@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { use } from "react";
 import TimeTableGrid from "@/components/organisms/TimeTableGrid";
+import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
 import type { Session, Student, Subject, Enrollment, Teacher } from "@/lib/planner";
 
 interface ShareData {
@@ -13,6 +14,9 @@ interface ShareData {
   subjects: RawSubject[];
   enrollments: RawEnrollment[];
   teachers: RawTeacher[];
+  scheduleUpdatedAt: string;
+  lastViewedAt: string | null;
+  hasChanges: boolean;
 }
 
 interface RawSession {
@@ -166,6 +170,10 @@ export default function SharePage({
           <p className="mt-1 text-sm text-[--color-text-secondary]">{data.label}</p>
         )}
       </div>
+
+      {data.hasChanges && data.lastViewedAt !== null && (
+        <ScheduleChangeBanner scheduleUpdatedAt={data.scheduleUpdatedAt} />
+      )}
 
       <div data-surface="surface">
         <TimeTableGrid

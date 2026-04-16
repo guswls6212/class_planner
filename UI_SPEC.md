@@ -531,6 +531,7 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/middleware.ts` | `/students`, `/subjects`, `/schedule` (가드 동작) |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
 | `src/components/molecules/SessionBlock*` | `/schedule` |
+| `src/components/molecules/ScheduleChangeBanner*` | `/share/{token}` (변경 배지) |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |
 | `src/components/molecules/ConfirmModal*` | `/students`, `/subjects` (삭제 흐름) |
 | `src/components/organisms/TimeTableGrid*` | `/schedule` |
@@ -551,3 +552,4 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | 기본 과목 | `DEFAULT_SUBJECTS` 9개 (초등수학~고등국어). 사용자 추가 과목과 구분하여 DataConflictModal에서 표시 |
 | PDF | A4 종이 인쇄 최적화. html2canvas 캡처 → jsPDF |
 | 로그아웃 | 현재 `supabase.auth.signOut()` 대신 localStorage 토큰 수동 삭제. 개선 예정 (TASKS.md) |
+| 공유 페이지 변경 배지 | `/share/{token}` 페이지 상단. `hasChanges=true && lastViewedAt !== null`일 때만 `ScheduleChangeBanner` 렌더. 최초 방문(lastViewedAt=null)은 배너 미표시. 배지 표시 후 페이지 갱신 시 자동 사라짐 (last_viewed_at 갱신됨). |
