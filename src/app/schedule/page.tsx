@@ -25,6 +25,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
+import { useTemplates } from "../../hooks/useTemplates";
+import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -96,6 +98,14 @@ const GroupSessionModal = dynamic(
 );
 const PdfDownloadSection = dynamic(
   () => import("./_components/PdfDownloadSection"),
+  { ssr: false, loading: () => null }
+);
+const SaveTemplateModal = dynamic(
+  () => import("../../components/molecules/SaveTemplateModal"),
+  { ssr: false, loading: () => null }
+);
+const ApplyTemplateModal = dynamic(
+  () => import("../../components/molecules/ApplyTemplateModal"),
   { ssr: false, loading: () => null }
 );
 const ScheduleDailyView = dynamic(
@@ -889,6 +899,100 @@ function SchedulePageContent(): JSX.Element {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // 🆕 템플릿 기능
+  const [userId, setUserId] = useState<string | null>(null);
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
+  const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates, saveTemplate } = useTemplates(userId);
+
+  // 현재 세션 → TemplateData 변환
+  const buildTemplateData = useCallback((): TemplateData => {
+    if (!displaySessions) return { version: "1.0", sessions: [] };
+    const sessionsData = Array.from(displaySessions.values()).flat();
+    return {
+      version: "1.0",
+      sessions: sessionsData.map((session) => {
+        // Session has enrollmentIds → enrollment → subjectId → subject
+        const firstEnrollment = enrollments.find(
+          (e) => (session.enrollmentIds ?? []).includes(e.id)
+        );
+        const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
+        const sessionStudentNames = (session.enrollmentIds ?? [])
+          .map((eid) => {
+            const enrollment = enrollments.find((e) => e.id === eid);
+            if (!enrollment) return null;
+            return students.find((st) => st.id === enrollment.studentId)?.name ?? null;
+          })
+          .filter((n): n is string => n !== null);
+        return {
+          weekday: session.weekday,
+          startsAt: session.startsAt,
+          endsAt: session.endsAt,
+          subjectName: subject?.name ?? "미지정",
+          subjectColor: subject?.color ?? "#6366f1",
+          studentNames: sessionStudentNames,
+        };
+      }),
+    };
+  }, [displaySessions, subjects, enrollments, students]);
+
+  const handleApplyTemplate = useCallback(
+    async (template: ScheduleTemplate) => {
+      const { sessions: templateSessions } = template.templateData;
+      let applied = 0;
+      let skipped = 0;
+
+      for (const tplSession of templateSessions) {
+        // 1. 과목 매칭 (없으면 생성)
+        let subject = subjects.find((s) => s.name === tplSession.subjectName);
+        if (!subject) {
+          const newSubjectId = crypto.randomUUID();
+          subject = { id: newSubjectId, name: tplSession.subjectName, color: tplSession.subjectColor };
+          await updateData({ subjects: [...subjects, subject] });
+        }
+
+        // 2. 학생 매칭
+        const studentIds: string[] = [];
+        for (const name of tplSession.studentNames) {
+          const student = students.find((s) => s.name === name);
+          if (student) {
+            studentIds.push(student.id);
+          } else {
+            skipped++;
+          }
+        }
+
+        if (studentIds.length === 0) continue;
+
+        // 3. 세션 생성
+        await addSession({
+          subjectId: subject.id,
+          studentIds,
+          weekday: tplSession.weekday,
+          startTime: tplSession.startsAt,
+          endTime: tplSession.endsAt,
+          yPosition: 1,
+        });
+        applied++;
+      }
+
+      setShowApplyTemplateModal(false);
+      if (applied > 0) {
+        showToast("success", `${applied}개 세션이 적용되었습니다.${skipped > 0 ? ` (${skipped}명 학생 매칭 실패)` : ""}`);
+      } else {
+        showToast("error", "매칭된 학생이 없어 세션을 생성하지 못했습니다.");
+      }
+    },
+    [subjects, students, enrollments, sessions, updateData, addSession]
+  );
+
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
 
@@ -937,25 +1041,43 @@ function SchedulePageContent(): JSX.Element {
         />
       )}
 
-      {/* PDF 다운로드 버튼 */}
-      <PdfDownloadSection
-        onDownload={() =>
-          renderSchedulePdf(
-            Array.from(displaySessions.values()).flat(),
-            subjects,
-            students,
-            enrollments,
-            teachers,
-            {
-              academyName: "CLASS PLANNER",
-              filterStudentId: selectedStudentId ?? undefined,
-            }
-          )
-        }
-        isDownloading={isDownloading}
-        onDownloadStart={() => setIsDownloading(true)}
-        onDownloadEnd={() => setIsDownloading(false)}
-      />
+      {/* PDF 다운로드 버튼 + 템플릿 버튼 */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <PdfDownloadSection
+          onDownload={() =>
+            renderSchedulePdf(
+              Array.from(displaySessions.values()).flat(),
+              subjects,
+              students,
+              enrollments,
+              teachers,
+              {
+                academyName: "CLASS PLANNER",
+                filterStudentId: selectedStudentId ?? undefined,
+              }
+            )
+          }
+          isDownloading={isDownloading}
+          onDownloadStart={() => setIsDownloading(true)}
+          onDownloadEnd={() => setIsDownloading(false)}
+        />
+        {userId && (
+          <>
+            <button
+              onClick={() => setShowSaveTemplateModal(true)}
+              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+              템플릿으로 저장
+            </button>
+            <button
+              onClick={() => { fetchTemplates(); setShowApplyTemplateModal(true); }}
+              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+              템플릿 적용
+            </button>
+          </>
+        )}
+      </div>
 
       {/* 시간표 뷰 (일별/주간 조건부 렌더링) */}
       {viewMode === "daily" ? (
@@ -1125,6 +1247,33 @@ function SchedulePageContent(): JSX.Element {
           setTempEnrollments,
           onSaveComplete: () => setTempTeacherId(undefined),
         })}
+      />
+
+      {/* 템플릿 저장 모달 */}
+      <SaveTemplateModal
+        isOpen={showSaveTemplateModal}
+        onClose={() => setShowSaveTemplateModal(false)}
+        onSave={async (payload) => {
+          const ok = await saveTemplate(payload);
+          if (ok) {
+            setShowSaveTemplateModal(false);
+            showToast("success", "템플릿이 저장되었습니다.");
+          } else {
+            showError("템플릿 저장에 실패했습니다.");
+          }
+        }}
+        templateData={buildTemplateData()}
+        isSaving={templateSaving}
+      />
+
+      {/* 템플릿 적용 모달 */}
+      <ApplyTemplateModal
+        isOpen={showApplyTemplateModal}
+        onClose={() => setShowApplyTemplateModal(false)}
+        onApply={handleApplyTemplate}
+        templates={templates}
+        isApplying={false}
+        isLoading={templatesLoading}
       />
     </div>
   );
