@@ -35,6 +35,7 @@ const emptyData: ClassPlannerData = {
   subjects: [],
   sessions: [],
   enrollments: [],
+  teachers: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
 };
@@ -44,6 +45,7 @@ const serverData: ClassPlannerData = {
   subjects: [{ id: "server-sub1", name: "서버 과목", color: "#ff0000" }],
   sessions: [],
   enrollments: [],
+  teachers: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
 };
@@ -53,6 +55,7 @@ const localData: ClassPlannerData = {
   subjects: [{ id: "anon-sub1", name: "익명 과목", color: "#00ff00" }],
   sessions: [],
   enrollments: [],
+  teachers: [],
   version: "1.0",
   lastModified: new Date().toISOString(),
 };

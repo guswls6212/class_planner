@@ -59,6 +59,7 @@ describe("GroupSessionModal - state updates", () => {
         filteredStudentsForModal={[]}
         addStudent={() => {}}
         subjects={subjects}
+        teachers={[]}
         students={students}
         weekdays={weekdays}
         handleStartTimeChange={() => {}}
@@ -120,6 +121,7 @@ describe("GroupSessionModal - 신규 학생 생성 CTA (B-1)", () => {
       filteredStudentsForModal: [],
       addStudent: () => {},
       subjects,
+      teachers: [],
       students,
       weekdays,
       handleStartTimeChange: () => {},

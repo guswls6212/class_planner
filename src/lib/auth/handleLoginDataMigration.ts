@@ -117,6 +117,7 @@ export async function applyLocalDataChoice(
     subjects,
     sessions,
     enrollments,
+    teachers: [],
     version: "1.0",
     lastModified: new Date().toISOString(),
   });

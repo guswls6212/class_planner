@@ -10,6 +10,7 @@ type Session = {
   startsAt: string;
   endsAt: string;
   room?: string;
+  teacherId?: string;
 };
 
 type Subject = {
@@ -190,4 +191,59 @@ export const calculateZIndex = (yOffset: number): number => {
 
 export const getSubjectColor = (subjectColor?: string): string => {
   return subjectColor && subjectColor.trim() !== "" ? subjectColor : "#888";
+};
+
+// Q Pastel 팔레트 — 학생 결정론적 색상에 사용
+const Q_PASTEL_PALETTE = [
+  "#f87171",
+  "#fb923c",
+  "#facc15",
+  "#4ade80",
+  "#60a5fa",
+  "#a78bfa",
+  "#f472b6",
+  "#94a3b8",
+];
+
+// 문자열을 팔레트 인덱스로 해시
+function hashStringToIndex(str: string, length: number): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) % length;
+}
+
+export const getStudentDeterministicColor = (studentId: string): string => {
+  return Q_PASTEL_PALETTE[hashStringToIndex(studentId, Q_PASTEL_PALETTE.length)];
+};
+
+export type ColorByMode = "subject" | "student" | "teacher";
+
+export const resolveSessionColor = (
+  session: Session,
+  colorBy: ColorByMode,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  subjects: Subject[],
+  _students: Array<{ id: string; name: string }>,
+  teachers: Array<{ id: string; name: string; color: string }>
+): string => {
+  const firstEnrollment = enrollments.find(
+    (e) => e.id === session.enrollmentIds?.[0]
+  );
+
+  if (colorBy === "student") {
+    const studentId = firstEnrollment?.studentId;
+    if (studentId) return getStudentDeterministicColor(studentId);
+    return "#888";
+  }
+
+  if (colorBy === "teacher") {
+    const teacher = teachers.find((t) => t.id === session.teacherId);
+    return teacher?.color ?? "#888";
+  }
+
+  // default: subject
+  const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
+  return subject?.color ?? "#888";
 };

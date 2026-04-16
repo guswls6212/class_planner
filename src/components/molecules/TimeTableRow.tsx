@@ -1,6 +1,7 @@
 import React from "react";
-import type { Session, Subject } from "../../lib/planner";
+import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
+import type { ColorByMode } from "../../hooks/useColorBy";
 
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import DropZone from "./DropZone";
@@ -35,6 +36,8 @@ interface TimeTableRowProps {
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
   // 🆕 드래그 핸들러들
   onDragStart?: (session: Session) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
@@ -58,6 +61,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   style = {},
   selectedStudentId, // 🆕 선택된 학생 ID 추가
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
+  teachers = [],
+  colorBy = "subject",
   // 🆕 드래그 핸들러들
   onDragStart,
   onDragOver,
@@ -292,6 +297,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               }
             }}
             selectedStudentId={selectedStudentId}
+            teachers={teachers}
+            colorBy={colorBy}
             // 🆕 드래그 상태 전달
             isDragging={dragPreview?.draggedSession !== null}
             draggedSessionId={dragPreview?.draggedSession?.id}

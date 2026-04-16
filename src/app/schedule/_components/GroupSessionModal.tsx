@@ -7,6 +7,7 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 
 type SubjectOption = { id: string; name: string; color?: string };
 type StudentOption = { id: string; name: string };
+type TeacherOption = { id: string; name: string; color: string };
 
 interface GroupSessionModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface GroupSessionModalProps {
   filteredStudentsForModal: StudentOption[];
   addStudent: (studentId: string) => void;
   subjects: SubjectOption[];
+  teachers: TeacherOption[];
   students: StudentOption[];
   weekdays: string[];
   handleStartTimeChange: (newStartTime: string) => void;
@@ -45,6 +47,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   filteredStudentsForModal,
   addStudent,
   subjects,
+  teachers,
   students,
   weekdays,
   handleStartTimeChange,
@@ -199,6 +202,30 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                   ))}
               </select>
             </div>
+
+            {teachers.length > 0 && (
+              <div className="form-group">
+                <Label htmlFor="modal-teacher">강사</Label>
+                <select
+                  id="modal-teacher"
+                  className="form-select"
+                  value={groupModalData.teacherId || ""}
+                  onChange={(e) =>
+                    setGroupModalData((prev) => ({
+                      ...prev,
+                      teacherId: e.target.value || undefined,
+                    }))
+                  }
+                >
+                  <option value="">강사 선택 (선택사항)</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <Label htmlFor="modal-weekday" required>

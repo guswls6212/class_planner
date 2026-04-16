@@ -47,11 +47,15 @@ vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
         },
       ],
       enrollments: [{ id: "enroll1", studentId: "s1", subjectId: "sub1" }],
+      teachers: [],
     },
     loading: false,
     error: null,
     updateData: vi.fn(),
     addEnrollment: vi.fn(),
+    addTeacher: vi.fn(),
+    updateTeacher: vi.fn(),
+    deleteTeacher: vi.fn(),
   }),
 }));
 

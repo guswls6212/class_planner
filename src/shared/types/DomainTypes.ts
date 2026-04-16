@@ -32,6 +32,16 @@ export interface Session {
   readonly endsAt: string; // HH:MM 형식
   readonly room?: string;
   readonly yPosition?: number;
+  readonly teacherId?: string;
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+export interface Teacher {
+  readonly id: string;
+  readonly name: string;
+  readonly color: string;
+  readonly userId: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -60,6 +70,10 @@ export interface StudentId {
 }
 
 export interface SubjectId {
+  readonly value: string;
+}
+
+export interface TeacherId {
   readonly value: string;
 }
 

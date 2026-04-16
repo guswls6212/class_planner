@@ -14,6 +14,7 @@ export { EnrollmentRepositoryFactory } from "./factories/EnrollmentRepositoryFac
 export { SessionRepositoryFactory } from "./factories/SessionRepositoryFactory";
 export { StudentRepositoryFactory } from "./factories/StudentRepositoryFactory";
 export { SubjectRepositoryFactory } from "./factories/SubjectRepositoryFactory";
+export { TeacherRepositoryFactory } from "./factories/TeacherRepositoryFactory";
 
 // 인터페이스
 export * from "./interfaces";
@@ -21,3 +22,4 @@ export * from "./interfaces";
 // Repository 구현체
 export { SupabaseStudentRepository } from "./repositories/SupabaseStudentRepository";
 export { SupabaseSubjectRepository } from "./repositories/SupabaseSubjectRepository";
+export { SupabaseTeacherRepository } from "./repositories/SupabaseTeacherRepository";

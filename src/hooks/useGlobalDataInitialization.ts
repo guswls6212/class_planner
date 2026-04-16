@@ -109,6 +109,7 @@ export const useGlobalDataInitialization = () => {
               subjects: defaultSubjectsWithId,
               sessions: [],
               enrollments: [],
+              teachers: [],
               version: "1.0",
               lastModified: new Date().toISOString(),
             });
@@ -170,6 +171,7 @@ export const useGlobalDataInitialization = () => {
           subjects: subjects ?? [],
           sessions,
           enrollments,
+          teachers: [],
           version: "1.0",
           lastModified: new Date().toISOString(),
         };

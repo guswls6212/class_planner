@@ -22,6 +22,7 @@ import dynamic from "next/dynamic";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useColorBy } from "../../hooks/useColorBy";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -110,12 +111,15 @@ export default function SchedulePage(): JSX.Element {
 function SchedulePageContent(): JSX.Element {
   // 🚀 통합 데이터 훅 사용 (JSONB 기반 효율적 데이터 관리)
   const {
-    data: { students, subjects, sessions, enrollments },
+    data: { students, subjects, sessions, enrollments, teachers },
     loading: dataLoading,
     error,
     updateData,
     addEnrollment,
   } = useIntegratedDataLocal();
+
+  // Color-by 토글
+  const { colorBy, setColorBy } = useColorBy();
 
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
@@ -127,6 +131,7 @@ function SchedulePageContent(): JSX.Element {
   type SessionCreateInput = {
     subjectId: string;
     studentIds: string[];
+    teacherId?: string;
     weekday: number;
     startTime: string;
     endTime: string;
@@ -193,6 +198,7 @@ function SchedulePageContent(): JSX.Element {
         id: crypto.randomUUID(),
         subjectId: sessionData.subjectId,
         studentIds: sessionData.studentIds,
+        ...(sessionData.teacherId && { teacherId: sessionData.teacherId }),
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
@@ -552,6 +558,9 @@ function SchedulePageContent(): JSX.Element {
     setEditTimeError,
   } = useEditModalState();
 
+  // 강사 선택 상태 (편집 모달용; undefined = 변경 없음, "" = 제거)
+  const [tempTeacherId, setTempTeacherId] = useState<string | undefined>(undefined);
+
   // 🆕 수업 편집 모달 시간 변경 핸들러 (헬퍼 적용)
   const { handleEditStartTimeChange, handleEditEndTimeChange } = useMemo(
     () =>
@@ -755,6 +764,7 @@ function SchedulePageContent(): JSX.Element {
       await addSession({
         studentIds: data.studentIds,
         subjectId: data.subjectId,
+        teacherId: data.teacherId,
         weekday: data.weekday,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -889,6 +899,8 @@ function SchedulePageContent(): JSX.Element {
               undefined
             : undefined
         }
+        colorBy={colorBy}
+        onColorByChange={setColorBy}
       />
 
       {/* PDF 다운로드 버튼 */}
@@ -914,6 +926,8 @@ function SchedulePageContent(): JSX.Element {
         onEmptySpaceClick={handleEmptySpaceClick}
         selectedStudentId={selectedStudentId}
         isStudentDragging={isStudentDragging}
+        teachers={teachers}
+        colorBy={colorBy}
       />
 
       {/* 🆕 학생 패널 */}
@@ -938,6 +952,7 @@ function SchedulePageContent(): JSX.Element {
         filteredStudentsForModal={filteredStudentsForModal}
         addStudent={addStudent}
         subjects={subjects}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         students={students}
         weekdays={weekdays}
         handleStartTimeChange={handleStartTimeChange}
@@ -1002,8 +1017,11 @@ function SchedulePageContent(): JSX.Element {
         )}
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         tempSubjectId={tempSubjectId}
         onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
+        tempTeacherId={tempTeacherId ?? (editModalData?.teacherId || "")}
+        onTeacherChange={(teacherId) => setTempTeacherId(teacherId)}
         weekdays={weekdays}
         defaultWeekday={editModalData?.weekday ?? 0}
         startTime={editModalTimeData.startTime}
@@ -1019,11 +1037,13 @@ function SchedulePageContent(): JSX.Element {
         onCancel={buildEditOnCancel({
           setShowEditModal,
           setTempSubjectId,
+          onCancel: () => setTempTeacherId(undefined),
         })}
         onSave={buildEditOnSave({
           editModalData,
           editModalTimeData,
           tempSubjectId,
+          tempTeacherId,
           tempEnrollments,
           enrollments,
           addEnrollment,
@@ -1037,6 +1057,7 @@ function SchedulePageContent(): JSX.Element {
           setShowEditModal,
           setTempSubjectId,
           setTempEnrollments,
+          onSaveComplete: () => setTempTeacherId(undefined),
         })}
       />
     </div>

@@ -1,5 +1,6 @@
 import { Student } from "@/domain/entities/Student";
 import { Subject } from "@/domain/entities/Subject";
+import { Teacher } from "@/domain/entities/Teacher";
 import { Enrollment, Session } from "@/shared/types/DomainTypes";
 
 export interface StudentRepository {
@@ -38,6 +39,18 @@ export interface SessionRepository {
     session: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
   ): Promise<Session>;
   delete(id: string): Promise<void>;
+}
+
+export interface TeacherRepository {
+  getAll(academyId: string): Promise<Teacher[]>;
+  getById(id: string, academyId?: string): Promise<Teacher | null>;
+  create(teacher: { name: string; color: string; userId?: string | null }, academyId: string): Promise<Teacher>;
+  update(
+    id: string,
+    teacher: { name?: string; color?: string; userId?: string | null },
+    academyId: string
+  ): Promise<Teacher>;
+  delete(id: string, academyId: string): Promise<void>;
 }
 
 export interface EnrollmentRepository {
