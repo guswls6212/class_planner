@@ -35,6 +35,8 @@
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
+- **Common Primitives** (`src/components/common/`): 크로스-뷰 공유 디자인 원자. Atomic Design 계층을 초월하여 atoms/molecules/organisms 어디서나 소비 가능.
+  - `SubjectChip` — 과목 색상을 표현하는 공유 칩 primitive. variant: `fill` (캘린더), `border-left` (리스트 행), `soft`.
 - **Molecules:** Atoms 조합 (SessionBlock, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, StudentPanel, HelpDrawer, AppShell)
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
