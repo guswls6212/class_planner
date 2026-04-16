@@ -199,10 +199,11 @@
 - [x] 월별 뷰 — 3-way 토글(일별/주별/월별), MonthDayCell, ScheduleMonthlyView, 날짜 클릭→일별 전환 (PR#59)
 - [x] 공유 링크 (`/share/{token}`) — share_tokens 테이블, 공개 API, 읽기 전용 시간표 페이지, Settings 관리 UI (PR#60)
 
+- [x] 시간표 템플릿 — templates 테이블, 저장/적용 모달, useTemplates 훅, name-based 매칭 (PR#61)
+- [x] 출석 관리 — attendance 테이블, GET/POST API, bulk upsert, AttendanceSheet, useAttendance 훅, 일별 뷰 연동 (PR#62)
+
 ### 남은 항목
 - [ ] 학원생 자동 알림 (시간표 변경 시)
-- [ ] 출석 관리 기능
-- [ ] 시간표 템플릿 기능
 
 ---
 
@@ -245,3 +246,4 @@
 | 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
 | 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
 | 2026-04-17 | Phase 3 Polish + Phase 4 W1~W3 완료 — ConfirmModal a11y, signOut, SessionBlock onDelete, 월별 뷰(PR#59), 공유 링크(PR#60) |
+| 2026-04-17 | Phase 4 W4~W5 완료 — 시간표 템플릿(PR#61), 출석 관리(PR#62) |
