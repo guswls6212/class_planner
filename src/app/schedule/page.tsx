@@ -98,9 +98,9 @@ const GroupSessionModal = dynamic(
   () => import("./_components/GroupSessionModal"),
   { ssr: false, loading: () => null }
 );
-const PdfDownloadSection = dynamic(
-  () => import("./_components/PdfDownloadSection"),
-  { ssr: false, loading: () => null }
+const ScheduleActionBar = dynamic(
+  () => import("./_components/ScheduleActionBar"),
+  { ssr: false }
 );
 const SaveTemplateModal = dynamic(
   () => import("../../components/molecules/SaveTemplateModal"),
@@ -1087,50 +1087,39 @@ function SchedulePageContent(): JSX.Element {
         />
       )}
 
-      {/* PDF 다운로드 버튼 + 템플릿 버튼 */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <PdfDownloadSection
-          onDownload={() =>
-            renderSchedulePdf(
-              Array.from(displaySessions.values()).flat(),
-              subjects,
-              students,
-              enrollments,
-              teachers,
-              {
-                academyName: "CLASS PLANNER",
-                filterStudentId: selectedStudentId ?? undefined,
-              }
-            )
-          }
-          isDownloading={isDownloading}
-          onDownloadStart={() => setIsDownloading(true)}
-          onDownloadEnd={() => setIsDownloading(false)}
-          viewLabel={
-            viewMode === "daily"
-              ? "일별 시간표"
-              : viewMode === "monthly"
-                ? "월별 시간표"
-                : "주간 시간표"
-          }
-        />
-        {userId && (
-          <>
-            <button
-              onClick={() => setShowSaveTemplateModal(true)}
-              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
-            >
-              템플릿으로 저장
-            </button>
-            <button
-              onClick={() => { _fetchTemplates(); setShowApplyTemplateModal(true); }}
-              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
-            >
-              템플릿 적용
-            </button>
-          </>
-        )}
-      </div>
+      {/* 액션 바: PDF · 템플릿 · 공유 */}
+      <ScheduleActionBar
+        viewLabel={
+          viewMode === "daily"
+            ? "일별 시간표"
+            : viewMode === "monthly"
+              ? "월별 시간표"
+              : "주간 시간표"
+        }
+        onDownload={() =>
+          renderSchedulePdf(
+            Array.from(displaySessions.values()).flat(),
+            subjects,
+            students,
+            enrollments,
+            teachers,
+            {
+              academyName: "CLASS PLANNER",
+              filterStudentId: selectedStudentId ?? undefined,
+            }
+          )
+        }
+        isDownloading={isDownloading}
+        onDownloadStart={() => setIsDownloading(true)}
+        onDownloadEnd={() => setIsDownloading(false)}
+        userId={userId}
+        onSaveTemplate={() => setShowSaveTemplateModal(true)}
+        onApplyTemplate={() => {
+          _fetchTemplates();
+          setShowApplyTemplateModal(true);
+        }}
+        isSaving={templateSaving}
+      />
 
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
