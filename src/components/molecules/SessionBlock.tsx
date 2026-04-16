@@ -71,6 +71,7 @@ interface SessionBlockProps {
   draggedSessionId?: string; // 드래그된 세션 ID
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   hasConflict?: boolean; // 시간 충돌 여부
+  onDelete?: () => void; // 컨텍스트 메뉴 삭제 핸들러 (제공 시 직접 삭제, 미제공 시 onClick fallback)
 }
 
 export const validateSessionBlockProps = (
@@ -105,6 +106,7 @@ function SessionBlock({
   draggedSessionId, // 🆕 드래그된 세션 ID
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
   hasConflict = false,
+  onDelete,
 }: SessionBlockProps) {
   // 롱프레스 컨텍스트 메뉴 상태
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
@@ -206,10 +208,13 @@ function SessionBlock({
     (e: React.MouseEvent | React.TouchEvent) => {
       e.stopPropagation();
       setContextMenuOpen(false);
-      // 편집 모달을 통해 삭제 처리 — onClick으로 편집 모달 열기
-      onClick();
+      if (onDelete) {
+        onDelete();
+      } else {
+        onClick();
+      }
     },
-    [onClick]
+    [onClick, onDelete]
   );
 
   const handleClick = (e: React.MouseEvent) => {

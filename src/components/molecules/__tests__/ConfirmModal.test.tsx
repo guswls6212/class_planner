@@ -113,4 +113,30 @@ describe("ConfirmModal Component", () => {
     expect(screen.getByText("테스트 제목")).toHaveAttribute("id", "confirm-modal-title");
     expect(screen.getByText("테스트 메시지입니다.")).toHaveAttribute("id", "confirm-modal-message");
   });
+
+  it("useModalA11y: 모달이 열리면 포커스가 첫 번째 버튼으로 이동해야 한다", async () => {
+    vi.useFakeTimers();
+    const { act } = await import("@testing-library/react");
+
+    render(<ConfirmModal {...defaultProps} />);
+
+    // jsdom does not implement layout — offsetParent is always null.
+    // Mock it so getFocusableElements inside useModalA11y includes the buttons.
+    const buttons = screen.getAllByRole("button");
+    buttons.forEach((btn) => {
+      Object.defineProperty(btn, "offsetParent", {
+        value: btn.parentElement,
+        configurable: true,
+      });
+    });
+
+    // useModalA11y focus effect fires after 50ms timeout
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    expect(document.activeElement).toBe(buttons[0]);
+
+    vi.useRealTimers();
+  });
 });

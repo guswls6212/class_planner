@@ -21,7 +21,12 @@ export default function ScheduleHeader({
   viewMode,
   onViewModeChange,
 }: Props) {
-  const title = viewMode === "daily" ? "일별 시간표" : "주간 시간표";
+  const title =
+    viewMode === "daily"
+      ? "일별 시간표"
+      : viewMode === "monthly"
+        ? "월별 시간표"
+        : "주간 시간표";
 
   return (
     <div className="mb-4 border-b border-[--color-border] pb-3">
@@ -56,6 +61,16 @@ export default function ScheduleHeader({
               }`}
             >
               주간
+            </button>
+            <button
+              onClick={() => onViewModeChange("monthly")}
+              className={`px-3 py-1 text-sm transition-colors ${
+                viewMode === "monthly"
+                  ? "bg-accent text-white"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
+              }`}
+            >
+              월별
             </button>
           </div>
           {onColorByChange && (

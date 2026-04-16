@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ScheduleHeader from "../ScheduleHeader";
 
@@ -64,5 +64,36 @@ describe("ScheduleHeader", () => {
     );
     expect(screen.getByText("일별")).toBeInTheDocument();
     expect(screen.getByText("주간")).toBeInTheDocument();
+  });
+
+  it("월별 토글 버튼이 렌더링된다", () => {
+    render(
+      <ScheduleHeader dataLoading={false} {...defaultViewProps} />
+    );
+    expect(screen.getByText("월별")).toBeInTheDocument();
+  });
+
+  it("월별 모드에서 제목 '월별 시간표'를 렌더링한다", () => {
+    render(
+      <ScheduleHeader dataLoading={false} viewMode="monthly" onViewModeChange={vi.fn()} />
+    );
+    expect(screen.getByText("월별 시간표")).toBeInTheDocument();
+  });
+
+  it("월별 버튼 클릭 시 onViewModeChange('monthly')가 호출된다", () => {
+    const onViewModeChange = vi.fn();
+    render(
+      <ScheduleHeader dataLoading={false} viewMode="weekly" onViewModeChange={onViewModeChange} />
+    );
+    fireEvent.click(screen.getByText("월별"));
+    expect(onViewModeChange).toHaveBeenCalledWith("monthly");
+  });
+
+  it("viewMode='monthly'일 때 월별 버튼이 활성 스타일을 가진다", () => {
+    render(
+      <ScheduleHeader dataLoading={false} viewMode="monthly" onViewModeChange={vi.fn()} />
+    );
+    const monthlyBtn = screen.getByText("월별").closest("button");
+    expect(monthlyBtn).toHaveClass("bg-accent");
   });
 });

@@ -43,6 +43,7 @@ import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionC
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
+import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentPanelSection from "./_components/StudentPanelSection";
@@ -112,6 +113,10 @@ const ScheduleDailyView = dynamic(
   () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
   { ssr: false, loading: () => null }
 );
+const ScheduleMonthlyView = dynamic(
+  () => import("../../components/organisms/ScheduleMonthlyView"),
+  { ssr: false, loading: () => null }
+);
 
 /**
  * 페이지 엔트리 컴포넌트
@@ -138,7 +143,7 @@ function SchedulePageContent(): JSX.Element {
   // Color-by 토글
   const { colorBy, setColorBy } = useColorBy();
 
-  // 뷰 모드 (일별/주간) 및 날짜 선택
+  // 뷰 모드 (일별/주간/월별) 및 날짜 선택
   const {
     viewMode,
     setViewMode,
@@ -146,7 +151,10 @@ function SchedulePageContent(): JSX.Element {
     selectedWeekday,
     goToNextDay,
     goToPrevDay,
+    goToToday,
     setSelectedDate,
+    goToNextMonth,
+    goToPrevMonth,
   } = useScheduleView();
 
   // 성능 모니터링
@@ -455,6 +463,10 @@ function SchedulePageContent(): JSX.Element {
     [sessions, updateData]
   );
 
+  const handleSessionDelete = useCallback((session: Session) => {
+    setDeleteConfirmSessionId(session.id);
+  }, []);
+
   // 🆕 데이터 로딩 완료 후 selectedStudentId 복원
   useEffect(() => {
     if (!dataLoading && students.length > 0) {
@@ -551,6 +563,9 @@ function SchedulePageContent(): JSX.Element {
     yPosition: 1, // 🆕 기본값 1
   });
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
+
+  // 세션 삭제 확인 모달 상태
+  const [deleteConfirmSessionId, setDeleteConfirmSessionId] = useState<string | null>(null);
 
   // 학생 생성 훅 (모달에서 신규 학생 추가 시 사용)
   const { addStudent: createStudent } = useStudentManagementLocal();
@@ -1079,7 +1094,7 @@ function SchedulePageContent(): JSX.Element {
         )}
       </div>
 
-      {/* 시간표 뷰 (일별/주간 조건부 렌더링) */}
+      {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
         <ScheduleDailyView
           sessions={displaySessions}
@@ -1098,8 +1113,22 @@ function SchedulePageContent(): JSX.Element {
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
         />
+      ) : viewMode === "monthly" ? (
+        <ScheduleMonthlyView
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          currentDate={selectedDate}
+          goToNextMonth={goToNextMonth}
+          goToPrevMonth={goToPrevMonth}
+          goToToday={goToToday}
+          onDayClick={(date) => {
+            setSelectedDate(date);
+            setViewMode("daily");
+          }}
+        />
       ) : (
-        /* 🆕 시간표 그리드 */
+        /* 주간 시간표 그리드 */
         <ScheduleGridSection
           containerRef={timeTableRef}
           gridVersion={gridVersion}
@@ -1108,6 +1137,7 @@ function SchedulePageContent(): JSX.Element {
           enrollments={enrollments}
           students={students}
           onSessionClick={handleSessionClick}
+          onSessionDelete={handleSessionDelete}
           onDrop={handleDrop}
           onSessionDrop={handleSessionDrop}
           onEmptySpaceClick={handleEmptySpaceClick}
@@ -1247,6 +1277,23 @@ function SchedulePageContent(): JSX.Element {
           setTempEnrollments,
           onSaveComplete: () => setTempTeacherId(undefined),
         })}
+      />
+
+      {/* 세션 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={deleteConfirmSessionId !== null}
+        title="수업 삭제"
+        message="이 수업을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+        onConfirm={async () => {
+          if (deleteConfirmSessionId) {
+            await deleteSession(deleteConfirmSessionId);
+          }
+          setDeleteConfirmSessionId(null);
+        }}
+        onCancel={() => setDeleteConfirmSessionId(null)}
       />
 
       {/* 템플릿 저장 모달 */}

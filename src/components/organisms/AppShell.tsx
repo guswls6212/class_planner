@@ -5,8 +5,10 @@ import { TopBar } from "../molecules/TopBar";
 import { BottomTabBar } from "../molecules/BottomTabBar";
 import { Sidebar } from "../molecules/Sidebar";
 
-// Routes that render without the App Shell
+// Routes that render without the App Shell (exact match)
 const SHELL_EXCLUDED: string[] = ["/", "/login", "/about"];
+// Route prefixes that render without the App Shell
+const SHELL_EXCLUDED_PREFIXES: string[] = ["/share/", "/invite/", "/onboarding"];
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -15,7 +17,10 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
 
-  if (SHELL_EXCLUDED.includes(pathname)) {
+  if (
+    SHELL_EXCLUDED.includes(pathname) ||
+    SHELL_EXCLUDED_PREFIXES.some((p) => pathname.startsWith(p))
+  ) {
     return <>{children}</>;
   }
 
