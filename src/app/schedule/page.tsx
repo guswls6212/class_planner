@@ -1106,6 +1106,13 @@ function SchedulePageContent(): JSX.Element {
           isDownloading={isDownloading}
           onDownloadStart={() => setIsDownloading(true)}
           onDownloadEnd={() => setIsDownloading(false)}
+          viewLabel={
+            viewMode === "daily"
+              ? "일별 시간표"
+              : viewMode === "monthly"
+                ? "월별 시간표"
+                : "주간 시간표"
+          }
         />
         {userId && (
           <>

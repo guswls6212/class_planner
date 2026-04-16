@@ -15,6 +15,7 @@ export function drawHeader(
   const { margin, pageWidth, headerHeight } = dims;
   const y = margin.top + headerHeight / 2;
 
+  doc.setFont("Pretendard", "bold");
   doc.setFontSize(14);
   doc.setTextColor(30, 30, 30);
   doc.text(options.academyName, margin.left + dims.timeColWidth, y, {
@@ -52,6 +53,7 @@ export function drawFooter(doc: jsPDF, dims: GridDimensions): void {
   const { margin, pageWidth, pageHeight, footerHeight } = dims;
   const y = pageHeight - margin.bottom - footerHeight / 2;
 
+  doc.setFont("Pretendard", "normal");
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.text("CLASS PLANNER", pageWidth / 2, y, {
