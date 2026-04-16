@@ -193,12 +193,11 @@
 - [x] Color-by 토글 UI — 원장 뷰에서 과목/학생/강사 색상 기준 전환 (PR#45)
 - [x] CSS Modules → Tailwind 전면 이관 — 14개 모듈 삭제 완료 (PR#44)
 
+- [x] 시간표 템플릿 — templates 테이블, API CRUD, SaveTemplateModal + ApplyTemplateModal, 이름 기반 매칭 (PR#61)
+
 ### 남은 항목
-- [ ] 공유 링크 페이지 (`/share/{token}`) — 학생/학부모용 읽기 전용 Surface 모드 (현재는 PDF만)
 - [ ] 학원생 자동 알림 (시간표 변경 시)
 - [ ] 출석 관리 기능
-- [ ] 월별/주별 시간표 뷰
-- [ ] 시간표 템플릿 기능
 
 ---
 
