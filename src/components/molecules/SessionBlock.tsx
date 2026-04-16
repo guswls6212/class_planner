@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
 import {
@@ -65,6 +65,7 @@ interface SessionBlockProps {
   onDragEnd?: (e: React.DragEvent) => void; // 🆕 드래그 종료 핸들러
   style?: React.CSSProperties;
   selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
+  isMobile?: boolean; // 모바일 뷰포트 여부
   // 🆕 드래그 상태 props
   isDragging?: boolean; // 드래그 중인지 여부
   draggedSessionId?: string; // 드래그된 세션 ID
@@ -99,11 +100,16 @@ function SessionBlock({
   onDragStart, // 🆕 드래그 시작 핸들러
   onDragEnd, // 🆕 드래그 종료 핸들러
   selectedStudentId, // 🆕 선택된 학생 ID 추가
+  isMobile = false,
   isDragging = false, // 🆕 드래그 상태
   draggedSessionId, // 🆕 드래그된 세션 ID
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
   hasConflict = false,
 }: SessionBlockProps) {
+  // 롱프레스 컨텍스트 메뉴 상태
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchMovedRef = useRef(false);
   // 세션 진행 상태 계산 (upcoming / in-progress / completed)
   // Hook must be called before any early return (Rules of Hooks).
   // session is validated below — we use fallback values when session is null.
@@ -159,6 +165,51 @@ function SessionBlock({
     isDragging, // 🆕 드래그 상태 전달
     session.id === draggedSessionId, // 🆕 현재 세션이 드래그된 세션인지
     isAnyDragging // 🆕 전역 드래그 상태 전달
+  );
+
+  // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchMovedRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      if (!touchMovedRef.current) {
+        e.preventDefault();
+        setContextMenuOpen(true);
+      }
+    }, 300);
+  }, []);
+
+  const handleTouchMove = useCallback(() => {
+    touchMovedRef.current = true;
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current !== null) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const handleContextMenuEdit = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      setContextMenuOpen(false);
+      onClick();
+    },
+    [onClick]
+  );
+
+  const handleContextMenuDelete = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      setContextMenuOpen(false);
+      // 편집 모달을 통해 삭제 처리 — onClick으로 편집 모달 열기
+      onClick();
+    },
+    [onClick]
   );
 
   const handleClick = (e: React.MouseEvent) => {
@@ -239,15 +290,49 @@ function SessionBlock({
   const cursorClassName =
     isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
 
+  // 컨텍스트 메뉴를 위해 position/left/top/width/height/zIndex를 wrapper div에 위임
+  // opacity/visibility/pointerEvents는 테스트 호환성을 위해 button에 유지
+  const wrapperStyle: React.CSSProperties = {
+    position: "absolute",
+    left: styles.left,
+    top: styles.top,
+    width: styles.width,
+    height: styles.height,
+    zIndex: styles.zIndex,
+  };
+  const buttonStyle: React.CSSProperties = {
+    background: styles.background,
+    color: styles.color,
+    borderRadius: styles.borderRadius,
+    padding: styles.padding,
+    fontSize: styles.fontSize,
+    display: styles.display,
+    alignItems: styles.alignItems,
+    overflow: styles.overflow,
+    border: styles.border,
+    cursor: styles.cursor,
+    pointerEvents: styles.pointerEvents,
+    opacity: styles.opacity,
+    visibility: styles.visibility as React.CSSProperties["visibility"],
+    transition: styles.transition,
+    width: "100%",
+    height: "100%",
+    position: "relative",
+  };
+
   return (
+    <div style={wrapperStyle}>
     <button
       type="button"
-      style={styles}
+      style={buttonStyle}
       aria-label={ariaLabel}
       onClick={handleClick}
-      draggable={true} // 드래그 가능하도록 설정
-      onDragStart={handleDragStart} // 드래그 시작 이벤트
-      onDragEnd={handleDragEnd} // 드래그 종료 이벤트
+      draggable={!isMobile} // 모바일에서는 드래그 비활성화
+      onDragStart={!isMobile ? handleDragStart : undefined}
+      onDragEnd={!isMobile ? handleDragEnd : undefined}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
       data-starts-at={session.startsAt}
@@ -370,6 +455,42 @@ function SessionBlock({
         </div>
       </div>
     </button>
+
+    {/* 롱프레스 컨텍스트 메뉴 */}
+    {contextMenuOpen && (
+      <>
+        {/* 백드롭 — 외부 클릭 시 메뉴 닫기 */}
+        <div
+          className="fixed inset-0 z-[200]"
+          onClick={() => setContextMenuOpen(false)}
+          aria-hidden="true"
+        />
+        {/* 컨텍스트 메뉴 — wrapper div 기준 top-full left-0 */}
+        <div
+          role="menu"
+          aria-label="세션 옵션"
+          className="absolute top-full left-0 z-[201] min-w-[120px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] py-1 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+            onClick={handleContextMenuEdit}
+          >
+            편집
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+            onClick={handleContextMenuDelete}
+          >
+            삭제
+          </button>
+        </div>
+      </>
+    )}
+    </div>
   );
 }
 
