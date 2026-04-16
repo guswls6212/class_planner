@@ -1,5 +1,6 @@
 import React from "react";
 import { logger } from "../../lib/logger";
+import { useSessionStatus } from "../../hooks/useSessionStatus";
 import {
   type ColorByMode,
   getGroupStudentNames,
@@ -68,6 +69,7 @@ interface SessionBlockProps {
   isDragging?: boolean; // 드래그 중인지 여부
   draggedSessionId?: string; // 드래그된 세션 ID
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
+  hasConflict?: boolean; // 시간 충돌 여부
 }
 
 export const validateSessionBlockProps = (
@@ -100,7 +102,17 @@ function SessionBlock({
   isDragging = false, // 🆕 드래그 상태
   draggedSessionId, // 🆕 드래그된 세션 ID
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
+  hasConflict = false,
 }: SessionBlockProps) {
+  // 세션 진행 상태 계산 (upcoming / in-progress / completed)
+  // Hook must be called before any early return (Rules of Hooks).
+  // session is validated below — we use fallback values when session is null.
+  const sessionStatus = useSessionStatus(
+    session?.startsAt ?? "00:00",
+    session?.endsAt ?? "00:00",
+    session?.weekday ?? -1
+  );
+
   // null/undefined 안전 처리
   if (!session) {
     return null;
@@ -211,29 +223,66 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
+  // 상태 레이어 Tailwind 클래스 계산 (drag 중에는 dimming/glow 비활성화)
+  const statusClassName = (() => {
+    if (isAnyDragging || isDragging) return "";
+    if (sessionStatus === "completed") return "opacity-[0.55]";
+    if (sessionStatus === "in-progress")
+      return "ring-1 ring-amber-400/50 shadow-[0_0_8px_rgba(251,191,36,0.35)]";
+    return "";
+  })();
+
+  // 충돌 상태 클래스 (충돌: 빨간 왼쪽 테두리 / 정상: 투명 왼쪽 테두리 유지)
+  const conflictClassName = hasConflict ? "border-l-[3px] border-l-[#EF4444]" : "";
+
+  // 커서 클래스 (드래그 중 세션: grabbing / 그 외: move)
+  const cursorClassName =
+    isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
+
   return (
     <button
       type="button"
-      style={{
-        ...styles,
-        cursor: "move", // 🆕 드래그 가능함을 나타내는 커서
-        // 🆕 드래그 중인 세션에 직접 투명도 적용
-        ...(isDragging &&
-          isDraggedSession && {
-            opacity: 0.5,
-          }),
-      }}
+      style={styles}
       aria-label={ariaLabel}
       onClick={handleClick}
-      draggable={true} // 🆕 드래그 가능하도록 설정
-      onDragStart={handleDragStart} // 🆕 드래그 시작 이벤트
-      onDragEnd={handleDragEnd} // 🆕 드래그 종료 이벤트
+      draggable={true} // 드래그 가능하도록 설정
+      onDragStart={handleDragStart} // 드래그 시작 이벤트
+      onDragEnd={handleDragEnd} // 드래그 종료 이벤트
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
       data-starts-at={session.startsAt}
       data-ends-at={session.endsAt}
-      className="session-block"
+      data-status={sessionStatus}
+      className={[
+        "session-block", // focus-visible ring defined in globals.css
+        "hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150", // hover elevation
+        statusClassName,
+        conflictClassName,
+        cursorClassName,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
+      {/* 진행 중 배지 */}
+      {sessionStatus === "in-progress" && !hasConflict && (
+        <span
+          className="absolute top-0.5 right-0.5 rounded-sm px-1 font-semibold leading-tight bg-amber-400 text-[#1a1a1a] text-[8px]"
+          aria-label="진행 중"
+        >
+          진행중
+        </span>
+      )}
+
+      {/* 충돌 경고 아이콘 */}
+      {hasConflict && (
+        <span
+          className="absolute top-0.5 right-0.5 text-[10px] text-red-500 leading-none"
+          aria-label="시간 충돌"
+        >
+          ⚠️
+        </span>
+      )}
+
       <div
         style={{
           display: "flex",
