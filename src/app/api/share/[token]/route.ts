@@ -14,7 +14,7 @@ export async function GET(
     // 1. Validate token
     const { data: tokenRow, error: tokenError } = await client
       .from("share_tokens")
-      .select("id, token, academy_id, label, filter_student_id, expires_at, revoked_at")
+      .select("id, token, academy_id, label, filter_student_id, expires_at, revoked_at, last_viewed_at")
       .eq("token", token)
       .single();
 
@@ -32,10 +32,10 @@ export async function GET(
 
     const academyId: string = tokenRow.academy_id;
 
-    // 2. Fetch academy name
+    // 2. Fetch academy name + change tracking timestamp
     const { data: academyRow } = await client
       .from("academies")
-      .select("name")
+      .select("name, schedule_updated_at")
       .eq("id", academyId)
       .single();
 
@@ -65,7 +65,20 @@ export async function GET(
       students = students.filter((st: { id: string }) => st.id === filterStudentId);
     }
 
-    logger.info("공유 링크 데이터 조회", { token: token.slice(0, 8) + "...", academyId });
+    // 5. Determine change badge data before updating last_viewed_at
+    const previousLastViewedAt: string | null = tokenRow.last_viewed_at ?? null;
+    const scheduleUpdatedAt: string = academyRow?.schedule_updated_at ?? new Date().toISOString();
+    const hasChanges: boolean =
+      previousLastViewedAt !== null &&
+      new Date(scheduleUpdatedAt) > new Date(previousLastViewedAt);
+
+    // 6. Update last_viewed_at to now (sequential to ensure consistency)
+    await client
+      .from("share_tokens")
+      .update({ last_viewed_at: new Date().toISOString() })
+      .eq("id", tokenRow.id);
+
+    logger.info("공유 링크 데이터 조회", { token: token.slice(0, 8) + "...", academyId, hasChanges });
 
     return NextResponse.json({
       success: true,
@@ -77,6 +90,9 @@ export async function GET(
         subjects: subjectsRes.data ?? [],
         enrollments: enrollmentsRes.data ?? [],
         teachers: teachersRes.data ?? [],
+        scheduleUpdatedAt,
+        lastViewedAt: previousLastViewedAt,
+        hasChanges,
       },
     });
   } catch (error) {

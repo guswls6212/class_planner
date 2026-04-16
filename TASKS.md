@@ -202,8 +202,7 @@
 - [x] 시간표 템플릿 — templates 테이블, 저장/적용 모달, useTemplates 훅, name-based 매칭 (PR#61)
 - [x] 출석 관리 — attendance 테이블, GET/POST API, bulk upsert, AttendanceSheet, useAttendance 훅, 일별 뷰 연동 (PR#62)
 
-### 남은 항목
-- [ ] 학원생 자동 알림 (시간표 변경 시)
+- [x] 학원생 자동 알림 (시간표 변경 시) — E안: /share/{token} 공유 페이지 변경 배지. academies.schedule_updated_at (sessions trigger), share_tokens.last_viewed_at, ScheduleChangeBanner molecule, migration 029
 
 ---
 

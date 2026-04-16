@@ -87,7 +87,8 @@ class-planner/
 │       ├── 025_add_student_profile_fields.sql
 │       ├── 026_create_share_tokens.sql    # W3: 공유 링크 토큰 테이블
 │       ├── 027_create_templates.sql       # W4: 시간표 템플릿 테이블
-│       └── 028_create_attendance.sql      # W5: 출석 관리 테이블
+│       ├── 028_create_attendance.sql      # W5: 출석 관리 테이블
+│       └── 029_add_schedule_change_tracking.sql  # Phase 4 알림: academies.schedule_updated_at + sessions trigger + share_tokens.last_viewed_at
 │
 ├── nginx/
 │   ├── default.conf
@@ -187,7 +188,9 @@ class-planner/
     │       │   ├── route.ts                  # GET (목록)
     │       │   └── [userId]/route.ts         # DELETE (제거)
     │       ├── share/                        # 공유 링크 (인증 불필요, W3)
-    │       │   └── [token]/route.ts          # GET — token 검증 + 시간표 데이터 반환
+    │       │   └── [token]/
+    │       │       ├── route.ts              # GET — token 검증 + 시간표 데이터 반환 (hasChanges, last_viewed_at 갱신)
+    │       │       └── __tests__/route.test.ts
     │       ├── share-tokens/                 # 공유 토큰 CRUD (W3)
     │       │   ├── route.ts                  # GET (목록), POST (생성)
     │       │   └── [id]/route.ts             # DELETE (취소: revoked_at 설정)
@@ -222,6 +225,7 @@ class-planner/
     │   │   └── __tests__/ (10 test files)
     │   ├── molecules/
     │   │   ├── ApplyTemplateModal.tsx        # W4: 템플릿 적용 모달
+    │   │   ├── ScheduleChangeBanner.tsx      # Phase 4 알림: 공유 페이지 시간표 변경 배지
     │   │   ├── AttendanceSheet.tsx           # W5: 세션별 출석 체크 패널
     │   │   ├── BottomSheet.tsx              # Phase 3: 모바일 바텀 시트
     │   │   ├── BottomTabBar.tsx             # Phase 3: 모바일 하단 탭바
