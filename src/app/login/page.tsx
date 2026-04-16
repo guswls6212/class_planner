@@ -104,142 +104,46 @@ const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-5"
-      style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        minHeight: "calc(100vh - 60px)", // nav 높이만 제외 (footer는 고정)
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="flex min-h-[calc(100vh-60px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] p-5"
     >
       <div
-        className="bg-white w-full text-center"
-        style={{
-          backgroundColor: "white",
-          borderRadius: "16px",
-          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-          padding: "40px",
-          maxWidth: "400px",
-        }}
+        className="w-full max-w-[400px] rounded-2xl bg-white p-10 text-center shadow-[0_20px_40px_rgba(0,0,0,0.1)]"
       >
         {/* Header */}
-        <div
-          className="mb-8"
-          style={{
-            marginBottom: "32px",
-          }}
-        >
+        <div className="mb-8">
           <h1
-            className="font-bold mb-2"
-            style={{
-              fontSize: "2.5rem",
-              fontWeight: "700",
-              color: "#1f2937",
-              margin: "0 0 8px 0",
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
+            className="mb-2 bg-gradient-to-br from-[#667eea] to-[#764ba2] bg-clip-text text-[2.5rem] font-bold leading-tight text-transparent"
           >
             클래스 플래너
           </h1>
-          <p
-            className="text-base leading-relaxed"
-            style={{
-              color: "#6b7280",
-              fontSize: "1rem",
-              margin: "0",
-              lineHeight: "1.5",
-            }}
-          >
+          <p className="text-base leading-relaxed text-gray-500">
             수업 시간표를 쉽고 빠르게 관리하세요
           </p>
         </div>
 
         {/* Login Section */}
-        <div
-          className="mb-8"
-          style={{
-            marginBottom: "32px",
-          }}
-        >
-          <h2
-            className="font-semibold mb-6"
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "600",
-              color: "#1f2937",
-              margin: "0 0 24px 0",
-            }}
-          >
+        <div className="mb-8">
+          <h2 className="mb-6 text-2xl font-semibold text-gray-800">
             로그인
           </h2>
 
           {error && (
-            <div
-              className="rounded-lg mb-5 text-sm"
-              style={{
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                color: "#dc2626",
-                padding: "12px",
-                borderRadius: "8px",
-                marginBottom: "20px",
-                fontSize: "0.875rem",
-              }}
-            >
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
           {/* Social Buttons */}
-          <div
-            className="flex flex-col gap-3 mb-6"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "12px",
-              marginBottom: "24px",
-            }}
-          >
+          <div className="mb-6 flex flex-col gap-3">
             <Button
               onClick={handleGoogleLogin}
               disabled={isLoading}
               variant="transparent"
-              className="w-full py-3 px-4 border transition-all duration-200"
-              style={{
-                backgroundColor: "white",
-                border: "1px solid #d1d5db",
-                color: "#374151",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#f9fafb";
-                e.currentTarget.style.borderColor = "#9ca3af";
-                e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(0, 0, 0, 0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "white";
-                e.currentTarget.style.borderColor = "#d1d5db";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
+              className="w-full border border-gray-300 bg-white px-4 py-3 text-gray-700 transition-all duration-200 hover:-translate-y-px hover:border-gray-400 hover:bg-gray-50 hover:shadow-md"
             >
-              <div
-                className="flex items-center justify-center gap-3"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "12px",
-                }}
-              >
+              <div className="flex items-center justify-center gap-3">
                 <svg
-                  className="flex-shrink-0"
+                  className="shrink-0"
                   viewBox="0 0 24 24"
                   width="20"
                   height="20"
@@ -267,32 +171,14 @@ const LoginPage: React.FC = () => {
           </div>
 
           {/* Email Section */}
-          <div
-            className="mt-6"
-            style={{
-              marginTop: "24px",
-            }}
-          >
-            <p
-              className="text-sm mb-3"
-              style={{
-                color: "#6b7280",
-                fontSize: "0.875rem",
-                margin: "0 0 12px 0",
-              }}
-            >
+          <div className="mt-6">
+            <p className="mb-3 text-sm text-gray-500">
               이메일 로그인은 준비 중입니다
             </p>
             <Button
               disabled={true}
               variant="transparent"
-              className="w-full py-3 px-4 border cursor-not-allowed"
-              style={{
-                backgroundColor: "#f3f4f6",
-                border: "1px solid #d1d5db",
-                color: "#9ca3af",
-                cursor: "not-allowed",
-              }}
+              className="w-full cursor-not-allowed border border-gray-300 bg-gray-100 px-4 py-3 text-gray-400"
             >
               이메일로 로그인 (준비 중)
             </Button>
@@ -300,22 +186,8 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div
-          className="pt-6"
-          style={{
-            borderTop: "1px solid #e5e7eb",
-            paddingTop: "24px",
-          }}
-        >
-          <p
-            className="text-sm leading-relaxed"
-            style={{
-              color: "#6b7280",
-              fontSize: "0.875rem",
-              margin: "0",
-              lineHeight: "1.5",
-            }}
-          >
+        <div className="border-t border-gray-200 pt-6">
+          <p className="text-sm leading-relaxed text-gray-500">
             로그인하면 수업 시간표를 저장하고 관리할 수 있습니다
           </p>
         </div>
