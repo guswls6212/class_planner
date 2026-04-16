@@ -1,5 +1,52 @@
 /* Tailwind CSS v4 — theme 변수 포함 전체 임포트 (색상 CSS 변수 정의 필요) */
 @import "tailwindcss";
+/* ===================================================
+   Phase 3 Design System — @theme SSOT
+   New tokens for Admin (A) and Surface (C) modes.
+   Existing :root vars preserved for backward compat.
+   Remove legacy entries when components are redesigned.
+=================================================== */
+@theme {
+  /* --- Admin Mode: Accent (Amber Confident) --- */
+  --color-accent:         #FBBF24;
+  --color-accent-hover:   #F59E0B;
+  --color-accent-pressed: #D97706;
+
+  /* --- Semantic (shared by Admin + Surface) --- */
+  /* Note: --color-success/warning/danger already exist in :root.
+     These @theme entries create new Tailwind classes: bg-success etc.
+     The :root values remain for CSS var usage (var(--color-success)). */
+  --color-semantic-success: #10B981;
+  --color-semantic-warning: #F59E0B;
+  --color-semantic-danger:  #EF4444;
+  --color-semantic-info:    #3B82F6;
+
+  /* --- Typography --- */
+  /* Creates font-sans class using Pretendard */
+  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system,
+               'SF Pro Display', 'Segoe UI', sans-serif;
+
+  /* Custom text scale for Phase 3 components.
+     Usage: class="text-hero" (48px/800), "text-page" (32px/800) etc.
+     Existing Tailwind text-* utilities (text-xl etc.) are unaffected. */
+  --text-hero:    3rem;      /* 48px */
+  --text-page:    2rem;      /* 32px */
+  --text-section: 1.375rem;  /* 22px */
+  --text-label:   0.8125rem; /* 13px */
+  --text-caption: 0.6875rem; /* 11px */
+
+  /* --- Admin Radius (sharp) --- */
+  /* Creates rounded-admin-sm / rounded-admin-md / rounded-admin-lg */
+  --radius-admin-sm: 4px;
+  --radius-admin-md: 6px;
+  --radius-admin-lg: 8px;
+
+  /* --- Shadow --- */
+  --shadow-admin-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-admin-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-admin-lg: 0 12px 32px rgba(0,0,0,.12);
+}
+
 /* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
 @custom-variant dark (&:where(body[data-theme=dark] *, body[data-theme=dark]));
 /* 명시적 소스 스캔: src 하위 모든 파일 */
