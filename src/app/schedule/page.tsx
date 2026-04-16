@@ -102,6 +102,10 @@ const ScheduleDailyView = dynamic(
   () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
   { ssr: false, loading: () => null }
 );
+const ScheduleMonthlyView = dynamic(
+  () => import("../../components/organisms/ScheduleMonthlyView"),
+  { ssr: false, loading: () => null }
+);
 
 /**
  * 페이지 엔트리 컴포넌트
@@ -128,7 +132,7 @@ function SchedulePageContent(): JSX.Element {
   // Color-by 토글
   const { colorBy, setColorBy } = useColorBy();
 
-  // 뷰 모드 (일별/주간) 및 날짜 선택
+  // 뷰 모드 (일별/주간/월별) 및 날짜 선택
   const {
     viewMode,
     setViewMode,
@@ -136,7 +140,10 @@ function SchedulePageContent(): JSX.Element {
     selectedWeekday,
     goToNextDay,
     goToPrevDay,
+    goToToday,
     setSelectedDate,
+    goToNextMonth,
+    goToPrevMonth,
   } = useScheduleView();
 
   // 성능 모니터링
@@ -957,7 +964,7 @@ function SchedulePageContent(): JSX.Element {
         onDownloadEnd={() => setIsDownloading(false)}
       />
 
-      {/* 시간표 뷰 (일별/주간 조건부 렌더링) */}
+      {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
         <ScheduleDailyView
           sessions={displaySessions}
@@ -976,8 +983,22 @@ function SchedulePageContent(): JSX.Element {
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
         />
+      ) : viewMode === "monthly" ? (
+        <ScheduleMonthlyView
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          currentDate={selectedDate}
+          goToNextMonth={goToNextMonth}
+          goToPrevMonth={goToPrevMonth}
+          goToToday={goToToday}
+          onDayClick={(date) => {
+            setSelectedDate(date);
+            setViewMode("daily");
+          }}
+        />
       ) : (
-        /* 🆕 시간표 그리드 */
+        /* 주간 시간표 그리드 */
         <ScheduleGridSection
           containerRef={timeTableRef}
           gridVersion={gridVersion}

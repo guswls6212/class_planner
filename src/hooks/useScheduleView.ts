@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useLocal } from "./useLocal";
 
-export type ScheduleViewMode = "daily" | "weekly";
+export type ScheduleViewMode = "daily" | "weekly" | "monthly";
 
 interface UseScheduleViewReturn {
   viewMode: ScheduleViewMode;
@@ -14,6 +14,9 @@ interface UseScheduleViewReturn {
   goToPrevDay: () => void;
   goToToday: () => void;
   setSelectedDate: (date: Date) => void;
+  goToNextMonth: () => void;
+  goToPrevMonth: () => void;
+  currentMonthLabel: string; // e.g. "2026년 4월"
 }
 
 export function useScheduleView(): UseScheduleViewReturn {
@@ -47,6 +50,26 @@ export function useScheduleView(): UseScheduleViewReturn {
     setSelectedDate(new Date());
   }, []);
 
+  const goToNextMonth = useCallback(() => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(1);
+      next.setMonth(next.getMonth() + 1);
+      return next;
+    });
+  }, []);
+
+  const goToPrevMonth = useCallback(() => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(1);
+      next.setMonth(next.getMonth() - 1);
+      return next;
+    });
+  }, []);
+
+  const currentMonthLabel = `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
+
   return {
     viewMode: storedView,
     setViewMode: setStoredView,
@@ -56,5 +79,8 @@ export function useScheduleView(): UseScheduleViewReturn {
     goToPrevDay,
     goToToday,
     setSelectedDate,
+    goToNextMonth,
+    goToPrevMonth,
+    currentMonthLabel,
   };
 }
