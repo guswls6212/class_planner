@@ -1,5 +1,5 @@
 /**
- * 학생 페이지 테스트 (84줄)
+ * 학생 페이지 테스트
  */
 
 import { render } from "@testing-library/react";
@@ -13,7 +13,7 @@ vi.mock("../../../hooks/useStudentManagementLocal", () => ({
     loading: false,
     error: null,
     addStudent: vi.fn(),
-    updateStudent: vi.fn(),
+    updateStudent: vi.fn().mockResolvedValue(true),
     deleteStudent: vi.fn(),
     getStudent: vi.fn(),
     refreshStudents: vi.fn(),
@@ -22,10 +22,39 @@ vi.mock("../../../hooks/useStudentManagementLocal", () => ({
   })),
 }));
 
-vi.mock("../../components/organisms/StudentsPageLayout", () => ({
-  default: vi.fn(() => (
-    <div data-testid="students-layout">Students Layout</div>
-  )),
+vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
+  useIntegratedDataLocal: vi.fn(() => ({
+    data: {
+      students: [],
+      subjects: [],
+      enrollments: [],
+      sessions: [],
+      teachers: [],
+      version: "1.0",
+    },
+    loading: false,
+    error: null,
+    refreshData: vi.fn(),
+    updateData: vi.fn(),
+    clearError: vi.fn(),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    deleteSession: vi.fn(),
+    addEnrollment: vi.fn(),
+    deleteEnrollment: vi.fn(),
+    addTeacher: vi.fn(),
+    updateTeacher: vi.fn(),
+    deleteTeacher: vi.fn(),
+    studentCount: 0,
+    subjectCount: 0,
+    sessionCount: 0,
+    enrollmentCount: 0,
+    teacherCount: 0,
+  })),
+}));
+
+vi.mock("../../../hooks/useLocal", () => ({
+  useLocal: vi.fn(() => ["", vi.fn()]),
 }));
 
 describe("Students Page", () => {

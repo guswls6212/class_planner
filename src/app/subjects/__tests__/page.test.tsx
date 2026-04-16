@@ -1,5 +1,5 @@
 /**
- * 과목 페이지 테스트 (69줄)
+ * 과목 페이지 테스트
  */
 
 import { render } from "@testing-library/react";
@@ -11,8 +11,8 @@ vi.mock("../../../hooks/useSubjectManagementLocal", () => ({
   useSubjectManagementLocal: vi.fn(() => ({
     subjects: [],
     errorMessage: "",
-    addSubject: vi.fn(),
-    updateSubject: vi.fn(),
+    addSubject: vi.fn().mockResolvedValue(true),
+    updateSubject: vi.fn().mockResolvedValue(true),
     deleteSubject: vi.fn(),
     getSubject: vi.fn(),
     refreshSubjects: vi.fn(),
@@ -21,10 +21,35 @@ vi.mock("../../../hooks/useSubjectManagementLocal", () => ({
   })),
 }));
 
-vi.mock("../../components/organisms/SubjectsPageLayout", () => ({
-  default: vi.fn(() => (
-    <div data-testid="subjects-layout">Subjects Layout</div>
-  )),
+vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
+  useIntegratedDataLocal: vi.fn(() => ({
+    data: {
+      students: [],
+      subjects: [],
+      enrollments: [],
+      sessions: [],
+      teachers: [],
+      version: "1.0",
+    },
+    loading: false,
+    error: null,
+    refreshData: vi.fn(),
+    updateData: vi.fn(),
+    clearError: vi.fn(),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    deleteSession: vi.fn(),
+    addEnrollment: vi.fn(),
+    deleteEnrollment: vi.fn(),
+    addTeacher: vi.fn(),
+    updateTeacher: vi.fn(),
+    deleteTeacher: vi.fn(),
+    studentCount: 0,
+    subjectCount: 0,
+    sessionCount: 0,
+    enrollmentCount: 0,
+    teacherCount: 0,
+  })),
 }));
 
 describe("Subjects Page", () => {
