@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [checked, setChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const check = () => {
       const userId = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
       setIsLoggedIn(!!userId);
+      setChecked(true);
       if (userId) {
         router.replace("/schedule");
       }
@@ -27,7 +29,7 @@ export default function LandingPage() {
     };
   }, [router]);
 
-  if (isLoggedIn) return null;
+  if (!checked || isLoggedIn) return null;
 
   return (
     <>
@@ -71,7 +73,7 @@ function HeroSection() {
             </a>
           </div>
         </div>
-        <div className="flex-1 w-full">
+        <div className="flex-[1.2] w-full">
           <ScheduleMockup />
         </div>
       </div>
@@ -86,8 +88,7 @@ function ScheduleMockup() {
       className="bg-[--color-bg-secondary] rounded-admin-lg shadow-admin-lg border border-[--color-border-light] p-5 w-full"
     >
       <div
-        className="grid gap-[3px]"
-        style={{ gridTemplateColumns: "56px repeat(5, 1fr)" }}
+        className="grid gap-[3px] [grid-template-columns:56px_repeat(5,1fr)]"
       >
         {/* Header row */}
         <div />
