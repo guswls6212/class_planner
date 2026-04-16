@@ -10,6 +10,7 @@ import React, {
 import { logger } from "../../lib/logger";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import TimeTableRow from "../molecules/TimeTableRow";
 
 // 🆕 드래그 상태 타입 정의 (간소화)
@@ -67,6 +68,13 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     },
     ref
   ) => {
+    // 반응형: 모바일 뷰포트 감지 (SSR-safe)
+    const isMobile = useMediaQuery("(max-width: 767px)");
+
+    // 터치 디바이스 감지 (drag-and-drop 비활성화용)
+    const isTouchDevice =
+      typeof window !== "undefined" && "ontouchstart" in window;
+
     // 🆕 드래그 상태 관리 (간소화)
     const [dragPreview, setDragPreview] = useState<DragPreviewState>({
       draggedSession: null,
@@ -371,25 +379,33 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [weekdayHeights]
     );
 
-    // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 100px (학생 이름 표시를 위해)
+    // 그리드 템플릿 열: 모바일(< 768px)에서는 축소된 너비 사용
     const gridTemplateColumns = useMemo(
-      () => `80px repeat(${timeCols}, 100px)`,
-      [timeCols]
+      () =>
+        isMobile
+          ? `56px repeat(${timeCols}, 64px)` // 모바일: 요일 56px + 열 64px
+          : `80px repeat(${timeCols}, 100px)`, // 데스크탑: 요일 80px + 열 100px
+      [timeCols, isMobile]
     );
 
-    // 🆕 드래그 시작 핸들러 (간소화)
-    const handleDragStart = useCallback((session: Session) => {
-      setDragPreview({
-        draggedSession: session,
-        targetWeekday: null,
-        targetTime: null,
-        targetYPosition: null,
-      });
-    }, []);
+    // 🆕 드래그 시작 핸들러 (터치 디바이스에서는 no-op)
+    const handleDragStart = useCallback(
+      (session: Session) => {
+        if (isTouchDevice) return;
+        setDragPreview({
+          draggedSession: session,
+          targetWeekday: null,
+          targetTime: null,
+          targetYPosition: null,
+        });
+      },
+      [isTouchDevice]
+    );
 
-    // 🆕 드래그 오버 핸들러 (간소화)
+    // 🆕 드래그 오버 핸들러 (터치 디바이스에서는 no-op)
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
+        if (isTouchDevice) return;
         if (!dragPreview.draggedSession) return;
 
         setDragPreview((prev) => ({
@@ -399,7 +415,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           targetYPosition: yPosition,
         }));
       },
-      [dragPreview.draggedSession]
+      [dragPreview.draggedSession, isTouchDevice]
     );
 
     // 🆕 드래그 종료 핸들러 (간소화)
@@ -478,7 +494,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                   backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
                   padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
                   textAlign: "center",
-                  fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
+                  fontSize: isMobile ? "9px" : "11px", // 모바일에서 더 작은 폰트
                   color: "var(--color-text-secondary)",
                   border: "1px solid var(--color-border)",
                   borderRight: isLastTime
@@ -518,11 +534,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
                 teachers={teachers}
                 colorBy={colorBy}
-                // 🆕 드래그 핸들러들 전달
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                dragPreview={dragPreview}
+                isMobile={isMobile}
+                // 터치 디바이스에서는 drag-and-drop 핸들러를 전달하지 않음
+                onDragStart={isTouchDevice ? undefined : handleDragStart}
+                onDragOver={isTouchDevice ? undefined : handleDragOver}
+                onDragEnd={isTouchDevice ? undefined : handleDragEnd}
+                dragPreview={isTouchDevice ? undefined : dragPreview}
               />
             );
           })}

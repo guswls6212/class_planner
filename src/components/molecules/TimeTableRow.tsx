@@ -38,6 +38,7 @@ interface TimeTableRowProps {
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
   teachers?: Teacher[];
   colorBy?: ColorByMode;
+  isMobile?: boolean;
   // 🆕 드래그 핸들러들
   onDragStart?: (session: Session) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
@@ -63,6 +64,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
   teachers = [],
   colorBy = "subject",
+  isMobile = false,
   // 🆕 드래그 핸들러들
   onDragStart,
   onDragOver,
@@ -144,6 +146,9 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return slots;
   }, []);
 
+  // 모바일 여부에 따른 열 너비 (30분 단위)
+  const colWidth = isMobile ? 64 : 100;
+
   // 🆕 시간대별로 겹치는 세션들을 병합하여 표시
   const mergedSessions = React.useMemo(() => {
     const merged: Array<{
@@ -158,21 +163,22 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const [startTime] = timeKey.split("-");
       const timeSlot = timeToMinutes(startTime);
 
-      // 🆕 정확한 시간 기반 위치 계산 (소수점 제거)
+      // 정확한 시간 기반 위치 계산 (소수점 제거)
       const timeIndex = (timeSlot - 9 * 60) / 30;
-      const left = Math.round(timeIndex * 100); // 🆕 Math.round로 소수점 제거
+      const left = Math.round(timeIndex * colWidth);
 
       // 🆕 같은 시간대의 모든 세션을 개별적으로 표시
       sessionsInTime.forEach((session) => {
         const yPosition = sessionYPositions.get(session.id) || 0;
 
-        // 🆕 세션셀 너비를 실제 시간 길이에 맞게 계산 (소수점 제거)
+        // 세션셀 너비를 실제 시간 길이에 맞게 계산 (소수점 제거)
         const sessionDuration =
           timeToMinutes(session.endsAt) - timeToMinutes(session.startsAt);
-        const timeBasedWidth = Math.round((sessionDuration / 30) * 100); // 🆕 Math.round로 소수점 제거
+        const timeBasedWidth = Math.round((sessionDuration / 30) * colWidth);
 
-        // 🆕 정확한 시간 기반 너비 사용
-        const width = Math.max(timeBasedWidth, 80); // 🆕 최소 너비 80px로 증가 (기존 50px)
+        // 최소 너비 보장
+        const minWidth = isMobile ? 52 : 80;
+        const width = Math.max(timeBasedWidth, minWidth);
 
         merged.push({
           session: session,
@@ -185,7 +191,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
 
     return merged;
-  }, [sessionsByTime, sessionYPositions, timeToMinutes]);
+  }, [sessionsByTime, sessionYPositions, timeToMinutes, colWidth, isMobile]);
 
   return (
     <div
@@ -259,11 +265,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 dragPreview={dragPreview} // 🆕 드래그 프리뷰 정보 전달
                 style={{
                   position: "absolute",
-                  top: `${top}px`, // 🆕 yPosition별 위치
-                  left: `${timeIndex * 100}px`, // 🆕 30분당 100px
-                  width: "100px", // 🆕 30분 단위 너비
-                  height: `${SESSION_CELL_HEIGHT}px`, // 🆕 세션 셀 높이 상수 사용
-                  zIndex: isDragging ? 10 : 1, // 🆕 드래그 중일 때만 z-index를 조금 높임
+                  top: `${top}px`,
+                  left: `${timeIndex * colWidth}px`,
+                  width: `${colWidth}px`,
+                  height: `${SESSION_CELL_HEIGHT}px`,
+                  zIndex: isDragging ? 10 : 1,
                 }}
               />
             );
@@ -299,6 +305,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             selectedStudentId={selectedStudentId}
             teachers={teachers}
             colorBy={colorBy}
+            isMobile={isMobile}
             // 🆕 드래그 상태 전달
             isDragging={dragPreview?.draggedSession !== null}
             draggedSessionId={dragPreview?.draggedSession?.id}
