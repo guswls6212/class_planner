@@ -59,7 +59,7 @@ export const StudentManagementSection: React.FC<
       />
 
       {selectedStudentId && (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-4">
           <h3>
             선택된 학생:{" "}
             {students.find((s) => s.id === selectedStudentId)?.name}

@@ -31,13 +31,10 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
 
   return (
     <div
-      className="fixed z-[9999] overflow-auto rounded-xl border border-white/20 bg-black/85 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.8),0_10px_10px_-5px_rgba(0,0,0,0.6)] backdrop-blur-[10px]"
+      className="fixed z-[9999] overflow-auto rounded-xl border border-white/20 bg-black/85 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.8),0_10px_10px_-5px_rgba(0,0,0,0.6)] backdrop-blur-[10px] w-[280px] max-h-[400px] p-4"
       style={{
         left: safePosition.x,
         top: safePosition.y,
-        width: 280,
-        maxHeight: "400px",
-        padding: 16,
       }}
       onMouseDown={onMouseDown}
     >

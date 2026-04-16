@@ -195,46 +195,21 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   return (
     <div
-      className={`time-table-row ${className}`}
-      style={{
-        display: "contents", // 🆕 다시 contents로 변경 (부모 그리드에 직접 참여)
-        ...style,
-      }}
+      className={`time-table-row contents ${className}`}
+      style={style}
     >
       {/* 요일 라벨 (Y축 왼쪽) - 스크롤 시 좌측 고정 */}
       <div
-        className="shadow-sm"
-        style={{
-          // 완전 불투명 배경으로 세션 셀과의 겹침 제거
-          backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
-          padding: "12px 8px",
-          textAlign: "center",
-          fontWeight: "bold",
-          fontSize: "14px",
-          color: "var(--color-text)",
-          border: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: `${height}px`,
-          position: "sticky",
-          left: 0,
-          zIndex: 999, // 세션(zIndex: 100+yOffset)보다 높게, 레이아웃 상위(1000)보다 낮게
-          gridColumn: "1", // 🆕 첫 번째 열에 명시적으로 배치
-        }}
+        className="shadow-sm flex items-center justify-center px-2 py-3 text-center font-bold text-sm border border-[var(--color-border)] bg-[var(--color-bg-primary)] sticky left-0 z-[999] [grid-column:1]"
+        style={{ height: `${height}px`, color: "var(--color-text)" }}
       >
         {["월", "화", "수", "목", "금", "토", "일"][weekday]}
       </div>
 
       {/* 요일별 세션 컨테이너 (X축 전체) */}
       <div
-        style={{
-          position: "relative",
-          backgroundColor: "var(--color-bg-primary)",
-          height: `${height}px`,
-          border: "1px solid var(--color-border-grid)",
-          gridColumn: "2 / -1", // 🆕 첫 번째 열(요일 라벨)을 제외한 모든 열 차지
-        }}
+        className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border-grid)] [grid-column:2_/_-1]"
+        style={{ height: `${height}px` }}
       >
         {/* 🆕 드롭 존들 - 30분 단위 × maxYPosition 개의 개별 DropZone */}
         {timeSlots30Min.map((timeString, timeIndex) => {

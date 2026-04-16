@@ -368,41 +368,11 @@ function SessionBlock({
         </span>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          width: "100%",
-          height: "100%",
-          padding: "4px",
-          justifyContent: "space-between", // 🆕 상하 공간 분배
-        }}
-      >
+      <div className="flex flex-col w-full h-full p-1 justify-between">
         {/* 첫 번째 줄: 주요 레이블(왼쪽) + 시간(오른쪽) */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            height: "15px",
-            overflow: "hidden",
-          }}
-        >
+        <div className="flex items-start justify-between h-[15px] overflow-hidden">
           {/* Top-left: colorBy에 따라 과목명 | 학생명 | 강사명 */}
-          <span
-            style={{
-              color: "white",
-              fontWeight: "600",
-              fontSize: "13px",
-              textAlign: "left",
-              letterSpacing: "-0.5px",
-              lineHeight: "1.1",
-              flex: 1,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <span className="text-white font-semibold text-[13px] text-left tracking-[-0.5px] leading-[1.1] flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
             {colorBy === "student"
               ? studentNames[0] || "학생 없음"
               : colorBy === "teacher"
@@ -411,42 +381,16 @@ function SessionBlock({
           </span>
 
           {/* 시간 - 오른쪽 */}
-          <span
-            style={{
-              color: "rgba(255, 255, 255, 0.8)",
-              fontSize: "11px",
-              textAlign: "right",
-              letterSpacing: "-0.2px",
-              lineHeight: "1.1",
-              marginLeft: "4px",
-              flexShrink: 0,
-            }}
-          >
+          <span className="text-white/80 text-[11px] text-right tracking-[-0.2px] leading-[1.1] ml-1 shrink-0">
             {session.startsAt}-{session.endsAt}
           </span>
         </div>
 
         {/* 두 번째 줄: Bottom-right - colorBy에 따라 학생명 | 과목명 | 학생명 */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "flex-end",
-            height: "14px",
-            overflow: "hidden",
-          }}
-        >
+        <div className="flex items-end justify-end h-[14px] overflow-hidden">
           <span
-            style={{
-              color: "rgba(255, 255, 255, 0.9)",
-              fontSize: getDynamicFontSize(studentNames.length),
-              textAlign: "right",
-              letterSpacing: "-0.3px",
-              lineHeight: "1.1",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            className="text-white/90 text-right tracking-[-0.3px] leading-[1.1] overflow-hidden text-ellipsis whitespace-nowrap"
+            style={{ fontSize: getDynamicFontSize(studentNames.length) }}
           >
             {colorBy === "student"
               ? subject?.name || ""

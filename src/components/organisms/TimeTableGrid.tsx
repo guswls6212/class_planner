@@ -461,26 +461,16 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
             gridRef.current = node;
           }}
-          className={`time-table-grid ${className}`}
+          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
           data-testid="time-table-grid"
           style={{
-            display: "grid",
             gridTemplateColumns,
             gridTemplateRows,
-            backgroundColor: "var(--color-bg-primary)",
-            border: "1px solid var(--color-border-grid)",
-            borderRadius: "8px 8px 0 0", // 위쪽만 둥글게
-            // 그리드 내부에서만 스크롤되도록 설정
-            overflowY: "auto", // 세로 스크롤은 필요할 때만 표시
-            overflowX: "auto", // 가로 스크롤 활성화
-            position: "relative",
-            isolation: "isolate",
-            maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화
             ...style,
           }}
         >
           {/* 좌상단 빈칸 */}
-          <div style={{ backgroundColor: "var(--color-background)" }} />
+          <div className="bg-[var(--color-bg-primary)]" />
 
           {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
           {timeSlots30Min.map((timeString, index) => {
@@ -488,26 +478,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             return (
               <div
                 key={timeString}
-                className="shadow-sm"
-                style={{
-                  // 완전 불투명 배경으로 세션 셀과의 겹침 제거
-                  backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
-                  padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
-                  textAlign: "center",
-                  fontSize: isMobile ? "9px" : "11px", // 모바일에서 더 작은 폰트
-                  color: "var(--color-text-secondary)",
-                  border: "1px solid var(--color-border)",
-                  borderRight: isLastTime
-                    ? "1px solid var(--color-border)"
-                    : "1px solid var(--color-border-grid)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "40px",
-                  position: "sticky",
-                  top: 0,
-                  zIndex: 999, // 세션보다 높게
-                }}
+                className={`shadow-sm flex items-center justify-center p-1 text-center ${isMobile ? "text-[9px]" : "text-[11px]"} text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] h-[40px] sticky top-0 z-[999] ${isLastTime ? "border-r-[var(--color-border)]" : "border-r-[var(--color-border-grid)]"}`}
               >
                 {timeString}
               </div>
@@ -548,33 +519,14 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         {/* 🆕 가상 가로 스크롤바 */}
         <div
           className="virtual-scrollbar-container"
-          style={{
-            position: "sticky",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "12px",
-            backgroundColor: "var(--color-scrollbar-track)",
-            borderTop: "1px solid var(--color-scrollbar-track-border)",
-            borderRadius: "0 0 8px 8px",
-            zIndex: 1000,
-            cursor: "pointer",
-          }}
           onClick={handleScrollbarTrackClick}
         >
           <div
             ref={scrollbarThumbRef}
             className="virtual-scrollbar-thumb"
             style={{
-              position: "absolute",
-              bottom: "1px",
               left: `${scrollbarState.thumbPosition}px`,
-              height: "10px",
               width: `${scrollbarState.thumbWidth}px`,
-              backgroundColor: "var(--color-scrollbar-thumb)",
-              borderRadius: "5px",
-              cursor: "pointer",
-              zIndex: 1001,
             }}
             onMouseDown={handleScrollbarMouseDown}
           />
