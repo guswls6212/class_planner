@@ -1,31 +1,25 @@
+"use client";
 import React from "react";
 import { showError } from "../../lib/toast";
-import type { Student } from "../../lib/planner";
 import Button from "../atoms/Button";
 
 interface PDFDownloadButtonProps {
-  timeTableRef: React.RefObject<HTMLDivElement | null>;
-  selectedStudent: Student | undefined;
+  onDownload: () => Promise<void> | void;
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
 }
 
 const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
-  timeTableRef,
-  selectedStudent,
+  onDownload,
   isDownloading,
   onDownloadStart,
   onDownloadEnd,
 }) => {
   const handlePDFDownload = async () => {
-    if (!timeTableRef.current) return;
-
     onDownloadStart();
     try {
-      const studentName = selectedStudent?.name;
-      const { downloadTimetableAsPDF } = await import("../../lib/pdf-utils");
-      await downloadTimetableAsPDF(timeTableRef.current, studentName);
+      await onDownload();
     } catch (error) {
       showError("PDF 다운로드에 실패했습니다.");
     } finally {
