@@ -97,6 +97,40 @@ describe("checkLoginDataConflict", () => {
     const result = checkLoginDataConflict(serverData);
     expect(result.action).toBe("use-server");
   });
+
+  it("anon에 subjects만 9개 있고 students/sessions/enrollments는 0 → use-server", () => {
+    const subjectsOnlyData: ClassPlannerData = {
+      students: [],
+      subjects: Array.from({ length: 9 }, (_, i) => ({
+        id: `default-${i + 1}`,
+        name: `과목${i + 1}`,
+        color: "#fbbf24",
+      })),
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+    storage["classPlannerData:anonymous"] = JSON.stringify(subjectsOnlyData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("use-server");
+  });
+
+  it("anon에 enrollments만 있고 students/sessions는 0 → conflict (enrollments는 의미 있는 데이터)", () => {
+    const enrollmentsOnlyData: ClassPlannerData = {
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [{ id: "e1", studentId: "s1", subjectId: "sub1" }],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+    storage["classPlannerData:anonymous"] = JSON.stringify(enrollmentsOnlyData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("conflict");
+  });
 });
 
 describe("applyServerChoice", () => {

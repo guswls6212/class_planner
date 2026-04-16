@@ -88,34 +88,14 @@ describe("useGlobalDataInitialization 기본 기능", () => {
     );
   });
 
-  it("기본 과목 추가 시 lastModified가 갱신되어야 한다", () => {
-    // Mock 데이터: 과목이 없는 상태
-    const mockServerData = {
-      students: [],
-      subjects: [], // 빈 과목 배열
-      sessions: [],
-      enrollments: [],
-      version: "1.0",
-      lastModified: "2025-01-01T00:00:00.000Z",
-    };
-
-    // Mock localStorage에 빈 데이터 설정
-    localStorageMock.getItem.mockReturnValue(null);
-
-    // Mock API response
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockServerData),
-    });
-
-    const { result } = renderHook(() => useGlobalDataInitialization());
-
-    // 초기 상태 확인
-    expect(result.current.isInitialized).toBe(false);
-
-    // 기본 과목이 추가될 때 lastModified가 갱신되는 로직이 있음을 확인
-    // (실제 구현에서는 API 호출에서 lastModified가 갱신됨)
-  });
+  // NOTE: "기본 과목 추가 시 lastModified가 갱신되어야 한다" 테스트는 삭제됨.
+  // lastModified는 훅 내부 상태로 public API에 노출되지 않으므로
+  // (return 값: isInitialized, isInitializing, conflictState, resolveConflict, isMigrating, migrationError)
+  // 훅 외부에서 직접 검증할 수 없다.
+  // 해당 동작을 검증하려면 localStorage.setItem 호출 인자를 파싱하여
+  // lastModified 필드가 초기화 전후로 달라지는지 확인하는 방식이 필요하며,
+  // 이는 별도 통합 테스트(integration test) 수준에서 다루는 것이 적합하다.
+  // 관련 Issue: class-planner tech-debt backlog
 });
 
 describe("익명 사용자 초기화", () => {
@@ -132,20 +112,34 @@ describe("익명 사용자 초기화", () => {
     } as any);
   });
 
-  it("세션 없으면 anonymous 키로 기본 과목 9개 시딩", async () => {
-    // getItem returns null → no existing anonymous data
+  it("세션 없으면 anonymous 스토리지를 생성하지 않는다 (자동 시딩 제거)", async () => {
+    // Phase 5-D fix: anonymous path no longer auto-seeds DEFAULT_SUBJECTS.
+    // Visiting without a session must NOT touch localStorage at all.
     localStorageMock.getItem.mockReturnValue(null);
 
     const { result } = renderHook(() => useGlobalDataInitialization());
     await waitFor(() => expect(result.current.isInitialized).toBe(true));
 
-    // setClassPlannerData calls localStorage.setItem("classPlannerData:anonymous", ...)
     const setItemCalls: string[][] = localStorageMock.setItem.mock.calls;
-    const anonymousCall = setItemCalls.find((args) => args[0] === "classPlannerData:anonymous");
-    expect(anonymousCall).toBeDefined();
+    const anonymousCall = setItemCalls.find(
+      (args) => args[0] === "classPlannerData:anonymous"
+    );
+    expect(anonymousCall).toBeUndefined();
+  });
 
-    const storedData = JSON.parse(anonymousCall![1]);
-    expect(storedData.subjects.length).toBe(9);
+  it("세션 없이 방문만 해도 anonymous 스토리지를 생성하지 않는다", async () => {
+    // getItem returns null — localStorage에 아무것도 없음
+    localStorageMock.getItem.mockReturnValue(null);
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    // setItem이 "classPlannerData:anonymous" 키로 호출되면 안 됨
+    const setItemCalls: string[][] = localStorageMock.setItem.mock.calls;
+    const anonymousCall = setItemCalls.find(
+      (args) => args[0] === "classPlannerData:anonymous"
+    );
+    expect(anonymousCall).toBeUndefined();
   });
 
   it("anonymous 키가 이미 있으면 재초기화 안 함 (기존 데이터 유지)", async () => {
