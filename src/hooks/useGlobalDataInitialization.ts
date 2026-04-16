@@ -1,7 +1,7 @@
 /**
  * 전역 사용자 데이터 초기화 훅
  *
- * - 세션 없음(익명): localStorage:anonymous 초기화 + 기본 과목 시딩
+ * - 세션 없음(익명): 초기화 스킵 (localStorage 쓰기 없음)
  * - 세션 있음: 기존 로직 유지 (onboarding → 서버 fetch → localStorage:userId 저장)
  *   + anonymous 데이터와의 충돌 체크 (DataConflictModal 트리거)
  */
@@ -97,26 +97,7 @@ export const useGlobalDataInitialization = () => {
 
         // ===== 익명 사용자 경로 =====
         if (!session?.user) {
-          logger.debug("익명 사용자 — anonymous localStorage 초기화");
-          const existing = localStorage.getItem(ANONYMOUS_STORAGE_KEY);
-          if (!existing) {
-            const defaultSubjectsWithId = DEFAULT_SUBJECTS.map((s, i) => ({
-              id: `default-${i + 1}`,
-              ...s,
-            }));
-            setClassPlannerData({
-              students: [],
-              subjects: defaultSubjectsWithId,
-              sessions: [],
-              enrollments: [],
-              teachers: [],
-              version: "1.0",
-              lastModified: new Date().toISOString(),
-            });
-            logger.info("익명 사용자 — 기본 과목 시딩 완료", {
-              count: DEFAULT_SUBJECTS.length,
-            });
-          }
+          logger.debug("익명 사용자 경로 — localStorage 자동 초기화 건너뜀");
           if (mounted) setIsInitialized(true);
           return;
         }
