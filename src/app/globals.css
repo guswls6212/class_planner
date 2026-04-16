@@ -1017,3 +1017,13 @@ body {
   font-size: 16px;
   min-height: 44px;
 }
+
+/* ===== App Shell — spacing ===== */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
