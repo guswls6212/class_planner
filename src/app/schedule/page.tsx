@@ -23,6 +23,7 @@ import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useColorBy } from "../../hooks/useColorBy";
+import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
@@ -100,6 +101,10 @@ const PdfDownloadSection = dynamic(
 );
 const ScheduleDailyView = dynamic(
   () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
+  { ssr: false, loading: () => null }
+);
+const AttendanceSheet = dynamic(
+  () => import("../../components/molecules/AttendanceSheet"),
   { ssr: false, loading: () => null }
 );
 
@@ -889,6 +894,42 @@ function SchedulePageContent(): JSX.Element {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // ================================
+  // 🎯 출석 관리 섹션
+  // ================================
+  const [attendanceUserId, setAttendanceUserId] = useState<string | null>(null);
+  const [attendanceSession, setAttendanceSession] = useState<Session | null>(null);
+  const { attendance, fetchAttendance, markAttendance, markAllPresent } =
+    useAttendance(attendanceUserId);
+
+  // userId 로드
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setAttendanceUserId(data.user.id);
+    });
+  }, []);
+
+  const handleOpenAttendance = useCallback(
+    async (session: Session) => {
+      setAttendanceSession(session);
+      const dateStr = selectedDate.toISOString().slice(0, 10);
+      await fetchAttendance(session.id, dateStr);
+    },
+    [selectedDate, fetchAttendance]
+  );
+
+  // 출석 학생 목록 (세션의 enrollment → student)
+  const attendanceStudents = useMemo(() => {
+    if (!attendanceSession) return [];
+    const eIds = attendanceSession.enrollmentIds ?? [];
+    return eIds.flatMap((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      if (!enrollment) return [];
+      const student = students.find((s) => s.id === enrollment.studentId);
+      return student ? [{ id: student.id, name: student.name }] : [];
+    });
+  }, [attendanceSession, enrollments, students]);
+
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
 
@@ -975,6 +1016,7 @@ function SchedulePageContent(): JSX.Element {
           }}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
+          onAttendanceClick={handleOpenAttendance}
         />
       ) : (
         /* 🆕 시간표 그리드 */
@@ -1029,6 +1071,33 @@ function SchedulePageContent(): JSX.Element {
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
       />
+
+      {/* 출석 시트 */}
+      {attendanceSession && (
+        <AttendanceSheet
+          isOpen={!!attendanceSession}
+          onClose={() => setAttendanceSession(null)}
+          sessionId={attendanceSession.id}
+          date={selectedDate.toISOString().slice(0, 10)}
+          students={attendanceStudents}
+          attendance={attendance[attendanceSession.id] ?? {}}
+          onMarkAttendance={(studentId, status) =>
+            markAttendance(
+              attendanceSession.id,
+              studentId,
+              selectedDate.toISOString().slice(0, 10),
+              status
+            )
+          }
+          onMarkAllPresent={() =>
+            markAllPresent(
+              attendanceSession.id,
+              attendanceStudents.map((s) => s.id),
+              selectedDate.toISOString().slice(0, 10)
+            )
+          }
+        />
+      )}
 
       {/* 세션 편집 모달 (분리) */}
       <EditSessionModal

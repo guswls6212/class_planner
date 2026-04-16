@@ -5,6 +5,8 @@ import { Plus } from "lucide-react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
 
+type AttendanceStatus = "all-present" | "partial" | "absent" | "unmarked";
+
 interface ScheduleDailyViewProps {
   sessions: Map<number, Session[]>;
   subjects: Subject[];
@@ -17,12 +19,28 @@ interface ScheduleDailyViewProps {
   onAddSession: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
+  onAttendanceClick?: (session: Session) => void;
+  attendanceStatusMap?: Record<string, AttendanceStatus>;
 }
+
+const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  "all-present": "✓",
+  partial: "△",
+  absent: "✗",
+  unmarked: "•",
+};
+
+const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
+  "all-present": "bg-green-500",
+  partial: "bg-yellow-400",
+  absent: "bg-red-400",
+  unmarked: "bg-[var(--color-text-muted)]",
+};
 
 export function ScheduleDailyView({
   sessions, subjects, students, enrollments, teachers,
   selectedWeekday, colorBy, onSessionClick, onAddSession,
-  onSwipeLeft, onSwipeRight,
+  onSwipeLeft, onSwipeRight, onAttendanceClick, attendanceStatusMap,
 }: ScheduleDailyViewProps) {
   const daySessions = useMemo(() => {
     const raw = sessions.get(selectedWeekday) ?? [];
@@ -81,37 +99,60 @@ export function ScheduleDailyView({
             const subject = getSubjectForSession(session);
             const accentColor = subject?.color ?? "var(--color-primary)";
             const teacher = getTeacher(session);
+            const attStatus = attendanceStatusMap?.[session.id] ?? "unmarked";
             return (
-              <button
+              <div
                 key={session.id}
-                onClick={() => onSessionClick(session)}
-                className="flex gap-3 p-3 rounded-lg bg-[var(--color-bg-secondary)] text-left transition-all active:scale-[0.98] hover:bg-[var(--color-overlay-light)] w-full"
+                className="flex gap-3 p-3 rounded-lg bg-[var(--color-bg-secondary)] transition-all w-full"
                 style={{ borderLeft: `3px solid ${accentColor}` }}
               >
-                <div className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 pt-0.5">
-                  {session.startsAt}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                      {subject?.name ?? "과목 없음"}
-                    </span>
-                    <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
-                      {session.startsAt}–{session.endsAt}
-                    </span>
+                <button
+                  onClick={() => onSessionClick(session)}
+                  className="flex gap-3 flex-1 text-left min-w-0 active:scale-[0.98] hover:opacity-80"
+                >
+                  <div className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 pt-0.5">
+                    {session.startsAt}
                   </div>
-                  {getStudentNames(session) && (
-                    <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
-                      {getStudentNames(session)}
-                    </p>
-                  )}
-                  {teacher && (
-                    <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {teacher.name} 선생님
-                    </p>
-                  )}
-                </div>
-              </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {subject?.name ?? "과목 없음"}
+                      </span>
+                      <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
+                        {session.startsAt}–{session.endsAt}
+                      </span>
+                    </div>
+                    {getStudentNames(session) && (
+                      <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
+                        {getStudentNames(session)}
+                      </p>
+                    )}
+                    {teacher && (
+                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                        {teacher.name} 선생님
+                      </p>
+                    )}
+                  </div>
+                </button>
+                {onAttendanceClick && (
+                  <button
+                    aria-label="출석 체크"
+                    onClick={() => onAttendanceClick(session)}
+                    className="flex-shrink-0 flex flex-col items-center justify-center gap-0.5 ml-1"
+                    title="출석 체크"
+                  >
+                    <span
+                      className={[
+                        "w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center",
+                        ATTENDANCE_STATUS_COLORS[attStatus],
+                      ].join(" ")}
+                    >
+                      {ATTENDANCE_STATUS_LABELS[attStatus]}
+                    </span>
+                    <span className="text-[9px] text-[var(--color-text-muted)]">출석</span>
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
