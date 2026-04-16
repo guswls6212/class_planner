@@ -13,8 +13,8 @@ describe("ErrorCodes", () => {
     expect(ErrorCodes.STUDENT_NAME_DUPLICATE).toBe("STUDENT_NAME_DUPLICATE");
   });
 
-  it("STUDENT_PHONE_INVALID_FORMAT 코드가 존재해야 한다", () => {
-    expect(ErrorCodes.STUDENT_PHONE_INVALID_FORMAT).toBe("STUDENT_PHONE_INVALID_FORMAT");
+  it("PHONE_INVALID_FORMAT 코드가 존재해야 한다", () => {
+    expect(ErrorCodes.PHONE_INVALID_FORMAT).toBe("PHONE_INVALID_FORMAT");
   });
 
   it("INVITE_TOKEN_EXPIRED 코드가 존재해야 한다", () => {

@@ -6,7 +6,7 @@ const messages: Record<ErrorCode, string> = {
   STUDENT_NAME_REQUIRED: "학생 이름을 입력해주세요.",
   STUDENT_NAME_DUPLICATE: "이미 존재하는 학생 이름입니다.",
   STUDENT_NOT_FOUND: "존재하지 않는 학생입니다.",
-  STUDENT_PHONE_INVALID_FORMAT: "유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678)",
+  PHONE_INVALID_FORMAT: "유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678)",
 
   // Subject
   SUBJECT_NAME_REQUIRED: "과목 이름을 입력해주세요.",
