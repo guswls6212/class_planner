@@ -317,7 +317,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
 
   if (!isDesktop && isOpen) {
     return (
-      <BottomSheet isOpen={isOpen} onClose={() => setShowGroupModal(false)} title="수업 추가">
+      <BottomSheet isOpen={isOpen} onClose={() => setShowGroupModal(false)} title="수업 추가" aria-labelledby="group-session-modal-title">
         {formContent}
       </BottomSheet>
     );
