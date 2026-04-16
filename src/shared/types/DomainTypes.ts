@@ -11,6 +11,10 @@ export interface Student {
   readonly id: string;
   readonly name: string;
   readonly gender?: string;
+  readonly birthDate?: string;
+  readonly grade?: string;
+  readonly school?: string;
+  readonly phone?: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }

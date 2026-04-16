@@ -15,6 +15,11 @@ export class StudentMapper {
     return {
       id: student.id.value,
       name: student.name,
+      gender: student.gender,
+      birthDate: student.birthDate,
+      grade: student.grade,
+      school: student.school,
+      phone: student.phone,
       createdAt: student.createdAt.toISOString(),
       updatedAt: student.updatedAt.toISOString(),
     };
@@ -24,14 +29,15 @@ export class StudentMapper {
    * DTO를 도메인 엔티티로 변환합니다.
    */
   static toDomain(dto: StudentDto): Student {
-    return Student.restore(
-      dto.id,
-      dto.name,
-      undefined,
-      undefined,
-      new Date(dto.createdAt),
-      new Date(dto.updatedAt)
-    );
+    return Student.restore(dto.id, dto.name, {
+      gender: dto.gender,
+      birthDate: dto.birthDate,
+      grade: dto.grade,
+      school: dto.school,
+      phone: dto.phone,
+      createdAt: new Date(dto.createdAt),
+      updatedAt: new Date(dto.updatedAt),
+    });
   }
 
   /**

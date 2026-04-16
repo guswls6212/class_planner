@@ -26,6 +26,10 @@ export interface Student {
   id: string;
   name: string;
   gender?: string;
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
 }
 
 export interface UseStudentManagementLocalReturn {
@@ -38,7 +42,7 @@ export interface UseStudentManagementLocalReturn {
   addStudent: (name: string) => Promise<boolean>;
   updateStudent: (
     id: string,
-    updates: { name?: string; gender?: string }
+    updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
   ) => Promise<boolean>;
   deleteStudent: (id: string) => Promise<boolean>;
   getStudent: (id: string) => Student | null;
@@ -162,7 +166,7 @@ export const useStudentManagementLocal =
     const updateStudent = useCallback(
       async (
         id: string,
-        updates: { name?: string; gender?: string }
+        updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
       ): Promise<boolean> => {
         try {
           setLoading(true);
