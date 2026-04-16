@@ -1,5 +1,6 @@
 import React from "react";
 import { logger } from "../../lib/logger";
+import { useSessionStatus } from "../../hooks/useSessionStatus";
 import {
   type ColorByMode,
   getGroupStudentNames,
@@ -68,6 +69,7 @@ interface SessionBlockProps {
   isDragging?: boolean; // 드래그 중인지 여부
   draggedSessionId?: string; // 드래그된 세션 ID
   isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
+  hasConflict?: boolean; // 시간 충돌 여부
 }
 
 export const validateSessionBlockProps = (
@@ -100,7 +102,17 @@ function SessionBlock({
   isDragging = false, // 🆕 드래그 상태
   draggedSessionId, // 🆕 드래그된 세션 ID
   isAnyDragging = false, // 🆕 전역 드래그 상태 추가
+  hasConflict = false,
 }: SessionBlockProps) {
+  // 세션 진행 상태 계산 (upcoming / in-progress / completed)
+  // Hook must be called before any early return (Rules of Hooks).
+  // session is validated below — we use fallback values when session is null.
+  const sessionStatus = useSessionStatus(
+    session?.startsAt ?? "00:00",
+    session?.endsAt ?? "00:00",
+    session?.weekday ?? -1
+  );
+
   // null/undefined 안전 처리
   if (!session) {
     return null;
@@ -211,17 +223,41 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
+  // 상태 레이어 스타일 계산
+  const statusStyle: React.CSSProperties = (() => {
+    if (sessionStatus === "completed") {
+      return { opacity: (styles.opacity as number ?? 1) * 0.55 };
+    }
+    if (sessionStatus === "in-progress") {
+      return {
+        boxShadow: "0 0 8px rgba(251,191,36,0.35)",
+        outline: "1px solid rgba(251,191,36,0.5)",
+      };
+    }
+    return {};
+  })();
+
+  // 충돌 상태: 빨간 왼쪽 테두리
+  const conflictStyle: React.CSSProperties = hasConflict
+    ? { borderLeft: "3px solid #EF4444" }
+    : {};
+
   return (
     <button
       type="button"
       style={{
         ...styles,
-        cursor: "move", // 🆕 드래그 가능함을 나타내는 커서
-        // 🆕 드래그 중인 세션에 직접 투명도 적용
+        // 상태 레이어 (drag state가 없을 때만 완료 dimming 적용)
+        ...(isAnyDragging || isDragging ? {} : statusStyle),
+        ...conflictStyle,
+        cursor: isDragging && isDraggedSession ? "grabbing" : "move",
+        // 드래그 중인 세션에 직접 투명도 적용 (getSessionBlockStyles override)
         ...(isDragging &&
           isDraggedSession && {
             opacity: 0.5,
           }),
+        // 상대 위치 지정 (배지 절대 위치 기준점)
+        position: "absolute",
       }}
       aria-label={ariaLabel}
       onClick={handleClick}
@@ -232,8 +268,35 @@ function SessionBlock({
       data-session-id={session.id}
       data-starts-at={session.startsAt}
       data-ends-at={session.endsAt}
+      data-status={sessionStatus}
       className="session-block"
     >
+      {/* 진행 중 배지 */}
+      {sessionStatus === "in-progress" && !hasConflict && (
+        <span
+          className="absolute top-0.5 right-0.5 rounded-sm px-1 font-semibold leading-tight"
+          style={{
+            background: "#FBBF24",
+            color: "#1a1a1a",
+            fontSize: "8px",
+          }}
+          aria-label="진행 중"
+        >
+          진행중
+        </span>
+      )}
+
+      {/* 충돌 경고 아이콘 */}
+      {hasConflict && (
+        <span
+          className="absolute top-0.5 right-0.5"
+          style={{ fontSize: "10px", color: "#EF4444", lineHeight: 1 }}
+          aria-label="시간 충돌"
+        >
+          ⚠️
+        </span>
+      )}
+
       <div
         style={{
           display: "flex",
