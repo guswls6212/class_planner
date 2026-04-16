@@ -67,18 +67,18 @@ export default function ScheduleMonthlyView({
         <button
           type="button"
           aria-label="이전 달"
-          className="rounded p-1 text-[--color-text-secondary] hover:bg-[--color-bg-secondary]"
+          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
           onClick={goToPrevMonth}
         >
           ‹
         </button>
-        <span className="text-base font-semibold text-[--color-text-primary]">
+        <span className="text-base font-semibold text-[var(--color-text-primary)]">
           {monthLabel}
         </span>
         <button
           type="button"
           aria-label="다음 달"
-          className="rounded p-1 text-[--color-text-secondary] hover:bg-[--color-bg-secondary]"
+          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
           onClick={goToNextMonth}
         >
           ›
@@ -86,7 +86,7 @@ export default function ScheduleMonthlyView({
         <button
           type="button"
           aria-label="오늘"
-          className="ml-2 rounded border border-[--color-border] px-2 py-0.5 text-xs text-[--color-text-secondary] hover:bg-[--color-bg-secondary]"
+          className="ml-2 rounded border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
           onClick={goToToday}
         >
           오늘
@@ -98,7 +98,7 @@ export default function ScheduleMonthlyView({
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="py-1 text-xs font-medium text-[--color-text-muted]"
+            className="py-1 text-xs font-medium text-[var(--color-text-muted)]"
           >
             {label}
           </div>
