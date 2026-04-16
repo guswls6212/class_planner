@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
+import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
+import type { Student } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
 
@@ -12,17 +14,20 @@ export default function StudentsPage() {
 }
 
 function StudentsPageContent() {
-  const [newStudentName, setNewStudentName] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
   );
 
-  // 🚀 localStorage 직접 조작 훅 사용
+  // Integrated data for subjects, enrollments, sessions
+  const { data } = useIntegratedDataLocal();
+  const { subjects = [], enrollments = [], sessions = [] } = data ?? {};
+
+  // Student management
   const {
     students,
-    loading: isLoading,
-    error,
+    loading: _isLoading,
+    error: _error,
     addStudent,
     updateStudent,
     deleteStudent,
@@ -35,8 +40,7 @@ function StudentsPageContent() {
     try {
       const success = await addStudent(name);
       if (success) {
-        setNewStudentName(""); // 입력창 초기화
-        await refreshStudents(); // 학생 목록 새로고침
+        await refreshStudents();
       }
     } catch (error) {
       logger.error("학생 추가 실패:", undefined, error as Error);
@@ -54,11 +58,10 @@ function StudentsPageContent() {
     try {
       const success = await deleteStudent(studentId);
       if (success) {
-        // 선택된 학생이 삭제되면 선택 해제
         if (selectedStudentId === studentId) {
           setSelectedStudentId("");
         }
-        await refreshStudents(); // 학생 목록 새로고침
+        await refreshStudents();
       }
     } catch (error) {
       logger.error("학생 삭제 실패:", undefined, error as Error);
@@ -66,21 +69,26 @@ function StudentsPageContent() {
     }
   };
 
+  // 학생 업데이트 핸들러
+  const handleUpdateStudent = async (id: string, updates: Partial<Student>): Promise<boolean> => {
+    const success = await updateStudent(id, updates);
+    if (success) {
+      await refreshStudents();
+    }
+    return success;
+  };
+
   return (
     <StudentsPageLayout
       students={students}
-      newStudentName={newStudentName}
+      subjects={subjects}
+      enrollments={enrollments}
+      sessions={sessions}
       selectedStudentId={selectedStudentId}
-      onNewStudentNameChange={setNewStudentName}
-      onAddStudent={handleAddStudent}
       onSelectStudent={handleSelectStudent}
+      onAddStudent={handleAddStudent}
       onDeleteStudent={handleDeleteStudent}
-      onUpdateStudent={async (id, name) => {
-        await updateStudent(id, { name });
-        await refreshStudents();
-      }}
-      isLoading={isLoading}
-      error={error || undefined}
+      onUpdateStudent={handleUpdateStudent}
       onClearError={clearError}
     />
   );
