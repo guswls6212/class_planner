@@ -104,7 +104,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div
-      className="flex min-h-[calc(100vh-60px)] items-center justify-center bg-gradient-to-br from-[#667eea] to-[#764ba2] p-5"
+      className="flex min-h-[calc(100vh-60px)] items-center justify-center bg-gradient-to-br from-brand-gradient-from to-brand-gradient-to p-5"
     >
       <div
         className="w-full max-w-[400px] rounded-2xl bg-white p-10 text-center shadow-[0_20px_40px_rgba(0,0,0,0.1)]"
@@ -112,7 +112,7 @@ const LoginPage: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1
-            className="mb-2 bg-gradient-to-br from-[#667eea] to-[#764ba2] bg-clip-text text-[2.5rem] font-bold leading-tight text-transparent"
+            className="mb-2 bg-gradient-to-br from-brand-gradient-from to-brand-gradient-to bg-clip-text text-[2.5rem] font-bold leading-tight text-transparent"
           >
             클래스 플래너
           </h1>

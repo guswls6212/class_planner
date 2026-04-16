@@ -46,10 +46,13 @@
   --shadow-admin-md: 0 4px 12px rgba(0,0,0,.08);
   --shadow-admin-lg: 0 12px 32px rgba(0,0,0,.12);
 
-  /* --- Brand Colors (login buttons) --- */
-  --color-brand-google: #4285F4;
-  --color-brand-kakao-bg: #FEE500;
-  --color-brand-kakao-text: #191919;
+  /* --- Brand Colors (login buttons, gradients) --- */
+  --color-brand-gradient-from: #667eea;
+  --color-brand-gradient-to:   #764ba2;
+  --color-brand-google:        #4285F4;
+  --color-brand-kakao-bg:      #FEE500;
+  --color-brand-kakao-text:    #191919;
+  --color-admin-ink:           #1a1a1a;
 
   /* --- Legacy Primary/Secondary (기존 컴포넌트 호환) --- */
   --color-primary: #3b82f6;

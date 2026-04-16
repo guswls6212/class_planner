@@ -245,7 +245,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   return (
     <>
       <button
-        className={`login-btn-shimmer flex cursor-pointer items-center gap-2 rounded-xl border-none bg-gradient-to-br from-[#667eea] to-[#764ba2] px-[18px] py-2.5 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(102,126,234,0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(102,126,234,0.4)] active:translate-y-0 ${className || ""}`}
+        className={`login-btn-shimmer flex cursor-pointer items-center gap-2 rounded-xl border-none bg-gradient-to-br from-brand-gradient-from to-brand-gradient-to px-[18px] py-2.5 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(102,126,234,0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(102,126,234,0.4)] active:translate-y-0 ${className || ""}`}
         onClick={() => setShowLoginModal(true)}
         title="로그인"
       >

@@ -237,7 +237,7 @@ function SessionBlock({
           {/* 과목명 - 왼쪽 */}
           <span
             style={{
-              color: "#fff",
+              color: "white",
               fontWeight: "600",
               fontSize: "13px",
               textAlign: "left",

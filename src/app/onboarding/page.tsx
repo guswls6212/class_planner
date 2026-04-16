@@ -110,7 +110,7 @@ export default function OnboardingPage() {
     <div
       className="min-h-screen flex items-center justify-center p-5"
       style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: "linear-gradient(135deg, var(--color-brand-gradient-from) 0%, var(--color-brand-gradient-to) 100%)",
         minHeight: "calc(100vh - 60px)",
       }}
     >
@@ -206,10 +206,10 @@ export default function OnboardingPage() {
             style={{
               background:
                 isValid && !isSubmitting
-                  ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                  ? "linear-gradient(135deg, var(--color-brand-gradient-from) 0%, var(--color-brand-gradient-to) 100%)"
                   : undefined,
               backgroundColor:
-                !isValid || isSubmitting ? "#d1d5db" : undefined,
+                !isValid || isSubmitting ? "var(--color-border)" : undefined,
             }}
           >
             {isSubmitting ? "생성 중..." : "시작하기"}
