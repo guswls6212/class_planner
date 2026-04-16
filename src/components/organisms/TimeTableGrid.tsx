@@ -27,6 +27,7 @@ interface TimeTableGridProps {
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
   students: Array<{ id: string; name: string }>;
   onSessionClick: (session: Session) => void;
+  onSessionDelete?: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onSessionDrop?: (
     sessionId: string,
@@ -54,6 +55,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       enrollments,
       students,
       onSessionClick,
+      onSessionDelete,
       onDrop,
       onSessionDrop, // 🆕 세션 드롭 핸들러
       onEmptySpaceClick,
@@ -498,6 +500,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 students={students}
                 sessionYPositions={getSessionYPositions(weekday)}
                 onSessionClick={isReadOnly ? () => {} : onSessionClick}
+                onSessionDelete={isReadOnly ? undefined : onSessionDelete}
                 onDrop={isReadOnly ? () => {} : onDrop}
                 onSessionDrop={isReadOnly ? undefined : onSessionDrop}
                 onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}

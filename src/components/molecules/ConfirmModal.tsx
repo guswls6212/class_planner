@@ -1,4 +1,5 @@
 import React from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import Button from "../atoms/Button";
 
 interface ConfirmModalProps {
@@ -22,19 +23,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onCancel,
   variant = "danger",
 }) => {
+  // Hook must be called before early return (Rules of Hooks).
+  // useModalA11y provides: Escape key handling, focus trap, return-focus on close.
+  const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
+
   if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      onCancel();
-    }
-  };
-
-  // TODO: migrate to useModalA11y hook — this modal predates the centralized
-  // focus management pattern (src/hooks/useModalA11y.ts).
-  // Note: ConfirmModal lacks a focus trap and return-focus; useModalA11y provides both.
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
       onCancel();
     }
   };
@@ -44,9 +40,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-5"
       data-testid="confirm-modal-backdrop"
       onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
     >
       <div
+        ref={containerRef}
         className="w-full max-w-[400px] max-h-[90vh] overflow-hidden rounded-lg border border-[--color-border] bg-[--color-bg-primary] shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
         role="dialog"
         aria-modal="true"
