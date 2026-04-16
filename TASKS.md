@@ -196,11 +196,12 @@
 - [x] Phase 3 Polish — ConfirmModal `useModalA11y` 마이그레이션 (Escape + focus trap) (PR#58)
 - [x] Phase 3 Polish — LoginButton `supabase.auth.signOut()` 교체 (수동 localStorage 스크럽 제거) (PR#58)
 
+- [x] 월별 뷰 — 3-way 토글(일별/주별/월별), MonthDayCell, ScheduleMonthlyView, 날짜 클릭→일별 전환 (PR#59)
+- [x] 공유 링크 (`/share/{token}`) — share_tokens 테이블, 공개 API, 읽기 전용 시간표 페이지, Settings 관리 UI (PR#60)
+
 ### 남은 항목
-- [ ] 공유 링크 페이지 (`/share/{token}`) — 학생/학부모용 읽기 전용 Surface 모드 (현재는 PDF만)
 - [ ] 학원생 자동 알림 (시간표 변경 시)
 - [ ] 출석 관리 기능
-- [ ] 월별/주별 시간표 뷰
 - [ ] 시간표 템플릿 기능
 
 ---
@@ -243,3 +244,4 @@
 | 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
 | 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
 | 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
+| 2026-04-17 | Phase 3 Polish + Phase 4 W1~W3 완료 — ConfirmModal a11y, signOut, SessionBlock onDelete, 월별 뷰(PR#59), 공유 링크(PR#60) |

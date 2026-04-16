@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
+import { getClassPlannerData } from "../../lib/localStorageCrud";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "원장",
@@ -27,6 +28,15 @@ interface PendingInvite {
   expiresAt: string;
 }
 
+interface ShareToken {
+  id: string;
+  token: string;
+  label: string | null;
+  filter_student_id: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
 export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
@@ -39,6 +49,15 @@ export default function SettingsPage() {
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // 공유 링크
+  const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLabel, setShareLabel] = useState("");
+  const [shareExpiresInDays, setShareExpiresInDays] = useState(30);
+  const [shareStudentId, setShareStudentId] = useState("");
+  const [isCreatingShare, setIsCreatingShare] = useState(false);
+  const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,9 +73,10 @@ export default function SettingsPage() {
     if (!userId) return;
     setIsLoading(true);
     try {
-      const [membersRes, invitesRes] = await Promise.all([
+      const [membersRes, invitesRes, shareRes] = await Promise.all([
         fetch(`/api/members?userId=${userId}`),
         fetch(`/api/invites?userId=${userId}`),
+        fetch(`/api/share-tokens?userId=${userId}`),
       ]);
 
       if (membersRes.ok) {
@@ -69,6 +89,11 @@ export default function SettingsPage() {
       if (invitesRes.ok) {
         const { data } = await invitesRes.json();
         setInvites(data ?? []);
+      }
+
+      if (shareRes.ok) {
+        const { data } = await shareRes.json();
+        setShareTokens(data ?? []);
       }
     } catch (err) {
       logger.error("설정 데이터 로드 실패", undefined, err as Error);
@@ -132,6 +157,51 @@ export default function SettingsPage() {
     setGeneratedLink(null);
     setInviteRole("member");
     setCopied(false);
+  };
+
+  // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const { students } = getClassPlannerData();
+      setLocalStudents(students.map((s) => ({ id: s.id, name: s.name })));
+    }
+  }, []);
+
+  const handleCreateShareToken = async () => {
+    if (!userId) return;
+    setIsCreatingShare(true);
+    try {
+      const res = await fetch(`/api/share-tokens?userId=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: shareLabel || null,
+          filterStudentId: shareStudentId || null,
+          expiresInDays: shareExpiresInDays,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowShareModal(false);
+        setShareLabel("");
+        setShareStudentId("");
+        setShareExpiresInDays(30);
+        await fetchData();
+      } else {
+        showError(data.error ?? "공유 링크 생성에 실패했습니다.");
+      }
+    } catch (err) {
+      logger.error("공유 링크 생성 실패", undefined, err as Error);
+      showError("공유 링크 생성에 실패했습니다.");
+    } finally {
+      setIsCreatingShare(false);
+    }
+  };
+
+  const handleRevokeShareToken = async (id: string) => {
+    if (!userId || !confirm("이 공유 링크를 취소하시겠습니까?")) return;
+    await fetch(`/api/share-tokens/${id}?userId=${userId}`, { method: "DELETE" });
+    await fetchData();
   };
 
   const canManage = myRole === "owner" || myRole === "admin";
@@ -243,6 +313,142 @@ export default function SettingsPage() {
             })}
           </div>
         </section>
+      )}
+
+      {/* 공유 링크 섹션 */}
+      {canManage && (
+        <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mt-4 border border-[var(--color-border)]">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              공유 링크 ({shareTokens.length}개)
+            </h2>
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+            >
+              + 링크 생성
+            </button>
+          </div>
+          {shareTokens.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-secondary)]">활성 공유 링크가 없습니다.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {shareTokens.map((st) => {
+                const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/share/${st.token}`;
+                const studentName = st.filter_student_id
+                  ? localStudents.find((s) => s.id === st.filter_student_id)?.name ?? "학생"
+                  : null;
+                return (
+                  <div
+                    key={st.id}
+                    className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)]"
+                  >
+                    <div className="min-w-0 flex-1 mr-3">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                        {st.label ?? "(제목 없음)"}
+                        {studentName && (
+                          <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
+                            · {studentName}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                        만료: {new Date(st.expires_at).toLocaleDateString("ko-KR")}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => handleCopyLink(shareUrl)}
+                        className="text-xs px-3 py-1 border border-gray-300 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      >
+                        복사
+                      </button>
+                      <button
+                        onClick={() => handleRevokeShareToken(st.id)}
+                        className="text-xs px-3 py-1 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                      >
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* 공유 링크 생성 모달 */}
+      {showShareModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowShareModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-7 w-full max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-800 mb-1">공유 링크 생성</h3>
+            <p className="text-sm text-gray-500 mb-5">인증 없이 시간표를 볼 수 있는 링크를 만듭니다</p>
+
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 block mb-1">제목 (선택)</label>
+              <input
+                type="text"
+                value={shareLabel}
+                onChange={(e) => setShareLabel(e.target.value)}
+                placeholder="예: 학부모 공유용"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+
+            {localStudents.length > 0 && (
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-700 block mb-1">학생 필터 (선택)</label>
+                <select
+                  value={shareStudentId}
+                  onChange={(e) => setShareStudentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  <option value="">전체 학생</option>
+                  {localStudents.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="text-sm font-medium text-gray-700 block mb-1">만료 기간</label>
+              <select
+                value={shareExpiresInDays}
+                onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value={7}>7일</option>
+                <option value={30}>30일</option>
+                <option value={90}>90일</option>
+                <option value={365}>1년</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateShareToken}
+                disabled={isCreatingShare}
+                className="flex-1 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+              >
+                {isCreatingShare ? "생성 중..." : "생성"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 초대 모달 */}
