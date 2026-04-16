@@ -33,7 +33,12 @@ const geistMono = Geist_Mono({
 
 function Navigation() {
   const pathname = usePathname();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("supabase_user_id");
+    }
+    return false;
+  });
   const { trackPageView, trackAction } = useUserTracking();
 
   const navItems = [
@@ -55,7 +60,7 @@ function Navigation() {
   };
 
   // 로그인 상태 확인 - localStorage에서 사용자 ID 확인
-  React.useEffect(() => {
+  useEffect(() => {
     const checkLoginStatus = () => {
       const userId = localStorage.getItem("supabase_user_id");
       setIsLoggedIn(!!userId);
