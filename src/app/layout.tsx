@@ -80,39 +80,37 @@ function Navigation() {
     };
   }, []);
 
+  if (pathname === "/" && !isLoggedIn) {
+    return (
+      <nav className="flex justify-between items-center px-12 py-4 border-b border-[--color-border] bg-[--color-bg-secondary]">
+        <span className="font-[800] text-lg text-[--color-text-primary]">🗓 클래스 플래너</span>
+        <div className="flex items-center gap-4">
+          <Link href="/login" className="text-sm text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">로그인</Link>
+          <Link href="/schedule" className="bg-accent hover:bg-accent-hover text-[#1a1a1a] font-bold text-sm px-5 py-2 rounded-admin-md transition-colors">무료로 시작</Link>
+        </div>
+      </nav>
+    );
+  }
+
   return (
-    <nav
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: 12,
-        borderBottom: "1px solid var(--color-border)",
-        background: "var(--color-bg-secondary)",
-      }}
-    >
-      <div style={{ display: "flex", gap: 12 }}>
+    <nav className="flex justify-between items-center px-3 py-3 border-b border-[--color-border] bg-[--color-bg-secondary]">
+      <div className="flex gap-3">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             onClick={() => handleNavClick(item.href, item.label)}
-            style={{
-              fontWeight: pathname === item.href ? 600 : 400,
-              textDecoration: "none",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              background:
-                pathname === item.href ? "var(--color-primary)" : "transparent",
-              color:
-                pathname === item.href ? "white" : "var(--color-text-primary)",
-            }}
+            className={`no-underline px-2 py-1 rounded-[4px] transition-colors ${
+              pathname === item.href
+                ? "font-[600] bg-[--color-primary] text-white"
+                : "font-normal bg-transparent text-[--color-text-primary]"
+            }`}
           >
             {item.label}
           </Link>
         ))}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="flex items-center gap-3">
         {isLoggedIn && <ThemeToggle size="small" variant="both" />}
         <LoginButton />
       </div>
@@ -122,30 +120,12 @@ function Navigation() {
 
 function Footer() {
   return (
-    <footer
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: 12,
-        borderTop: "1px solid var(--color-border)",
-        background: "var(--color-bg-secondary)",
-        zIndex: 1000,
-      }}
-    >
-      <div style={{ display: "flex", gap: 12 }}>
-        <span style={{ color: "var(--color-text-primary)", fontSize: "14px" }}>
-          클래스 플래너
-        </span>
+    <footer className="fixed bottom-0 left-0 right-0 flex justify-between items-center px-3 py-3 border-t border-[--color-border] bg-[--color-bg-secondary] z-[1000]">
+      <div className="flex gap-3">
+        <span className="text-[--color-text-primary] text-sm">클래스 플래너</span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ color: "var(--color-text-primary)", fontSize: "14px" }}>
-          교육을 더 쉽게 만들어갑니다
-        </span>
+      <div className="flex items-center gap-3">
+        <span className="text-[--color-text-primary] text-sm">교육을 더 쉽게 만들어갑니다</span>
       </div>
     </footer>
   );
