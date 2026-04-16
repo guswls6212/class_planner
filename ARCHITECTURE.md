@@ -37,6 +37,7 @@
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
 - **Molecules:** Atoms 조합 (SessionBlock, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, StudentPanel, HelpDrawer, AppShell)
+- **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
 ## 2. 컴포넌트 구조
 
@@ -125,7 +126,16 @@ src/infrastructure/
 
 ### 2.6 Shared Utilities
 ```
+src/components/common/ # 디자인 시스템 공유 Primitive (Atomic Design 계층 공유)
+├── SubjectChip.tsx            # 과목 색상 칩 — fill/border-left/soft 3가지 변형 (SSOT)
+├── SubjectChip.types.ts       # SubjectChipProps, SubjectChipVariant, SubjectChipSize
+├── SchedulePreview.tsx        # 미니 시간표 그리드 — SubjectChip 기반 (랜딩, HelpDrawer 등)
+└── SchedulePreview.types.ts   # PreviewCell, SchedulePreviewProps, PreviewSubjectColor
+
 src/lib/               # 핵심 유틸리티
+├── schedule/                  # 시간표 도메인 유틸리티
+│   ├── getSessionSubject.ts   # 세션 → 과목 조회 (정규 위치, Phase 5-B에서 승격)
+│   └── subjectColorPalette.ts # PreviewSubjectColor → HEX 팔레트 (SUBJECT_PALETTE_HEX)
 ├── localStorageCrud.ts        # localStorage CRUD 시스템 (Anonymous/User 키 분리)
 ├── apiSync.ts                 # fire-and-forget 서버 동기화 (syncStudentCreate 등)
 ├── sessionCollisionUtils.ts   # 세션 충돌 감지 및 재배치
@@ -275,3 +285,4 @@ attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_
 - 2026-04-15: Step 5 개발자 로그 뷰어 추가. /admin/logs 페이지 + /api/admin/logs Route (ADMIN_EMAILS 화이트리스트). adminGuard.ts 신규. 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP.
 - 2026-04-17: Phase 3 Full Redesign 완료 (AppShell, ScheduleDailyView, BottomTabBar, Sidebar, TopBar, DayChipBar, useModalA11y 등). Phase 4 Teacher 뷰 + Color-by 토글 완료 (teachers 페이지 + API, teacher-schedule 뷰, useColorBy, useTeacherManagementLocal 등). W2 월별 뷰 (ScheduleMonthlyView, MonthDayCell, useScheduleView). W3 공유 링크 (share/[token] 페이지, share-tokens API, migration 026). W4 시간표 템플릿 (templates API, SaveTemplateModal, ApplyTemplateModal, useTemplates, templateTypes, migration 027). W5 출석 관리 (attendance API + bulk, AttendanceSheet, useAttendance, migration 028).
 - 2026-04-17: Phase 4 마지막 — 시간표 변경 배지 (migration 029: academies.schedule_updated_at + sessions trigger + share_tokens.last_viewed_at). /share/[token] 페이지에 ScheduleChangeBanner molecule 추가.
+- 2026-04-17: Phase 5-B B-1 — SubjectChip + SchedulePreview Common Primitive 신설. getSessionSubject → src/lib/schedule/ 승격 (SessionBlock.utils.ts re-export). 랜딩 ScheduleMockup → SchedulePreview 교체. src/components/common/ 디렉터리 추가.

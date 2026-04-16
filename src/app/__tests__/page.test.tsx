@@ -62,11 +62,11 @@ describe("Landing Page", () => {
     ).toBeInTheDocument();
   });
 
-  it("ScheduleMockup에 aria-hidden 컨테이너가 있어야 한다", () => {
+  it("HeroSection에 SchedulePreview 그리드가 있어야 한다", () => {
     const { container } = render(<LandingPage />);
 
-    const mockup = container.querySelector("[aria-hidden='true']");
-    expect(mockup).toBeInTheDocument();
+    const preview = container.querySelector('[data-testid="schedule-preview"]');
+    expect(preview).toBeInTheDocument();
   });
 
   it("로그인 시 랜딩 콘텐츠 대신 null을 렌더링해야 한다", () => {
