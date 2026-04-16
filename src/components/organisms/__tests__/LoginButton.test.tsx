@@ -147,12 +147,6 @@ describe("LoginButton", () => {
     }).not.toThrow();
   });
 
-  it("로거 시스템을 사용해야 한다", () => {
-    render(<LoginButton />);
-
-    // 컴포넌트가 로드되면 로거가 사용됨
-    expect(true).toBe(true);
-  });
 });
 
 // NOTE: 로그아웃 기능은 AccountMenu 컴포넌트로 이전되었습니다.
