@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import StudentsPageLayout from "../StudentsPageLayout";
 
@@ -87,9 +87,10 @@ describe("StudentsPageLayout Component", () => {
       expect(screen.getByText("'김철수' 학생을 삭제하시겠습니까?")).toBeInTheDocument();
     });
 
-    // Act - 확인 모달에서 삭제 버튼 클릭
-    const confirmDeleteButton = screen.getByRole("dialog").querySelector('button[class*="_confirmButton_"]');
-    fireEvent.click(confirmDeleteButton!);
+    // Act - 확인 모달에서 삭제 확인 버튼 클릭 (confirmText="삭제")
+    const dialog = screen.getByRole("dialog");
+    const confirmDeleteButton = within(dialog).getAllByRole("button", { name: "삭제" })[0];
+    fireEvent.click(confirmDeleteButton);
 
     // Assert - 실제 삭제 함수가 호출되는지 확인
     await waitFor(() => {

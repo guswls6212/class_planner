@@ -3,7 +3,6 @@ import React from "react";
 import Button from "../../../components/atoms/Button";
 import Label from "../../../components/atoms/Label";
 import { useModalA11y } from "../../../hooks/useModalA11y";
-import styles from "../Schedule.module.css";
 
 type StudentOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string };
@@ -63,27 +62,27 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
   return (
     <div className="modal-backdrop">
-      <div className={styles.modalOverlay}>
+      <div className="fixed left-1/2 top-1/2 z-[9999] flex min-w-[320px] max-w-[90vw] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-[--color-border] bg-[--color-bg-primary] p-4 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.3),0_10px_10px_-5px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] backdrop-blur-[10px]">
         <div
-          className={styles.modalContent}
+          className="flex h-full flex-col overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-session-modal-title"
           ref={containerRef}
         >
-          <h4 id="edit-session-modal-title" className={styles.modalTitle}>수업 편집</h4>
-          <div className={styles.modalForm}>
+          <h4 id="edit-session-modal-title" className="mb-4 shrink-0 text-lg font-semibold text-[--color-text-primary]">수업 편집</h4>
+          <div className="mb-4 flex-1 overflow-y-auto pr-2">
             <div className="form-group">
               <Label htmlFor="edit-modal-students" required>
                 학생
               </Label>
-              <div className={styles.studentTagsContainer}>
+              <div className="mb-2 flex min-h-[32px] flex-wrap gap-2 rounded border border-[--color-border] bg-[--color-bg-secondary] p-1">
                 {selectedStudents.map((student) => (
-                  <div key={student.id} className={styles.studentTag}>
+                  <div key={student.id} className="inline-flex items-center gap-1.5 rounded-full bg-[--color-primary] px-2 py-1 text-xs font-medium text-white">
                     <span>{student.name}</span>
                     <button
                       type="button"
-                      className={styles.removeStudentBtn}
+                      className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 text-sm font-bold text-white transition-colors duration-200 hover:bg-white/20"
                       onClick={() => onRemoveStudent(student.id)}
                     >
                       ×
@@ -92,42 +91,32 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 ))}
               </div>
 
-              <div className={styles.studentInputContainer}>
+              <div className="flex items-center gap-2">
                 <input
                   id="edit-modal-students"
                   type="text"
                   placeholder="학생 이름을 입력하세요"
-                  className="form-input"
+                  className="form-input flex-1"
                   value={editStudentInputValue}
                   onChange={(e) => onEditStudentInputChange(e.target.value)}
                   onKeyDown={onEditStudentInputKeyDown}
                 />
                 <button
                   type="button"
-                  className={styles.addStudentBtn}
+                  className="cursor-pointer whitespace-nowrap rounded border-none bg-[--color-primary] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:enabled:bg-[--color-primary-dark] disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-50"
                   onClick={onAddStudentClick}
                   disabled={!editStudentInputValue || !editStudentInputValue.trim()}
-                  style={{
-                    opacity:
-                      !editStudentInputValue || !editStudentInputValue.trim()
-                        ? 0.5
-                        : 1,
-                    cursor:
-                      !editStudentInputValue || !editStudentInputValue.trim()
-                        ? "not-allowed"
-                        : "pointer",
-                  }}
                 >
                   추가
                 </button>
               </div>
 
               {editStudentInputValue.trim() && (
-                <div className={styles.studentSearchResults}>
+                <div className="mt-2 max-h-[200px] overflow-y-auto rounded border border-[--color-border] bg-[--color-bg-primary]">
                   {editSearchResults.length === 0 ? (
-                    <div className={styles.noSearchResults}>
+                    <div className="flex flex-col gap-1 p-3 text-center text-sm text-[--color-text-secondary]">
                       <span>검색 결과가 없습니다</span>
-                      <span className={styles.studentNotFound}>
+                      <span className="text-xs italic text-[--color-danger]">
                         (존재하지 않는 학생입니다)
                       </span>
                     </div>
@@ -136,7 +125,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                       <button
                         key={student.id}
                         type="button"
-                        className={styles.studentSearchItem}
+                        className="block w-full cursor-pointer border-0 border-b border-solid border-b-[--color-border-light] bg-transparent px-3 py-2 text-left text-[--color-text-primary] transition-colors duration-200 last:border-b-0 hover:bg-[--color-bg-secondary]"
                         onClick={() => onSelectSearchStudent(student.id)}
                       >
                         {student.name}
@@ -208,11 +197,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             )}
           </div>
 
-          <div className={styles.modalActions}>
+          <div className="mt-auto flex shrink-0 items-center justify-between gap-2">
             <Button variant="danger" onClick={onDelete}>
               삭제
             </Button>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <Button variant="transparent" onClick={onCancel}>
                 취소
               </Button>
@@ -228,5 +217,3 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 };
 
 export default EditSessionModal;
-
-

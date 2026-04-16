@@ -1,5 +1,4 @@
 import React from "react";
-import styles from "../../app/schedule/Schedule.module.css";
 import type { Student } from "../../lib/planner";
 import type { StudentPanelState } from "../../types/scheduleTypes";
 
@@ -9,7 +8,7 @@ interface StudentPanelProps {
   onMouseDown: (e: React.MouseEvent) => void;
   onStudentClick: (studentId: string) => void;
   onDragStart: (e: React.DragEvent, student: Student) => void;
-  onDragEnd: (e: React.DragEvent) => void; // 🆕 드래그 종료 핸들러 추가
+  onDragEnd: (e: React.DragEvent) => void;
   onSearchChange: (query: string) => void;
 }
 
@@ -19,10 +18,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
   onMouseDown,
   onStudentClick,
   onDragStart,
-  onDragEnd, // 🆕 드래그 종료 핸들러 추가
+  onDragEnd,
   onSearchChange,
 }) => {
-  // null/undefined 안전 처리
   if (!panelState) {
     return null;
   }
@@ -33,7 +31,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
 
   return (
     <div
-      className={`${styles.floatingPanel} position-fixed overflow-auto`}
+      className="fixed z-[9999] overflow-auto rounded-xl border border-white/20 bg-black/85 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.8),0_10px_10px_-5px_rgba(0,0,0,0.6)] backdrop-blur-[10px]"
       style={{
         left: safePosition.x,
         top: safePosition.y,
@@ -45,7 +43,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
     >
       {/* 드래그 가능한 헤더 */}
       <div
-        className={`${styles.panelHeader} ${
+        className={`mb-4 py-2 text-center text-base font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.5)] ${
           panelState.isDragging ? "cursor-grabbing" : "cursor-grab"
         }`}
         data-testid="students-panel-header"
@@ -55,27 +53,29 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
       </div>
 
       {/* 검색 입력창 */}
-      <div className={styles.searchContainer}>
+      <div className="mb-4">
         <input
           type="text"
           placeholder="학생 이름 검색..."
           value={safeSearchQuery}
           onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
-          className={styles.searchInput}
+          className="w-full rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/60 focus:border-white/30 focus:bg-white/15 focus:shadow-[0_0_0_2px_rgba(255,255,255,0.1)]"
         />
       </div>
 
-      <div className={styles.studentList} role="list">
+      <div className="m-0 flex list-none flex-col gap-2 p-0" role="list">
         {safeFilteredStudents.map((s) => (
           <div key={s.id} role="listitem">
             <div
               draggable
-              className={`${styles.studentItem} ${
-                selectedStudentId === s.id ? styles.selected : ""
+              className={`w-full cursor-grab select-none rounded-md border px-3 py-2 text-left text-white transition-all duration-200 active:cursor-grabbing ${
+                selectedStudentId === s.id
+                  ? "border-blue-500/30 bg-blue-500/50"
+                  : "border-white/15 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]"
               }`}
               data-testid={`student-item-${s.id}`}
               onDragStart={(e) => onDragStart && onDragStart(e, s)}
-              onDragEnd={(e) => onDragEnd && onDragEnd(e)} // 🆕 드래그 종료 이벤트 추가
+              onDragEnd={(e) => onDragEnd && onDragEnd(e)}
               onClick={() => onStudentClick && onStudentClick(s.id)}
             >
               {s.name}
@@ -84,7 +84,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({
         ))}
         {safeFilteredStudents.length === 0 && (
           <div
-            style={{ color: "var(--color-gray-400)", padding: "8px 12px" }}
+            className="px-3 py-2 text-gray-400"
             role="listitem"
           >
             {safeSearchQuery.trim()
