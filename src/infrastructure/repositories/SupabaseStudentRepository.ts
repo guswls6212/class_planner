@@ -37,7 +37,7 @@ export class SupabaseStudentRepository implements StudentRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) =>
+      return (data ?? []).map((row) =>
         Student.restore(row.id, row.name, {
           gender: row.gender ?? undefined,
           birthDate: row.birth_date ?? undefined,
