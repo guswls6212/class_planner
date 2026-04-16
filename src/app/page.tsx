@@ -1,36 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const check = () => {
-      const userId = localStorage.getItem("supabase_user_id");
+      const userId = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+      setIsLoggedIn(!!userId);
       if (userId) {
         router.replace("/schedule");
       }
     };
 
     check();
-
-    window.addEventListener("userLoggedOut", check);
     const interval = setInterval(check, 1000);
+    window.addEventListener("userLoggedOut", check);
 
     return () => {
-      window.removeEventListener("userLoggedOut", check);
       clearInterval(interval);
+      window.removeEventListener("userLoggedOut", check);
     };
   }, [router]);
 
-  const userId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("supabase_user_id")
-      : null;
-  if (userId) return null;
+  if (isLoggedIn) return null;
 
   return (
     <>
@@ -135,7 +132,7 @@ function ScheduleMockup() {
           16:00
         </div>
         {/* 월 */}
-        <div className="bg-[var(--color-subject-violet-bg)] text-[var(--color-subject-violet-fg)] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
+        <div className="bg-[--color-subject-violet-bg] text-[--color-subject-violet-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
           과학
           <br />
           <span className="text-[9px] opacity-70">박지호</span>
@@ -176,7 +173,7 @@ function ScheduleMockup() {
           <span className="text-[9px] opacity-70">최유진</span>
         </div>
         {/* 목 */}
-        <div className="bg-[var(--color-subject-violet-bg)] text-[var(--color-subject-violet-fg)] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
+        <div className="bg-[--color-subject-violet-bg] text-[--color-subject-violet-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
           과학
           <br />
           <span className="text-[9px] opacity-70">박지호</span>
@@ -193,7 +190,7 @@ function ScheduleMockup() {
           18:00
         </div>
         {/* 월 */}
-        <div className="bg-[var(--color-subject-pink-bg)] text-[var(--color-subject-pink-fg)] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
+        <div className="bg-[--color-subject-pink-bg] text-[--color-subject-pink-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
           음악
           <br />
           <span className="text-[9px] opacity-70">한소율</span>
@@ -201,7 +198,7 @@ function ScheduleMockup() {
         {/* 화 */}
         <div />
         {/* 수 */}
-        <div className="bg-[var(--color-subject-teal-bg)] text-[var(--color-subject-teal-fg)] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
+        <div className="bg-[--color-subject-teal-bg] text-[--color-subject-teal-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
           체육
           <br />
           <span className="text-[9px] opacity-70">윤도현</span>
@@ -209,7 +206,7 @@ function ScheduleMockup() {
         {/* 목 */}
         <div />
         {/* 금 */}
-        <div className="bg-[var(--color-subject-orange-bg)] text-[var(--color-subject-orange-fg)] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
+        <div className="bg-[--color-subject-orange-bg] text-[--color-subject-orange-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
           사회
           <br />
           <span className="text-[9px] opacity-70">강예린</span>
