@@ -130,7 +130,7 @@
 - [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
 
 ### 남은 항목
-- [x] 에러 핸들링 체계화 (F3 Step 1~4 완료, PR#25~28 → dev 머지 완료)
+- [x] 에러 핸들링 체계화 (F3 Step 1~5 완료, PR#25~29 → dev 머지 완료)
 - [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
   - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
   - [x] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
@@ -231,6 +231,7 @@
 | 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
 | 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
 | 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |
+| 2026-04-16 | F3 Step 5 완료 확인 — user feedback toast + apiSync retry queue (PR#29 → dev 머지 완료) |
 | 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
 | 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
 | 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
