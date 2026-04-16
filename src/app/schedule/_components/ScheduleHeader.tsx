@@ -1,4 +1,5 @@
 import ColorByToggle from "../../../components/molecules/ColorByToggle";
+import { HelpTooltip } from "../../../components/molecules/HelpTooltip";
 import type { ColorByMode } from "../../../hooks/useColorBy";
 import type { ScheduleViewMode } from "../../../hooks/useScheduleView";
 
@@ -74,7 +75,13 @@ export default function ScheduleHeader({
             </button>
           </div>
           {onColorByChange && (
-            <ColorByToggle colorBy={colorBy} onChange={onColorByChange} />
+            <div className="flex items-center gap-1">
+              <ColorByToggle colorBy={colorBy} onChange={onColorByChange} />
+              <HelpTooltip
+                label="색상 기준 도움말"
+                content="과목별로 색을 구분하거나, 학생·강사 기준으로 전환할 수 있습니다."
+              />
+            </div>
           )}
         </div>
       </div>

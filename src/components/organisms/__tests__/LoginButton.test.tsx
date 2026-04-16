@@ -33,14 +33,7 @@ vi.mock("../../../lib/logger", () => ({
   },
 }));
 
-vi.mock("../../../hooks/useUserTracking", () => ({
-  useUserTracking: vi.fn(() => ({
-    setUserId: vi.fn(),
-    clearUserId: vi.fn(),
-    trackAction: vi.fn(),
-    trackSecurityEvent: vi.fn(),
-  })),
-}));
+// useUserTracking is no longer used by LoginButton (moved to AccountMenu)
 
 // Mock window methods
 Object.defineProperty(window, "location", {
@@ -93,38 +86,42 @@ describe("LoginButton", () => {
     expect(screen.getByText("로그인")).toBeInTheDocument();
   });
 
-  it("로그인 버튼 클릭 시 모달이 열려야 한다", () => {
+  it("로그인 버튼 클릭 시 signInWithOAuth가 직접 호출되어야 한다", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+
     render(<LoginButton />);
 
     const loginButton = screen.getByText("로그인");
     fireEvent.click(loginButton);
 
-    expect(
-      screen.getByText("Google 계정으로 간편하게 로그인하세요")
-    ).toBeInTheDocument();
+    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: "google" })
+    );
+
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   });
 
-  it("Google 로그인 버튼이 표시되어야 한다", () => {
+  it("Google 로그인 모달이 아닌 단일 버튼만 렌더링되어야 한다", () => {
     render(<LoginButton />);
 
-    const loginButton = screen.getByText("로그인");
-    fireEvent.click(loginButton);
-
-    expect(screen.getByText("Google로 로그인")).toBeInTheDocument();
+    // No modal — only the CTA button is present
+    expect(screen.getByText("로그인")).toBeInTheDocument();
+    expect(screen.queryByText("Google 계정으로 간편하게 로그인하세요")).not.toBeInTheDocument();
   });
 
-  it("모달 닫기 버튼이 작동해야 한다", () => {
+  it("Supabase 미설정 시 alert를 표시하고 signInWithOAuth를 호출하지 않아야 한다", () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
     render(<LoginButton />);
+    fireEvent.click(screen.getByText("로그인"));
 
-    const loginButton = screen.getByText("로그인");
-    fireEvent.click(loginButton);
-
-    const closeButton = screen.getByText("×");
-    fireEvent.click(closeButton);
-
-    expect(
-      screen.queryByText("Google 계정으로 간편하게 로그인하세요")
-    ).not.toBeInTheDocument();
+    expect(alertSpy).toHaveBeenCalled();
+    expect(supabase.auth.signInWithOAuth).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 
   it("className prop을 처리해야 한다", () => {
@@ -143,60 +140,14 @@ describe("LoginButton", () => {
     }).not.toThrow();
   });
 
-  it("사용자 추적 시스템을 사용해야 한다", () => {
-    // LoginButton이 렌더링되면 useUserTracking이 내부적으로 사용됨
+  it("에러 없이 렌더링되어야 한다 (추가 검증)", () => {
+    // LoginButton은 이제 단순 CTA 버튼으로 사용자 추적은 AccountMenu에서 담당
     expect(() => {
       render(<LoginButton />);
     }).not.toThrow();
   });
 
-  it("로거 시스템을 사용해야 한다", () => {
-    render(<LoginButton />);
-
-    // 컴포넌트가 로드되면 로거가 사용됨
-    expect(true).toBe(true);
-  });
 });
 
-describe("로그아웃 — supabase.auth.signOut 호출", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    Object.defineProperty(window, "localStorage", {
-      value: {
-        getItem: vi.fn(),
-        setItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-        key: vi.fn(),
-        length: 0,
-      },
-      writable: true,
-    });
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
-  });
-
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  });
-
-  it("로그아웃 버튼 클릭 시 supabase.auth.signOut이 호출되어야 한다", async () => {
-    const mockUser = { id: "user-123", email: "test@example.com" };
-    vi.mocked(supabase.auth.getUser).mockResolvedValueOnce({
-      data: { user: mockUser as any },
-      error: null,
-    });
-
-    render(<LoginButton />);
-
-    // Wait for async getUser to resolve and logged-in UI to appear
-    const avatarButton = await screen.findByTitle("사용자 메뉴");
-    fireEvent.click(avatarButton); // open dropdown
-
-    const logoutButton = screen.getByText("로그아웃");
-    fireEvent.click(logoutButton);
-
-    expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
-  });
-});
+// NOTE: 로그아웃 기능은 AccountMenu 컴포넌트로 이전되었습니다.
+// AccountMenu 테스트는 별도 테스트 파일에서 관리합니다.
