@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-16, Token SSOT 완성 반영)
+# class-planner file structure (2026-04-17, W2-W5 기능 확장 반영)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
@@ -82,6 +82,13 @@ class-planner/
 │       ├── 021_academy_members_delete_policy.sql
 │       └── 023_drop_app_logs_owner_select_policy.sql
 │
+├── supabase/
+│   └── migrations/               # Supabase 마이그레이션 (025~)
+│       ├── 025_add_student_profile_fields.sql
+│       ├── 026_create_share_tokens.sql    # W3: 공유 링크 토큰 테이블
+│       ├── 027_create_templates.sql       # W4: 시간표 템플릿 테이블
+│       └── 028_create_attendance.sql      # W5: 출석 관리 테이블
+│
 ├── nginx/
 │   ├── default.conf
 │   └── init-ssl.conf
@@ -124,9 +131,15 @@ class-planner/
     │   ├── invite/[token]/page.tsx           # 초대 수락 페이지
     │   ├── students/page.tsx
     │   ├── subjects/page.tsx
-    │   ├── schedule/                     # 가장 복잡한 페이지
+    │   ├── teachers/page.tsx                 # 강사 관리 (Phase 4)
+    │   ├── teacher-schedule/page.tsx         # 강사 전용 시간표 뷰 (읽기 전용, Phase 4)
+    │   ├── share/                            # 공유 시간표 (인증 불필요, W3)
+    │   │   └── [token]/
+    │   │       ├── page.tsx                  # 공유 링크 시간표 뷰 (읽기 전용)
+    │   │       └── layout.tsx               # 최소 레이아웃 (Nav 없음)
+    │   ├── schedule/                         # 가장 복잡한 페이지
     │   │   ├── page.tsx
-    │   │   ├── _components/              # 페이지 전용 섹션 컴포넌트
+    │   │   ├── _components/                  # 페이지 전용 섹션 컴포넌트
     │   │   │   ├── EditSessionModal.tsx
     │   │   │   ├── GroupSessionModal.tsx
     │   │   │   ├── PdfDownloadSection.tsx
@@ -146,15 +159,18 @@ class-planner/
     │   │   │   ├── scheduleSelectors.ts
     │   │   │   └── sessionSaveUtils.ts
     │   │   └── _constants/scheduleConstants.ts
-    │   └── api/                          # Next.js API Routes
-    │       ├── enrollments/route.ts      # GET/POST/DELETE enrollments
+    │   └── api/                              # Next.js API Routes
+    │       ├── enrollments/route.ts          # GET/POST/DELETE enrollments
     │       ├── onboarding/
-    │       │   ├── route.ts              # POST — academyName + role 입력, onboarded 쿠키 설정
-    │       │   └── status/route.ts       # GET — academy 존재 여부 확인
+    │       │   ├── route.ts                  # POST — academyName + role 입력, onboarded 쿠키 설정
+    │       │   └── status/route.ts           # GET — academy 존재 여부 확인
     │       ├── students/
     │       │   ├── route.ts
     │       │   └── [id]/route.ts
     │       ├── subjects/
+    │       │   ├── route.ts
+    │       │   └── [id]/route.ts
+    │       ├── teachers/                     # 강사 CRUD (Phase 4)
     │       │   ├── route.ts
     │       │   └── [id]/route.ts
     │       ├── sessions/
@@ -162,46 +178,90 @@ class-planner/
     │       │   └── [id]/
     │       │       ├── route.ts
     │       │       └── position/route.ts
-    │       ├── invites/                  # 초대 토큰 CRUD
-    │       │   ├── route.ts              # GET (목록), POST (생성)
-    │       │   ├── [id]/route.ts         # DELETE (취소)
-    │       │   ├── check/route.ts        # GET (공개 조회)
-    │       │   └── accept/route.ts       # POST (수락)
-    │       ├── members/                  # 멤버 관리
-    │       │   ├── route.ts              # GET (목록)
-    │       │   └── [userId]/route.ts     # DELETE (제거)
+    │       ├── invites/                      # 초대 토큰 CRUD
+    │       │   ├── route.ts                  # GET (목록), POST (생성)
+    │       │   ├── [id]/route.ts             # DELETE (취소)
+    │       │   ├── check/route.ts            # GET (공개 조회)
+    │       │   └── accept/route.ts           # POST (수락)
+    │       ├── members/                      # 멤버 관리
+    │       │   ├── route.ts                  # GET (목록)
+    │       │   └── [userId]/route.ts         # DELETE (제거)
+    │       ├── share/                        # 공유 링크 (인증 불필요, W3)
+    │       │   └── [token]/route.ts          # GET — token 검증 + 시간표 데이터 반환
+    │       ├── share-tokens/                 # 공유 토큰 CRUD (W3)
+    │       │   ├── route.ts                  # GET (목록), POST (생성)
+    │       │   └── [id]/route.ts             # DELETE (취소: revoked_at 설정)
+    │       ├── templates/                    # 시간표 템플릿 CRUD (W4)
+    │       │   ├── route.ts                  # GET (목록), POST (생성)
+    │       │   └── [id]/route.ts             # GET, PUT, DELETE
+    │       ├── attendance/                   # 출석 관리 (W5)
+    │       │   ├── route.ts                  # GET (세션+날짜 조회), POST (단건 upsert)
+    │       │   └── bulk/route.ts             # POST (일괄 upsert)
+    │       ├── logs/
+    │       │   └── client/route.ts           # 클라이언트 로그 수신
     │       ├── admin/
     │       │   └── logs/
-    │       │       ├── route.ts          # GET — ADMIN_EMAILS 게이트, 전체 학원 횡단 조회
+    │       │       ├── route.ts              # GET — ADMIN_EMAILS 게이트, 전체 학원 횡단 조회
     │       │       └── __tests__/
     │       │           └── route.test.ts
     │       ├── user-settings/route.ts
-    │       └── auth/                     # Supabase Auth callback
+    │       └── auth/                         # Supabase Auth callback
     │
     ├── components/                       # Atomic Design
     │   ├── atoms/
     │   │   ├── AuthGuard.tsx
-    │   │   ├── Button.tsx    │   │   ├── ErrorBoundary.tsx
-    │   │   ├── Input.tsx    │   │   ├── Label.tsx    │   │   ├── StudentListItem.tsx    │   │   ├── SubjectListItem.tsx    │   │   ├── ThemeToggle.tsx
-    │   │   └── __tests__/ (8 test files)
+    │   │   ├── Button.tsx
+    │   │   ├── ErrorBoundary.tsx
+    │   │   ├── GlobalErrorHandlers.tsx
+    │   │   ├── Input.tsx
+    │   │   ├── Label.tsx
+    │   │   ├── StudentListItem.tsx
+    │   │   ├── SubjectListItem.tsx
+    │   │   ├── TeacherListItem.tsx           # Phase 4
+    │   │   ├── ThemeToggle.tsx
+    │   │   └── __tests__/ (10 test files)
     │   ├── molecules/
-    │   │   ├── ConfirmModal.tsx    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
+    │   │   ├── ApplyTemplateModal.tsx        # W4: 템플릿 적용 모달
+    │   │   ├── AttendanceSheet.tsx           # W5: 세션별 출석 체크 패널
+    │   │   ├── BottomSheet.tsx              # Phase 3: 모바일 바텀 시트
+    │   │   ├── BottomTabBar.tsx             # Phase 3: 모바일 하단 탭바
+    │   │   ├── ColorByToggle.tsx            # Phase 4: 색상 기준 토글
+    │   │   ├── ConfirmModal.tsx
+    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
+    │   │   ├── DayChipBar.tsx               # Phase 3: 모바일 요일 선택 칩바
     │   │   ├── DropZone.tsx
+    │   │   ├── MonthDayCell.tsx             # W2: 월별 뷰 날짜 셀
     │   │   ├── PDFDownloadButton.tsx
-    │   │   ├── SessionBlock.tsx (+utils.ts)           # 시간표 수업 블록
+    │   │   ├── SaveTemplateModal.tsx         # W4: 템플릿 저장 모달
+    │   │   ├── SessionBlock.tsx (+utils.ts)  # 시간표 수업 블록
     │   │   ├── SessionForm.tsx
-    │   │   ├── StudentInputSection.tsx    │   │   ├── StudentList.tsx    │   │   ├── SubjectInputSection.tsx    │   │   ├── SubjectList.tsx    │   │   ├── TimeTableRow.tsx
-    │   │   └── __tests__/ (12 test files)
+    │   │   ├── Sidebar.tsx                  # Phase 3: 데스크탑 사이드바
+    │   │   ├── StudentInputSection.tsx
+    │   │   ├── StudentList.tsx
+    │   │   ├── SubjectInputSection.tsx
+    │   │   ├── SubjectList.tsx
+    │   │   ├── TeacherInputSection.tsx       # Phase 4
+    │   │   ├── TeacherList.tsx              # Phase 4
+    │   │   ├── TimeTableRow.tsx
+    │   │   ├── TopBar.tsx                   # Phase 3: 모바일 상단 앱바
+    │   │   └── __tests__/ (15+ test files)
     │   └── organisms/
     │       ├── AboutPageLayout.tsx
+    │       ├── AppShell.tsx                 # Phase 3: AppShell (Sidebar + TopBar + BottomTabBar)
     │       ├── LoginButton.tsx (+.module.css)         # Google OAuth 모달 + 드롭다운
+    │       ├── ScheduleDailyView.tsx        # Phase 3: 모바일 일별 뷰
+    │       ├── ScheduleMonthlyView.tsx      # W2: 월별 캘린더 뷰
+    │       ├── StudentDetailPanel.tsx       # Phase 4: 학생 상세 패널
     │       ├── StudentManagementSection.tsx
-    │       ├── StudentPanel.tsx                       # 플로팅 학생 패널 (드래그 가능)
+    │       ├── StudentPanel.tsx             # 플로팅 학생 패널 (드래그 가능)
     │       ├── StudentsPageLayout.tsx
+    │       ├── SubjectDetailPanel.tsx       # Phase 4: 과목 상세 패널
     │       ├── SubjectManagementSection.tsx
     │       ├── SubjectsPageLayout.tsx
-    │       ├── TimeTableGrid.tsx                      # 주간 시간표 그리드 (DnD)
-    │       ├── __tests__/ (8 test files)
+    │       ├── TeacherManagementSection.tsx # Phase 4
+    │       ├── TeachersPageLayout.tsx       # Phase 4
+    │       ├── TimeTableGrid.tsx            # 주간 시간표 그리드 (DnD)
+    │       ├── __tests__/ (10+ test files)
     │       └── about/
     │           ├── FeatureCard.tsx
     │           ├── FeatureDetail.tsx
@@ -256,19 +316,29 @@ class-planner/
     │       └── SupabaseSubjectRepository.ts      # subjects 테이블 (academy_id 기반)
     │
     ├── hooks/                            # Custom React Hooks
+    │   ├── useAttendance.ts              # W5: 날짜별 출석 데이터 + 마킹
+    │   ├── useBottomSheet.ts             # Phase 3: 바텀시트 상태
+    │   ├── useColorBy.ts                 # Phase 4: 색상 기준 (subject/teacher)
     │   ├── useDisplaySessions.ts
     │   ├── useGlobalDataInitialization.ts
     │   ├── useIntegratedDataLocal.ts     # 통합 데이터 관리 (Local-first SSOT)
     │   ├── useLocal.ts
+    │   ├── useMediaQuery.ts              # Phase 3: 반응형 미디어 쿼리
+    │   ├── useModalA11y.ts              # Phase 3: 모달 접근성 (focus trap + Escape)
     │   ├── usePerformanceMonitoring.ts
     │   ├── useScheduleDragAndDrop.ts
     │   ├── useScheduleSessionManagement.ts
+    │   ├── useScheduleView.ts            # W2: 뷰 모드 (daily/weekly/monthly) + 네비게이션
+    │   ├── useSessionStatus.ts           # Phase 4: 세션 상태 계산
     │   ├── useStudentManagementLocal.ts
     │   ├── useStudentPanel.ts
     │   ├── useSubjectManagementLocal.ts
+    │   ├── useTeacherDisplaySessions.ts  # Phase 4: 강사별 세션 표시
+    │   ├── useTeacherManagementLocal.ts  # Phase 4: 강사 관리 (Local-first)
+    │   ├── useTemplates.ts              # W4: 시간표 템플릿 CRUD
     │   ├── useTimeValidation.ts
     │   ├── useUserTracking.ts
-    │   └── __tests__/ (12 test files)
+    │   └── __tests__/ (15+ test files)
     │
     ├── lib/                              # 핵심 유틸리티
     │   ├── apiSync.ts                    # Fire-and-forget 서버 동기화
@@ -305,7 +375,8 @@ class-planner/
     │       ├── CommonTypes.ts
     │       ├── DomainTypes.ts
     │       ├── index.ts
-    │       └── scheduleTypes.ts
+    │       ├── scheduleTypes.ts
+    │       └── templateTypes.ts          # W4: 시간표 템플릿 타입 정의
     │
     ├── types/scheduleTypes.ts
     └── utils/supabaseClient.ts
@@ -328,4 +399,4 @@ tests/
     ├── mock-supabase.test.ts
     └── schedule-features.test.ts
 
-# __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 100+ 테스트 파일, 위 구조에서 생략)
+# __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 120+ 테스트 파일, 위 구조에서 생략)

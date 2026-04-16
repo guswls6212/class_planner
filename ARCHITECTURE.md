@@ -43,24 +43,29 @@
 ### 2.1 Pages (Next.js App Router)
 ```
 src/app/
-├── page.tsx              # 랜딩 페이지
-├── layout.tsx            # 루트 레이아웃 (Nav + Footer)
-├── login/page.tsx        # OAuth 로그인
-├── onboarding/page.tsx   # 첫 로그인 온보딩 (학원명 + 역할 입력)
-├── students/page.tsx     # 학생 관리
-├── subjects/page.tsx     # 과목 관리
-├── settings/page.tsx     # 학원 설정 (멤버 목록 + 초대 관리)
+├── page.tsx                    # 랜딩 페이지
+├── layout.tsx                  # 루트 레이아웃 (AppShell)
+├── login/page.tsx              # OAuth 로그인
+├── onboarding/page.tsx         # 첫 로그인 온보딩 (학원명 + 역할 입력)
+├── students/page.tsx           # 학생 관리
+├── subjects/page.tsx           # 과목 관리
+├── teachers/page.tsx           # 강사 관리 (Phase 4)
+├── teacher-schedule/page.tsx   # 강사 전용 시간표 뷰 (읽기 전용, Phase 4)
+├── settings/page.tsx           # 학원 설정 (멤버 목록 + 초대 관리)
 ├── admin/
-│   ├── layout.tsx        # ADMIN_EMAILS env 화이트리스트 게이트
-│   └── logs/page.tsx     # 개발자 전용 로그 뷰어 (전체 학원 횡단 조회)
-├── invite/[token]/page.tsx # 초대 수락 페이지 (비로그인/로그인 분기)
-├── schedule/             # 시간표 관리 (가장 복잡)
+│   ├── layout.tsx              # ADMIN_EMAILS env 화이트리스트 게이트
+│   └── logs/page.tsx           # 개발자 전용 로그 뷰어 (전체 학원 횡단 조회)
+├── invite/[token]/page.tsx     # 초대 수락 페이지 (비로그인/로그인 분기)
+├── share/[token]/              # 공유 시간표 (인증 불필요, W3)
+│   ├── page.tsx                # 공유 링크 시간표 뷰 (읽기 전용)
+│   └── layout.tsx              # 최소 레이아웃 (Nav 없음)
+├── schedule/                   # 시간표 관리 (가장 복잡)
 │   ├── page.tsx
-│   ├── _components/      # 페이지 전용 컴포넌트
-│   ├── _hooks/           # 페이지 전용 훅
-│   ├── _utils/           # 페이지 전용 유틸리티
-│   └── _constants/       # 페이지 전용 상수
-└── about/page.tsx        # 소개 페이지
+│   ├── _components/            # 페이지 전용 컴포넌트
+│   ├── _hooks/                 # 페이지 전용 훅
+│   ├── _utils/                 # 페이지 전용 유틸리티
+│   └── _constants/             # 페이지 전용 상수
+└── about/page.tsx              # 소개 페이지
 ```
 
 ### 2.1.1 Middleware (`src/middleware.ts`)
@@ -72,16 +77,21 @@ matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`
 ### 2.2 API Routes
 ```
 src/app/api/
-├── students/       # 학생 CRUD (GET, POST, [id] PUT/DELETE)
-├── subjects/       # 과목 CRUD (GET, POST, [id] PUT/DELETE)
-├── sessions/       # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
-├── enrollments/    # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
-├── onboarding/     # 신규 사용자 온보딩 (Academy 생성)
-├── invites/        # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
-├── members/        # 멤버 관리 (GET 목록, [userId] DELETE 제거)
+├── students/         # 학생 CRUD (GET, POST, [id] PUT/DELETE)
+├── subjects/         # 과목 CRUD (GET, POST, [id] PUT/DELETE)
+├── teachers/         # 강사 CRUD (GET, POST, [id] PUT/DELETE, Phase 4)
+├── sessions/         # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
+├── enrollments/      # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
+├── onboarding/       # 신규 사용자 온보딩 (Academy 생성)
+├── invites/          # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
+├── members/          # 멤버 관리 (GET 목록, [userId] DELETE 제거)
+├── share/[token]/    # 공유 링크 데이터 (GET — 인증 불필요, token 검증, W3)
+├── share-tokens/     # 공유 토큰 CRUD (GET/POST 목록·생성, [id] DELETE 취소, W3)
+├── templates/        # 시간표 템플릿 CRUD (GET/POST 목록·생성, [id] GET/PUT/DELETE, W4)
+├── attendance/       # 출석 관리 (GET 조회/POST 단건 upsert, bulk/ POST 일괄 upsert, W5)
 ├── admin/
-│   └── logs/       # GET — 개발자 전용 (ADMIN_EMAILS 화이트리스트), 전체 학원 횡단 조회, 필터/페이지네이션
-└── user-settings/  # 사용자 설정
+│   └── logs/         # GET — 개발자 전용 (ADMIN_EMAILS 화이트리스트), 전체 학원 횡단 조회, 필터/페이지네이션
+└── user-settings/    # 사용자 설정
 ```
 모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
 
@@ -137,11 +147,21 @@ src/lib/               # 핵심 유틸리티
 src/hooks/             # 커스텀 React 훅
 ├── useStudentManagementLocal.ts   # 학생 관리 (Local-first)
 ├── useSubjectManagementLocal.ts   # 과목 관리 (Local-first)
+├── useTeacherManagementLocal.ts   # 강사 관리 (Local-first, Phase 4)
 ├── useIntegratedDataLocal.ts      # 통합 데이터 (Local-first)
 ├── useGlobalDataInitialization.ts # 앱 초기화 (익명/로그인 분기, 충돌 감지)
 ├── useScheduleDragAndDrop.ts      # 드래그앤드롭
 ├── useScheduleSessionManagement.ts # 세션 관리
+├── useScheduleView.ts             # 뷰 모드 (daily/weekly/monthly) + 네비게이션 (W2)
 ├── useDisplaySessions.ts          # 세션 표시 로직
+├── useTeacherDisplaySessions.ts   # 강사별 세션 표시 (Phase 4)
+├── useColorBy.ts                  # 색상 기준 토글 (subject/teacher, Phase 4)
+├── useAttendance.ts               # 날짜별 출석 데이터 + 마킹 (W5)
+├── useTemplates.ts                # 시간표 템플릿 CRUD (W4)
+├── useModalA11y.ts                # 모달 접근성 (focus trap + Escape)
+├── useBottomSheet.ts              # 바텀시트 상태 관리
+├── useMediaQuery.ts               # 반응형 미디어 쿼리
+├── useSessionStatus.ts            # 세션 상태 계산 (Phase 4)
 ├── useLocal.ts                    # localStorage 기반 범용 훅
 ├── useStudentPanel.ts             # StudentPanel 상태 관리
 ├── useTimeValidation.ts           # 시간 유효성 검사
@@ -163,7 +183,8 @@ src/shared/            # 계층 간 공유 타입/상수
     ├── CommonTypes.ts       # 공통 타입 (ID, Timestamp 등)
     ├── DomainTypes.ts       # Domain 계층 인터페이스
     ├── index.ts             # 재export
-    └── scheduleTypes.ts     # Schedule 전용 타입
+    ├── scheduleTypes.ts     # Schedule 전용 타입
+    └── templateTypes.ts     # 시간표 템플릿 타입 (W4)
 
 src/types/             # 레거시 타입 (shared/types로 점진 통합 예정)
 └── scheduleTypes.ts   # Schedule 관련 타입
@@ -194,6 +215,15 @@ subjects           (id UUID PK, academy_id UUID FK, name TEXT, color TEXT)
 enrollments        (id UUID PK, student_id UUID FK, subject_id UUID FK)
 sessions           (id UUID PK, academy_id UUID FK, weekday INT, starts_at TIME, ends_at TIME, room TEXT, y_position INT)
 session_enrollments(session_id UUID FK, enrollment_id UUID FK)
+
+-- 공유 링크 (W3 — supabase/migrations/026)
+share_tokens       (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, label TEXT, filter_student_id UUID FK NULL, expires_at TIMESTAMPTZ, created_by UUID FK, revoked_at TIMESTAMPTZ NULL)
+
+-- 시간표 템플릿 (W4 — supabase/migrations/027)
+templates          (id UUID PK, academy_id UUID FK, name TEXT, description TEXT, template_data JSONB, created_by UUID FK, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)
+
+-- 출석 관리 (W5 — supabase/migrations/028)
+attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_id UUID FK, date DATE, status TEXT CHECK('present','absent','late','excused'), notes TEXT, marked_by UUID FK NULL, marked_at TIMESTAMPTZ, UNIQUE(session_id, student_id, date))
 ```
 
 ### 3.3 보조 테이블
@@ -240,3 +270,4 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 - 2026-04-14: API Routes 현행화 (enrollments, onboarding 추가, data/auth 제거). lib/ 현행화 (apiSync, auth/, resolveAcademyId 등 추가, debouncedServerSync 제거). AuthContext.tsx 제거 (ThemeContext.tsx만 유지). Vercel 다이어그램 제거.
 - 2026-04-15: invite_tokens 테이블 추가 (020 migration). /api/invites + /api/members API Routes 추가. /settings, /invite/[token] 페이지 추가. resolveAcademyMembership 헬퍼 추가.
 - 2026-04-15: Step 5 개발자 로그 뷰어 추가. /admin/logs 페이지 + /api/admin/logs Route (ADMIN_EMAILS 화이트리스트). adminGuard.ts 신규. 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP.
+- 2026-04-17: Phase 3 Full Redesign 완료 (AppShell, ScheduleDailyView, BottomTabBar, Sidebar, TopBar, DayChipBar, useModalA11y 등). Phase 4 Teacher 뷰 + Color-by 토글 완료 (teachers 페이지 + API, teacher-schedule 뷰, useColorBy, useTeacherManagementLocal 등). W2 월별 뷰 (ScheduleMonthlyView, MonthDayCell, useScheduleView). W3 공유 링크 (share/[token] 페이지, share-tokens API, migration 026). W4 시간표 템플릿 (templates API, SaveTemplateModal, ApplyTemplateModal, useTemplates, templateTypes, migration 027). W5 출석 관리 (attendance API + bulk, AttendanceSheet, useAttendance, migration 028).
