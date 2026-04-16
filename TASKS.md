@@ -132,7 +132,7 @@
 ### 남은 항목
 - [x] 에러 핸들링 체계화 (F3 Step 1~5 완료, PR#25~29 → dev 머지 완료)
 - [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
-  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
+  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#58
   - [x] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
         — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
         — RLS: insert는 service_role만, select는 owner role만
@@ -159,12 +159,12 @@
         — `no-console` rule `"warn"` → `"error"` 승격, logger.ts+테스트 파일 override 추가
         — `src/` 전수 치환 (lib 3개 + components 4개 + hooks 2개 + app 2개 파일)
         — 테스트 spy 4개 `console.warn` → `logger.warn` 업데이트
-- [x] 성능 최적화 (번들 사이즈, 초기 로딩) — 완료 (PR#TBD)
+- [x] 성능 최적화 (번들 사이즈, 초기 로딩) — 완료 (PR#58)
       — react-router-dom/uid/template SVGs 제거 (dead deps cleanup)
       — PDF 스택(jspdf+html2canvas) dynamic import → 클릭 시 온디맨드 로드
       — 3개 모달 next/dynamic { ssr: false } + experimental.optimizePackageImports: ["sonner"]
       — /schedule First Load JS: **385 kB → 200 kB (−48%)**
-- [x] 접근성(a11y) 개선 — 완료 (PR#TBD)
+- [x] 접근성(a11y) 개선 — 완료 (PR#58)
       — useModalA11y 훅 신규: Escape, Tab 포커스 트랩, return-focus
       — EditSessionModal/GroupSessionModal/DataConflictModal: role=dialog + aria-modal + aria-labelledby
       — SessionBlock: div → button + aria-label(학생/과목/요일/시간) + focus-visible 아웃라인
@@ -181,10 +181,10 @@
 - [x] 디자인 시스템 정의 (색상, 타이포그래피, 간격) — @theme SSOT 설계 완료 (2026-04-15)
 - [x] 토큰 SSOT 구현 — @theme 통합, tailwind.config.ts 삭제, 14개 CSS Module→Tailwind, hex→CSS var 전환 (PR#44)
 - [x] 랜딩 페이지 리디자인 — Product-Led 랜딩, LandingNav, 인라인→Tailwind (PR#42)
-- [ ] 시간표 그리드 UI 개선 (별도 스펙)
-- [ ] 학생/과목 관리 페이지 UI 개선 (별도 스펙)
-- [ ] 모바일 반응형 강화 (별도 스펙)
-- [ ] PDF 출력 레이아웃 개선 (별도 스펙)
+- [x] 시간표 그리드 UI 개선 — Full Redesign 완료 (PR#44)
+- [x] 학생/과목 관리 페이지 UI 개선 — Full Redesign 완료 (PR#44)
+- [x] 모바일 반응형 강화 — Full Redesign 완료 (PR#44)
+- [x] PDF 출력 레이아웃 개선 — Full Redesign 완료 (PR#44)
 
 ## Phase 4: 기능 확장 (진행 중)
 
@@ -192,13 +192,18 @@
 - [x] 강사(Teacher) 뷰 — Teacher 엔티티, Teacher CRUD, 세션 배정, /teacher-schedule 읽기 전용 페이지 (PR#45)
 - [x] Color-by 토글 UI — 원장 뷰에서 과목/학생/강사 색상 기준 전환 (PR#45)
 - [x] CSS Modules → Tailwind 전면 이관 — 14개 모듈 삭제 완료 (PR#44)
+- [x] Phase 3 Polish — SessionBlock `onDelete` prop + 컨텍스트 메뉴 삭제 연결 (PR#58)
+- [x] Phase 3 Polish — ConfirmModal `useModalA11y` 마이그레이션 (Escape + focus trap) (PR#58)
+- [x] Phase 3 Polish — LoginButton `supabase.auth.signOut()` 교체 (수동 localStorage 스크럽 제거) (PR#58)
+
+- [x] 월별 뷰 — 3-way 토글(일별/주별/월별), MonthDayCell, ScheduleMonthlyView, 날짜 클릭→일별 전환 (PR#59)
+- [x] 공유 링크 (`/share/{token}`) — share_tokens 테이블, 공개 API, 읽기 전용 시간표 페이지, Settings 관리 UI (PR#60)
+
+- [x] 시간표 템플릿 — templates 테이블, 저장/적용 모달, useTemplates 훅, name-based 매칭 (PR#61)
+- [x] 출석 관리 — attendance 테이블, GET/POST API, bulk upsert, AttendanceSheet, useAttendance 훅, 일별 뷰 연동 (PR#62)
 
 ### 남은 항목
-- [ ] 공유 링크 페이지 (`/share/{token}`) — 학생/학부모용 읽기 전용 Surface 모드 (현재는 PDF만)
 - [ ] 학원생 자동 알림 (시간표 변경 시)
-- [ ] 출석 관리 기능
-- [ ] 월별/주별 시간표 뷰
-- [ ] 시간표 템플릿 기능
 
 ---
 
@@ -235,7 +240,10 @@
 | 2026-04-16 | F3 Step 5 완료 확인 — user feedback toast + apiSync retry queue (PR#29 → dev 머지 완료) |
 | 2026-04-16 | Token SSOT 완성 — @theme 확장, 14개 CSS Module 삭제, hex→CSS var 전환, TSX inline hex 정리 (PR#44 → dev 머지 완료) |
 | 2026-04-16 | Phase 4 Teacher 완료 — Teacher CRUD + Session 배정, Color-by 토글, /teacher-schedule 뷰 (PR#45 → dev 머지 완료) |
+| 2026-04-17 | Phase 3 Polish (W1) — SessionBlock onDelete, ConfirmModal useModalA11y, LoginButton signOut 교체 (PR#58) |
 | 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
 | 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
 | 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
 | 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
+| 2026-04-17 | Phase 3 Polish + Phase 4 W1~W3 완료 — ConfirmModal a11y, signOut, SessionBlock onDelete, 월별 뷰(PR#59), 공유 링크(PR#60) |
+| 2026-04-17 | Phase 4 W4~W5 완료 — 시간표 템플릿(PR#61), 출석 관리(PR#62) |

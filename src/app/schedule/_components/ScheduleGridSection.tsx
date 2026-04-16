@@ -17,6 +17,7 @@ type Props = {
   enrollments: Enrollment[];
   students: Student[];
   onSessionClick: (session: Session) => void;
+  onSessionDelete?: (session: Session) => void;
   onDrop: (
     weekday: number,
     time: string,
@@ -48,6 +49,7 @@ export default function ScheduleGridSection({
   enrollments,
   students,
   onSessionClick,
+  onSessionDelete,
   onDrop,
   onSessionDrop,
   onEmptySpaceClick,
@@ -65,6 +67,7 @@ export default function ScheduleGridSection({
         enrollments={enrollments}
         students={students}
         onSessionClick={onSessionClick}
+        onSessionDelete={onSessionDelete}
         onDrop={onDrop}
         onSessionDrop={onSessionDrop}
         onEmptySpaceClick={onEmptySpaceClick}

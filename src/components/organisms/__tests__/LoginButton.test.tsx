@@ -5,6 +5,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginButton from "../LoginButton";
+import { supabase } from "../../../utils/supabaseClient";
 
 // Mock all dependencies
 vi.mock("../../../utils/supabaseClient", () => ({
@@ -154,5 +155,48 @@ describe("LoginButton", () => {
 
     // 컴포넌트가 로드되면 로거가 사용됨
     expect(true).toBe(true);
+  });
+});
+
+describe("로그아웃 — supabase.auth.signOut 호출", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
+        key: vi.fn(),
+        length: 0,
+      },
+      writable: true,
+    });
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+  });
+
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  });
+
+  it("로그아웃 버튼 클릭 시 supabase.auth.signOut이 호출되어야 한다", async () => {
+    const mockUser = { id: "user-123", email: "test@example.com" };
+    vi.mocked(supabase.auth.getUser).mockResolvedValueOnce({
+      data: { user: mockUser as any },
+      error: null,
+    });
+
+    render(<LoginButton />);
+
+    // Wait for async getUser to resolve and logged-in UI to appear
+    const avatarButton = await screen.findByTitle("사용자 메뉴");
+    fireEvent.click(avatarButton); // open dropdown
+
+    const logoutButton = screen.getByText("로그아웃");
+    fireEvent.click(logoutButton);
+
+    expect(supabase.auth.signOut).toHaveBeenCalledTimes(1);
   });
 });
