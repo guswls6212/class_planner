@@ -35,8 +35,8 @@ export function SubjectDetailPanel({
   );
 
   const handleSave = async () => {
-    await onUpdate(subject.id, editName, editColor);
-    setIsEditing(false);
+    const success = await onUpdate(subject.id, editName, editColor);
+    if (success) setIsEditing(false);
   };
 
   const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -162,11 +162,12 @@ export function SubjectDetailPanel({
                 <button
                   key={color}
                   onClick={() => setEditColor(color)}
-                  className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: color,
-                    borderColor: editColor === color ? "var(--color-text-primary)" : "transparent",
-                  }}
+                  className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ring-offset-1 ${
+                    editColor === color
+                      ? "ring-2 ring-[var(--color-text-primary)]"
+                      : "ring-0"
+                  }`}
+                  style={{ backgroundColor: color }}
                   aria-label={`색상 ${color}`}
                 />
               ))}

@@ -1,24 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useSubjectManagementLocal } from "../../hooks/useSubjectManagementLocal";
+import { useLocal } from "../../hooks/useLocal";
 import { logger } from "../../lib/logger";
-
-const SELECTED_SUBJECT_KEY = "selectedSubjectId";
 
 const SubjectsPage: React.FC = () => {
   return <SubjectsPageContent />;
 };
 
 const SubjectsPageContent: React.FC = () => {
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem(SELECTED_SUBJECT_KEY) ?? "";
-    }
-    return "";
-  });
+  const [selectedSubjectId, setSelectedSubjectId] = useLocal("ui:selectedSubject", "");
 
   const { subjects, addSubject, deleteSubject, updateSubject, errorMessage } =
     useSubjectManagementLocal();
@@ -32,9 +26,6 @@ const SubjectsPageContent: React.FC = () => {
   // 과목 선택 핸들러
   const handleSelectSubject = (subjectId: string) => {
     setSelectedSubjectId(subjectId);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(SELECTED_SUBJECT_KEY, subjectId);
-    }
   };
 
   const handleUpdateSubject = async (
