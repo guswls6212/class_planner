@@ -31,7 +31,7 @@ describe("StudentsPageLayout Component", () => {
     render(<StudentsPageLayout {...mockProps} />);
 
     expect(screen.getByTestId("students-page")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("학생 이름")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("학생 이름 (검색 가능)")).toBeInTheDocument();
     // 선택된 학생(김철수)은 목록+상세 양쪽에 표시될 수 있으므로 getAllByText 사용
     expect(screen.getAllByText("김철수").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("이영희")).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("StudentsPageLayout Component", () => {
 
   it("학생 추가 — 입력 후 버튼 클릭 시 onAddStudent가 호출된다", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름");
+    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
     const addButton = screen.getByRole("button", { name: /학생 추가/ });
 
     fireEvent.change(input, { target: { value: "박민수" } });
@@ -94,7 +94,7 @@ describe("StudentsPageLayout Component", () => {
 
   it("학생 추가 — Enter 키 입력 시 onAddStudent가 호출된다", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름");
+    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
 
     fireEvent.change(input, { target: { value: "최지수" } });
     fireEvent.keyDown(input, { key: "Enter" });
