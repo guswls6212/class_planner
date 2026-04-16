@@ -223,53 +223,45 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
-  // 상태 레이어 스타일 계산
-  const statusStyle: React.CSSProperties = (() => {
-    if (sessionStatus === "completed") {
-      return { opacity: (styles.opacity as number ?? 1) * 0.55 };
-    }
-    if (sessionStatus === "in-progress") {
-      return {
-        boxShadow: "0 0 8px rgba(251,191,36,0.35)",
-        outline: "1px solid rgba(251,191,36,0.5)",
-      };
-    }
-    return {};
+  // 상태 레이어 Tailwind 클래스 계산 (drag 중에는 dimming/glow 비활성화)
+  const statusClassName = (() => {
+    if (isAnyDragging || isDragging) return "";
+    if (sessionStatus === "completed") return "opacity-[0.55]";
+    if (sessionStatus === "in-progress")
+      return "ring-1 ring-amber-400/50 shadow-[0_0_8px_rgba(251,191,36,0.35)]";
+    return "";
   })();
 
-  // 충돌 상태: 빨간 왼쪽 테두리
-  const conflictStyle: React.CSSProperties = hasConflict
-    ? { borderLeft: "3px solid #EF4444" }
-    : {};
+  // 충돌 상태 클래스 (충돌: 빨간 왼쪽 테두리 / 정상: 투명 왼쪽 테두리 유지)
+  const conflictClassName = hasConflict ? "border-l-[3px] border-l-[#EF4444]" : "";
+
+  // 커서 클래스 (드래그 중 세션: grabbing / 그 외: move)
+  const cursorClassName =
+    isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
 
   return (
     <button
       type="button"
-      style={{
-        ...styles,
-        // 상태 레이어 (drag state가 없을 때만 완료 dimming 적용)
-        ...(isAnyDragging || isDragging ? {} : statusStyle),
-        ...conflictStyle,
-        cursor: isDragging && isDraggedSession ? "grabbing" : "move",
-        // 드래그 중인 세션에 직접 투명도 적용 (getSessionBlockStyles override)
-        ...(isDragging &&
-          isDraggedSession && {
-            opacity: 0.5,
-          }),
-        // 상대 위치 지정 (배지 절대 위치 기준점)
-        position: "absolute",
-      }}
+      style={styles}
       aria-label={ariaLabel}
       onClick={handleClick}
-      draggable={true} // 🆕 드래그 가능하도록 설정
-      onDragStart={handleDragStart} // 🆕 드래그 시작 이벤트
-      onDragEnd={handleDragEnd} // 🆕 드래그 종료 이벤트
+      draggable={true} // 드래그 가능하도록 설정
+      onDragStart={handleDragStart} // 드래그 시작 이벤트
+      onDragEnd={handleDragEnd} // 드래그 종료 이벤트
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
       data-starts-at={session.startsAt}
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
-      className="session-block"
+      className={[
+        "session-block", // focus-visible ring defined in globals.css
+        "hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150", // hover elevation
+        statusClassName,
+        conflictClassName,
+        cursorClassName,
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {/* 진행 중 배지 */}
       {sessionStatus === "in-progress" && !hasConflict && (
