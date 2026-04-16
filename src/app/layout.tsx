@@ -91,7 +91,7 @@ function Navigation() {
         <span className="font-[800] text-lg text-[--color-text-primary]">🗓 클래스 플래너</span>
         <div className="flex items-center gap-4">
           <Link href="/login" className="text-sm text-[--color-text-muted] hover:text-[--color-text-primary] transition-colors">로그인</Link>
-          <Link href="/schedule" className="bg-accent hover:bg-accent-hover text-[#1a1a1a] font-bold text-sm px-5 py-2 rounded-admin-md transition-colors">무료로 시작</Link>
+          <Link href="/schedule" className="bg-accent hover:bg-accent-hover text-admin-ink font-bold text-sm px-5 py-2 rounded-admin-md transition-colors">무료로 시작</Link>
         </div>
       </nav>
     );

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import type { Student } from "../../lib/planner";
 import ConfirmModal from "../molecules/ConfirmModal";
 import Button from "./Button";
-import styles from "./StudentListItem.module.css";
 
 interface StudentListItemProps {
   student: Student;
@@ -59,25 +58,14 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
     if (e.key === "Escape") setIsEditing(false);
   };
 
-  const containerClasses = [
-    styles.container,
-    isSelected ? styles.selected : "",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const studentNameClasses = [
-    styles.studentName,
-    isSelected ? styles.selected : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
     <>
       <div
-        className={containerClasses}
+        className={`relative flex cursor-pointer items-center justify-between rounded border border-[--color-border] bg-[--color-bg-primary] px-4 py-2 mb-1 list-none select-none transition-all duration-200 before:!content-none before:!hidden after:!content-none after:!hidden hover:border-[--color-border-light] hover:bg-[--color-bg-secondary] ${
+          isSelected
+            ? "border-[--color-primary] bg-[--color-primary-light]"
+            : ""
+        } ${className}`}
         onClick={() => onSelect(student.id)}
         style={style}
         role="listitem"
@@ -95,13 +83,19 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
             value={editName}
             onChange={(e) => setEditName(e.target.value.slice(0, 4))}
             onKeyDown={handleKeyDown}
-            className={styles.editInput}
+            className="mr-2 flex-1 rounded border border-[--color-border] bg-[--color-bg-primary] px-2 py-1 text-[--color-text-primary]"
             autoFocus
           />
         ) : (
-          <span className={studentNameClasses}>{student.name}</span>
+          <span className={`flex-1 text-left transition-[font-weight] duration-200 ${
+            isSelected
+              ? "font-semibold text-[--color-primary]"
+              : "font-normal text-[--color-text-primary]"
+          }`}>
+            {student.name}
+          </span>
         )}
-        <div className={styles.deleteButton}>
+        <div className="ml-2 flex shrink-0 gap-1">
           {isEditing ? (
             <>
               <Button

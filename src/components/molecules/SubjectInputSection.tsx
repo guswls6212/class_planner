@@ -2,13 +2,12 @@ import React, { useState } from "react";
 import { logger } from "../../lib/logger";
 import Button from "../atoms/Button";
 import Input from "../atoms/Input";
-import styles from "./SubjectInputSection.module.css";
 
 interface SubjectInputSectionProps {
   onAddSubject: (name: string, color: string) => Promise<boolean>;
   onSearchChange?: (query: string) => void;
   errorMessage?: string;
-  subjects?: Array<{ name: string }>; // 중복 체크를 위한 과목 목록
+  subjects?: Array<{ name: string }>;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -22,10 +21,9 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
   style = {},
 }) => {
   const [subjectName, setSubjectName] = useState("");
-  const [subjectColor, setSubjectColor] = useState("#f59e0b"); // Default orange instead of blue
+  const [subjectColor, setSubjectColor] = useState("#f59e0b");
   const [internalErrorMessage, setInternalErrorMessage] = useState<string>("");
 
-  // 외부 에러 메시지가 있으면 그것을 우선 사용, 없으면 내부 에러 메시지 사용
   const errorMessage = externalErrorMessage || internalErrorMessage;
 
   const handleAddSubject = async () => {
@@ -36,13 +34,11 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
       return;
     }
 
-    // 길이 제한: 최대 6글자
     if (name.length > 6) {
       setInternalErrorMessage("과목 이름은 최대 6글자까지 가능합니다.");
       return;
     }
 
-    // 중복 이름 체크
     const isDuplicate = subjects.some(
       (subject) => subject.name.toLowerCase() === name.toLowerCase()
     );
@@ -57,10 +53,9 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
     if (success) {
       logger.info("✅ 과목 추가 성공 - 입력창 초기화");
       setSubjectName("");
-      setSubjectColor("#f59e0b"); // Reset color to default after adding
+      setSubjectColor("#f59e0b");
       setInternalErrorMessage("");
 
-      // 검색어도 초기화하여 새로 추가된 과목이 보이도록 함
       if (onSearchChange) {
         onSearchChange("");
       }
@@ -72,20 +67,18 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
     const limited = value.slice(0, 6);
     setSubjectName(limited);
 
-    // 검색 기능이 활성화된 경우 검색어도 업데이트
     if (onSearchChange) {
       onSearchChange(value);
     }
 
-    // 입력 중일 때는 내부 에러 메시지 숨김
     if (internalErrorMessage) {
       setInternalErrorMessage("");
     }
   };
 
   return (
-    <div className={`${styles.container} ${className}`} style={style}>
-      <div className={styles.input}>
+    <div className={`relative mb-4 flex flex-wrap items-center gap-2 ${className}`} style={style}>
+      <div className="flex-1">
         <label htmlFor="subject-name-input" className="sr-only">과목 이름</label>
         <Input
           id="subject-name-input"
@@ -101,21 +94,25 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           }}
         />
       </div>
-      <div className={styles.colorPicker}>
+      <div className="shrink-0">
         <label htmlFor="subject-color-input" className="sr-only">과목 색상</label>
         <input
           id="subject-color-input"
           type="color"
-          className={styles.colorInput}
+          className="h-9 w-10 cursor-pointer rounded border border-[--color-border] bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-none"
           value={subjectColor}
           onChange={(e) => setSubjectColor(e.target.value)}
           title="과목 색상 선택"
         />
       </div>
-      <div className={styles.button}>
+      <div className="shrink-0">
         <Button onClick={handleAddSubject}>추가</Button>
       </div>
-      {errorMessage && <div className={styles.error}>{errorMessage}</div>}
+      {errorMessage && (
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-500">
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 };

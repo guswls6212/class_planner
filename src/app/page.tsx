@@ -61,7 +61,7 @@ function HeroSection() {
           <div className="flex gap-3">
             <Link
               href="/schedule"
-              className="bg-accent hover:bg-accent-hover text-[#1a1a1a] font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
+              className="bg-accent hover:bg-accent-hover text-admin-ink font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
             >
               무료로 시작하기
             </Link>
@@ -254,7 +254,7 @@ function StepsSection() {
               key={n}
               className="flex-1 bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-7"
             >
-              <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center font-[800] text-[#1a1a1a] text-base mb-4">
+              <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center font-[800] text-admin-ink text-base mb-4">
                 {n}
               </div>
               <p className="font-bold text-base text-[--color-text-primary] mb-2">
@@ -273,16 +273,16 @@ function StepsSection() {
 
 function BottomCTA() {
   return (
-    <section className="py-12 px-6 text-center bg-[#1a1a1a]">
+    <section className="py-12 px-6 text-center bg-admin-ink">
       <h2 className="text-page font-[800] text-white mb-2 tracking-[-0.035em]">
         지금 바로 시작하세요
       </h2>
-      <p className="text-sm text-[#999] mb-6">
+      <p className="text-sm text-[--color-text-muted] mb-6">
         회원가입 없이 바로 사용할 수 있습니다. 무료.
       </p>
       <Link
         href="/schedule"
-        className="inline-block bg-accent hover:bg-accent-hover text-[#1a1a1a] font-bold px-9 py-3.5 rounded-admin-md shadow-admin-md transition-colors"
+        className="inline-block bg-accent hover:bg-accent-hover text-admin-ink font-bold px-9 py-3.5 rounded-admin-md shadow-admin-md transition-colors"
       >
         무료로 시작하기
       </Link>

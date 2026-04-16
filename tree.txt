@@ -1,4 +1,4 @@
-# class-planner file structure (2026-04-16, Phase 3 랜딩 페이지 반영)
+# class-planner file structure (2026-04-16, Token SSOT 완성 반영)
 # Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
 # Active docs: 5개 | Archived docs: 9개 (docs/archive/)
 
@@ -16,7 +16,6 @@ class-planner/
 ├── tsconfig.json
 ├── next.config.ts
 ├── next-env.d.ts
-├── tailwind.config.ts
 ├── postcss.config.mjs
 ├── eslint.config.mjs
 ├── vitest.config.ts
@@ -116,8 +115,7 @@ class-planner/
     │   ├── favicon.ico
     │   ├── about/page.tsx
     │   ├── login/
-    │   │   ├── page.tsx
-    │   │   └── Login.module.css
+    │   │   └── page.tsx
     │   ├── onboarding/page.tsx               # 첫 로그인 온보딩 (학원명 + 역할)
     │   ├── admin/
     │   │   ├── layout.tsx                    # ADMIN_EMAILS env 화이트리스트 게이트
@@ -128,7 +126,6 @@ class-planner/
     │   ├── subjects/page.tsx
     │   ├── schedule/                     # 가장 복잡한 페이지
     │   │   ├── page.tsx
-    │   │   ├── Schedule.module.css
     │   │   ├── _components/              # 페이지 전용 섹션 컴포넌트
     │   │   │   ├── EditSessionModal.tsx
     │   │   │   ├── GroupSessionModal.tsx
@@ -184,26 +181,16 @@ class-planner/
     ├── components/                       # Atomic Design
     │   ├── atoms/
     │   │   ├── AuthGuard.tsx
-    │   │   ├── Button.tsx (+.module.css)
-    │   │   ├── ErrorBoundary.tsx
-    │   │   ├── Input.tsx (+.module.css)
-    │   │   ├── Label.tsx (+.module.css)
-    │   │   ├── StudentListItem.tsx (+.module.css)
-    │   │   ├── SubjectListItem.tsx (+.module.css)
-    │   │   ├── ThemeToggle.tsx
+    │   │   ├── Button.tsx    │   │   ├── ErrorBoundary.tsx
+    │   │   ├── Input.tsx    │   │   ├── Label.tsx    │   │   ├── StudentListItem.tsx    │   │   ├── SubjectListItem.tsx    │   │   ├── ThemeToggle.tsx
     │   │   └── __tests__/ (8 test files)
     │   ├── molecules/
-    │   │   ├── ConfirmModal.tsx (+.module.css)
-    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
+    │   │   ├── ConfirmModal.tsx    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
     │   │   ├── DropZone.tsx
     │   │   ├── PDFDownloadButton.tsx
     │   │   ├── SessionBlock.tsx (+utils.ts)           # 시간표 수업 블록
     │   │   ├── SessionForm.tsx
-    │   │   ├── StudentInputSection.tsx (+.module.css)
-    │   │   ├── StudentList.tsx (+.module.css)
-    │   │   ├── SubjectInputSection.tsx (+.module.css)
-    │   │   ├── SubjectList.tsx (+.module.css)
-    │   │   ├── TimeTableRow.tsx
+    │   │   ├── StudentInputSection.tsx    │   │   ├── StudentList.tsx    │   │   ├── SubjectInputSection.tsx    │   │   ├── SubjectList.tsx    │   │   ├── TimeTableRow.tsx
     │   │   └── __tests__/ (12 test files)
     │   └── organisms/
     │       ├── AboutPageLayout.tsx

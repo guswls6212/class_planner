@@ -156,13 +156,13 @@ describe("TimeTableGrid", () => {
       position: "sticky",
       bottom: "0px",
       height: "12px",
-      backgroundColor: "#f0f0f0",
+      backgroundColor: "var(--color-scrollbar-track)",
     });
 
     expect(scrollbarThumb).toHaveStyle({
       position: "absolute",
       height: "10px",
-      backgroundColor: "#666",
+      backgroundColor: "var(--color-scrollbar-thumb)",
       borderRadius: "5px",
     });
   });

@@ -119,7 +119,7 @@ export default function InvitePage({
   return (
     <div
       className="min-h-screen flex items-center justify-center p-5"
-      style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "calc(100vh - 60px)" }}
+      style={{ background: "linear-gradient(135deg, var(--color-brand-gradient-from) 0%, var(--color-brand-gradient-to) 100%)", minHeight: "calc(100vh - 60px)" }}
     >
       <div className="bg-white w-full max-w-sm rounded-2xl p-8 text-center shadow-2xl">
         {isInvalid ? (

@@ -3,7 +3,6 @@ import { useUserTracking } from "../../hooks/useUserTracking";
 import { clearUserClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
-import styles from "./LoginButton.module.css";
 
 interface LoginButtonProps {
   className?: string;
@@ -200,21 +199,21 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
   if (isLoggedIn && user) {
     return (
-      <div className={`${styles.userMenu} ${className || ""}`}>
+      <div className={`relative flex items-center ${className || ""}`}>
         <button
-          className={styles.userButton}
+          className="flex cursor-pointer items-center rounded-lg border-none bg-transparent p-1 transition-colors duration-200 hover:bg-[--color-bg-secondary]"
           onClick={() => setShowLoginModal(!showLoginModal)}
           title="사용자 메뉴"
         >
-          <div className={styles.userAvatar}>
+          <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[--color-primary]">
             {user.user_metadata?.avatar_url ? (
               <img
                 src={user.user_metadata.avatar_url}
                 alt="프로필"
-                className={styles.avatarImage}
+                className="h-full w-full object-cover"
               />
             ) : (
-              <span className={styles.avatarText}>
+              <span className="text-sm font-semibold text-white">
                 {user.email?.charAt(0).toUpperCase() || "U"}
               </span>
             )}
@@ -222,16 +221,19 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
         </button>
 
         {showLoginModal && (
-          <div className={styles.userDropdown}>
-            <div className={styles.userInfo}>
-              <div className={styles.userName}>
+          <div className="absolute right-0 top-full z-[10000] mt-1 min-w-[200px] rounded-lg border border-[--color-border] bg-[--color-bg-primary] p-3 shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
+            <div className="mb-2 border-b border-[--color-border] pb-2">
+              <div className="mb-1 text-sm font-medium text-[--color-text-primary]">
                 {user.user_metadata?.full_name ||
                   user.email?.split("@")[0] ||
                   "사용자"}
               </div>
-              <div className={styles.userEmail}>{user.email}</div>
+              <div className="text-xs text-[--color-text-secondary]">{user.email}</div>
             </div>
-            <button className={styles.logoutButton} onClick={handleLogout}>
+            <button
+              className="w-full cursor-pointer rounded-md border-none bg-[--color-danger] px-3 py-2 text-sm text-white transition-colors duration-200 hover:bg-red-700"
+              onClick={handleLogout}
+            >
               로그아웃
             </button>
           </div>
@@ -243,12 +245,12 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
   return (
     <>
       <button
-        className={`${styles.loginButton} ${className || ""}`}
+        className={`login-btn-shimmer flex cursor-pointer items-center gap-2 rounded-xl border-none bg-gradient-to-br from-brand-gradient-from to-brand-gradient-to px-[18px] py-2.5 text-sm font-semibold text-white shadow-[0_4px_15px_rgba(102,126,234,0.3)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(102,126,234,0.4)] active:translate-y-0 ${className || ""}`}
         onClick={() => setShowLoginModal(true)}
         title="로그인"
       >
         <svg
-          className={styles.loginIcon}
+          className="h-4 w-4 shrink-0"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -263,34 +265,34 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
 
       {showLoginModal && (
         <div
-          className={styles.modalOverlay}
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-5 max-[480px]:p-2.5"
           onClick={() => setShowLoginModal(false)}
         >
           <div
-            className={styles.loginModal}
+            className="w-full max-w-[400px] overflow-y-auto rounded-xl bg-[--color-bg-primary] shadow-[0_8px_32px_rgba(0,0,0,0.2)] max-[480px]:rounded-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={styles.modalHeader}>
-              <h2>로그인</h2>
+            <div className="flex items-center justify-between border-b border-[--color-border] px-6 pb-4 pt-5 max-[480px]:px-5 max-[480px]:pb-3 max-[480px]:pt-4">
+              <h2 className="text-xl font-semibold text-[--color-text-primary]">로그인</h2>
               <button
-                className={styles.closeButton}
+                className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border-none bg-transparent text-2xl text-[--color-text-secondary] transition-colors duration-200 hover:bg-[--color-bg-secondary]"
                 onClick={() => setShowLoginModal(false)}
               >
                 ×
               </button>
             </div>
 
-            <div className={styles.loginContent}>
-              <p className={styles.loginDescription}>
+            <div className="p-6 max-[480px]:p-5">
+              <p className="mb-6 text-center text-sm text-[--color-text-secondary]">
                 Google 계정으로 간편하게 로그인하세요
               </p>
 
-              <div className={styles.socialButtons}>
+              <div className="flex flex-col gap-3">
                 <button
-                  className={`${styles.socialButton} ${styles.googleButton}`}
+                  className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border border-[--color-border] bg-[--color-bg-primary] px-4 py-3 text-sm font-medium text-[--color-text-primary] transition-all duration-200 hover:-translate-y-px hover:border-brand-google hover:bg-[--color-bg-secondary] hover:shadow-[0_2px_8px_rgba(66,133,244,0.2)] active:translate-y-0 max-[480px]:py-3.5 max-[480px]:text-[15px]"
                   onClick={handleGoogleLogin}
                 >
-                  <svg className={styles.socialIcon} viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

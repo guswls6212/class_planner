@@ -63,18 +63,18 @@ describe("Input Component", () => {
   it("size prop이 올바르게 적용되어야 한다", () => {
     const { rerender } = render(<Input {...defaultProps} size="small" />);
     let input = screen.getByRole("textbox");
-    expect(input.className).toContain("small");
+    expect(input.className).toContain("min-h-[28px]");
 
     rerender(<Input {...defaultProps} size="large" />);
     input = screen.getByRole("textbox");
-    expect(input.className).toContain("large");
+    expect(input.className).toContain("min-h-[44px]");
   });
 
   it("error prop이 올바르게 적용되어야 한다", () => {
     render(<Input {...defaultProps} error={true} />);
 
     const input = screen.getByRole("textbox");
-    expect(input.className).toContain("error");
+    expect(input.className).toContain("border-[--color-danger]");
   });
 
   it("disabled prop이 올바르게 적용되어야 한다", () => {
@@ -181,8 +181,8 @@ describe("Input Component", () => {
     expect(input).toBeInTheDocument();
     expect(input).toHaveValue("테스트 값");
     expect(input).toHaveAttribute("placeholder", "테스트 플레이스홀더");
-    expect(input.className).toContain("large");
-    expect(input.className).toContain("error");
+    expect(input.className).toContain("min-h-[44px]");
+    expect(input.className).toContain("border-[--color-danger]");
     expect(input).toHaveClass("custom-class");
     expect(input).toBeDisabled();
     expect(input).toHaveStyle("color: rgb(0, 0, 255)");

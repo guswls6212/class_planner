@@ -124,7 +124,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
           alignItems: "center",
           height: "100vh",
           fontSize: "1.2rem",
-          color: "#6b7280",
+          color: "var(--color-text-muted)",
         }}
       >
         로딩 중...

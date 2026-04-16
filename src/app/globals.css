@@ -45,6 +45,22 @@
   --shadow-admin-sm: 0 1px 2px rgba(0,0,0,.06);
   --shadow-admin-md: 0 4px 12px rgba(0,0,0,.08);
   --shadow-admin-lg: 0 12px 32px rgba(0,0,0,.12);
+
+  /* --- Brand Colors (login buttons, gradients) --- */
+  --color-brand-gradient-from: #667eea;
+  --color-brand-gradient-to:   #764ba2;
+  --color-brand-google:        #4285F4;
+  --color-brand-kakao-bg:      #FEE500;
+  --color-brand-kakao-text:    #191919;
+  --color-admin-ink:           #1a1a1a;
+
+  /* --- Legacy Primary/Secondary (기존 컴포넌트 호환) --- */
+  --color-primary: #3b82f6;
+  --color-primary-light: #dbeafe;
+  --color-primary-dark: #2563eb;
+  --color-secondary: #6b7280;
+  --color-secondary-light: #9ca3af;
+  --color-secondary-dark: #4b5563;
 }
 
 /* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
@@ -98,24 +114,6 @@
   --color-border-grid-lighter: #d1d5db;
 
   /* 그림자 */
-
-  /* 리스트 불릿 완전 제거 */
-  ul,
-  ol,
-  li {
-    list-style: none !important;
-    list-style-type: none !important;
-    list-style-image: none !important;
-  }
-
-  ul::before,
-  ol::before,
-  li::before,
-  ul::after,
-  ol::after,
-  li::after {
-    content: none !important;
-  }
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -167,6 +165,35 @@
   --color-grid-line-minor:  #F4F4F5;
   --color-grid-header-text: #71717A;
   --color-grid-time-text:   #A1A1AA;
+
+  /* --- Scrollbar Tokens --- */
+  --color-scrollbar-track:        #f0f0f0;
+  --color-scrollbar-track-border: #dddddd;
+  --color-scrollbar-thumb:        #666666;
+  --color-scrollbar-thumb-hover:  #555555;
+  --color-scrollbar-thumb-active: #444444;
+  --color-scrollbar-button:       #dddddd;
+  --color-scrollbar-button-border:#bbbbbb;
+  --color-scrollbar-button-alt:   #cccccc;
+  --color-bg-deep:                #111827;
+}
+
+/* 리스트 불릿 완전 제거 */
+ul,
+ol,
+li {
+  list-style: none !important;
+  list-style-type: none !important;
+  list-style-image: none !important;
+}
+
+ul::before,
+ol::before,
+li::before,
+ul::after,
+ol::after,
+li::after {
+  content: none !important;
 }
 
 /* 라이트모드 테마 */
@@ -236,9 +263,24 @@ body {
     color var(--transition-normal);
 }
 
-/* 공통 유틸리티 클래스 */
-.flex {
-  display: flex;
+
+/* Login button shimmer effect (pseudo-element, cannot be Tailwind inline) */
+.login-btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.login-btn-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+.login-btn-shimmer:hover::before {
+  left: 100%;
 }
 
 /* 커스텀 스크롤바 스타일 */
@@ -260,6 +302,38 @@ body {
   background: var(--color-border-light);
 }
 
+/* 리스트 컴포넌트: 기본 스크롤바 숨김, 호버 시 얇은 스크롤바 표시 */
+.list-scroll-reveal {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.list-scroll-reveal::before,
+.list-scroll-reveal::after {
+  content: none !important;
+  display: none !important;
+}
+.list-scroll-reveal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.list-scroll-reveal:hover {
+  scrollbar-width: thin;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar {
+  width: 6px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
+}
+
 /* TimeTableGrid 컴포넌트의 스크롤바를 강제로 항상 표시 */
 /* 맥북 크롬에서도 스크롤바가 보이도록 강력한 설정 */
 
@@ -269,7 +343,7 @@ body {
 
   /* Firefox용 스크롤바 스타일 */
   scrollbar-width: auto !important;
-  scrollbar-color: #6b7280 #374151 !important;
+  scrollbar-color: var(--color-border-light) var(--color-bg-secondary) !important;
 
   /* 강제로 스크롤바가 보이도록 설정 */
   -webkit-overflow-scrolling: touch !important;
@@ -290,17 +364,17 @@ body {
 
 /* 스크롤바 트랙 - 매우 진한 색상으로 강제 표시 */
 .time-table-grid::-webkit-scrollbar-track {
-  background-color: #1f2937 !important; /* 매우 진한 회색 */
+  background-color: var(--color-bg-primary) !important;
   border-radius: 8px !important;
-  border: 2px solid #111827 !important;
+  border: 2px solid var(--color-bg-deep) !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* 스크롤바 막대 - 밝은 색상으로 강제 표시 */
 .time-table-grid::-webkit-scrollbar-thumb {
-  background-color: #4b5563 !important; /* 밝은 회색 */
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 8px !important;
-  border: 2px solid #1f2937 !important;
+  border: 2px solid var(--color-bg-primary) !important;
   min-height: 20px !important;
   min-width: 20px !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3) !important;
@@ -308,19 +382,19 @@ body {
 
 /* 스크롤바 막대 호버 효과 */
 .time-table-grid::-webkit-scrollbar-thumb:hover {
-  background-color: #6b7280 !important;
+  background-color: var(--color-border-light) !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* 스크롤바 막대 클릭 효과 */
 .time-table-grid::-webkit-scrollbar-thumb:active {
-  background-color: #9ca3af !important;
+  background-color: var(--color-text-muted) !important;
 }
 
 /* 스크롤바 코너 */
 .time-table-grid::-webkit-scrollbar-corner {
-  background-color: #1f2937 !important;
-  border: 2px solid #111827 !important;
+  background-color: var(--color-bg-primary) !important;
+  border: 2px solid var(--color-bg-deep) !important;
 }
 
 /* 스크롤바 버튼 강제 표시 */
@@ -328,17 +402,17 @@ body {
   display: block !important;
   height: 16px !important;
   width: 16px !important;
-  background-color: #374151 !important;
-  border: 1px solid #1f2937 !important;
+  background-color: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-bg-primary) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:start:decrement {
-  background-color: #4b5563 !important;
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 4px !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:end:increment {
-  background-color: #4b5563 !important;
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 4px !important;
 }
 
@@ -613,7 +687,7 @@ body {
 
 /* 필수 항목 표시 (*) 스타일 */
 .required {
-  color: #ef4444; /* 빨간색 */
+  color: var(--color-semantic-danger);
   margin-left: 2px;
   font-weight: bold;
 }
@@ -730,7 +804,7 @@ body {
 .time-table-grid {
   /* Firefox용 스크롤바 스타일 */
   scrollbar-width: thin !important;
-  scrollbar-color: #666 #f0f0f0 !important; /* 자연스러운 색상 */
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track) !important;
 
   /* 스크롤바 공간 항상 예약 */
   scrollbar-gutter: stable both-edges !important;
@@ -756,8 +830,8 @@ body {
   left: 0 !important;
   right: 0 !important;
   height: 12px !important;
-  background-color: #f0f0f0 !important;
-  border-top: 1px solid #ddd !important;
+  background-color: var(--color-scrollbar-track) !important;
+  border-top: 1px solid var(--color-scrollbar-track-border) !important;
   z-index: 1000 !important;
   cursor: pointer !important;
   border-radius: 0 0 8px 8px !important;
@@ -768,7 +842,7 @@ body {
   position: absolute !important;
   bottom: 1px !important;
   height: 10px !important;
-  background-color: #666 !important;
+  background-color: var(--color-scrollbar-thumb) !important;
   border-radius: 5px !important;
   z-index: 1001 !important;
   cursor: pointer !important;
@@ -776,11 +850,11 @@ body {
 }
 
 .virtual-scrollbar-thumb:hover {
-  background-color: #555 !important;
+  background-color: var(--color-scrollbar-thumb-hover) !important;
 }
 
 .virtual-scrollbar-thumb:active {
-  background-color: #444 !important;
+  background-color: var(--color-scrollbar-thumb-active) !important;
 }
 
 /* Webkit 계열 브라우저 - 가로 스크롤바 항상 표시 */
@@ -793,39 +867,39 @@ body {
   -webkit-appearance: none !important;
   position: relative !important;
   z-index: 9999 !important;
-  background-color: #f0f0f0 !important; /* 자연스러운 배경색 */
+  background-color: var(--color-scrollbar-track) !important;
 }
 
 /* 가로 스크롤바 트랙 - 항상 보이도록 강제 */
 .time-table-grid::-webkit-scrollbar-track {
-  background-color: #f0f0f0 !important;
+  background-color: var(--color-scrollbar-track) !important;
   border-radius: 6px !important;
-  border: 1px solid #ddd !important;
+  border: 1px solid var(--color-scrollbar-track-border) !important;
   -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* 가로 스크롤바 막대 - 항상 보이도록 강제 */
 .time-table-grid::-webkit-scrollbar-thumb {
-  background-color: #666 !important;
+  background-color: var(--color-scrollbar-thumb) !important;
   border-radius: 6px !important;
-  border: 1px solid #f0f0f0 !important;
+  border: 1px solid var(--color-scrollbar-track) !important;
   min-height: 20px !important;
   min-width: 20px !important;
   -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-thumb:hover {
-  background-color: #555 !important;
+  background-color: var(--color-scrollbar-thumb-hover) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-thumb:active {
-  background-color: #444 !important;
+  background-color: var(--color-scrollbar-thumb-active) !important;
 }
 
 /* 스크롤바 코너 */
 .time-table-grid::-webkit-scrollbar-corner {
-  background-color: #f0f0f0 !important;
-  border: 1px solid #ddd !important;
+  background-color: var(--color-scrollbar-track) !important;
+  border: 1px solid var(--color-scrollbar-track-border) !important;
 }
 
 /* 스크롤바 버튼 - 가로 스크롤바만 강제 표시 */
@@ -833,17 +907,17 @@ body {
   display: block !important;
   height: 12px !important;
   width: 12px !important;
-  background-color: #ddd !important;
-  border: 1px solid #bbb !important;
+  background-color: var(--color-scrollbar-button) !important;
+  border: 1px solid var(--color-scrollbar-button-border) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:start:decrement {
-  background-color: #ccc !important;
+  background-color: var(--color-scrollbar-button-alt) !important;
   border-radius: 3px !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:end:increment {
-  background-color: #ccc !important;
+  background-color: var(--color-scrollbar-button-alt) !important;
   border-radius: 3px !important;
 }
 
