@@ -76,6 +76,16 @@ export const getGroupStudentDisplayText = (studentNames: string[]): string => {
   }명`;
 };
 
+// 학생이름 표시 로직 — 최대 8명까지 표시, 초과 시 '외 N명'
+export const getImprovedStudentDisplayText = (studentNames: string[]): string => {
+  if (studentNames.length <= 8) {
+    return studentNames.join(", ");
+  }
+  return `${studentNames.slice(0, 8).join(", ")} 외 ${
+    studentNames.length - 8
+  }명`;
+};
+
 // 🆕 세션 셀 높이를 동적으로 조정하는 스타일
 export const getSessionBlockStyles = (
   left: number,
@@ -137,18 +147,6 @@ export const getSessionBlockStyles = (
     pointerEvents, // 🆕 pointer-events 적용
     transition: "opacity 0.2s ease-in-out, visibility 0.2s ease-in-out", // 🆕 부드러운 투명도 및 표시 전환
   };
-};
-
-export const calculateTopPosition = (yOffset: number): number => {
-  return yOffset; // 🆕 요일 영역 경계선 안에 정확히 위치하도록 수정
-};
-
-export const calculateZIndex = (yOffset: number): number => {
-  return yOffset + 1;
-};
-
-export const getSubjectColor = (subjectColor?: string): string => {
-  return subjectColor && subjectColor.trim() !== "" ? subjectColor : "#888";
 };
 
 // Q Pastel 팔레트 — 학생 결정론적 색상에 사용
