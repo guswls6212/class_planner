@@ -38,6 +38,7 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
+import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentPanelSection from "./_components/StudentPanelSection";
@@ -905,8 +906,19 @@ function SchedulePageContent(): JSX.Element {
 
       {/* PDF 다운로드 버튼 */}
       <PdfDownloadSection
-        timeTableRef={timeTableRef}
-        selectedStudent={students.find((s) => s.id === selectedStudentId)}
+        onDownload={() =>
+          renderSchedulePdf(
+            Array.from(displaySessions.values()).flat(),
+            subjects,
+            students,
+            enrollments,
+            teachers,
+            {
+              academyName: "CLASS PLANNER",
+              filterStudentId: selectedStudentId ?? undefined,
+            }
+          )
+        }
         isDownloading={isDownloading}
         onDownloadStart={() => setIsDownloading(true)}
         onDownloadEnd={() => setIsDownloading(false)}

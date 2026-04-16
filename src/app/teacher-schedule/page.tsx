@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
+import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 
 const PDFDownloadButton = dynamic(
   () => import("../../components/molecules/PDFDownloadButton"),
@@ -54,8 +55,18 @@ export default function TeacherSchedulePage() {
           )}
         </div>
         <PDFDownloadButton
-          timeTableRef={timeTableRef}
-          selectedStudent={myTeacher ? { id: myTeacher.id, name: myTeacher.name } : undefined}
+          onDownload={() =>
+            renderSchedulePdf(
+              Array.from(displaySessions.values()).flat(),
+              subjects,
+              students,
+              enrollments,
+              teachers,
+              {
+                academyName: "CLASS PLANNER",
+              }
+            )
+          }
           isDownloading={isDownloading}
           onDownloadStart={() => setIsDownloading(true)}
           onDownloadEnd={() => setIsDownloading(false)}
