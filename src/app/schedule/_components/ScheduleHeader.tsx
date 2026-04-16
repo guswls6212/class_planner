@@ -1,5 +1,6 @@
 import ColorByToggle from "../../../components/molecules/ColorByToggle";
 import type { ColorByMode } from "../../../hooks/useColorBy";
+import type { ScheduleViewMode } from "../../../hooks/useScheduleView";
 
 type Props = {
   dataLoading: boolean;
@@ -7,6 +8,8 @@ type Props = {
   selectedStudentName?: string;
   colorBy?: ColorByMode;
   onColorByChange?: (mode: ColorByMode) => void;
+  viewMode: ScheduleViewMode;
+  onViewModeChange: (mode: ScheduleViewMode) => void;
 };
 
 export default function ScheduleHeader({
@@ -15,11 +18,15 @@ export default function ScheduleHeader({
   selectedStudentName,
   colorBy = "subject",
   onColorByChange,
+  viewMode,
+  onViewModeChange,
 }: Props) {
+  const title = viewMode === "daily" ? "일별 시간표" : "주간 시간표";
+
   return (
     <div className="mb-4 border-b border-[--color-border] pb-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-[--color-text-primary]">주간 시간표</h2>
+        <h2 className="text-2xl font-semibold text-[--color-text-primary]">{title}</h2>
         <div className="flex items-center gap-3">
           {dataLoading && (
             <div className="text-sm text-blue-500">
@@ -28,6 +35,29 @@ export default function ScheduleHeader({
                 : "세션 데이터를 로드 중..."}
             </div>
           )}
+          {/* View mode segmented toggle */}
+          <div className="flex rounded-md overflow-hidden border border-[var(--color-border)]">
+            <button
+              onClick={() => onViewModeChange("daily")}
+              className={`px-3 py-1 text-sm transition-colors ${
+                viewMode === "daily"
+                  ? "bg-accent text-white"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
+              }`}
+            >
+              일별
+            </button>
+            <button
+              onClick={() => onViewModeChange("weekly")}
+              className={`px-3 py-1 text-sm transition-colors ${
+                viewMode === "weekly"
+                  ? "bg-accent text-white"
+                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
+              }`}
+            >
+              주간
+            </button>
+          </div>
           {onColorByChange && (
             <ColorByToggle colorBy={colorBy} onChange={onColorByChange} />
           )}
