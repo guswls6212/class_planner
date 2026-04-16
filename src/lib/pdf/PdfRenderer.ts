@@ -60,9 +60,10 @@ export function renderSchedulePdf(
 ): void {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
-  // Determine which weekdays are used
+  // Determine which weekdays are used — use max index+1 so columns cover all used days
   const usedWeekdays = new Set(sessions.map((s) => s.weekday));
-  const weekdayCount = Math.max(5, usedWeekdays.size); // min 5 (Mon-Fri)
+  const maxWeekday = usedWeekdays.size > 0 ? Math.max(...usedWeekdays) : 4;
+  const weekdayCount = Math.max(5, maxWeekday + 1); // min 5 (Mon-Fri)
   const dims = calculateGridDimensions(weekdayCount, START_HOUR, END_HOUR);
   const weekdayLabels = WEEKDAY_LABELS.slice(0, weekdayCount);
 
@@ -88,6 +89,8 @@ export function renderSchedulePdf(
   }
 
   for (const session of targetSessions) {
+    // Guard against malformed time strings
+    if (!session.startsAt || !session.endsAt) continue;
     // Skip sessions outside grid range
     const [sh] = session.startsAt.split(":").map(Number);
     if (sh < START_HOUR || sh >= END_HOUR) continue;

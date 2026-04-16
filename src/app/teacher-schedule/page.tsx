@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
@@ -34,7 +34,6 @@ export default function TeacherSchedulePage() {
     myTeacherId
   );
 
-  const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   return (
@@ -73,7 +72,7 @@ export default function TeacherSchedulePage() {
         />
       </div>
 
-      <div ref={timeTableRef} data-surface="surface">
+      <div data-surface="surface">
         <TimeTableGrid
           sessions={displaySessions}
           subjects={subjects}

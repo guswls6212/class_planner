@@ -124,11 +124,4 @@ export function drawGridLines(
     }
   }
 
-  // Left border
-  doc.line(
-    margin.left + timeColWidth,
-    gridTop,
-    margin.left + timeColWidth,
-    gridBottom
-  );
 }
