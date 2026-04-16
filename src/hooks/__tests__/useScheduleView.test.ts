@@ -54,6 +54,35 @@ describe("useScheduleView", () => {
     expect(result.current.viewMode).toBe("daily");
   });
 
+  it("setViewMode('monthly') persists monthly mode", () => {
+    const { result } = renderHook(() => useScheduleView());
+    act(() => result.current.setViewMode("monthly"));
+    expect(result.current.viewMode).toBe("monthly");
+  });
+
+  it("goToNextMonth increments the month", () => {
+    vi.setSystemTime(new Date("2026-04-16T12:00:00"));
+    const { result } = renderHook(() => useScheduleView());
+    act(() => result.current.goToNextMonth());
+    expect(result.current.selectedDate.getMonth()).toBe(4); // May = 4
+    vi.useRealTimers();
+  });
+
+  it("goToPrevMonth decrements the month", () => {
+    vi.setSystemTime(new Date("2026-04-16T12:00:00"));
+    const { result } = renderHook(() => useScheduleView());
+    act(() => result.current.goToPrevMonth());
+    expect(result.current.selectedDate.getMonth()).toBe(2); // March = 2
+    vi.useRealTimers();
+  });
+
+  it("currentMonthLabel returns 'YYYY년 M월' format", () => {
+    vi.setSystemTime(new Date("2026-04-16T12:00:00"));
+    const { result } = renderHook(() => useScheduleView());
+    expect(result.current.currentMonthLabel).toBe("2026년 4월");
+    vi.useRealTimers();
+  });
+
   it("selectedWeekday is 0 (Mon) for a Monday", () => {
     vi.setSystemTime(new Date("2026-04-13T12:00:00")); // Monday
     const { result } = renderHook(() => useScheduleView());
