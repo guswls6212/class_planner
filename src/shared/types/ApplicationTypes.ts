@@ -12,6 +12,11 @@ import type { Enrollment, Session, Student, Subject, Teacher } from "./DomainTyp
 export interface StudentDto {
   id: string;
   name: string;
+  gender?: string;
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -65,13 +70,21 @@ export interface UserDto {
 
 export interface AddStudentRequest {
   name: string;
-  gender: "male" | "female";
+  gender?: "male" | "female";
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
 }
 
 export interface UpdateStudentRequest {
   id: string;
-  name: string;
-  gender: "male" | "female";
+  name?: string;
+  gender?: "male" | "female";
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
 }
 
 export interface AddTeacherRequest {

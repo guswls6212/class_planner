@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Student } from "../Student";
 
+
 describe("Student Entity", () => {
   describe("생성 및 검증", () => {
     it("학생 이름이 2글자 미만이면 에러를 던져야 한다", () => {
@@ -109,5 +110,87 @@ describe("Student Entity", () => {
         originalStudent.updatedAt.getTime()
       );
     });
+  });
+});
+
+describe("프로필 필드 (grade/school/phone)", () => {
+  it("create에 options 객체를 전달하면 모든 필드가 설정되어야 한다", () => {
+    const student = Student.create("김철수", {
+      gender: "male",
+      birthDate: "2013-03-15",
+      grade: "중3",
+      school: "○○중학교",
+      phone: "010-1234-5678",
+    });
+    expect(student.grade).toBe("중3");
+    expect(student.school).toBe("○○중학교");
+    expect(student.phone).toBe("010-1234-5678");
+  });
+
+  it("옵션 없이 create하면 새 필드는 undefined이어야 한다", () => {
+    const student = Student.create("김철수");
+    expect(student.grade).toBeUndefined();
+    expect(student.school).toBeUndefined();
+    expect(student.phone).toBeUndefined();
+  });
+
+  it("changeProfile로 프로필 필드를 일괄 변경해야 한다", () => {
+    const student = Student.create("김철수");
+    const updated = student.changeProfile({ grade: "중3", school: "○○중학교", phone: "010-1234-5678" });
+    expect(updated.grade).toBe("중3");
+    expect(updated.school).toBe("○○중학교");
+    expect(updated.phone).toBe("010-1234-5678");
+  });
+
+  it("changeProfile은 불변성을 보장해야 한다", () => {
+    const original = Student.create("김철수");
+    const updated = original.changeProfile({ grade: "중3" });
+    expect(original.grade).toBeUndefined();
+    expect(updated.grade).toBe("중3");
+    expect(original).not.toBe(updated);
+  });
+
+  it("changeProfile은 updatedAt을 갱신해야 한다", async () => {
+    const original = Student.create("김철수");
+    await new Promise((r) => setTimeout(r, 10));
+    const updated = original.changeProfile({ grade: "중3" });
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(original.updatedAt.getTime());
+  });
+
+  it("유효하지 않은 전화번호는 validatePhone이 실패해야 한다", () => {
+    const result = Student.validatePhone("abc");
+    expect(result.isValid).toBe(false);
+    expect(result.errors[0].code).toBe("PHONE_INVALID_FORMAT");
+  });
+
+  it("빈 전화번호는 validatePhone이 통과해야 한다 (선택 필드)", () => {
+    expect(Student.validatePhone("").isValid).toBe(true);
+    expect(Student.validatePhone(undefined).isValid).toBe(true);
+  });
+
+  it("유효한 전화번호 형식은 validatePhone이 통과해야 한다", () => {
+    expect(Student.validatePhone("010-1234-5678").isValid).toBe(true);
+    expect(Student.validatePhone("01012345678").isValid).toBe(true);
+    expect(Student.validatePhone("010-123-5678").isValid).toBe(true);
+  });
+
+  it("restore에 프로필 필드가 포함되어야 한다", () => {
+    const student = Student.restore("00000000-0000-4000-8000-000000000000", "김철수", {
+      grade: "중3",
+      school: "○○중학교",
+      phone: "010-1234-5678",
+    });
+    expect(student.grade).toBe("중3");
+    expect(student.school).toBe("○○중학교");
+    expect(student.phone).toBe("010-1234-5678");
+  });
+
+  it("toJSON/fromJSON이 프로필 필드를 보존해야 한다", () => {
+    const student = Student.create("김철수", { grade: "중3", school: "○○중학교", phone: "010-1234-5678" });
+    const json = student.toJSON();
+    const restored = Student.fromJSON(json);
+    expect(restored.grade).toBe("중3");
+    expect(restored.school).toBe("○○중학교");
+    expect(restored.phone).toBe("010-1234-5678");
   });
 });

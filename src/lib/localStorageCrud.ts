@@ -200,7 +200,10 @@ export const clearClassPlannerData = (): boolean => {
 /**
  * 학생 추가
  */
-export const addStudentToLocal = (name: string): CrudResult<Student> => {
+export const addStudentToLocal = (
+  name: string,
+  options?: { gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
+): CrudResult<Student> => {
   try {
     const data = getClassPlannerData();
 
@@ -208,6 +211,11 @@ export const addStudentToLocal = (name: string): CrudResult<Student> => {
     const newStudent: Student = {
       id: crypto.randomUUID(),
       name: name.trim(),
+      ...(options?.gender !== undefined && { gender: options.gender }),
+      ...(options?.birthDate !== undefined && { birthDate: options.birthDate }),
+      ...(options?.grade !== undefined && { grade: options.grade }),
+      ...(options?.school !== undefined && { school: options.school }),
+      ...(options?.phone !== undefined && { phone: options.phone }),
     };
 
     // 중복 이름 검사
@@ -257,7 +265,7 @@ export const addStudentToLocal = (name: string): CrudResult<Student> => {
  */
 export const updateStudentInLocal = (
   id: string,
-  updates: { name?: string }
+  updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): CrudResult<Student> => {
   try {
     const data = getClassPlannerData();
@@ -287,6 +295,11 @@ export const updateStudentInLocal = (
     const updatedStudent: Student = {
       ...data.students[studentIndex],
       ...(updates.name && { name: updates.name.trim() }),
+      ...(updates.gender !== undefined && { gender: updates.gender }),
+      ...(updates.birthDate !== undefined && { birthDate: updates.birthDate }),
+      ...(updates.grade !== undefined && { grade: updates.grade }),
+      ...(updates.school !== undefined && { school: updates.school }),
+      ...(updates.phone !== undefined && { phone: updates.phone }),
     };
 
     data.students[studentIndex] = updatedStudent;

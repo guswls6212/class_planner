@@ -5,6 +5,9 @@ export type Student = {
   name: string;
   gender?: string;
   birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
 };
 
 export type Teacher = {
