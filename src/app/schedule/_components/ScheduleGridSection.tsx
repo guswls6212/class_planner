@@ -51,7 +51,7 @@ export default function ScheduleGridSection({
   isStudentDragging,
 }: Props) {
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} data-surface="surface">
       <TimeTableGrid
         key={gridVersion}
         sessions={sessions}
