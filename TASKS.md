@@ -206,6 +206,34 @@
 
 ---
 
+## Phase 5 — Stabilize & Unify (Post-launch)
+> 마스터 스펙: `docs/superpowers/specs/2026-04-17-phase5-stabilize-and-unify-design.md`
+
+### P5-D — Bugfix ✅ (PR#64, #65)
+- [x] D-1: 비로그인 방문 시 데이터 충돌 false positive 제거 (`isEmptyData` 판정 기준 변경)
+- [x] D-2: Pretendard Subset 폰트 실탑재 — PDF 한글 깨짐 수정
+- [x] D-3: PDF 다운로드 버튼 뷰 라벨 표시 (일별/주간/월별)
+
+### P5-A — Global Nav & Account Shell ✅ (PR#66, #67, #68)
+- [x] A-1: AccountMenu molecule 신설 + TopBar(Bell 제거) + Sidebar 하단 compact 아바타
+- [x] A-2: ScheduleActionBar — PDF·템플릿·공유 버튼 통합, 라벨 명확화
+- [x] A-3: HelpDrawer + HelpTooltip 도움말 시스템 (? 버튼, 5개 섹션, ColorBy 옆 i 버튼)
+
+### P5-B — Design System Consistency 🔜
+- [ ] B-1: `SchedulePreview` primitive 추출 (랜딩 ScheduleMockup → 실제 그리드 기반으로 교체)
+- [ ] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
+- [ ] B-3: `SubjectChip` primitive 추출 (Monthly/Daily/Landing 공유)
+- [ ] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
+
+### P5-C — /schedule UX Polish 🔜
+- [ ] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환
+- [ ] C-2: ColorBy 토글 시각 통일 (Day/Week/Month 토글과 동일 스타일)
+- [ ] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, +N 뱃지)
+- [ ] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
+- [ ] C-5: PDF 고급 스코프 (범위 선택 다이얼로그) — 선택적
+
+---
+
 ## 실행 우선순위 가이드
 
 | 우선순위 | 태스크 | 이유 |
@@ -246,3 +274,5 @@
 | 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
 | 2026-04-17 | Phase 3 Polish + Phase 4 W1~W3 완료 — ConfirmModal a11y, signOut, SessionBlock onDelete, 월별 뷰(PR#59), 공유 링크(PR#60) |
 | 2026-04-17 | Phase 4 W4~W5 완료 — 시간표 템플릿(PR#61), 출석 관리(PR#62) |
+| 2026-04-17 | P5-D 완료 — 데이터 충돌 false positive 수정(PR#64), Pretendard 폰트 + PDF 뷰 라벨(PR#65) |
+| 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |

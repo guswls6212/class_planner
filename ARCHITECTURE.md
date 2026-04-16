@@ -35,8 +35,8 @@
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
-- **Molecules:** Atoms 조합 (SessionBlock, TimeTableRow, ConfirmModal)
-- **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, StudentPanel)
+- **Molecules:** Atoms 조합 (SessionBlock, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
+- **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, StudentPanel, HelpDrawer, AppShell)
 
 ## 2. 컴포넌트 구조
 
@@ -169,7 +169,8 @@ src/hooks/             # 커스텀 React 훅
 └── usePerformanceMonitoring.ts    # 성능 모니터링
 
 src/contexts/          # React Context
-└── ThemeContext.tsx    # 테마 (Dark/Light)
+├── ThemeContext.tsx    # 테마 (Dark/Light)
+└── HelpDrawerContext.tsx  # 도움말 드로워 전역 상태 (isOpen/open/close) — P5-A
 
 src/middleware/         # API Route 미들웨어
 ├── cors.ts            # CORS 헤더 (POST/PUT/DELETE에만 적용)
