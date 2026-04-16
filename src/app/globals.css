@@ -288,6 +288,38 @@ body {
   background: var(--color-border-light);
 }
 
+/* 리스트 컴포넌트: 기본 스크롤바 숨김, 호버 시 얇은 스크롤바 표시 */
+.list-scroll-reveal {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.list-scroll-reveal::before,
+.list-scroll-reveal::after {
+  content: none !important;
+  display: none !important;
+}
+.list-scroll-reveal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.list-scroll-reveal:hover {
+  scrollbar-width: thin;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar {
+  width: 6px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
+}
+
 /* TimeTableGrid 컴포넌트의 스크롤바를 강제로 항상 표시 */
 /* 맥북 크롬에서도 스크롤바가 보이도록 강력한 설정 */
 
