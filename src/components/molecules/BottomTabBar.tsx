@@ -24,8 +24,7 @@ export function BottomTabBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch bg-[var(--color-bg-primary)] border-t border-[var(--color-border)]"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch bg-[var(--color-bg-primary)] border-t border-[var(--color-border)] pb-safe"
     >
       {tabs.map(({ href, icon: Icon, label }) => {
         const isActive = pathname === href || pathname.startsWith(`${href}/`);
@@ -40,9 +39,9 @@ export function BottomTabBar() {
             }`}
           >
             <Icon size={20} strokeWidth={1.5} />
-            {isActive && (
-              <span className="text-[10px] font-medium leading-none">{label}</span>
-            )}
+            <span className={isActive ? "text-[10px] font-medium leading-none" : "sr-only"}>
+              {label}
+            </span>
           </Link>
         );
       })}

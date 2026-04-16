@@ -31,7 +31,7 @@ function SidebarLink({
   return (
     <Link
       href={href}
-      title={label}
+      aria-label={label}
       className={`group relative flex items-center justify-center w-10 h-10 rounded-admin-md transition-colors ${
         isActive
           ? "bg-accent text-[var(--color-admin-ink)]"
