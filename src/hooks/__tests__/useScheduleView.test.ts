@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { useState } from "react";
 import { useScheduleView } from "../useScheduleView";
 
 // Mock useLocal to avoid localStorage issues in tests
 vi.mock("../useLocal", () => ({
   useLocal: vi.fn((key: string, initial: unknown) => {
-    const React = require("react");
-    return React.useState(initial);
+    return useState(initial);
   }),
 }));
 
