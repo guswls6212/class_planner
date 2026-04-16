@@ -25,9 +25,13 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!isConfigured) return;
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
+    supabase.auth.getUser()
+      .then(({ data: { user } }) => {
+        setUser(user);
+      })
+      .catch(() => {
+        // Network failure — stay as anonymous
+      });
 
     const {
       data: { subscription },
@@ -39,12 +43,16 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
   }, []);
 
   const handleLogout = async () => {
-    const currentUserId = localStorage.getItem("supabase_user_id");
-    if (currentUserId) clearUserClassPlannerData(currentUserId);
-    localStorage.removeItem("supabase_user_id");
-    document.cookie = "onboarded=; Path=/; Max-Age=0";
-    await supabase.auth.signOut();
-    setTimeout(() => window.location.reload(), 500);
+    try {
+      await supabase.auth.signOut();
+      const currentUserId = localStorage.getItem("supabase_user_id");
+      if (currentUserId) clearUserClassPlannerData(currentUserId);
+      localStorage.removeItem("supabase_user_id");
+      document.cookie = "onboarded=; Path=/; Max-Age=0";
+      window.location.reload();
+    } catch {
+      window.location.reload();
+    }
   };
 
   if (!user) {
