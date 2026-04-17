@@ -22,6 +22,7 @@ interface SessionBlockProps {
   left: number;
   width: number;
   yOffset: number;
+  height?: number;
   onClick: () => void;
   onDragStart?: (e: React.DragEvent, session: Session) => void;
   onDragEnd?: (e: React.DragEvent) => void;
@@ -57,6 +58,7 @@ function SessionBlock({
   left,
   width,
   yOffset,
+  height,
   onClick,
   onDragStart,
   onDragEnd,
@@ -124,7 +126,8 @@ function SessionBlock({
     blockColor,
     isDragging,
     session.id === draggedSessionId,
-    isAnyDragging
+    isAnyDragging,
+    height
   );
 
   // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)

@@ -57,16 +57,14 @@ describe("TimeTableRow Component", () => {
   ];
 
   const mockSessions = new Map<number, Session[]>();
-  const mockSessionYPositions = new Map<string, number>();
 
   const defaultProps = {
     weekday: 0,
-    height: 100,
+    width: 120, // B2: weekday column width (lanes × laneWidth)
     sessions: mockSessions,
     subjects: mockSubjects,
     enrollments: mockEnrollments,
     students: mockStudents,
-    sessionYPositions: mockSessionYPositions,
     onSessionClick: vi.fn(),
     onDrop: vi.fn(),
     onEmptySpaceClick: vi.fn(),
@@ -76,14 +74,17 @@ describe("TimeTableRow Component", () => {
     vi.clearAllMocks();
   });
 
-  it("요일 라벨이 올바르게 표시되어야 한다", () => {
+  it("weekday column container가 data-weekday 속성으로 렌더된다", () => {
     render(<TimeTableRow {...defaultProps} weekday={0} />);
-    expect(screen.getByText("월")).toBeInTheDocument();
+    const column = screen.getByTestId("time-table-column-0");
+    expect(column).toBeInTheDocument();
+    expect(column.getAttribute("data-weekday")).toBe("0");
   });
 
-  it("다른 요일도 올바르게 표시되어야 한다", () => {
+  it("다른 요일 column도 올바른 data-weekday를 가진다", () => {
     render(<TimeTableRow {...defaultProps} weekday={1} />);
-    expect(screen.getByText("화")).toBeInTheDocument();
+    const column = screen.getByTestId("time-table-column-1");
+    expect(column.getAttribute("data-weekday")).toBe("1");
   });
 
   it("시간 슬롯들이 올바르게 생성되어야 한다", () => {
@@ -136,7 +137,7 @@ describe("TimeTableRow Component", () => {
     );
 
     // 컴포넌트가 크래시하지 않고 렌더링되어야 함
-    expect(screen.getByText("월")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-column-0")).toBeInTheDocument();
 
     // 경고 메시지가 출력되어야 함
     expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: "" });
@@ -163,7 +164,7 @@ describe("TimeTableRow Component", () => {
       <TimeTableRow {...defaultProps} sessions={sessionsWithUndefinedTime} />
     );
 
-    expect(screen.getByText("월")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-column-0")).toBeInTheDocument();
     expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: undefined });
 
     warnSpy.mockRestore();
@@ -186,7 +187,7 @@ describe("TimeTableRow Component", () => {
 
     render(<TimeTableRow {...defaultProps} sessions={sessionsWithNullTime} />);
 
-    expect(screen.getByText("월")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-column-0")).toBeInTheDocument();
     expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: null });
 
     warnSpy.mockRestore();
@@ -211,7 +212,7 @@ describe("TimeTableRow Component", () => {
       <TimeTableRow {...defaultProps} sessions={sessionsWithInvalidFormat} />
     );
 
-    expect(screen.getByText("월")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-column-0")).toBeInTheDocument();
     // 콜론 없는 문자열은 typeof 체크를 통과하므로 경고 없음
 
     warnSpy.mockRestore();
