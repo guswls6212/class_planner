@@ -179,13 +179,22 @@ npm run dev
 
 ---
 
-## Phase P5-B — Design System Consistency
+## Phase P5-B — Design System Consistency ✅ 완료 (2026-04-17)
 
 **포함 이슈:** 2, 3, 4, 6
-**규모:** 3-4 PR
-**의존성:** P5-A의 Action Bar 결정 후
+**규모:** 5 PR (B-1 ~ B-4)
+**의존성:** P5-A 완료 후
+**플랜:** [2026-04-17-phase5-b-design-consistency.md](plans/2026-04-17-phase5-b-design-consistency.md)
 
-### B-1. `SchedulePreview` primitive 추출 (이슈 3)
+**구현 방침 (스펙 승인 후 업데이트):**
+"TimeTableGrid는 레거시 — 싹 다 갈아엎음." 우회/경량 복제본 대신 원본 내부를 전면 재작성하는 전략 채택.
+- `SubjectChip`을 SSOT로 확립. 4개 뷰(Landing/Daily/Monthly/Weekly)가 모두 소비.
+- `SchedulePreview`: 랜딩 전용 경량 그리드 (SubjectChip + SUBJECT_PALETTE_HEX).
+- `SessionBlock` 내부 재작성: SubjectChip 기반. 공개 API(props 20개, data-testid 계약)는 불변.
+- `TimeTableCell` 신설: DropZone + 세션 렌더 + 빈 공간 클릭을 하나로 통합.
+- `DropZone.tsx` 삭제: 단일 소비자(TimeTableRow)였으므로 TimeTableCell로 흡수.
+
+### B-1. Primitives foundation (PR #69) ✅
 
 **현재 상태:** 랜딩 `page.tsx:84-218`의 `ScheduleMockup`은 실제 그리드와 무관한 하드코드 inline 컴포넌트.
 
