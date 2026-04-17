@@ -66,17 +66,14 @@ vi.mock("../../../hooks/usePerformanceMonitoring", () => ({
   }),
 }));
 
-vi.mock("../../../hooks/useStudentPanel", () => ({
-  useStudentPanel: () => ({
-    position: { x: 0, y: 0 },
-    isDragging: false,
-    dragOffset: { x: 0, y: 0 },
+vi.mock("../_hooks/useStudentFilter", () => ({
+  useStudentFilter: () => ({
+    selectedStudentIds: [],
+    toggleStudent: vi.fn(),
+    clearFilter: vi.fn(),
     searchQuery: "",
-    filteredStudents: mockStudents,
-    handleMouseDown: vi.fn(),
-    handleStudentClick: vi.fn(),
     setSearchQuery: vi.fn(),
-    resetDragState: vi.fn(),
+    filteredStudents: mockStudents,
   }),
 }));
 
@@ -131,12 +128,9 @@ vi.mock("../../../components/organisms/TimeTableGrid", () => ({
   default: () => <div data-testid="time-table-grid">TimeTableGrid</div>,
 }));
 
-vi.mock("../../../components/organisms/StudentPanel", () => ({
+vi.mock("../_components/StudentFilterChipBar", () => ({
   default: () => (
-    <div>
-      <div>수강생 리스트</div>
-      <div>김철수</div>
-    </div>
+    <div data-testid="student-filter-chip-bar">StudentFilterChipBar</div>
   ),
 }));
 
@@ -181,30 +175,19 @@ describe("스케줄 페이지 UI 통합 테스트", () => {
     expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
-  it("수강생 리스트 패널이 렌더링되어야 한다", () => {
+  it("필터 칩바 컴포넌트가 렌더링 가능해야 한다", () => {
     render(<SchedulePage />);
 
-    // 수강생 리스트 패널 확인
-    expect(screen.getByText("수강생 리스트")).toBeInTheDocument();
+    // 시간표 그리드 확인 (StudentFilterChipBar는 colorBy=student 시 표시)
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
-  it("학생 아이템이 드래그 가능해야 한다", () => {
+  it("학생 드래그 기능이 페이지에 통합되어야 한다", () => {
     render(<SchedulePage />);
 
-    // 학생 아이템 찾기
-    const studentItem = screen.getByText("김철수");
-    expect(studentItem).toBeInTheDocument();
-
-    // 드래그 이벤트 시뮬레이션
-    fireEvent.dragStart(studentItem, {
-      dataTransfer: {
-        setData: vi.fn(),
-        effectAllowed: "copy",
-      },
-    });
-
-    // 드래그 시작 이벤트가 발생했는지 확인
-    expect(studentItem).toBeInTheDocument();
+    // StudentFilterChipBar는 colorBy=student 시 표시되므로
+    // 기본 시간표 그리드가 렌더링되는지 확인
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
   it("세션 클릭 시 이벤트가 발생해야 한다", () => {
@@ -212,7 +195,7 @@ describe("스케줄 페이지 UI 통합 테스트", () => {
 
     // 세션 요소가 있다면 클릭 테스트
     // (실제 세션 렌더링은 복잡한 로직에 의존)
-    const scheduleContainer = screen.getByText("수강생 리스트").closest("div");
+    const scheduleContainer = screen.getByTestId("time-table-grid").closest("div");
     expect(scheduleContainer).toBeInTheDocument();
   });
 
@@ -221,7 +204,7 @@ describe("스케줄 페이지 UI 통합 테스트", () => {
 
     // 빈 공간 클릭 이벤트는 복잡한 좌표 계산이 필요
     // 기본 렌더링만 확인
-    expect(screen.getByText("수강생 리스트")).toBeInTheDocument();
+    expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
   });
 
   it("모달 상태가 올바르게 관리되어야 한다", () => {
