@@ -8,6 +8,7 @@ import { drawHeader, drawFooter } from "./PdfHeader";
 import { drawSessionBlock } from "./PdfSessionBlock";
 import { PRETENDARD_REGULAR_BASE64 } from "./fonts/pretendard-regular";
 import { PRETENDARD_BOLD_BASE64 } from "./fonts/pretendard-bold";
+import { eachWeekStart, formatWeekRangeLabel, getWeekStart } from "@/lib/dateUtils";
 import type {
   Session,
   Subject,
@@ -20,23 +21,12 @@ export interface PdfRenderOptions {
   academyName?: string;
   filterStudentId?: string;
   filename?: string;
+  weekRange?: { startDate: string; endDate: string };
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const START_HOUR = 9;
 const END_HOUR = 23;
-
-function getCurrentWeekRange(): string {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // Monday
-  const mon = new Date(now);
-  mon.setDate(now.getDate() + diff);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-  return `${fmt(mon)} – ${fmt(sun)}`;
-}
 
 function getStudentNames(
   session: Session,
@@ -60,49 +50,49 @@ function registerPretendardFont(doc: jsPDF): void {
   doc.setFont("Pretendard", "normal");
 }
 
-export function renderSchedulePdf(
+function filterSessions(
+  sessions: Session[],
+  enrollments: Enrollment[],
+  filterStudentId?: string
+): Session[] {
+  if (!filterStudentId) return sessions;
+  const studentEnrollmentIds = new Set(
+    enrollments
+      .filter((e) => e.studentId === filterStudentId)
+      .map((e) => e.id)
+  );
+  return sessions.filter((s) =>
+    s.enrollmentIds?.some((eid) => studentEnrollmentIds.has(eid))
+  );
+}
+
+function drawWeekPage(
+  doc: jsPDF,
+  weekStart: Date,
   sessions: Session[],
   subjects: Subject[],
   students: Student[],
   enrollments: Enrollment[],
-  _teachers: Teacher[],
-  options: PdfRenderOptions = {}
+  options: PdfRenderOptions
 ): void {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  registerPretendardFont(doc);
-
-  // Determine which weekdays are used — use max index+1 so columns cover all used days
   const usedWeekdays = new Set(sessions.map((s) => s.weekday));
   const maxWeekday = usedWeekdays.size > 0 ? Math.max(...usedWeekdays) : 4;
-  const weekdayCount = Math.max(5, maxWeekday + 1); // min 5 (Mon-Fri)
+  const weekdayCount = Math.max(5, maxWeekday + 1);
   const dims = calculateGridDimensions(weekdayCount, START_HOUR, END_HOUR);
   const weekdayLabels = WEEKDAY_LABELS.slice(0, weekdayCount);
 
   drawHeader(doc, dims, {
     academyName: options.academyName ?? "CLASS PLANNER",
-    dateRange: getCurrentWeekRange(),
+    dateRange: formatWeekRangeLabel(weekStart),
     printDate: new Date().toISOString().slice(0, 10),
   });
 
   drawGridLines(doc, dims, weekdayLabels, START_HOUR, END_HOUR);
 
-  // Filter sessions
-  let targetSessions = sessions;
-  if (options.filterStudentId) {
-    const studentEnrollmentIds = new Set(
-      enrollments
-        .filter((e) => e.studentId === options.filterStudentId)
-        .map((e) => e.id)
-    );
-    targetSessions = sessions.filter((s) =>
-      s.enrollmentIds?.some((eid) => studentEnrollmentIds.has(eid))
-    );
-  }
+  const targetSessions = filterSessions(sessions, enrollments, options.filterStudentId);
 
   for (const session of targetSessions) {
-    // Guard against malformed time strings
     if (!session.startsAt || !session.endsAt) continue;
-    // Skip sessions outside grid range
     const [sh] = session.startsAt.split(":").map(Number);
     if (sh < START_HOUR || sh >= END_HOUR) continue;
 
@@ -131,8 +121,39 @@ export function renderSchedulePdf(
   }
 
   drawFooter(doc, dims);
+}
 
-  const filename =
-    options.filename ?? `${options.academyName ?? "시간표"}_전체시간표.pdf`;
-  doc.save(filename);
+function buildFilename(opts: PdfRenderOptions): string {
+  if (opts.filename) return opts.filename;
+  const academy = opts.academyName ?? "시간표";
+  if (opts.weekRange) {
+    return `${academy}_${opts.weekRange.startDate}_${opts.weekRange.endDate}.pdf`;
+  }
+  return `${academy}_전체시간표.pdf`;
+}
+
+export function renderSchedulePdf(
+  sessions: Session[],
+  subjects: Subject[],
+  students: Student[],
+  enrollments: Enrollment[],
+  _teachers: Teacher[],
+  options: PdfRenderOptions = {}
+): void {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  registerPretendardFont(doc);
+
+  const weekStarts = options.weekRange
+    ? eachWeekStart(
+        new Date(options.weekRange.startDate),
+        new Date(options.weekRange.endDate)
+      )
+    : [getWeekStart(new Date())];
+
+  weekStarts.forEach((weekStart, idx) => {
+    if (idx > 0) doc.addPage();
+    drawWeekPage(doc, weekStart, sessions, subjects, students, enrollments, options);
+  });
+
+  doc.save(buildFilename(options));
 }

@@ -6,7 +6,7 @@ import { HelpTooltip } from "../../../components/molecules/HelpTooltip";
 
 interface Props {
   viewLabel: string;
-  onDownload: () => Promise<void> | void;
+  onOpenPdfDialog: () => void;
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
@@ -18,7 +18,7 @@ interface Props {
 
 export default function ScheduleActionBar({
   viewLabel,
-  onDownload,
+  onOpenPdfDialog,
   isDownloading,
   onDownloadStart,
   onDownloadEnd,
@@ -30,7 +30,7 @@ export default function ScheduleActionBar({
   return (
     <div className="flex items-center gap-2 flex-wrap py-2">
       <PDFDownloadButton
-        onDownload={onDownload}
+        onDownload={onOpenPdfDialog}
         isDownloading={isDownloading}
         onDownloadStart={onDownloadStart}
         onDownloadEnd={onDownloadEnd}
