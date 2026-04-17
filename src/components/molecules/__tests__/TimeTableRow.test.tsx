@@ -300,5 +300,79 @@ describe("TimeTableRow Component", () => {
     );
     expect(sessionElement).toBeInTheDocument();
   });
+
+  describe("D-hybrid overflow (B3)", () => {
+    const makeSession = (
+      id: string,
+      yPosition: number,
+      startsAt = "09:00",
+      endsAt = "10:00"
+    ) =>
+      ({
+        id,
+        subjectId: "550e8400-e29b-41d4-a716-446655440101",
+        startsAt,
+        endsAt,
+        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+        weekday: 0,
+        yPosition,
+      }) as Session;
+
+    it("yPosition ≤3이면 모든 세션이 보인다", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+    });
+
+    it("yPosition ≥4이면 yPos 1,2는 보이고 3+는 숨겨진다", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+      expect(screen.queryByTestId("session-s3")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
+    });
+
+    it("overflow 시 활성 슬롯에 pill이 렌더된다", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3), // hidden
+        makeSession("s4", 4), // hidden — needed to trigger threshold (rawMaxYPos=4≥4)
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      // s3, s4이 09:00-10:00에 있으므로 09:00 슬롯에 pill이 있어야 한다
+      expect(screen.getByTestId("overflow-pill-09:00")).toBeInTheDocument();
+      expect(screen.getByTestId("overflow-pill-09:00")).toHaveTextContent("+2");
+    });
+
+    it("pill 클릭 시 popover가 열린다", async () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4), // needed to trigger overflow
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      const pill = screen.getByTestId("overflow-pill-09:00");
+      pill.click();
+      expect(await screen.findByTestId("overflow-popover-backdrop")).toBeInTheDocument();
+    });
+  });
 });
 
