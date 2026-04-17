@@ -45,7 +45,7 @@ import ScheduleActionBar from "../ScheduleActionBar";
 
 const baseProps = {
   viewLabel: "주간 시간표",
-  onDownload: vi.fn(),
+  onOpenPdfDialog: vi.fn(),
   isDownloading: false,
   onDownloadStart: vi.fn(),
   onDownloadEnd: vi.fn(),
@@ -95,5 +95,14 @@ describe("ScheduleActionBar", () => {
     render(<ScheduleActionBar {...baseProps} userId="user-1" />);
     const helpBtns = screen.getAllByRole("button", { name: /도움말/ });
     expect(helpBtns.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
+    const onOpenPdfDialog = vi.fn();
+    render(
+      <ScheduleActionBar {...baseProps} onOpenPdfDialog={onOpenPdfDialog} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /PDF 다운로드/ }));
+    expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
   });
 });

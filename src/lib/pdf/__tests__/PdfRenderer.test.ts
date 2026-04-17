@@ -13,6 +13,7 @@ const textMock = vi.fn();
 const lineMock = vi.fn();
 const rectMock = vi.fn();
 const saveMock = vi.fn();
+const addPageMock = vi.fn();
 
 vi.mock("jspdf", () => ({
   default: vi.fn().mockImplementation(() => ({
@@ -28,6 +29,7 @@ vi.mock("jspdf", () => ({
     line: lineMock,
     rect: rectMock,
     save: saveMock,
+    addPage: addPageMock,
     internal: { scaleFactor: 1 },
   })),
 }));
@@ -94,5 +96,68 @@ describe("renderSchedulePdf — 폰트 등록", () => {
       academyName: "테스트학원",
     });
     expect(saveMock).toHaveBeenCalledWith("테스트학원_전체시간표.pdf");
+  });
+});
+
+describe("renderSchedulePdf — weekRange 옵션", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("weekRange가 있으면 주 단위로 addPage 호출 (3주 → addPage 2번)", () => {
+    renderSchedulePdf(
+      emptySessions,
+      emptySubjects,
+      emptyStudents,
+      emptyEnrollments,
+      emptyTeachers,
+      {
+        academyName: "테스트학원",
+        weekRange: { startDate: "2026-04-13", endDate: "2026-05-03" }, // 3주
+      }
+    );
+    expect(addPageMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("weekRange 미제공 시 단일 페이지 — addPage 미호출 (역호환)", () => {
+    renderSchedulePdf(
+      emptySessions,
+      emptySubjects,
+      emptyStudents,
+      emptyEnrollments,
+      emptyTeachers,
+      {}
+    );
+    expect(addPageMock).not.toHaveBeenCalled();
+  });
+
+  it("weekRange 있을 때 filename에 날짜 범위 포함", () => {
+    renderSchedulePdf(
+      emptySessions,
+      emptySubjects,
+      emptyStudents,
+      emptyEnrollments,
+      emptyTeachers,
+      {
+        academyName: "학원",
+        weekRange: { startDate: "2026-04-13", endDate: "2026-04-19" },
+      }
+    );
+    expect(saveMock).toHaveBeenCalledWith(expect.stringContaining("2026-04-13"));
+  });
+
+  it("weekRange 있을 때 filename에 academyName 포함", () => {
+    renderSchedulePdf(
+      emptySessions,
+      emptySubjects,
+      emptyStudents,
+      emptyEnrollments,
+      emptyTeachers,
+      {
+        academyName: "우리학원",
+        weekRange: { startDate: "2026-04-13", endDate: "2026-04-19" },
+      }
+    );
+    expect(saveMock).toHaveBeenCalledWith(expect.stringContaining("우리학원"));
   });
 });

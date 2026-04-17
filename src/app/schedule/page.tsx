@@ -45,6 +45,7 @@ import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionC
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
+import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
 import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
@@ -889,6 +890,28 @@ function SchedulePageContent(): JSX.Element {
   // 🆕 PDF 다운로드 처리
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
+
+  const handlePdfExport = async (range: PdfExportRange) => {
+    setIsDownloading(true);
+    try {
+      await renderSchedulePdf(
+        Array.from(displaySessions.values()).flat(),
+        subjects,
+        students,
+        enrollments,
+        teachers,
+        {
+          academyName: "CLASS PLANNER",
+          filterStudentId: selectedStudentIds[0] ?? undefined,
+          weekRange: range,
+        }
+      );
+      setIsPdfDialogOpen(false);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // ================================
   // 🎯 템플릿 기능
@@ -1068,22 +1091,10 @@ function SchedulePageContent(): JSX.Element {
               ? "월별 시간표"
               : "주간 시간표"
         }
-        onDownload={() =>
-          renderSchedulePdf(
-            Array.from(displaySessions.values()).flat(),
-            subjects,
-            students,
-            enrollments,
-            teachers,
-            {
-              academyName: "CLASS PLANNER",
-              filterStudentId: selectedStudentIds[0] ?? undefined,
-            }
-          )
-        }
+        onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
         isDownloading={isDownloading}
-        onDownloadStart={() => setIsDownloading(true)}
-        onDownloadEnd={() => setIsDownloading(false)}
+        onDownloadStart={() => {}}
+        onDownloadEnd={() => {}}
         userId={userId}
         onSaveTemplate={() => setShowSaveTemplateModal(true)}
         onApplyTemplate={() => {
@@ -1340,6 +1351,16 @@ function SchedulePageContent(): JSX.Element {
         templates={templates}
         isApplying={false}
         isLoading={templatesLoading}
+      />
+
+      {/* PDF 범위 선택 다이얼로그 */}
+      <PdfExportRangeModal
+        isOpen={isPdfDialogOpen}
+        onClose={() => setIsPdfDialogOpen(false)}
+        onExport={handlePdfExport}
+        viewMode={viewMode}
+        selectedDate={selectedDate}
+        isExporting={isDownloading}
       />
     </div>
   );

@@ -183,6 +183,7 @@ src/components/molecules/DayChipBar.tsx
 src/components/molecules/HelpTooltip.tsx
 src/components/molecules/MonthDayCell.tsx
 src/components/molecules/PDFDownloadButton.tsx
+src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/SessionBlock.tsx
@@ -206,6 +207,7 @@ src/components/molecules/__tests__/DataConflictModal.test.tsx
 src/components/molecules/__tests__/HelpTooltip.test.tsx
 src/components/molecules/__tests__/MonthDayCell.test.tsx
 src/components/molecules/__tests__/PDFDownloadButton.test.tsx
+src/components/molecules/__tests__/PdfExportRangeModal.test.tsx
 src/components/molecules/__tests__/SaveTemplateModal.test.tsx
 src/components/molecules/__tests__/ScheduleChangeBanner.test.tsx
 src/components/molecules/__tests__/SessionBlock.test.tsx

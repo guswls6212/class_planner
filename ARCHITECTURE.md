@@ -40,6 +40,7 @@
 - **Molecules:** Atoms 조합 (SessionBlock, TimeTableCell, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
   - `TimeTableCell` — 드롭존 + 빈 셀 클릭 처리를 통합한 단위 셀. 기존 DropZone을 대체.
   - `StudentFilterChipBar` — 학생 멀티셀렉트 필터 칩바. colorBy=student 시 표시.
+  - `PdfExportRangeModal` — PDF 출력 범위 선택 다이얼로그. viewMode별 옵션 분기(weekly/daily: 현재 뷰 or 범위, monthly: 해당 월 전체).
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, StudentListItem, SubjectListItem, SegmentedButton
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, HelpDrawer, AppShell)
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
@@ -147,6 +148,7 @@ src/lib/               # 핵심 유틸리티
 ├── logger.ts                  # 로깅 시스템
 ├── errorTracker.ts            # 에러 추적
 ├── planner.ts                 # 핵심 데이터 타입 정의
+├── dateUtils.ts               # Monday-based 주 계산 유틸 (getWeekStart, addWeeks, eachWeekStart, formatWeekRangeLabel, getMonthWeekRange)
 ├── pdf-utils.ts               # PDF 생성 유틸리티
 ├── timeUtils.ts               # 시간 관련 유틸리티
 ├── authUtils.ts               # 인증 관련 유틸리티
