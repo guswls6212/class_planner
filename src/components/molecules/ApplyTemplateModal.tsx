@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ScheduleTemplate } from "@/shared/types/templateTypes";
 
 interface ApplyTemplateModalProps {
@@ -21,6 +21,10 @@ export default function ApplyTemplateModal({
   isLoading,
 }: ApplyTemplateModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) setSelectedId(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -67,6 +71,7 @@ export default function ApplyTemplateModal({
                 <button
                   key={tpl.id}
                   onClick={() => setSelectedId(tpl.id)}
+                  disabled={isApplying}
                   className={`text-left w-full p-3 rounded-lg border transition-colors ${
                     selectedId === tpl.id
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
@@ -89,6 +94,17 @@ export default function ApplyTemplateModal({
             </div>
           )}
         </div>
+
+        {selected && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
+            <p className="font-medium text-amber-800 mb-1">
+              {selected.templateData.sessions.length}개 세션을 적용합니다
+            </p>
+            <p className="text-amber-700">
+              현재 주의 기존 세션이 모두 삭제되고 이 템플릿으로 교체됩니다.
+            </p>
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button

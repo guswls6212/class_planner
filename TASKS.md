@@ -231,7 +231,7 @@
 - [x] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환 (StudentFilterChipBar)
 - [x] C-2: ColorBy 토글 시각 통일 (SegmentedButton atom — Day/Week/Month + ColorBy 동일 스타일)
 - [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
-- [ ] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
+- [x] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
 - [ ] C-5: PDF 고급 스코프 (범위 선택 다이얼로그) — 선택적
 
 ---

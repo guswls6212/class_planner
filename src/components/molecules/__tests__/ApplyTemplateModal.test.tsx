@@ -75,4 +75,11 @@ describe("ApplyTemplateModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /취소/ }));
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("템플릿 선택 시 세션 수와 덮어쓰기 경고가 표시된다", () => {
+    render(<ApplyTemplateModal {...defaultProps} />);
+    fireEvent.click(screen.getByText("기본 시간표"));
+    expect(screen.getByText(/1개 세션/)).toBeInTheDocument();
+    expect(screen.getByText(/현재 주의 기존 세션이 모두 삭제/)).toBeInTheDocument();
+  });
 });

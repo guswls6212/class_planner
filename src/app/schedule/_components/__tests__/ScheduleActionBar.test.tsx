@@ -2,6 +2,12 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("../../../../components/molecules/HelpTooltip", () => ({
+  HelpTooltip: ({ label }: { label: string; content: string }) => (
+    <button aria-label={label}>도움말</button>
+  ),
+}));
+
 vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   default: ({
     viewLabel,
@@ -83,5 +89,11 @@ describe("ScheduleActionBar", () => {
     render(<ScheduleActionBar {...baseProps} userId="user-1" onApplyTemplate={onApplyTemplate} />);
     fireEvent.click(screen.getByText("저장된 템플릿 적용하기"));
     expect(onApplyTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("userId가 있을 때 템플릿 버튼 옆에 도움말 버튼이 있다", () => {
+    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
+    const helpBtns = screen.getAllByRole("button", { name: /도움말/ });
+    expect(helpBtns.length).toBeGreaterThanOrEqual(1);
   });
 });
