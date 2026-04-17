@@ -35,7 +35,7 @@ interface TimeTableRowProps {
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
-  selectedStudentId?: string;
+  selectedStudentIds?: string[];
   isAnyDragging?: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
@@ -62,7 +62,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onEmptySpaceClick,
   className = "",
   style = {},
-  selectedStudentId,
+  selectedStudentIds,
   isAnyDragging = false,
   teachers = [],
   colorBy = "subject",
@@ -246,7 +246,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 onDragEnd();
               }
             }}
-            selectedStudentId={selectedStudentId}
+            selectedStudentIds={selectedStudentIds}
             teachers={teachers}
             colorBy={colorBy}
             isMobile={isMobile}

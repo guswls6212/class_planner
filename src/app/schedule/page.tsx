@@ -33,7 +33,8 @@ import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
-import { useStudentPanel } from "../../hooks/useStudentPanel";
+import { useStudentFilter } from "./_hooks/useStudentFilter";
+import { filterSessionsByStudents } from "@/features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
@@ -47,7 +48,7 @@ import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
-import StudentPanelSection from "./_components/StudentPanelSection";
+import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import {
   DEFAULT_GROUP_SESSION_DATA,
   ERROR_MESSAGES,
@@ -190,10 +191,11 @@ function SchedulePageContent(): JSX.Element {
     studentIds?: string[];
   };
 
-  const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
-    "ui:selectedStudent",
-    ""
-  );
+  const {
+    selectedStudentIds,
+    toggleStudent: toggleStudentFilter,
+    clearFilter: clearStudentFilter,
+  } = useStudentFilter(students);
 
   // ================================
   // 🧩 핵심 콜백: 세션 추가
@@ -472,51 +474,6 @@ function SchedulePageContent(): JSX.Element {
     setDeleteConfirmSessionId(session.id);
   }, []);
 
-  // 🆕 데이터 로딩 완료 후 selectedStudentId 복원
-  useEffect(() => {
-    if (!dataLoading && students.length > 0) {
-      // 클라이언트에서만 localStorage 접근
-      if (typeof window !== "undefined") {
-        try {
-          const savedStudentId = localStorage.getItem("ui:selectedStudent");
-          if (savedStudentId && students.some((s) => s.id === savedStudentId)) {
-            logger.debug("저장된 학생 선택 복원", { savedStudentId });
-            setSelectedStudentId(savedStudentId);
-          }
-        } catch {
-          // localStorage 접근 실패 시 무시
-        }
-      }
-    }
-  }, [dataLoading, students, setSelectedStudentId]);
-
-  // 🆕 학생 데이터 디버깅
-  useEffect(() => {
-    logger.debug("학생 데이터 상태", {
-      studentsCount: students.length,
-      selectedStudentId,
-      selectedStudentName: students.find((s) => s.id === selectedStudentId)
-        ?.name,
-    });
-  }, [students, selectedStudentId]);
-
-  // 🆕 selectedStudentId 변경 감지 및 저장
-  useEffect(() => {
-    logger.debug("selectedStudentId 변경됨", { selectedStudentId });
-    // 클라이언트에서만 localStorage 접근
-    if (typeof window !== "undefined") {
-      try {
-        if (selectedStudentId) {
-          localStorage.setItem("ui:selectedStudent", selectedStudentId);
-        } else {
-          localStorage.removeItem("ui:selectedStudent");
-        }
-      } catch {
-        // localStorage 접근 실패 시 무시
-      }
-    }
-  }, [selectedStudentId]);
-
   // 🆕 로그인 상태 감지 및 로그아웃 시 정리
   useEffect(() => {
     const checkAuthState = async () => {
@@ -544,14 +501,17 @@ function SchedulePageContent(): JSX.Element {
   const { sessions: displaySessions } = useDisplaySessions(
     sessions,
     enrollments,
-    selectedStudentId
+    ""
   );
 
-  const studentPanelState = useStudentPanel(
-    students,
-    selectedStudentId,
-    setSelectedStudentId
-  );
+  const filteredDisplaySessions = useMemo(() => {
+    if (selectedStudentIds.length === 0) return displaySessions;
+    const filtered = new Map<number, Session[]>();
+    displaySessions.forEach((daySessions, weekday) => {
+      filtered.set(weekday, filterSessionsByStudents(daySessions, selectedStudentIds, enrollments));
+    });
+    return filtered;
+  }, [displaySessions, selectedStudentIds, enrollments]);
 
   const {
     validateTimeRange,
@@ -1049,29 +1009,34 @@ function SchedulePageContent(): JSX.Element {
       student,
       enrollments,
       setIsStudentDragging,
-      studentPanelState.resetDragState
+      () => {}
     );
 
   // 🆕 드래그 종료 처리
   const handleDragEnd = (e: React.DragEvent) =>
-    onDragEndStudent(e, setIsStudentDragging, studentPanelState.resetDragState);
+    onDragEndStudent(e, setIsStudentDragging, () => {});
 
   return (
     <div className="timetable-container p-4">
       <ScheduleHeader
         dataLoading={dataLoading}
         error={error ?? undefined}
-        selectedStudentName={
-          selectedStudentId
-            ? students.find((s) => s.id === selectedStudentId)?.name ??
-              undefined
-            : undefined
-        }
         colorBy={colorBy}
         onColorByChange={setColorBy}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
+
+      {colorBy === "student" && (
+        <StudentFilterChipBar
+          students={students}
+          selectedStudentIds={selectedStudentIds}
+          onToggleStudent={toggleStudentFilter}
+          onClearFilter={clearStudentFilter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+      )}
 
       {/* 일별 뷰: 요일 칩 바 */}
       {viewMode === "daily" && (
@@ -1105,7 +1070,7 @@ function SchedulePageContent(): JSX.Element {
             teachers,
             {
               academyName: "CLASS PLANNER",
-              filterStudentId: selectedStudentId ?? undefined,
+              filterStudentId: selectedStudentIds[0] ?? undefined,
             }
           )
         }
@@ -1160,7 +1125,7 @@ function SchedulePageContent(): JSX.Element {
         <ScheduleGridSection
           containerRef={timeTableRef}
           gridVersion={gridVersion}
-          sessions={displaySessions}
+          sessions={filteredDisplaySessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}
@@ -1169,20 +1134,12 @@ function SchedulePageContent(): JSX.Element {
           onDrop={handleDrop}
           onSessionDrop={handleSessionDrop}
           onEmptySpaceClick={handleEmptySpaceClick}
-          selectedStudentId={selectedStudentId}
+          selectedStudentIds={selectedStudentIds}
           isStudentDragging={isStudentDragging}
           teachers={teachers}
           colorBy={colorBy}
         />
       )}
-
-      {/* 🆕 학생 패널 */}
-      <StudentPanelSection
-        selectedStudentId={selectedStudentId}
-        panelState={studentPanelState}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      />
 
       {/* 그룹 수업 추가 모달 (분리) */}
       <GroupSessionModal

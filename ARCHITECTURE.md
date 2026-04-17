@@ -39,7 +39,9 @@
   - `SubjectChip` — 과목 색상을 표현하는 공유 칩 primitive. variant: `fill` (캘린더), `border-left` (리스트 행), `soft`.
 - **Molecules:** Atoms 조합 (SessionBlock, TimeTableCell, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
   - `TimeTableCell` — 드롭존 + 빈 셀 클릭 처리를 통합한 단위 셀. 기존 DropZone을 대체.
-- **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, StudentPanel, HelpDrawer, AppShell)
+  - `StudentFilterChipBar` — 학생 멀티셀렉트 필터 칩바. colorBy=student 시 표시.
+- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, StudentListItem, SubjectListItem, SegmentedButton
+- **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, HelpDrawer, AppShell)
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
 ## 2. 컴포넌트 구조
@@ -176,7 +178,7 @@ src/hooks/             # 커스텀 React 훅
 ├── useMediaQuery.ts               # 반응형 미디어 쿼리
 ├── useSessionStatus.ts            # 세션 상태 계산 (Phase 4)
 ├── useLocal.ts                    # localStorage 기반 범용 훅
-├── useStudentPanel.ts             # StudentPanel 상태 관리
+├── useStudentFilter (schedule/_hooks/) # 학생 멀티셀렉트 필터 (localStorage: ui:selectedStudentIds)
 ├── useTimeValidation.ts           # 시간 유효성 검사
 ├── useUserTracking.ts             # 사용자 행동 추적
 └── usePerformanceMonitoring.ts    # 성능 모니터링
@@ -199,6 +201,10 @@ src/shared/            # 계층 간 공유 타입/상수
     ├── index.ts             # 재export
     ├── scheduleTypes.ts     # Schedule 전용 타입
     └── templateTypes.ts     # 시간표 템플릿 타입 (W4)
+
+src/features/          # 기능별 순수 비즈니스 로직 (UI 없음)
+└── schedule/
+    └── filters.ts     # filterSessionsByStudents — OR 로직 멀티셀렉트 필터
 
 src/types/             # 레거시 타입 (shared/types로 점진 통합 예정)
 └── scheduleTypes.ts   # Schedule 관련 타입

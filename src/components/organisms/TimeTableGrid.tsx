@@ -38,7 +38,7 @@ interface TimeTableGridProps {
   className?: string;
   style?: React.CSSProperties;
   ref?: React.Ref<HTMLDivElement>;
-  selectedStudentId?: string;
+  selectedStudentIds?: string[];
   isAnyDragging?: boolean;
   isStudentDragging?: boolean;
   teachers?: Teacher[];
@@ -60,7 +60,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onEmptySpaceClick,
       className = "",
       style = {},
-      selectedStudentId,
+      selectedStudentIds,
       isAnyDragging = false,
       isStudentDragging = false,
       teachers = [],
@@ -472,7 +472,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onDrop={isReadOnly ? () => {} : onDrop}
                 onSessionDrop={isReadOnly ? undefined : onSessionDrop}
                 onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
-                selectedStudentId={selectedStudentId}
+                selectedStudentIds={selectedStudentIds}
                 isAnyDragging={isAnyDragging || isStudentDragging}
                 teachers={teachers}
                 colorBy={colorBy}

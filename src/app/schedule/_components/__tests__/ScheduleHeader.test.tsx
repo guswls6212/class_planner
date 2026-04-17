@@ -44,20 +44,6 @@ describe("ScheduleHeader", () => {
     expect(screen.getByText(/로컬 데이터로 계속 작업할 수 있습니다/)).toBeInTheDocument();
   });
 
-  it("selectedStudentName이 있으면 해당 학생 메시지를 표시한다", () => {
-    render(
-      <ScheduleHeader dataLoading={false} selectedStudentName="김철수" {...defaultViewProps} />
-    );
-    expect(screen.getByText(/김철수 학생의 시간표입니다/)).toBeInTheDocument();
-  });
-
-  it("selectedStudentName이 없으면 전체 시간표 메시지를 표시한다", () => {
-    render(
-      <ScheduleHeader dataLoading={false} {...defaultViewProps} />
-    );
-    expect(screen.getByText(/전체 학생의 시간표입니다/)).toBeInTheDocument();
-  });
-
   it("뷰 모드 토글 버튼이 렌더링된다", () => {
     render(
       <ScheduleHeader dataLoading={false} {...defaultViewProps} />
@@ -95,5 +81,10 @@ describe("ScheduleHeader", () => {
     );
     const monthlyBtn = screen.getByText("월별").closest("button");
     expect(monthlyBtn).toHaveClass("bg-accent");
+  });
+
+  it("뷰 모드 group 역할을 가진다", () => {
+    render(<ScheduleHeader dataLoading={false} viewMode="weekly" onViewModeChange={vi.fn()} />);
+    expect(screen.getByRole("group", { name: "뷰 모드" })).toBeInTheDocument();
   });
 });
