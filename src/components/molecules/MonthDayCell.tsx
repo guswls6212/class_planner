@@ -1,6 +1,7 @@
 import React from "react";
 import type { Enrollment, Session, Subject } from "../../lib/planner";
 import SubjectChip from "../common/SubjectChip";
+import { getSessionSubject } from "@/lib/schedule/getSessionSubject";
 
 interface MonthDayCellProps {
   date: Date;
@@ -23,18 +24,8 @@ export default function MonthDayCell({
   isCurrentMonth,
   onDayClick,
 }: MonthDayCellProps) {
-  const subjectMap = new Map(subjects.map((s) => [s.id, s]));
-  const enrollmentMap = new Map(enrollments.map((e) => [e.id, e]));
   const visibleSessions = sessions.slice(0, MAX_VISIBLE_CHIPS);
   const overflow = sessions.length - MAX_VISIBLE_CHIPS;
-
-  function getSessionSubject(session: Session) {
-    const firstEnrollmentId = session.enrollmentIds?.[0];
-    if (!firstEnrollmentId) return undefined;
-    const enrollment = enrollmentMap.get(firstEnrollmentId);
-    if (!enrollment) return undefined;
-    return subjectMap.get(enrollment.subjectId);
-  }
 
   return (
     <button
@@ -61,7 +52,7 @@ export default function MonthDayCell({
       {visibleSessions.length > 0 && (
         <ul className="flex w-full flex-col gap-0.5">
           {visibleSessions.map((session) => {
-            const subj = getSessionSubject(session);
+            const subj = getSessionSubject(session, enrollments, subjects);
             return (
               <li key={session.id} className="w-full">
                 <SubjectChip

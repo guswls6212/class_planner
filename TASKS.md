@@ -224,10 +224,10 @@
 - [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
 - [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
 - [x] B-3b: Weekly 그리드 내부 리라이트 — `TimeTableCell` 신설(DropZone 대체), `TimeTableRow` 간소화, `DropZone.tsx` 삭제, `TimeTableGrid` 루트에 `data-surface="surface"` 추가, Q Pastel 그리드 토큰 적용. 20개 공개 API, data-testid, virtual-scrollbar, schedule_scroll_position 계약 보존.
-- [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
+- [x] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
 - [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
-### P5-C — /schedule UX Polish 🔜
+### P5-C — /schedule UX Polish ✅
 - [x] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환 (StudentFilterChipBar)
 - [x] C-2: ColorBy 토글 시각 통일 (SegmentedButton atom — Day/Week/Month + ColorBy 동일 스타일)
 - [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
@@ -280,3 +280,4 @@
 | 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |
 | 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
+| 2026-04-17 | P5-B 종결 — B-3 체크, MonthDayCell/ScheduleDailyView 로컬 getSessionSubject 제거 → canonical util 사용 |

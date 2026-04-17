@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
 import SubjectChip from "@/components/common/SubjectChip";
+import { getSessionSubject } from "@/lib/schedule/getSessionSubject";
 
 type AttendanceStatus = "all-present" | "partial" | "absent" | "unmarked";
 
@@ -66,11 +67,6 @@ export function ScheduleDailyView({
     }
   };
 
-  const getSubjectForSession = (session: Session) => {
-    const enrollment = enrollments.find((e) => session.enrollmentIds?.includes(e.id));
-    return enrollment ? subjects.find((s) => s.id === enrollment.subjectId) : undefined;
-  };
-
   const getStudentNames = (session: Session) => {
     const eIds = session.enrollmentIds ?? [];
     return eIds
@@ -98,7 +94,7 @@ export function ScheduleDailyView({
       ) : (
         <div className="flex flex-col gap-2 px-4 py-3">
           {daySessions.map((session) => {
-            const subject = getSubjectForSession(session);
+            const subject = getSessionSubject(session, enrollments, subjects);
             const teacher = getTeacher(session);
             const studentNames = getStudentNames(session);
             const attStatus = attendanceStatusMap?.[session.id] ?? "unmarked";
