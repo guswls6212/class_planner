@@ -316,6 +316,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const slotCount = timeSlots30Min.length;
 
     // 요일별 lane 수 (yPosition max). weekday column 내부에서 laneWidth 분할 기준.
+    // D-hybrid (B3): ≤3 lanes — equal split; ≥4 lanes — cap at 2 (pill handles overflow).
+    // 드래그 중에는 캡 해제 (TimeTableRow가 5 lanes로 확장하므로 width도 맞춰야 함).
     const weekdayMaxLanes = useMemo(
       () =>
         Array.from({ length: 7 }, (_, weekday) => {
@@ -325,9 +327,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             ...daySessions.map((s) => s.yPosition || 1),
             1
           );
+          const isDraggingAny = isAnyDragging || isStudentDragging;
+          if (!isDraggingAny && maxPos >= 4) return 2;
           return Math.max(1, maxPos);
         }),
-      [sessions]
+      [sessions, isAnyDragging, isStudentDragging]
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
