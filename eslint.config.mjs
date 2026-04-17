@@ -2,9 +2,33 @@ import js from "@eslint/js";
 import typescript from "@typescript-eslint/eslint-plugin";
 import typescriptParser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 
 const eslintConfig = [
   js.configs.recommended,
+  // jsx-a11y: recommended rules at warn level (errors promoted to warn so legacy issues
+  // don't block CI; will escalate to error in Phase 3 after visual redesign)
+  {
+    files: ["**/*.{tsx,jsx}"],
+    plugins: {
+      "jsx-a11y": jsxA11y,
+    },
+    rules: {
+      ...Object.fromEntries(
+        Object.entries(
+          jsxA11y.flatConfigs?.recommended?.rules ??
+            jsxA11y.configs.recommended.rules
+        ).map(([key, val]) => {
+          // Downgrade error → warn; handles both string ("error") and array (["error", opts]) forms
+          if (Array.isArray(val)) {
+            const [sev, ...rest] = val;
+            return [key, [sev === "error" || sev === 2 ? "warn" : sev, ...rest]];
+          }
+          return [key, val === "error" || val === 2 ? "warn" : val];
+        })
+      ),
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -32,6 +56,7 @@ const eslintConfig = [
         getComputedStyle: "readonly",
         crypto: "readonly",
         performance: "readonly",
+        navigator: "readonly",
 
         // Fetch API
         fetch: "readonly",
@@ -71,7 +96,7 @@ const eslintConfig = [
       ...typescript.configs.recommended.rules,
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "no-console": "warn",
+      "no-console": "error",
       "prefer-const": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "no-useless-escape": "warn",
@@ -100,6 +125,7 @@ const eslintConfig = [
         getComputedStyle: "readonly",
         crypto: "readonly",
         performance: "readonly",
+        navigator: "readonly",
 
         // Fetch API
         fetch: "readonly",
@@ -133,10 +159,21 @@ const eslintConfig = [
     },
     rules: {
       "no-unused-vars": "warn",
-      "no-console": "warn",
+      "no-console": "error",
       "prefer-const": "warn",
       "no-useless-escape": "warn",
     },
+  },
+  {
+    // logger.ts 내부에서만 console.* 사용 허용 (stdout 최종 출력 지점)
+    // 테스트 파일은 console을 mock/restore하므로 허용
+    files: [
+      "src/lib/logger.ts",
+      "**/__tests__/**",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: { "no-console": "off" },
   },
   {
     ignores: [

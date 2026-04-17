@@ -1,93 +1,86 @@
 /**
- * Home Page 실제 테스트 (368줄 - 세 번째로 큰 파일)
+ * Landing Page 테스트 (Phase 3 리라이트)
+ * 참고: setupTests.ts에서 localStorage, next/navigation, next/link를 글로벌 모킹
+ *   - localStorage.getItem은 vi.fn() → 기본 undefined 반환 (비로그인 상태)
+ *   - useRouter는 vi.fn() → { push, replace, ... } 반환
  */
 
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import HomePage from "../page";
+import LandingPage from "../page";
 
-// Mock all dependencies
-vi.mock("../../components/atoms/AuthGuard", () => ({
-  default: vi.fn(({ children }) => (
-    <div data-testid="auth-guard">{children}</div>
-  )),
-}));
-
-vi.mock("../../utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getUser: vi.fn(() =>
-        Promise.resolve({ data: { user: null }, error: null })
-      ),
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
-    },
-  },
-}));
-
-vi.mock("../../lib/logger", () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
-describe("Home Page", () => {
+describe("Landing Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 기본: localStorage.getItem은 undefined 반환 → 비로그인 상태
   });
 
-  it("홈 페이지가 에러 없이 렌더링되어야 한다", () => {
+  it("에러 없이 렌더링되어야 한다", () => {
     expect(() => {
-      render(<HomePage />);
+      render(<LandingPage />);
     }).not.toThrow();
   });
 
-  it("기본 구조가 렌더링되어야 한다", () => {
-    const { container } = render(<HomePage />);
+  it("HeroSection이 렌더링되어야 한다", () => {
+    render(<LandingPage />);
 
-    expect(container.firstChild).toBeDefined();
+    expect(screen.getByText("무료 시간표 관리 도구")).toBeInTheDocument();
+    expect(screen.getByText(/5분이면 충분합니다/)).toBeInTheDocument();
   });
 
-  it("AuthGuard가 포함되어야 한다", () => {
-    render(<HomePage />);
+  it("메인 CTA '무료로 시작하기' 링크가 있어야 한다", () => {
+    render(<LandingPage />);
 
-    // AuthGuard는 내부적으로 작동하므로 페이지가 렌더링되면 성공
-    expect(screen.getByText("클래스 플래너")).toBeInTheDocument();
+    const ctaLinks = screen.getAllByText("무료로 시작하기");
+    expect(ctaLinks.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("네비게이션 링크들이 있어야 한다", () => {
-    render(<HomePage />);
+  it("'자세히 보기' 링크가 #how-it-works를 가리켜야 한다", () => {
+    render(<LandingPage />);
 
-    // 비로그인 상태: "로그인하기" 보조 링크 1개
-    expect(screen.getAllByText(/로그인/)).toHaveLength(1);
-    // 메인 CTA "바로 시작하기"가 표시되는지 확인
-    expect(screen.getByText("바로 시작하기")).toBeInTheDocument();
+    const anchor = screen.getByText(/자세히 보기/);
+    expect(anchor).toBeInTheDocument();
+    expect(anchor.getAttribute("href")).toBe("#how-it-works");
   });
 
-  it("메인 콘텐츠가 표시되어야 한다", () => {
-    render(<HomePage />);
+  it("StepsSection이 렌더링되어야 한다", () => {
+    render(<LandingPage />);
 
-    expect(screen.getAllByText(/시간표/)).toHaveLength(2);
+    expect(screen.getByText("이렇게 만들어집니다")).toBeInTheDocument();
+    expect(screen.getByText("3단계면 시간표 완성")).toBeInTheDocument();
+    expect(screen.getByText("학생·과목 등록")).toBeInTheDocument();
+    expect(screen.getByText("시간표에 배치")).toBeInTheDocument();
+    expect(screen.getByText("PDF로 출력")).toBeInTheDocument();
   });
 
-  // 핵심 기능 테스트만 유지
-  it("로그인 상태에 따른 조건부 렌더링이 작동해야 한다", () => {
-    render(<HomePage />);
+  it("BottomCTA가 렌더링되어야 한다", () => {
+    render(<LandingPage />);
 
-    // 비로그인 상태: "바로 시작하기" 메인 CTA + "로그인하기" 보조 링크
-    expect(screen.getByText("바로 시작하기")).toBeInTheDocument();
-    expect(screen.getByText("로그인하기")).toBeInTheDocument();
+    expect(screen.getByText("지금 바로 시작하세요")).toBeInTheDocument();
+    expect(
+      screen.getByText("회원가입 없이 바로 사용할 수 있습니다. 무료.")
+    ).toBeInTheDocument();
   });
 
-  it("기능 카드들이 올바른 링크를 가져야 한다", () => {
-    render(<HomePage />);
+  it("HeroSection에 SchedulePreview 그리드가 있어야 한다", () => {
+    const { container } = render(<LandingPage />);
 
-    // 주요 기능 카드들 확인
-    expect(screen.getByText("학생 관리")).toBeInTheDocument();
-    expect(screen.getByText("과목 관리")).toBeInTheDocument();
-    expect(screen.getAllByText(/시간표/)).toHaveLength(2);
+    const preview = container.querySelector('[data-testid="schedule-preview"]');
+    expect(preview).toBeInTheDocument();
+  });
+
+  it("로그인 시 랜딩 콘텐츠 대신 null을 렌더링해야 한다", () => {
+    // localStorage.getItem이 supabase_user_id에 대해 truthy 값을 반환하도록 설정
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValue(
+      "test-user-id"
+    );
+
+    const { container } = render(<LandingPage />);
+
+    // null 렌더링 시 랜딩 콘텐츠가 없어야 함
+    expect(container.querySelector("#how-it-works")).toBeNull();
+    expect(
+      screen.queryByText("무료 시간표 관리 도구")
+    ).not.toBeInTheDocument();
   });
 });

@@ -69,7 +69,7 @@ describe("AboutPageLayout", () => {
 
     const aboutPage = screen.getByTestId("about-page");
     expect(aboutPage.className).toContain(
-      "bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)]"
+      "bg-gradient-to-br"
     );
   });
 

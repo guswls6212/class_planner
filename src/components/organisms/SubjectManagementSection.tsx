@@ -57,7 +57,7 @@ const SubjectManagementSection: React.FC<SubjectManagementSectionProps> = ({
 
       {/* 선택된 과목 표시 */}
       {selectedSubjectId && (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-4">
           <h3>
             선택된 과목:{" "}
             {subjects.find((s) => s.id === selectedSubjectId)?.name}

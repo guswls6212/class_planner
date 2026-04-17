@@ -48,6 +48,7 @@ TEST_PASSWORD=your-test-password
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 URL | 클라이언트+서버 (공개 안전) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 공개 키 (RLS 적용) | 클라이언트+서버 |
 | `SUPABASE_SERVICE_ROLE_KEY` | 비밀 키 (RLS 우회) | **서버 전용** (API Routes만) |
+| `ADMIN_EMAILS` | 개발자 전용 로그 뷰어 접근 허용 이메일 목록 (콤마 구분). `/admin/logs` 접근 게이트. | `trymakeit1000@gmail.com` |
 
 ### Supabase API 키 확인
 

@@ -27,6 +27,13 @@ describe("StudentInputSection Component", () => {
     expect(screen.getByRole("button", { name: /추가/ })).toBeInTheDocument();
   });
 
+  it("학생 이름 입력 필드는 label과 연결되어야 한다 (a11y)", () => {
+    render(<StudentInputSection {...mockProps} />);
+
+    const input = screen.getByLabelText("학생 이름");
+    expect(input).toBeInTheDocument();
+  });
+
   it("학생 이름을 입력하고 추가 버튼을 클릭하면 onAddStudent가 호출되어야 한다", async () => {
     // Arrange
     const propsWithName = { ...mockProps, newStudentName: "김철" };

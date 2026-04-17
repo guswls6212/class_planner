@@ -117,16 +117,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   // 로딩 중
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-          fontSize: "1.2rem",
-          color: "#6b7280",
-        }}
-      >
+      <div className="flex items-center justify-center h-screen text-xl text-[var(--color-text-muted)]">
         로딩 중...
       </div>
     );

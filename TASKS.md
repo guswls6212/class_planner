@@ -130,47 +130,109 @@
 - [x] Schedule 컴포넌트/유틸 테스트 (_utils 5개 + _components 5개 — 56 tests)
 
 ### 남은 항목
-- [x] 에러 핸들링 체계화 (F3 Step 1~4 완료, PR#25~28 → dev 머지 완료)
+- [x] 에러 핸들링 체계화 (F3 Step 1~5 완료, PR#25~29 → dev 머지 완료)
 - [ ] 로깅/모니터링 — 자체 솔루션 (저장소: Supabase Postgres)
-  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#TBD
-  - [ ] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
+  - [x] Step 1: Docker 로그 rotation (max-size 10m, max-file 5) — PR#58
+  - [x] Step 2: `app_logs` 테이블 마이그레이션 (Supabase)
         — 컬럼: id, ts, level, source(server\|client), code, message, context jsonb, user_id, academy_id, request_id, user_agent, url, stack
         — RLS: insert는 service_role만, select는 owner role만
         — TTL: 30일 자동 삭제 함수 (선택)
-  - [ ] Step 3: 서버 logger → app_logs 영구화
+  - [x] Step 3: 서버 logger → app_logs 영구화
         — `logger.error/warn` 호출 시 service-role client로 비동기 insert (실패해도 stdout 유지)
-        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출
-        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact)
-  - [ ] Step 4: 클라이언트 에러 ingest 엔드포인트
-        — `POST /api/logs/client` — rate-limit, payload schema 검증
-        — `window.onerror` + `unhandledrejection` 글로벌 핸들러 (top-level client component)
-        — `app/global-error.tsx` Next.js 글로벌 폴백
-        — `ErrorBoundary` / `useUserTracking.trackError` → ingest 연동
-  - [ ] Step 5: 관리자 로그 뷰어 `/settings/logs`
-        — owner role만 접근 (academy_members 검증)
-        — 최근 N건 조회, level/source/code 필터, 페이지네이션
-  - [ ] Step 6: `console.*` 사용 금지 ESLint rule + 38개 sweep
-        — `no-console` rule 추가 (logger.* 강제)
-        — `src/` 전수 치환, 테스트 픽스처 제외
-- [ ] 성능 최적화 (번들 사이즈, 초기 로딩)
-- [ ] 접근성(a11y) 개선
+        — `httpErrors.toErrorResponse`의 5xx 분기에서 자동 호출 (이미 logger.error 호출 중 — 추가 변경 없음)
+        — PII 마스킹 (이메일/토큰/비밀번호 필드 redact), maskPII 유틸 + 19개 단위 테스트
+  - [x] Step 4: 클라이언트 에러 ingest 엔드포인트
+        — `POST /api/logs/client` — in-memory rate-limit (30/min/IP, 60s window), payload schema 검증
+        — `src/lib/rateLimit.ts` 신규 (IP별 토큰 버킷, Lightsail 단일 인스턴스 전제)
+        — `logger.persistFromBrowser` — 브라우저에서 logger.error/warn 호출 시 fire-and-forget POST
+        — `GlobalErrorHandlers.tsx` — window.onerror + unhandledrejection 글로벌 핸들러 (AppContent 마운트)
+        — `app/global-error.tsx` — Next.js 글로벌 에러 폴백 (자체 html/body)
+        — ErrorBoundary / useUserTracking.trackError → logger.error 경유로 자동 연동 (수정 없음)
+        — 서버사이드 PII 마스킹 후 insert, UUID FK 보호
+        — 5개 rateLimit + 9개 route + 2개 logger.browser 단위 테스트
+  - [x] Step 5: 개발자 로그 뷰어 `/admin/logs`
+        — ADMIN_EMAILS 화이트리스트 (env 기반 게이트, academy_members 무관)
+        — 전체 학원 횡단 조회, level/source/code/q/academyId 필터, 페이지네이션
+        — 레벨 뱃지, 상세 모달 (stack trace 포함)
+        — 023 마이그레이션: app_logs_select_by_owner RLS 정책 DROP
+  - [x] Step 6: `console.*` 사용 금지 ESLint rule + 17개 sweep (production 코드, logger.ts/테스트 제외)
+        — `no-console` rule `"warn"` → `"error"` 승격, logger.ts+테스트 파일 override 추가
+        — `src/` 전수 치환 (lib 3개 + components 4개 + hooks 2개 + app 2개 파일)
+        — 테스트 spy 4개 `console.warn` → `logger.warn` 업데이트
+- [x] 성능 최적화 (번들 사이즈, 초기 로딩) — 완료 (PR#58)
+      — react-router-dom/uid/template SVGs 제거 (dead deps cleanup)
+      — PDF 스택(jspdf+html2canvas) dynamic import → 클릭 시 온디맨드 로드
+      — 3개 모달 next/dynamic { ssr: false } + experimental.optimizePackageImports: ["sonner"]
+      — /schedule First Load JS: **385 kB → 200 kB (−48%)**
+- [x] 접근성(a11y) 개선 — 완료 (PR#58)
+      — useModalA11y 훅 신규: Escape, Tab 포커스 트랩, return-focus
+      — EditSessionModal/GroupSessionModal/DataConflictModal: role=dialog + aria-modal + aria-labelledby
+      — SessionBlock: div → button + aria-label(학생/과목/요일/시간) + focus-visible 아웃라인
+      — StudentInputSection/SubjectInputSection/EditSessionModal: label/htmlFor 연결
+      — eslint-plugin-jsx-a11y (recommended/warn 레벨) + aria-live 플레이스홀더
+      — 테스트 +29개 (1255 → 1284)
 
-## Phase 3: 디자인 리뉴얼 (계획)
+## Phase 3: 디자인 리뉴얼 (진행 중)
 > Phase 2B 안정화 후 진행.
+> 스펙: `docs/superpowers/specs/2026-04-15-phase3-design-system-design.md`
+> **Dual-Mode 아키텍처:** Admin(Amber 다크, 관리 영역) + Surface(Q Pastel, 시간표 그리드/PDF)
 
-- [ ] UI/UX 감사 (현재 디자인 문제점 정리)
-- [ ] 디자인 시스템 정의 (색상, 타이포그래피, 간격)
-- [ ] 랜딩 페이지 리디자인
-- [ ] 시간표 그리드 UI 개선
-- [ ] 학생/과목 관리 페이지 UI 개선
-- [ ] 모바일 반응형 강화
-- [ ] PDF 출력 레이아웃 개선
+- [x] UI/UX 감사 (현재 디자인 문제점 정리) — 스펙 §5 감사 결과 참조 (2026-04-15)
+- [x] 디자인 시스템 정의 (색상, 타이포그래피, 간격) — @theme SSOT 설계 완료 (2026-04-15)
+- [x] 토큰 SSOT 구현 — @theme 통합, tailwind.config.ts 삭제, 14개 CSS Module→Tailwind, hex→CSS var 전환 (PR#44)
+- [x] 랜딩 페이지 리디자인 — Product-Led 랜딩, LandingNav, 인라인→Tailwind (PR#42)
+- [x] 시간표 그리드 UI 개선 — Full Redesign 완료 (PR#44)
+- [x] 학생/과목 관리 페이지 UI 개선 — Full Redesign 완료 (PR#44)
+- [x] 모바일 반응형 강화 — Full Redesign 완료 (PR#44)
+- [x] PDF 출력 레이아웃 개선 — Full Redesign 완료 (PR#44)
 
-## Phase 4: 기능 확장 (계획)
-- [ ] 학원생 자동 알림 (시간표 변경 시)
-- [ ] 출석 관리 기능
-- [ ] 월별/주별 시간표 뷰
-- [ ] 시간표 템플릿 기능
+## Phase 4: 기능 확장 (진행 중)
+
+### 완료
+- [x] 강사(Teacher) 뷰 — Teacher 엔티티, Teacher CRUD, 세션 배정, /teacher-schedule 읽기 전용 페이지 (PR#45)
+- [x] Color-by 토글 UI — 원장 뷰에서 과목/학생/강사 색상 기준 전환 (PR#45)
+- [x] CSS Modules → Tailwind 전면 이관 — 14개 모듈 삭제 완료 (PR#44)
+- [x] Phase 3 Polish — SessionBlock `onDelete` prop + 컨텍스트 메뉴 삭제 연결 (PR#58)
+- [x] Phase 3 Polish — ConfirmModal `useModalA11y` 마이그레이션 (Escape + focus trap) (PR#58)
+- [x] Phase 3 Polish — LoginButton `supabase.auth.signOut()` 교체 (수동 localStorage 스크럽 제거) (PR#58)
+
+- [x] 월별 뷰 — 3-way 토글(일별/주별/월별), MonthDayCell, ScheduleMonthlyView, 날짜 클릭→일별 전환 (PR#59)
+- [x] 공유 링크 (`/share/{token}`) — share_tokens 테이블, 공개 API, 읽기 전용 시간표 페이지, Settings 관리 UI (PR#60)
+
+- [x] 시간표 템플릿 — templates 테이블, 저장/적용 모달, useTemplates 훅, name-based 매칭 (PR#61)
+- [x] 출석 관리 — attendance 테이블, GET/POST API, bulk upsert, AttendanceSheet, useAttendance 훅, 일별 뷰 연동 (PR#62)
+
+- [x] 학원생 자동 알림 (시간표 변경 시) — E안: /share/{token} 공유 페이지 변경 배지. academies.schedule_updated_at (sessions trigger), share_tokens.last_viewed_at, ScheduleChangeBanner molecule, migration 029
+
+---
+
+## Phase 5 — Stabilize & Unify (Post-launch)
+> 마스터 스펙: `docs/superpowers/specs/2026-04-17-phase5-stabilize-and-unify-design.md`
+
+### P5-D — Bugfix ✅ (PR#64, #65)
+- [x] D-1: 비로그인 방문 시 데이터 충돌 false positive 제거 (`isEmptyData` 판정 기준 변경)
+- [x] D-2: Pretendard Subset 폰트 실탑재 — PDF 한글 깨짐 수정
+- [x] D-3: PDF 다운로드 버튼 뷰 라벨 표시 (일별/주간/월별)
+
+### P5-A — Global Nav & Account Shell ✅ (PR#66, #67, #68)
+- [x] A-1: AccountMenu molecule 신설 + TopBar(Bell 제거) + Sidebar 하단 compact 아바타
+- [x] A-2: ScheduleActionBar — PDF·템플릿·공유 버튼 통합, 라벨 명확화
+- [x] A-3: HelpDrawer + HelpTooltip 도움말 시스템 (? 버튼, 5개 섹션, ColorBy 옆 i 버튼)
+
+### P5-B — Design System Consistency ✅
+- [x] B-1: `SubjectChip` primitive 신설 + `SchedulePreview` primitive 신설 + `getSessionSubject` 정규 위치 승격 → 랜딩 ScheduleMockup → SchedulePreview 교체 완료 (PR 진행 중)
+- [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
+- [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
+- [x] B-3b: Weekly 그리드 내부 리라이트 — `TimeTableCell` 신설(DropZone 대체), `TimeTableRow` 간소화, `DropZone.tsx` 삭제, `TimeTableGrid` 루트에 `data-surface="surface"` 추가, Q Pastel 그리드 토큰 적용. 20개 공개 API, data-testid, virtual-scrollbar, schedule_scroll_position 계약 보존.
+- [x] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
+- [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
+
+### P5-C — /schedule UX Polish ✅
+- [x] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환 (StudentFilterChipBar)
+- [x] C-2: ColorBy 토글 시각 통일 (SegmentedButton atom — Day/Week/Month + ColorBy 동일 스타일)
+- [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
+- [x] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
+- [x] C-5: PDF 고급 스코프 (범위 선택 다이얼로그)
 
 ---
 
@@ -187,6 +249,10 @@
 
 ---
 
+### Deferred / 백로그
+- 학원장용 활동 히스토리 (audit_events 테이블) + 개발자 공지 시스템 — 별도 Phase 예정
+  (app_logs는 개발자 전용으로 재정의. 학원장이 필요한 것은 멤버 초대/등급 변경 등의 audit log)
+
 ## 변경 이력
 | 날짜 | 내용 |
 |------|------|
@@ -200,3 +266,18 @@
 | 2026-04-14 | 019_drop_user_data.sql 적용 — 레거시 JSONB 테이블 제거, Phase 2A 정리 완료 (PR#21) |
 | 2026-04-15 | PR#22 (운영자 초대 기능: invite_tokens, /settings, /invite/[token]) |
 | 2026-04-15 | Phase 2B 에러 핸들링 완료(F3 PR#25~28). 로깅/모니터링 자체 솔루션 Step 1(Docker rotation) 시작, Step 2~6 TASKS.md 등록 |
+| 2026-04-16 | F3 Step 5 완료 확인 — user feedback toast + apiSync retry queue (PR#29 → dev 머지 완료) |
+| 2026-04-16 | Token SSOT 완성 — @theme 확장, 14개 CSS Module 삭제, hex→CSS var 전환, TSX inline hex 정리 (PR#44 → dev 머지 완료) |
+| 2026-04-16 | Phase 4 Teacher 완료 — Teacher CRUD + Session 배정, Color-by 토글, /teacher-schedule 뷰 (PR#45 → dev 머지 완료) |
+| 2026-04-17 | Phase 3 Polish (W1) — SessionBlock onDelete, ConfirmModal useModalA11y, LoginButton signOut 교체 (PR#58) |
+| 2026-04-15 | Phase 2B Step 5 완료 — 개발자 로그 뷰어 /admin/logs (ADMIN_EMAILS 게이트, 필터/페이지네이션, 상세 모달) |
+| 2026-04-15 | Phase 2B Step 6 완료 — no-console ESLint rule (warn→error), production 17개 console.* → logger.* 치환 |
+| 2026-04-15 | Phase 2B 성능 최적화 완료 — /schedule First Load JS 385→200 kB (−48%), PDF/모달 lazy-load, dead deps 제거 |
+| 2026-04-15 | Phase 2B 접근성 개선 완료 — useModalA11y 훅, SessionBlock→button, 폼 라벨, jsx-a11y 린트 가드 |
+| 2026-04-17 | Phase 3 Polish + Phase 4 W1~W3 완료 — ConfirmModal a11y, signOut, SessionBlock onDelete, 월별 뷰(PR#59), 공유 링크(PR#60) |
+| 2026-04-17 | Phase 4 W4~W5 완료 — 시간표 템플릿(PR#61), 출석 관리(PR#62) |
+| 2026-04-17 | P5-D 완료 — 데이터 충돌 false positive 수정(PR#64), Pretendard 폰트 + PDF 뷰 라벨(PR#65) |
+| 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |
+| 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
+| 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
+| 2026-04-17 | P5-B 종결 — B-3 체크, MonthDayCell/ScheduleDailyView 로컬 getSessionSubject 제거 → canonical util 사용 |

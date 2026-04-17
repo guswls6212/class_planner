@@ -1,331 +1,426 @@
-# class-planner file structure (2026-04-14, 문서 통합 축소 + 고아 파일 정리)
-# Excludes: node_modules, .next, coverage, test-results, playwright-report, .vercel, .git
-# Active docs: 5개 | Archived docs: 9개 (docs/archive/)
-
-class-planner/
-├── ARCHITECTURE.md               # 프로젝트 헌법 (계층 구조, 데이터 모델, 배포)
-├── CLAUDE.md                     # AI 진입점 (Documentation Map + 개발 규칙)
-├── UI_SPEC.md                    # UI 소스 오브 트루스 (컴포넌트, 인터랙션, 검증 라우트)
-├── TASKS.md                      # Phase별 진행 현황
-├── tree.txt                      # 파일 구조 (이 파일)
-├── LICENSE
-├── README.md
-├── Dockerfile
-├── docker-compose.yml
-├── package.json
-├── tsconfig.json
-├── next.config.ts
-├── next-env.d.ts
-├── tailwind.config.ts
-├── postcss.config.mjs
-├── eslint.config.mjs
-├── vitest.config.ts
-├── playwright.config.ts
-├── .gitignore
-├── .env.local                    # 로컬 환경 변수 (gitignore)
-├── .env.e2e                      # E2E 테스트 환경 변수
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                # PR/push 시 type-check + lint + unit + build + e2e
-│       └── deploy.yml            # main CI 성공 시 ghcr.io 빌드 → Lightsail SSH 배포
-│
-├── docs/
-│   ├── code-convention.md        # class-planner 전용 코딩 규칙 (글로벌: ../docs/code-convention.md)
-│   ├── development-guide.md      # 통합: 개발 프로세스 + 테스트 + 검증 + E2E + 브랜치/CI
-│   ├── deployment-guide.md       # 통합: 배포 절차 + 환경 변수 설정
-│   ├── adr/
-│   │   ├── 001-migrate-to-aws-lightsail.md
-│   │   └── 002-academy-multitenant-architecture.md
-│   ├── archive/                  # Stale 문서 보관 (참조하지 말 것)
-│   │   ├── FOR_AI.md
-│   │   ├── FUTURE_TODO.md
-│   │   ├── INFRASTRUCTURE_GUIDE.md
-│   │   ├── LOGGING_GUIDE.md
-│   │   ├── PROJECT_STRUCTURE.md
-│   │   ├── README.md
-│   │   ├── SECURITY_GUIDE.md
-│   │   ├── SUPABASE_JSONB_GUIDE.md
-│   │   └── SYSTEM_TEST_README.md
-│   └── superpowers/
-│       ├── plans/
-│       │   ├── 2026-04-12-branching-strategy.md
-│       │   ├── 2026-04-12-phase2b-code-quality.md
-│       │   └── 2026-04-13-data-conflict-modal-redesign.md
-│       └── specs/
-│           ├── 2026-04-12-branching-strategy-design.md
-│           ├── 2026-04-12-phase2b-code-quality-design.md
-│           ├── 2026-04-13-data-conflict-modal-redesign.md
-│           ├── 2026-04-14-member-invite-design.md
-│           ├── 2026-04-14-onboarding-flow-design.md
-│           └── 2026-04-15-error-handling-design.md
-│
-├── migration/
-│   ├── MIGRATION_GUIDE.md
-│   ├── check-migration-status.sh
-│   ├── run-migration.sh
-│   ├── backups/                  # user_data 백업 (gitignore)
-│   │   └── user_data_20260411-2300.json
-│   └── migrations/
-│       ├── 000_migration_system_setup.sql
-│       ├── 001_supabase_cross_browser_sync_setup.sql
-│       ├── 002_user_management_tables.sql
-│       ├── 003_integrate_legacy_schema.sql
-│       ├── 005~009_timezone_fixes.sql
-│       ├── 010~013_rls_fixes.sql
-│       ├── 014_create_session_crud_tables.sql
-│       ├── 015_refactor_user_data_table.sql
-│       ├── 016_create_academy_tables.sql
-│       ├── 017_rls_academy_based.sql
-│       ├── 018_migrate_jsonb_to_normalized.sql
-│       ├── 019_drop_user_data.sql
-│       ├── 020_create_invite_tokens.sql
-│       └── 021_academy_members_delete_policy.sql
-│
-├── nginx/
-│   ├── default.conf
-│   └── init-ssl.conf
-│
-├── scripts/
-│   ├── check-stale-branches.sh   # 미완료 브랜치 감지
-│   ├── deploy.sh                 # 수동 배포 (빌드→HTTP→SSL→HTTPS)
-│   ├── setup-server.sh           # 서버 초기 설정 (Docker, Compose, Git)
-│   ├── clear-localstorage.js
-│   ├── detailed-unused-analysis.sh
-│   ├── find-unused-files.sh
-│   ├── find-unused-src-files.sh
-│   ├── server-manager.sh
-│   └── system-test.js
-│
-├── public/
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
-│
-└── src/
-    ├── setupTests.ts
-    ├── middleware.ts                     # 온보딩 가드 — /students /subjects /schedule 보호
-    │
-    ├── app/                              # Next.js App Router
-    │   ├── page.tsx                      # / → /schedule redirect
-    │   ├── layout.tsx                    # RootLayout (ThemeProvider, GlobalDataInit)
-    │   ├── globals.css
-    │   ├── favicon.ico
-    │   ├── about/page.tsx
-    │   ├── login/
-    │   │   ├── page.tsx
-    │   │   └── Login.module.css
-    │   ├── onboarding/page.tsx               # 첫 로그인 온보딩 (학원명 + 역할)
-    │   ├── settings/page.tsx                 # 학원 설정 (멤버 목록 + 초대 관리)
-    │   ├── invite/[token]/page.tsx           # 초대 수락 페이지
-    │   ├── students/page.tsx
-    │   ├── subjects/page.tsx
-    │   ├── schedule/                     # 가장 복잡한 페이지
-    │   │   ├── page.tsx
-    │   │   ├── Schedule.module.css
-    │   │   ├── _components/              # 페이지 전용 섹션 컴포넌트
-    │   │   │   ├── EditSessionModal.tsx
-    │   │   │   ├── GroupSessionModal.tsx
-    │   │   │   ├── PdfDownloadSection.tsx
-    │   │   │   ├── ScheduleGridSection.tsx
-    │   │   │   ├── ScheduleHeader.tsx
-    │   │   │   └── StudentPanelSection.tsx
-    │   │   ├── _hooks/
-    │   │   │   ├── useEditModalState.ts
-    │   │   │   └── useUiState.ts
-    │   │   ├── _utils/
-    │   │   │   ├── collisionHelpers.ts
-    │   │   │   ├── collisionQueries.ts
-    │   │   │   ├── dndHelpers.ts
-    │   │   │   ├── editSaveHandlers.ts
-    │   │   │   ├── editStudentHandlers.ts
-    │   │   │   ├── modalHandlers.ts
-    │   │   │   ├── scheduleSelectors.ts
-    │   │   │   └── sessionSaveUtils.ts
-    │   │   └── _constants/scheduleConstants.ts
-    │   └── api/                          # Next.js API Routes
-    │       ├── enrollments/route.ts      # GET/POST/DELETE enrollments
-    │       ├── onboarding/
-    │       │   ├── route.ts              # POST — academyName + role 입력, onboarded 쿠키 설정
-    │       │   └── status/route.ts       # GET — academy 존재 여부 확인
-    │       ├── students/
-    │       │   ├── route.ts
-    │       │   └── [id]/route.ts
-    │       ├── subjects/
-    │       │   ├── route.ts
-    │       │   └── [id]/route.ts
-    │       ├── sessions/
-    │       │   ├── route.ts
-    │       │   └── [id]/
-    │       │       ├── route.ts
-    │       │       └── position/route.ts
-    │       ├── invites/                  # 초대 토큰 CRUD
-    │       │   ├── route.ts              # GET (목록), POST (생성)
-    │       │   ├── [id]/route.ts         # DELETE (취소)
-    │       │   ├── check/route.ts        # GET (공개 조회)
-    │       │   └── accept/route.ts       # POST (수락)
-    │       ├── members/                  # 멤버 관리
-    │       │   ├── route.ts              # GET (목록)
-    │       │   └── [userId]/route.ts     # DELETE (제거)
-    │       ├── user-settings/route.ts
-    │       └── auth/                     # Supabase Auth callback
-    │
-    ├── components/                       # Atomic Design
-    │   ├── atoms/
-    │   │   ├── AuthGuard.tsx
-    │   │   ├── Button.tsx (+.module.css)
-    │   │   ├── ErrorBoundary.tsx
-    │   │   ├── Input.tsx (+.module.css)
-    │   │   ├── Label.tsx (+.module.css)
-    │   │   ├── StudentListItem.tsx (+.module.css)
-    │   │   ├── SubjectListItem.tsx (+.module.css)
-    │   │   ├── ThemeToggle.tsx
-    │   │   └── __tests__/ (8 test files)
-    │   ├── molecules/
-    │   │   ├── ConfirmModal.tsx (+.module.css)
-    │   │   ├── DataConflictModal.tsx (+.module.css)  # 로그인 충돌 해결 모달
-    │   │   ├── DropZone.tsx
-    │   │   ├── PDFDownloadButton.tsx
-    │   │   ├── SessionBlock.tsx (+utils.ts)           # 시간표 수업 블록
-    │   │   ├── SessionForm.tsx
-    │   │   ├── StudentInputSection.tsx (+.module.css)
-    │   │   ├── StudentList.tsx (+.module.css)
-    │   │   ├── SubjectInputSection.tsx (+.module.css)
-    │   │   ├── SubjectList.tsx (+.module.css)
-    │   │   ├── TimeTableRow.tsx
-    │   │   └── __tests__/ (12 test files)
-    │   └── organisms/
-    │       ├── AboutPageLayout.tsx
-    │       ├── LoginButton.tsx (+.module.css)         # Google OAuth 모달 + 드롭다운
-    │       ├── StudentManagementSection.tsx
-    │       ├── StudentPanel.tsx                       # 플로팅 학생 패널 (드래그 가능)
-    │       ├── StudentsPageLayout.tsx
-    │       ├── SubjectManagementSection.tsx
-    │       ├── SubjectsPageLayout.tsx
-    │       ├── TimeTableGrid.tsx                      # 주간 시간표 그리드 (DnD)
-    │       ├── __tests__/ (8 test files)
-    │       └── about/
-    │           ├── FeatureCard.tsx
-    │           ├── FeatureDetail.tsx
-    │           └── HeroSection.tsx
-    │
-    ├── contexts/
-    │   └── ThemeContext.tsx
-    │
-    ├── domain/                           # Clean Architecture — Domain Layer
-    │   ├── entities/
-    │   │   ├── Student.ts
-    │   │   └── Subject.ts
-    │   ├── value-objects/
-    │   │   ├── Color.ts
-    │   │   ├── StudentId.ts
-    │   │   └── SubjectId.ts
-    │   ├── repositories/index.ts         # Repository interfaces
-    │   └── services/StudentDomainService.ts
-    │
-    ├── application/                      # Clean Architecture — Application Layer
-    │   ├── index.ts
-    │   ├── mappers/
-    │   │   ├── StudentMapper.ts
-    │   │   └── SubjectMapper.ts
-    │   ├── services/
-    │   │   ├── EnrollmentApplicationService.ts
-    │   │   ├── ServiceFactory.ts
-    │   │   ├── SessionApplicationService.ts
-    │   │   ├── StudentApplicationService.ts
-    │   │   └── SubjectApplicationService.ts
-    │   └── use-cases/
-    │       ├── AddStudentUseCase.ts
-    │       ├── DeleteStudentUseCase.ts
-    │       ├── GetStudentUseCase.ts
-    │       ├── SubjectUseCases.ts
-    │       └── UpdateStudentUseCase.ts
-    │
-    ├── infrastructure/                   # Clean Architecture — Infrastructure Layer
-    │   ├── index.ts
-    │   ├── interfaces.ts
-    │   ├── config/RepositoryConfig.ts
-    │   ├── container/RepositoryRegistry.ts
-    │   ├── factories/
-    │   │   ├── EnrollmentRepositoryFactory.ts
-    │   │   ├── SessionRepositoryFactory.ts
-    │   │   ├── StudentRepositoryFactory.ts
-    │   │   └── SubjectRepositoryFactory.ts
-    │   └── repositories/
-    │       ├── SupabaseEnrollmentRepository.ts   # enrollments 테이블 CRUD
-    │       ├── SupabaseSessionRepository.ts      # sessions + session_enrollments 조인
-    │       ├── SupabaseStudentRepository.ts      # students 테이블 (academy_id 기반)
-    │       └── SupabaseSubjectRepository.ts      # subjects 테이블 (academy_id 기반)
-    │
-    ├── hooks/                            # Custom React Hooks
-    │   ├── useDisplaySessions.ts
-    │   ├── useGlobalDataInitialization.ts
-    │   ├── useIntegratedDataLocal.ts     # 통합 데이터 관리 (Local-first SSOT)
-    │   ├── useLocal.ts
-    │   ├── usePerformanceMonitoring.ts
-    │   ├── useScheduleDragAndDrop.ts
-    │   ├── useScheduleSessionManagement.ts
-    │   ├── useStudentManagementLocal.ts
-    │   ├── useStudentPanel.ts
-    │   ├── useSubjectManagementLocal.ts
-    │   ├── useTimeValidation.ts
-    │   ├── useUserTracking.ts
-    │   └── __tests__/ (12 test files)
-    │
-    ├── lib/                              # 핵심 유틸리티
-    │   ├── apiSync.ts                    # Fire-and-forget 서버 동기화
-    │   ├── authUtils.ts
-    │   ├── errorTracker.ts
-    │   ├── localStorageCrud.ts           # localStorage SSOT 연산
-    │   ├── logger.ts
-    │   ├── pdf-utils.ts
-    │   ├── planner.ts
-    │   ├── resolveAcademyId.ts           # userId → academyId 변환
-    │   ├── resolveAcademyMembership.ts   # userId → { academyId, role } 변환
-    │   ├── sessionCollisionUtils.ts      # 시간 충돌 감지 및 yPosition 재배치
-    │   ├── supabaseServiceRole.ts        # Service Role 클라이언트 싱글톤
-    │   ├── timeUtils.ts
-    │   ├── yPositionMigration.ts
-    │   ├── auth/
-    │   │   ├── deduplication.ts
-    │   │   ├── fullDataMigration.ts
-    │   │   └── handleLoginDataMigration.ts  # 로그인 시 localStorage → DB 마이그레이션
-    │   └── __tests__/
-    │
-    ├── middleware/
-    │   ├── cors.ts
-    │   └── logging.ts
-    │
-    ├── shared/
-    │   ├── constants/sessionConstants.ts
-    │   └── types/
-    │       ├── ApplicationTypes.ts
-    │       ├── CommonTypes.ts
-    │       ├── DomainTypes.ts
-    │       ├── index.ts
-    │       └── scheduleTypes.ts
-    │
-    ├── types/scheduleTypes.ts
-    └── utils/supabaseClient.ts
-
-# tests/ (co-located __tests__/ 제외 별도 위치)
-tests/
-├── e2e/                                  # Playwright E2E
-│   ├── config/e2e-config.ts
-│   ├── browser-compatibility.spec.ts
-│   ├── conflict-modal.spec.ts
-│   ├── real-user-scenarios.spec.ts
-│   ├── schedule-student-names.spec.ts
-│   ├── schedule.spec.ts
-│   ├── scroll-position-preservation.spec.ts
-│   ├── simple-ui-test.spec.ts
-│   ├── students.spec.ts
-│   └── subjects.spec.ts
-└── integration/
-    ├── api-integration.test.ts
-    ├── mock-supabase.test.ts
-    └── schedule-features.test.ts
-
-# __tests__/ 디렉터리는 각 모듈 옆에 co-located (약 100+ 테스트 파일, 위 구조에서 생략)
+src/__tests__/middleware.test.ts
+src/app/__tests__/page.test.tsx
+src/app/about/__tests__/page.test.tsx
+src/app/about/page.tsx
+src/app/admin/layout.tsx
+src/app/admin/logs/page.tsx
+src/app/api/admin/logs/__tests__/route.test.ts
+src/app/api/admin/logs/route.ts
+src/app/api/attendance/__tests__/route.test.ts
+src/app/api/attendance/bulk/__tests__/route.test.ts
+src/app/api/attendance/bulk/route.ts
+src/app/api/attendance/route.ts
+src/app/api/enrollments/__tests__/route.test.ts
+src/app/api/enrollments/route.ts
+src/app/api/invites/[id]/__tests__/route.test.ts
+src/app/api/invites/[id]/route.ts
+src/app/api/invites/__tests__/route.test.ts
+src/app/api/invites/accept/__tests__/route.test.ts
+src/app/api/invites/accept/route.ts
+src/app/api/invites/check/__tests__/route.test.ts
+src/app/api/invites/check/route.ts
+src/app/api/invites/route.ts
+src/app/api/logs/client/__tests__/route.test.ts
+src/app/api/logs/client/route.ts
+src/app/api/members/[userId]/route.ts
+src/app/api/members/__tests__/route.test.ts
+src/app/api/members/route.ts
+src/app/api/onboarding/__tests__/route.test.ts
+src/app/api/onboarding/route.ts
+src/app/api/onboarding/status/__tests__/route.test.ts
+src/app/api/onboarding/status/route.ts
+src/app/api/sessions/[id]/__tests__/route.test.ts
+src/app/api/sessions/[id]/position/__tests__/route.test.ts
+src/app/api/sessions/[id]/position/route.ts
+src/app/api/sessions/[id]/route.ts
+src/app/api/sessions/__tests__/route.test.ts
+src/app/api/sessions/route.ts
+src/app/api/share-tokens/[id]/__tests__/route.test.ts
+src/app/api/share-tokens/[id]/route.ts
+src/app/api/share-tokens/__tests__/route.test.ts
+src/app/api/share-tokens/route.ts
+src/app/api/share/[token]/__tests__/route.test.ts
+src/app/api/share/[token]/route.ts
+src/app/api/students/[id]/__tests__/route.test.ts
+src/app/api/students/[id]/route.ts
+src/app/api/students/__tests__/route.test.ts
+src/app/api/students/route.ts
+src/app/api/subjects/[id]/__tests__/route.test.ts
+src/app/api/subjects/[id]/route.ts
+src/app/api/subjects/__tests__/route.test.ts
+src/app/api/subjects/route.ts
+src/app/api/teachers/[id]/route.ts
+src/app/api/teachers/route.ts
+src/app/api/templates/[id]/__tests__/route.test.ts
+src/app/api/templates/[id]/route.ts
+src/app/api/templates/__tests__/route.test.ts
+src/app/api/templates/route.ts
+src/app/api/user-settings/__tests__/route.test.ts
+src/app/api/user-settings/route.ts
+src/app/favicon.ico
+src/app/global-error.tsx
+src/app/globals.css
+src/app/invite/[token]/__tests__/page.test.tsx
+src/app/invite/[token]/page.tsx
+src/app/layout.tsx
+src/app/login/__tests__/page.test.tsx
+src/app/login/page.tsx
+src/app/onboarding/page.tsx
+src/app/page.tsx
+src/app/schedule/__tests__/edit-modal-integration.test.tsx
+src/app/schedule/__tests__/page.test.tsx
+src/app/schedule/__tests__/scroll-position-integration.test.tsx
+src/app/schedule/__tests__/ui-integration.test.tsx
+src/app/schedule/_components/EditSessionModal.tsx
+src/app/schedule/_components/GroupSessionModal.tsx
+src/app/schedule/_components/PdfDownloadSection.tsx
+src/app/schedule/_components/ScheduleActionBar.tsx
+src/app/schedule/_components/ScheduleGridSection.tsx
+src/app/schedule/_components/ScheduleHeader.tsx
+src/app/schedule/_components/StudentFilterChipBar.tsx
+src/app/schedule/_components/__tests__/EditSessionModal.test.tsx
+src/app/schedule/_components/__tests__/GroupSessionModal.test.tsx
+src/app/schedule/_components/__tests__/PdfDownloadSection.test.tsx
+src/app/schedule/_components/__tests__/ScheduleActionBar.test.tsx
+src/app/schedule/_components/__tests__/ScheduleGridSection.test.tsx
+src/app/schedule/_components/__tests__/ScheduleHeader.test.tsx
+src/app/schedule/_components/__tests__/StudentFilterChipBar.test.tsx
+src/app/schedule/_constants/scheduleConstants.ts
+src/app/schedule/_hooks/__tests__/useEditModalState.test.ts
+src/app/schedule/_hooks/__tests__/useUiState.test.ts
+src/app/schedule/_hooks/useEditModalState.ts
+src/app/schedule/_hooks/useStudentFilter.ts
+src/app/schedule/_hooks/useUiState.ts
+src/app/schedule/_utils/__tests__/collisionHelpers.test.ts
+src/app/schedule/_utils/__tests__/collisionQueries.test.ts
+src/app/schedule/_utils/__tests__/dndHelpers.test.ts
+src/app/schedule/_utils/__tests__/editSaveHandlers.test.ts
+src/app/schedule/_utils/__tests__/editStudentHandlers.test.ts
+src/app/schedule/_utils/__tests__/modalHandlers.test.ts
+src/app/schedule/_utils/__tests__/scheduleSelectors.test.ts
+src/app/schedule/_utils/__tests__/sessionSaveUtils.ensureEnrollments.test.ts
+src/app/schedule/_utils/__tests__/sessionSaveUtils.test.ts
+src/app/schedule/_utils/collisionHelpers.ts
+src/app/schedule/_utils/collisionQueries.ts
+src/app/schedule/_utils/dndHelpers.ts
+src/app/schedule/_utils/editSaveHandlers.ts
+src/app/schedule/_utils/editStudentHandlers.ts
+src/app/schedule/_utils/modalHandlers.ts
+src/app/schedule/_utils/scheduleSelectors.ts
+src/app/schedule/_utils/sessionSaveUtils.ts
+src/app/schedule/page.tsx
+src/app/settings/__tests__/page.test.tsx
+src/app/settings/page.tsx
+src/app/share/[token]/layout.tsx
+src/app/share/[token]/page.tsx
+src/app/students/__tests__/page.test.tsx
+src/app/students/page.tsx
+src/app/subjects/__tests__/page.test.tsx
+src/app/subjects/page.tsx
+src/app/teacher-schedule/page.tsx
+src/app/teachers/page.tsx
+src/application/__tests__/index.test.ts
+src/application/index.ts
+src/application/mappers/StudentMapper.ts
+src/application/mappers/SubjectMapper.ts
+src/application/mappers/__tests__/StudentMapper.test.ts
+src/application/mappers/__tests__/SubjectMapper.test.ts
+src/application/services/EnrollmentApplicationService.ts
+src/application/services/ServiceFactory.ts
+src/application/services/SessionApplicationService.ts
+src/application/services/StudentApplicationService.ts
+src/application/services/SubjectApplicationService.ts
+src/application/services/TeacherApplicationService.ts
+src/application/services/__tests__/EnrollmentApplicationService.test.ts
+src/application/services/__tests__/ServiceFactory.test.ts
+src/application/services/__tests__/SessionApplicationService.test.ts
+src/application/services/__tests__/StudentApplicationService.test.ts
+src/application/services/__tests__/SubjectApplicationService.test.ts
+src/application/use-cases/AddStudentUseCase.ts
+src/application/use-cases/DeleteStudentUseCase.ts
+src/application/use-cases/GetStudentUseCase.ts
+src/application/use-cases/SubjectUseCases.ts
+src/application/use-cases/UpdateStudentUseCase.ts
+src/application/use-cases/__tests__/AddStudentUseCase.test.ts
+src/application/use-cases/__tests__/DeleteStudentUseCase.test.ts
+src/application/use-cases/__tests__/SubjectUseCases.test.ts
+src/application/use-cases/__tests__/UpdateStudentUseCase.test.ts
+src/components/common/SchedulePreview.tsx
+src/components/common/SchedulePreview.types.ts
+src/components/common/SubjectChip.tsx
+src/components/common/SubjectChip.types.ts
+src/components/common/__tests__/SchedulePreview.test.tsx
+src/components/common/__tests__/SubjectChip.test.tsx
+src/components/atoms/AuthGuard.tsx
+src/components/atoms/Button.tsx
+src/components/atoms/ErrorBoundary.tsx
+src/components/atoms/GlobalErrorHandlers.tsx
+src/components/atoms/Input.tsx
+src/components/atoms/Label.tsx
+src/components/atoms/SegmentedButton.tsx
+src/components/atoms/StudentListItem.tsx
+src/components/atoms/SubjectListItem.tsx
+src/components/atoms/TeacherListItem.tsx
+src/components/atoms/ThemeToggle.tsx
+src/components/atoms/__tests__/AuthGuard.test.tsx
+src/components/atoms/__tests__/SegmentedButton.test.tsx
+src/components/atoms/__tests__/Button.test.tsx
+src/components/atoms/__tests__/ErrorBoundary.test.tsx
+src/components/atoms/__tests__/Input.test.tsx
+src/components/atoms/__tests__/Label.test.tsx
+src/components/atoms/__tests__/StudentListItem.test.tsx
+src/components/atoms/__tests__/SubjectListItem.test.tsx
+src/components/atoms/__tests__/ThemeToggle.test.tsx
+src/components/molecules/AccountMenu.tsx
+src/components/molecules/ApplyTemplateModal.tsx
+src/components/molecules/AttendanceSheet.tsx
+src/components/molecules/BottomSheet.tsx
+src/components/molecules/BottomTabBar.tsx
+src/components/molecules/ColorByToggle.tsx
+src/components/molecules/ConfirmModal.tsx
+src/components/molecules/DataConflictModal.tsx
+src/components/molecules/DayChipBar.tsx
+src/components/molecules/HelpTooltip.tsx
+src/components/molecules/MonthDayCell.tsx
+src/components/molecules/PDFDownloadButton.tsx
+src/components/molecules/PdfExportRangeModal.tsx
+src/components/molecules/SaveTemplateModal.tsx
+src/components/molecules/ScheduleChangeBanner.tsx
+src/components/molecules/SessionBlock.tsx
+src/components/molecules/SessionBlock.utils.ts
+src/components/molecules/SessionForm.tsx
+src/components/molecules/Sidebar.tsx
+src/components/molecules/StudentInputSection.tsx
+src/components/molecules/StudentList.tsx
+src/components/molecules/SubjectInputSection.tsx
+src/components/molecules/SubjectList.tsx
+src/components/molecules/TeacherInputSection.tsx
+src/components/molecules/TeacherList.tsx
+src/components/molecules/TimeTableCell.tsx
+src/components/molecules/TimeTableRow.tsx
+src/components/molecules/TopBar.tsx
+src/components/molecules/__tests__/AccountMenu.test.tsx
+src/components/molecules/__tests__/ApplyTemplateModal.test.tsx
+src/components/molecules/__tests__/AttendanceSheet.test.tsx
+src/components/molecules/__tests__/ConfirmModal.test.tsx
+src/components/molecules/__tests__/DataConflictModal.test.tsx
+src/components/molecules/__tests__/HelpTooltip.test.tsx
+src/components/molecules/__tests__/MonthDayCell.test.tsx
+src/components/molecules/__tests__/PDFDownloadButton.test.tsx
+src/components/molecules/__tests__/PdfExportRangeModal.test.tsx
+src/components/molecules/__tests__/SaveTemplateModal.test.tsx
+src/components/molecules/__tests__/ScheduleChangeBanner.test.tsx
+src/components/molecules/__tests__/SessionBlock.test.tsx
+src/components/molecules/__tests__/SessionBlock.utils.test.ts
+src/components/molecules/__tests__/SessionForm.test.tsx
+src/components/molecules/__tests__/StudentInputSection.test.tsx
+src/components/molecules/__tests__/StudentList.test.tsx
+src/components/molecules/__tests__/SubjectInputSection.test.tsx
+src/components/molecules/__tests__/SubjectList.test.tsx
+src/components/molecules/__tests__/TimeTableCell.test.tsx
+src/components/molecules/__tests__/TimeTableRow.test.tsx
+src/components/organisms/AboutPageLayout.tsx
+src/components/organisms/AppShell.tsx
+src/components/organisms/HelpDrawer.tsx
+src/components/organisms/LoginButton.tsx
+src/components/organisms/ScheduleDailyView.tsx
+src/components/organisms/ScheduleMonthlyView.tsx
+src/components/organisms/StudentDetailPanel.tsx
+src/components/organisms/StudentManagementSection.tsx
+src/components/organisms/StudentsPageLayout.tsx
+src/components/organisms/SubjectDetailPanel.tsx
+src/components/organisms/SubjectManagementSection.tsx
+src/components/organisms/SubjectsPageLayout.tsx
+src/components/organisms/TeacherManagementSection.tsx
+src/components/organisms/TeachersPageLayout.tsx
+src/components/organisms/TimeTableGrid.tsx
+src/components/organisms/__tests__/AboutPageLayout.test.tsx
+src/components/organisms/__tests__/HelpDrawer.test.tsx
+src/components/organisms/__tests__/LoginButton.security.test.tsx
+src/components/organisms/__tests__/LoginButton.test.tsx
+src/components/organisms/__tests__/ScheduleDailyView.test.tsx
+src/components/organisms/__tests__/ScheduleMonthlyView.test.tsx
+src/components/organisms/__tests__/StudentDetailPanel.test.tsx
+src/components/organisms/__tests__/StudentsPageLayout.test.tsx
+src/components/organisms/__tests__/SubjectsPageLayout.test.tsx
+src/components/organisms/__tests__/TimeTableGrid.scrollPosition.test.tsx
+src/components/organisms/__tests__/TimeTableGrid.test.tsx
+src/components/organisms/about/FeatureCard.tsx
+src/components/organisms/about/FeatureDetail.tsx
+src/components/organisms/about/HeroSection.tsx
+src/components/organisms/about/__tests__/FeatureCard.test.tsx
+src/components/organisms/about/__tests__/FeatureDetail.test.tsx
+src/components/organisms/about/__tests__/HeroSection.test.tsx
+src/contexts/HelpDrawerContext.tsx
+src/contexts/ThemeContext.tsx
+src/contexts/__tests__/ThemeContext.test.tsx
+src/db/migrations/add_birth_date_to_students.sql
+src/domain/entities/Student.ts
+src/domain/entities/Subject.ts
+src/domain/entities/Teacher.ts
+src/domain/entities/__tests__/Student.test.ts
+src/domain/entities/__tests__/Subject.test.ts
+src/domain/entities/__tests__/Teacher.test.ts
+src/domain/repositories/__tests__/index.test.ts
+src/domain/repositories/index.ts
+src/domain/services/StudentDomainService.ts
+src/domain/services/__tests__/StudentDomainService.test.ts
+src/domain/value-objects/Color.ts
+src/domain/value-objects/StudentId.ts
+src/domain/value-objects/SubjectId.ts
+src/domain/value-objects/TeacherId.ts
+src/domain/value-objects/__tests__/Color.test.ts
+src/domain/value-objects/__tests__/StudentId.test.ts
+src/domain/value-objects/__tests__/SubjectId.test.ts
+src/domain/value-objects/__tests__/TeacherId.test.ts
+src/features/schedule/__tests__/filters.test.ts
+src/features/schedule/filters.ts
+src/hooks/__tests__/useAttendance.test.ts
+src/hooks/__tests__/useBottomSheet.test.ts
+src/hooks/__tests__/useDisplaySessions.test.ts
+src/hooks/__tests__/useGlobalDataInitialization.security.test.ts
+src/hooks/__tests__/useGlobalDataInitialization.test.ts
+src/hooks/__tests__/useIntegratedDataLocal.test.ts
+src/hooks/__tests__/useLocal-ssr.test.ts
+src/hooks/__tests__/useLocal.test.ts
+src/hooks/__tests__/useMediaQuery.test.ts
+src/hooks/__tests__/useModalA11y.test.ts
+src/hooks/__tests__/useScheduleDragAndDrop.test.ts
+src/hooks/__tests__/useScheduleSessionManagement.test.ts
+src/hooks/__tests__/useScheduleView.test.ts
+src/hooks/__tests__/useSessionStatus.test.ts
+src/hooks/__tests__/useStudentManagementLocal.test.ts
+src/hooks/__tests__/useSubjectManagementLocal.test.ts
+src/hooks/__tests__/useTimeValidation.test.ts
+src/hooks/__tests__/useUserTracking.test.ts
+src/hooks/useAttendance.ts
+src/hooks/useBottomSheet.ts
+src/hooks/useColorBy.ts
+src/hooks/useDisplaySessions.ts
+src/hooks/useGlobalDataInitialization.ts
+src/hooks/useIntegratedDataLocal.ts
+src/hooks/useLocal.ts
+src/hooks/useMediaQuery.ts
+src/hooks/useModalA11y.ts
+src/hooks/usePerformanceMonitoring.ts
+src/hooks/useScheduleDragAndDrop.ts
+src/hooks/useScheduleSessionManagement.ts
+src/hooks/useScheduleView.ts
+src/hooks/useSessionStatus.ts
+src/hooks/useStudentManagementLocal.ts
+src/hooks/useSubjectManagementLocal.ts
+src/hooks/useTeacherDisplaySessions.ts
+src/hooks/useTeacherManagementLocal.ts
+src/hooks/useTemplates.ts
+src/hooks/useTimeValidation.ts
+src/hooks/useUserTracking.ts
+src/infrastructure/__tests__/RepositoryRegistry.test.ts
+src/infrastructure/__tests__/index.test.ts
+src/infrastructure/__tests__/interfaces.test.ts
+src/infrastructure/config/RepositoryConfig.ts
+src/infrastructure/config/__tests__/RepositoryConfig.test.ts
+src/infrastructure/container/RepositoryRegistry.ts
+src/infrastructure/container/__tests__/RepositoryRegistry.test.ts
+src/infrastructure/factories/EnrollmentRepositoryFactory.ts
+src/infrastructure/factories/SessionRepositoryFactory.ts
+src/infrastructure/factories/StudentRepositoryFactory.ts
+src/infrastructure/factories/SubjectRepositoryFactory.ts
+src/infrastructure/factories/TeacherRepositoryFactory.ts
+src/infrastructure/factories/__tests__/factories.test.ts
+src/infrastructure/index.ts
+src/infrastructure/interfaces.ts
+src/infrastructure/repositories/SupabaseEnrollmentRepository.ts
+src/infrastructure/repositories/SupabaseSessionRepository.ts
+src/infrastructure/repositories/SupabaseStudentRepository.ts
+src/infrastructure/repositories/SupabaseSubjectRepository.ts
+src/infrastructure/repositories/SupabaseTeacherRepository.ts
+src/infrastructure/repositories/__tests__/SupabaseEnrollmentRepository.test.ts
+src/infrastructure/repositories/__tests__/SupabaseSessionRepository.test.ts
+src/infrastructure/repositories/__tests__/SupabaseStudentRepository.test.ts
+src/infrastructure/repositories/__tests__/SupabaseSubjectRepository.test.ts
+src/lib/schedule/__tests__/getSessionSubject.test.ts
+src/lib/schedule/getSessionSubject.ts
+src/lib/schedule/subjectColorPalette.ts
+src/lib/__tests__/adminGuard.test.ts
+src/lib/__tests__/apiSync.test.ts
+src/lib/__tests__/authUtils.test.ts
+src/lib/__tests__/errorTracker.test.ts
+src/lib/__tests__/localStorageCrud.test.ts
+src/lib/__tests__/logger.browser.test.ts
+src/lib/__tests__/logger.test.ts
+src/lib/__tests__/planner-real-scenarios.test.ts
+src/lib/__tests__/planner.test.ts
+src/lib/__tests__/rateLimit.test.ts
+src/lib/__tests__/resolveAcademyId.test.ts
+src/lib/__tests__/resolveAcademyMembership.test.ts
+src/lib/__tests__/sessionCollisionUtils.compact.test.ts
+src/lib/__tests__/sessionCollisionUtils.cross-day-compact.test.ts
+src/lib/__tests__/sessionCollisionUtils.test.ts
+src/lib/__tests__/sessionCollisionUtils.timeAxis.test.ts
+src/lib/__tests__/sessionCollisionUtils.weekdayAxis.test.ts
+src/lib/__tests__/supabaseServiceRole.test.ts
+src/lib/__tests__/timeUtils.test.ts
+src/lib/__tests__/yPositionMigration.test.ts
+src/lib/adminGuard.ts
+src/lib/apiSync.ts
+src/lib/auth/__tests__/deduplication.test.ts
+src/lib/auth/__tests__/fullDataMigration.test.ts
+src/lib/auth/__tests__/handleLoginDataMigration.test.ts
+src/lib/auth/deduplication.ts
+src/lib/auth/fullDataMigration.ts
+src/lib/auth/handleLoginDataMigration.ts
+src/lib/authUtils.ts
+src/lib/errorTracker.ts
+src/lib/errors/AppError.ts
+src/lib/errors/__tests__/AppError.test.ts
+src/lib/errors/__tests__/codes.test.ts
+src/lib/errors/__tests__/httpErrors.test.ts
+src/lib/errors/__tests__/messages.ko.test.ts
+src/lib/errors/codes.ts
+src/lib/errors/httpErrors.ts
+src/lib/errors/index.ts
+src/lib/errors/messages.ko.ts
+src/lib/localStorageCrud.ts
+src/lib/logger.ts
+src/lib/pdf/PdfGridLayout.ts
+src/lib/pdf/PdfHeader.ts
+src/lib/pdf/PdfRenderer.ts
+src/lib/pdf/PdfSessionBlock.ts
+src/lib/pdf/__tests__/PdfGridLayout.test.ts
+src/lib/pdf/__tests__/PdfRenderer.test.ts
+src/lib/pdf/fonts/pretendard-bold.ts
+src/lib/pdf/fonts/pretendard-regular.ts
+src/lib/planner.ts
+src/lib/rateLimit.ts
+src/lib/resolveAcademyId.ts
+src/lib/resolveAcademyMembership.ts
+src/lib/sessionCollisionUtils.ts
+src/lib/supabaseServiceRole.ts
+src/lib/timeUtils.ts
+src/lib/toast.ts
+src/lib/yPositionMigration.ts
+src/middleware.ts
+src/middleware/__tests__/cors.test.ts
+src/middleware/__tests__/logging.test.ts
+src/middleware/cors.ts
+src/middleware/logging.ts
+src/setupTests.ts
+src/shared/__tests__/constants.test.ts
+src/shared/constants/sessionConstants.ts
+src/shared/types/ApplicationTypes.ts
+src/shared/types/CommonTypes.ts
+src/shared/types/DomainTypes.ts
+src/shared/types/__tests__/ApplicationTypes.test.ts
+src/shared/types/__tests__/CommonTypes.test.ts
+src/shared/types/__tests__/DomainTypes.test.ts
+src/shared/types/__tests__/index.test.ts
+src/shared/types/__tests__/scheduleTypes.test.ts
+src/shared/types/index.ts
+src/shared/types/scheduleTypes.ts
+src/shared/types/templateTypes.ts
+src/types/__tests__/scheduleTypes.test.ts
+src/types/scheduleTypes.ts
+src/utils/__tests__/dateUtils.test.ts
+src/utils/__tests__/stringUtils.test.ts
+src/utils/__tests__/supabaseClient.test.ts
+src/utils/supabaseClient.ts

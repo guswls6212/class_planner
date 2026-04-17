@@ -53,3 +53,4 @@ next-env.d.ts
 # DB backups (contains real user data)
 migration/backups/
 .superpowers/
+.claude/

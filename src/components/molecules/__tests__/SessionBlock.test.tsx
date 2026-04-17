@@ -69,7 +69,6 @@ describe("SessionBlock Component", () => {
     subjects: mockSubjects,
     enrollments: mockEnrollments,
     students: mockStudents,
-    yPosition: 0,
     left: 100,
     width: 200,
     yOffset: 0,
@@ -93,6 +92,44 @@ describe("SessionBlock Component", () => {
     );
     expect(sessionBlock).toHaveAttribute("data-starts-at", "09:00");
     expect(sessionBlock).toHaveAttribute("data-ends-at", "10:00");
+  });
+
+  it("button role로 렌더링되어야 한다 (키보드 접근성)", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const sessionBlock = screen.getByRole("button");
+    expect(sessionBlock).toBeInTheDocument();
+  });
+
+  it("aria-label이 '학생명, 과목명, 요일, 시간' 형식으로 구성되어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    const label = sessionBlock.getAttribute("aria-label");
+    expect(label).toBe("김철수, 이영희 수학 월 09:00–10:00");
+  });
+
+  it("학생이 없을 때 aria-label에 '학생 없음'이 포함되어야 한다", () => {
+    const sessionWithoutEnrollments = {
+      ...mockSession,
+      enrollmentIds: [],
+    };
+
+    render(
+      <SessionBlock
+        {...defaultProps}
+        session={sessionWithoutEnrollments}
+        enrollments={[]}
+      />
+    );
+
+    const sessionBlock = screen.getByTestId(
+      "session-block-550e8400-e29b-41d4-a716-446655440201"
+    );
+    const label = sessionBlock.getAttribute("aria-label");
+    expect(label).toContain("학생 없음");
   });
 
   it("과목명이 올바르게 표시되어야 한다", () => {
@@ -121,10 +158,8 @@ describe("SessionBlock Component", () => {
     const mockOnClick = vi.fn();
     render(<SessionBlock {...defaultProps} onClick={mockOnClick} />);
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    fireEvent.click(sessionBlock);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
@@ -139,10 +174,8 @@ describe("SessionBlock Component", () => {
       </div>
     );
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    fireEvent.click(sessionBlock);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
     expect(parentOnClick).not.toHaveBeenCalled();
@@ -163,7 +196,7 @@ describe("SessionBlock Component", () => {
     render(
       <SessionBlock
         {...defaultProps}
-        selectedStudentId="550e8400-e29b-41d4-a716-446655440001"
+        selectedStudentIds={["550e8400-e29b-41d4-a716-446655440001"]}
       />
     );
 
@@ -173,14 +206,12 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("style prop이 올바르게 적용되어야 한다", () => {
-    const customStyle = { border: "2px solid red" };
-    render(<SessionBlock {...defaultProps} style={customStyle} />);
+  it("기본 border 스타일이 올바르게 적용되어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    expect(sessionBlock).toHaveStyle(
+    // border style is on the inner button, not the outer wrapper div
+    const button = screen.getByRole("button");
+    expect(button).toHaveStyle(
       "border: 1px solid rgba(255, 255, 255, 0.2)"
     );
   });
@@ -188,10 +219,9 @@ describe("SessionBlock Component", () => {
   it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {
     render(<SessionBlock {...defaultProps} isDragging={false} isAnyDragging={false} />);
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    expect(sessionBlock).toHaveStyle({ opacity: "1" });
+    // opacity is on the inner button element
+    const button = screen.getByRole("button");
+    expect(button).toHaveStyle({ opacity: "1" });
   });
 
   it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
@@ -204,10 +234,9 @@ describe("SessionBlock Component", () => {
       />
     );
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    expect(sessionBlock).toHaveStyle({ opacity: "0.3" });
+    // opacity is on the inner button element
+    const button = screen.getByRole("button");
+    expect(button).toHaveStyle({ opacity: "0.3" });
   });
 
   it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
@@ -220,11 +249,11 @@ describe("SessionBlock Component", () => {
       />
     );
 
-    const sessionBlock = screen.getByTestId(
-      "session-block-550e8400-e29b-41d4-a716-446655440201"
-    );
-    expect(sessionBlock).toHaveStyle({ opacity: "0" });
-    expect(sessionBlock).toHaveStyle({ visibility: "hidden" });
+    // opacity and visibility are on the inner button element
+    // use hidden: true because visibility:hidden removes it from the accessibility tree
+    const button = screen.getByRole("button", { hidden: true });
+    expect(button).toHaveStyle({ opacity: "0" });
+    expect(button).toHaveStyle({ visibility: "hidden" });
   });
 
   // 엣지 케이스 테스트
@@ -343,7 +372,8 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
 
     // onClick이 undefined여도 크래시하지 않아야 함
-    fireEvent.click(sessionBlock);
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
     expect(sessionBlock).toBeInTheDocument();
   });
 
@@ -539,6 +569,133 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveTextContent("학생7");
     expect(sessionBlock).toHaveTextContent("학생8");
     expect(sessionBlock).toHaveTextContent("외 1명");
+  });
+
+  it("onDragStart가 드래그 시작 시 호출되어야 한다", () => {
+    const onDragStart = vi.fn();
+    render(
+      <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
+    );
+    const block = screen.getByTestId(`session-block-${mockSession.id}`);
+    fireEvent.dragStart(block);
+    expect(onDragStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("onDragEnd가 드래그 종료 시 호출되어야 한다", () => {
+    const onDragEnd = vi.fn();
+    render(
+      <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
+    );
+    const block = screen.getByTestId(`session-block-${mockSession.id}`);
+    fireEvent.dragEnd(block);
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it("hasConflict=true 일 때 충돌 표시가 렌더되어야 한다", () => {
+    render(<SessionBlock {...defaultProps} hasConflict={true} />);
+    // The red border class is applied to the inner button element
+    const button = screen.getByRole("button");
+    expect(button.className).toContain("border-l");
+  });
+
+  it("isReadOnly=true 일 때 onClick이 호출되지 않아야 한다", () => {
+    const onClick = vi.fn();
+    render(
+      <SessionBlock {...defaultProps} onClick={onClick} isReadOnly={true} />
+    );
+    const button = screen.getByRole("button");
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("컨텍스트 메뉴 — onDelete prop", () => {
+  const contextMenuSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const contextMenuSubjects = [
+    { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
+  ];
+  const contextMenuEnrollments = [
+    { id: "550e8400-e29b-41d4-a716-446655440301", studentId: "550e8400-e29b-41d4-a716-446655440001", subjectId: "550e8400-e29b-41d4-a716-446655440101" },
+  ];
+  const contextMenuStudents = [
+    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
+  ];
+  const baseContextProps = {
+    session: contextMenuSession,
+    subjects: contextMenuSubjects,
+    enrollments: contextMenuEnrollments,
+    students: contextMenuStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("onDelete가 제공되면 컨텍스트 메뉴 삭제 버튼 클릭 시 onDelete가 호출되어야 한다", async () => {
+    const mockOnClick = vi.fn();
+    const mockOnDelete = vi.fn();
+
+    const { act } = await import("@testing-library/react");
+
+    render(
+      <SessionBlock
+        {...baseContextProps}
+        onClick={mockOnClick}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    // 롱프레스 시뮬레이션 (300ms 타임아웃) — onTouchStart is on the inner button
+    const button = screen.getByRole("button");
+    fireEvent.touchStart(button);
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    // 컨텍스트 메뉴가 나타나야 함
+    const deleteButton = screen.getByRole("menuitem", { name: "삭제" });
+    fireEvent.click(deleteButton);
+
+    expect(mockOnDelete).toHaveBeenCalledTimes(1);
+    expect(mockOnClick).not.toHaveBeenCalled();
+  });
+
+  it("onDelete가 없으면 컨텍스트 메뉴 삭제 버튼 클릭 시 onClick이 호출되어야 한다 (하위 호환)", async () => {
+    const mockOnClick = vi.fn();
+
+    const { act } = await import("@testing-library/react");
+
+    render(
+      <SessionBlock
+        {...baseContextProps}
+        onClick={mockOnClick}
+      />
+    );
+
+    // 롱프레스 시뮬레이션 (300ms 타임아웃) — onTouchStart is on the inner button
+    const button = screen.getByRole("button");
+    fireEvent.touchStart(button);
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    const deleteButton = screen.getByRole("menuitem", { name: "삭제" });
+    fireEvent.click(deleteButton);
+
+    expect(mockOnClick).toHaveBeenCalledTimes(1);
   });
 });
 

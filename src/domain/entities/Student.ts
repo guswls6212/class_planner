@@ -7,28 +7,52 @@
 
 import { StudentId } from "../value-objects/StudentId";
 
+export interface StudentCreateOptions {
+  gender?: string;
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
+}
+
+export interface StudentRestoreOptions extends StudentCreateOptions {
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export class Student {
   private readonly _id: StudentId;
   private readonly _name: string;
   private readonly _gender?: string;
   private readonly _birthDate?: string;
+  private readonly _grade?: string;
+  private readonly _school?: string;
+  private readonly _phone?: string;
   private readonly _createdAt: Date;
   private readonly _updatedAt: Date;
 
   private constructor(
     id: StudentId,
     name: string,
-    gender?: string,
-    birthDate?: string,
-    createdAt: Date = new Date(),
-    updatedAt: Date = new Date()
+    options: {
+      gender?: string;
+      birthDate?: string;
+      grade?: string;
+      school?: string;
+      phone?: string;
+      createdAt?: Date;
+      updatedAt?: Date;
+    } = {}
   ) {
     this._id = id;
     this._name = name;
-    this._gender = gender;
-    this._birthDate = birthDate;
-    this._createdAt = createdAt;
-    this._updatedAt = updatedAt;
+    this._gender = options.gender;
+    this._birthDate = options.birthDate;
+    this._grade = options.grade;
+    this._school = options.school;
+    this._phone = options.phone;
+    this._createdAt = options.createdAt ?? new Date();
+    this._updatedAt = options.updatedAt ?? new Date();
     this.validate();
   }
 
@@ -37,11 +61,11 @@ export class Student {
   /**
    * 새로운 학생을 생성합니다.
    */
-  static create(name: string, gender?: string, birthDate?: string): Student {
+  static create(name: string, options?: StudentCreateOptions): Student {
     const trimmedName = name.trim();
     const studentId = StudentId.generate();
 
-    return new Student(studentId, trimmedName, gender, birthDate);
+    return new Student(studentId, trimmedName, options ?? {});
   }
 
   /**
@@ -50,16 +74,19 @@ export class Student {
   static restore(
     id: string,
     name: string,
-    gender?: string,
-    birthDate?: string,
-    createdAt?: Date,
-    updatedAt?: Date
+    options?: StudentRestoreOptions
   ): Student {
     const studentId = StudentId.fromString(id);
-    const created = createdAt || new Date();
-    const updated = updatedAt || new Date();
 
-    return new Student(studentId, name, gender, birthDate, created, updated);
+    return new Student(studentId, name, {
+      gender: options?.gender,
+      birthDate: options?.birthDate,
+      grade: options?.grade,
+      school: options?.school,
+      phone: options?.phone,
+      createdAt: options?.createdAt ?? new Date(),
+      updatedAt: options?.updatedAt ?? new Date(),
+    });
   }
 
   // ===== 비즈니스 로직 =====
@@ -74,14 +101,36 @@ export class Student {
       return this; // 변경사항이 없으면 현재 인스턴스 반환
     }
 
-    return new Student(
-      this._id,
-      trimmedName,
-      this._gender,
-      this._birthDate,
-      this._createdAt,
-      new Date() // updatedAt 업데이트
-    );
+    return new Student(this._id, trimmedName, {
+      gender: this._gender,
+      birthDate: this._birthDate,
+      grade: this._grade,
+      school: this._school,
+      phone: this._phone,
+      createdAt: this._createdAt,
+      updatedAt: new Date(), // updatedAt 업데이트
+    });
+  }
+
+  /**
+   * 프로필 필드를 일괄 변경합니다. 불변성을 보장하며 새 인스턴스를 반환합니다.
+   */
+  changeProfile(updates: {
+    gender?: string;
+    birthDate?: string;
+    grade?: string;
+    school?: string;
+    phone?: string;
+  }): Student {
+    return new Student(this._id, this._name, {
+      gender: updates.gender !== undefined ? updates.gender : this._gender,
+      birthDate: updates.birthDate !== undefined ? updates.birthDate : this._birthDate,
+      grade: updates.grade !== undefined ? updates.grade : this._grade,
+      school: updates.school !== undefined ? updates.school : this._school,
+      phone: updates.phone !== undefined ? updates.phone : this._phone,
+      createdAt: this._createdAt,
+      updatedAt: new Date(), // updatedAt 업데이트
+    });
   }
 
   /**
@@ -148,6 +197,32 @@ export class Student {
   }
 
   /**
+   * 전화번호가 유효한지 검증합니다. 빈 값/undefined는 유효합니다 (선택 필드).
+   */
+  static validatePhone(phone: string | undefined): ValidationResult {
+    if (!phone || phone.trim() === "") {
+      return { isValid: true, errors: [] };
+    }
+
+    // 한국 전화번호 형식: 010-1234-5678, 01012345678, 010-123-5678 등
+    const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
+    if (!phoneRegex.test(phone.trim())) {
+      return {
+        isValid: false,
+        errors: [
+          {
+            field: "phone",
+            message: "올바른 전화번호 형식이 아닙니다.",
+            code: "PHONE_INVALID_FORMAT",
+          },
+        ],
+      };
+    }
+
+    return { isValid: true, errors: [] };
+  }
+
+  /**
    * 학생 이름이 중복되는지 확인합니다.
    */
   static isNameDuplicate(name: string, existingStudents: Student[]): boolean {
@@ -186,6 +261,18 @@ export class Student {
     return this._birthDate;
   }
 
+  get grade(): string | undefined {
+    return this._grade;
+  }
+
+  get school(): string | undefined {
+    return this._school;
+  }
+
+  get phone(): string | undefined {
+    return this._phone;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -205,6 +292,9 @@ export class Student {
       name: this._name,
       gender: this._gender,
       birthDate: this._birthDate,
+      grade: this._grade,
+      school: this._school,
+      phone: this._phone,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -219,6 +309,9 @@ export class Student {
       name: this._name,
       gender: this._gender,
       birthDate: this._birthDate,
+      grade: this._grade,
+      school: this._school,
+      phone: this._phone,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
     };
@@ -228,14 +321,15 @@ export class Student {
    * JSON으로부터 도메인 엔티티를 복원합니다.
    */
   static fromJSON(json: StudentJson): Student {
-    return Student.restore(
-      json.id,
-      json.name,
-      json.gender,
-      json.birthDate,
-      new Date(json.createdAt),
-      new Date(json.updatedAt)
-    );
+    return Student.restore(json.id, json.name, {
+      gender: json.gender,
+      birthDate: json.birthDate,
+      grade: json.grade,
+      school: json.school,
+      phone: json.phone,
+      createdAt: new Date(json.createdAt),
+      updatedAt: new Date(json.updatedAt),
+    });
   }
 
   // ===== 동등성 비교 =====
@@ -267,6 +361,9 @@ export interface StudentDto {
   name: string;
   gender?: string;
   birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -276,6 +373,9 @@ export interface StudentJson {
   name: string;
   gender?: string;
   birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
   createdAt: string;
   updatedAt: string;
 }

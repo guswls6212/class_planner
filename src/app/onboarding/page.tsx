@@ -108,15 +108,10 @@ export default function OnboardingPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-5"
-      style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        minHeight: "calc(100vh - 60px)",
-      }}
+      className="bg-brand-gradient flex items-center justify-center p-5 min-h-[calc(100vh-60px)]"
     >
       <div
-        className="bg-white w-full max-w-[440px] rounded-2xl p-10"
-        style={{ boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)" }}
+        className="bg-white w-full max-w-[440px] rounded-2xl p-10 shadow-[0_20px_40px_rgba(0,0,0,0.1)]"
       >
         <h1 className="text-2xl font-bold text-gray-800 text-center mb-2">
           학원 정보 설정
@@ -202,15 +197,7 @@ export default function OnboardingPage() {
           <button
             type="submit"
             disabled={!isValid || isSubmitting}
-            className="w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background:
-                isValid && !isSubmitting
-                  ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                  : undefined,
-              backgroundColor:
-                !isValid || isSubmitting ? "#d1d5db" : undefined,
-            }}
+            className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isValid && !isSubmitting ? "bg-brand-gradient" : "bg-[var(--color-border)]"}`}
           >
             {isSubmitting ? "생성 중..." : "시작하기"}
           </button>

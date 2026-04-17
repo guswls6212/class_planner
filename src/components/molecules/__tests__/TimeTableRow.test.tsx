@@ -1,14 +1,15 @@
 import type { Session, Subject } from "@lib/planner";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { logger } from "../../../lib/logger";
 import { TimeTableRow } from "../TimeTableRow";
 
 // Mock dependencies
-vi.mock("../DropZone", () => ({
-  default: ({ time, onDrop, onEmptySpaceClick }: any) => (
+vi.mock("../TimeTableCell", () => ({
+  default: ({ time, weekday, onDrop, onEmptySpaceClick }: any) => (
     <div
       data-testid={`dropzone-${time}`}
-      onClick={() => onEmptySpaceClick(0, time)}
+      onClick={() => onEmptySpaceClick(weekday, time)}
     >
       DropZone: {time}
     </div>
@@ -128,8 +129,7 @@ describe("TimeTableRow Component", () => {
       } as Session,
     ]);
 
-    // 콘솔 경고를 모킹
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     render(
       <TimeTableRow {...defaultProps} sessions={sessionsWithInvalidTime} />
@@ -139,9 +139,9 @@ describe("TimeTableRow Component", () => {
     expect(screen.getByText("월")).toBeInTheDocument();
 
     // 경고 메시지가 출력되어야 함
-    expect(consoleSpy).toHaveBeenCalledWith("Invalid time format:", "");
+    expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: "" });
 
-    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it("undefined 시간에 대해 안전하게 처리해야 한다", () => {
@@ -157,16 +157,16 @@ describe("TimeTableRow Component", () => {
       } as Session,
     ]);
 
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     render(
       <TimeTableRow {...defaultProps} sessions={sessionsWithUndefinedTime} />
     );
 
     expect(screen.getByText("월")).toBeInTheDocument();
-    expect(consoleSpy).toHaveBeenCalledWith("Invalid time format:", undefined);
+    expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: undefined });
 
-    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it("null 시간에 대해 안전하게 처리해야 한다", () => {
@@ -182,14 +182,14 @@ describe("TimeTableRow Component", () => {
       } as Session,
     ]);
 
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     render(<TimeTableRow {...defaultProps} sessions={sessionsWithNullTime} />);
 
     expect(screen.getByText("월")).toBeInTheDocument();
-    expect(consoleSpy).toHaveBeenCalledWith("Invalid time format:", null);
+    expect(warnSpy).toHaveBeenCalledWith("Invalid time format", { time: null });
 
-    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it("잘못된 시간 형식 (콜론 없음)에 대해 안전하게 처리해야 한다", () => {
@@ -205,17 +205,16 @@ describe("TimeTableRow Component", () => {
       } as Session,
     ]);
 
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
 
     render(
       <TimeTableRow {...defaultProps} sessions={sessionsWithInvalidFormat} />
     );
 
     expect(screen.getByText("월")).toBeInTheDocument();
-    // 이 경우는 문자열이므로 경고가 출력되지 않을 수 있음
-    // 하지만 NaN이 될 수 있으므로 추가 검증이 필요할 수 있음
+    // 콜론 없는 문자열은 typeof 체크를 통과하므로 경고 없음
 
-    consoleSpy.mockRestore();
+    warnSpy.mockRestore();
   });
 
   it("세션 클릭 이벤트가 올바르게 처리되어야 한다", () => {
@@ -290,7 +289,7 @@ describe("TimeTableRow Component", () => {
       <TimeTableRow
         {...defaultProps}
         sessions={sessionsWithData}
-        selectedStudentId="550e8400-e29b-41d4-a716-446655440001"
+        selectedStudentIds={["550e8400-e29b-41d4-a716-446655440001"]}
       />
     );
 

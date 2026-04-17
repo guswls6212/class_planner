@@ -4,7 +4,7 @@ import React from "react";
 
 vi.mock("../../../../components/organisms/TimeTableGrid", () => ({
   default: (props: any) => (
-    <div data-testid="timetable-grid" data-selected={props.selectedStudentId}>
+    <div data-testid="timetable-grid" data-selected={JSON.stringify(props.selectedStudentIds)}>
       TimeTableGrid Mock
     </div>
   ),
@@ -24,7 +24,7 @@ describe("ScheduleGridSection", () => {
     onDrop: vi.fn(),
     onSessionDrop: vi.fn(),
     onEmptySpaceClick: vi.fn(),
-    selectedStudentId: "stu-1",
+    selectedStudentIds: ["stu-1"],
     isStudentDragging: false,
   };
 
@@ -33,9 +33,9 @@ describe("ScheduleGridSection", () => {
     expect(getByTestId("timetable-grid")).toBeInTheDocument();
   });
 
-  it("selectedStudentId를 전달한다", () => {
+  it("selectedStudentIds를 전달한다", () => {
     const { getByTestId } = render(<ScheduleGridSection {...defaultProps} />);
-    expect(getByTestId("timetable-grid")).toHaveAttribute("data-selected", "stu-1");
+    expect(getByTestId("timetable-grid")).toHaveAttribute("data-selected", '["stu-1"]');
   });
 
   it("containerRef가 wrapper div에 연결된다", () => {

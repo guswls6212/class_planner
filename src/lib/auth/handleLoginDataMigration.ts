@@ -23,8 +23,8 @@ export type MigrationResult =
 function isEmptyData(data: ClassPlannerData): boolean {
   return (
     data.students.length === 0 &&
-    data.subjects.length === 0 &&
-    data.sessions.length === 0
+    data.sessions.length === 0 &&
+    data.enrollments.length === 0
   );
 }
 
@@ -117,6 +117,7 @@ export async function applyLocalDataChoice(
     subjects,
     sessions,
     enrollments,
+    teachers: [],
     version: "1.0",
     lastModified: new Date().toISOString(),
   });

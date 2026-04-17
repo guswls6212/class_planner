@@ -1,7 +1,6 @@
 import type { Subject } from "@/shared/types/DomainTypes";
 import React, { useEffect, useRef, useState } from "react";
 import SubjectListItem from "../atoms/SubjectListItem";
-import styles from "./SubjectList.module.css";
 
 interface SubjectListProps {
   subjects: Subject[];
@@ -35,7 +34,6 @@ const SubjectList: React.FC<SubjectListProps> = ({
 
     checkScrollable();
 
-    // 리사이즈 이벤트 리스너 추가
     window.addEventListener("resize", checkScrollable);
 
     return () => {
@@ -45,8 +43,11 @@ const SubjectList: React.FC<SubjectListProps> = ({
 
   return (
     <div className={className} style={style}>
-      {/* 과목 목록 */}
-      <div ref={containerRef} className={styles.container} role="list">
+      <div
+        ref={containerRef}
+        className="list-scroll-reveal relative m-0 max-h-[400px] list-none overflow-auto rounded-md border border-[--color-border] bg-[--color-bg-primary] p-0"
+        role="list"
+      >
         {subjects.map((subject) => (
           <SubjectListItem
             key={subject.id}
@@ -58,13 +59,16 @@ const SubjectList: React.FC<SubjectListProps> = ({
           />
         ))}
         {subjects.length === 0 && (
-          <div className={styles.emptyMessage}>과목을 추가해주세요</div>
+          <div className="m-2 rounded border border-dashed border-[--color-border-light] bg-[--color-bg-secondary] p-4 text-center italic text-[--color-text-muted]">
+            과목을 추가해주세요
+          </div>
         )}
       </div>
 
-      {/* 스크롤 안내 메시지 - 실제 스크롤이 활성화될 때만 표시 */}
       {isScrollable && (
-        <div className={styles.scrollIndicator}>스크롤하여 확인</div>
+        <div className="mt-2 rounded-b-md border-t border-[--color-border-light] bg-[--color-bg-secondary] p-2 text-center text-xs italic text-[--color-text-muted]">
+          스크롤하여 확인
+        </div>
       )}
     </div>
   );

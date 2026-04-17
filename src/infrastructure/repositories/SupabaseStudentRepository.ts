@@ -37,15 +37,16 @@ export class SupabaseStudentRepository implements StudentRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) =>
-        Student.restore(
-          row.id,
-          row.name,
-          row.gender ?? undefined,
-          row.birth_date ?? undefined,
-          new Date(row.created_at),
-          new Date(row.updated_at)
-        )
+      return (data ?? []).map((row) =>
+        Student.restore(row.id, row.name, {
+          gender: row.gender ?? undefined,
+          birthDate: row.birth_date ?? undefined,
+          grade: row.grade ?? undefined,
+          school: row.school ?? undefined,
+          phone: row.phone ?? undefined,
+          createdAt: new Date(row.created_at),
+          updatedAt: new Date(row.updated_at),
+        })
       );
     } catch (error) {
       logger.error("학생 데이터 조회 중 오류:", undefined, error as Error);
@@ -68,14 +69,15 @@ export class SupabaseStudentRepository implements StudentRepository {
         return null;
       }
 
-      return Student.restore(
-        data.id,
-        data.name,
-        data.gender ?? undefined,
-        data.birth_date ?? undefined,
-        new Date(data.created_at),
-        new Date(data.updated_at)
-      );
+      return Student.restore(data.id, data.name, {
+        gender: data.gender ?? undefined,
+        birthDate: data.birth_date ?? undefined,
+        grade: data.grade ?? undefined,
+        school: data.school ?? undefined,
+        phone: data.phone ?? undefined,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      });
     } catch (error) {
       logger.error("학생 조회 중 오류:", undefined, error as Error);
       return null;
@@ -83,7 +85,7 @@ export class SupabaseStudentRepository implements StudentRepository {
   }
 
   async create(
-    studentData: { name: string; gender?: string; birthDate?: string },
+    studentData: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -96,6 +98,9 @@ export class SupabaseStudentRepository implements StudentRepository {
           name: studentData.name,
           gender: studentData.gender ?? null,
           birth_date: studentData.birthDate ?? null,
+          grade: studentData.grade ?? null,
+          school: studentData.school ?? null,
+          phone: studentData.phone ?? null,
         })
         .select()
         .single();
@@ -105,14 +110,15 @@ export class SupabaseStudentRepository implements StudentRepository {
         throw error;
       }
 
-      return Student.restore(
-        data.id,
-        data.name,
-        data.gender ?? undefined,
-        data.birth_date ?? undefined,
-        new Date(data.created_at),
-        new Date(data.updated_at)
-      );
+      return Student.restore(data.id, data.name, {
+        gender: data.gender ?? undefined,
+        birthDate: data.birth_date ?? undefined,
+        grade: data.grade ?? undefined,
+        school: data.school ?? undefined,
+        phone: data.phone ?? undefined,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      });
     } catch (error) {
       logger.error("학생 생성 중 오류:", undefined, error as Error);
       throw error;
@@ -121,7 +127,7 @@ export class SupabaseStudentRepository implements StudentRepository {
 
   async update(
     id: string,
-    studentData: { name?: string; gender?: string; birthDate?: string },
+    studentData: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
     academyId: string
   ): Promise<Student> {
     try {
@@ -131,6 +137,9 @@ export class SupabaseStudentRepository implements StudentRepository {
       if (studentData.name !== undefined) updates.name = studentData.name;
       if (studentData.gender !== undefined) updates.gender = studentData.gender;
       if (studentData.birthDate !== undefined) updates.birth_date = studentData.birthDate;
+      if (studentData.grade !== undefined) updates.grade = studentData.grade;
+      if (studentData.school !== undefined) updates.school = studentData.school;
+      if (studentData.phone !== undefined) updates.phone = studentData.phone;
 
       const { data, error } = await client
         .from("students")
@@ -145,14 +154,15 @@ export class SupabaseStudentRepository implements StudentRepository {
         throw error;
       }
 
-      return Student.restore(
-        data.id,
-        data.name,
-        data.gender ?? undefined,
-        data.birth_date ?? undefined,
-        new Date(data.created_at),
-        new Date(data.updated_at)
-      );
+      return Student.restore(data.id, data.name, {
+        gender: data.gender ?? undefined,
+        birthDate: data.birth_date ?? undefined,
+        grade: data.grade ?? undefined,
+        school: data.school ?? undefined,
+        phone: data.phone ?? undefined,
+        createdAt: new Date(data.created_at),
+        updatedAt: new Date(data.updated_at),
+      });
     } catch (error) {
       logger.error("학생 업데이트 중 오류:", undefined, error as Error);
       throw error;

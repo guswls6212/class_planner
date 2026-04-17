@@ -1,5 +1,4 @@
 import React from "react";
-import styles from "./Button.module.css";
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -19,6 +18,23 @@ interface ButtonProps {
   "data-testid"?: string;
 }
 
+const VARIANT_CLASSES: Record<string, string> = {
+  primary:
+    "bg-[--color-primary] text-white hover:enabled:bg-[--color-primary-dark]",
+  secondary:
+    "bg-[--color-secondary] text-white hover:enabled:bg-[--color-secondary-dark]",
+  danger:
+    "bg-[--color-danger] text-white border border-[--color-danger] hover:enabled:bg-[--color-danger-dark] hover:enabled:border-[--color-danger-dark] hover:enabled:shadow-[0_0_0_2px_rgba(220,38,38,0.15)]",
+  transparent:
+    "bg-transparent text-[--color-text] border border-[--color-border] hover:enabled:bg-[--color-bg-secondary] hover:enabled:border-[--color-border-light] hover:enabled:text-[--color-text-primary]",
+};
+
+const SIZE_CLASSES: Record<string, string> = {
+  small: "px-3 py-1.5 text-xs min-h-[28px]",
+  medium: "px-4 py-2 text-sm min-h-[36px]",
+  large: "px-6 py-3 text-base min-h-[44px]",
+};
+
 export const Button: React.FC<ButtonProps> = ({
   children,
   type = "button",
@@ -37,10 +53,10 @@ export const Button: React.FC<ButtonProps> = ({
   "data-testid": dataTestId,
 }) => {
   const buttonClasses = [
-    styles.button,
-    styles[variant],
-    styles[size],
-    loading ? styles.loading : "",
+    "inline-flex items-center justify-center rounded-md font-medium cursor-pointer transition-all duration-200 no-underline font-inherit border-none disabled:opacity-50 disabled:cursor-not-allowed",
+    VARIANT_CLASSES[variant] ?? VARIANT_CLASSES.primary,
+    SIZE_CLASSES[size] ?? SIZE_CLASSES.medium,
+    loading ? "relative cursor-not-allowed" : "",
     className,
   ]
     .filter(Boolean)
@@ -60,7 +76,7 @@ export const Button: React.FC<ButtonProps> = ({
       aria-describedby={ariaDescribedBy}
       data-testid={dataTestId}
     >
-      {loading && <span data-testid="spinner">⏳</span>}
+      {loading && <span data-testid="spinner" className="mr-2">⏳</span>}
       {children}
     </button>
   );

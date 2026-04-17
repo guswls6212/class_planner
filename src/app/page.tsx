@@ -2,372 +2,176 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import SchedulePreview from "@/components/common/SchedulePreview";
+import type { PreviewCell } from "@/components/common/SchedulePreview.types";
 
-export default function Home() {
+const LANDING_DEMO_DATA: PreviewCell[] = [
+  { day: 0, timeIndex: 0, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 2, timeIndex: 0, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 4, timeIndex: 2, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 4, timeIndex: 0, subjectLabel: "영어", studentLabel: "이서연", color: "red" },
+  { day: 1, timeIndex: 1, subjectLabel: "영어", studentLabel: "이서연", color: "red" },
+  { day: 0, timeIndex: 1, subjectLabel: "과학", studentLabel: "박지호", color: "violet" },
+  { day: 3, timeIndex: 2, subjectLabel: "과학", studentLabel: "박지호", color: "violet" },
+  { day: 3, timeIndex: 1, subjectLabel: "국어", studentLabel: "최유진", color: "emerald" },
+  { day: 2, timeIndex: 2, subjectLabel: "국어", studentLabel: "최유진", color: "emerald" },
+  { day: 1, timeIndex: 2, subjectLabel: "미술", studentLabel: "정하은", color: "amber" },
+  { day: 0, timeIndex: 3, subjectLabel: "음악", studentLabel: "한소율", color: "pink" },
+  { day: 2, timeIndex: 3, subjectLabel: "체육", studentLabel: "윤도현", color: "teal" },
+  { day: 4, timeIndex: 3, subjectLabel: "사회", studentLabel: "강예린", color: "orange" },
+];
+
+export default function LandingPage() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // 로그인 상태 확인
   useEffect(() => {
-    const checkLoginStatus = () => {
-      const userId = localStorage.getItem("supabase_user_id");
+    const check = () => {
+      const userId = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
       setIsLoggedIn(!!userId);
+      setChecked(true);
+      if (userId) {
+        router.replace("/schedule");
+      }
     };
 
-    checkLoginStatus();
-
-    // 로그인 상태 변화 감지
-    const handleAuthChange = () => {
-      checkLoginStatus();
-    };
-
-    // 로그아웃 이벤트 감지
-    window.addEventListener("userLoggedOut", handleAuthChange);
-
-    // 주기적으로 상태 확인 (로그인 시)
-    const interval = setInterval(checkLoginStatus, 1000);
+    check();
+    const interval = setInterval(check, 1000);
+    window.addEventListener("userLoggedOut", check);
 
     return () => {
-      window.removeEventListener("userLoggedOut", handleAuthChange);
       clearInterval(interval);
+      window.removeEventListener("userLoggedOut", check);
     };
-  }, []);
+  }, [router]);
 
-  return <HomeContent isLoggedIn={isLoggedIn} />;
+  if (!checked || isLoggedIn) return null;
+
+  return (
+    <>
+      <HeroSection />
+      <StepsSection />
+      <BottomCTA />
+    </>
+  );
 }
 
-function HomeContent({ isLoggedIn }: { isLoggedIn: boolean }) {
+function HeroSection() {
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        minHeight: "calc(100vh - 120px)", // nav + footer 높이 제외
-        padding: "40px 20px",
-      }}
-    >
-      <div
-        className="max-w-6xl mx-auto"
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        {/* Hero Section */}
-        <div
-          className="text-center mb-16"
-          style={{
-            marginBottom: "64px",
-          }}
-        >
-          <h1
-            className="text-6xl font-bold mb-6"
-            style={{
-              fontSize: "3.5rem",
-              fontWeight: "700",
-              color: "white",
-              margin: "0 0 24px 0",
-              textShadow: "0 4px 8px rgba(0, 0, 0, 0.3)",
-            }}
-          >
-            클래스 플래너
-          </h1>
-          <p
-            className="text-2xl mb-8"
-            style={{
-              fontSize: "1.5rem",
-              color: "rgba(255, 255, 255, 0.9)",
-              margin: "0 0 32px 0",
-              fontWeight: "300",
-            }}
-          >
-            효율적인 수업 관리와 시간표 작성 도구
+    <section className="pb-16 pt-12 px-6 md:px-12 lg:px-20">
+      <div className="flex flex-col md:flex-row items-center gap-12 max-w-7xl mx-auto">
+        <div className="flex-1">
+          <p className="text-caption text-accent font-[600] tracking-[0.1em] uppercase mb-3">
+            무료 시간표 관리 도구
           </p>
-
-          {!isLoggedIn && (
-            <div
-              className="mb-12"
-              style={{
-                marginBottom: "48px",
-                display: "flex",
-                gap: "16px",
-                justifyContent: "center",
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
+          <h1 className="text-hero font-[800] tracking-[-0.035em] leading-[1.15] mb-4 text-[--color-text-primary]">
+            수업 시간표,
+            <br />
+            5분이면 충분합니다
+          </h1>
+          <p className="text-[15px] leading-relaxed text-[--color-text-muted] mb-8">
+            학생 등록부터 시간표 완성, PDF 출력까지.
+            <br />
+            복잡한 설정 없이 바로 시작하세요.
+          </p>
+          <div className="flex gap-3">
+            <Link
+              href="/schedule"
+              className="bg-accent hover:bg-accent-hover text-admin-ink font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
             >
-              <Link
-                href="/schedule"
-                className="inline-block px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 hover:scale-105"
-                style={{
-                  backgroundColor: "white",
-                  color: "#667eea",
-                  padding: "16px 32px",
-                  borderRadius: "12px",
-                  textDecoration: "none",
-                  boxShadow: "0 8px 25px rgba(0, 0, 0, 0.2)",
-                  fontWeight: "600",
-                }}
-              >
-                바로 시작하기
-              </Link>
-              <Link
-                href="/login"
-                style={{
-                  color: "rgba(255, 255, 255, 0.75)",
-                  textDecoration: "underline",
-                  fontSize: "0.875rem",
-                }}
-              >
-                로그인하기
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Features Grid */}
-        <div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "32px",
-          }}
-        >
-          <Link
-            href="/students"
-            className="group"
-            style={{
-              textDecoration: "none",
-            }}
-          >
-            <div
-              className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.3s ease",
-              }}
+              무료로 시작하기
+            </Link>
+            <a
+              href="#how-it-works"
+              className="border border-[--color-border] text-[--color-text-muted] px-7 py-3 rounded-admin-md hover:bg-[--color-bg-tertiary] transition-colors"
             >
-              <div
-                className="text-5xl mb-6 text-center"
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "24px",
-                  textAlign: "center",
-                }}
-              >
-                👥
-              </div>
-              <h3
-                className="text-xl font-bold mb-4 text-center"
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  margin: "0 0 16px 0",
-                  textAlign: "center",
-                }}
-              >
-                학생 관리
-              </h3>
-              <p
-                className="text-gray-600 text-center leading-relaxed"
-                style={{
-                  color: "#6b7280",
-                  textAlign: "center",
-                  lineHeight: "1.6",
-                  margin: "0",
-                }}
-              >
-                학생 정보를 추가하고 관리하세요
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/subjects"
-            className="group"
-            style={{
-              textDecoration: "none",
-            }}
-          >
-            <div
-              className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                className="text-5xl mb-6 text-center"
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "24px",
-                  textAlign: "center",
-                }}
-              >
-                📚
-              </div>
-              <h3
-                className="text-xl font-bold mb-4 text-center"
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  margin: "0 0 16px 0",
-                  textAlign: "center",
-                }}
-              >
-                과목 관리
-              </h3>
-              <p
-                className="text-gray-600 text-center leading-relaxed"
-                style={{
-                  color: "#6b7280",
-                  textAlign: "center",
-                  lineHeight: "1.6",
-                  margin: "0",
-                }}
-              >
-                과목을 추가하고 색상을 설정하세요
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/schedule"
-            className="group"
-            style={{
-              textDecoration: "none",
-            }}
-          >
-            <div
-              className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                className="text-5xl mb-6 text-center"
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "24px",
-                  textAlign: "center",
-                }}
-              >
-                📅
-              </div>
-              <h3
-                className="text-xl font-bold mb-4 text-center"
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  margin: "0 0 16px 0",
-                  textAlign: "center",
-                }}
-              >
-                시간표
-              </h3>
-              <p
-                className="text-gray-600 text-center leading-relaxed"
-                style={{
-                  color: "#6b7280",
-                  textAlign: "center",
-                  lineHeight: "1.6",
-                  margin: "0",
-                }}
-              >
-                드래그 앤 드롭으로 수업을 배치하세요
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/about"
-            className="group"
-            style={{
-              textDecoration: "none",
-            }}
-          >
-            <div
-              className="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
-              style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                className="text-5xl mb-6 text-center"
-                style={{
-                  fontSize: "3rem",
-                  marginBottom: "24px",
-                  textAlign: "center",
-                }}
-              >
-                📖
-              </div>
-              <h3
-                className="text-xl font-bold mb-4 text-center"
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  margin: "0 0 16px 0",
-                  textAlign: "center",
-                }}
-              >
-                소개
-              </h3>
-              <p
-                className="text-gray-600 text-center leading-relaxed"
-                style={{
-                  color: "#6b7280",
-                  textAlign: "center",
-                  lineHeight: "1.6",
-                  margin: "0",
-                }}
-              >
-                클래스 플래너에 대해 자세히 알아보세요
-              </p>
-            </div>
-          </Link>
-        </div>
-
-        {/* Additional Info for Logged In Users */}
-        {isLoggedIn && (
-          <div
-            className="mt-16 text-center"
-            style={{
-              marginTop: "64px",
-              textAlign: "center",
-            }}
-          >
-            <p
-              className="text-lg"
-              style={{
-                fontSize: "1.125rem",
-                color: "rgba(255, 255, 255, 0.8)",
-                margin: "0",
-              }}
-            >
-              로그인하신 것을 환영합니다! 위의 기능들을 자유롭게 사용해보세요.
-            </p>
+              자세히 보기 ↓
+            </a>
           </div>
-        )}
+        </div>
+        <div className="flex-[1.2] w-full">
+          <SchedulePreview
+            data={LANDING_DEMO_DATA}
+            times={["15:00", "16:00", "17:00", "18:00"]}
+            size="sm"
+          />
+        </div>
       </div>
-    </div>
+    </section>
+  );
+}
+
+function StepsSection() {
+  const steps = [
+    {
+      n: 1,
+      title: "학생·과목 등록",
+      desc: "이름만 입력하면 끝. 검색으로 빠르게 찾고, 과목별 색상이 자동 배정됩니다.",
+    },
+    {
+      n: 2,
+      title: "시간표에 배치",
+      desc: "요일과 시간을 선택하고 수업을 추가. 한눈에 보이는 주간 시간표가 완성됩니다.",
+    },
+    {
+      n: 3,
+      title: "PDF로 출력",
+      desc: "완성된 시간표를 PDF로 다운로드. 바로 인쇄해서 학원에 게시할 수 있습니다.",
+    },
+  ];
+
+  return (
+    <section
+      id="how-it-works"
+      className="py-16 px-6 md:px-12 lg:px-20 bg-[--color-bg-secondary]"
+    >
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-section font-bold text-center mb-2 tracking-[-0.02em] text-[--color-text-primary]">
+          이렇게 만들어집니다
+        </h2>
+        <p className="text-label text-center text-[--color-text-muted] mb-10">
+          3단계면 시간표 완성
+        </p>
+        <div className="flex flex-col md:flex-row gap-6">
+          {steps.map(({ n, title, desc }) => (
+            <div
+              key={n}
+              className="flex-1 bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-7"
+            >
+              <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center font-[800] text-admin-ink text-base mb-4">
+                {n}
+              </div>
+              <p className="font-bold text-base text-[--color-text-primary] mb-2">
+                {title}
+              </p>
+              <p className="text-label text-[--color-text-muted] leading-relaxed">
+                {desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BottomCTA() {
+  return (
+    <section className="py-12 px-6 text-center bg-admin-ink">
+      <h2 className="text-page font-[800] text-white mb-2 tracking-[-0.035em]">
+        지금 바로 시작하세요
+      </h2>
+      <p className="text-sm text-[--color-text-muted] mb-6">
+        회원가입 없이 바로 사용할 수 있습니다. 무료.
+      </p>
+      <Link
+        href="/schedule"
+        className="inline-block bg-accent hover:bg-accent-hover text-admin-ink font-bold px-9 py-3.5 rounded-admin-md shadow-admin-md transition-colors"
+      >
+        무료로 시작하기
+      </Link>
+    </section>
   );
 }

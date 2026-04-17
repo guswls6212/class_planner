@@ -32,24 +32,24 @@ describe("Button Component", () => {
 
     it("다양한 variant가 올바르게 적용되어야 한다", () => {
       const { rerender } = render(<Button variant="primary">Primary</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_primary_716912");
+      expect(screen.getByRole("button").className).toContain("bg-[--color-primary]");
 
       rerender(<Button variant="secondary">Secondary</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_secondary_716912");
+      expect(screen.getByRole("button").className).toContain("bg-[--color-secondary]");
 
       rerender(<Button variant="danger">Danger</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_danger_716912");
+      expect(screen.getByRole("button").className).toContain("bg-[--color-danger]");
     });
 
     it("다양한 size가 올바르게 적용되어야 한다", () => {
       const { rerender } = render(<Button size="small">Small</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_small_716912");
+      expect(screen.getByRole("button").className).toContain("min-h-[28px]");
 
       rerender(<Button size="medium">Medium</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_medium_716912");
+      expect(screen.getByRole("button").className).toContain("min-h-[36px]");
 
       rerender(<Button size="large">Large</Button>);
-      expect(screen.getByRole("button")).toHaveClass("_large_716912");
+      expect(screen.getByRole("button").className).toContain("min-h-[44px]");
     });
   });
 
@@ -126,7 +126,7 @@ describe("Button Component", () => {
       render(<Button loading>로딩 중</Button>);
 
       const button = screen.getByRole("button");
-      expect(button).toHaveClass("_loading_716912");
+      expect(button.className).toContain("cursor-not-allowed");
 
       // 스피너 아이콘이 있는지 확인 (실제 구현에 따라 조정)
       const spinner = button.querySelector('[data-testid="spinner"]');

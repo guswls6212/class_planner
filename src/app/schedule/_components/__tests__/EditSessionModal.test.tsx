@@ -21,6 +21,9 @@ const defaultProps = {
   ],
   tempSubjectId: "sub-1",
   onSubjectChange: vi.fn(),
+  teachers: [],
+  tempTeacherId: "",
+  onTeacherChange: vi.fn(),
   weekdays: ["월", "화", "수", "목", "금", "토", "일"],
   defaultWeekday: 0,
   startTime: "09:00",
@@ -117,5 +120,42 @@ describe("EditSessionModal", () => {
       />
     );
     expect(screen.getByText("김민수")).toBeInTheDocument();
+  });
+
+  describe("접근성 (a11y)", () => {
+    it('isOpen=true일 때 role="dialog"가 존재한다', () => {
+      render(<EditSessionModal {...defaultProps} />);
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it('isOpen=true일 때 aria-modal="true"가 존재한다', () => {
+      render(<EditSessionModal {...defaultProps} />);
+      expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true");
+    });
+
+    it("Escape 키 입력 시 onCancel을 호출한다", () => {
+      const onCancel = vi.fn();
+      render(<EditSessionModal {...defaultProps} onCancel={onCancel} />);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(onCancel).toHaveBeenCalled();
+    });
+
+    it("요일 select는 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const weekdaySelect = screen.getByLabelText("요일");
+      expect(weekdaySelect).toBeInTheDocument();
+    });
+
+    it("시작 시간 input은 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const startTimeInput = screen.getByLabelText("시작 시간");
+      expect(startTimeInput).toBeInTheDocument();
+    });
+
+    it("종료 시간 input은 label과 연결되어야 한다", () => {
+      render(<EditSessionModal {...defaultProps} />);
+      const endTimeInput = screen.getByLabelText("종료 시간");
+      expect(endTimeInput).toBeInTheDocument();
+    });
   });
 });

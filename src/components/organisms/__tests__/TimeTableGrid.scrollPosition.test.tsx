@@ -61,9 +61,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
   describe("스크롤 위치 저장", () => {
     it("스크롤 시 localStorage에 위치를 저장해야 한다", async () => {
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 스크롤 이벤트 발생
       fireEvent.scroll(gridElement, {
@@ -84,9 +82,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
 
     it("스크롤 위치 저장 시 타임스탬프를 포함해야 한다", async () => {
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       fireEvent.scroll(gridElement, {
         target: { scrollLeft: 300, scrollTop: 50 },
@@ -109,9 +105,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       });
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 에러가 발생해도 컴포넌트가 정상 동작해야 함
       expect(() => {
@@ -134,9 +128,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // useEffect에서 스크롤 위치가 복원되어야 함
       await waitFor(() => {
@@ -191,9 +183,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 드래그 종료 이벤트 시뮬레이션
       const dragEndHandler = vi.fn();
@@ -225,9 +215,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // useEffect에서 초기 복원이 실행되어야 함
       await waitFor(
@@ -249,9 +237,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 스크롤 위치를 이미 설정된 상태로 시뮬레이션
       Object.defineProperty(gridElement, "scrollLeft", {
@@ -277,9 +263,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
   describe("사용자 스크롤 동작", () => {
     it("사용자가 스크롤할 때는 위치를 저장만 하고 복원하지 않아야 한다", async () => {
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 사용자가 스크롤을 이동
       Object.defineProperty(gridElement, "scrollLeft", {
@@ -321,9 +305,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
       localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 초기 로드 시 복원
       await waitFor(() => {
@@ -365,9 +347,7 @@ describe("TimeTableGrid 스크롤 위치 보존", () => {
   describe("스크롤바 상태 업데이트", () => {
     it("스크롤 시 가상 스크롤바 상태를 업데이트해야 한다", () => {
       const { container } = render(<TimeTableGrid {...defaultProps} />);
-      const gridElement = container.querySelector(
-        '[data-testid="time-table-grid"]'
-      ) as HTMLElement;
+      const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
       // 스크롤 이벤트 발생
       fireEvent.scroll(gridElement, { target: { scrollLeft: 300 } });

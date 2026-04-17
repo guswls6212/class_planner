@@ -27,22 +27,28 @@ vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
       enrollments: [
         { id: "enrollment-1", studentId: "student-1", subjectId: "subject-1" },
       ],
+      teachers: [],
       version: "1.0",
       lastModified: "2024-01-01T00:00:00.000Z",
     },
     loading: false,
     error: null,
     updateData: vi.fn(),
-  })),
-}));
-
-// Mock useStudentPanel
-vi.mock("../../../hooks/useStudentPanel", () => ({
-  useStudentPanel: vi.fn(() => ({
-    panelPosition: { x: 0, y: 0 },
-    setPanelPosition: vi.fn(),
-    isPanelVisible: true,
-    setIsPanelVisible: vi.fn(),
+    refreshData: vi.fn(),
+    clearError: vi.fn(),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    deleteSession: vi.fn(),
+    addEnrollment: vi.fn(),
+    deleteEnrollment: vi.fn(),
+    addTeacher: vi.fn(),
+    updateTeacher: vi.fn(),
+    deleteTeacher: vi.fn(),
+    studentCount: 2,
+    subjectCount: 2,
+    sessionCount: 1,
+    enrollmentCount: 1,
+    teacherCount: 0,
   })),
 }));
 
@@ -80,8 +86,8 @@ vi.mock("../../../components/organisms/TimeTableGrid", () => ({
   default: () => <div data-testid="time-table-grid">TimeTableGrid</div>,
 }));
 
-vi.mock("../../../components/organisms/StudentPanel", () => ({
-  default: () => <div data-testid="student-panel">StudentPanel</div>,
+vi.mock("../_components/StudentFilterChipBar", () => ({
+  default: () => <div data-testid="student-filter-chip-bar">StudentFilterChipBar</div>,
 }));
 
 vi.mock("../../../components/molecules/PDFDownloadButton", () => ({
@@ -98,7 +104,6 @@ describe("Schedule Page", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
-      expect(screen.getByTestId("student-panel")).toBeInTheDocument();
       expect(screen.getByTestId("pdf-download-button")).toBeInTheDocument();
     });
   });
@@ -120,6 +125,7 @@ describe("Schedule Page", () => {
         subjects: [],
         sessions: [],
         enrollments: [],
+        teachers: [],
         version: "1.0",
       },
       loading: true,
@@ -132,15 +138,29 @@ describe("Schedule Page", () => {
       deleteSession: vi.fn(),
       addEnrollment: vi.fn(),
       deleteEnrollment: vi.fn(),
+      addTeacher: vi.fn(),
+      updateTeacher: vi.fn(),
+      deleteTeacher: vi.fn(),
       studentCount: 0,
       subjectCount: 0,
       sessionCount: 0,
       enrollmentCount: 0,
+      teacherCount: 0,
     });
 
     render(<SchedulePage />);
 
     expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
+  });
+
+  it("schedule modals return null when closed (lazy-load boundary test)", () => {
+    render(<SchedulePage />);
+    // EditSessionModal and GroupSessionModal both return null when isOpen=false.
+    // They are also lazy-loaded via next/dynamic; neither should produce any DOM
+    // output on cold render. The modal-backdrop div is the outermost element each
+    // modal renders when open — its absence confirms the closed state.
+    // (The build-chunk split is the ground truth for lazy-loading itself.)
+    expect(document.querySelector(".modal-backdrop")).toBeNull();
   });
 
   it("에러 상태일 때 적절히 처리되어야 한다", () => {
@@ -151,6 +171,7 @@ describe("Schedule Page", () => {
         subjects: [],
         sessions: [],
         enrollments: [],
+        teachers: [],
         version: "1.0",
       },
       loading: false,
@@ -163,10 +184,14 @@ describe("Schedule Page", () => {
       deleteSession: vi.fn(),
       addEnrollment: vi.fn(),
       deleteEnrollment: vi.fn(),
+      addTeacher: vi.fn(),
+      updateTeacher: vi.fn(),
+      deleteTeacher: vi.fn(),
       studentCount: 0,
       subjectCount: 0,
       sessionCount: 0,
       enrollmentCount: 0,
+      teacherCount: 0,
     });
 
     render(<SchedulePage />);

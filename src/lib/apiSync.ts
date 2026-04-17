@@ -80,14 +80,21 @@ function fireAndForget(
 
 export function syncStudentCreate(
   userId: string | null,
-  data: { name: string; gender?: string; birthDate?: string }
+  data: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
   const makeRequest = () =>
     fetch(`/api/students?userId=${encodeURIComponent(userId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: data.name, gender: data.gender, birthDate: data.birthDate }),
+      body: JSON.stringify({
+        name: data.name,
+        gender: data.gender,
+        birthDate: data.birthDate,
+        grade: data.grade,
+        school: data.school,
+        phone: data.phone,
+      }),
     });
   fireAndForget(makeRequest, "student:create");
 }
@@ -95,14 +102,21 @@ export function syncStudentCreate(
 export function syncStudentUpdate(
   userId: string | null,
   id: string,
-  data: { name?: string; gender?: string; birthDate?: string }
+  data: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
   const makeRequest = () =>
     fetch(`/api/students/${id}?userId=${encodeURIComponent(userId)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: data.name, gender: data.gender, birthDate: data.birthDate }),
+      body: JSON.stringify({
+        name: data.name,
+        gender: data.gender,
+        birthDate: data.birthDate,
+        grade: data.grade,
+        school: data.school,
+        phone: data.phone,
+      }),
     });
   fireAndForget(makeRequest, "student:update");
 }
@@ -217,4 +231,44 @@ export function syncSessionDelete(userId: string | null, id: string): void {
   const makeRequest = () =>
     fetch(`/api/sessions?id=${id}`, { method: "DELETE" });
   fireAndForget(makeRequest, "session:delete");
+}
+
+// ===== Teachers =====
+
+export function syncTeacherCreate(
+  userId: string | null,
+  data: { name: string; color: string; userId?: string | null }
+): void {
+  if (!userId) return;
+  const makeRequest = () =>
+    fetch(`/api/teachers?userId=${encodeURIComponent(userId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  fireAndForget(makeRequest, "teacher:create");
+}
+
+export function syncTeacherUpdate(
+  userId: string | null,
+  id: string,
+  data: { name?: string; color?: string; userId?: string | null }
+): void {
+  if (!userId) return;
+  const makeRequest = () =>
+    fetch(`/api/teachers/${id}?userId=${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  fireAndForget(makeRequest, "teacher:update");
+}
+
+export function syncTeacherDelete(userId: string | null, id: string): void {
+  if (!userId) return;
+  const makeRequest = () =>
+    fetch(`/api/teachers/${id}?userId=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+    });
+  fireAndForget(makeRequest, "teacher:delete");
 }

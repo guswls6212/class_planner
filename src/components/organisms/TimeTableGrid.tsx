@@ -8,15 +8,16 @@ import React, {
   useState,
 } from "react";
 import { logger } from "../../lib/logger";
-import type { Session, Subject } from "../../lib/planner";
+import type { Session, Subject, Teacher } from "../../lib/planner";
+import type { ColorByMode } from "../../hooks/useColorBy";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import TimeTableRow from "../molecules/TimeTableRow";
 
-// 🆕 드래그 상태 타입 정의 (간소화)
 interface DragPreviewState {
-  draggedSession: Session | null; // 현재 드래그 중인 세션 객체 (드래그 시작 시 설정)
-  targetWeekday: number | null; // 드래그 대상 요일 (0=월요일, 1=화요일, ..., 6=일요일)
-  targetTime: string | null; // 드래그 대상 시간 (예: "09:00", "10:30")
-  targetYPosition: number | null; // 드래그 대상 Y축 위치 (픽셀 단위, 0부터 시작)
+  draggedSession: Session | null;
+  targetWeekday: number | null;
+  targetTime: string | null;
+  targetYPosition: number | null;
 }
 
 interface TimeTableGridProps {
@@ -25,20 +26,24 @@ interface TimeTableGridProps {
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>;
   students: Array<{ id: string; name: string }>;
   onSessionClick: (session: Session) => void;
+  onSessionDelete?: (session: Session) => void;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onSessionDrop?: (
     sessionId: string,
     weekday: number,
     time: string,
     yPosition: number
-  ) => void; // 🆕 세션 드롭 핸들러
+  ) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
   ref?: React.Ref<HTMLDivElement>;
-  selectedStudentId?: string; // 🆕 선택된 학생 ID 추가
-  isAnyDragging?: boolean; // 🆕 전역 드래그 상태 (학생 드래그와 세션 드래그 모두 포함)
-  isStudentDragging?: boolean; // 🆕 학생 드래그 상태 추가
+  selectedStudentIds?: string[];
+  isAnyDragging?: boolean;
+  isStudentDragging?: boolean;
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
+  isReadOnly?: boolean;
 }
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
@@ -49,18 +54,28 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       enrollments,
       students,
       onSessionClick,
+      onSessionDelete,
       onDrop,
-      onSessionDrop, // 🆕 세션 드롭 핸들러
+      onSessionDrop,
       onEmptySpaceClick,
       className = "",
       style = {},
-      selectedStudentId, // 🆕 선택된 학생 ID 추가
-      isAnyDragging = false, // 🆕 전역 드래그 상태 추가
-      isStudentDragging = false, // 🆕 학생 드래그 상태 추가
+      selectedStudentIds,
+      isAnyDragging = false,
+      isStudentDragging = false,
+      teachers = [],
+      colorBy = "subject",
+      isReadOnly = false,
     },
     ref
   ) => {
-    // 🆕 드래그 상태 관리 (간소화)
+    // 반응형: 모바일 뷰포트 감지 (SSR-safe)
+    const isMobile = useMediaQuery("(max-width: 767px)");
+
+    // 터치 디바이스 감지 (drag-and-drop 비활성화용)
+    const isTouchDevice =
+      typeof window !== "undefined" && "ontouchstart" in window;
+
     const [dragPreview, setDragPreview] = useState<DragPreviewState>({
       draggedSession: null,
       targetWeekday: null,
@@ -68,7 +83,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       targetYPosition: null,
     });
 
-    // 🆕 가상 스크롤바 상태 관리
     const [scrollbarState, setScrollbarState] = useState({
       thumbWidth: 0,
       thumbPosition: 0,
@@ -78,7 +92,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const gridRef = useRef<HTMLDivElement>(null);
     const scrollbarThumbRef = useRef<HTMLDivElement>(null);
 
-    // 🆕 스크롤 위치 보존을 위한 ref
     const scrollPositionRef = useRef<{ scrollLeft: number; scrollTop: number }>(
       {
         scrollLeft: 0,
@@ -86,7 +99,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       }
     );
 
-    // 🆕 가상 스크롤바 업데이트 함수
     const updateScrollbar = useCallback(() => {
       const element = gridRef.current;
       if (!element) return;
@@ -95,7 +107,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       const contentWidth = element.scrollWidth;
       const scrollLeft = element.scrollLeft;
 
-      // 🆕 스크롤 위치 저장
       scrollPositionRef.current = {
         scrollLeft: element.scrollLeft,
         scrollTop: element.scrollTop,
@@ -122,13 +133,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       }));
     }, []);
 
-    // 🆕 스크롤바 썸 드래그 시작
     const handleScrollbarMouseDown = useCallback((e: React.MouseEvent) => {
       e.preventDefault();
       setScrollbarState((prev) => ({ ...prev, isDragging: true }));
     }, []);
 
-    // 🆕 스크롤바 썸 드래그 중
     const handleScrollbarMouseMove = useCallback(
       (e: MouseEvent) => {
         if (!scrollbarState.isDragging) return;
@@ -157,12 +166,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [scrollbarState.isDragging, scrollbarState.thumbWidth]
     );
 
-    // 🆕 스크롤바 썸 드래그 종료
     const handleScrollbarMouseUp = useCallback(() => {
       setScrollbarState((prev) => ({ ...prev, isDragging: false }));
     }, []);
 
-    // 🆕 스크롤바 트랙 클릭
     const handleScrollbarTrackClick = useCallback((e: React.MouseEvent) => {
       const element = gridRef.current;
       if (!element) return;
@@ -179,12 +186,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       element.scrollLeft = newScrollLeft;
     }, []);
 
-    // 🆕 초기 스크롤바 설정
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
 
-      // 초기 설정
       const timer = setTimeout(updateScrollbar, 100);
 
       return () => {
@@ -192,7 +197,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       };
     }, [updateScrollbar]);
 
-    // 🆕 localStorage에서 스크롤 위치 저장/복원
     const saveScrollPosition = useCallback(() => {
       const element = gridRef.current;
       if (!element) return;
@@ -210,11 +214,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         );
       } catch (error) {
         // localStorage 에러는 무시
-        // console.warn('스크롤 위치 저장 실패:', error);
       }
     }, []);
 
-    // 🆕 저장된 스크롤 위치를 가져오는 함수 (동기적)
     const getSavedScrollPosition = useCallback(() => {
       try {
         const savedData = localStorage.getItem("schedule_scroll_position");
@@ -243,14 +245,13 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       }
     }, [getSavedScrollPosition]);
 
-    // 🆕 초기 로드 시에만 스크롤 위치 복원 (컴포넌트 마운트 시 한 번만)
+    // 마운트 시 한 번만 스크롤 위치 복원 (초기 상태가 0,0일 때만)
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
 
       const savedPosition = getSavedScrollPosition();
       if (savedPosition) {
-        // 초기 상태(0,0)일 때만 복원
         if (
           element.scrollLeft === 0 &&
           element.scrollTop === 0 &&
@@ -260,9 +261,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           element.scrollTop = savedPosition.scrollTop;
         }
       }
-    }, [getSavedScrollPosition]); // 의존성 배열에 getSavedScrollPosition만 포함
+    }, [getSavedScrollPosition]);
 
-    // 🆕 사용자 스크롤 시 위치 저장 (debounce 적용)
     useEffect(() => {
       const element = gridRef.current;
       if (!element) return;
@@ -270,8 +270,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       let saveTimer: NodeJS.Timeout;
       const handleScrollWithSave = () => {
         updateScrollbar();
-
-        // 사용자 스크롤 시에만 위치 저장 (debounce 적용)
         clearTimeout(saveTimer);
         saveTimer = setTimeout(saveScrollPosition, 300);
       };
@@ -284,7 +282,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       };
     }, [updateScrollbar, saveScrollPosition]);
 
-    // 🆕 전역 마우스 이벤트 리스너
     useEffect(() => {
       if (scrollbarState.isDragging) {
         document.addEventListener("mousemove", handleScrollbarMouseMove);
@@ -301,7 +298,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       handleScrollbarMouseUp,
     ]);
 
-    // 🆕 30분 단위로 변경: 9:00 ~ 24:00 (30개 열)
     const timeSlots30Min = useMemo(() => {
       const slots: string[] = [];
       for (let hour = 9; hour < 24; hour++) {
@@ -313,15 +309,13 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const timeCols = timeSlots30Min.length; // 30개 열
 
-    // 🚀 간단한 세션 Y축 위치 계산: 논리적 위치(1,2,3...)를 픽셀 위치로 변환
     const getSessionYPositions = useCallback(
       (weekday: number): Map<string, number> => {
         const daySessions = sessions?.get(weekday) || [];
         const sessionYPositions = new Map<string, number>();
 
-        // 각 세션의 논리적 위치를 픽셀 위치로 변환
         daySessions.forEach((session) => {
-          const logicalPosition = session.yPosition || 1; // 기본값: 1
+          const logicalPosition = session.yPosition || 1;
           const pixelPosition = (logicalPosition - 1) * SESSION_CELL_HEIGHT;
           sessionYPositions.set(session.id, pixelPosition);
         });
@@ -331,24 +325,21 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions]
     );
 
-    // 🚀 간단한 요일별 높이 계산: 데이터베이스의 maxYPosition 사용
     const getWeekdayHeight = useCallback(
       (weekday: number): number => {
         const daySessions = sessions?.get(weekday) || [];
 
         if (daySessions.length === 0) {
-          return 49; // 기본 높이
+          return 49;
         }
 
-        // 데이터베이스에서 저장된 maxYPosition 찾기
         const maxYPosition = Math.max(
           ...daySessions.map((session) => session.yPosition || 1)
         );
 
-        // 논리적 위치를 픽셀 높이로 변환
         const height = maxYPosition * SESSION_CELL_HEIGHT;
 
-        return Math.max(49, height); // 최소 높이 49px 보장
+        return Math.max(49, height);
       },
       [sessions]
     );
@@ -365,25 +356,31 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [weekdayHeights]
     );
 
-    // 🆕 그리드 템플릿 열을 30분 단위로 변경: 80px + 30개 × 100px (학생 이름 표시를 위해)
+    // 그리드 템플릿 열: 모바일(< 768px)에서는 축소된 너비 사용
     const gridTemplateColumns = useMemo(
-      () => `80px repeat(${timeCols}, 100px)`,
-      [timeCols]
+      () =>
+        isMobile
+          ? `56px repeat(${timeCols}, 64px)` // 모바일: 요일 56px + 열 64px
+          : `80px repeat(${timeCols}, 100px)`, // 데스크탑: 요일 80px + 열 100px
+      [timeCols, isMobile]
     );
 
-    // 🆕 드래그 시작 핸들러 (간소화)
-    const handleDragStart = useCallback((session: Session) => {
-      setDragPreview({
-        draggedSession: session,
-        targetWeekday: null,
-        targetTime: null,
-        targetYPosition: null,
-      });
-    }, []);
+    const handleDragStart = useCallback(
+      (session: Session) => {
+        if (isTouchDevice) return;
+        setDragPreview({
+          draggedSession: session,
+          targetWeekday: null,
+          targetTime: null,
+          targetYPosition: null,
+        });
+      },
+      [isTouchDevice]
+    );
 
-    // 🆕 드래그 오버 핸들러 (간소화)
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
+        if (isTouchDevice) return;
         if (!dragPreview.draggedSession) return;
 
         setDragPreview((prev) => ({
@@ -393,14 +390,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           targetYPosition: yPosition,
         }));
       },
-      [dragPreview.draggedSession]
+      [dragPreview.draggedSession, isTouchDevice]
     );
 
-    // 🆕 드래그 종료 핸들러 (간소화)
     const handleDragEnd = useCallback(() => {
-      // DropZone에서 이미 드롭 처리를 했으므로 여기서는 상태만 초기화
-      // 중복 호출 방지를 위해 onSessionDrop 호출 제거
-      logger.info("🔄 TimeTableGrid 드래그 종료 - 상태 초기화만 수행");
+      logger.info("TimeTableGrid 드래그 종료");
 
       setDragPreview({
         draggedSession: null,
@@ -409,22 +403,21 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetYPosition: null,
       });
 
-      // 🆕 세션 드래그앤드롭 후에만 스크롤 위치 복원
-      setTimeout(() => {
+      // 세션 드래그앤드롭 후 스크롤 위치 복원 (다음 페인트 직후)
+      requestAnimationFrame(() => {
         const element = gridRef.current;
         if (element) {
           const savedPosition = getSavedScrollPosition();
           if (savedPosition) {
-            // 드래그앤드롭 후에는 저장된 위치로 완전 복원
             element.scrollLeft = savedPosition.scrollLeft;
             element.scrollTop = savedPosition.scrollTop;
           }
         }
-      }, 100); // 그리드 리렌더링 완료 후 복원
+      });
     }, [getSavedScrollPosition]);
 
     return (
-      <div className="time-table-container">
+      <div className="time-table-container" data-surface="surface" data-testid="time-table-grid">
         <div
           ref={(node) => {
             if (ref) {
@@ -435,57 +428,27 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               }
             }
 
-            // 🆕 ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
+            // ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
 
             gridRef.current = node;
           }}
-          className={`time-table-grid ${className}`}
-          data-testid="time-table-grid"
+          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
           style={{
-            display: "grid",
             gridTemplateColumns,
             gridTemplateRows,
-            backgroundColor: "var(--color-bg-primary)",
-            border: "1px solid var(--color-border-grid)",
-            borderRadius: "8px 8px 0 0", // 위쪽만 둥글게
-            // 그리드 내부에서만 스크롤되도록 설정
-            overflowY: "auto", // 세로 스크롤은 필요할 때만 표시
-            overflowX: "auto", // 가로 스크롤 활성화
-            position: "relative",
-            isolation: "isolate",
-            maxHeight: "80vh", // 최대 높이 제한으로 스크롤 활성화
             ...style,
           }}
         >
           {/* 좌상단 빈칸 */}
-          <div style={{ backgroundColor: "var(--color-background)" }} />
+          <div className="bg-[var(--color-bg-primary)]" />
 
-          {/* 🆕 시간 헤더 (X축 상단) - 30분 단위 */}
+          {/* 시간 헤더 (X축 상단) */}
           {timeSlots30Min.map((timeString, index) => {
             const isLastTime = index === timeSlots30Min.length - 1;
             return (
               <div
                 key={timeString}
-                className="shadow-sm"
-                style={{
-                  // 완전 불투명 배경으로 세션 셀과의 겹침 제거
-                  backgroundColor: "var(--color-bg-primary)", // 테마별 배경색 사용
-                  padding: "4px", // 🆕 패딩을 줄여서 30분 단위에 맞춤
-                  textAlign: "center",
-                  fontSize: "11px", // 🆕 폰트 크기를 줄여서 30분 단위에 맞춤
-                  color: "var(--color-text-secondary)",
-                  border: "1px solid var(--color-border)",
-                  borderRight: isLastTime
-                    ? "1px solid var(--color-border)"
-                    : "1px solid var(--color-border-grid)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "40px",
-                  position: "sticky",
-                  top: 0,
-                  zIndex: 999, // 세션보다 높게
-                }}
+                className={`shadow-sm flex items-center justify-center p-1 text-center ${isMobile ? "text-[9px]" : "text-[11px]"} text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] h-[40px] sticky top-0 z-[999] ${isLastTime ? "border-r-[var(--color-border)]" : "border-r-[var(--color-border-grid)]"}`}
               >
                 {timeString}
               </div>
@@ -504,52 +467,37 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 enrollments={enrollments}
                 students={students}
                 sessionYPositions={getSessionYPositions(weekday)}
-                onSessionClick={onSessionClick}
-                onDrop={onDrop}
-                onSessionDrop={onSessionDrop} // 🆕 세션 드롭 핸들러 전달
-                onEmptySpaceClick={onEmptySpaceClick}
-                selectedStudentId={selectedStudentId}
-                isAnyDragging={isAnyDragging || isStudentDragging} // 🆕 전역 드래그 상태 전달 (세션 드래그 + 학생 드래그)
-                // 🆕 드래그 핸들러들 전달
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-                dragPreview={dragPreview}
+                onSessionClick={isReadOnly ? () => {} : onSessionClick}
+                onSessionDelete={isReadOnly ? undefined : onSessionDelete}
+                onDrop={isReadOnly ? () => {} : onDrop}
+                onSessionDrop={isReadOnly ? undefined : onSessionDrop}
+                onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
+                selectedStudentIds={selectedStudentIds}
+                isAnyDragging={isAnyDragging || isStudentDragging}
+                teachers={teachers}
+                colorBy={colorBy}
+                isMobile={isMobile}
+                // 터치 디바이스에서는 drag-and-drop 핸들러를 전달하지 않음
+                onDragStart={isTouchDevice ? undefined : handleDragStart}
+                onDragOver={isTouchDevice ? undefined : handleDragOver}
+                onDragEnd={isTouchDevice ? undefined : handleDragEnd}
+                dragPreview={isTouchDevice ? undefined : dragPreview}
               />
             );
           })}
         </div>
 
-        {/* 🆕 가상 가로 스크롤바 */}
+        {/* 가상 가로 스크롤바 */}
         <div
           className="virtual-scrollbar-container"
-          style={{
-            position: "sticky",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "12px",
-            backgroundColor: "#f0f0f0",
-            borderTop: "1px solid #ddd",
-            borderRadius: "0 0 8px 8px",
-            zIndex: 1000,
-            cursor: "pointer",
-          }}
           onClick={handleScrollbarTrackClick}
         >
           <div
             ref={scrollbarThumbRef}
             className="virtual-scrollbar-thumb"
             style={{
-              position: "absolute",
-              bottom: "1px",
               left: `${scrollbarState.thumbPosition}px`,
-              height: "10px",
               width: `${scrollbarState.thumbWidth}px`,
-              backgroundColor: "#666",
-              borderRadius: "5px",
-              cursor: "pointer",
-              zIndex: 1001,
             }}
             onMouseDown={handleScrollbarMouseDown}
           />

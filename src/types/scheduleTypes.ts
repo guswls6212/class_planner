@@ -4,6 +4,7 @@ import type { Session, Student } from "../lib/planner";
 export interface GroupSessionData {
   studentIds: string[];
   subjectId: string;
+  teacherId?: string;
   weekday: number;
   startTime: string;
   endTime: string;

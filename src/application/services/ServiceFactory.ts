@@ -8,6 +8,7 @@ import { EnrollmentApplicationServiceImpl } from "./EnrollmentApplicationService
 import { SessionApplicationServiceImpl } from "./SessionApplicationService";
 import { StudentApplicationServiceImpl } from "./StudentApplicationService";
 import { SubjectApplicationServiceImpl } from "./SubjectApplicationService";
+import { TeacherApplicationServiceImpl } from "./TeacherApplicationService";
 
 /**
  * Application Services Factory
@@ -51,6 +52,14 @@ export class ServiceFactory {
   }
 
   /**
+   * TeacherApplicationService 인스턴스를 생성합니다.
+   */
+  static createTeacherService(): TeacherApplicationServiceImpl {
+    const teacherRepository = RepositoryRegistry.getTeacherRepository() as import('@/infrastructure/interfaces').TeacherRepository;
+    return new TeacherApplicationServiceImpl(teacherRepository);
+  }
+
+  /**
    * 모든 Application Services를 생성합니다.
    * @returns 모든 서비스 인스턴스
    */
@@ -60,6 +69,7 @@ export class ServiceFactory {
       subjectService: this.createSubjectService(),
       sessionService: this.createSessionService(),
       enrollmentService: this.createEnrollmentService(),
+      teacherService: this.createTeacherService(),
     };
   }
 }

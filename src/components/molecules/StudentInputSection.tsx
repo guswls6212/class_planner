@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
-import styles from './StudentInputSection.module.css';
 
 interface StudentInputSectionProps {
   newStudentName: string;
@@ -24,7 +23,6 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
 }) => {
   const [internalErrorMessage, setInternalErrorMessage] = useState<string>('');
 
-  // 외부 에러 메시지가 있으면 그것을 우선 사용, 없으면 내부 에러 메시지 사용
   const errorMessage = externalErrorMessage || internalErrorMessage;
 
   const handleAddStudent = () => {
@@ -34,20 +32,17 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
       return;
     }
 
-    // 길이 제한: 최대 4글자
     if (name.length > 4) {
       setInternalErrorMessage('학생 이름은 최대 4글자까지 가능합니다.');
       return;
     }
 
-    // 중복 이름 체크
     const isDuplicate = students.some(student => student.name === name);
     if (isDuplicate) {
       setInternalErrorMessage('이미 존재하는 학생 이름입니다.');
       return;
     }
 
-    // onAddStudent 호출
     onAddStudent(name);
     setInternalErrorMessage('');
   };
@@ -56,16 +51,17 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
     const value = e.target.value;
     const limited = value.slice(0, 4);
     onNewStudentNameChange(limited);
-    // 입력 중일 때는 내부 에러 메시지 숨김
     if (internalErrorMessage) {
       setInternalErrorMessage('');
     }
   };
 
   return (
-    <div className={`${styles.container} ${className}`} style={style}>
-      <div className={styles.input}>
+    <div className={`relative mb-4 flex flex-wrap items-center gap-2 ${className}`} style={style}>
+      <div className="flex-1">
+        <label htmlFor="student-name-input" className="sr-only">학생 이름</label>
         <Input
+          id="student-name-input"
           placeholder="학생 이름 (검색 가능)"
           value={newStudentName}
           onChange={handleInputChange}
@@ -78,10 +74,14 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
           }}
         />
       </div>
-      <div className={styles.button}>
+      <div className="shrink-0">
         <Button onClick={handleAddStudent}>추가</Button>
       </div>
-      {errorMessage && <div className={styles.error}>{errorMessage}</div>}
+      {errorMessage && (
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-500">
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 };

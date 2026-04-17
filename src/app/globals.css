@@ -1,3 +1,73 @@
+/* Tailwind CSS v4 — theme 변수 포함 전체 임포트 (색상 CSS 변수 정의 필요) */
+@import "tailwindcss";
+/* ===================================================
+   Phase 3 Design System — @theme SSOT
+   New tokens for Admin (A) and Surface (C) modes.
+   Existing :root vars preserved for backward compat.
+   Remove legacy entries when components are redesigned.
+=================================================== */
+@theme {
+  /* --- Admin Mode: Accent (Amber Confident) --- */
+  --color-accent:         #FBBF24;
+  --color-accent-hover:   #F59E0B;
+  --color-accent-pressed: #D97706;
+
+  /* --- Semantic (shared by Admin + Surface) --- */
+  /* Note: --color-success/warning/danger already exist in :root.
+     These @theme entries create new Tailwind classes: bg-success etc.
+     The :root values remain for CSS var usage (var(--color-success)). */
+  --color-semantic-success: #10B981;
+  --color-semantic-warning: #F59E0B;
+  --color-semantic-danger:  #EF4444;
+  --color-semantic-info:    #3B82F6;
+
+  /* --- Typography --- */
+  /* Creates font-sans class using Pretendard */
+  --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system,
+               'SF Pro Display', 'Segoe UI', sans-serif;
+
+  /* Custom text scale for Phase 3 components.
+     Usage: class="text-hero" (48px/800), "text-page" (32px/800) etc.
+     Existing Tailwind text-* utilities (text-xl etc.) are unaffected. */
+  --text-hero:    3rem;      /* 48px */
+  --text-page:    2rem;      /* 32px */
+  --text-section: 1.375rem;  /* 22px */
+  --text-label:   0.8125rem; /* 13px */
+  --text-caption: 0.6875rem; /* 11px */
+
+  /* --- Admin Radius (sharp) --- */
+  /* Creates rounded-admin-sm / rounded-admin-md / rounded-admin-lg */
+  --radius-admin-sm: 4px;
+  --radius-admin-md: 6px;
+  --radius-admin-lg: 8px;
+
+  /* --- Shadow --- */
+  --shadow-admin-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-admin-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-admin-lg: 0 12px 32px rgba(0,0,0,.12);
+
+  /* --- Brand Colors (login buttons, gradients) --- */
+  --color-brand-gradient-from: #667eea;
+  --color-brand-gradient-to:   #764ba2;
+  --color-brand-google:        #4285F4;
+  --color-brand-kakao-bg:      #FEE500;
+  --color-brand-kakao-text:    #191919;
+  --color-admin-ink:           #1a1a1a;
+
+  /* --- Legacy Primary/Secondary (기존 컴포넌트 호환) --- */
+  --color-primary: #3b82f6;
+  --color-primary-light: #dbeafe;
+  --color-primary-dark: #2563eb;
+  --color-secondary: #6b7280;
+  --color-secondary-light: #9ca3af;
+  --color-secondary-dark: #4b5563;
+}
+
+/* data-theme 기반 dark mode (기존 ThemeContext와 일치) */
+@custom-variant dark (&:where(body[data-theme=dark] *, body[data-theme=dark]));
+/* 명시적 소스 스캔: src 하위 TS/TSX/JS 파일만 (docs/ 마크다운 제외) */
+@source "../**/*.{ts,tsx,js,jsx}";
+
 /* ===== 전역 CSS - 디자인 시스템 및 유틸리티 ===== */
 
 /* 색상 변수 */
@@ -7,8 +77,9 @@
   --color-primary-light: #dbeafe;
   --color-secondary: #6b7280;
   --color-success: #10b981;
-  --color-warning: #f59e0b;
+  --color-success-dark: #059669;
   --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
 
   /* 테마별 색상 - 다크모드 기본값 */
   --color-bg-primary: #1f2937;
@@ -44,24 +115,6 @@
   --color-border-grid-lighter: #d1d5db;
 
   /* 그림자 */
-
-  /* 리스트 불릿 완전 제거 */
-  ul,
-  ol,
-  li {
-    list-style: none !important;
-    list-style-type: none !important;
-    list-style-image: none !important;
-  }
-
-  ul::before,
-  ol::before,
-  li::before,
-  ul::after,
-  ol::after,
-  li::after {
-    content: none !important;
-  }
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -70,6 +123,71 @@
   --transition-fast: 0.15s ease;
   --transition-normal: 0.2s ease;
   --transition-slow: 0.3s ease;
+
+  /* --- Surface Mode: Subject Palette (Q Pastel Soft) ---
+     8 colors × 3 tones (bg / fg / accent).
+     Used by SessionBlock via colorKey lookup.
+     Keep as CSS vars (not @theme) — assigned dynamically at runtime. */
+  --color-subject-blue-bg:       #DBEAFE;
+  --color-subject-blue-fg:       #1E40AF;
+  --color-subject-blue-accent:   #3B82F6;
+
+  --color-subject-red-bg:        #FEE2E2;
+  --color-subject-red-fg:        #991B1B;
+  --color-subject-red-accent:    #EF4444;
+
+  --color-subject-violet-bg:     #EDE9FE;
+  --color-subject-violet-fg:     #5B21B6;
+  --color-subject-violet-accent: #8B5CF6;
+
+  --color-subject-emerald-bg:    #D1FAE5;
+  --color-subject-emerald-fg:    #065F46;
+  --color-subject-emerald-accent:#10B981;
+
+  --color-subject-amber-bg:      #FEF3C7;
+  --color-subject-amber-fg:      #92400E;
+  --color-subject-amber-accent:  #F59E0B;
+
+  --color-subject-pink-bg:       #FCE7F3;
+  --color-subject-pink-fg:       #9D174D;
+  --color-subject-pink-accent:   #EC4899;
+
+  --color-subject-teal-bg:       #CCFBF1;
+  --color-subject-teal-fg:       #115E59;
+  --color-subject-teal-accent:   #14B8A6;
+
+  --color-subject-orange-bg:     #FFEDD5;
+  --color-subject-orange-fg:     #9A3412;
+  --color-subject-orange-accent: #F97316;
+
+  /* --- Scrollbar Tokens --- */
+  --color-scrollbar-track:        #f0f0f0;
+  --color-scrollbar-track-border: #dddddd;
+  --color-scrollbar-thumb:        #666666;
+  --color-scrollbar-thumb-hover:  #555555;
+  --color-scrollbar-thumb-active: #444444;
+  --color-scrollbar-button:       #dddddd;
+  --color-scrollbar-button-border:#bbbbbb;
+  --color-scrollbar-button-alt:   #cccccc;
+  --color-bg-deep:                #111827;
+}
+
+/* 리스트 불릿 완전 제거 */
+ul,
+ol,
+li {
+  list-style: none !important;
+  list-style-type: none !important;
+  list-style-image: none !important;
+}
+
+ul::before,
+ol::before,
+li::before,
+ul::after,
+ol::after,
+li::after {
+  content: none !important;
 }
 
 /* 라이트모드 테마 */
@@ -106,6 +224,23 @@
   --color-border-grid-lighter: #d1d5db;
 }
 
+/* Surface Mode — schedule grid + PDF output.
+   Overrides inherited dark-mode vars.
+   Always light regardless of body[data-theme]. */
+[data-surface="surface"] {
+  --color-bg-primary:          #FAFAFA;
+  --color-bg-secondary:        #FFFFFF;
+  --color-bg-tertiary:         #F4F4F5;
+  --color-text-primary:        #18181B;
+  --color-text-secondary:      #3F3F46;
+  --color-text-muted:          #71717A;
+  --color-border:              #E4E4E7;
+  --color-border-light:        #F4F4F5;
+  --color-border-grid:         #E4E4E7;
+  --color-border-grid-light:   #EFEFEF;
+  --color-border-grid-lighter: #F8F8F8;
+}
+
 /* 기본 리셋 */
 * {
   box-sizing: border-box;
@@ -122,9 +257,33 @@ body {
     color var(--transition-normal);
 }
 
-/* 공통 유틸리티 클래스 */
-.flex {
-  display: flex;
+
+/* Brand gradient — used by login, onboarding, invite pages */
+.bg-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--color-brand-gradient-from) 0%,
+    var(--color-brand-gradient-to) 100%
+  );
+}
+
+/* Login button shimmer effect (pseudo-element, cannot be Tailwind inline) */
+.login-btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.login-btn-shimmer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+.login-btn-shimmer:hover::before {
+  left: 100%;
 }
 
 /* 커스텀 스크롤바 스타일 */
@@ -146,6 +305,38 @@ body {
   background: var(--color-border-light);
 }
 
+/* 리스트 컴포넌트: 기본 스크롤바 숨김, 호버 시 얇은 스크롤바 표시 */
+.list-scroll-reveal {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.list-scroll-reveal::before,
+.list-scroll-reveal::after {
+  content: none !important;
+  display: none !important;
+}
+.list-scroll-reveal::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.list-scroll-reveal:hover {
+  scrollbar-width: thin;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar {
+  width: 6px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.list-scroll-reveal:hover::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
+}
+
 /* TimeTableGrid 컴포넌트의 스크롤바를 강제로 항상 표시 */
 /* 맥북 크롬에서도 스크롤바가 보이도록 강력한 설정 */
 
@@ -155,7 +346,7 @@ body {
 
   /* Firefox용 스크롤바 스타일 */
   scrollbar-width: auto !important;
-  scrollbar-color: #6b7280 #374151 !important;
+  scrollbar-color: var(--color-border-light) var(--color-bg-secondary) !important;
 
   /* 강제로 스크롤바가 보이도록 설정 */
   -webkit-overflow-scrolling: touch !important;
@@ -176,17 +367,17 @@ body {
 
 /* 스크롤바 트랙 - 매우 진한 색상으로 강제 표시 */
 .time-table-grid::-webkit-scrollbar-track {
-  background-color: #1f2937 !important; /* 매우 진한 회색 */
+  background-color: var(--color-bg-primary) !important;
   border-radius: 8px !important;
-  border: 2px solid #111827 !important;
+  border: 2px solid var(--color-bg-deep) !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* 스크롤바 막대 - 밝은 색상으로 강제 표시 */
 .time-table-grid::-webkit-scrollbar-thumb {
-  background-color: #4b5563 !important; /* 밝은 회색 */
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 8px !important;
-  border: 2px solid #1f2937 !important;
+  border: 2px solid var(--color-bg-primary) !important;
   min-height: 20px !important;
   min-width: 20px !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3) !important;
@@ -194,19 +385,19 @@ body {
 
 /* 스크롤바 막대 호버 효과 */
 .time-table-grid::-webkit-scrollbar-thumb:hover {
-  background-color: #6b7280 !important;
+  background-color: var(--color-border-light) !important;
   -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* 스크롤바 막대 클릭 효과 */
 .time-table-grid::-webkit-scrollbar-thumb:active {
-  background-color: #9ca3af !important;
+  background-color: var(--color-text-muted) !important;
 }
 
 /* 스크롤바 코너 */
 .time-table-grid::-webkit-scrollbar-corner {
-  background-color: #1f2937 !important;
-  border: 2px solid #111827 !important;
+  background-color: var(--color-bg-primary) !important;
+  border: 2px solid var(--color-bg-deep) !important;
 }
 
 /* 스크롤바 버튼 강제 표시 */
@@ -214,17 +405,17 @@ body {
   display: block !important;
   height: 16px !important;
   width: 16px !important;
-  background-color: #374151 !important;
-  border: 1px solid #1f2937 !important;
+  background-color: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-bg-primary) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:start:decrement {
-  background-color: #4b5563 !important;
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 4px !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:end:increment {
-  background-color: #4b5563 !important;
+  background-color: var(--color-bg-tertiary) !important;
   border-radius: 4px !important;
 }
 
@@ -499,7 +690,7 @@ body {
 
 /* 필수 항목 표시 (*) 스타일 */
 .required {
-  color: #ef4444; /* 빨간색 */
+  color: var(--color-semantic-danger);
   margin-left: 2px;
   font-weight: bold;
 }
@@ -590,6 +781,7 @@ body {
   border: 1px solid var(--color-border);
   z-index: 20002;
   position: relative;
+  animation: modalFadeIn 0.2s ease-out;
 }
 
 /* 모달 애니메이션 */
@@ -616,7 +808,7 @@ body {
 .time-table-grid {
   /* Firefox용 스크롤바 스타일 */
   scrollbar-width: thin !important;
-  scrollbar-color: #666 #f0f0f0 !important; /* 자연스러운 색상 */
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track) !important;
 
   /* 스크롤바 공간 항상 예약 */
   scrollbar-gutter: stable both-edges !important;
@@ -642,8 +834,8 @@ body {
   left: 0 !important;
   right: 0 !important;
   height: 12px !important;
-  background-color: #f0f0f0 !important;
-  border-top: 1px solid #ddd !important;
+  background-color: var(--color-scrollbar-track) !important;
+  border-top: 1px solid var(--color-scrollbar-track-border) !important;
   z-index: 1000 !important;
   cursor: pointer !important;
   border-radius: 0 0 8px 8px !important;
@@ -654,7 +846,7 @@ body {
   position: absolute !important;
   bottom: 1px !important;
   height: 10px !important;
-  background-color: #666 !important;
+  background-color: var(--color-scrollbar-thumb) !important;
   border-radius: 5px !important;
   z-index: 1001 !important;
   cursor: pointer !important;
@@ -662,11 +854,11 @@ body {
 }
 
 .virtual-scrollbar-thumb:hover {
-  background-color: #555 !important;
+  background-color: var(--color-scrollbar-thumb-hover) !important;
 }
 
 .virtual-scrollbar-thumb:active {
-  background-color: #444 !important;
+  background-color: var(--color-scrollbar-thumb-active) !important;
 }
 
 /* Webkit 계열 브라우저 - 가로 스크롤바 항상 표시 */
@@ -679,39 +871,39 @@ body {
   -webkit-appearance: none !important;
   position: relative !important;
   z-index: 9999 !important;
-  background-color: #f0f0f0 !important; /* 자연스러운 배경색 */
+  background-color: var(--color-scrollbar-track) !important;
 }
 
 /* 가로 스크롤바 트랙 - 항상 보이도록 강제 */
 .time-table-grid::-webkit-scrollbar-track {
-  background-color: #f0f0f0 !important;
+  background-color: var(--color-scrollbar-track) !important;
   border-radius: 6px !important;
-  border: 1px solid #ddd !important;
+  border: 1px solid var(--color-scrollbar-track-border) !important;
   -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* 가로 스크롤바 막대 - 항상 보이도록 강제 */
 .time-table-grid::-webkit-scrollbar-thumb {
-  background-color: #666 !important;
+  background-color: var(--color-scrollbar-thumb) !important;
   border-radius: 6px !important;
-  border: 1px solid #f0f0f0 !important;
+  border: 1px solid var(--color-scrollbar-track) !important;
   min-height: 20px !important;
   min-width: 20px !important;
   -webkit-box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.2) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-thumb:hover {
-  background-color: #555 !important;
+  background-color: var(--color-scrollbar-thumb-hover) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-thumb:active {
-  background-color: #444 !important;
+  background-color: var(--color-scrollbar-thumb-active) !important;
 }
 
 /* 스크롤바 코너 */
 .time-table-grid::-webkit-scrollbar-corner {
-  background-color: #f0f0f0 !important;
-  border: 1px solid #ddd !important;
+  background-color: var(--color-scrollbar-track) !important;
+  border: 1px solid var(--color-scrollbar-track-border) !important;
 }
 
 /* 스크롤바 버튼 - 가로 스크롤바만 강제 표시 */
@@ -719,22 +911,37 @@ body {
   display: block !important;
   height: 12px !important;
   width: 12px !important;
-  background-color: #ddd !important;
-  border: 1px solid #bbb !important;
+  background-color: var(--color-scrollbar-button) !important;
+  border: 1px solid var(--color-scrollbar-button-border) !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:start:decrement {
-  background-color: #ccc !important;
+  background-color: var(--color-scrollbar-button-alt) !important;
   border-radius: 3px !important;
 }
 
 .time-table-grid::-webkit-scrollbar-button:end:increment {
-  background-color: #ccc !important;
+  background-color: var(--color-scrollbar-button-alt) !important;
   border-radius: 3px !important;
 }
 
-.modal-content {
-  animation: modalFadeIn 0.2s ease-out;
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* SessionBlock keyboard focus ring (Tailwind v4 preflight resets outline) */
+.session-block:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
 }
 
 /* Button Component Styles */
@@ -809,4 +1016,30 @@ body {
   padding: 12px 24px;
   font-size: 16px;
   min-height: 44px;
+}
+
+/* ===== App Shell — spacing ===== */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ===== BottomSheet Animations ===== */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
 }

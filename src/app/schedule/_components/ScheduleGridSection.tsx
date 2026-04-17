@@ -5,7 +5,9 @@ import type {
   Session,
   Student,
   Subject,
+  Teacher,
 } from "../../../lib/planner";
+import type { ColorByMode } from "../../../hooks/useColorBy";
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -15,6 +17,7 @@ type Props = {
   enrollments: Enrollment[];
   students: Student[];
   onSessionClick: (session: Session) => void;
+  onSessionDelete?: (session: Session) => void;
   onDrop: (
     weekday: number,
     time: string,
@@ -32,8 +35,10 @@ type Props = {
     time: string,
     yPosition?: number
   ) => void;
-  selectedStudentId: string;
+  selectedStudentIds?: string[];
   isStudentDragging: boolean;
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
 };
 
 export default function ScheduleGridSection({
@@ -44,14 +49,17 @@ export default function ScheduleGridSection({
   enrollments,
   students,
   onSessionClick,
+  onSessionDelete,
   onDrop,
   onSessionDrop,
   onEmptySpaceClick,
-  selectedStudentId,
+  selectedStudentIds,
   isStudentDragging,
+  teachers = [],
+  colorBy = "subject",
 }: Props) {
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} data-surface="surface">
       <TimeTableGrid
         key={gridVersion}
         sessions={sessions}
@@ -59,11 +67,14 @@ export default function ScheduleGridSection({
         enrollments={enrollments}
         students={students}
         onSessionClick={onSessionClick}
+        onSessionDelete={onSessionDelete}
         onDrop={onDrop}
         onSessionDrop={onSessionDrop}
         onEmptySpaceClick={onEmptySpaceClick}
-        selectedStudentId={selectedStudentId}
+        selectedStudentIds={selectedStudentIds}
         isStudentDragging={isStudentDragging}
+        teachers={teachers}
+        colorBy={colorBy}
       />
     </div>
   );

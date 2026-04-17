@@ -18,15 +18,23 @@
  * 주의: 본 리팩토링은 비기능적(가독성) 수정으로, 로직 변경 없음
  */
 
+import dynamic from "next/dynamic";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useColorBy } from "../../hooks/useColorBy";
+import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useScheduleView } from "../../hooks/useScheduleView";
+import { useTemplates } from "../../hooks/useTemplates";
+import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
+import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
-import { useStudentPanel } from "../../hooks/useStudentPanel";
+import { useStudentFilter } from "./_hooks/useStudentFilter";
+import { filterSessionsByStudents } from "@/features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { logger } from "../../lib/logger";
@@ -36,12 +44,12 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
-import EditSessionModal from "./_components/EditSessionModal";
-import GroupSessionModal from "./_components/GroupSessionModal";
-import PdfDownloadSection from "./_components/PdfDownloadSection";
+import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
+import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
+import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
-import StudentPanelSection from "./_components/StudentPanelSection";
+import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import {
   DEFAULT_GROUP_SESSION_DATA,
   ERROR_MESSAGES,
@@ -84,6 +92,39 @@ import {
   processTempEnrollments,
 } from "./_utils/sessionSaveUtils";
 
+const EditSessionModal = dynamic(
+  () => import("./_components/EditSessionModal"),
+  { ssr: false, loading: () => null }
+);
+const GroupSessionModal = dynamic(
+  () => import("./_components/GroupSessionModal"),
+  { ssr: false, loading: () => null }
+);
+const ScheduleActionBar = dynamic(
+  () => import("./_components/ScheduleActionBar"),
+  { ssr: false }
+);
+const SaveTemplateModal = dynamic(
+  () => import("../../components/molecules/SaveTemplateModal"),
+  { ssr: false, loading: () => null }
+);
+const ApplyTemplateModal = dynamic(
+  () => import("../../components/molecules/ApplyTemplateModal"),
+  { ssr: false, loading: () => null }
+);
+const ScheduleDailyView = dynamic(
+  () => import("../../components/organisms/ScheduleDailyView").then(m => ({ default: m.ScheduleDailyView })),
+  { ssr: false, loading: () => null }
+);
+const AttendanceSheet = dynamic(
+  () => import("../../components/molecules/AttendanceSheet"),
+  { ssr: false, loading: () => null }
+);
+const ScheduleMonthlyView = dynamic(
+  () => import("../../components/organisms/ScheduleMonthlyView"),
+  { ssr: false, loading: () => null }
+);
+
 /**
  * 페이지 엔트리 컴포넌트
  * 인증 가드로 감싼 스케줄 페이지 컨테이너를 노출합니다.
@@ -99,16 +140,44 @@ export default function SchedulePage(): JSX.Element {
 function SchedulePageContent(): JSX.Element {
   // 🚀 통합 데이터 훅 사용 (JSONB 기반 효율적 데이터 관리)
   const {
-    data: { students, subjects, sessions, enrollments },
+    data: { students, subjects, sessions, enrollments, teachers },
     loading: dataLoading,
     error,
     updateData,
     addEnrollment,
   } = useIntegratedDataLocal();
 
+  // Color-by 토글
+  const { colorBy, setColorBy } = useColorBy();
+
+  // 뷰 모드 (일별/주간/월별) 및 날짜 선택
+  const {
+    viewMode,
+    setViewMode,
+    selectedDate,
+    selectedWeekday,
+    goToNextDay,
+    goToPrevDay,
+    goToToday,
+    setSelectedDate,
+    goToNextMonth,
+    goToPrevMonth,
+  } = useScheduleView();
+
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
     usePerformanceMonitoring();
+
+  // ================================
+  // 🎯 사용자 ID (useStudentFilter 스코프 키에 필요)
+  // ================================
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
 
   // ================================
   // 🧩 로컬 타입 (가독성 향상용)
@@ -116,6 +185,7 @@ function SchedulePageContent(): JSX.Element {
   type SessionCreateInput = {
     subjectId: string;
     studentIds: string[];
+    teacherId?: string;
     weekday: number;
     startTime: string;
     endTime: string;
@@ -133,10 +203,11 @@ function SchedulePageContent(): JSX.Element {
     studentIds?: string[];
   };
 
-  const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
-    "ui:selectedStudent",
-    ""
-  );
+  const {
+    selectedStudentIds,
+    toggleStudent: toggleStudentFilter,
+    clearFilter: clearStudentFilter,
+  } = useStudentFilter(userId);
 
   // ================================
   // 🧩 핵심 콜백: 세션 추가
@@ -182,6 +253,7 @@ function SchedulePageContent(): JSX.Element {
         id: crypto.randomUUID(),
         subjectId: sessionData.subjectId,
         studentIds: sessionData.studentIds,
+        ...(sessionData.teacherId && { teacherId: sessionData.teacherId }),
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
@@ -354,7 +426,7 @@ function SchedulePageContent(): JSX.Element {
       // 기존 세션의 지속 시간 계산
       const existingSession = sessions.find((s) => s.id === sessionId);
       if (!existingSession) {
-        console.error("세션을 찾을 수 없습니다:", sessionId);
+        logger.error("세션을 찾을 수 없습니다", { sessionId });
         return;
       }
 
@@ -410,50 +482,9 @@ function SchedulePageContent(): JSX.Element {
     [sessions, updateData]
   );
 
-  // 🆕 데이터 로딩 완료 후 selectedStudentId 복원
-  useEffect(() => {
-    if (!dataLoading && students.length > 0) {
-      // 클라이언트에서만 localStorage 접근
-      if (typeof window !== "undefined") {
-        try {
-          const savedStudentId = localStorage.getItem("ui:selectedStudent");
-          if (savedStudentId && students.some((s) => s.id === savedStudentId)) {
-            logger.debug("저장된 학생 선택 복원", { savedStudentId });
-            setSelectedStudentId(savedStudentId);
-          }
-        } catch {
-          // localStorage 접근 실패 시 무시
-        }
-      }
-    }
-  }, [dataLoading, students, setSelectedStudentId]);
-
-  // 🆕 학생 데이터 디버깅
-  useEffect(() => {
-    logger.debug("학생 데이터 상태", {
-      studentsCount: students.length,
-      selectedStudentId,
-      selectedStudentName: students.find((s) => s.id === selectedStudentId)
-        ?.name,
-    });
-  }, [students, selectedStudentId]);
-
-  // 🆕 selectedStudentId 변경 감지 및 저장
-  useEffect(() => {
-    logger.debug("selectedStudentId 변경됨", { selectedStudentId });
-    // 클라이언트에서만 localStorage 접근
-    if (typeof window !== "undefined") {
-      try {
-        if (selectedStudentId) {
-          localStorage.setItem("ui:selectedStudent", selectedStudentId);
-        } else {
-          localStorage.removeItem("ui:selectedStudent");
-        }
-      } catch {
-        // localStorage 접근 실패 시 무시
-      }
-    }
-  }, [selectedStudentId]);
+  const handleSessionDelete = useCallback((session: Session) => {
+    setDeleteConfirmSessionId(session.id);
+  }, []);
 
   // 🆕 로그인 상태 감지 및 로그아웃 시 정리
   useEffect(() => {
@@ -482,14 +513,17 @@ function SchedulePageContent(): JSX.Element {
   const { sessions: displaySessions } = useDisplaySessions(
     sessions,
     enrollments,
-    selectedStudentId
+    ""
   );
 
-  const studentPanelState = useStudentPanel(
-    students,
-    selectedStudentId,
-    setSelectedStudentId
-  );
+  const filteredDisplaySessions = useMemo(() => {
+    if (selectedStudentIds.length === 0) return displaySessions;
+    const filtered = new Map<number, Session[]>();
+    displaySessions.forEach((daySessions, weekday) => {
+      filtered.set(weekday, filterSessionsByStudents(daySessions, selectedStudentIds, enrollments));
+    });
+    return filtered;
+  }, [displaySessions, selectedStudentIds, enrollments]);
 
   const {
     validateTimeRange,
@@ -506,6 +540,9 @@ function SchedulePageContent(): JSX.Element {
     yPosition: 1, // 🆕 기본값 1
   });
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
+
+  // 세션 삭제 확인 모달 상태
+  const [deleteConfirmSessionId, setDeleteConfirmSessionId] = useState<string | null>(null);
 
   // 학생 생성 훅 (모달에서 신규 학생 추가 시 사용)
   const { addStudent: createStudent } = useStudentManagementLocal();
@@ -540,6 +577,9 @@ function SchedulePageContent(): JSX.Element {
     editTimeError,
     setEditTimeError,
   } = useEditModalState();
+
+  // 강사 선택 상태 (편집 모달용; undefined = 변경 없음, "" = 제거)
+  const [tempTeacherId, setTempTeacherId] = useState<string | undefined>(undefined);
 
   // 🆕 수업 편집 모달 시간 변경 핸들러 (헬퍼 적용)
   const { handleEditStartTimeChange, handleEditEndTimeChange } = useMemo(
@@ -744,6 +784,7 @@ function SchedulePageContent(): JSX.Element {
       await addSession({
         studentIds: data.studentIds,
         subjectId: data.subjectId,
+        teacherId: data.teacherId,
         weekday: data.weekday,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -849,6 +890,141 @@ function SchedulePageContent(): JSX.Element {
   // 🆕 PDF 다운로드 처리
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
+
+  const handlePdfExport = async (range: PdfExportRange) => {
+    setIsDownloading(true);
+    try {
+      await renderSchedulePdf(
+        Array.from(displaySessions.values()).flat(),
+        subjects,
+        students,
+        enrollments,
+        teachers,
+        {
+          academyName: "CLASS PLANNER",
+          filterStudentId: selectedStudentIds[0] ?? undefined,
+          weekRange: range,
+        }
+      );
+      setIsPdfDialogOpen(false);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ================================
+  // 🎯 템플릿 기능
+  // ================================
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
+
+  const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate } = useTemplates(userId);
+
+  // 현재 세션 → TemplateData 변환
+  const buildTemplateData = useCallback((): TemplateData => {
+    if (!displaySessions) return { version: "1.0", sessions: [] };
+    const sessionsData = Array.from(displaySessions.values()).flat();
+    return {
+      version: "1.0",
+      sessions: sessionsData.map((session) => {
+        const firstEnrollment = enrollments.find(
+          (e) => (session.enrollmentIds ?? []).includes(e.id)
+        );
+        const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
+        const sessionStudentNames = (session.enrollmentIds ?? [])
+          .map((eid) => {
+            const enrollment = enrollments.find((e) => e.id === eid);
+            if (!enrollment) return null;
+            return students.find((st) => st.id === enrollment.studentId)?.name ?? null;
+          })
+          .filter((n): n is string => n !== null);
+        return {
+          weekday: session.weekday,
+          startsAt: session.startsAt,
+          endsAt: session.endsAt,
+          subjectName: subject?.name ?? "미지정",
+          subjectColor: subject?.color ?? "#6366f1",
+          studentNames: sessionStudentNames,
+        };
+      }),
+    };
+  }, [displaySessions, subjects, enrollments, students]);
+
+  const handleApplyTemplate = useCallback(
+    async (template: ScheduleTemplate) => {
+      const { sessions: templateSessions } = template.templateData;
+      let applied = 0;
+      let skipped = 0;
+
+      for (const tplSession of templateSessions) {
+        let subject = subjects.find((s) => s.name === tplSession.subjectName);
+        if (!subject) {
+          const newSubjectId = crypto.randomUUID();
+          subject = { id: newSubjectId, name: tplSession.subjectName, color: tplSession.subjectColor };
+          await updateData({ subjects: [...subjects, subject] });
+        }
+
+        const studentIds: string[] = [];
+        for (const name of tplSession.studentNames) {
+          const student = students.find((s) => s.name === name);
+          if (student) {
+            studentIds.push(student.id);
+          } else {
+            skipped++;
+          }
+        }
+
+        if (studentIds.length === 0) continue;
+
+        await addSession({
+          subjectId: subject.id,
+          studentIds,
+          weekday: tplSession.weekday,
+          startTime: tplSession.startsAt,
+          endTime: tplSession.endsAt,
+          yPosition: 1,
+        });
+        applied++;
+      }
+
+      setShowApplyTemplateModal(false);
+      if (applied > 0) {
+        showToast("success", `${applied}개 세션이 적용되었습니다.${skipped > 0 ? ` (${skipped}명 학생 매칭 실패)` : ""}`);
+      } else {
+        showToast("error", "매칭된 학생이 없어 세션을 생성하지 못했습니다.");
+      }
+    },
+    [subjects, students, enrollments, sessions, updateData, addSession]
+  );
+
+  // ================================
+  // 🎯 출석 관리 섹션
+  // ================================
+  const [attendanceSession, setAttendanceSession] = useState<Session | null>(null);
+  const { attendance, fetchAttendance, markAttendance, markAllPresent } =
+    useAttendance(userId);
+
+  const handleOpenAttendance = useCallback(
+    async (session: Session) => {
+      setAttendanceSession(session);
+      const dateStr = selectedDate.toISOString().slice(0, 10);
+      await fetchAttendance(session.id, dateStr);
+    },
+    [selectedDate, fetchAttendance]
+  );
+
+  const attendanceStudents = useMemo(() => {
+    if (!attendanceSession) return [];
+    const eIds = attendanceSession.enrollmentIds ?? [];
+    return eIds.flatMap((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      if (!enrollment) return [];
+      const student = students.find((s) => s.id === enrollment.studentId);
+      return student ? [{ id: student.id, name: student.name }] : [];
+    });
+  }, [attendanceSession, enrollments, students]);
+
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
@@ -860,58 +1036,128 @@ function SchedulePageContent(): JSX.Element {
       student,
       enrollments,
       setIsStudentDragging,
-      studentPanelState.resetDragState
+      () => {}
     );
 
   // 🆕 드래그 종료 처리
   const handleDragEnd = (e: React.DragEvent) =>
-    onDragEndStudent(e, setIsStudentDragging, studentPanelState.resetDragState);
+    onDragEndStudent(e, setIsStudentDragging, () => {});
 
   return (
-    <div className="timetable-container" style={{ padding: 16 }}>
+    <div className="timetable-container p-4">
       <ScheduleHeader
         dataLoading={dataLoading}
         error={error ?? undefined}
-        selectedStudentName={
-          selectedStudentId
-            ? students.find((s) => s.id === selectedStudentId)?.name ??
-              undefined
-            : undefined
+        colorBy={colorBy}
+        onColorByChange={(mode) => {
+          setColorBy(mode);
+          if (mode !== "student") clearStudentFilter();
+        }}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+
+      {colorBy === "student" && (
+        <StudentFilterChipBar
+          students={students}
+          selectedStudentIds={selectedStudentIds}
+          onToggleStudent={toggleStudentFilter}
+          onClearFilter={clearStudentFilter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+      )}
+
+      {/* 일별 뷰: 요일 칩 바 */}
+      {viewMode === "daily" && (
+        <DayChipBar
+          selectedWeekday={selectedWeekday}
+          onSelectWeekday={(wd) => {
+            const monday = new Date(selectedDate);
+            const currentWd = (monday.getDay() + 6) % 7;
+            monday.setDate(monday.getDate() - currentWd + wd);
+            setSelectedDate(monday);
+          }}
+          baseDate={selectedDate}
+        />
+      )}
+
+      {/* 액션 바: PDF · 템플릿 · 공유 */}
+      <ScheduleActionBar
+        viewLabel={
+          viewMode === "daily"
+            ? "일별 시간표"
+            : viewMode === "monthly"
+              ? "월별 시간표"
+              : "주간 시간표"
         }
-      />
-
-      {/* PDF 다운로드 버튼 */}
-      <PdfDownloadSection
-        timeTableRef={timeTableRef}
-        selectedStudent={students.find((s) => s.id === selectedStudentId)}
+        onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
         isDownloading={isDownloading}
-        onDownloadStart={() => setIsDownloading(true)}
-        onDownloadEnd={() => setIsDownloading(false)}
+        onDownloadStart={() => {}}
+        onDownloadEnd={() => {}}
+        userId={userId}
+        onSaveTemplate={() => setShowSaveTemplateModal(true)}
+        onApplyTemplate={() => {
+          _fetchTemplates();
+          setShowApplyTemplateModal(true);
+        }}
+        isSaving={templateSaving}
       />
 
-      {/* 🆕 시간표 그리드 */}
-      <ScheduleGridSection
-        containerRef={timeTableRef}
-        gridVersion={gridVersion}
-        sessions={displaySessions}
-        subjects={subjects}
-        enrollments={enrollments}
-        students={students}
-        onSessionClick={handleSessionClick}
-        onDrop={handleDrop}
-        onSessionDrop={handleSessionDrop}
-        onEmptySpaceClick={handleEmptySpaceClick}
-        selectedStudentId={selectedStudentId}
-        isStudentDragging={isStudentDragging}
-      />
-
-      {/* 🆕 학생 패널 */}
-      <StudentPanelSection
-        selectedStudentId={selectedStudentId}
-        panelState={studentPanelState}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      />
+      {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
+      {viewMode === "daily" ? (
+        <ScheduleDailyView
+          sessions={displaySessions}
+          subjects={subjects}
+          students={students}
+          enrollments={enrollments}
+          teachers={teachers}
+          selectedWeekday={selectedWeekday}
+          colorBy={colorBy}
+          onSessionClick={handleSessionClick}
+          onAddSession={() => {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+            openGroupModal(selectedWeekday, currentTime, 1);
+          }}
+          onSwipeLeft={goToNextDay}
+          onSwipeRight={goToPrevDay}
+          onAttendanceClick={handleOpenAttendance}
+        />
+      ) : viewMode === "monthly" ? (
+        <ScheduleMonthlyView
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          currentDate={selectedDate}
+          goToNextMonth={goToNextMonth}
+          goToPrevMonth={goToPrevMonth}
+          goToToday={goToToday}
+          onDayClick={(date) => {
+            setSelectedDate(date);
+            setViewMode("daily");
+          }}
+        />
+      ) : (
+        /* 주간 시간표 그리드 */
+        <ScheduleGridSection
+          containerRef={timeTableRef}
+          gridVersion={gridVersion}
+          sessions={filteredDisplaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          students={students}
+          onSessionClick={handleSessionClick}
+          onSessionDelete={handleSessionDelete}
+          onDrop={handleDrop}
+          onSessionDrop={handleSessionDrop}
+          onEmptySpaceClick={handleEmptySpaceClick}
+          selectedStudentIds={selectedStudentIds}
+          isStudentDragging={isStudentDragging}
+          teachers={teachers}
+          colorBy={colorBy}
+        />
+      )}
 
       {/* 그룹 수업 추가 모달 (분리) */}
       <GroupSessionModal
@@ -927,6 +1173,7 @@ function SchedulePageContent(): JSX.Element {
         filteredStudentsForModal={filteredStudentsForModal}
         addStudent={addStudent}
         subjects={subjects}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         students={students}
         weekdays={weekdays}
         handleStartTimeChange={handleStartTimeChange}
@@ -937,6 +1184,33 @@ function SchedulePageContent(): JSX.Element {
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
       />
+
+      {/* 출석 시트 */}
+      {attendanceSession && (
+        <AttendanceSheet
+          isOpen={!!attendanceSession}
+          onClose={() => setAttendanceSession(null)}
+          sessionId={attendanceSession.id}
+          date={selectedDate.toISOString().slice(0, 10)}
+          students={attendanceStudents}
+          attendance={attendance[attendanceSession.id] ?? {}}
+          onMarkAttendance={(studentId, status) =>
+            markAttendance(
+              attendanceSession.id,
+              studentId,
+              selectedDate.toISOString().slice(0, 10),
+              status
+            )
+          }
+          onMarkAllPresent={() =>
+            markAllPresent(
+              attendanceSession.id,
+              attendanceStudents.map((s) => s.id),
+              selectedDate.toISOString().slice(0, 10)
+            )
+          }
+        />
+      )}
 
       {/* 세션 편집 모달 (분리) */}
       <EditSessionModal
@@ -991,8 +1265,11 @@ function SchedulePageContent(): JSX.Element {
         )}
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         tempSubjectId={tempSubjectId}
         onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
+        tempTeacherId={tempTeacherId ?? (editModalData?.teacherId || "")}
+        onTeacherChange={(teacherId) => setTempTeacherId(teacherId)}
         weekdays={weekdays}
         defaultWeekday={editModalData?.weekday ?? 0}
         startTime={editModalTimeData.startTime}
@@ -1008,11 +1285,13 @@ function SchedulePageContent(): JSX.Element {
         onCancel={buildEditOnCancel({
           setShowEditModal,
           setTempSubjectId,
+          onCancel: () => setTempTeacherId(undefined),
         })}
         onSave={buildEditOnSave({
           editModalData,
           editModalTimeData,
           tempSubjectId,
+          tempTeacherId,
           tempEnrollments,
           enrollments,
           addEnrollment,
@@ -1026,7 +1305,62 @@ function SchedulePageContent(): JSX.Element {
           setShowEditModal,
           setTempSubjectId,
           setTempEnrollments,
+          onSaveComplete: () => setTempTeacherId(undefined),
         })}
+      />
+
+      {/* 세션 삭제 확인 모달 */}
+      <ConfirmModal
+        isOpen={deleteConfirmSessionId !== null}
+        title="수업 삭제"
+        message="이 수업을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        variant="danger"
+        onConfirm={async () => {
+          if (deleteConfirmSessionId) {
+            await deleteSession(deleteConfirmSessionId);
+          }
+          setDeleteConfirmSessionId(null);
+        }}
+        onCancel={() => setDeleteConfirmSessionId(null)}
+      />
+
+      {/* 템플릿 저장 모달 */}
+      <SaveTemplateModal
+        isOpen={showSaveTemplateModal}
+        onClose={() => setShowSaveTemplateModal(false)}
+        onSave={async (payload) => {
+          const ok = await saveTemplate(payload);
+          if (ok) {
+            setShowSaveTemplateModal(false);
+            showToast("success", "템플릿이 저장되었습니다.");
+          } else {
+            showError("템플릿 저장에 실패했습니다.");
+          }
+        }}
+        templateData={buildTemplateData()}
+        isSaving={templateSaving}
+      />
+
+      {/* 템플릿 적용 모달 */}
+      <ApplyTemplateModal
+        isOpen={showApplyTemplateModal}
+        onClose={() => setShowApplyTemplateModal(false)}
+        onApply={handleApplyTemplate}
+        templates={templates}
+        isApplying={false}
+        isLoading={templatesLoading}
+      />
+
+      {/* PDF 범위 선택 다이얼로그 */}
+      <PdfExportRangeModal
+        isOpen={isPdfDialogOpen}
+        onClose={() => setIsPdfDialogOpen(false)}
+        onExport={handlePdfExport}
+        viewMode={viewMode}
+        selectedDate={selectedDate}
+        isExporting={isDownloading}
       />
     </div>
   );

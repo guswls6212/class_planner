@@ -1,6 +1,6 @@
 import React from "react";
+import { useModalA11y } from "../../hooks/useModalA11y";
 import Button from "../atoms/Button";
-import styles from "./ConfirmModal.module.css";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -23,6 +23,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onCancel,
   variant = "danger",
 }) => {
+  // Hook must be called before early return (Rules of Hooks).
+  // useModalA11y provides: Escape key handling, focus trap, return-focus on close.
+  const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
+
   if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -31,41 +35,38 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      onCancel();
-    }
-  };
-
   return (
     <div
-      className={styles.backdrop}
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-5"
+      data-testid="confirm-modal-backdrop"
       onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-modal-title"
-      aria-describedby="confirm-modal-message"
     >
-      <div className={styles.modal}>
-        <div className={styles.header}>
-          <h3 id="confirm-modal-title" className={styles.title}>
+      <div
+        ref={containerRef}
+        className="w-full max-w-[400px] max-h-[90vh] overflow-hidden rounded-lg border border-[--color-border] bg-[--color-bg-primary] shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-message"
+      >
+        <div className="px-5 pt-5">
+          <h3 id="confirm-modal-title" className="text-lg font-semibold text-[--color-text-primary]">
             {title}
           </h3>
         </div>
-        
-        <div className={styles.body}>
-          <p id="confirm-modal-message" className={styles.message}>
+
+        <div className="px-5 py-4">
+          <p id="confirm-modal-message" className="text-sm leading-relaxed text-[--color-text-secondary]">
             {message}
           </p>
         </div>
-        
-        <div className={styles.footer}>
+
+        <div className="flex justify-end gap-2 px-5 pb-5">
           <Button
             variant="transparent"
             size="small"
             onClick={onCancel}
-            className={styles.cancelButton}
+            className="min-w-[60px]"
           >
             {cancelText}
           </Button>
@@ -73,7 +74,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             variant={variant === "warning" ? "primary" : variant === "info" ? "secondary" : variant}
             size="small"
             onClick={onConfirm}
-            className={styles.confirmButton}
+            className="min-w-[60px]"
           >
             {confirmText}
           </Button>

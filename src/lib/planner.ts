@@ -1,8 +1,20 @@
+import { logger } from "./logger";
+
 export type Student = {
   id: string;
   name: string;
   gender?: string;
   birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
+};
+
+export type Teacher = {
+  id: string;
+  name: string;
+  color: string;
+  userId?: string | null;
 };
 
 export type Subject = {
@@ -20,12 +32,13 @@ export type Enrollment = {
 
 export type Session = {
   id: string; // 세션 고유 식별자
-  enrollmentIds?: string[]; // 🆕 여러 수강신청 ID (그룹 수업 지원)
+  enrollmentIds?: string[]; // 여러 수강신청 ID (그룹 수업 지원)
   weekday: number; // 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
   startsAt: string; // 시작 시간 (HH:MM 형식)
   endsAt: string; // 종료 시간 (HH:MM 형식)
   room?: string; // 강의실 (선택적)
-  yPosition?: number; // 🆕 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
+  yPosition?: number; // 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
+  teacherId?: string; // 담당 강사 ID (선택적)
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입
@@ -50,7 +63,7 @@ export const SLOT_PX = 16;
 
 export function timeToMinutes(t: string): number {
   if (!t || typeof t !== "string") {
-    console.warn("Invalid time format:", t);
+    logger.warn("Invalid time format", { time: t });
     return 0;
   }
   const [h, m] = t.split(":").map(Number);

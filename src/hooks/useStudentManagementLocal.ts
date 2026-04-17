@@ -26,6 +26,10 @@ export interface Student {
   id: string;
   name: string;
   gender?: string;
+  birthDate?: string;
+  grade?: string;
+  school?: string;
+  phone?: string;
 }
 
 export interface UseStudentManagementLocalReturn {
@@ -35,10 +39,13 @@ export interface UseStudentManagementLocalReturn {
   error: string | null;
 
   // 액션
-  addStudent: (name: string) => Promise<boolean>;
+  addStudent: (
+    name: string,
+    options?: { gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
+  ) => Promise<boolean>;
   updateStudent: (
     id: string,
-    updates: { name?: string; gender?: string }
+    updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
   ) => Promise<boolean>;
   deleteStudent: (id: string) => Promise<boolean>;
   getStudent: (id: string) => Student | null;
@@ -112,7 +119,10 @@ export const useStudentManagementLocal =
     // ===== 학생 추가 =====
 
     const addStudent = useCallback(
-      async (name: string): Promise<boolean> => {
+      async (
+        name: string,
+        options?: { gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
+      ): Promise<boolean> => {
         try {
           setLoading(true);
           setError(null);
@@ -120,7 +130,7 @@ export const useStudentManagementLocal =
           logger.debug("useStudentManagementLocal - 학생 추가 시작", { name });
 
           // localStorage에 즉시 추가
-          const result = addStudentToLocal(name);
+          const result = addStudentToLocal(name, options);
 
           if (result.success && result.data) {
             // UI 즉시 업데이트
@@ -128,7 +138,7 @@ export const useStudentManagementLocal =
 
             // 서버 동기화 (fire-and-forget)
             const userId = localStorage.getItem("supabase_user_id");
-            syncStudentCreate(userId, { name });
+            syncStudentCreate(userId, { name: name.trim(), ...options });
 
             logger.info("useStudentManagementLocal - 학생 추가 성공", {
               name,
@@ -162,7 +172,7 @@ export const useStudentManagementLocal =
     const updateStudent = useCallback(
       async (
         id: string,
-        updates: { name?: string; gender?: string }
+        updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
       ): Promise<boolean> => {
         try {
           setLoading(true);
