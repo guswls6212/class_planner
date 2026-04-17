@@ -422,7 +422,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 🆕 드래그 종료 핸들러 (간소화)
     const handleDragEnd = useCallback(() => {
-      // DropZone에서 이미 드롭 처리를 했으므로 여기서는 상태만 초기화
+      // TimeTableCell에서 이미 드롭 처리를 했으므로 여기서는 상태만 초기화
       // 중복 호출 방지를 위해 onSessionDrop 호출 제거
       logger.info("🔄 TimeTableGrid 드래그 종료 - 상태 초기화만 수행");
 
@@ -448,7 +448,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, [getSavedScrollPosition]);
 
     return (
-      <div className="time-table-container">
+      <div className="time-table-container" data-surface="surface">
         <div
           ref={(node) => {
             if (ref) {
@@ -459,11 +459,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               }
             }
 
-            // 🆕 ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
+            // ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
 
             gridRef.current = node;
           }}
-          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
+          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
           data-testid="time-table-grid"
           style={{
             gridTemplateColumns,

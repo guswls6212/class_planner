@@ -5,11 +5,11 @@ import { logger } from "../../../lib/logger";
 import { TimeTableRow } from "../TimeTableRow";
 
 // Mock dependencies
-vi.mock("../DropZone", () => ({
-  default: ({ time, onDrop, onEmptySpaceClick }: any) => (
+vi.mock("../TimeTableCell", () => ({
+  default: ({ time, weekday, onDrop, onEmptySpaceClick }: any) => (
     <div
       data-testid={`dropzone-${time}`}
-      onClick={() => onEmptySpaceClick(0, time)}
+      onClick={() => onEmptySpaceClick(weekday, time)}
     >
       DropZone: {time}
     </div>
