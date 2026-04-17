@@ -448,7 +448,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, [getSavedScrollPosition]);
 
     return (
-      <div className="time-table-container" data-surface="surface">
+      <div className="time-table-container" data-surface="surface" data-testid="time-table-grid">
         <div
           ref={(node) => {
             if (ref) {
@@ -464,7 +464,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             gridRef.current = node;
           }}
           className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
-          data-testid="time-table-grid"
           style={{
             gridTemplateColumns,
             gridTemplateRows,
