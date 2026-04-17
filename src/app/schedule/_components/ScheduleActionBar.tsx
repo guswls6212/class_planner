@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import PDFDownloadButton from "../../../components/molecules/PDFDownloadButton";
 import { HelpTooltip } from "../../../components/molecules/HelpTooltip";

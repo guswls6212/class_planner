@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { ScheduleTemplate } from "@/shared/types/templateTypes";
 
 interface ApplyTemplateModalProps {
@@ -21,6 +21,10 @@ export default function ApplyTemplateModal({
   isLoading,
 }: ApplyTemplateModalProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) setSelectedId(null);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -67,6 +71,7 @@ export default function ApplyTemplateModal({
                 <button
                   key={tpl.id}
                   onClick={() => setSelectedId(tpl.id)}
+                  disabled={isApplying}
                   className={`text-left w-full p-3 rounded-lg border transition-colors ${
                     selectedId === tpl.id
                       ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10"
