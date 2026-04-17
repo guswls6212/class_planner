@@ -94,7 +94,16 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
             className="fixed inset-0 z-[9998]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 z-[9999] min-w-[200px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-admin-md p-2">
+          <div
+            data-testid="account-menu-dropdown"
+            data-anchor={compact ? "left" : "bottom"}
+            className={[
+              compact
+                ? "absolute left-full top-0 ml-2 z-[9999]"
+                : "absolute right-0 top-full mt-2 z-[9999]",
+              "min-w-[200px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-admin-md p-2",
+            ].join(" ")}
+          >
             <div className="px-2 pb-2 mb-2 border-b border-[var(--color-border)]">
               <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                 {user.user_metadata?.full_name ??
