@@ -156,3 +156,36 @@ describe("SessionCard — row variant", () => {
     expect(screen.getByText("✓")).toBeDefined();
   });
 });
+
+describe("SessionCard — chip variant", () => {
+  it("과목명만 1줄로 렌더한다", () => {
+    render(
+      <SessionCard variant="chip" subject={blueSubject} data-testid="chip" />,
+    );
+    expect(screen.getByText("피아노")).toBeDefined();
+    expect(screen.queryByText("과목 없음")).toBeNull();
+  });
+
+  it("3-tone CSS var background가 적용된다", () => {
+    render(
+      <SessionCard variant="chip" subject={blueSubject} data-testid="chip" />,
+    );
+    expect(screen.getByTestId("chip").style.backgroundColor).toBe(
+      "var(--color-subject-blue-bg)",
+    );
+  });
+
+  it("onClick 핸들러가 동작한다", () => {
+    const onClick = vi.fn();
+    render(
+      <SessionCard
+        variant="chip"
+        subject={blueSubject}
+        onClick={onClick}
+        data-testid="chip"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("chip"));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});

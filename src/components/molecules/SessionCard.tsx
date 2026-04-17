@@ -185,8 +185,56 @@ function SessionCardRow({
   );
 }
 
-function SessionCardChip(_props: SessionCardProps) {
-  return <div data-testid="session-card-chip">TODO</div>;
+function SessionCardChip({
+  subject,
+  state = "default",
+  onClick,
+  className,
+  "data-testid": testId,
+}: SessionCardProps) {
+  const tone = resolveSessionTone(subject?.color);
+  const label = subject?.name ?? "수업";
+
+  const baseClass = [
+    "rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium truncate w-full text-left",
+    onClick ? "cursor-pointer hover:opacity-90" : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const toneStyle: React.CSSProperties = {
+    backgroundColor: tone.bg,
+    color: tone.fg,
+    opacity: state === "done" ? 0.55 : undefined,
+  };
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={baseClass}
+        style={toneStyle}
+        data-testid={testId}
+        data-variant="chip"
+        data-state={state}
+      >
+        {label}
+      </button>
+    );
+  }
+  return (
+    <div
+      className={baseClass}
+      style={toneStyle}
+      data-testid={testId}
+      data-variant="chip"
+      data-state={state}
+    >
+      {label}
+    </div>
+  );
 }
 
 function SessionCardPreview(_props: SessionCardProps) {
