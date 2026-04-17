@@ -223,7 +223,11 @@ function SessionBlock({
     } catch (error) {
       logger.error("❌ 드래그 데이터 설정 실패:", undefined, error as Error);
     }
-    e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+    try {
+      e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+    } catch (_) {
+      // jsdom 등 setDragImage 미지원 환경에서 안전하게 무시
+    }
     if (onDragStart) {
       onDragStart(e, session);
     }
@@ -232,7 +236,7 @@ function SessionBlock({
   const handleDragEnd = (e: React.DragEvent) => {
     logger.info("🔄 SessionBlock 드래그 종료", {
       sessionId: session.id,
-      dropEffect: e.dataTransfer.dropEffect,
+      dropEffect: e.dataTransfer?.dropEffect,
     });
     if (onDragEnd) {
       onDragEnd(e);
@@ -240,6 +244,14 @@ function SessionBlock({
   };
 
   const isDraggedSession = session.id === draggedSessionId;
+
+  // selectedStudentId 필터링: 선택된 학생이 없는 세션은 opacity 감소
+  const isFiltered =
+    selectedStudentId != null &&
+    !(session.enrollmentIds ?? []).some((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      return enrollment?.studentId === selectedStudentId;
+    });
 
   const weekdayLabel =
     ["월", "화", "수", "목", "금", "토", "일"][session.weekday] ?? "";
@@ -311,24 +323,36 @@ function SessionBlock({
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
+  // SubjectChip badge — in-progress glow indicator dot
+  const statusBadge =
+    sessionStatus === "in-progress" && !hasConflict ? (
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-white/80 shadow animate-pulse flex-shrink-0"
+        aria-label="진행 중"
+      />
+    ) : undefined;
+
   return (
-    <div style={wrapperStyle}>
+    <div
+      style={wrapperStyle}
+      data-testid={`session-block-${session.id}`}
+      data-session-id={session.id}
+      data-starts-at={session.startsAt}
+      data-ends-at={session.endsAt}
+      data-status={sessionStatus}
+      aria-label={ariaLabel}
+      draggable={!isMobile && !isReadOnly}
+      onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
+      onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
+      className={isFiltered ? "opacity-30" : ""}
+    >
       <button
         type="button"
         style={buttonStyle}
-        aria-label={ariaLabel}
         onClick={handleClick}
-        draggable={!isMobile && !isReadOnly}
-        onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
-        onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        data-testid={`session-block-${session.id}`}
-        data-session-id={session.id}
-        data-starts-at={session.startsAt}
-        data-ends-at={session.endsAt}
-        data-status={sessionStatus}
         className={[
           "session-block",
           "hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150",
@@ -339,16 +363,6 @@ function SessionBlock({
           .filter(Boolean)
           .join(" ")}
       >
-        {/* 진행 중 배지 */}
-        {sessionStatus === "in-progress" && !hasConflict && (
-          <span
-            className="absolute top-0.5 right-0.5 rounded-sm px-1 font-semibold leading-tight bg-amber-400 text-[#1a1a1a] text-[8px]"
-            aria-label="진행 중"
-          >
-            진행중
-          </span>
-        )}
-
         {/* 충돌 경고 아이콘 */}
         {hasConflict && (
           <span
@@ -367,6 +381,8 @@ function SessionBlock({
             variant="fill"
             size="sm"
             subLabel={`${session.startsAt}-${session.endsAt}`}
+            badge={statusBadge}
+            className="!flex-col w-full h-full justify-center !items-start !rounded-[6px] overflow-hidden"
           />
           {secondaryLabel && (
             <div className="text-white/90 text-right text-[12px] tracking-[-0.3px] leading-[1.1] overflow-hidden text-ellipsis whitespace-nowrap px-1 pb-0.5">
