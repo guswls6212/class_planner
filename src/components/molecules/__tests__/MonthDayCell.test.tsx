@@ -115,4 +115,19 @@ describe("MonthDayCell", () => {
     const btn = screen.getByRole("button");
     expect(btn.querySelector("[data-outside-month]")).not.toBeNull();
   });
+
+  it("SubjectChip을 통해 과목명이 렌더된다", () => {
+    const subj = makeSubject("s1", "영어", "#3498db");
+    const enrollment = makeEnrollment("e1", "s1");
+    const session = makeSession("sess-1", "e1");
+    render(
+      <MonthDayCell
+        {...defaultProps}
+        sessions={[session]}
+        subjects={[subj]}
+        enrollments={[enrollment]}
+      />
+    );
+    expect(screen.getByText("영어")).toBeInTheDocument();
+  });
 });

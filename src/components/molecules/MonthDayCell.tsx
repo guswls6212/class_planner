@@ -1,5 +1,6 @@
 import React from "react";
 import type { Enrollment, Session, Subject } from "../../lib/planner";
+import SubjectChip from "../common/SubjectChip";
 
 interface MonthDayCellProps {
   date: Date;
@@ -38,17 +39,17 @@ export default function MonthDayCell({
   return (
     <button
       type="button"
-      className="flex h-full min-h-[80px] w-full flex-col items-start gap-0.5 rounded-md border border-[--color-border] bg-[--color-bg-primary] p-1 text-left transition-colors hover:bg-[--color-bg-secondary]"
+      className="flex h-full min-h-[80px] w-full flex-col items-start gap-0.5 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-1 text-left transition-colors hover:bg-[var(--color-bg-secondary)]"
       onClick={() => onDayClick(date)}
     >
       {/* Date number */}
       <span
         className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
           isToday
-            ? "bg-[--color-primary] text-white"
+            ? "bg-[var(--color-primary)] text-white"
             : isCurrentMonth
-              ? "text-[--color-text-primary]"
-              : "text-[--color-text-muted]"
+              ? "text-[var(--color-text-primary)]"
+              : "text-[var(--color-text-muted)]"
         }`}
         {...(isToday ? { "data-today": "" } : {})}
         {...(!isCurrentMonth ? { "data-outside-month": "" } : {})}
@@ -62,12 +63,13 @@ export default function MonthDayCell({
           {visibleSessions.map((session) => {
             const subj = getSessionSubject(session);
             return (
-              <li
-                key={session.id}
-                className="truncate rounded px-1 py-0.5 text-[10px] leading-tight text-white"
-                style={{ backgroundColor: subj?.color ?? "var(--color-primary)" }}
-              >
-                {subj?.name ?? "수업"}
+              <li key={session.id} className="w-full">
+                <SubjectChip
+                  label={subj?.name ?? "수업"}
+                  color={subj?.color ?? "var(--color-primary)"}
+                  variant="fill"
+                  size="sm"
+                />
               </li>
             );
           })}
@@ -76,7 +78,7 @@ export default function MonthDayCell({
 
       {/* Overflow badge */}
       {overflow > 0 && (
-        <span className="text-[10px] text-[--color-text-muted]">+{overflow}</span>
+        <span className="text-[10px] text-[var(--color-text-muted)]">+{overflow}</span>
       )}
     </button>
   );

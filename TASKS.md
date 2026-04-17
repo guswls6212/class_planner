@@ -221,8 +221,9 @@
 
 ### P5-B — Design System Consistency 🔜
 - [x] B-1: `SubjectChip` primitive 신설 + `SchedulePreview` primitive 신설 + `getSessionSubject` 정규 위치 승격 → 랜딩 ScheduleMockup → SchedulePreview 교체 완료 (PR 진행 중)
-- [ ] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
-- [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 적용 (Monthly/Daily/Landing 공유 완성)
+- [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
+- [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
+- [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
 - [ ] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
 ### P5-C — /schedule UX Polish 🔜

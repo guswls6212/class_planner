@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import { Plus } from "lucide-react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
+import SubjectChip from "@/components/common/SubjectChip";
 
 type AttendanceStatus = "all-present" | "partial" | "absent" | "unmarked";
 
@@ -85,6 +86,7 @@ export function ScheduleDailyView({
 
   return (
     <div
+      data-surface="surface"
       className="flex flex-col flex-1 overflow-y-auto relative"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -97,48 +99,38 @@ export function ScheduleDailyView({
         <div className="flex flex-col gap-2 px-4 py-3">
           {daySessions.map((session) => {
             const subject = getSubjectForSession(session);
-            const accentColor = subject?.color ?? "var(--color-primary)";
             const teacher = getTeacher(session);
+            const studentNames = getStudentNames(session);
             const attStatus = attendanceStatusMap?.[session.id] ?? "unmarked";
+            // Build sub-label: student names + optional teacher
+            const subLabelParts = [
+              studentNames,
+              teacher ? `${teacher.name} 선생님` : "",
+            ].filter(Boolean);
+            const subLabel = subLabelParts.length > 0 ? subLabelParts.join(" · ") : undefined;
             return (
-              <div
-                key={session.id}
-                className="flex gap-3 p-3 rounded-lg bg-[var(--color-bg-secondary)] transition-all w-full"
-                style={{ borderLeft: `3px solid ${accentColor}` }}
-              >
-                <button
-                  onClick={() => onSessionClick(session)}
-                  className="flex gap-3 flex-1 text-left min-w-0 active:scale-[0.98] hover:opacity-80"
-                >
-                  <div className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 pt-0.5">
-                    {session.startsAt}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-medium text-[var(--color-text-primary)]">
-                        {subject?.name ?? "과목 없음"}
-                      </span>
-                      <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">
-                        {session.startsAt}–{session.endsAt}
-                      </span>
-                    </div>
-                    {getStudentNames(session) && (
-                      <p className="text-xs text-[var(--color-text-muted)] truncate mt-0.5">
-                        {getStudentNames(session)}
-                      </p>
-                    )}
-                    {teacher && (
-                      <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                        {teacher.name} 선생님
-                      </p>
-                    )}
-                  </div>
-                </button>
+              <div key={session.id} className="flex items-center gap-2 w-full">
+                {/* Time label */}
+                <span className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 text-right">
+                  {session.startsAt}
+                </span>
+                {/* SubjectChip — row layout with border-left accent */}
+                <div className="flex-1 min-w-0">
+                  <SubjectChip
+                    label={subject?.name ?? "과목 없음"}
+                    subLabel={subLabel}
+                    color={subject?.color ?? "var(--color-primary)"}
+                    variant="border-left"
+                    size="md"
+                    onClick={() => onSessionClick(session)}
+                  />
+                </div>
+                {/* Attendance badge */}
                 {onAttendanceClick && (
                   <button
                     aria-label="출석 체크"
                     onClick={() => onAttendanceClick(session)}
-                    className="flex-shrink-0 flex flex-col items-center justify-center gap-0.5 ml-1"
+                    className="flex-shrink-0 flex flex-col items-center justify-center gap-0.5"
                     title="출석 체크"
                   >
                     <span

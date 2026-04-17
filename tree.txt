@@ -234,6 +234,7 @@ src/components/organisms/__tests__/AboutPageLayout.test.tsx
 src/components/organisms/__tests__/HelpDrawer.test.tsx
 src/components/organisms/__tests__/LoginButton.security.test.tsx
 src/components/organisms/__tests__/LoginButton.test.tsx
+src/components/organisms/__tests__/ScheduleDailyView.test.tsx
 src/components/organisms/__tests__/ScheduleMonthlyView.test.tsx
 src/components/organisms/__tests__/StudentDetailPanel.test.tsx
 src/components/organisms/__tests__/StudentPanel.test.tsx

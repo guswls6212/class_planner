@@ -264,7 +264,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             }))}
             enrollments={enrollments}
             students={students}
-            yPosition={session.yPosition}
             left={session.left}
             width={session.width}
             yOffset={session.yOffset}
