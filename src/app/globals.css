@@ -77,8 +77,9 @@
   --color-primary-light: #dbeafe;
   --color-secondary: #6b7280;
   --color-success: #10b981;
-  --color-warning: #f59e0b;
+  --color-success-dark: #059669;
   --color-danger: #dc2626;
+  --color-danger-dark: #b91c1c;
 
   /* 테마별 색상 - 다크모드 기본값 */
   --color-bg-primary: #1f2937;
@@ -158,13 +159,6 @@
   --color-subject-orange-bg:     #FFEDD5;
   --color-subject-orange-fg:     #9A3412;
   --color-subject-orange-accent: #F97316;
-
-  /* --- Surface Grid Tokens --- */
-  --color-grid-canvas:      #FAFAFA;
-  --color-grid-line-major:  #E4E4E7;
-  --color-grid-line-minor:  #F4F4F5;
-  --color-grid-header-text: #71717A;
-  --color-grid-time-text:   #A1A1AA;
 
   /* --- Scrollbar Tokens --- */
   --color-scrollbar-track:        #f0f0f0;

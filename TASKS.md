@@ -219,13 +219,13 @@
 - [x] A-2: ScheduleActionBar — PDF·템플릿·공유 버튼 통합, 라벨 명확화
 - [x] A-3: HelpDrawer + HelpTooltip 도움말 시스템 (? 버튼, 5개 섹션, ColorBy 옆 i 버튼)
 
-### P5-B — Design System Consistency 🔜
+### P5-B — Design System Consistency ✅
 - [x] B-1: `SubjectChip` primitive 신설 + `SchedulePreview` primitive 신설 + `getSessionSubject` 정규 위치 승격 → 랜딩 ScheduleMockup → SchedulePreview 교체 완료 (PR 진행 중)
 - [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
 - [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
 - [x] B-3b: Weekly 그리드 내부 리라이트 — `TimeTableCell` 신설(DropZone 대체), `TimeTableRow` 간소화, `DropZone.tsx` 삭제, `TimeTableGrid` 루트에 `data-surface="surface"` 추가, Q Pastel 그리드 토큰 적용. 20개 공개 API, data-testid, virtual-scrollbar, schedule_scroll_position 계약 보존.
 - [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
-- [ ] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
+- [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
 ### P5-C — /schedule UX Polish 🔜
 - [ ] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환
@@ -278,3 +278,4 @@
 | 2026-04-17 | Phase 4 W4~W5 완료 — 시간표 템플릿(PR#61), 출석 관리(PR#62) |
 | 2026-04-17 | P5-D 완료 — 데이터 충돌 false positive 수정(PR#64), Pretendard 폰트 + PDF 뷰 라벨(PR#65) |
 | 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |
+| 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
