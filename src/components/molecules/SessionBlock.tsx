@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
 import SubjectChip from "@/components/common/SubjectChip";
+import type { Session, Subject } from "@/lib/planner";
 import {
   type ColorByMode,
   getGroupStudentNames,
@@ -11,23 +12,6 @@ import {
   resolveSessionColor,
 } from "./SessionBlock.utils";
 
-// 로컬 타입 정의 (SessionBlock.utils.ts와 동일)
-type Session = {
-  id: string;
-  enrollmentIds?: string[];
-  weekday: number;
-  startsAt: string;
-  endsAt: string;
-  room?: string;
-  teacherId?: string;
-};
-
-type Subject = {
-  id: string;
-  name: string;
-  color: string;
-};
-
 interface SessionBlockProps {
   session: Session;
   subjects: Subject[];
@@ -35,14 +19,12 @@ interface SessionBlockProps {
   students: Array<{ id: string; name: string }>;
   teachers?: Array<{ id: string; name: string; color: string }>;
   colorBy?: ColorByMode;
-  yPosition: number;
   left: number;
   width: number;
   yOffset: number;
   onClick: () => void;
   onDragStart?: (e: React.DragEvent, session: Session) => void;
   onDragEnd?: (e: React.DragEvent) => void;
-  style?: React.CSSProperties;
   selectedStudentId?: string;
   isMobile?: boolean;
   isDragging?: boolean;
@@ -72,7 +54,6 @@ function SessionBlock({
   students,
   teachers = [],
   colorBy = "subject",
-  yPosition,
   left,
   width,
   yOffset,
@@ -199,7 +180,7 @@ function SessionBlock({
   );
 
   const handleClick = (e: React.MouseEvent) => {
-    logger.info("🖱️ SessionBlock clicked!", {
+    logger.info("SessionBlock clicked", {
       sessionId: session.id,
       subjectName: subject?.name,
       studentNames,
@@ -219,9 +200,9 @@ function SessionBlock({
     try {
       e.dataTransfer.setData("text/plain", `session:${session.id}`);
       e.dataTransfer.effectAllowed = "move";
-      logger.info("✅ 드래그 데이터 설정 완료", { sessionId: session.id });
+      logger.info("드래그 데이터 설정 완료", { sessionId: session.id });
     } catch (error) {
-      logger.error("❌ 드래그 데이터 설정 실패:", undefined, error as Error);
+      logger.error("드래그 데이터 설정 실패", undefined, error as Error);
     }
     try {
       e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
@@ -234,7 +215,7 @@ function SessionBlock({
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
-    logger.info("🔄 SessionBlock 드래그 종료", {
+    logger.info("SessionBlock 드래그 종료", {
       sessionId: session.id,
       dropEffect: e.dataTransfer?.dropEffect,
     });

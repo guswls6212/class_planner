@@ -1,21 +1,5 @@
 import { logger } from "@/lib/logger";
-
-// 로컬 타입 — Domain 엔티티 클래스 대신 플레이너 호환 평탄 타입 사용 (SessionBlock.utils.ts와 일치)
-type Session = {
-  id: string;
-  enrollmentIds?: string[];
-  weekday: number;
-  startsAt: string;
-  endsAt: string;
-  room?: string;
-  teacherId?: string;
-};
-
-type Subject = {
-  id: string;
-  name: string;
-  color: string | undefined;
-};
+import type { Session, Subject } from "@/lib/planner";
 
 /**
  * 세션의 첫 번째 enrollment를 통해 과목 정보를 가져옵니다.

@@ -69,7 +69,6 @@ describe("SessionBlock Component", () => {
     subjects: mockSubjects,
     enrollments: mockEnrollments,
     students: mockStudents,
-    yPosition: 0,
     left: 100,
     width: 200,
     yOffset: 0,
@@ -207,9 +206,8 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("style prop이 올바르게 적용되어야 한다", () => {
-    const customStyle = { border: "2px solid red" };
-    render(<SessionBlock {...defaultProps} style={customStyle} />);
+  it("기본 border 스타일이 올바르게 적용되어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
 
     // border style is on the inner button, not the outer wrapper div
     const button = screen.getByRole("button");
@@ -633,7 +631,6 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
     subjects: contextMenuSubjects,
     enrollments: contextMenuEnrollments,
     students: contextMenuStudents,
-    yPosition: 0,
     left: 100,
     width: 200,
     yOffset: 0,

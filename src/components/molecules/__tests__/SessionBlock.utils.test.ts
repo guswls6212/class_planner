@@ -1,40 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  getGroupStudentDisplayText,
   getSessionBlockStyles,
 } from "../SessionBlock.utils";
-
-describe("getGroupStudentDisplayText", () => {
-  it("학생 0명 → 빈 문자열", () => {
-    expect(getGroupStudentDisplayText([])).toBe("");
-  });
-
-  it("학생 1명 → 이름만", () => {
-    expect(getGroupStudentDisplayText(["홍길동"])).toBe("홍길동");
-  });
-
-  it("학생 2명 → 쉼표 구분", () => {
-    expect(getGroupStudentDisplayText(["홍길동", "김철수"])).toBe(
-      "홍길동, 김철수"
-    );
-  });
-
-  it("학생 3명 → 쉼표 구분", () => {
-    expect(getGroupStudentDisplayText(["A", "B", "C"])).toBe("A, B, C");
-  });
-
-  it("학생 4명 → 첫 3명 + 외 1명", () => {
-    expect(getGroupStudentDisplayText(["A", "B", "C", "D"])).toBe(
-      "A, B, C 외 1명"
-    );
-  });
-
-  it("학생 6명 → 첫 3명 + 외 3명", () => {
-    expect(getGroupStudentDisplayText(["A", "B", "C", "D", "E", "F"])).toBe(
-      "A, B, C 외 3명"
-    );
-  });
-});
 
 describe("getSessionBlockStyles", () => {
   const defaultParams = {
