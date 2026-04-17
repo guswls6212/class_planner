@@ -132,16 +132,19 @@ describe("TimeTableGrid", () => {
   });
 
   it("그리드 스타일이 올바르게 적용된다", () => {
-    render(<TimeTableGrid {...defaultProps} />);
+    const { container } = render(<TimeTableGrid {...defaultProps} />);
 
-    const gridElement = screen.getByTestId("time-table-grid");
+    // The outermost element has data-testid="time-table-grid" and data-surface="surface"
+    const rootElement = screen.getByTestId("time-table-grid");
+    expect(rootElement.getAttribute("data-surface")).toBe("surface");
 
-    // Tailwind classes applied via className — check class presence instead of computed style
-    expect(gridElement.className).toContain("time-table-grid");
-    expect(gridElement.className).toContain("grid");
-    expect(gridElement.className).toContain("overflow-y-auto");
-    expect(gridElement.className).toContain("overflow-x-auto");
-    expect(gridElement.className).toContain("relative");
+    // The inner scrollable grid div carries the grid-specific Tailwind classes
+    const innerGrid = container.querySelector(".time-table-grid") as HTMLElement;
+    expect(innerGrid.className).toContain("time-table-grid");
+    expect(innerGrid.className).toContain("grid");
+    expect(innerGrid.className).toContain("overflow-y-auto");
+    expect(innerGrid.className).toContain("overflow-x-auto");
+    expect(innerGrid.className).toContain("relative");
   });
 
   it("가상 스크롤바 스타일이 올바르게 적용된다", () => {

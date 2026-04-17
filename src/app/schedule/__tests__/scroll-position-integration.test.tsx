@@ -134,7 +134,7 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
   });
 
   it("사용자 스크롤 시 위치를 localStorage에 저장해야 한다", async () => {
-    render(
+    const { container } = render(
       <AuthGuard requireAuth={false}>
         <SchedulePage />
       </AuthGuard>
@@ -144,7 +144,7 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
     });
 
-    const gridElement = screen.getByTestId("time-table-grid");
+    const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
     // 스크롤 이벤트 발생
     fireEvent.scroll(gridElement, {
@@ -307,7 +307,7 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
     // localStorage mock을 초기화하여 스크롤 관련 호출만 추적
     localStorageMock.setItem.mockClear();
 
-    render(
+    const { container } = render(
       <AuthGuard requireAuth={false}>
         <SchedulePage />
       </AuthGuard>
@@ -317,7 +317,7 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
     });
 
-    const gridElement = screen.getByTestId("time-table-grid");
+    const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
     // 연속된 스크롤 이벤트 발생
     fireEvent.scroll(gridElement, {
@@ -389,13 +389,14 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
     };
     localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
-    render(
+    const { container } = render(
       <AuthGuard requireAuth={false}>
         <SchedulePage />
       </AuthGuard>
     );
 
-    const gridElement = await screen.findByTestId("time-table-grid");
+    await screen.findByTestId("time-table-grid");
+    const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
     // 초기 로드 시 복원 확인
     await waitFor(() => {
@@ -433,13 +434,14 @@ describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
     };
     localStorageMock.getItem.mockReturnValue(JSON.stringify(savedData));
 
-    render(
+    const { container } = render(
       <AuthGuard requireAuth={false}>
         <SchedulePage />
       </AuthGuard>
     );
 
-    const gridElement = await screen.findByTestId("time-table-grid");
+    await screen.findByTestId("time-table-grid");
+    const gridElement = container.querySelector(".time-table-grid") as HTMLElement;
 
     // 초기 로드 시 복원 확인
     await waitFor(() => {
