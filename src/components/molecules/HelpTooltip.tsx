@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface HelpTooltipProps {
   content: string;
@@ -9,6 +9,14 @@ interface HelpTooltipProps {
 
 export function HelpTooltip({ content, label = "도움말" }: HelpTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [flip, setFlip] = useState<"none" | "left">("none");
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || !popoverRef.current) return;
+    const rect = popoverRef.current.getBoundingClientRect();
+    setFlip(rect.right > window.innerWidth - 8 ? "left" : "none");
+  }, [isOpen]);
 
   return (
     <div className="relative inline-flex items-center">
@@ -27,7 +35,15 @@ export function HelpTooltip({ content, label = "도움말" }: HelpTooltipProps) 
             className="fixed inset-0 z-[999]"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute left-6 top-0 z-[1000] w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 text-xs text-[var(--color-text-secondary)] shadow-admin-md leading-relaxed">
+          <div
+            ref={popoverRef}
+            data-testid="help-tooltip-popover"
+            data-flip={flip}
+            className={[
+              "absolute top-0 z-[1000] w-56 max-w-[calc(100vw-32px)] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 text-xs text-[var(--color-text-secondary)] shadow-admin-md leading-relaxed",
+              flip === "left" ? "right-6" : "left-6",
+            ].join(" ")}
+          >
             {content}
           </div>
         </>

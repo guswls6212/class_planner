@@ -94,4 +94,38 @@ describe("AccountMenu", () => {
     expect(screen.getByText("test@example.com")).toBeDefined();
     expect(screen.getByRole("button", { name: "로그아웃" })).toBeDefined();
   });
+
+  it("compact=false(기본) 드롭다운은 data-anchor='bottom'", async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: "u1",
+          email: "test@example.com",
+          user_metadata: {},
+        },
+      },
+    });
+    render(<AccountMenu compact={false} />);
+    await waitFor(() => screen.getByRole("button", { name: "계정 메뉴" }));
+    fireEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
+    const dropdown = screen.getByTestId("account-menu-dropdown");
+    expect(dropdown.getAttribute("data-anchor")).toBe("bottom");
+  });
+
+  it("compact=true 드롭다운은 data-anchor='left'", async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: "u1",
+          email: "test@example.com",
+          user_metadata: {},
+        },
+      },
+    });
+    render(<AccountMenu compact />);
+    await waitFor(() => screen.getByRole("button", { name: "계정 메뉴" }));
+    fireEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
+    const dropdown = screen.getByTestId("account-menu-dropdown");
+    expect(dropdown.getAttribute("data-anchor")).toBe("left");
+  });
 });
