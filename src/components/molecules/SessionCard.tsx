@@ -97,8 +97,92 @@ function SessionCardBlock({
   );
 }
 
-function SessionCardRow(_props: SessionCardProps) {
-  return <div data-testid="session-card-row">TODO</div>;
+const ATTENDANCE_LABELS: Record<string, string> = {
+  "all-present": "✓",
+  partial: "△",
+  absent: "✗",
+  unmarked: "•",
+};
+
+const ATTENDANCE_COLORS: Record<string, string> = {
+  "all-present": "bg-green-500",
+  partial: "bg-yellow-400",
+  absent: "bg-red-400",
+  unmarked: "bg-[var(--color-text-muted)]",
+};
+
+function SessionCardRow({
+  subject,
+  studentNames,
+  timeRange,
+  state = "default",
+  onClick,
+  onAttendanceClick,
+  attendanceStatus = "unmarked",
+  className,
+  "data-testid": testId,
+}: SessionCardProps) {
+  const tone = resolveSessionTone(subject?.color);
+  const label = subject?.name ?? "과목 없음";
+  const students =
+    studentNames && studentNames.length > 0
+      ? studentNames.join(", ")
+      : undefined;
+
+  return (
+    <div
+      className={["flex items-center gap-2 w-full", className ?? ""]
+        .filter(Boolean)
+        .join(" ")}
+      data-testid={testId}
+      data-variant="row"
+      data-state={state}
+    >
+      {timeRange && (
+        <span className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 text-right">
+          {timeRange}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        className="flex-1 min-w-0 rounded-[4px] px-2 py-1.5 text-left transition-shadow hover:shadow-sm"
+        style={{
+          backgroundColor: tone.bg,
+          color: tone.fg,
+          borderLeft:
+            state === "ongoing" ? `3px solid ${tone.accent}` : undefined,
+          opacity: state === "done" ? 0.55 : undefined,
+        }}
+      >
+        <div className="text-[12px] font-semibold truncate">{label}</div>
+        {students && (
+          <div className="text-[10px] opacity-75 truncate">{students}</div>
+        )}
+      </button>
+      {onAttendanceClick && (
+        <button
+          type="button"
+          onClick={onAttendanceClick}
+          aria-label="출석 체크"
+          className="flex-shrink-0 flex flex-col items-center gap-0.5"
+        >
+          <span
+            className={[
+              "w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center",
+              ATTENDANCE_COLORS[attendanceStatus],
+            ].join(" ")}
+          >
+            {ATTENDANCE_LABELS[attendanceStatus]}
+          </span>
+          <span className="text-[9px] text-[var(--color-text-muted)]">
+            출석
+          </span>
+        </button>
+      )}
+    </div>
+  );
 }
 
 function SessionCardChip(_props: SessionCardProps) {

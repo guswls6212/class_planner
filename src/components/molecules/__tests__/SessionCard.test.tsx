@@ -114,3 +114,45 @@ describe("SessionCard — block variant", () => {
     expect(el.getAttribute("aria-label")).toContain("충돌");
   });
 });
+
+describe("SessionCard — row variant", () => {
+  it("시간 range prefix + 과목명 + 학생을 렌더한다", () => {
+    render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        studentNames={["김지우"]}
+        timeRange="14:00"
+      />,
+    );
+    expect(screen.getByText("14:00")).toBeDefined();
+    expect(screen.getByText("피아노")).toBeDefined();
+    expect(screen.getByText("김지우")).toBeDefined();
+  });
+
+  it("출석 클릭 핸들러가 attendance 버튼에서 호출된다", () => {
+    const onAttendance = vi.fn();
+    render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        onAttendanceClick={onAttendance}
+        attendanceStatus="all-present"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /출석/ }));
+    expect(onAttendance).toHaveBeenCalledTimes(1);
+  });
+
+  it("attendanceStatus='all-present'이면 ✓ 기호 렌더", () => {
+    render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        onAttendanceClick={() => {}}
+        attendanceStatus="all-present"
+      />,
+    );
+    expect(screen.getByText("✓")).toBeDefined();
+  });
+});
