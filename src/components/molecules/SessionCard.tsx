@@ -237,8 +237,43 @@ function SessionCardChip({
   );
 }
 
-function SessionCardPreview(_props: SessionCardProps) {
-  return <div data-testid="session-card-preview">TODO</div>;
+function SessionCardPreview({
+  subject,
+  studentNames,
+  style,
+  className,
+  "data-testid": testId,
+}: SessionCardProps) {
+  const tone = resolveSessionTone(subject?.color);
+  const label = subject?.name ?? "수업";
+  const subLabel =
+    studentNames && studentNames.length > 0
+      ? studentNames.join(", ")
+      : undefined;
+
+  return (
+    <div
+      className={[
+        "rounded-[4px] px-2 py-1 text-[10px] leading-tight overflow-hidden pointer-events-none",
+        className ?? "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{
+        ...style,
+        backgroundColor: tone.bg,
+        color: tone.fg,
+      }}
+      data-testid={testId}
+      data-variant="preview"
+      aria-hidden="true"
+    >
+      <div className="font-semibold truncate">{label}</div>
+      {subLabel && (
+        <div className="text-[9px] opacity-75 truncate">{subLabel}</div>
+      )}
+    </div>
+  );
 }
 
 export default SessionCard;

@@ -189,3 +189,35 @@ describe("SessionCard — chip variant", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("SessionCard — preview variant", () => {
+  it("block처럼 렌더하지만 pointer-events-none이 적용된다", () => {
+    render(
+      <SessionCard
+        variant="preview"
+        subject={blueSubject}
+        studentNames={["김지우"]}
+        data-testid="preview"
+      />,
+    );
+    const el = screen.getByTestId("preview") as HTMLElement;
+    expect(screen.getByText("피아노")).toBeDefined();
+    expect(el.className).toContain("pointer-events-none");
+  });
+
+  it("onClick을 전달해도 클릭되지 않는다 (읽기 전용)", () => {
+    const onClick = vi.fn();
+    render(
+      <SessionCard
+        variant="preview"
+        subject={blueSubject}
+        onClick={onClick}
+        data-testid="preview"
+      />,
+    );
+    const el = screen.getByTestId("preview");
+    expect(el.tagName.toLowerCase()).toBe("div");
+    fireEvent.click(el);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
