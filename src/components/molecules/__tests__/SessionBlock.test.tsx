@@ -206,14 +206,20 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("기본 border 스타일이 올바르게 적용되어야 한다", () => {
+  it("기본 상태에서 좌측 accent 바가 없어야 한다 (borderLeft: undefined)", () => {
     render(<SessionBlock {...defaultProps} />);
 
-    // border style is on the inner button, not the outer wrapper div
     const button = screen.getByRole("button");
-    expect(button).toHaveStyle(
-      "border: 1px solid rgba(255, 255, 255, 0.2)"
-    );
+    // 기본 상태: in-progress/conflict 아님 → borderLeft 없음
+    expect(button.style.borderLeft).toBe("");
+  });
+
+  it("파스텔 tone이 버튼 배경에 적용되어야 한다 (#FF0000 → tintFromHex 0.8)", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const button = screen.getByRole("button");
+    // #FF0000 → tint 0.8 → rgb(255, 204, 204)
+    expect(button).toHaveStyle({ backgroundColor: "rgb(255, 204, 204)" });
   });
 
   it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {
@@ -591,11 +597,13 @@ describe("SessionBlock Component", () => {
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
-  it("hasConflict=true 일 때 충돌 표시가 렌더되어야 한다", () => {
+  it("hasConflict=true 일 때 빨간 borderLeft + ⚠ 아이콘이 렌더되어야 한다", () => {
     render(<SessionBlock {...defaultProps} hasConflict={true} />);
-    // The red border class is applied to the inner button element
     const button = screen.getByRole("button");
-    expect(button.className).toContain("border-l");
+    // 충돌: 좌측 3px 빨강 accent 바 (inline style) — jsdom이 hex를 rgb로 정규화
+    expect(button.style.borderLeft).toBe("3px solid rgb(239, 68, 68)");
+    // ⚠ 경고 아이콘
+    expect(screen.getByLabelText("시간 충돌")).toBeInTheDocument();
   });
 
   it("isReadOnly=true 일 때 onClick이 호출되지 않아야 한다", () => {
