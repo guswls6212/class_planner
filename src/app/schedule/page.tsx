@@ -1026,7 +1026,10 @@ function SchedulePageContent(): JSX.Element {
         dataLoading={dataLoading}
         error={error ?? undefined}
         colorBy={colorBy}
-        onColorByChange={setColorBy}
+        onColorByChange={(mode) => {
+          setColorBy(mode);
+          if (mode !== "student") clearStudentFilter();
+        }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
       />
