@@ -3,6 +3,24 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import SchedulePreview from "@/components/common/SchedulePreview";
+import type { PreviewCell } from "@/components/common/SchedulePreview.types";
+
+const LANDING_DEMO_DATA: PreviewCell[] = [
+  { day: 0, timeIndex: 0, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 2, timeIndex: 0, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 4, timeIndex: 2, subjectLabel: "수학", studentLabel: "김민준", color: "blue" },
+  { day: 4, timeIndex: 0, subjectLabel: "영어", studentLabel: "이서연", color: "red" },
+  { day: 1, timeIndex: 1, subjectLabel: "영어", studentLabel: "이서연", color: "red" },
+  { day: 0, timeIndex: 1, subjectLabel: "과학", studentLabel: "박지호", color: "violet" },
+  { day: 3, timeIndex: 2, subjectLabel: "과학", studentLabel: "박지호", color: "violet" },
+  { day: 3, timeIndex: 1, subjectLabel: "국어", studentLabel: "최유진", color: "emerald" },
+  { day: 2, timeIndex: 2, subjectLabel: "국어", studentLabel: "최유진", color: "emerald" },
+  { day: 1, timeIndex: 2, subjectLabel: "미술", studentLabel: "정하은", color: "amber" },
+  { day: 0, timeIndex: 3, subjectLabel: "음악", studentLabel: "한소율", color: "pink" },
+  { day: 2, timeIndex: 3, subjectLabel: "체육", studentLabel: "윤도현", color: "teal" },
+  { day: 4, timeIndex: 3, subjectLabel: "사회", studentLabel: "강예린", color: "orange" },
+];
 
 export default function LandingPage() {
   const router = useRouter();
@@ -74,146 +92,14 @@ function HeroSection() {
           </div>
         </div>
         <div className="flex-[1.2] w-full">
-          <ScheduleMockup />
+          <SchedulePreview
+            data={LANDING_DEMO_DATA}
+            times={["15:00", "16:00", "17:00", "18:00"]}
+            size="sm"
+          />
         </div>
       </div>
     </section>
-  );
-}
-
-function ScheduleMockup() {
-  return (
-    <div
-      aria-hidden="true"
-      className="bg-[--color-bg-secondary] rounded-admin-lg shadow-admin-lg border border-[--color-border-light] p-5 w-full"
-    >
-      <div
-        className="grid gap-[3px] [grid-template-columns:56px_repeat(5,1fr)]"
-      >
-        {/* Header row */}
-        <div />
-        {["월", "화", "수", "목", "금"].map((day) => (
-          <div
-            key={day}
-            className="text-[12px] font-[700] text-[--color-text-muted] text-center py-2"
-          >
-            {day}
-          </div>
-        ))}
-
-        {/* 15:00 row */}
-        <div className="text-[10px] text-[--color-text-muted] text-right py-1 pr-2">
-          15:00
-        </div>
-        {/* 월 */}
-        <div className="bg-[--color-subject-blue-bg] text-[--color-subject-blue-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          수학
-          <br />
-          <span className="text-[9px] opacity-70">김민준</span>
-        </div>
-        {/* 화 */}
-        <div />
-        {/* 수 */}
-        <div className="bg-[--color-subject-blue-bg] text-[--color-subject-blue-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          수학
-          <br />
-          <span className="text-[9px] opacity-70">김민준</span>
-        </div>
-        {/* 목 */}
-        <div />
-        {/* 금 */}
-        <div className="bg-[--color-subject-red-bg] text-[--color-subject-red-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          영어
-          <br />
-          <span className="text-[9px] opacity-70">이서연</span>
-        </div>
-
-        {/* 16:00 row */}
-        <div className="text-[10px] text-[--color-text-muted] text-right py-1 pr-2">
-          16:00
-        </div>
-        {/* 월 */}
-        <div className="bg-[--color-subject-violet-bg] text-[--color-subject-violet-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          과학
-          <br />
-          <span className="text-[9px] opacity-70">박지호</span>
-        </div>
-        {/* 화 */}
-        <div className="bg-[--color-subject-red-bg] text-[--color-subject-red-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          영어
-          <br />
-          <span className="text-[9px] opacity-70">이서연</span>
-        </div>
-        {/* 수 */}
-        <div />
-        {/* 목 */}
-        <div className="bg-[--color-subject-emerald-bg] text-[--color-subject-emerald-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          국어
-          <br />
-          <span className="text-[9px] opacity-70">최유진</span>
-        </div>
-        {/* 금 */}
-        <div />
-
-        {/* 17:00 row */}
-        <div className="text-[10px] text-[--color-text-muted] text-right py-1 pr-2">
-          17:00
-        </div>
-        {/* 월 */}
-        <div />
-        {/* 화 */}
-        <div className="bg-[--color-subject-amber-bg] text-[--color-subject-amber-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          미술
-          <br />
-          <span className="text-[9px] opacity-70">정하은</span>
-        </div>
-        {/* 수 */}
-        <div className="bg-[--color-subject-emerald-bg] text-[--color-subject-emerald-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          국어
-          <br />
-          <span className="text-[9px] opacity-70">최유진</span>
-        </div>
-        {/* 목 */}
-        <div className="bg-[--color-subject-violet-bg] text-[--color-subject-violet-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          과학
-          <br />
-          <span className="text-[9px] opacity-70">박지호</span>
-        </div>
-        {/* 금 */}
-        <div className="bg-[--color-subject-blue-bg] text-[--color-subject-blue-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          수학
-          <br />
-          <span className="text-[9px] opacity-70">김민준</span>
-        </div>
-
-        {/* 18:00 row */}
-        <div className="text-[10px] text-[--color-text-muted] text-right py-1 pr-2">
-          18:00
-        </div>
-        {/* 월 */}
-        <div className="bg-[--color-subject-pink-bg] text-[--color-subject-pink-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          음악
-          <br />
-          <span className="text-[9px] opacity-70">한소율</span>
-        </div>
-        {/* 화 */}
-        <div />
-        {/* 수 */}
-        <div className="bg-[--color-subject-teal-bg] text-[--color-subject-teal-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          체육
-          <br />
-          <span className="text-[9px] opacity-70">윤도현</span>
-        </div>
-        {/* 목 */}
-        <div />
-        {/* 금 */}
-        <div className="bg-[--color-subject-orange-bg] text-[--color-subject-orange-fg] rounded-[6px] p-[6px] text-[10px] leading-[1.3]">
-          사회
-          <br />
-          <span className="text-[9px] opacity-70">강예린</span>
-        </div>
-      </div>
-    </div>
   );
 }
 

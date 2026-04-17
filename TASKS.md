@@ -220,9 +220,9 @@
 - [x] A-3: HelpDrawer + HelpTooltip 도움말 시스템 (? 버튼, 5개 섹션, ColorBy 옆 i 버튼)
 
 ### P5-B — Design System Consistency 🔜
-- [ ] B-1: `SchedulePreview` primitive 추출 (랜딩 ScheduleMockup → 실제 그리드 기반으로 교체)
+- [x] B-1: `SubjectChip` primitive 신설 + `SchedulePreview` primitive 신설 + `getSessionSubject` 정규 위치 승격 → 랜딩 ScheduleMockup → SchedulePreview 교체 완료 (PR 진행 중)
 - [ ] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
-- [ ] B-3: `SubjectChip` primitive 추출 (Monthly/Daily/Landing 공유)
+- [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 적용 (Monthly/Daily/Landing 공유 완성)
 - [ ] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
 ### P5-C — /schedule UX Polish 🔜

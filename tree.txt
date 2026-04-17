@@ -144,6 +144,12 @@ src/application/use-cases/__tests__/AddStudentUseCase.test.ts
 src/application/use-cases/__tests__/DeleteStudentUseCase.test.ts
 src/application/use-cases/__tests__/SubjectUseCases.test.ts
 src/application/use-cases/__tests__/UpdateStudentUseCase.test.ts
+src/components/common/SchedulePreview.tsx
+src/components/common/SchedulePreview.types.ts
+src/components/common/SubjectChip.tsx
+src/components/common/SubjectChip.types.ts
+src/components/common/__tests__/SchedulePreview.test.tsx
+src/components/common/__tests__/SubjectChip.test.tsx
 src/components/atoms/AuthGuard.tsx
 src/components/atoms/Button.tsx
 src/components/atoms/ErrorBoundary.tsx
@@ -327,6 +333,9 @@ src/infrastructure/repositories/__tests__/SupabaseEnrollmentRepository.test.ts
 src/infrastructure/repositories/__tests__/SupabaseSessionRepository.test.ts
 src/infrastructure/repositories/__tests__/SupabaseStudentRepository.test.ts
 src/infrastructure/repositories/__tests__/SupabaseSubjectRepository.test.ts
+src/lib/schedule/__tests__/getSessionSubject.test.ts
+src/lib/schedule/getSessionSubject.ts
+src/lib/schedule/subjectColorPalette.ts
 src/lib/__tests__/adminGuard.test.ts
 src/lib/__tests__/apiSync.test.ts
 src/lib/__tests__/authUtils.test.ts

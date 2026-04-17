@@ -1,6 +1,5 @@
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { CSSProperties } from "react";
-import { logger } from "../../lib/logger";
 
 // 타입을 직접 정의하여 import 의존성 제거
 type Session = {
@@ -62,49 +61,8 @@ export const getGroupStudentNames = (
     .filter(Boolean) as string[];
 };
 
-// 🆕 과목 정보를 가져오는 함수
-export const getSessionSubject = (
-  session: Session,
-  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
-  subjects: Subject[]
-): Subject | null => {
-  // enrollmentIds가 undefined이거나 비어있는 경우 처리
-  if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
-    logger.warn("SessionBlock: enrollmentIds가 비어있음", { sessionId: session.id });
-    return null;
-  }
-
-  // 첫 번째 enrollment에서 과목 정보 가져오기
-  const enrollmentIds = session.enrollmentIds || [];
-  const firstEnrollment = enrollments?.find((e) => e.id === enrollmentIds[0]);
-  if (!firstEnrollment) {
-    logger.warn("SessionBlock: enrollment를 찾을 수 없음", {
-      sessionId: session.id,
-      enrollmentId: enrollmentIds[0],
-      availableEnrollments: enrollments?.map((e) => e.id),
-    });
-    return null;
-  }
-
-  const subject = subjects?.find((s) => s.id === firstEnrollment.subjectId);
-  if (!subject) {
-    logger.warn("SessionBlock: 과목을 찾을 수 없음", {
-      sessionId: session.id,
-      enrollmentId: firstEnrollment.id,
-      subjectId: firstEnrollment.subjectId,
-      availableSubjects: subjects?.map((s) => ({ id: s.id, name: s.name })),
-    });
-
-    // 🆕 과목을 찾을 수 없을 때 기본 과목 반환 (Unknown 대신)
-    if (subjects && subjects.length > 0) {
-      logger.debug("SessionBlock: 기본 과목 사용", { subject: subjects[0] });
-      return subjects[0];
-    }
-    return null;
-  }
-
-  return subject;
-};
+// 과목 정보를 가져오는 함수 — src/lib/schedule/getSessionSubject.ts로 승격됨 (Phase 5-B)
+export { getSessionSubject } from "@/lib/schedule/getSessionSubject";
 
 // 🆕 그룹 학생 이름을 표시하는 함수 (최대 3명까지 표시)
 export const getGroupStudentDisplayText = (studentNames: string[]): string => {
