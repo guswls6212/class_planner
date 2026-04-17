@@ -320,6 +320,8 @@ function SessionBlock({
       return enrollment ? [enrollment.studentId] : [];
     });
     const selectedInSession = allStudentIds.filter((id) => selectedStudentIds.includes(id));
+    // Only show +N badge if at least one selected student is in this session
+    if (selectedInSession.length === 0) return 0;
     return allStudentIds.length - selectedInSession.length;
   })();
 

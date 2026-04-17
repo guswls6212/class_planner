@@ -168,6 +168,17 @@ function SchedulePageContent(): JSX.Element {
     usePerformanceMonitoring();
 
   // ================================
+  // 🎯 사용자 ID (useStudentFilter 스코프 키에 필요)
+  // ================================
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
+  // ================================
   // 🧩 로컬 타입 (가독성 향상용)
   // ================================
   type SessionCreateInput = {
@@ -195,7 +206,7 @@ function SchedulePageContent(): JSX.Element {
     selectedStudentIds,
     toggleStudent: toggleStudentFilter,
     clearFilter: clearStudentFilter,
-  } = useStudentFilter(students);
+  } = useStudentFilter(userId);
 
   // ================================
   // 🧩 핵심 콜백: 세션 추가
@@ -882,15 +893,8 @@ function SchedulePageContent(): JSX.Element {
   // ================================
   // 🎯 템플릿 기능
   // ================================
-  const [userId, setUserId] = useState<string | null>(null);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id);
-    });
-  }, []);
 
   const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate } = useTemplates(userId);
 

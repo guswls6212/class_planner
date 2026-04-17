@@ -1,12 +1,8 @@
-import { useState } from "react";
 import { useLocal } from "@/hooks/useLocal";
 
-export function useStudentFilter(students: { id: string; name: string }[]) {
-  const [selectedStudentIds, setSelectedStudentIds] = useLocal<string[]>(
-    "ui:selectedStudentIds",
-    []
-  );
-  const [searchQuery, setSearchQuery] = useState("");
+export function useStudentFilter(userId: string | null) {
+  const key = `ui:${userId ?? "anonymous"}:selectedStudentIds`;
+  const [selectedStudentIds, setSelectedStudentIds] = useLocal<string[]>(key, []);
 
   const toggleStudent = (id: string) => {
     setSelectedStudentIds((prev) =>
@@ -16,18 +12,9 @@ export function useStudentFilter(students: { id: string; name: string }[]) {
 
   const clearFilter = () => setSelectedStudentIds([]);
 
-  const filteredStudents = students.filter((s) =>
-    searchQuery.trim()
-      ? s.name.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
-  );
-
   return {
     selectedStudentIds,
     toggleStudent,
     clearFilter,
-    searchQuery,
-    setSearchQuery,
-    filteredStudents,
   };
 }

@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
+import type { DragEvent } from "react";
 
 interface StudentFilterChipBarProps {
   students: { id: string; name: string }[];
   selectedStudentIds: string[];
   onToggleStudent: (id: string) => void;
   onClearFilter: () => void;
-  onDragStart: (e: React.DragEvent, student: { id: string; name: string }) => void;
-  onDragEnd: (e: React.DragEvent) => void;
+  onDragStart: (e: DragEvent<HTMLButtonElement>, student: { id: string; name: string }) => void;
+  onDragEnd: (e: DragEvent<HTMLButtonElement>) => void;
 }
 
 export default function StudentFilterChipBar({
