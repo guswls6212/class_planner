@@ -781,6 +781,7 @@ body {
   border: 1px solid var(--color-border);
   z-index: 20002;
   position: relative;
+  animation: modalFadeIn 0.2s ease-out;
 }
 
 /* 모달 애니메이션 */
@@ -922,10 +923,6 @@ body {
 .time-table-grid::-webkit-scrollbar-button:end:increment {
   background-color: var(--color-scrollbar-button-alt) !important;
   border-radius: 3px !important;
-}
-
-.modal-content {
-  animation: modalFadeIn 0.2s ease-out;
 }
 
 /* Screen-reader only utility */
