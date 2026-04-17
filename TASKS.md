@@ -228,9 +228,9 @@
 - [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
 ### P5-C — /schedule UX Polish 🔜
-- [ ] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환
-- [ ] C-2: ColorBy 토글 시각 통일 (Day/Week/Month 토글과 동일 스타일)
-- [ ] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, +N 뱃지)
+- [x] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환 (StudentFilterChipBar)
+- [x] C-2: ColorBy 토글 시각 통일 (SegmentedButton atom — Day/Week/Month + ColorBy 동일 스타일)
+- [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
 - [x] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
 - [ ] C-5: PDF 고급 스코프 (범위 선택 다이얼로그) — 선택적
 

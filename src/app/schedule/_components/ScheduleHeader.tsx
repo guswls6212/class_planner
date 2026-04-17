@@ -1,22 +1,27 @@
 import ColorByToggle from "../../../components/molecules/ColorByToggle";
 import { HelpTooltip } from "../../../components/molecules/HelpTooltip";
+import SegmentedButton from "../../../components/atoms/SegmentedButton";
 import type { ColorByMode } from "../../../hooks/useColorBy";
 import type { ScheduleViewMode } from "../../../hooks/useScheduleView";
 
 type Props = {
   dataLoading: boolean;
   error?: string;
-  selectedStudentName?: string;
   colorBy?: ColorByMode;
   onColorByChange?: (mode: ColorByMode) => void;
   viewMode: ScheduleViewMode;
   onViewModeChange: (mode: ScheduleViewMode) => void;
 };
 
+const VIEW_MODES = [
+  { label: "일별", value: "daily" as ScheduleViewMode },
+  { label: "주간", value: "weekly" as ScheduleViewMode },
+  { label: "월별", value: "monthly" as ScheduleViewMode },
+] as const;
+
 export default function ScheduleHeader({
   dataLoading,
   error,
-  selectedStudentName,
   colorBy = "subject",
   onColorByChange,
   viewMode,
@@ -41,39 +46,12 @@ export default function ScheduleHeader({
                 : "세션 데이터를 로드 중..."}
             </div>
           )}
-          {/* View mode segmented toggle */}
-          <div className="flex rounded-md overflow-hidden border border-[var(--color-border)]">
-            <button
-              onClick={() => onViewModeChange("daily")}
-              className={`px-3 py-1 text-sm transition-colors ${
-                viewMode === "daily"
-                  ? "bg-accent text-white"
-                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
-              }`}
-            >
-              일별
-            </button>
-            <button
-              onClick={() => onViewModeChange("weekly")}
-              className={`px-3 py-1 text-sm transition-colors ${
-                viewMode === "weekly"
-                  ? "bg-accent text-white"
-                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
-              }`}
-            >
-              주간
-            </button>
-            <button
-              onClick={() => onViewModeChange("monthly")}
-              className={`px-3 py-1 text-sm transition-colors ${
-                viewMode === "monthly"
-                  ? "bg-accent text-white"
-                  : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
-              }`}
-            >
-              월별
-            </button>
-          </div>
+          <SegmentedButton
+            options={VIEW_MODES}
+            value={viewMode}
+            onChange={onViewModeChange}
+            aria-label="뷰 모드"
+          />
           {onColorByChange && (
             <div className="flex items-center gap-1">
               <ColorByToggle colorBy={colorBy} onChange={onColorByChange} />
@@ -93,17 +71,6 @@ export default function ScheduleHeader({
             로컬 데이터로 계속 작업할 수 있습니다.
           </small>
         </div>
-      )}
-      {selectedStudentName ? (
-        <p className="mt-1 text-sm text-[--color-text-secondary]">
-          {selectedStudentName} 학생의 시간표입니다. 다른 학생을 선택하거나 선택
-          해제하여 전체 시간표를 볼 수 있습니다.
-        </p>
-      ) : (
-        <p className="mt-1 text-sm text-[--color-text-secondary]">
-          전체 학생의 시간표입니다. 수강생 리스트에서 학생을 선택하면 해당
-          학생의 시간표만 볼 수 있습니다.
-        </p>
       )}
     </div>
   );

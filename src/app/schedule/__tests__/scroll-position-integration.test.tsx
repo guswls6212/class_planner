@@ -72,15 +72,14 @@ vi.mock("../../../hooks/useScheduleSessionManagementLocal", () => ({
   }),
 }));
 
-vi.mock("../../../hooks/useStudentPanel", () => ({
-  useStudentPanel: () => ({
-    selectedStudentId: "",
-    panelState: {
-      handleMouseDown: vi.fn(),
-      handleStudentClick: vi.fn(),
-      resetDragState: vi.fn(),
-      setSearchQuery: vi.fn(),
-    },
+vi.mock("../_hooks/useStudentFilter", () => ({
+  useStudentFilter: () => ({
+    selectedStudentIds: [],
+    toggleStudent: vi.fn(),
+    clearFilter: vi.fn(),
+    searchQuery: "",
+    setSearchQuery: vi.fn(),
+    filteredStudents: [],
   }),
 }));
 

@@ -25,7 +25,7 @@ interface SessionBlockProps {
   onClick: () => void;
   onDragStart?: (e: React.DragEvent, session: Session) => void;
   onDragEnd?: (e: React.DragEvent) => void;
-  selectedStudentId?: string;
+  selectedStudentIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
   draggedSessionId?: string;
@@ -60,7 +60,7 @@ function SessionBlock({
   onClick,
   onDragStart,
   onDragEnd,
-  selectedStudentId,
+  selectedStudentIds,
   isMobile = false,
   isDragging = false,
   draggedSessionId,
@@ -91,7 +91,7 @@ function SessionBlock({
     session,
     enrollments || [],
     students || [],
-    selectedStudentId
+    selectedStudentIds?.[0]
   );
 
   // colorBy에 따라 블록 색상 결정
@@ -226,12 +226,12 @@ function SessionBlock({
 
   const isDraggedSession = session.id === draggedSessionId;
 
-  // selectedStudentId 필터링: 선택된 학생이 없는 세션은 opacity 감소
   const isFiltered =
-    selectedStudentId != null &&
+    selectedStudentIds != null &&
+    selectedStudentIds.length > 0 &&
     !(session.enrollmentIds ?? []).some((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment?.studentId === selectedStudentId;
+      return enrollment != null && selectedStudentIds.includes(enrollment.studentId);
     });
 
   const weekdayLabel =
@@ -313,6 +313,18 @@ function SessionBlock({
       />
     ) : undefined;
 
+  const extraStudentCount = (() => {
+    if (colorBy !== "student" || !selectedStudentIds || selectedStudentIds.length === 0) return 0;
+    const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      return enrollment ? [enrollment.studentId] : [];
+    });
+    const selectedInSession = allStudentIds.filter((id) => selectedStudentIds.includes(id));
+    // Only show +N badge if at least one selected student is in this session
+    if (selectedInSession.length === 0) return 0;
+    return allStudentIds.length - selectedInSession.length;
+  })();
+
   return (
     <div
       style={wrapperStyle}
@@ -372,6 +384,15 @@ function SessionBlock({
           )}
         </div>
       </button>
+
+      {extraStudentCount > 0 && (
+        <span
+          className="absolute top-0.5 right-0.5 text-[9px] font-bold text-white/80 bg-black/25 rounded-full px-1 leading-4 pointer-events-none"
+          aria-label={`외 ${extraStudentCount}명`}
+        >
+          +{extraStudentCount}
+        </span>
+      )}
 
       {/* 롱프레스 컨텍스트 메뉴 */}
       {contextMenuOpen && !isReadOnly && (

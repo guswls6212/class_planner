@@ -52,16 +52,6 @@ vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
   })),
 }));
 
-// Mock useStudentPanel
-vi.mock("../../../hooks/useStudentPanel", () => ({
-  useStudentPanel: vi.fn(() => ({
-    panelPosition: { x: 0, y: 0 },
-    setPanelPosition: vi.fn(),
-    isPanelVisible: true,
-    setIsPanelVisible: vi.fn(),
-  })),
-}));
-
 // Mock useDisplaySessions
 vi.mock("../../../hooks/useDisplaySessions", () => ({
   useDisplaySessions: vi.fn(() => ({
@@ -96,8 +86,8 @@ vi.mock("../../../components/organisms/TimeTableGrid", () => ({
   default: () => <div data-testid="time-table-grid">TimeTableGrid</div>,
 }));
 
-vi.mock("../../../components/organisms/StudentPanel", () => ({
-  default: () => <div data-testid="student-panel">StudentPanel</div>,
+vi.mock("../_components/StudentFilterChipBar", () => ({
+  default: () => <div data-testid="student-filter-chip-bar">StudentFilterChipBar</div>,
 }));
 
 vi.mock("../../../components/molecules/PDFDownloadButton", () => ({
@@ -114,7 +104,6 @@ describe("Schedule Page", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("time-table-grid")).toBeInTheDocument();
-      expect(screen.getByTestId("student-panel")).toBeInTheDocument();
       expect(screen.getByTestId("pdf-download-button")).toBeInTheDocument();
     });
   });
