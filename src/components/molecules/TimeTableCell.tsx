@@ -3,11 +3,20 @@ import React, { useEffect, useState } from "react";
 import { logger } from "../../lib/logger";
 import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 
+import type { Session } from "../../lib/planner";
+
+interface DragPreviewState {
+  draggedSession: Session | null;
+  targetWeekday: number | null;
+  targetTime: string | null;
+  targetYPosition: number | null;
+}
+
 interface TimeTableCellProps {
   weekday: number;
   time: string;
   yPosition?: number; // logical y-position (1-based) for this cell row — default 1
-  onDrop: (weekday: number, time: string, enrollmentId: string, yPosition?: number) => void;
+  onDrop: (weekday: number, time: string, enrollmentId: string) => void;
   onSessionDrop?: (sessionId: string, weekday: number, time: string, yPosition: number) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
@@ -15,8 +24,7 @@ interface TimeTableCellProps {
   // drag state
   isAnyDragging?: boolean;
   isDragging?: boolean;
-  draggedSessionTimeRange?: { startsAt: string; endsAt: string } | null;
-  dragPreview?: { draggedSession: unknown } | null;
+  dragPreview?: DragPreviewState | null;
   isReadOnly?: boolean;
 }
 
@@ -36,7 +44,6 @@ export default function TimeTableCell({
   style,
   isAnyDragging = false,
   isDragging = false,
-  draggedSessionTimeRange,
   dragPreview = null,
   isReadOnly = false,
 }: TimeTableCellProps) {
@@ -113,7 +120,7 @@ export default function TimeTableCell({
         // Enrollment drag
         logger.debug("enrollment 드롭 처리", { data });
         if (onDrop) {
-          onDrop(weekday, time, data, yPosition);
+          onDrop(weekday, time, data);
         }
       }
     } else {
@@ -142,13 +149,13 @@ export default function TimeTableCell({
       ? "2px dashed var(--color-primary)"
       : "1px dashed transparent",
     backgroundColor: showBorder
-      ? "rgba(var(--color-primary-rgb), 0.1)"
+      ? "var(--color-primary-light)"
       : style?.backgroundColor || "transparent",
     cursor: "pointer",
     pointerEvents: "auto" as const,
     ...(isDragging &&
       !showBorder && {
-        backgroundColor: "rgba(var(--color-primary-rgb), 0.02)",
+        backgroundColor: "var(--color-bg-secondary)",
       }),
   };
 

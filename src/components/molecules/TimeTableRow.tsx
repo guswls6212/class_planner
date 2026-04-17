@@ -177,8 +177,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     >
       {/* Weekday label — sticky left */}
       <div
-        className="shadow-sm flex items-center justify-center px-2 py-3 text-center font-bold text-sm border border-[var(--color-border)] bg-[var(--color-bg-primary)] sticky left-0 z-[999] [grid-column:1]"
-        style={{ height: `${height}px`, color: "var(--color-text)" }}
+        className="shadow-sm flex items-center justify-center px-2 py-3 text-center font-bold text-sm border border-[var(--color-border)] bg-[var(--color-bg-primary)] sticky left-0 z-[999] [grid-column:1] text-[var(--color-text)]"
+        style={{ height: `${height}px` }}
       >
         {["월", "화", "수", "목", "금", "토", "일"][weekday]}
       </div>
@@ -204,14 +204,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 onSessionDrop={onSessionDrop}
                 onEmptySpaceClick={onEmptySpaceClick}
                 onDragOver={onDragOver}
-                draggedSessionTimeRange={
-                  dragPreview?.draggedSession
-                    ? {
-                        startsAt: (dragPreview.draggedSession as Session).startsAt,
-                        endsAt: (dragPreview.draggedSession as Session).endsAt,
-                      }
-                    : null
-                }
                 isAnyDragging={isAnyDragging}
                 isDragging={isDragging}
                 dragPreview={dragPreview}

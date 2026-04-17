@@ -60,7 +60,7 @@ describe("TimeTableCell", () => {
     const dropEvent = createDragEvent("drop", "enrollment-1");
     fireEvent(cell, dropEvent);
 
-    expect(onDrop).toHaveBeenCalledWith(0, "15:00", "enrollment-1", expect.any(Number));
+    expect(onDrop).toHaveBeenCalledWith(0, "15:00", "enrollment-1");
   });
 
   it("드롭 이벤트 시 세션 드롭 처리 (session: 접두사 있는 데이터)", () => {
