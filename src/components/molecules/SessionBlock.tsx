@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
-import SubjectChip from "@/components/common/SubjectChip";
 import type { Session, Subject } from "@/lib/planner";
 import {
   type ColorByMode,
@@ -11,6 +10,7 @@ import {
   getSessionSubject,
   resolveSessionColor,
 } from "./SessionBlock.utils";
+import { resolveSessionTone } from "./SessionCard.utils";
 
 interface SessionBlockProps {
   session: Session;
@@ -243,19 +243,12 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
-  // 상태 레이어 Tailwind 클래스 계산
-  const statusClassName = (() => {
-    if (isAnyDragging || isDragging) return "";
-    if (sessionStatus === "completed") return "opacity-[0.55]";
-    if (sessionStatus === "in-progress")
-      return "ring-1 ring-amber-400/50 shadow-[0_0_8px_rgba(251,191,36,0.35)]";
-    return "";
-  })();
+  // 3-tone 파스텔 톤 (pastel bg + dark fg + accent)
+  const tone = resolveSessionTone(blockColor);
 
-  // 충돌 상태 클래스
-  const conflictClassName = hasConflict
-    ? "border-l-[3px] border-l-[#EF4444]"
-    : "";
+  // 상태 레이어 (Phase 3 SSOT): 완료 = opacity 0.55. in-progress/conflict = borderLeft accent
+  const isCompleted = sessionStatus === "completed" && !isAnyDragging && !isDragging;
+  const isInProgress = sessionStatus === "in-progress" && !isAnyDragging && !isDragging;
 
   // 커서 클래스
   const cursorClassName =
@@ -270,19 +263,25 @@ function SessionBlock({
     zIndex: styles.zIndex,
   };
 
+  const accentColor = hasConflict
+    ? "#EF4444"
+    : isInProgress
+      ? tone.accent
+      : undefined;
+
   const buttonStyle: React.CSSProperties = {
-    background: styles.background,
-    color: styles.color,
-    borderRadius: styles.borderRadius,
-    padding: styles.padding,
-    fontSize: styles.fontSize,
-    display: styles.display,
-    alignItems: styles.alignItems,
-    overflow: styles.overflow,
-    border: styles.border,
+    backgroundColor: tone.bg,
+    color: tone.fg,
+    borderRadius: 4,
+    borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
+    padding: 0,
+    fontSize: 12,
+    display: "flex",
+    alignItems: "stretch",
+    overflow: "hidden",
     cursor: styles.cursor,
     pointerEvents: styles.pointerEvents,
-    opacity: styles.opacity,
+    opacity: isCompleted ? 0.55 : styles.opacity,
     visibility: styles.visibility as React.CSSProperties["visibility"],
     transition: styles.transition,
     width: "100%",
@@ -290,7 +289,7 @@ function SessionBlock({
     position: "relative",
   };
 
-  // SubjectChip label — primary label based on colorBy
+  // Primary label based on colorBy
   const primaryLabel =
     colorBy === "student"
       ? studentNames[0] || "학생 없음"
@@ -298,20 +297,11 @@ function SessionBlock({
         ? teacher?.name || "강사 없음"
         : subject?.name || "과목 없음";
 
-  // SubjectChip subLabel — secondary info based on colorBy
+  // Secondary info based on colorBy
   const secondaryLabel =
     colorBy === "student"
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
-
-  // SubjectChip badge — in-progress glow indicator dot
-  const statusBadge =
-    sessionStatus === "in-progress" && !hasConflict ? (
-      <span
-        className="w-1.5 h-1.5 rounded-full bg-white/80 shadow animate-pulse flex-shrink-0"
-        aria-label="진행 중"
-      />
-    ) : undefined;
 
   const extraStudentCount = (() => {
     if (colorBy !== "student" || !selectedStudentIds || selectedStudentIds.length === 0) return 0;
@@ -348,9 +338,7 @@ function SessionBlock({
         onTouchEnd={handleTouchEnd}
         className={[
           "session-block",
-          "hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150",
-          statusClassName,
-          conflictClassName,
+          "hover:-translate-y-0.5 hover:shadow-md transition-all duration-150",
           cursorClassName,
         ]
           .filter(Boolean)
@@ -359,26 +347,22 @@ function SessionBlock({
         {/* 충돌 경고 아이콘 */}
         {hasConflict && (
           <span
-            className="absolute top-0.5 right-0.5 text-[10px] text-red-500 leading-none"
+            className="absolute top-0.5 right-1 text-[10px] text-[#EF4444] leading-none"
             aria-label="시간 충돌"
           >
-            ⚠️
+            ⚠
           </span>
         )}
 
-        {/* SubjectChip — visual primitive for label/color rendering */}
-        <div className="flex flex-col w-full h-full justify-between overflow-hidden p-0">
-          <SubjectChip
-            label={primaryLabel}
-            color={blockColor}
-            variant="fill"
-            size="sm"
-            subLabel={`${session.startsAt}-${session.endsAt}`}
-            badge={statusBadge}
-            className="!flex-col w-full h-full justify-center !items-start !rounded-[6px] overflow-hidden"
-          />
+        <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
+          <div className="font-semibold truncate text-[11px] leading-tight">
+            {primaryLabel}
+          </div>
+          <div className="text-[10px] opacity-75 truncate leading-tight">
+            {session.startsAt}-{session.endsAt}
+          </div>
           {secondaryLabel && (
-            <div className="text-white/90 text-right text-[12px] tracking-[-0.3px] leading-[1.1] overflow-hidden text-ellipsis whitespace-nowrap px-1 pb-0.5">
+            <div className="text-[10px] opacity-80 truncate leading-tight">
               {secondaryLabel}
             </div>
           )}
