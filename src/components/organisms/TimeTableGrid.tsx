@@ -1,4 +1,8 @@
-import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
+import {
+  LANE_WIDTH_PX_DESKTOP,
+  LANE_WIDTH_PX_MOBILE,
+  SLOT_HEIGHT_PX,
+} from "@/shared/constants/sessionConstants";
 import React, {
   forwardRef,
   useCallback,
@@ -45,6 +49,8 @@ interface TimeTableGridProps {
   colorBy?: ColorByMode;
   isReadOnly?: boolean;
 }
+
+const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
 const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
   (
@@ -307,63 +313,42 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       return slots;
     }, []);
 
-    const timeCols = timeSlots30Min.length; // 30개 열
+    const slotCount = timeSlots30Min.length;
 
-    const getSessionYPositions = useCallback(
-      (weekday: number): Map<string, number> => {
-        const daySessions = sessions?.get(weekday) || [];
-        const sessionYPositions = new Map<string, number>();
-
-        daySessions.forEach((session) => {
-          const logicalPosition = session.yPosition || 1;
-          const pixelPosition = (logicalPosition - 1) * SESSION_CELL_HEIGHT;
-          sessionYPositions.set(session.id, pixelPosition);
-        });
-
-        return sessionYPositions;
-      },
+    // 요일별 lane 수 (yPosition max). weekday column 내부에서 laneWidth 분할 기준.
+    const weekdayMaxLanes = useMemo(
+      () =>
+        Array.from({ length: 7 }, (_, weekday) => {
+          const daySessions = sessions?.get(weekday) || [];
+          if (daySessions.length === 0) return 1;
+          const maxPos = Math.max(
+            ...daySessions.map((s) => s.yPosition || 1),
+            1
+          );
+          return Math.max(1, maxPos);
+        }),
       [sessions]
     );
 
-    const getWeekdayHeight = useCallback(
-      (weekday: number): number => {
-        const daySessions = sessions?.get(weekday) || [];
+    const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
-        if (daySessions.length === 0) {
-          return 49;
-        }
-
-        const maxYPosition = Math.max(
-          ...daySessions.map((session) => session.yPosition || 1)
-        );
-
-        const height = maxYPosition * SESSION_CELL_HEIGHT;
-
-        return Math.max(49, height);
-      },
-      [sessions]
+    // 각 weekday column 너비 = max lanes × laneWidth (overlap 많으면 컬럼 넓어짐)
+    const weekdayWidths = useMemo(
+      () => weekdayMaxLanes.map((lanes) => lanes * laneWidth),
+      [weekdayMaxLanes, laneWidth]
     );
 
-    // 요일별 높이를 useMemo로 최적화
-    const weekdayHeights = useMemo(
-      () => Array.from({ length: 7 }, (_, i) => getWeekdayHeight(i)),
-      [getWeekdayHeight]
-    );
+    const timeLabelColWidth = isMobile ? 40 : 56;
+    const headerRowHeight = 40;
+    const contentHeight = slotCount * SLOT_HEIGHT_PX;
 
-    // 그리드 템플릿 행을 useMemo로 최적화
-    const gridTemplateRows = useMemo(
-      () => `40px ${weekdayHeights.map((h) => `${h}px`).join(" ")}`,
-      [weekdayHeights]
-    );
-
-    // 그리드 템플릿 열: 모바일(< 768px)에서는 축소된 너비 사용
     const gridTemplateColumns = useMemo(
       () =>
-        isMobile
-          ? `56px repeat(${timeCols}, 64px)` // 모바일: 요일 56px + 열 64px
-          : `80px repeat(${timeCols}, 100px)`, // 데스크탑: 요일 80px + 열 100px
-      [timeCols, isMobile]
+        `${timeLabelColWidth}px ${weekdayWidths.map((w) => `${w}px`).join(" ")}`,
+      [timeLabelColWidth, weekdayWidths]
     );
+
+    const gridTemplateRows = `${headerRowHeight}px ${contentHeight}px`;
 
     const handleDragStart = useCallback(
       (session: Session) => {
@@ -417,7 +402,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, [getSavedScrollPosition]);
 
     return (
-      <div className="time-table-container" data-surface="surface" data-testid="time-table-grid">
+      <div
+        className="time-table-container"
+        data-surface="surface"
+        data-testid="time-table-grid"
+      >
         <div
           ref={(node) => {
             if (ref) {
@@ -427,9 +416,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 ref.current = node;
               }
             }
-
-            // ref 콜백에서는 복원하지 않음 (useEffect에서 처리)
-
             gridRef.current = node;
           }}
           className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
@@ -439,52 +425,66 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             ...style,
           }}
         >
-          {/* 좌상단 빈칸 */}
-          <div className="bg-[var(--color-bg-primary)]" />
+          {/* (1,1) 좌상단 빈 코너 — sticky top+left */}
+          <div
+            className="sticky top-0 left-0 z-[1000] bg-[var(--color-bg-primary)] border-b border-r border-[var(--color-border)]"
+            style={{ gridColumn: 1, gridRow: 1 }}
+          />
 
-          {/* 시간 헤더 (X축 상단) */}
-          {timeSlots30Min.map((timeString, index) => {
-            const isLastTime = index === timeSlots30Min.length - 1;
-            return (
+          {/* (1, 2..8) 요일 헤더 — sticky top */}
+          {WEEKDAY_LABELS.map((label, weekday) => (
+            <div
+              key={`header-${weekday}`}
+              className={`shadow-sm sticky top-0 z-[999] flex items-center justify-center font-bold ${isMobile ? "text-[11px]" : "text-sm"} text-[var(--color-text)] bg-[var(--color-bg-primary)] border border-[var(--color-border)]`}
+              style={{ gridColumn: weekday + 2, gridRow: 1 }}
+            >
+              {label}
+            </div>
+          ))}
+
+          {/* (2, 1) 시간 라벨 컬럼 — sticky left */}
+          <div
+            className="sticky left-0 z-[998] flex flex-col bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]"
+            style={{ gridColumn: 1, gridRow: 2, height: contentHeight }}
+          >
+            {timeSlots30Min.map((timeString) => (
               <div
-                key={timeString}
-                className={`shadow-sm flex items-center justify-center p-1 text-center ${isMobile ? "text-[9px]" : "text-[11px]"} text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)] h-[40px] sticky top-0 z-[999] ${isLastTime ? "border-r-[var(--color-border)]" : "border-r-[var(--color-border-grid)]"}`}
+                key={`time-${timeString}`}
+                className={`flex items-start justify-end pr-1 pt-0.5 ${isMobile ? "text-[9px]" : "text-[10px]"} text-[var(--color-text-secondary)] border-b border-[var(--color-border-grid-light)]`}
+                style={{ height: SLOT_HEIGHT_PX }}
               >
                 {timeString}
               </div>
-            );
-          })}
+            ))}
+          </div>
 
-          {/* 요일별 행 (Y축 왼쪽) */}
-          {Array.from({ length: 7 }, (_, weekday) => {
-            return (
-              <TimeTableRow
-                key={weekday}
-                weekday={weekday}
-                height={weekdayHeights[weekday]}
-                sessions={sessions}
-                subjects={subjects}
-                enrollments={enrollments}
-                students={students}
-                sessionYPositions={getSessionYPositions(weekday)}
-                onSessionClick={isReadOnly ? () => {} : onSessionClick}
-                onSessionDelete={isReadOnly ? undefined : onSessionDelete}
-                onDrop={isReadOnly ? () => {} : onDrop}
-                onSessionDrop={isReadOnly ? undefined : onSessionDrop}
-                onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
-                selectedStudentIds={selectedStudentIds}
-                isAnyDragging={isAnyDragging || isStudentDragging}
-                teachers={teachers}
-                colorBy={colorBy}
-                isMobile={isMobile}
-                // 터치 디바이스에서는 drag-and-drop 핸들러를 전달하지 않음
-                onDragStart={isTouchDevice ? undefined : handleDragStart}
-                onDragOver={isTouchDevice ? undefined : handleDragOver}
-                onDragEnd={isTouchDevice ? undefined : handleDragEnd}
-                dragPreview={isTouchDevice ? undefined : dragPreview}
-              />
-            );
-          })}
+          {/* (2, 2..8) 요일별 컬럼 */}
+          {Array.from({ length: 7 }, (_, weekday) => (
+            <TimeTableRow
+              key={weekday}
+              weekday={weekday}
+              width={weekdayWidths[weekday]}
+              sessions={sessions}
+              subjects={subjects}
+              enrollments={enrollments}
+              students={students}
+              onSessionClick={isReadOnly ? () => {} : onSessionClick}
+              onSessionDelete={isReadOnly ? undefined : onSessionDelete}
+              onDrop={isReadOnly ? () => {} : onDrop}
+              onSessionDrop={isReadOnly ? undefined : onSessionDrop}
+              onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
+              selectedStudentIds={selectedStudentIds}
+              isAnyDragging={isAnyDragging || isStudentDragging}
+              teachers={teachers}
+              colorBy={colorBy}
+              isMobile={isMobile}
+              onDragStart={isTouchDevice ? undefined : handleDragStart}
+              onDragOver={isTouchDevice ? undefined : handleDragOver}
+              onDragEnd={isTouchDevice ? undefined : handleDragEnd}
+              dragPreview={isTouchDevice ? undefined : dragPreview}
+              style={{ gridColumn: weekday + 2, gridRow: 2 }}
+            />
+          ))}
         </div>
 
         {/* 가상 가로 스크롤바 */}

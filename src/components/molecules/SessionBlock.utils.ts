@@ -58,7 +58,9 @@ export const getImprovedStudentDisplayText = (studentNames: string[]): string =>
   }명`;
 };
 
-// 세션 셀 높이를 동적으로 조정하는 스타일
+// 세션 셀 크기를 동적으로 조정하는 스타일
+// B2 이전: height가 SESSION_CELL_HEIGHT 고정, width는 duration 기반
+// B2 이후: height는 duration 기반 (caller 결정), width는 lane 기반
 export const getSessionBlockStyles = (
   left: number,
   width: number,
@@ -66,7 +68,8 @@ export const getSessionBlockStyles = (
   subjectColor?: string,
   isDragging?: boolean,
   isDraggedSession?: boolean,
-  isAnyDragging?: boolean
+  isAnyDragging?: boolean,
+  height?: number
 ): CSSProperties => {
   // 투명도 및 pointer-events 계산 로직
   let opacity = 1.0;
@@ -100,8 +103,8 @@ export const getSessionBlockStyles = (
   return {
     position: "absolute",
     left,
-    top: yOffset + 1, // 요일 경계선과 겹치지 않도록 1px 여백 추가
-    height: `${SESSION_CELL_HEIGHT}px`,
+    top: yOffset + 1, // 경계선과 겹치지 않도록 1px 여백 추가
+    height: `${height ?? SESSION_CELL_HEIGHT}px`,
     width,
     background: subjectColor ?? "#888",
     color: "#fff",
