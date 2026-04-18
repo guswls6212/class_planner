@@ -4,6 +4,7 @@ import { logger } from "../../lib/logger";
 import type { ColorByMode } from "../../hooks/useColorBy";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
+import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
 import {
@@ -100,19 +101,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return sessions?.get(weekday) || [];
   }, [sessions, weekday]);
 
-  // Raw max yPosition (including drag expansion)
+  // Required lane count based on actual time overlaps (not stored yPosition max)
   const rawMaxYPosition = React.useMemo(() => {
     if (dragPreview?.draggedSession) {
-      const maxPos = Math.max(
-        ...weekdaySessions.map((s) => s.yPosition || 1),
-        1
-      );
-      if (!isFinite(maxPos) || isNaN(maxPos)) return 5;
-      return Math.max(5, maxPos);
+      const required = computeRequiredLanes(weekdaySessions);
+      return Math.max(5, required);
     }
-    const maxPos = Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1);
-    if (!isFinite(maxPos) || isNaN(maxPos)) return 1;
-    return maxPos;
+    return computeRequiredLanes(weekdaySessions);
   }, [weekdaySessions, dragPreview?.draggedSession]);
 
   const isDragging = React.useMemo(() => {
@@ -156,7 +151,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // Compute per-session layout (top/height from time, left/width from lane)
   const laidOutSessions = React.useMemo(() => {
     return visibleSessions.map((session) => {
-      const laneIdx = Math.max(0, (session.yPosition || 1) - 1);
+      // Clamp laneIdx to valid range — orphan yPosition values (e.g., yPos=2 with no yPos=1)
+      // would place blocks outside the column without this clamp.
+      const laneIdx = Math.min(
+        Math.max(0, (session.yPosition || 1) - 1),
+        effectiveLanes - 1
+      );
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
       const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
@@ -294,7 +294,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           teachers={teachers}
           colorBy={colorBy}
           isMobile={isMobile}
-          isDragging={dragPreview?.draggedSession !== null}
+          isDragging={Boolean(dragPreview?.draggedSession)}
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
         />

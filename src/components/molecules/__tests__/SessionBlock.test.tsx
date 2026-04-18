@@ -230,7 +230,7 @@ describe("SessionBlock Component", () => {
     expect(button).toHaveStyle({ opacity: "1" });
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 1이어야 한다", () => {
     render(
       <SessionBlock
         {...defaultProps}
@@ -242,10 +242,10 @@ describe("SessionBlock Component", () => {
 
     // opacity is on the inner button element
     const button = screen.getByRole("button");
-    expect(button).toHaveStyle({ opacity: "0.3" });
+    expect(button).toHaveStyle({ opacity: "1" });
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0.4이고 visible이어야 한다", () => {
     render(
       <SessionBlock
         {...defaultProps}
@@ -255,11 +255,9 @@ describe("SessionBlock Component", () => {
       />
     );
 
-    // opacity and visibility are on the inner button element
-    // use hidden: true because visibility:hidden removes it from the accessibility tree
-    const button = screen.getByRole("button", { hidden: true });
-    expect(button).toHaveStyle({ opacity: "0" });
-    expect(button).toHaveStyle({ visibility: "hidden" });
+    const button = screen.getByRole("button");
+    expect(button).toHaveStyle({ opacity: "0.4" });
+    expect(button).toHaveStyle({ visibility: "visible" });
   });
 
   // 엣지 케이스 테스트

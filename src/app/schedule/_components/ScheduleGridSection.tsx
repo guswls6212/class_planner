@@ -59,7 +59,7 @@ export default function ScheduleGridSection({
   colorBy = "subject",
 }: Props) {
   return (
-    <div ref={containerRef} data-surface="surface">
+    <div ref={containerRef}>
       <TimeTableGrid
         key={gridVersion}
         sessions={sessions}

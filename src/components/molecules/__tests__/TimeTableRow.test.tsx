@@ -374,5 +374,6 @@ describe("TimeTableRow Component", () => {
       expect(await screen.findByTestId("overflow-popover-backdrop")).toBeInTheDocument();
     });
   });
+
 });
 
