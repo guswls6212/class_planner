@@ -3,7 +3,8 @@ import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import type { ColorByMode } from "../../hooks/useColorBy";
 
-import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
+import { SESSION_CELL_HEIGHT, SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
+import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
 import {
@@ -100,19 +101,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return sessions?.get(weekday) || [];
   }, [sessions, weekday]);
 
-  // Raw max yPosition (including drag expansion)
+  // Required lane count based on actual time overlaps (not stored yPosition max)
   const rawMaxYPosition = React.useMemo(() => {
     if (dragPreview?.draggedSession) {
-      const maxPos = Math.max(
-        ...weekdaySessions.map((s) => s.yPosition || 1),
-        1
-      );
-      if (!isFinite(maxPos) || isNaN(maxPos)) return 5;
-      return Math.max(5, maxPos);
+      const required = computeRequiredLanes(weekdaySessions);
+      return Math.max(5, required);
     }
-    const maxPos = Math.max(...weekdaySessions.map((s) => s.yPosition || 1), 1);
-    if (!isFinite(maxPos) || isNaN(maxPos)) return 1;
-    return maxPos;
+    return computeRequiredLanes(weekdaySessions);
   }, [weekdaySessions, dragPreview?.draggedSession]);
 
   const isDragging = React.useMemo(() => {
@@ -156,7 +151,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // Compute per-session layout (top/height from time, left/width from lane)
   const laidOutSessions = React.useMemo(() => {
     return visibleSessions.map((session) => {
-      const laneIdx = Math.max(0, (session.yPosition || 1) - 1);
+      // Clamp laneIdx to valid range — orphan yPosition values (e.g., yPos=2 with no yPos=1)
+      // would place blocks outside the column without this clamp.
+      const laneIdx = Math.min(
+        Math.max(0, (session.yPosition || 1) - 1),
+        effectiveLanes - 1
+      );
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
       const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
@@ -279,6 +279,70 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isAnyDragging={isAnyDragging}
         />
       ))}
+
+      {/* Drop preview ghost — shows where the dragged session will land */}
+      {(() => {
+        const dragged = dragPreview?.draggedSession;
+        if (
+          !dragged ||
+          dragPreview?.targetWeekday !== weekday ||
+          dragPreview?.targetTime == null ||
+          dragPreview?.targetYPosition == null
+        )
+          return null;
+
+        // Vertical position from target time
+        const targetStartMin = timeToMinutes(dragPreview.targetTime);
+        const ghostTop = Math.round(
+          ((targetStartMin - 9 * 60) / 30) * SLOT_HEIGHT_PX
+        );
+        // Height from original duration
+        const origDuration =
+          timeToMinutes(dragged.endsAt) - timeToMinutes(dragged.startsAt);
+        const ghostHeight = Math.max(
+          SLOT_HEIGHT_PX,
+          Math.round((origDuration / 30) * SLOT_HEIGHT_PX)
+        );
+        // Lane from targetYPosition (pixel offset = laneIdx * SESSION_CELL_HEIGHT)
+        const laneIdx = Math.round(
+          dragPreview.targetYPosition / SESSION_CELL_HEIGHT
+        );
+        const clampedLane = Math.min(laneIdx, effectiveLanes - 1);
+        const ghostLeft = Math.round(clampedLane * laneWidth);
+
+        // Subject color from dragged session's first enrollment
+        const firstEnrollmentId = dragged.enrollmentIds?.[0];
+        const enrollment = enrollments?.find((e) => e.id === firstEnrollmentId);
+        const subjectColor =
+          subjects?.find((s) => s.id === enrollment?.subjectId)?.color ??
+          "#888";
+
+        return (
+          <div
+            key="drop-preview-ghost"
+            data-testid="drop-preview-ghost"
+            style={{
+              position: "absolute",
+              top: ghostTop,
+              left: ghostLeft,
+              width: Math.round(laneWidth),
+              height: ghostHeight,
+              background: subjectColor,
+              opacity: 0.55,
+              border: "2px dashed rgba(255,255,255,0.8)",
+              borderRadius: 4,
+              pointerEvents: "none",
+              zIndex: 90,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 11,
+              color: "rgba(255,255,255,0.9)",
+              fontWeight: 600,
+            }}
+          />
+        );
+      })()}
 
       {/* Overflow pills — one per time slot where hidden sessions are active */}
       {isOverflow &&

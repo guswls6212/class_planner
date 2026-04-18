@@ -14,6 +14,7 @@ import React, {
 import { logger } from "../../lib/logger";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
+import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import TimeTableRow from "../molecules/TimeTableRow";
 
@@ -322,14 +323,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       () =>
         Array.from({ length: 7 }, (_, weekday) => {
           const daySessions = sessions?.get(weekday) || [];
-          if (daySessions.length === 0) return 1;
-          const maxPos = Math.max(
-            ...daySessions.map((s) => s.yPosition || 1),
-            1
-          );
+          const required = computeRequiredLanes(daySessions);
           const isDraggingAny = isAnyDragging || isStudentDragging;
-          if (!isDraggingAny && maxPos >= 4) return 2;
-          return Math.max(1, maxPos);
+          if (!isDraggingAny && required >= 4) return 2;
+          return required;
         }),
       [sessions, isAnyDragging, isStudentDragging]
     );
@@ -353,6 +350,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     );
 
     const gridTemplateRows = `${headerRowHeight}px ${contentHeight}px`;
+
+    // 브라우저 창 전환 등으로 dragend가 누락될 때 드래그 상태를 강제 리셋
+    useEffect(() => {
+      const resetDrag = () => {
+        setDragPreview({
+          draggedSession: null,
+          targetWeekday: null,
+          targetTime: null,
+          targetYPosition: null,
+        });
+      };
+      document.addEventListener("dragend", resetDrag);
+      return () => document.removeEventListener("dragend", resetDrag);
+    }, []);
 
     const handleDragStart = useCallback(
       (session: Session) => {

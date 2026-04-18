@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Enrollment, Session, Subject } from "../planner";
-import { repositionSessions } from "../sessionCollisionUtils";
+import { computeRequiredLanes, repositionSessions } from "../sessionCollisionUtils";
 
 const sub = (id: string, name: string): Subject => ({
   id,
@@ -168,5 +168,58 @@ describe("repositionSessions - 충돌/재배치", () => {
     const count = result.filter((s) => s.id === "sessA").length;
     expect(count).toBe(1);
     expect(result.find((s) => s.id === "sessA")?.weekday).toBe(2);
+  });
+});
+
+const makeSession = (
+  id: string,
+  startsAt: string,
+  endsAt: string,
+  yPosition = 1
+): Session => ({
+  id,
+  weekday: 0,
+  startsAt,
+  endsAt,
+  yPosition,
+  enrollmentIds: [],
+});
+
+describe("computeRequiredLanes", () => {
+  it("빈 세션 배열 → 1 lane", () => {
+    expect(computeRequiredLanes([])).toBe(1);
+  });
+
+  it("단일 세션 → 1 lane (yPosition과 무관)", () => {
+    expect(computeRequiredLanes([makeSession("s1", "09:00", "10:00", 2)])).toBe(1);
+  });
+
+  it("시간이 겹치지 않는 2개 세션 → 1 lane", () => {
+    const sessions = [
+      makeSession("s1", "09:00", "10:00"),
+      makeSession("s2", "10:00", "11:00"),
+    ];
+    expect(computeRequiredLanes(sessions)).toBe(1);
+  });
+
+  it("시간이 겹치는 2개 세션 → 2 lanes", () => {
+    const sessions = [
+      makeSession("s1", "09:00", "10:00"),
+      makeSession("s2", "09:30", "10:30"),
+    ];
+    expect(computeRequiredLanes(sessions)).toBe(2);
+  });
+
+  it("3개 세션이 모두 겹침 → 3 lanes", () => {
+    const sessions = [
+      makeSession("s1", "09:00", "10:00"),
+      makeSession("s2", "09:00", "10:00"),
+      makeSession("s3", "09:00", "10:00"),
+    ];
+    expect(computeRequiredLanes(sessions)).toBe(3);
+  });
+
+  it("고아 yPosition=2 단독 세션 → 1 lane (Bug 4 핵심 케이스)", () => {
+    expect(computeRequiredLanes([makeSession("s1", "09:00", "10:00", 2)])).toBe(1);
   });
 });
