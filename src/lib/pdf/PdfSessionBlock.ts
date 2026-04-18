@@ -1,4 +1,5 @@
 import type { jsPDF } from "jspdf";
+import { tintFromHex } from "@/lib/colors/tintFromHex";
 import type { CellPosition } from "./PdfGridLayout";
 
 export interface SessionBlockData {
@@ -26,26 +27,13 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-/** Lighten color for pastel background (mix with white 80%) */
-function lightenColor(
-  r: number,
-  g: number,
-  b: number
-): [number, number, number] {
-  return [
-    Math.round(r * 0.2 + 255 * 0.8),
-    Math.round(g * 0.2 + 255 * 0.8),
-    Math.round(b * 0.2 + 255 * 0.8),
-  ];
-}
-
 export function drawSessionBlock(
   doc: jsPDF,
   cell: CellPosition,
   data: SessionBlockData
 ): void {
   const [r, g, b] = hexToRgb(data.color);
-  const [lr, lg, lb] = lightenColor(r, g, b);
+  const [lr, lg, lb] = hexToRgb(tintFromHex(data.color, 0.8));
   const padding = 1;
 
   // Background (pastel)
