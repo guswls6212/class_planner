@@ -274,7 +274,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           teachers={teachers}
           colorBy={colorBy}
           isMobile={isMobile}
-          isDragging={dragPreview?.draggedSession !== null}
+          isDragging={Boolean(dragPreview?.draggedSession)}
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
         />

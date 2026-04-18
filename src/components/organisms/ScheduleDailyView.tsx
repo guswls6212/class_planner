@@ -72,7 +72,6 @@ export function ScheduleDailyView({
 
   return (
     <div
-      data-surface="surface"
       className="flex flex-col flex-1 overflow-y-auto relative"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
