@@ -14,7 +14,7 @@ import React, {
 import { logger } from "../../lib/logger";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
-import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
+import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import TimeTableRow from "../molecules/TimeTableRow";
 
@@ -331,6 +331,22 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions, isAnyDragging, isStudentDragging]
     );
 
+    // 드래그 중 목표 위치를 기반으로 레이아웃을 미리 계산해 TimeTableRow에 전달.
+    // 드래그가 없으면 원본 sessions Map을 그대로 반환 (참조 동일).
+    const sessionsForRender = useMemo(
+      () =>
+        computeTentativeLayout(
+          sessions,
+          enrollments,
+          subjects,
+          dragPreview.draggedSession,
+          dragPreview.targetWeekday,
+          dragPreview.targetTime,
+          dragPreview.targetYPosition,
+        ),
+      [sessions, enrollments, subjects, dragPreview],
+    );
+
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
     // 각 weekday column 너비 = max lanes × laneWidth (overlap 많으면 컬럼 넓어짐)
@@ -478,7 +494,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               key={weekday}
               weekday={weekday}
               width={weekdayWidths[weekday]}
-              sessions={sessions}
+              sessions={sessionsForRender}
               subjects={subjects}
               enrollments={enrollments}
               students={students}

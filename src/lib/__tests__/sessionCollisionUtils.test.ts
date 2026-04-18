@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Enrollment, Session, Subject } from "../planner";
-import { computeRequiredLanes, repositionSessions } from "../sessionCollisionUtils";
+import { computeRequiredLanes, computeTentativeLayout, repositionSessions } from "../sessionCollisionUtils";
 
 const sub = (id: string, name: string): Subject => ({
   id,
@@ -221,5 +221,92 @@ describe("computeRequiredLanes", () => {
 
   it("고아 yPosition=2 단독 세션 → 1 lane (Bug 4 핵심 케이스)", () => {
     expect(computeRequiredLanes([makeSession("s1", "09:00", "10:00", 2)])).toBe(1);
+  });
+});
+
+describe("computeTentativeLayout", () => {
+  const enroll = (id: string, studentId: string, subjectId: string): Enrollment => ({
+    id,
+    studentId,
+    subjectId,
+  });
+  const subject = (id: string): Subject => ({ id, name: "수학", color: "#000" });
+
+  const makeSessionFull = (
+    id: string,
+    weekday: number,
+    startsAt: string,
+    endsAt: string,
+    yPosition = 1
+  ): Session => ({
+    id,
+    weekday,
+    startsAt,
+    endsAt,
+    yPosition,
+    enrollmentIds: ["e1"],
+    room: "",
+  });
+
+  it("drag 없음 → 원본 Map 참조 그대로 반환", () => {
+    const map = new Map<number, Session[]>();
+    map.set(0, [makeSessionFull("s1", 0, "09:00", "10:00")]);
+    const result = computeTentativeLayout(map, [], [], null, null, null, null);
+    expect(result).toBe(map);
+  });
+
+  it("드래그된 세션이 빈 lane으로 이동 → 해당 weekday에 새 위치로 나타남", () => {
+    const dragged = makeSessionFull("s1", 0, "09:00", "10:00", 1);
+    const map = new Map<number, Session[]>();
+    map.set(0, [dragged]);
+    const enrollments = [enroll("e1", "st1", "sub1")];
+    const subjects = [subject("sub1")];
+
+    const result = computeTentativeLayout(
+      map, enrollments, subjects, dragged, 0, "11:00", 1
+    );
+    const day0 = result.get(0) ?? [];
+    const movedSession = day0.find((s) => s.id === "s1");
+    expect(movedSession).toBeDefined();
+    expect(movedSession?.startsAt).toBe("11:00");
+    expect(movedSession?.endsAt).toBe("12:00");
+  });
+
+  it("드래그된 세션이 점유된 lane으로 이동 → 기존 세션이 다음 lane으로 밀려남", () => {
+    const dragged = makeSessionFull("dragged", 0, "09:00", "10:00", 1);
+    const occupant = makeSessionFull("occupant", 0, "09:30", "10:30", 1);
+    const map = new Map<number, Session[]>();
+    map.set(0, [dragged, occupant]);
+    const enrollments = [
+      enroll("e1", "st1", "sub1"),
+      enroll("e2", "st2", "sub1"),
+    ];
+    const subjects = [subject("sub1")];
+
+    const result = computeTentativeLayout(
+      map, enrollments, subjects, dragged, 0, "09:00", 1
+    );
+    const day0 = result.get(0) ?? [];
+    const byId = Object.fromEntries(day0.map((s) => [s.id, s]));
+    expect(byId["dragged"].yPosition).toBe(1);
+    expect(byId["occupant"].yPosition).toBeGreaterThan(1);
+  });
+
+  it("다른 요일로 드래그 → 원본 요일에 세션 없음, 목표 요일에 나타남", () => {
+    const dragged = makeSessionFull("s1", 0, "09:00", "10:00", 1);
+    const map = new Map<number, Session[]>();
+    map.set(0, [dragged]);
+    map.set(1, []);
+    const enrollments = [enroll("e1", "st1", "sub1")];
+    const subjects = [subject("sub1")];
+
+    const result = computeTentativeLayout(
+      map, enrollments, subjects, dragged, 1, "09:00", 1
+    );
+    const day0 = result.get(0) ?? [];
+    const day1 = result.get(1) ?? [];
+    expect(day0.find((s) => s.id === "s1")).toBeUndefined();
+    expect(day1.find((s) => s.id === "s1")).toBeDefined();
+    expect(day1.find((s) => s.id === "s1")?.weekday).toBe(1);
   });
 });

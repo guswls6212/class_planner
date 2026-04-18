@@ -416,3 +416,53 @@ export function computeRequiredLanes(sessions: Session[]): number {
   }
   return Math.max(1, maxConcurrent);
 }
+
+/**
+ * 드래그 중인 세션의 현재 목표 위치를 기반으로 드롭 후의 레이아웃을 미리 계산.
+ * 드래그가 없으면 입력 Map을 그대로 반환.
+ */
+export function computeTentativeLayout(
+  sessionsMap: Map<number, Session[]>,
+  enrollments: Enrollment[],
+  subjects: Subject[],
+  dragged: Session | null,
+  targetWeekday: number | null,
+  targetStartTime: string | null,
+  targetYPosition: number | null,
+): Map<number, Session[]> {
+  if (
+    !dragged ||
+    targetWeekday == null ||
+    targetStartTime == null ||
+    targetYPosition == null
+  ) {
+    return sessionsMap;
+  }
+
+  const origDurationMin =
+    timeToMinutes(dragged.endsAt) - timeToMinutes(dragged.startsAt);
+  const newStartMin = timeToMinutes(targetStartTime);
+  const newEndMin = newStartMin + origDurationMin;
+  const hh = Math.floor(newEndMin / 60).toString().padStart(2, "0");
+  const mm = (newEndMin % 60).toString().padStart(2, "0");
+  const newEndTime = `${hh}:${mm}`;
+
+  const allSessions = Array.from(sessionsMap.values()).flat();
+  const tentative = repositionSessions(
+    allSessions,
+    enrollments,
+    subjects,
+    targetWeekday,
+    targetStartTime,
+    newEndTime,
+    targetYPosition,
+    dragged.id,
+  );
+
+  const result = new Map<number, Session[]>();
+  for (const s of tentative) {
+    if (!result.has(s.weekday)) result.set(s.weekday, []);
+    result.get(s.weekday)!.push(s);
+  }
+  return result;
+}
