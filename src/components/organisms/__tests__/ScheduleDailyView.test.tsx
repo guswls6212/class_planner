@@ -75,22 +75,16 @@ describe("ScheduleDailyView", () => {
     expect(screen.getByText("수업이 없습니다")).toBeInTheDocument();
   });
 
-  it("세션의 과목명을 SubjectChip을 통해 렌더링한다", () => {
+  it("세션의 과목명을 SessionCard row를 통해 렌더링한다", () => {
     render(<ScheduleDailyView {...defaultProps} />);
     expect(screen.getByText("수학")).toBeInTheDocument();
   });
 
-  it("SubjectChip border-left 스타일이 과목 색상으로 렌더된다", () => {
+  it("SessionCard row가 data-variant='row'로 렌더된다", () => {
     const { container } = render(<ScheduleDailyView {...defaultProps} />);
-    // border-left variant sets borderLeft inline style with the subject color
-    // jsdom converts hex to rgb in style attribute
-    const chipEl = container.querySelector('[style*="border-left"]');
-    expect(chipEl).not.toBeNull();
-    // color present (either hex or rgb form)
-    const styleAttr = chipEl!.getAttribute("style") ?? "";
-    const hasColor =
-      styleAttr.includes("#e74c3c") || styleAttr.includes("rgb(231, 76, 60)");
-    expect(hasColor).toBe(true);
+    const rowEl = container.querySelector('[data-variant="row"]');
+    expect(rowEl).not.toBeNull();
+    expect(rowEl!.getAttribute("data-state")).toBe("default");
   });
 
   it("수업 시작 시각을 표시한다", () => {
