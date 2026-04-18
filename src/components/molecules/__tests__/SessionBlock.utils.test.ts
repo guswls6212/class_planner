@@ -40,7 +40,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("auto");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -51,12 +51,12 @@ describe("getSessionBlockStyles", () => {
       true // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0.3);
+    expect(styles.opacity).toBe(1);
     expect(styles.visibility).toBe("visible");
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명해야 한다 (opacity 0.4, visible)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -67,12 +67,12 @@ describe("getSessionBlockStyles", () => {
       true // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0);
-    expect(styles.visibility).toBe("hidden");
+    expect(styles.opacity).toBe(0.4);
+    expect(styles.visibility).toBe("visible");
     expect(styles.pointerEvents).toBe("auto");
   });
 
-  it("isDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
+  it("isDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -83,12 +83,12 @@ describe("getSessionBlockStyles", () => {
       false // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0.3);
+    expect(styles.opacity).toBe(1);
     expect(styles.visibility).toBe("visible");
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
+  it("isDragging이 true이고 드래그된 세션일 때 반투명해야 한다 (opacity 0.4, visible)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -99,8 +99,8 @@ describe("getSessionBlockStyles", () => {
       false // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0);
-    expect(styles.visibility).toBe("hidden");
+    expect(styles.opacity).toBe(0.4);
+    expect(styles.visibility).toBe("visible");
     expect(styles.pointerEvents).toBe("auto");
   });
 
@@ -116,7 +116,8 @@ describe("getSessionBlockStyles", () => {
       true // isAnyDragging (우선순위 높음)
     );
 
-    expect(styles1.opacity).toBe(0.3); // isAnyDragging 로직 적용
+    expect(styles1.opacity).toBe(1); // 비드래그 세션은 완전히 보임
+    expect(styles1.pointerEvents).toBe("none"); // drop target인 cell에 이벤트 전달
 
     const styles2 = getSessionBlockStyles(
       defaultParams.left,
@@ -128,7 +129,7 @@ describe("getSessionBlockStyles", () => {
       true // isAnyDragging (우선순위 높음)
     );
 
-    expect(styles2.opacity).toBe(0.3); // 동일한 결과
+    expect(styles2.opacity).toBe(1); // 동일한 결과
   });
 
   it("과목 색상이 없을 때 기본 색상(#888)을 사용해야 한다", () => {

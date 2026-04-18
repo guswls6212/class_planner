@@ -79,23 +79,23 @@ export const getSessionBlockStyles = (
   // 전역 드래그 상태 (학생 드래그 또는 세션 드래그) 처리
   if (isAnyDragging) {
     if (isDraggedSession) {
-      // 드래그된 세션: 보이지 않게 하지만 공간은 유지 (드래그 이벤트는 정상 처리)
-      opacity = 0;
-      visibility = "hidden";
+      // 드래그 중인 세션: 반투명으로 표시 (공간·이벤트 유지)
+      opacity = 0.4;
+      visibility = "visible";
       pointerEvents = "auto";
     } else {
-      // 다른 세션들: 투명하게 (0.3) + 마우스 이벤트 통과
-      opacity = 0.3;
+      // 다른 세션들: 완전히 보이되, pointer-events는 none (drop target인 cell에 dragover 전달)
+      opacity = 1;
       pointerEvents = "none";
     }
   } else if (isDragging) {
     // 세션 드래그 전용 로직 (isAnyDragging에 학생 드래그가 포함되지 않은 경우)
     if (isDraggedSession) {
-      opacity = 0;
-      visibility = "hidden";
+      opacity = 0.4;
+      visibility = "visible";
       pointerEvents = "auto";
     } else {
-      opacity = 0.3;
+      opacity = 1;
       pointerEvents = "none";
     }
   }

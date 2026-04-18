@@ -394,3 +394,25 @@ export const repositionSessions = (
   logger.debug("우선순위 기반 충돌 해결 완료");
   return finalSessions;
 };
+
+/**
+ * 세션 배열에서 실제로 필요한 lane 수를 계산 (sweep-line).
+ * 저장된 yPosition 값을 무시하고 시간 겹침 기반으로 계산.
+ * 고아 yPosition(삭제/이동 후 남은 비연속 값)으로 인한 빈 lane 방지.
+ */
+export function computeRequiredLanes(sessions: Session[]): number {
+  if (sessions.length === 0) return 1;
+  const events: [number, number][] = sessions.flatMap((s) => [
+    [timeToMinutes(s.startsAt), 1],
+    [timeToMinutes(s.endsAt), -1],
+  ]);
+  // 같은 시각: 종료(-1) 먼저 처리 → 연속 배치 세션이 같은 lane 공유
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let maxConcurrent = 0;
+  let current = 0;
+  for (const [, delta] of events) {
+    current += delta;
+    if (current > maxConcurrent) maxConcurrent = current;
+  }
+  return Math.max(1, maxConcurrent);
+}
