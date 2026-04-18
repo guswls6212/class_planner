@@ -105,7 +105,14 @@ SchedulePage (AuthGuard 미사용 — 익명 허용)
 - 가상 스크롤바: 하단 12px 높이 (dark/light 모두)
 - 스크롤 위치 localStorage 보존: 키 `schedule_scroll_position`, 5분 TTL
 
-**SessionBlock 상세:**
+**SessionCard (Phase 6 공유 primitive) 상세:**
+- Weekly는 SessionBlock 유지. Daily/Monthly/Landing은 SessionCard로 통일.
+- `data-variant`: `block`(weekly legacy) / `row`(daily) / `chip`(monthly) / `preview`(landing)
+- `data-state`: `default` / `ongoing` / `done` / `conflict`
+- 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
+- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 2개 + `SessionOverflowPopover` "+N" pill
+
+**SessionBlock 상세 (Weekly 전용):**
 ```
 ┌─────────────────────────┐
 │ 과목명(좌)    HH:MM-HH:MM(우) │
@@ -255,7 +262,9 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `DataConflictModal` | `DataConflictModal.tsx` | `localData`, `serverData`, `onSelectServer`, `onSelectLocal`, `isMigrating?`, `migrationError?` | 로그인 시 로컬/서버 데이터 충돌 해결 모달. 데스크탑: 사이드바이사이드 카드 + 라디오. 모바일: 탭. 섹션(학생/과목/수업) 접기/펼치기 |
 | `DropZone` | `DropZone.tsx` | `onDrop`, `weekday`, `time` | 시간표 셀의 드롭 수신 영역 |
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
-| `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 시간표 셀 내 수업 블록. 과목색 배경, 과목명+시간+학생명 표시, 드래그 이동 가능 |
+| `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
+| `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 주간 시간표 전용 수업 블록. 드래그 이동 가능. Phase 6 이후 Daily/Monthly/Landing은 SessionCard로 대체됨. |
+| `SessionOverflowPopover` | `SessionOverflowPopover.tsx` | `sessions`, `subjects`, `students`, `enrollments`, `overflowCount`, `onClick?` | 겹침 세션 4개↑일 때 "+N" pill 클릭 시 팝오버로 목록 표시 (D-hybrid). |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
 | `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
 | `StudentList` | `StudentList.tsx` | `students`, `selectedStudentId`, `onSelect`, `onDelete` | 학생 목록 (StudentListItem 반복) |
@@ -530,7 +539,8 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/app/onboarding/**` | `/onboarding` |
 | `src/middleware.ts` | `/students`, `/subjects`, `/schedule` (가드 동작) |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
-| `src/components/molecules/SessionBlock*` | `/schedule` |
+| `src/components/molecules/SessionBlock*` | `/schedule` (weekly 전용) |
+| `src/components/molecules/SessionCard*` | `/schedule` (daily/monthly), `/` (landing) |
 | `src/components/molecules/ScheduleChangeBanner*` | `/share/{token}` (변경 배지) |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |
 | `src/components/molecules/ConfirmModal*` | `/students`, `/subjects` (삭제 흐름) |

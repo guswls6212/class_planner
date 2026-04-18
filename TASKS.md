@@ -224,15 +224,33 @@
 - [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
 - [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
 - [x] B-3b: Weekly 그리드 내부 리라이트 — `TimeTableCell` 신설(DropZone 대체), `TimeTableRow` 간소화, `DropZone.tsx` 삭제, `TimeTableGrid` 루트에 `data-surface="surface"` 추가, Q Pastel 그리드 토큰 적용. 20개 공개 API, data-testid, virtual-scrollbar, schedule_scroll_position 계약 보존.
-- [ ] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
+- [x] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Phase 6에서 SubjectChip → SessionCard로 대체하며 완료)
 - [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
-### P5-C — /schedule UX Polish 🔜
+### P5-C — /schedule UX Polish ✅
 - [x] C-1: 학생 리스트 패널 → ColorBy=학생 시만 표시되는 칩 필터로 전환 (StudentFilterChipBar)
 - [x] C-2: ColorBy 토글 시각 통일 (SegmentedButton atom — Day/Week/Month + ColorBy 동일 스타일)
 - [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
 - [x] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
 - [x] C-5: PDF 고급 스코프 (범위 선택 다이얼로그)
+
+---
+
+## Phase 6 — Schedule Body Unification ✅ (2026-04-18)
+> 스펙: `docs/superpowers/specs/2026-04-17-schedule-body-unification-design.md`
+> Weekly/Daily/Monthly/Landing/PDF 5개 surface를 SessionCard primitive로 통일. 3-tone 파스텔 색, D-hybrid 겹침, CSS Grid 세로 시간축.
+
+| 서브페이즈 | PR | 내용 | 상태 |
+|---|---|---|---|
+| A | #77 | `tintFromHex` util + `SessionCard` 4-variant primitive + `SessionOverflowPopover` | ✅ |
+| G | #78 | `HelpTooltip` viewport flip + `AccountMenu` compact anchor | ✅ |
+| B1 | #79 | `SessionBlock` 3-tone 파스텔 (resolveSessionTone, accent 바) | ✅ |
+| B2 | #80 | Weekly 그리드 CSS Grid transpose (rows=시간, cols=요일) | ✅ |
+| B3 | #81 | D-hybrid overlap (≤3 균등, ≥4 cap-2 + overflow pill) | ✅ |
+| D | #82 | `MonthDayCell` → `SessionCard chip` | ✅ |
+| E | #83 | `SchedulePreview` → `SessionCard preview` | ✅ |
+| F | #84 | PDF `lightenColor` → `tintFromHex` 공유 전환 | ✅ |
+| C | #85 | `ScheduleDailyView` → `SessionCard row` | ✅ |
 
 ---
 
@@ -279,4 +297,5 @@
 | 2026-04-17 | P5-D 완료 — 데이터 충돌 false positive 수정(PR#64), Pretendard 폰트 + PDF 뷰 라벨(PR#65) |
 | 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |
 | 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
+| 2026-04-18 | Phase 6 완료 — SessionCard 4-variant + tintFromHex + D-hybrid overlap + Weekly CSS Grid transpose + Daily/Monthly/Landing/PDF 통일 (PR#77~#85 → dev 머지) |
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
