@@ -327,13 +327,13 @@ function SessionBlock({
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
       aria-label={ariaLabel}
-      draggable={!isMobile && !isReadOnly}
-      onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
-      onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
       className={isFiltered ? "opacity-30" : ""}
     >
       <button
         type="button"
+        draggable={!isMobile && !isReadOnly}
+        onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
+        onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
         style={buttonStyle}
         onClick={handleClick}
         onTouchStart={handleTouchStart}
