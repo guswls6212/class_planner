@@ -134,9 +134,9 @@ describe("TimeTableGrid", () => {
   it("그리드 스타일이 올바르게 적용된다", () => {
     const { container } = render(<TimeTableGrid {...defaultProps} />);
 
-    // The outermost element has data-testid="time-table-grid" and data-surface="surface"
+    // The outermost element has data-testid="time-table-grid" (admin views use dark theme, no data-surface)
     const rootElement = screen.getByTestId("time-table-grid");
-    expect(rootElement.getAttribute("data-surface")).toBe("surface");
+    expect(rootElement).toBeTruthy();
 
     // The inner scrollable grid div carries the grid-specific Tailwind classes
     const innerGrid = container.querySelector(".time-table-grid") as HTMLElement;

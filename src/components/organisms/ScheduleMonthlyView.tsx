@@ -61,7 +61,7 @@ export default function ScheduleMonthlyView({
   }
 
   return (
-    <div data-surface="surface" className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {/* Month navigation */}
       <div className="flex items-center justify-between px-1">
         <button

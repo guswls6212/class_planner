@@ -184,6 +184,7 @@ const eslintConfig = [
       "next-env.d.ts",
       "tests/e2e/**",
       "scripts/**",
+      "verify-*.mjs",
       ".worktrees/**",
     ],
   },

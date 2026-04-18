@@ -60,9 +60,9 @@ describe("ScheduleDailyView", () => {
     vi.clearAllMocks();
   });
 
-  it("최상위 컨테이너에 data-surface='surface'가 있다", () => {
+  it("최상위 컨테이너가 렌더링된다", () => {
     const { container } = render(<ScheduleDailyView {...defaultProps} />);
-    expect(container.querySelector('[data-surface="surface"]')).not.toBeNull();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it("세션이 없으면 '수업이 없습니다' 메시지를 표시한다", () => {

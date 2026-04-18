@@ -408,7 +408,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     return (
       <div
         className="time-table-container"
-        data-surface="surface"
         data-testid="time-table-grid"
       >
         <div
@@ -439,7 +438,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           {WEEKDAY_LABELS.map((label, weekday) => (
             <div
               key={`header-${weekday}`}
-              className={`shadow-sm sticky top-0 z-[999] flex items-center justify-center font-bold ${isMobile ? "text-[11px]" : "text-sm"} text-[var(--color-text)] bg-[var(--color-bg-primary)] border border-[var(--color-border)]`}
+              className={`shadow-sm sticky top-0 z-[999] flex items-center justify-center font-bold ${isMobile ? "text-[11px]" : "text-sm"} text-[var(--color-text-primary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)]`}
               style={{ gridColumn: weekday + 2, gridRow: 1 }}
             >
               {label}
