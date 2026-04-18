@@ -1,6 +1,6 @@
 /**
  * Mix a hex color with white by `ratio` (0 = original, 1 = white).
- * Matches PdfSessionBlock.lightenColor algorithm for cross-platform visual parity.
+ * Shared by SessionCard (3-tone bg) and PDF renderer for cross-platform visual parity.
  */
 export function tintFromHex(hex: string, ratio = 0.8): string {
   const h = hex.replace(/^#/, "").toLowerCase();
