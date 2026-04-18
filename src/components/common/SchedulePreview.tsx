@@ -1,6 +1,6 @@
 import { SUBJECT_PALETTE_HEX } from "@/lib/schedule/subjectColorPalette";
+import { SessionCard } from "@/components/molecules/SessionCard";
 import type { SchedulePreviewProps } from "./SchedulePreview.types";
-import SubjectChip from "./SubjectChip";
 
 const DEFAULT_DAYS = ["월", "화", "수", "목", "금"];
 
@@ -40,13 +40,15 @@ export default function SchedulePreview({
               }
               return (
                 <div key={`${di}-${ti}`} className={`${cellHeight} flex items-stretch`}>
-                  <SubjectChip
-                    label={cell.subjectLabel}
-                    subLabel={cell.studentLabel}
-                    color={SUBJECT_PALETTE_HEX[cell.color]}
-                    variant="fill"
-                    size={size === "sm" ? "sm" : "md"}
-                    className="!flex-col w-full h-full justify-center !items-start"
+                  <SessionCard
+                    variant="preview"
+                    subject={{
+                      id: `${di}-${ti}`,
+                      name: cell.subjectLabel,
+                      color: SUBJECT_PALETTE_HEX[cell.color],
+                    }}
+                    studentNames={cell.studentLabel ? [cell.studentLabel] : undefined}
+                    className="w-full h-full flex flex-col justify-center"
                   />
                 </div>
               );
