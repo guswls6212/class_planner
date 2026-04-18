@@ -1,6 +1,6 @@
 import React from "react";
 import type { Enrollment, Session, Subject } from "../../lib/planner";
-import SubjectChip from "../common/SubjectChip";
+import { SessionCard } from "./SessionCard";
 
 interface MonthDayCellProps {
   date: Date;
@@ -64,12 +64,7 @@ export default function MonthDayCell({
             const subj = getSessionSubject(session);
             return (
               <li key={session.id} className="w-full">
-                <SubjectChip
-                  label={subj?.name ?? "수업"}
-                  color={subj?.color ?? "var(--color-primary)"}
-                  variant="fill"
-                  size="sm"
-                />
+                <SessionCard variant="chip" subject={subj ?? null} />
               </li>
             );
           })}
