@@ -3,7 +3,7 @@ import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import type { ColorByMode } from "../../hooks/useColorBy";
 
-import { SESSION_CELL_HEIGHT, SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
+import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
@@ -184,6 +184,26 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [timeSlots30Min, hiddenSessions, isOverflow, timeToMinutes]);
 
+  // Group contiguous time slots sharing the same hidden session set → one pill per group
+  const overflowGroups = React.useMemo(() => {
+    if (!isOverflow) return [];
+    const groups: { startIdx: number; endIdx: number; hidden: Session[] }[] = [];
+    slotHiddenSessions.forEach((hidden, idx) => {
+      if (hidden.length === 0) return;
+      const hiddenKey = hidden.map((s) => s.id).sort().join(",");
+      if (groups.length > 0) {
+        const last = groups[groups.length - 1];
+        const lastKey = last.hidden.map((s) => s.id).sort().join(",");
+        if (idx === last.endIdx + 1 && hiddenKey === lastKey) {
+          last.endIdx = idx;
+          return;
+        }
+      }
+      groups.push({ startIdx: idx, endIdx: idx, hidden });
+    });
+    return groups;
+  }, [isOverflow, slotHiddenSessions]);
+
   // Map hidden sessions to OverflowSessionItem for the popover
   const toOverflowItems = React.useCallback(
     (sessions: Session[]): OverflowSessionItem[] =>
@@ -280,83 +300,19 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         />
       ))}
 
-      {/* Drop preview ghost — shows where the dragged session will land */}
-      {(() => {
-        const dragged = dragPreview?.draggedSession;
-        if (
-          !dragged ||
-          dragPreview?.targetWeekday !== weekday ||
-          dragPreview?.targetTime == null ||
-          dragPreview?.targetYPosition == null
-        )
-          return null;
-
-        // Vertical position from target time
-        const targetStartMin = timeToMinutes(dragPreview.targetTime);
-        const ghostTop = Math.round(
-          ((targetStartMin - 9 * 60) / 30) * SLOT_HEIGHT_PX
-        );
-        // Height from original duration
-        const origDuration =
-          timeToMinutes(dragged.endsAt) - timeToMinutes(dragged.startsAt);
-        const ghostHeight = Math.max(
-          SLOT_HEIGHT_PX,
-          Math.round((origDuration / 30) * SLOT_HEIGHT_PX)
-        );
-        // Lane from targetYPosition (pixel offset = laneIdx * SESSION_CELL_HEIGHT)
-        const laneIdx = Math.round(
-          dragPreview.targetYPosition / SESSION_CELL_HEIGHT
-        );
-        const clampedLane = Math.min(laneIdx, effectiveLanes - 1);
-        const ghostLeft = Math.round(clampedLane * laneWidth);
-
-        // Subject color from dragged session's first enrollment
-        const firstEnrollmentId = dragged.enrollmentIds?.[0];
-        const enrollment = enrollments?.find((e) => e.id === firstEnrollmentId);
-        const subjectColor =
-          subjects?.find((s) => s.id === enrollment?.subjectId)?.color ??
-          "#888";
-
-        return (
-          <div
-            key="drop-preview-ghost"
-            data-testid="drop-preview-ghost"
-            style={{
-              position: "absolute",
-              top: ghostTop,
-              left: ghostLeft,
-              width: Math.round(laneWidth),
-              height: ghostHeight,
-              background: subjectColor,
-              opacity: 0.55,
-              border: "2px dashed rgba(255,255,255,0.8)",
-              borderRadius: 4,
-              pointerEvents: "none",
-              zIndex: 90,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 11,
-              color: "rgba(255,255,255,0.9)",
-              fontWeight: 600,
-            }}
-          />
-        );
-      })()}
-
-      {/* Overflow pills — one per time slot where hidden sessions are active */}
+      {/* Overflow pills — one per contiguous group of slots sharing the same hidden session set */}
       {isOverflow &&
-        timeSlots30Min.map((timeString, timeIndex) => {
-          const hidden = slotHiddenSessions[timeIndex] ?? [];
-          if (hidden.length === 0) return null;
+        overflowGroups.map(({ startIdx, endIdx, hidden }) => {
+          const timeString = timeSlots30Min[startIdx];
+          const pillHeight = (endIdx - startIdx + 1) * SLOT_HEIGHT_PX - 4;
           return (
             <div
-              key={`pill-${timeString}`}
+              key={`pill-group-${startIdx}`}
               style={{
                 position: "absolute",
-                top: timeIndex * SLOT_HEIGHT_PX + 2,
+                top: startIdx * SLOT_HEIGHT_PX + 2,
                 right: 2,
-                height: SLOT_HEIGHT_PX - 4,
+                height: pillHeight,
                 width: 20,
                 zIndex: 110,
               }}

@@ -580,8 +580,9 @@ describe("SessionBlock Component", () => {
     render(
       <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
     );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragStart(block);
+    // drag handlers are on the button (direct mousedown target)
+    const button = screen.getByRole("button");
+    fireEvent.dragStart(button);
     expect(onDragStart).toHaveBeenCalledTimes(1);
   });
 
@@ -590,8 +591,9 @@ describe("SessionBlock Component", () => {
     render(
       <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
     );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragEnd(block);
+    // drag handlers are on the button (direct mousedown target)
+    const button = screen.getByRole("button");
+    fireEvent.dragEnd(button);
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 

@@ -99,7 +99,7 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
             data-anchor={compact ? "left" : "bottom"}
             className={[
               compact
-                ? "absolute left-full top-0 ml-2 z-[9999]"
+                ? "absolute left-full bottom-0 ml-2 z-[9999] max-h-[calc(100vh-16px)] overflow-y-auto"
                 : "absolute right-0 top-full mt-2 z-[9999]",
               "min-w-[200px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-admin-md p-2",
             ].join(" ")}
