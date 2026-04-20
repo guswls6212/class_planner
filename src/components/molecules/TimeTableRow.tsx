@@ -103,12 +103,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // Required lane count based on actual time overlaps (not stored yPosition max)
   const rawMaxYPosition = React.useMemo(() => {
-    if (dragPreview?.draggedSession) {
-      const required = computeRequiredLanes(weekdaySessions);
-      return Math.max(5, required);
-    }
     return computeRequiredLanes(weekdaySessions);
-  }, [weekdaySessions, dragPreview?.draggedSession]);
+  }, [weekdaySessions]);
 
   const isDragging = React.useMemo(() => {
     return Boolean(dragPreview?.draggedSession);
@@ -254,7 +250,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 left: `${laneIdx * laneWidth}px`,
                 width: `${laneWidth}px`,
                 height: `${SLOT_HEIGHT_PX}px`,
-                zIndex: isDragging ? 10 : 1,
+                zIndex: 1,
               }}
             />
           );
