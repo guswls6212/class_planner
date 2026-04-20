@@ -56,7 +56,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명해야 한다 (opacity 0.4, visible)", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events none이어야 한다 (Bug3 fix)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -69,7 +69,8 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    expect(styles.pointerEvents).toBe("auto");
+    // pointer-events none → 드래그 대상 영역에서도 cell이 drop 이벤트 수신 가능
+    expect(styles.pointerEvents).toBe("none");
   });
 
   it("isDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
@@ -88,7 +89,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isDragging이 true이고 드래그된 세션일 때 반투명해야 한다 (opacity 0.4, visible)", () => {
+  it("isDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events none이어야 한다 (Bug3 fix)", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -101,7 +102,7 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    expect(styles.pointerEvents).toBe("auto");
+    expect(styles.pointerEvents).toBe("none");
   });
 
   it("isAnyDragging이 우선순위가 높아야 한다 (isDragging보다)", () => {
@@ -130,6 +131,32 @@ describe("getSessionBlockStyles", () => {
     );
 
     expect(styles2.opacity).toBe(1); // 동일한 결과
+  });
+
+  it("드래그 중 비-대상 세션도 zIndex를 100+yOffset으로 유지한다 (Bug4 fix)", () => {
+    const yOffset = 94;
+    const styles = getSessionBlockStyles(
+      0, 100, yOffset, "#FF0000",
+      true, // isDragging
+      false, // not the dragged session
+      true   // isAnyDragging
+    );
+    expect(styles.zIndex).toBe(100 + yOffset);
+  });
+
+  it("드래그 중 드래그 대상 세션도 zIndex를 100+yOffset으로 유지한다", () => {
+    const yOffset = 47;
+    const styles = getSessionBlockStyles(
+      0, 100, yOffset, "#FF0000",
+      true, true, true
+    );
+    expect(styles.zIndex).toBe(100 + yOffset);
+  });
+
+  it("비드래그 상태의 기본 zIndex는 100+yOffset이다", () => {
+    const yOffset = 0;
+    const styles = getSessionBlockStyles(0, 100, yOffset, "#FF0000");
+    expect(styles.zIndex).toBe(100 + yOffset);
   });
 
   it("과목 색상이 없을 때 기본 색상(#888)을 사용해야 한다", () => {
