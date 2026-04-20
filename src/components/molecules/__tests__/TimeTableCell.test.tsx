@@ -63,15 +63,27 @@ describe("TimeTableCell", () => {
     expect(onDrop).toHaveBeenCalledWith(0, "15:00", "enrollment-1");
   });
 
-  it("드롭 이벤트 시 세션 드롭 처리 (session: 접두사 있는 데이터)", () => {
+  it("드롭 이벤트 시 세션 드롭 처리 — logical yPosition(1-based)을 그대로 전달", () => {
     const onSessionDrop = vi.fn();
-    render(<TimeTableCell {...sharedProps} onSessionDrop={onSessionDrop} />);
+    render(
+      <TimeTableCell {...sharedProps} yPosition={2} onSessionDrop={onSessionDrop} />
+    );
     const cell = screen.getByTestId("time-table-cell-0-15:00");
 
     const dropEvent = createDragEvent("drop", "session:abc-123");
     fireEvent(cell, dropEvent);
 
-    expect(onSessionDrop).toHaveBeenCalledWith("abc-123", 0, "15:00", expect.any(Number));
+    expect(onSessionDrop).toHaveBeenCalledWith("abc-123", 0, "15:00", 2);
+  });
+
+  it("dragOver 시 onDragOver에 logical yPosition(1-based)을 그대로 전달", () => {
+    const onDragOver = vi.fn();
+    render(
+      <TimeTableCell {...sharedProps} yPosition={3} onDragOver={onDragOver} isAnyDragging={true} isDragging={true} />
+    );
+    const cell = screen.getByTestId("time-table-cell-0-15:00");
+    fireEvent.dragOver(cell);
+    expect(onDragOver).toHaveBeenCalledWith(0, "15:00", 3);
   });
 
   it("isReadOnly 이면 드롭 이벤트가 무시된다", () => {

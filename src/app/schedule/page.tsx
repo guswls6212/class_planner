@@ -19,7 +19,6 @@
  */
 
 import dynamic from "next/dynamic";
-import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useColorBy } from "../../hooks/useColorBy";
@@ -439,19 +438,16 @@ function SchedulePageContent(): JSX.Element {
       const newEndMinutes = newStartMinutes + durationMinutes;
       const newEndTime = minutesToTime(newEndMinutes);
 
-      // 픽셀 위치를 논리적 위치로 변환 (1, 2, 3...)
-      const logicalPosition = Math.round(yPosition / SESSION_CELL_HEIGHT) + 1; // 0px = 1번째, SESSION_CELL_HEIGHT px = 2번째, SESSION_CELL_HEIGHT * 2 px = 3번째
-
       logger.debug("세션 위치 업데이트", {
         sessionId,
         originalTime: `${existingSession.startsAt}-${existingSession.endsAt}`,
         newTime: `${time}-${newEndTime}`,
         durationMinutes,
-        logicalPosition,
+        targetYPosition: yPosition,
         originalYPosition: existingSession.yPosition,
       });
 
-      // 🆕 충돌 방지 로직 적용
+      // 충돌 방지 로직 적용
       logger.debug("repositionSessions 호출 시작");
       const newSessions = repositionSessionsUtil(
         sessions,
@@ -460,7 +456,7 @@ function SchedulePageContent(): JSX.Element {
         weekday,
         time,
         newEndTime,
-        logicalPosition,
+        yPosition,
         sessionId
       );
       logger.debug("repositionSessions 완료", {

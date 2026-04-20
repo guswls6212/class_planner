@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { logger } from "../../lib/logger";
-import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
 
 import type { Session } from "../../lib/planner";
 
@@ -87,8 +86,7 @@ export default function TimeTableCell({
       }
     }
     if (onDragOver) {
-      const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
-      onDragOver(weekday, time, pixelYPosition);
+      onDragOver(weekday, time, yPosition);
     }
   };
 
@@ -112,9 +110,8 @@ export default function TimeTableCell({
         // Session drag: "session:{sessionId}"
         const sessionId = data.replace("session:", "");
         logger.debug("세션 드롭 처리", { sessionId });
-        const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
         if (onSessionDrop) {
-          onSessionDrop(sessionId, weekday, time, pixelYPosition);
+          onSessionDrop(sessionId, weekday, time, yPosition);
         }
       } else {
         // Enrollment drag
