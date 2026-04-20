@@ -6,6 +6,12 @@ import SessionBlock, {
   validateSessionBlockProps,
 } from "../SessionBlock";
 
+// useSessionStatus returns time-based values; mock to "upcoming" to make
+// tests deterministic regardless of the day/time tests run.
+vi.mock("../../../hooks/useSessionStatus", () => ({
+  useSessionStatus: () => "upcoming",
+}));
+
 // Mock console.log to avoid noise in tests
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
