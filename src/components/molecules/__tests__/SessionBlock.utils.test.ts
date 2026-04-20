@@ -56,7 +56,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events none이어야 한다 (Bug3 fix)", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -69,8 +69,8 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events none → 드래그 대상 영역에서도 cell이 drop 이벤트 수신 가능
-    expect(styles.pointerEvents).toBe("none");
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    expect(styles.pointerEvents).toBe("auto");
   });
 
   it("isDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
@@ -89,7 +89,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events none이어야 한다 (Bug3 fix)", () => {
+  it("isDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -102,7 +102,8 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    expect(styles.pointerEvents).toBe("none");
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    expect(styles.pointerEvents).toBe("auto");
   });
 
   it("isAnyDragging이 우선순위가 높아야 한다 (isDragging보다)", () => {

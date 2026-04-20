@@ -79,10 +79,11 @@ export const getSessionBlockStyles = (
   // 전역 드래그 상태 (학생 드래그 또는 세션 드래그) 처리
   if (isAnyDragging) {
     if (isDraggedSession) {
-      // 드래그 중인 세션: 반투명으로 표시. pointer-events none → cell이 dragover/drop 수신
+      // 드래그 중인 세션: 반투명으로 표시. pointer-events auto 유지 — none으로 바꾸면
+      // Chrome이 소스 요소를 비인터랙티브로 판단해 네이티브 드래그를 즉시 취소함.
       opacity = 0.4;
       visibility = "visible";
-      pointerEvents = "none";
+      pointerEvents = "auto";
     } else {
       // 다른 세션들: 완전히 보이되, pointer-events는 none (drop target인 cell에 dragover 전달)
       opacity = 1;
@@ -93,7 +94,7 @@ export const getSessionBlockStyles = (
     if (isDraggedSession) {
       opacity = 0.4;
       visibility = "visible";
-      pointerEvents = "none";
+      pointerEvents = "auto";
     } else {
       opacity = 1;
       pointerEvents = "none";
