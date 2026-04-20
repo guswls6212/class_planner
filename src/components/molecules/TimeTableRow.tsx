@@ -184,6 +184,26 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [timeSlots30Min, hiddenSessions, isOverflow, timeToMinutes]);
 
+  // Group contiguous time slots sharing the same hidden session set → one pill per group
+  const overflowGroups = React.useMemo(() => {
+    if (!isOverflow) return [];
+    const groups: { startIdx: number; endIdx: number; hidden: Session[] }[] = [];
+    slotHiddenSessions.forEach((hidden, idx) => {
+      if (hidden.length === 0) return;
+      const hiddenKey = hidden.map((s) => s.id).sort().join(",");
+      if (groups.length > 0) {
+        const last = groups[groups.length - 1];
+        const lastKey = last.hidden.map((s) => s.id).sort().join(",");
+        if (idx === last.endIdx + 1 && hiddenKey === lastKey) {
+          last.endIdx = idx;
+          return;
+        }
+      }
+      groups.push({ startIdx: idx, endIdx: idx, hidden });
+    });
+    return groups;
+  }, [isOverflow, slotHiddenSessions]);
+
   // Map hidden sessions to OverflowSessionItem for the popover
   const toOverflowItems = React.useCallback(
     (sessions: Session[]): OverflowSessionItem[] =>
@@ -280,19 +300,19 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         />
       ))}
 
-      {/* Overflow pills — one per time slot where hidden sessions are active */}
+      {/* Overflow pills — one per contiguous group of slots sharing the same hidden session set */}
       {isOverflow &&
-        timeSlots30Min.map((timeString, timeIndex) => {
-          const hidden = slotHiddenSessions[timeIndex] ?? [];
-          if (hidden.length === 0) return null;
+        overflowGroups.map(({ startIdx, endIdx, hidden }) => {
+          const timeString = timeSlots30Min[startIdx];
+          const pillHeight = (endIdx - startIdx + 1) * SLOT_HEIGHT_PX - 4;
           return (
             <div
-              key={`pill-${timeString}`}
+              key={`pill-group-${startIdx}`}
               style={{
                 position: "absolute",
-                top: timeIndex * SLOT_HEIGHT_PX + 2,
+                top: startIdx * SLOT_HEIGHT_PX + 2,
                 right: 2,
-                height: SLOT_HEIGHT_PX - 4,
+                height: pillHeight,
                 width: 20,
                 zIndex: 110,
               }}

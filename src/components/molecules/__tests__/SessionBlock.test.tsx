@@ -6,6 +6,12 @@ import SessionBlock, {
   validateSessionBlockProps,
 } from "../SessionBlock";
 
+// useSessionStatus returns time-based values; mock to "upcoming" to make
+// tests deterministic regardless of the day/time tests run.
+vi.mock("../../../hooks/useSessionStatus", () => ({
+  useSessionStatus: () => "upcoming",
+}));
+
 // Mock console.log to avoid noise in tests
 const originalConsoleLog = console.log;
 const originalConsoleWarn = console.warn;
@@ -580,8 +586,9 @@ describe("SessionBlock Component", () => {
     render(
       <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
     );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragStart(block);
+    // drag handlers are on the button (direct mousedown target)
+    const button = screen.getByRole("button");
+    fireEvent.dragStart(button);
     expect(onDragStart).toHaveBeenCalledTimes(1);
   });
 
@@ -590,8 +597,9 @@ describe("SessionBlock Component", () => {
     render(
       <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
     );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragEnd(block);
+    // drag handlers are on the button (direct mousedown target)
+    const button = screen.getByRole("button");
+    fireEvent.dragEnd(button);
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
