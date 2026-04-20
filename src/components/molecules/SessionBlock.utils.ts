@@ -79,10 +79,10 @@ export const getSessionBlockStyles = (
   // 전역 드래그 상태 (학생 드래그 또는 세션 드래그) 처리
   if (isAnyDragging) {
     if (isDraggedSession) {
-      // 드래그 중인 세션: 반투명으로 표시 (공간·이벤트 유지)
+      // 드래그 중인 세션: 반투명으로 표시. pointer-events none → cell이 dragover/drop 수신
       opacity = 0.4;
       visibility = "visible";
-      pointerEvents = "auto";
+      pointerEvents = "none";
     } else {
       // 다른 세션들: 완전히 보이되, pointer-events는 none (drop target인 cell에 dragover 전달)
       opacity = 1;
@@ -93,7 +93,7 @@ export const getSessionBlockStyles = (
     if (isDraggedSession) {
       opacity = 0.4;
       visibility = "visible";
-      pointerEvents = "auto";
+      pointerEvents = "none";
     } else {
       opacity = 1;
       pointerEvents = "none";
@@ -114,7 +114,7 @@ export const getSessionBlockStyles = (
     display: "flex",
     alignItems: "center",
     overflow: "hidden",
-    zIndex: isDragging && !isDraggedSession ? 0 : 100 + yOffset,
+    zIndex: 100 + yOffset,
     border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity,
