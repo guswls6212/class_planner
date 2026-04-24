@@ -32,7 +32,7 @@ class-planner (localhost:3000)
 | fetch/XHR 호출 및 응답 | ✅ | XHR 인터셉션 |
 | JS 에러, Promise rejection | ✅ | window.onerror / unhandledrejection |
 | Next.js API 라우트 서버사이드 로그 | ❌ | Node.js 런타임, 미지원 |
-| localStorage 읽기/쓰기 | ❌ | Storage API 미후킹 (omni-radar 개선 대상) |
+| localStorage 읽기/쓰기 | ✅ | `radar_console_hook.js` Storage 후킹 (2026-04-24 구현). op: write/read/delete/clear, key, value_preview(500자), value_length 캡처. `event_type:"storage"` |
 | React 상태 변화 | ❌ | React DevTools 연동 필요 |
 
 ---
@@ -98,6 +98,15 @@ grep '"event_type":"client_fetch"' \
 grep '"event_type":"console_log"' \
   /Users/leo/lee_file/entrepreneur/project/dev-pack/omni-radar/logs/radar_$(date +%Y%m%d).jsonl \
   | grep '"level":"error"'
+
+# localStorage 변경 (Storage 후킹 — 2026-04-24 추가)
+grep '"event_type":"storage"' \
+  /Users/leo/lee_file/entrepreneur/project/dev-pack/omni-radar/logs/radar_$(date +%Y%m%d).jsonl
+
+# classPlannerData 키만 (드래그 관련 핵심 키)
+grep '"event_type":"storage"' \
+  /Users/leo/lee_file/entrepreneur/project/dev-pack/omni-radar/logs/radar_$(date +%Y%m%d).jsonl \
+  | grep "classPlannerData"
 ```
 
 ---
@@ -106,7 +115,7 @@ grep '"event_type":"console_log"' \
 
 | 한계 | 원인 | 개선 방향 | 상태 |
 |------|------|-----------|------|
-| localStorage 변화 미포착 | Storage API 미후킹 | `radar_console_hook.js`에 Storage 후킹 추가 | TASKS.md 백로그 |
+| ~~localStorage 변화 미포착~~ | ~~Storage API 미후킹~~ | **완료** — `radar_console_hook.js` Storage 후킹 구현 (2026-04-24) | ✅ DONE |
 | Next.js 서버사이드 미포착 | Node.js 런타임 | 역방향 프록시 모드 or Next.js SDK | 장기 |
 | Vite HMR 후 재주입 안 됨 | content_script 재실행 안 함 | MV3 navigation listener 추가 | 단기 |
 | Stream LLM 미지원 | 버퍼링 금지 원칙 | 별도 스트림 이벤트 타입 | 중기 |
