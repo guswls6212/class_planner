@@ -271,6 +271,51 @@
 - 학원장용 활동 히스토리 (audit_events 테이블) + 개발자 공지 시스템 — 별도 Phase 예정
   (app_logs는 개발자 전용으로 재정의. 학원장이 필요한 것은 멤버 초대/등급 변경 등의 audit log)
 
+## Phase H — 드래그 미리보기 Drop 버그 (재설계)
+
+> **배경:** Phase E (PR #91, pointer-events:none 시도) → Phase F (PR #92, 되돌림) → Phase G (PR #93, hasDragTarget 조건부 none → 같은 회귀 재발) → Phase G revert (hotfix).
+> 교훈: 드래그 소스 요소의 pointer-events를 드래그 도중 변경하면 Chrome이 네이티브 drag를 취소함. 합성 DragEvent로는 재현 불가 — **실측 마우스 드래그 필수**.
+
+### 해결해야 할 현상 (Phase D+F 조합에서도 남는 동작)
+- `computeTentativeLayout`이 드래그 대상 세션을 target 위치로 이동 렌더.
+- 이 미리보기 SessionBlock은 `pointer-events: auto` 유지 중 → drop을 흡수 → 데이터 갱신 실패(no-op).
+- 즉, "미리보기 블록 위에서 release"하면 실제 데이터가 안 바뀜. 옆 cell로 살짝 비켜서 놓으면 정상.
+
+### 후보 접근 — Ghost Div 전략
+**핵심:** 미리보기 렌더를 SessionBlock이 아닌 별도 "ghost" div로 분리.
+1. `computeTentativeLayout`을 되돌려 원본 `sessions` Map을 그대로 전달 (드래그 대상은 목록에 그대로 남음 — opacity 0.4로만 표시).
+2. `TimeTableGrid`에 target 위치 기준 `<div data-testid="drag-ghost" style={{ pointer-events: none, ... }}>` 렌더.
+3. Ghost는 항상 `pointer-events: none` — drop이 밑 cell로 투과.
+4. 드래그 소스 SessionBlock은 `pointer-events` 절대 변경 안 함 (Chrome 드래그 취소 방지).
+
+### 대안 — 완전 포기
+"같은 자리 drop = no-op" UX를 의도된 "취소" 동작으로 수용하고 Phase H를 영구 보류. Phase D 픽스로 다른 cell 이동은 이미 정상.
+
+### 검증 필수 조건 (Phase F 교훈)
+- Playwright 합성 이벤트만으로 통과시키지 말 것. 반드시 아래 중 하나로 확인:
+  1. 실제 마우스 드래그 + Console 로그 파일 캡처 (Phase I 로그 인프라 완성 후)
+  2. `mcp__playwright__browser_drag` (실제 mouse path 시뮬레이션)
+  3. computer-use 실측 (Chrome이 read-tier라 Claude-in-Chrome extension 필요)
+
+### 착수 조건
+- Phase I (로그 인프라) 완료 후 진행. 실측 드래그 로그를 파일로 자동 저장할 수 있어야 회귀 검증 가능.
+
+## Phase I — Browser Console Log Capture 인프라
+
+> **배경:** Phase E/G 모두 Playwright 합성 DragEvent로는 통과했으나 실측에서 실패. 사용자가 매번 DevTools 콘솔 복붙 제공해야 디버깅 가능 → Claude가 직접 로그 파일 읽을 수 있어야 반복 회귀 방지.
+
+### 목표
+브라우저에서 발생한 `logger.*` 호출을 프로젝트 로컬 파일(`class-planner/logs/browser-YYYYMMDD.jsonl`)에 자동 수집. Claude가 `Grep` / `tail`로 직접 조회.
+
+### 제안 구성 (MVP)
+1. `src/app/api/dev/log/route.ts` — dev 전용 POST 엔드포인트. `NODE_ENV !== "development"`이면 404. body = `LogRecord[]`, `logs/browser-YYYYMMDD.jsonl`에 append.
+2. `src/lib/logger.ts` — dev 모드에서 메모리 버퍼에 누적, 1초 debounce로 `/api/dev/log`에 fire-and-forget POST (sendBeacon 우선, fallback fetch).
+3. `logs/.gitignore` — 로그 파일 git 제외.
+4. `docs/debugging-guide.md` — "Claude가 실측 드래그 로그 확인하는 법" 절차화.
+
+### 확장 (omni-radar 연동)
+로컬 파일 방식 검증 후 omni-radar HTTP ingest endpoint로 전환 고려. dev-pack CLAUDE.md에 이미 예고된 경로 ("API 레이어에 radar hook 주입, 또는 omni-radar HTTP endpoint로 이벤트 전송"). 전사 관측 인프라 통합이 목적이면 이 경로.
+
 ## 변경 이력
 | 날짜 | 내용 |
 |------|------|
@@ -299,3 +344,4 @@
 | 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
 | 2026-04-18 | Phase 6 완료 — SessionCard 4-variant + tintFromHex + D-hybrid overlap + Weekly CSS Grid transpose + Daily/Monthly/Landing/PDF 통일 (PR#77~#85 → dev 머지) |
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
+| 2026-04-24 | 드래그 UX Phase D/F 완료 · Phase E(#91)/G(#93) revert (hotfix). Phase H(ghost-div 재설계) + Phase I(브라우저 로그 캡처) 백로그 등록 |
