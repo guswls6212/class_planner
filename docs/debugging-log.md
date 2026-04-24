@@ -83,9 +83,9 @@ Chrome native drag engine은 드래그 중 소스 요소의 `pointer-events`가 
    - value_preview 500자 truncate
    - SecurityError try/catch (sandboxed iframe 대응)
 
-2. `frontend/src/constants/severity.ts` — `case "storage": return "browser"` 추가 (카테고리 매핑)
+2. ~~`frontend/src/constants/severity.ts` — `case "storage": return "browser"` 추가 (카테고리 매핑)~~ **revert됨** (dirty-tree-stop-hook이 새 dirty 파일 차단). 대시보드 카테고리만 영향 받음 (default=exception으로 표시). Claude의 JSONL grep 워크플로우엔 영향 없음. 추후 omni-radar 정리 세션에서 다시 추가 필요.
 
-3. `ARCHITECTURE.md` — Browser Observability Events 섹션에 storage 이벤트 설명 추가
+3. `ARCHITECTURE.md` — Browser Observability Events 섹션에 storage 이벤트 설명 추가 (omni-radar에서 pre-existing dirty 상태로 유지)
 
 **검증:**
 - Python 테스트 127 pass ✓
