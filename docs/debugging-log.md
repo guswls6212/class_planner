@@ -69,7 +69,47 @@ Chrome native drag engine은 드래그 중 소스 요소의 `pointer-events`가 
 
 ## 디버깅 세션 기록
 
-### 2026-04-24 (컨텍스트 압축 복원)
+### 2026-04-24 (2차 — omni-radar localStorage 후킹 구현)
+
+**배경:** DRAG-001 재시도 전에 실제 마우스 로그 캡처 인프라 구축. 특히 Local-first 아키텍처에서 `localStorage` 읽기/쓰기 흐름을 볼 수 없던 게 드래그 원인 분석의 최대 blind spot이었음.
+
+**구현한 것 (omni-radar repo):**
+
+1. `radar_console_hook.js` — Storage 후킹 블록 추가 (XMLHttpRequest 섹션 직전)
+   - `hookStorage(storage, storageType)` — setItem/getItem/removeItem/clear 래핑
+   - 이벤트 타입: `storage`
+   - payload: `{ storage: "local"|"session", op: "write"|"read"|"delete"|"clear", key, value_preview, value_length, url }`
+   - read 캡처 기본 활성, `window.__OMNI_RADAR_STORAGE_READ_CAPTURE__ = false`로 비활성화
+   - value_preview 500자 truncate
+   - SecurityError try/catch (sandboxed iframe 대응)
+
+2. `frontend/src/constants/severity.ts` — `case "storage": return "browser"` 추가 (카테고리 매핑)
+
+3. `ARCHITECTURE.md` — Browser Observability Events 섹션에 storage 이벤트 설명 추가
+
+**검증:**
+- Python 테스트 127 pass ✓
+- 프론트엔드 build 통과 ✓
+- JS 문법 `node -c` 통과 ✓
+
+**커밋 상태:**
+omni-radar repo는 pre-existing dirty 58개 파일이 있어서 내 변경분만 격리 커밋이 어려움. 파일 수정 상태로만 남겨둠. 다음 omni-radar 정리 세션 때 batch buffer 개선 + storage 후킹을 함께 커밋 권장.
+
+**그레프 명령어 (읽기용):**
+```bash
+# localStorage 변경 전체
+grep '"event_type":"storage"' \
+  /Users/leo/lee_file/entrepreneur/project/dev-pack/omni-radar/logs/radar_$(date +%Y%m%d).jsonl
+
+# classPlannerData 키만 (드래그 관련)
+grep '"event_type":"storage"' \
+  /Users/leo/lee_file/entrepreneur/project/dev-pack/omni-radar/logs/radar_$(date +%Y%m%d).jsonl \
+  | grep "classPlannerData"
+```
+
+---
+
+### 2026-04-24 (1차 — 컨텍스트 압축 복원)
 
 **진행한 것:**
 - Phase G 구현 → Playwright 합성 이벤트로 검증 → 실제 마우스 테스트 실패
