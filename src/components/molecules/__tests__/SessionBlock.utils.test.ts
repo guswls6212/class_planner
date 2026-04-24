@@ -56,7 +56,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때(타겟 미설정): 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -64,13 +64,32 @@ describe("getSessionBlockStyles", () => {
       defaultParams.subjectColor,
       false, // isDragging
       true, // isDraggedSession (드래그된 세션)
-      true // isAnyDragging
+      true, // isAnyDragging
+      false // hasDragTarget=false (dragstart 직후, target 미설정)
     );
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    // pointer-events auto — hasDragTarget=false이면 Chrome 네이티브 드래그 취소 방지
     expect(styles.pointerEvents).toBe("auto");
+  });
+
+  it("isAnyDragging이 true이고 드래그된 세션일 때(타겟 설정 후): 반투명하고 pointer-events none이어야 한다", () => {
+    const styles = getSessionBlockStyles(
+      defaultParams.left,
+      defaultParams.width,
+      defaultParams.yOffset,
+      defaultParams.subjectColor,
+      false, // isDragging
+      true, // isDraggedSession (드래그된 세션)
+      true, // isAnyDragging
+      true // hasDragTarget=true (dragover 후 미리보기 위치)
+    );
+
+    expect(styles.opacity).toBe(0.4);
+    expect(styles.visibility).toBe("visible");
+    // pointer-events none — 미리보기 블록이 drop을 가로채지 않고 밑 cell이 받도록
+    expect(styles.pointerEvents).toBe("none");
   });
 
   it("isDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
@@ -89,7 +108,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
+  it("isDragging이 true이고 드래그된 세션일 때(타겟 미설정): 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -97,13 +116,32 @@ describe("getSessionBlockStyles", () => {
       defaultParams.subjectColor,
       true, // isDragging
       true, // isDraggedSession (드래그된 세션)
-      false // isAnyDragging
+      false, // isAnyDragging
+      false // hasDragTarget=false (dragstart 직후)
     );
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    // pointer-events auto — hasDragTarget=false이면 Chrome 네이티브 드래그 취소 방지
     expect(styles.pointerEvents).toBe("auto");
+  });
+
+  it("isDragging이 true이고 드래그된 세션일 때(타겟 설정 후): 반투명하고 pointer-events none이어야 한다", () => {
+    const styles = getSessionBlockStyles(
+      defaultParams.left,
+      defaultParams.width,
+      defaultParams.yOffset,
+      defaultParams.subjectColor,
+      true, // isDragging
+      true, // isDraggedSession (드래그된 세션)
+      false, // isAnyDragging
+      true // hasDragTarget=true (dragover 후 미리보기 위치)
+    );
+
+    expect(styles.opacity).toBe(0.4);
+    expect(styles.visibility).toBe("visible");
+    // pointer-events none — 미리보기 블록이 drop을 가로채지 않고 밑 cell이 받도록
+    expect(styles.pointerEvents).toBe("none");
   });
 
   it("isAnyDragging이 우선순위가 높아야 한다 (isDragging보다)", () => {
