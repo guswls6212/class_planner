@@ -110,12 +110,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return Boolean(dragPreview?.draggedSession);
   }, [dragPreview]);
 
-  // dragover 후 타겟이 설정되면 미리보기 블록의 pointer-events를 none으로 전환해
-  // drop 이벤트가 SessionBlock이 아닌 밑의 TimeTableCell에 도달하도록 함.
-  const hasDragTarget = React.useMemo(() => {
-    return dragPreview?.draggedSession != null && dragPreview?.targetWeekday != null;
-  }, [dragPreview]);
-
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
 
@@ -299,7 +293,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isDragging={Boolean(dragPreview?.draggedSession)}
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
-          hasDragTarget={hasDragTarget}
         />
       ))}
 

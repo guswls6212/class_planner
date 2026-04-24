@@ -31,7 +31,6 @@ interface SessionBlockProps {
   isDragging?: boolean;
   draggedSessionId?: string;
   isAnyDragging?: boolean;
-  hasDragTarget?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
@@ -68,7 +67,6 @@ function SessionBlock({
   isDragging = false,
   draggedSessionId,
   isAnyDragging = false,
-  hasDragTarget = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
@@ -129,7 +127,6 @@ function SessionBlock({
     isDragging,
     session.id === draggedSessionId,
     isAnyDragging,
-    hasDragTarget,
     height
   );
 
