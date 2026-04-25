@@ -2,6 +2,7 @@ import React from "react";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import type { ColorByMode } from "../../hooks/useColorBy";
+import { resolveSessionTone } from "./SessionCard.utils";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
@@ -340,38 +341,65 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         );
       })()}
 
-      {/* DragGhost — sessionsForRender의 드래그 세션 레이아웃 위치에 렌더 (pointer-events:none).
-          laidOutSessions에서 위치를 가져오므로 컬럼 너비 변화에 자동 반영됨. */}
+      {/* DragGhost — 드래그 대상 위치에 세션 내용이 담긴 반투명 미리보기 카드 */}
       {(() => {
         const ds = dragPreview?.draggedSession;
         if (!ds || dragPreview?.targetWeekday !== weekday) return null;
 
-        // sessionsForRender에 드래그 세션이 포함됐으므로 laidOutSessions에도 있음
         const ghostLayout = laidOutSessions.find(({ session }) => session.id === ds.id);
         if (!ghostLayout) return null;
 
+        // 과목·학생 정보 추출 (sessionsForRender의 세션 = 이미 target 시간으로 업데이트됨)
+        const { session: ghostSession } = ghostLayout;
         const firstEnrollId = ds.enrollmentIds?.[0];
         const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
         const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
         const ghostColor = subj?.color ?? "#6B7280";
+        const tone = resolveSessionTone(ghostColor);
+        const studentNames = (ds.enrollmentIds ?? [])
+          .flatMap((eid) => {
+            const e = enrollments.find((en) => en.id === eid);
+            const st = e ? students.find((s) => s.id === e.studentId) : null;
+            return st ? [st.name] : [];
+          })
+          .slice(0, 4);
 
         return (
           <div
             key="drag-ghost"
+            data-testid="drag-ghost"
             style={{
               position: "absolute",
-              left: ghostLayout.left,
+              left: ghostLayout.left + 1,
               top: ghostLayout.top + 1,
-              width: ghostLayout.width,
-              height: ghostLayout.height - 1,
-              backgroundColor: ghostColor,
-              opacity: 0.5,
-              borderRadius: 4,
+              width: ghostLayout.width - 2,
+              height: ghostLayout.height - 2,
+              backgroundColor: tone.bg,
+              borderRadius: 6,
               pointerEvents: "none",
               zIndex: 200,
+              opacity: 0.82,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18), 0 0 0 2px rgba(255,255,255,0.25)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              padding: "3px 6px",
+              gap: 1,
+              borderLeft: `3px solid ${tone.accent}`,
             }}
-            data-testid="drag-ghost"
-          />
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: tone.fg, lineHeight: 1.3, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+              {subj?.name ?? "과목 없음"}
+            </div>
+            <div style={{ fontSize: 10, color: tone.fg, opacity: 0.75, lineHeight: 1.2 }}>
+              {ghostSession.startsAt}–{ghostSession.endsAt}
+            </div>
+            {studentNames.length > 0 && (
+              <div style={{ fontSize: 10, color: tone.fg, opacity: 0.65, lineHeight: 1.2, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                {studentNames.join(", ")}
+              </div>
+            )}
+          </div>
         );
       })()}
 

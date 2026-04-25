@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { logger } from "../../lib/logger";
 
 import type { Session } from "../../lib/planner";
@@ -20,11 +20,11 @@ interface TimeTableCellProps {
   onEmptySpaceClick: (weekday: number, time: string) => void;
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   style?: React.CSSProperties;
-  // drag state
+  isReadOnly?: boolean;
+  // retained for interface compatibility (unused visually — DragGhost provides feedback)
   isAnyDragging?: boolean;
   isDragging?: boolean;
   dragPreview?: DragPreviewState | null;
-  isReadOnly?: boolean;
 }
 
 /**
@@ -46,55 +46,24 @@ export default function TimeTableCell({
   dragPreview = null,
   isReadOnly = false,
 }: TimeTableCellProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  // Reset drag-over state when global drag ends
-  useEffect(() => {
-    if (!isAnyDragging) {
-      setIsDragOver(false);
-    }
-  }, [isAnyDragging]);
-
   const handleDragEnter = (e: React.DragEvent) => {
     logger.debug("TimeTableCell handleDragEnter", { weekday, time, yPosition });
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(true);
-    if (e.dataTransfer) {
-      if (e.dataTransfer.effectAllowed === "move") {
-        e.dataTransfer.dropEffect = "move";
-      } else {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(true);
-    if (e.dataTransfer) {
-      if (e.dataTransfer.effectAllowed === "move") {
-        e.dataTransfer.dropEffect = "move";
-      } else {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    }
-    if (onDragOver) {
-      onDragOver(weekday, time, yPosition);
-    }
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    if (onDragOver) onDragOver(weekday, time, yPosition);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     logger.debug("TimeTableCell handleDrop", { weekday, time, yPosition });
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
 
     if (isReadOnly) return;
 
@@ -138,22 +107,10 @@ export default function TimeTableCell({
     }
   };
 
-  const showBorder = isDragOver;
-
   const styles: React.CSSProperties = {
     ...style,
-    border: showBorder
-      ? "2px dashed var(--color-primary)"
-      : "1px dashed transparent",
-    backgroundColor: showBorder
-      ? "var(--color-primary-light)"
-      : style?.backgroundColor || "transparent",
     cursor: "pointer",
     pointerEvents: "auto" as const,
-    ...(isDragging &&
-      !showBorder && {
-        backgroundColor: "var(--color-bg-secondary)",
-      }),
   };
 
   return (
@@ -166,7 +123,6 @@ export default function TimeTableCell({
       data-y-position={yPosition}
       draggable={false}
       onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
