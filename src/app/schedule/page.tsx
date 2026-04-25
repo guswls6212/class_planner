@@ -65,6 +65,7 @@ import {
   onDragEndStudent,
   onDragStartStudent,
 } from "./_utils/dndHelpers";
+import { syncSessionUpdate } from "../../lib/apiSync";
 import {
   buildEditOnCancel,
   buildEditOnDelete,
@@ -466,6 +467,28 @@ function SchedulePageContent(): JSX.Element {
       logger.debug("updateData 호출 시작");
       await updateData({ sessions: newSessions });
       logger.info("updateData 완료");
+
+      // 이동된 세션을 서버에 동기화 (fire-and-forget).
+      // updateData는 localStorage만 쓰므로 명시적으로 sync 필요.
+      // 충돌 재배치된 다른 세션들도 업데이트.
+      const userId = localStorage.getItem("supabase_user_id");
+      for (const s of newSessions) {
+        const original = sessions.find((o) => o.id === s.id);
+        if (
+          original &&
+          (original.weekday !== s.weekday ||
+            original.startsAt !== s.startsAt ||
+            original.endsAt !== s.endsAt ||
+            original.yPosition !== s.yPosition)
+        ) {
+          syncSessionUpdate(userId, s.id, {
+            weekday: s.weekday,
+            startsAt: s.startsAt,
+            endsAt: s.endsAt,
+            yPosition: s.yPosition,
+          });
+        }
+      }
     },
     [sessions, updateData, enrollments, subjects]
   );
