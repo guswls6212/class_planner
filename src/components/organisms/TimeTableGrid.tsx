@@ -328,8 +328,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // 각 weekday column 너비 = max lanes × laneWidth.
     // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산.
-    // target 요일에는 +1 bonus lane 선제 추가 — 드래그 중 빈 공간이 미리 생겨서
-    // 다음 요일로 넘어가지 않고도 원하는 위치에 쉽게 드롭할 수 있다.
+    // target 요일에만 DRAG_HOVER_PAD * 2(양쪽 20px) 추가 — 세션 너비는 그대로이고
+    // 양 옆에 여백만 생겨서 다음 요일로 넘어가지 않고 원하는 위치에 쉽게 드롭할 수 있다.
+    const DRAG_HOVER_PAD = 20;
     const weekdayWidths = useMemo(
       () => {
         const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
@@ -338,12 +339,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         return Array.from({ length: 7 }, (_, wd) => {
           const daySessions = baseMap?.get(wd) || [];
           const required = computeRequiredLanes(daySessions);
-          let lanes = (!isDraggingAny && required >= 4) ? 2 : required;
-          // target 요일에 bonus lane 추가 (hover 중일 때만)
-          if (isDraggingAny && wd === targetWd && targetWd !== null) {
-            lanes += 1;
-          }
-          return Math.max(1, lanes) * laneWidth;
+          const lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          const baseW = Math.max(1, lanes) * laneWidth;
+          // target 요일에 좌우 여백 추가 (hover 중일 때만)
+          return isDraggingAny && wd === targetWd && targetWd !== null
+            ? baseW + DRAG_HOVER_PAD * 2
+            : baseW;
         });
       },
       [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth]

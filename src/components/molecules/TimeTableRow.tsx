@@ -113,11 +113,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
+  const effectiveLanes = isOverflow ? 2 : rawMaxYPosition;
 
-  // target 요일에 hover 중이면 bonus lane +1 (TimeTableGrid의 weekdayWidths와 동기화).
-  // width가 이미 +1 lane 반영됐으므로 effectiveLanes도 맞춰야 laneWidth가 올바름.
+  // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
+  // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
+  const DRAG_HOVER_PAD = 20;
   const isDraggingToThis = isDragging && dragPreview?.targetWeekday === weekday;
-  const effectiveLanes = (isOverflow ? 2 : rawMaxYPosition) + (isDraggingToThis ? 1 : 0);
+  const baseWidth = isDraggingToThis ? width - DRAG_HOVER_PAD * 2 : width;
 
   // 30-minute time slots (9:00 – 23:30)
   const timeSlots30Min = React.useMemo(() => {
@@ -130,7 +132,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   }, []);
 
   // Lane width for horizontal overlap stacking within this weekday column
-  const laneWidth = width / Math.max(1, effectiveLanes);
+  const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
   // Visible sessions (yPos ≤2 when overflow; all otherwise)
@@ -162,7 +164,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const durationSlots = Math.max(1, (endMin - startMin) / 30);
       return {
         session,
-        left: Math.round(laneIdx * laneWidth),
+        left: Math.round(laneIdx * laneWidth) + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
         width: Math.round(laneWidth),
         top: Math.round(timeIdx * SLOT_HEIGHT_PX),
         height: Math.round(durationSlots * SLOT_HEIGHT_PX),
@@ -228,7 +230,15 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
       data-testid={`time-table-column-${weekday}`}
       data-weekday={weekday}
-      style={{ height: `${totalHeight}px`, width: `${width}px`, ...style }}
+      style={{
+        height: `${totalHeight}px`,
+        width: `${width}px`,
+        // target 컬럼: 미묘한 inner glow로 "여기에 드래그 중" 표시
+        boxShadow: isDraggingToThis
+          ? "inset 0 0 0 1.5px rgba(99,179,237,0.35)"
+          : undefined,
+        ...style,
+      }}
     >
       {/* Drop cells — timeSlots × effectiveLanes */}
       {timeSlots30Min.map((timeString, timeIndex) => {
@@ -250,7 +260,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               style={{
                 position: "absolute",
                 top: `${timeIndex * SLOT_HEIGHT_PX}px`,
-                left: `${laneIdx * laneWidth}px`,
+                left: `${laneIdx * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0)}px`,
                 width: `${laneWidth}px`,
                 height: `${SLOT_HEIGHT_PX}px`,
                 zIndex: 1,
