@@ -117,7 +117,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
   // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
-  const DRAG_HOVER_PAD = 20;
+  const DRAG_HOVER_PAD = 10;
   const isDraggingToThis = isDragging && dragPreview?.targetWeekday === weekday;
   const baseWidth = isDraggingToThis ? width - DRAG_HOVER_PAD * 2 : width;
 

@@ -226,7 +226,9 @@ export function syncSessionUpdate(
   fireAndForget(makeRequest, "session:update");
 }
 
-/** awaitable 버전 — drag-drop 완료 후 서버 sync 결과를 확인할 때 사용. */
+/** awaitable 버전 — drag-drop 완료 후 서버 sync 결과를 확인할 때 사용.
+ *  위치 전용 엔드포인트(/position)를 사용하며 필드명도 API 스펙에 맞춤.
+ */
 export async function syncSessionUpdateAsync(
   userId: string | null,
   id: string,
@@ -234,10 +236,15 @@ export async function syncSessionUpdateAsync(
 ): Promise<boolean> {
   if (!userId) return false;
   try {
-    const res = await fetch(`/api/sessions/${id}`, {
+    const res = await fetch(`/api/sessions/${id}/position`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
+      body: JSON.stringify({
+        weekday: data.weekday,
+        time: data.startsAt,      // API 필드명: time (= startsAt)
+        endTime: data.endsAt,     // API 필드명: endTime (= endsAt)
+        yPosition: data.yPosition,
+      }),
     });
     return res.ok;
   } catch {

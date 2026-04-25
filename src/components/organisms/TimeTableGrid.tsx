@@ -330,7 +330,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산.
     // target 요일에만 DRAG_HOVER_PAD * 2(양쪽 20px) 추가 — 세션 너비는 그대로이고
     // 양 옆에 여백만 생겨서 다음 요일로 넘어가지 않고 원하는 위치에 쉽게 드롭할 수 있다.
-    const DRAG_HOVER_PAD = 20;
+    const DRAG_HOVER_PAD = 10;
     const weekdayWidths = useMemo(
       () => {
         const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
