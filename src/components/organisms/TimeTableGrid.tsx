@@ -16,14 +16,8 @@ import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useDragController } from "../../hooks/useDragController";
 import TimeTableRow from "../molecules/TimeTableRow";
-
-interface DragPreviewState {
-  draggedSession: Session | null;
-  targetWeekday: number | null;
-  targetTime: string | null;
-  targetYPosition: number | null;
-}
 
 interface TimeTableGridProps {
   sessions: Map<number, Session[]>;
@@ -83,12 +77,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const isTouchDevice =
       typeof window !== "undefined" && "ontouchstart" in window;
 
-    const [dragPreview, setDragPreview] = useState<DragPreviewState>({
-      draggedSession: null,
-      targetWeekday: null,
-      targetTime: null,
-      targetYPosition: null,
-    });
+    const dragController = useDragController();
 
     const [scrollbarState, setScrollbarState] = useState({
       thumbWidth: 0,
@@ -324,11 +313,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         Array.from({ length: 7 }, (_, weekday) => {
           const daySessions = sessions?.get(weekday) || [];
           const required = computeRequiredLanes(daySessions);
-          const isDraggingAny = isAnyDragging || isStudentDragging;
+          const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
           if (!isDraggingAny && required >= 4) return 2;
           return required;
         }),
-      [sessions, isAnyDragging, isStudentDragging]
+      [sessions, dragController, isStudentDragging]
     );
 
     // 드래그 중 목표 위치를 기반으로 레이아웃을 미리 계산해 TimeTableRow에 전달.
@@ -339,12 +328,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           sessions,
           enrollments,
           subjects,
-          dragPreview.draggedSession,
-          dragPreview.targetWeekday,
-          dragPreview.targetTime,
-          dragPreview.targetYPosition,
+          dragController.draggedSession,
+          dragController.targetWeekday,
+          dragController.targetTime,
+          dragController.targetYPosition,
         ),
-      [sessions, enrollments, subjects, dragPreview],
+      [sessions, enrollments, subjects, dragController],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
@@ -367,57 +356,28 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const gridTemplateRows = `${headerRowHeight}px ${contentHeight}px`;
 
-    // 브라우저 창 전환 등으로 dragend가 누락될 때 드래그 상태를 강제 리셋
-    useEffect(() => {
-      const resetDrag = () => {
-        setDragPreview({
-          draggedSession: null,
-          targetWeekday: null,
-          targetTime: null,
-          targetYPosition: null,
-        });
-      };
-      document.addEventListener("dragend", resetDrag);
-      return () => document.removeEventListener("dragend", resetDrag);
-    }, []);
+    // document-level dragend 리셋은 useDragController 내부 useEffect가 처리.
 
     const handleDragStart = useCallback(
       (session: Session) => {
         if (isTouchDevice) return;
-        setDragPreview({
-          draggedSession: session,
-          targetWeekday: null,
-          targetTime: null,
-          targetYPosition: null,
-        });
+        dragController.startSessionDrag(session);
       },
-      [isTouchDevice]
+      [isTouchDevice, dragController]
     );
 
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
         if (isTouchDevice) return;
-        if (!dragPreview.draggedSession) return;
-
-        setDragPreview((prev) => ({
-          ...prev,
-          targetWeekday: weekday,
-          targetTime: time,
-          targetYPosition: yPosition,
-        }));
+        if (!dragController.draggedSession) return;
+        dragController.hoverTarget(weekday, time, yPosition);
       },
-      [dragPreview.draggedSession, isTouchDevice]
+      [dragController, isTouchDevice]
     );
 
     const handleDragEnd = useCallback(() => {
       logger.info("TimeTableGrid 드래그 종료");
-
-      setDragPreview({
-        draggedSession: null,
-        targetWeekday: null,
-        targetTime: null,
-        targetYPosition: null,
-      });
+      dragController.cancelDrag();
 
       // 세션 드래그앤드롭 후 스크롤 위치 복원 (다음 페인트 직후)
       requestAnimationFrame(() => {
@@ -430,7 +390,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
         }
       });
-    }, [getSavedScrollPosition]);
+    }, [dragController, getSavedScrollPosition]);
 
     return (
       <div
@@ -504,14 +464,19 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               onSessionDrop={isReadOnly ? undefined : onSessionDrop}
               onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
               selectedStudentIds={selectedStudentIds}
-              isAnyDragging={isAnyDragging || isStudentDragging}
+              isAnyDragging={dragController.isAnyDragging() || isStudentDragging}
               teachers={teachers}
               colorBy={colorBy}
               isMobile={isMobile}
               onDragStart={isTouchDevice ? undefined : handleDragStart}
               onDragOver={isTouchDevice ? undefined : handleDragOver}
               onDragEnd={isTouchDevice ? undefined : handleDragEnd}
-              dragPreview={isTouchDevice ? undefined : dragPreview}
+              dragPreview={isTouchDevice ? undefined : {
+                draggedSession: dragController.draggedSession,
+                targetWeekday: dragController.targetWeekday,
+                targetTime: dragController.targetTime,
+                targetYPosition: dragController.targetYPosition,
+              }}
               style={{ gridColumn: weekday + 2, gridRow: 2 }}
             />
           ))}
