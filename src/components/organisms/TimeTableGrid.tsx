@@ -305,23 +305,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const slotCount = timeSlots30Min.length;
 
-    // 요일별 lane 수 (yPosition max). weekday column 내부에서 laneWidth 분할 기준.
-    // D-hybrid (B3): ≤3 lanes — equal split; ≥4 lanes — cap at 2 (pill handles overflow).
-    // 드래그 중에는 캡 해제 (TimeTableRow가 5 lanes로 확장하므로 width도 맞춰야 함).
-    const weekdayMaxLanes = useMemo(
-      () =>
-        Array.from({ length: 7 }, (_, weekday) => {
-          const daySessions = sessions?.get(weekday) || [];
-          const required = computeRequiredLanes(daySessions);
-          const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
-          if (!isDraggingAny && required >= 4) return 2;
-          return required;
-        }),
-      [sessions, dragController, isStudentDragging]
-    );
 
     // 드래그 중 목표 위치를 기반으로 레이아웃을 미리 계산해 TimeTableRow에 전달.
     // 드래그가 없으면 원본 sessions Map을 그대로 반환 (참조 동일).
+    // 드래그 세션을 포함한 결과를 반환 — TimeTableRow에서 SessionBlock 렌더 시 skip하고
+    // 대신 DragGhost를 렌더한다. 이렇게 해야 weekdayMaxLanes 계산에 ghost lane이 반영된다.
     const sessionsForRender = useMemo(
       () =>
         computeTentativeLayout(
@@ -332,17 +320,27 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           dragController.targetWeekday,
           dragController.targetTime,
           dragController.targetYPosition,
-          { excludeDraggedFromResult: true },
         ),
       [sessions, enrollments, subjects, dragController],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
-    // 각 weekday column 너비 = max lanes × laneWidth (overlap 많으면 컬럼 넓어짐)
+    // 각 weekday column 너비 = max lanes × laneWidth.
+    // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산해
+    // 컬럼이 실시간으로 확장/축소되는 미리보기를 제공한다.
     const weekdayWidths = useMemo(
-      () => weekdayMaxLanes.map((lanes) => lanes * laneWidth),
-      [weekdayMaxLanes, laneWidth]
+      () => {
+        const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
+        const baseMap = isDraggingAny ? sessionsForRender : sessions;
+        return Array.from({ length: 7 }, (_, wd) => {
+          const daySessions = baseMap?.get(wd) || [];
+          const required = computeRequiredLanes(daySessions);
+          const lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          return Math.max(1, lanes) * laneWidth;
+        });
+      },
+      [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth]
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;

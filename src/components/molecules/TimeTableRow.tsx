@@ -259,6 +259,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height }) => (
+        // 드래그 세션은 SessionBlock으로 렌더하지 않음 — DragGhost가 target 위치에 대신 표시.
+        session.id === dragPreview?.draggedSession?.id ? null :
         <SessionBlock
           key={session.id}
           session={session}
@@ -296,24 +298,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         />
       ))}
 
-      {/* DragGhost — target 위치에 반투명 ghost 표시 (pointer-events:none으로 drop 가로채지 않음) */}
+      {/* DragGhost — sessionsForRender의 드래그 세션 레이아웃 위치에 렌더 (pointer-events:none).
+          laidOutSessions에서 위치를 가져오므로 컬럼 너비 변화에 자동 반영됨. */}
       {(() => {
         const ds = dragPreview?.draggedSession;
-        if (!ds || dragPreview?.targetWeekday !== weekday || !dragPreview?.targetTime) return null;
+        if (!ds || dragPreview?.targetWeekday !== weekday) return null;
 
-        const startMin = (() => {
-          const [h, m] = (dragPreview.targetTime ?? "").split(":").map(Number);
-          return h * 60 + m;
-        })();
-        const [eh, em] = (ds.endsAt ?? "").split(":").map(Number);
-        const [sh, sm] = (ds.startsAt ?? "").split(":").map(Number);
-        const durationMin = (eh * 60 + em) - (sh * 60 + sm);
-        const endMin = startMin + durationMin;
-        const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
-        const durationSlots = Math.max(1, (endMin - startMin) / 30);
-        const laneIdx = Math.min(Math.max(0, (dragPreview.targetYPosition ?? 1) - 1), effectiveLanes - 1);
+        // sessionsForRender에 드래그 세션이 포함됐으므로 laidOutSessions에도 있음
+        const ghostLayout = laidOutSessions.find(({ session }) => session.id === ds.id);
+        if (!ghostLayout) return null;
 
-        // 드래그 세션의 과목 색상 추출
         const firstEnrollId = ds.enrollmentIds?.[0];
         const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
         const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
@@ -324,12 +318,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             key="drag-ghost"
             style={{
               position: "absolute",
-              left: Math.round(laneIdx * laneWidth),
-              top: Math.round(timeIdx * SLOT_HEIGHT_PX) + 1,
-              width: Math.round(laneWidth),
-              height: Math.round(durationSlots * SLOT_HEIGHT_PX) - 1,
+              left: ghostLayout.left,
+              top: ghostLayout.top + 1,
+              width: ghostLayout.width,
+              height: ghostLayout.height - 1,
               backgroundColor: ghostColor,
-              opacity: 0.45,
+              opacity: 0.5,
               borderRadius: 4,
               pointerEvents: "none",
               zIndex: 200,
