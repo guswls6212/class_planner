@@ -301,6 +301,77 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `GroupSessionModal` | 그룹 수업 생성/수정 모달 |
 | `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |
 
+### 3.4.1 Drag-Drop SSOT 선언 (Non-negotiable)
+
+> schedule 페이지의 모든 drag 상태는 `src/hooks/useDragController.ts`의 `useDragController` 훅에서만 관리한다.
+> 다른 컴포넌트가 `useState`/`useRef`로 drag 정보를 보관하면 PR 거절 사유.
+>
+> **이유:** 이전에 drag 상태가 `TimeTableGrid.dragPreview`, `useScheduleDragAndDrop`(dead code),
+> `TimeTableCell.isDragOver`, `SessionBlock.isDragging` 등 5곳에 분산되어
+> fix가 항상 다른 파일에 쌓이고 서로 상쇄됐다. 단일 SSOT로 "fix는 항상 useDragController.ts 한 곳"을 보장.
+
+### 3.4.2 Drag State Machine
+
+| Phase | 의미 | 전이 트리거 |
+|-------|------|-------------|
+| `idle` | 드래그 없음 | — |
+| `dragging` | 세션/학생 드래그 중, target 없음 | dragstart → `startSessionDrag` / `startStudentDrag` |
+| `hovering` | 드래그 중, 특정 cell 위에 있음 | dragover → `hoverTarget` |
+| (→ `idle`) | 드래그 종료 | drop → `completeDrop` / dragend → `cancelDrag` |
+
+**컴포넌트별 drag 책임:**
+- `useDragController` (TimeTableGrid 내부): 상태 SSOT, 모든 전이 관리
+- `SessionBlock`: drag 소스 (`onDragStart`, `onDragEnd` 이벤트 발생 → 콜백 전달)
+- `TimeTableCell`: drop 수신 (`onDragOver`에서 `preventDefault`, `onDrop`에서 `onSessionDrop` 호출)
+- `TimeTableGrid`: orchestrator — `useDragController` 호출, `sessionsForRender` 계산, props 분배
+
+### 3.4.3 Drag Event Flow
+
+```
+SessionBlock.button --dragstart--> onDragStart(e, session) ---> TimeTableGrid.handleDragStart
+                                                                  --> dragController.startSessionDrag(session)
+
+TimeTableCell --dragover(e.preventDefault())--> onDragOver(weekday, time, yPos)
+                                                  --> TimeTableGrid.handleDragOver
+                                                    --> dragController.hoverTarget(weekday, time, yPos)
+                                                      --> sessionsForRender 재계산 (computeTentativeLayout)
+                                                        --> 드래그 세션이 target 좌표로 이동 (opacity:0.65, pointer-events:none)
+
+TimeTableCell --drop--> onSessionDrop(sessionId, weekday, time, yPos)
+                          --> updateSessionPosition --> repositionSessions --> updateData (localStorage WRITE)
+                          --> dragController.completeDrop() (TimeTableGrid.handleDragEnd 경유)
+```
+
+### 3.4.4 Drag Failure Modes (점검 체크리스트)
+
+"drop 이벤트가 발화하지 않을 때" 점검 순서:
+
+1. `TimeTableCell`의 `onDragOver`에서 `e.preventDefault()` 호출하는가?
+2. drop target 위에 `pointer-events: auto`인 다른 요소가 덮고 있는가? (드래그 세션 본체가 `pointer-events: none`인지 `SessionBlock.utils.ts`에서 확인)
+3. dragImage(`setDragImage(e.currentTarget)`)가 설정됐는데 본체 DOM이 동일 프레임에 이동해 dragend가 즉시 발화하는가?
+4. wrapper에 `onDrop`만 있고 `onDragOver`가 없는가? (drop target 등록 실패 — 표준 요구사항)
+5. `dataTransfer.clearData`가 dragstart 이전 다른 핸들러에서 호출되는가?
+6. omni-radar 로그에서 `dragenter`는 보이는데 `handleDrop`이 없다면 → 2번 우선 점검.
+
+**omni-radar로 진단:**
+```bash
+omni-radar/scripts/radar-query --target browser --keyword handleDrop --since 5m
+omni-radar/scripts/radar-query --target browser --keyword "드래그\|dragstart\|dragenter\|drop" --since 5m
+```
+
+### 3.4.5 Drag Naming Glossary
+
+| 이름 | 의미 | Owner |
+|------|------|-------|
+| `dragController.draggedSession` | 현재 드래그 중인 세션 객체. null = idle. | `useDragController` |
+| `dragController.targetWeekday/Time/YPosition` | hover 중인 target 좌표. null = dragging phase. | `useDragController` |
+| `dragController.isAnyDragging()` | 드래그가 진행 중인지 (phase !== "idle") | `useDragController` |
+| `dragController.isDraggingSession(id)` | 특정 세션이 드래그 대상인지 | `useDragController` |
+| `dragRole: "self" \| "other-dragging" \| "idle"` | SessionBlock에 전달되는 selector 결과 (향후 B4 리팩터링 시 도입 목표) | `TimeTableGrid` |
+
+**Deprecated (코드에서 제거됨):**
+- `useScheduleDragAndDrop` — dead code 삭제 (`useDragController`로 대체)
+
 ---
 
 ## 4. Custom Hooks
@@ -327,7 +398,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | 훅 | 파일 | 역할 |
 |----|------|------|
 | `useScheduleSessionManagement` | `src/hooks/useScheduleSessionManagement.ts` | 세션 CRUD + 충돌 해결 (repositionSessions 연동) |
-| `useScheduleDragAndDrop` | `src/hooks/useScheduleDragAndDrop.ts` | 드래그앤드롭 이벤트 처리, DragPreview, 위치 계산 |
+| `useDragController` | `src/hooks/useDragController.ts` | **Drag SSOT.** 드래그 상태 단일 reducer (idle/dragging/hovering). 모든 drag 상태의 유일한 소유자. |
 | `useDisplaySessions` | `src/hooks/useDisplaySessions.ts` | 표시용 세션 데이터 가공 (필터링, 정렬, yPosition 계산) |
 | `useEditModalState` | `src/app/schedule/_hooks/useEditModalState.ts` | EditSessionModal 열기/닫기 상태 |
 | `useUiState` | `src/app/schedule/_hooks/useUiState.ts` | Schedule 페이지 UI 상태 (선택, 하이라이트 등) |
@@ -346,7 +417,7 @@ SchedulePage
   ├── useGlobalDataInitialization()  → 초기화 + 충돌 감지
   ├── useIntegratedDataLocal()       → students, subjects, enrollments, sessions
   ├── useScheduleSessionManagement() → 세션 CRUD
-  ├── useScheduleDragAndDrop()       → 드래그앤드롭
+  ├── useDragController()            → 드래그앤드롭 SSOT (TimeTableGrid 내부에서 호출)
   ├── useDisplaySessions()           → 표시용 세션 가공
   └── useStudentPanel()              → 패널 상태
 ```

@@ -83,14 +83,6 @@ vi.mock("../../../hooks/useScheduleSessionManagement", () => ({
   }),
 }));
 
-// 실제 드래그 로직 대신, 드롭 시 페이지에서 사용하는 핸들러가 호출되었다고 가정
-vi.mock("../../../hooks/useScheduleDragAndDrop", () => ({
-  useScheduleDragAndDrop: () => ({
-    handleDrop: vi.fn(),
-    handleSessionDrop: vi.fn(),
-  }),
-}));
-
 // 화면 렌더를 위한 표시용 훅 모킹 (세션 계산 의존성 제거)
 vi.mock("../../../hooks/useDisplaySessions", () => ({
   useDisplaySessions: () => ({
