@@ -332,6 +332,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           dragController.targetWeekday,
           dragController.targetTime,
           dragController.targetYPosition,
+          { excludeDraggedFromResult: true },
         ),
       [sessions, enrollments, subjects, dragController],
     );

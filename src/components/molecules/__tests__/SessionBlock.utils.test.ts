@@ -56,7 +56,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 ghost로 표시되고 pointer-events none이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -67,11 +67,11 @@ describe("getSessionBlockStyles", () => {
       true // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0.65);
+    expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events none — dragstart 이후 변경이므로 Chrome 드래그 취소 없음.
-    // computeTentativeLayout이 이 블록을 target 위치로 이동시켜도 drop 가로채기 방지.
-    expect(styles.pointerEvents).toBe("none");
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함.
+    // drop 가로채기 방지는 computeTentativeLayout excludeDraggedFromResult + DragGhost로 처리.
+    expect(styles.pointerEvents).toBe("auto");
   });
 
   it("isDragging이 true이고 드래그된 세션이 아닐 때 완전히 보여야 한다 (opacity 1, pointerEvents none)", () => {
@@ -90,7 +90,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.pointerEvents).toBe("none");
   });
 
-  it("isDragging이 true이고 드래그된 세션일 때 ghost로 표시되고 pointer-events none이어야 한다", () => {
+  it("isDragging이 true이고 드래그된 세션일 때 반투명하고 pointer-events auto여야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -101,10 +101,10 @@ describe("getSessionBlockStyles", () => {
       false // isAnyDragging
     );
 
-    expect(styles.opacity).toBe(0.65);
+    expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events none — dragstart 이후 변경이므로 Chrome 드래그 취소 없음.
-    expect(styles.pointerEvents).toBe("none");
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함.
+    expect(styles.pointerEvents).toBe("auto");
   });
 
   it("isAnyDragging이 우선순위가 높아야 한다 (isDragging보다)", () => {

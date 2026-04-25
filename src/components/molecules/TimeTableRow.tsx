@@ -296,6 +296,50 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         />
       ))}
 
+      {/* DragGhost — target 위치에 반투명 ghost 표시 (pointer-events:none으로 drop 가로채지 않음) */}
+      {(() => {
+        const ds = dragPreview?.draggedSession;
+        if (!ds || dragPreview?.targetWeekday !== weekday || !dragPreview?.targetTime) return null;
+
+        const startMin = (() => {
+          const [h, m] = (dragPreview.targetTime ?? "").split(":").map(Number);
+          return h * 60 + m;
+        })();
+        const [eh, em] = (ds.endsAt ?? "").split(":").map(Number);
+        const [sh, sm] = (ds.startsAt ?? "").split(":").map(Number);
+        const durationMin = (eh * 60 + em) - (sh * 60 + sm);
+        const endMin = startMin + durationMin;
+        const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
+        const durationSlots = Math.max(1, (endMin - startMin) / 30);
+        const laneIdx = Math.min(Math.max(0, (dragPreview.targetYPosition ?? 1) - 1), effectiveLanes - 1);
+
+        // 드래그 세션의 과목 색상 추출
+        const firstEnrollId = ds.enrollmentIds?.[0];
+        const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
+        const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
+        const ghostColor = subj?.color ?? "#6B7280";
+
+        return (
+          <div
+            key="drag-ghost"
+            style={{
+              position: "absolute",
+              left: Math.round(laneIdx * laneWidth),
+              top: Math.round(timeIdx * SLOT_HEIGHT_PX) + 1,
+              width: Math.round(laneWidth),
+              height: Math.round(durationSlots * SLOT_HEIGHT_PX) - 1,
+              backgroundColor: ghostColor,
+              opacity: 0.45,
+              borderRadius: 4,
+              pointerEvents: "none",
+              zIndex: 200,
+              border: "2px dashed rgba(255,255,255,0.6)",
+            }}
+            data-testid="drag-ghost"
+          />
+        );
+      })()}
+
       {/* Overflow pills — one per contiguous group of slots sharing the same hidden session set */}
       {isOverflow &&
         overflowGroups.map(({ startIdx, endIdx, hidden }) => {
