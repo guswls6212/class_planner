@@ -65,7 +65,7 @@ import {
   onDragEndStudent,
   onDragStartStudent,
 } from "./_utils/dndHelpers";
-import { syncSessionUpdate } from "../../lib/apiSync";
+import { syncSessionUpdateAsync } from "../../lib/apiSync";
 import {
   buildEditOnCancel,
   buildEditOnDelete,
@@ -466,27 +466,43 @@ function SchedulePageContent(): JSX.Element {
 
       logger.debug("updateData 호출 시작");
       await updateData({ sessions: newSessions });
-      logger.info("updateData 완료");
+      logger.info("updateData 완료 (localStorage)");
 
-      // 이동된 세션을 서버에 동기화 (fire-and-forget).
-      // updateData는 localStorage만 쓰므로 명시적으로 sync 필요.
-      // 충돌 재배치된 다른 세션들도 업데이트.
-      const userId = localStorage.getItem("supabase_user_id");
-      for (const s of newSessions) {
-        const original = sessions.find((o) => o.id === s.id);
-        if (
-          original &&
-          (original.weekday !== s.weekday ||
-            original.startsAt !== s.startsAt ||
-            original.endsAt !== s.endsAt ||
-            original.yPosition !== s.yPosition)
-        ) {
-          syncSessionUpdate(userId, s.id, {
-            weekday: s.weekday,
-            startsAt: s.startsAt,
-            endsAt: s.endsAt,
-            yPosition: s.yPosition,
-          });
+      // 변경된 세션들을 서버에 await 동기화.
+      // 서버가 source of truth이므로 PUT 완료를 확인한다.
+      // isSyncingSession을 true로 설정해 UI에서 "저장 중" 표시 가능.
+      const uid = localStorage.getItem("supabase_user_id");
+      if (uid) {
+        setIsSyncingSession(true);
+        try {
+          const syncPromises = newSessions
+            .filter((s) => {
+              const original = sessions.find((o) => o.id === s.id);
+              return (
+                original &&
+                (original.weekday !== s.weekday ||
+                  original.startsAt !== s.startsAt ||
+                  original.endsAt !== s.endsAt ||
+                  original.yPosition !== s.yPosition)
+              );
+            })
+            .map((s) =>
+              syncSessionUpdateAsync(uid, s.id, {
+                weekday: s.weekday,
+                startsAt: s.startsAt,
+                endsAt: s.endsAt,
+                yPosition: s.yPosition,
+              })
+            );
+          const results = await Promise.all(syncPromises);
+          const allOk = results.every(Boolean);
+          if (!allOk) {
+            logger.warn("일부 세션 서버 동기화 실패 — 다음 새로고침 시 서버에서 복원될 수 있음");
+          } else {
+            logger.info("세션 서버 동기화 완료");
+          }
+        } finally {
+          setIsSyncingSession(false);
         }
       }
     },
@@ -562,6 +578,8 @@ function SchedulePageContent(): JSX.Element {
 
   // 세션 삭제 확인 모달 상태
   const [deleteConfirmSessionId, setDeleteConfirmSessionId] = useState<string | null>(null);
+  // 세션 서버 동기화 중 여부 (드래그 완료 후 PUT 완료 전)
+  const [isSyncingSession, setIsSyncingSession] = useState(false);
 
   // 학생 생성 훅 (모달에서 신규 학생 추가 시 사용)
   const { addStudent: createStudent } = useStudentManagementLocal();
@@ -1074,6 +1092,7 @@ function SchedulePageContent(): JSX.Element {
         }}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
+        isSyncingSession={isSyncingSession}
       />
 
       {colorBy === "student" && (

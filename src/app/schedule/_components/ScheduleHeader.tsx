@@ -11,6 +11,7 @@ type Props = {
   onColorByChange?: (mode: ColorByMode) => void;
   viewMode: ScheduleViewMode;
   onViewModeChange: (mode: ScheduleViewMode) => void;
+  isSyncingSession?: boolean;
 };
 
 const VIEW_MODES = [
@@ -26,6 +27,7 @@ export default function ScheduleHeader({
   onColorByChange,
   viewMode,
   onViewModeChange,
+  isSyncingSession = false,
 }: Props) {
   const title =
     viewMode === "daily"
@@ -39,6 +41,11 @@ export default function ScheduleHeader({
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-semibold text-[--color-text-primary]">{title}</h2>
         <div className="flex items-center gap-3">
+          {isSyncingSession && (
+            <div className="text-xs text-[--color-text-secondary] opacity-70">
+              저장 중...
+            </div>
+          )}
           {dataLoading && (
             <div className="text-sm text-blue-500">
               {error

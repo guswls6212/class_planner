@@ -11,7 +11,6 @@ import { syncSubjectCreate } from "../lib/apiSync";
 import {
   ANONYMOUS_STORAGE_KEY,
   clearUserClassPlannerData,
-  getClassPlannerData,
   setClassPlannerData,
 } from "../lib/localStorageCrud";
 import type { ClassPlannerData } from "../lib/localStorageCrud";
@@ -183,24 +182,8 @@ export const useGlobalDataInitialization = () => {
           return;
         }
 
-        // use-server 전 — 로그인 사용자의 현재 localStorage 확인 (로컬 우선).
-        // checkLoginDataConflict는 익명→로그인 마이그레이션만 체크하고,
-        // 이미 로그인된 사용자의 재방문에서는 항상 "use-server"를 반환해
-        // 매 새로고침마다 localStorage를 서버 데이터로 덮어쓴다.
-        // class_planner_{userId}에 데이터가 있으면 서버 덮어쓰기를 생략한다.
-        const existingLocalData = getClassPlannerData();
-        const hasLocalData =
-          existingLocalData &&
-          (existingLocalData.students.length > 0 ||
-            existingLocalData.sessions.length > 0 ||
-            existingLocalData.enrollments.length > 0);
-        if (hasLocalData) {
-          if (mounted) setIsInitialized(true);
-          logger.info("로컬 사용자 데이터 유지 (서버 덮어쓰기 생략)");
-          return;
-        }
-
-        // use-server: 정상 경로 (로컬 데이터 없음 — 첫 로그인 등)
+        // use-server: 정상 경로
+        // 서버가 source of truth. 새로고침 시 서버 데이터를 localStorage에 적용.
         // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
         if (subjectsFetched && serverData.subjects.length === 0) {
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
