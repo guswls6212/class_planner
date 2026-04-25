@@ -369,7 +369,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               borderRadius: 4,
               pointerEvents: "none",
               zIndex: 200,
-              border: "2px dashed rgba(255,255,255,0.6)",
             }}
             data-testid="drag-ghost"
           />
