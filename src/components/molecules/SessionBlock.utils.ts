@@ -79,11 +79,13 @@ export const getSessionBlockStyles = (
   // 전역 드래그 상태 (학생 드래그 또는 세션 드래그) 처리
   if (isAnyDragging) {
     if (isDraggedSession) {
-      // 드래그 중인 세션: 반투명으로 표시. pointer-events auto 유지 — none으로 바꾸면
-      // Chrome이 소스 요소를 비인터랙티브로 판단해 네이티브 드래그를 즉시 취소함.
-      opacity = 0.4;
+      // 드래그 중인 세션: ghost처럼 반투명 표시.
+      // pointer-events:none — dragstart 이후에 변경하므로 Chrome 드래그 취소 없음.
+      // computeTentativeLayout이 이 블록을 target 위치로 이동시키므로
+      // pointer-events:auto 상태라면 cell의 native drop을 가로채는 문제가 발생.
+      opacity = 0.65;
       visibility = "visible";
-      pointerEvents = "auto";
+      pointerEvents = "none";
     } else {
       // 다른 세션들: 완전히 보이되, pointer-events는 none (drop target인 cell에 dragover 전달)
       opacity = 1;
@@ -92,9 +94,9 @@ export const getSessionBlockStyles = (
   } else if (isDragging) {
     // 세션 드래그 전용 로직 (isAnyDragging에 학생 드래그가 포함되지 않은 경우)
     if (isDraggedSession) {
-      opacity = 0.4;
+      opacity = 0.65;
       visibility = "visible";
-      pointerEvents = "auto";
+      pointerEvents = "none";
     } else {
       opacity = 1;
       pointerEvents = "none";
