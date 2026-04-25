@@ -259,8 +259,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height }) => (
-        // 드래그 세션은 SessionBlock으로 렌더하지 않음 — DragGhost가 target 위치에 대신 표시.
-        session.id === dragPreview?.draggedSession?.id ? null :
+        // target weekday에서만 SessionBlock을 skip하고 DragGhost가 대신 렌더.
+        // targetWeekday === null (아직 셀 위를 안 지남)이면 원본 위치에 정상 렌더.
+        session.id === dragPreview?.draggedSession?.id
+          && dragPreview?.targetWeekday === weekday
+          ? null :
         <SessionBlock
           key={session.id}
           session={session}
@@ -297,6 +300,45 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isAnyDragging={isAnyDragging}
         />
       ))}
+
+      {/* Source placeholder — 세션이 이 요일에서 빠져나갔을 때 원래 자리에 흐릿한 표시 */}
+      {(() => {
+        const ds = dragPreview?.draggedSession;
+        // source weekday이고, hover 중인 target이 있고, 이 요일에서 세션이 사라졌을 때
+        if (!ds || ds.weekday !== weekday || dragPreview?.targetWeekday === null) return null;
+        // laidOutSessions에 없어야 함 (다른 요일로 이동된 경우)
+        if (laidOutSessions.some(({ session }) => session.id === ds.id)) return null;
+
+        const [sh, sm] = (ds.startsAt ?? "").split(":").map(Number);
+        const [eh, em] = (ds.endsAt ?? "").split(":").map(Number);
+        const timeIdx = Math.max(0, (sh * 60 + sm - 9 * 60) / 30);
+        const durationSlots = Math.max(1, ((eh * 60 + em) - (sh * 60 + sm)) / 30);
+        const laneIdx = Math.min(Math.max(0, (ds.yPosition ?? 1) - 1), effectiveLanes - 1);
+
+        const firstEnrollId = ds.enrollmentIds?.[0];
+        const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
+        const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
+        const srcColor = subj?.color ?? "#6B7280";
+
+        return (
+          <div
+            key="drag-source"
+            style={{
+              position: "absolute",
+              left: Math.round(laneIdx * laneWidth),
+              top: Math.round(timeIdx * SLOT_HEIGHT_PX) + 1,
+              width: Math.round(laneWidth),
+              height: Math.round(durationSlots * SLOT_HEIGHT_PX) - 1,
+              backgroundColor: srcColor,
+              opacity: 0.18,
+              borderRadius: 4,
+              pointerEvents: "none",
+              zIndex: 90,
+            }}
+            data-testid="drag-source"
+          />
+        );
+      })()}
 
       {/* DragGhost — sessionsForRender의 드래그 세션 레이아웃 위치에 렌더 (pointer-events:none).
           laidOutSessions에서 위치를 가져오므로 컬럼 너비 변화에 자동 반영됨. */}
