@@ -327,16 +327,22 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
     // 각 weekday column 너비 = max lanes × laneWidth.
-    // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산해
-    // 컬럼이 실시간으로 확장/축소되는 미리보기를 제공한다.
+    // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산.
+    // target 요일에는 +1 bonus lane 선제 추가 — 드래그 중 빈 공간이 미리 생겨서
+    // 다음 요일로 넘어가지 않고도 원하는 위치에 쉽게 드롭할 수 있다.
     const weekdayWidths = useMemo(
       () => {
         const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
+        const targetWd = dragController.targetWeekday;
         const baseMap = isDraggingAny ? sessionsForRender : sessions;
         return Array.from({ length: 7 }, (_, wd) => {
           const daySessions = baseMap?.get(wd) || [];
           const required = computeRequiredLanes(daySessions);
-          const lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          let lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          // target 요일에 bonus lane 추가 (hover 중일 때만)
+          if (isDraggingAny && wd === targetWd && targetWd !== null) {
+            lanes += 1;
+          }
           return Math.max(1, lanes) * laneWidth;
         });
       },
@@ -411,6 +417,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           style={{
             gridTemplateColumns,
             gridTemplateRows,
+            transition: "grid-template-columns 0.15s ease",
             ...style,
           }}
         >

@@ -114,8 +114,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
 
-  // Effective lanes for column layout (cap at 2 when overflow)
-  const effectiveLanes = isOverflow ? 2 : rawMaxYPosition;
+  // target 요일에 hover 중이면 bonus lane +1 (TimeTableGrid의 weekdayWidths와 동기화).
+  // width가 이미 +1 lane 반영됐으므로 effectiveLanes도 맞춰야 laneWidth가 올바름.
+  const isDraggingToThis = isDragging && dragPreview?.targetWeekday === weekday;
+  const effectiveLanes = (isOverflow ? 2 : rawMaxYPosition) + (isDraggingToThis ? 1 : 0);
 
   // 30-minute time slots (9:00 – 23:30)
   const timeSlots30Min = React.useMemo(() => {
