@@ -86,6 +86,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onDragOver,
   onDragEnd,
   dragPreview,
+  isToday = false,
+  nowLinePx = null,
 }) => {
   const [openPillSlot, setOpenPillSlot] = React.useState<string | null>(null);
 
@@ -230,6 +232,41 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       data-weekday={weekday}
       style={{ height: `${totalHeight}px`, width: `${width}px`, ...style }}
     >
+      {/* 수평 시간선 overlay — pointer-events:none, 세션 블록보다 낮은 z-index */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {timeSlots30Min.map((slot, idx) => (
+          <div
+            key={`line-${slot}`}
+            className="absolute left-0 right-0"
+            style={{
+              top: idx * SLOT_HEIGHT_PX,
+              height: 1,
+              background: idx % 2 === 0
+                ? "rgba(255,255,255,0.09)"
+                : "rgba(255,255,255,0.04)",
+            }}
+          />
+        ))}
+
+        {/* 현재 시각 선 (오늘 열만) */}
+        {isToday && nowLinePx !== null && (
+          <div
+            className="absolute left-0 right-0"
+            style={{ top: nowLinePx, zIndex: 10 }}
+            aria-label="현재 시각"
+          >
+            <div
+              className="absolute rounded-full"
+              style={{ width: 10, height: 10, background: "var(--color-accent-hover)", top: -4, left: -4 }}
+            />
+            <div
+              className="absolute left-0 right-0"
+              style={{ height: 2, background: "var(--color-accent-hover)", borderRadius: 1 }}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Drop cells — timeSlots × effectiveLanes */}
       {timeSlots30Min.map((timeString, timeIndex) => {
         return Array.from({ length: effectiveLanes }, (_, laneIdx) => {
