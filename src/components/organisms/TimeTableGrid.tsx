@@ -49,6 +49,8 @@ interface TimeTableGridProps {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isReadOnly?: boolean;
+  // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.
+  baseDate?: Date;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -73,6 +75,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       teachers = [],
       colorBy = "subject",
       isReadOnly = false,
+      baseDate,
     },
     ref
   ) => {
