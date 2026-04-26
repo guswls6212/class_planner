@@ -78,7 +78,9 @@ describe("EditSessionModal Integration Tests", () => {
   it("편집 모달이 열렸을 때 선택된 학생들이 표시되어야 한다", () => {
     render(<EditSessionModal {...defaultProps} />);
 
-    expect(screen.getByText("김철수")).toBeInTheDocument();
+    // 학생이 칩 또는 헤더에 1회 이상 표시됨
+    expect(screen.getAllByText("김철수").length).toBeGreaterThan(0);
+    // 수업 편집 타이틀 (sr-only h4 또는 BottomSheet title)
     expect(screen.getByText("수업 편집")).toBeInTheDocument();
   });
 
@@ -91,7 +93,7 @@ describe("EditSessionModal Integration Tests", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText("학생 이름을 입력하세요");
+    const input = screen.getByPlaceholderText("학생 이름 검색...");
     fireEvent.change(input, { target: { value: "이영희" } });
 
     expect(onEditStudentInputChange).toHaveBeenCalledWith("이영희");
@@ -138,7 +140,7 @@ describe("EditSessionModal Integration Tests", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText("학생 이름을 입력하세요");
+    const input = screen.getByPlaceholderText("학생 이름 검색...");
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onEditStudentInputKeyDown).toHaveBeenCalledWith(
@@ -189,7 +191,7 @@ describe("EditSessionModal Integration Tests", () => {
       <EditSessionModal {...defaultProps} onRemoveStudent={onRemoveStudent} />
     );
 
-    const removeButton = screen.getByRole("button", { name: "×" });
+    const removeButton = screen.getByRole("button", { name: "김철수 제거" });
     fireEvent.click(removeButton);
 
     expect(onRemoveStudent).toHaveBeenCalledWith("student-1");

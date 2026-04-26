@@ -1300,7 +1300,13 @@ function SchedulePageContent(): JSX.Element {
           students
         )}
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
-        subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name, color: s.color }))}
+        onSubjectColorChange={(subjectId, newColor) => {
+          const updated = subjects.map((s) =>
+            s.id === subjectId ? { ...s, color: newColor } : s
+          );
+          updateData({ subjects: updated });
+        }}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         tempSubjectId={tempSubjectId}
         onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
