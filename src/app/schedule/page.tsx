@@ -27,6 +27,7 @@ import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
+import { Plus } from "lucide-react";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
@@ -1144,11 +1145,6 @@ function SchedulePageContent(): JSX.Element {
           selectedWeekday={selectedWeekday}
           colorBy={colorBy}
           onSessionClick={handleSessionClick}
-          onAddSession={() => {
-            const now = new Date();
-            const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
-            openGroupModal(selectedWeekday, currentTime, 1);
-          }}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
           onAttendanceClick={handleOpenAttendance}
@@ -1185,6 +1181,19 @@ function SchedulePageContent(): JSX.Element {
           baseDate={selectedDate}
         />
       )}
+
+      {/* FAB — 모든 뷰(일별/주간/월별)에서 공통 표시 */}
+      <button
+        onClick={() => {
+          const now = new Date();
+          const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+          openGroupModal(selectedWeekday, currentTime, 1);
+        }}
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
+        aria-label="수업 추가"
+      >
+        <Plus size={24} strokeWidth={2} />
+      </button>
 
       {/* 그룹 수업 추가 모달 (분리) */}
       <GroupSessionModal

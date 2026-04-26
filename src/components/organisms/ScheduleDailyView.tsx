@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import { Plus } from "lucide-react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
 import { SessionCard } from "@/components/molecules/SessionCard";
@@ -17,7 +16,6 @@ interface ScheduleDailyViewProps {
   selectedWeekday: number;
   colorBy: ColorByMode;
   onSessionClick: (session: Session) => void;
-  onAddSession: () => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   onAttendanceClick?: (session: Session) => void;
@@ -26,7 +24,7 @@ interface ScheduleDailyViewProps {
 
 export function ScheduleDailyView({
   sessions, subjects, students, enrollments, teachers,
-  selectedWeekday, colorBy, onSessionClick, onAddSession,
+  selectedWeekday, colorBy, onSessionClick,
   onSwipeLeft, onSwipeRight, onAttendanceClick, attendanceStatusMap,
 }: ScheduleDailyViewProps) {
   const daySessions = useMemo(() => {
@@ -110,14 +108,6 @@ export function ScheduleDailyView({
         </div>
       )}
 
-      {/* FAB */}
-      <button
-        onClick={onAddSession}
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
-        aria-label="수업 추가"
-      >
-        <Plus size={24} strokeWidth={2} />
-      </button>
     </div>
   );
 }
