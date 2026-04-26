@@ -37,14 +37,31 @@
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
 - **Common Primitives** (`src/components/common/`): 크로스-뷰 공유 디자인 원자. Atomic Design 계층을 초월하여 atoms/molecules/organisms 어디서나 소비 가능.
   - `SubjectChip` — 과목 색상을 표현하는 공유 칩 primitive. variant: `fill` (캘린더), `border-left` (리스트 행), `soft`.
-- **Molecules:** Atoms 조합 (SessionBlock, SessionCard, SessionOverflowPopover, TimeTableCell, TimeTableRow, ConfirmModal, AccountMenu, HelpTooltip, ScheduleActionBar)
+- **Molecules:** Atoms 조합
   - `SessionCard` — 4-variant 수업 카드 primitive (block/row/chip/preview). `data-variant`/`data-state` attr 계약. Daily/Monthly/Landing에서 소비.
+  - `SessionBlock` — 주간 그리드 내 드래그 가능한 세션 블록.
   - `SessionOverflowPopover` — 겹침 4개↑일 때 "+N" pill 클릭 시 목록 팝오버 (D-hybrid).
   - `TimeTableCell` — 드롭존 + 빈 셀 클릭 처리를 통합한 단위 셀. 기존 DropZone을 대체.
+  - `TimeTableRow` — 요일 컬럼. 수평 시간선 overlay(정시/30분 두 단계), `isToday` 시 now-line 표시, `nowLinePx` prop.
+  - `ScheduleDateNavigator` — 일별/주간/월별 공통 날짜 네비게이터. ‹/›(lucide 아이콘) + 중앙 라벨 + 오늘 버튼. (J-1, PR#96)
+  - `DayChipBar` — 일별 뷰 상단 주중 7일 칩 바. 오늘 강조.
+  - `MonthDayCell` — 월별 캘린더 단위 셀.
   - `StudentFilterChipBar` — 학생 멀티셀렉트 필터 칩바. colorBy=student 시 표시.
-  - `PdfExportRangeModal` — PDF 출력 범위 선택 다이얼로그. viewMode별 옵션 분기(weekly/daily: 현재 뷰 or 범위, monthly: 해당 월 전체).
-- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, StudentListItem, SubjectListItem, SegmentedButton
-- **Organisms:** Molecules 조합, 페이지 단위 레이아웃 (TimeTableGrid, HelpDrawer, AppShell)
+  - `AttendanceSheet` — 출석 체크 시트.
+  - `BottomSheet` — 모바일 하단 슬라이드 시트. GroupSessionModal 모바일 렌더에 사용.
+  - `BottomTabBar` — 모바일 하단 탭 네비게이션.
+  - `Sidebar` — 데스크톱 사이드 네비게이션.
+  - `TopBar` — 데스크톱 상단 헤더.
+  - `PdfExportRangeModal` — PDF 출력 범위 선택 다이얼로그. viewMode별 옵션 분기.
+  - `SaveTemplateModal`, `ApplyTemplateModal` — 시간표 템플릿 저장/불러오기 모달.
+  - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
+  - `AccountMenu`, `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼.
+- **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
+- **Organisms:** Molecules 조합, 페이지 단위 레이아웃
+  - `TimeTableGrid` — 주간 시간표 CSS Grid. `baseDate?: Date` prop으로 주 날짜 배열 계산. 헤더 Stacked Circle(요일명+날짜, 오늘 amber 배지). `nowLinePx` 계산 후 오늘 `TimeTableRow`에 전달. (J-2, PR#97)
+  - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.
+  - `ScheduleMonthlyView` — 월별 캘린더. `onDayClick`으로 일별 뷰 이동.
+  - `HelpDrawer`, `AppShell` — 앱 쉘/도움말 드로어.
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
 ## 2. 컴포넌트 구조
@@ -300,3 +317,4 @@ attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_
 - 2026-04-17: Phase 4 마지막 — 시간표 변경 배지 (migration 029: academies.schedule_updated_at + sessions trigger + share_tokens.last_viewed_at). /share/[token] 페이지에 ScheduleChangeBanner molecule 추가.
 - 2026-04-17: Phase 5-B B-1 — SubjectChip + SchedulePreview Common Primitive 신설. getSessionSubject → src/lib/schedule/ 승격 (SessionBlock.utils.ts re-export). 랜딩 ScheduleMockup → SchedulePreview 교체. src/components/common/ 디렉터리 추가.
 - 2026-04-18: Phase 6 Schedule Body Unification — `tintFromHex` util(`src/lib/colors/`), `SessionCard` 4-variant primitive + `SessionOverflowPopover` 신설. Weekly grid CSS Grid transpose(rows=time cols=weekday) + D-hybrid overlap(≤3 균등/≥4 cap-2+pill). Daily/Monthly/Landing/PDF → SessionCard로 통일. HelpTooltip viewport flip + AccountMenu compact anchor 수정.
+- 2026-04-26: Phase J Schedule UX — `ScheduleDateNavigator` molecule 신설(PR#96). `TimeTableGrid` Stacked Circle 헤더+수평 시간선+now-line+`baseDate` prop, `TimeTableRow` 시간선 overlay 추가(PR#97). FAB `page.tsx`로 이동(전 뷰 공통화), `GroupSessionModal` 3-step Glass Stepper 재설계(PR#98). Organisms 목록 현행화(ScheduleDailyView, ScheduleMonthlyView 추가).

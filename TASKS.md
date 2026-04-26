@@ -300,6 +300,31 @@
 ### 착수 조건
 - Phase I (로그 인프라) 완료 후 진행. 실측 드래그 로그를 파일로 자동 저장할 수 있어야 회귀 검증 가능.
 
+## Phase J — Schedule UX 전면 개선 ✅
+> 2026-04-26 완료 (PR#96, #97, #98 → dev 머지)
+
+### J-1. ScheduleDateNavigator ✅ (PR#96)
+- [x] `ScheduleDateNavigator` molecule 신설 — 좌우 화살표(lucide ChevronLeft/Right) + 중앙 라벨 + 오늘 버튼
+- [x] 일별 뷰: ‹/› → ±1일, 라벨 = "YYYY년 M월 D일 (요)"
+- [x] 주간 뷰: ‹/› → ±1주(`goToNextWeek`/`goToPrevWeek` 훅 추가), 라벨 = "YYYY년 M월 D일 — M월 D일"
+- [x] 월별 뷰: 기존 인라인 네비 → 공통 컴포넌트로 교체, 라벨 = "YYYY년 M월"
+- [x] 월별 뷰 화살표 크기 확대 (`p-2` + 아이콘)
+
+### J-2. 주간 시간표 헤더 개선 ✅ (PR#97)
+- [x] `TimeTableGrid`에 `baseDate?: Date` prop 추가 (`page.tsx → ScheduleGridSection` 체인)
+- [x] 헤더 Stacked Circle 디자인: 요일명(10px) + 날짜 숫자(22px bold)
+- [x] 오늘 컬럼: amber 원 배지(36px) + 컬럼 배경 amber tint + 현재 시각 선(amber 2px + 좌측 dot)
+- [x] 수평 시간선 overlay: 정시(:00) `rgba(255,255,255,0.09)` / 30분(:30) `rgba(255,255,255,0.04)`
+- [x] headerRowHeight 40 → 60px
+
+### J-3. FAB 전 뷰 공통화 + 모달 재설계 ✅ (PR#98)
+- [x] FAB(`+` 버튼)을 `ScheduleDailyView`에서 `page.tsx`로 이동 → 일별/주간/월별 모두 표시
+- [x] `GroupSessionModal` Glass Stepper 3-step wizard 재설계
+  - Step 1: 학생 선택 (amber chip + 아바타 autocomplete)
+  - Step 2: 과목/강사(2열) + 요일 + 통합 시간 range 입력
+  - Step 3: 확인 카드 (과목 색상 accent 헤더 + 구조화 요약)
+  - Footer: step indicator "N/3" + 이전/다음/수업 추가 버튼
+
 ## Phase I — Browser Console Log Capture 인프라
 
 > **배경:** Phase E/G 모두 Playwright 합성 DragEvent로는 통과했으나 실측에서 실패. 사용자가 매번 DevTools 콘솔 복붙 제공해야 디버깅 가능 → Claude가 직접 로그 파일 읽을 수 있어야 반복 회귀 방지.
@@ -345,3 +370,4 @@
 | 2026-04-18 | Phase 6 완료 — SessionCard 4-variant + tintFromHex + D-hybrid overlap + Weekly CSS Grid transpose + Daily/Monthly/Landing/PDF 통일 (PR#77~#85 → dev 머지) |
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
 | 2026-04-24 | 드래그 UX Phase D/F 완료 · Phase E(#91)/G(#93) revert (hotfix). Phase H(ghost-div 재설계) + Phase I(브라우저 로그 캡처) 백로그 등록 |
+| 2026-04-26 | Phase J: Schedule UX 전면 개선 — PR#96 ScheduleDateNavigator(일별/주간/월별 ‹›오늘), PR#97 주간 헤더 Stacked Circle+날짜+now-line+수평 시간선, PR#98 FAB 전 뷰 공통화+GroupSessionModal 3-step Glass Stepper 재설계 |

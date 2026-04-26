@@ -75,62 +75,73 @@ RootLayout
 
 ### 2.2 시간표 (`/schedule`)
 
-**컴포넌트 트리:**
+**3가지 뷰 모드:** 일별(daily) / 주간(weekly) / 월별(monthly). `SegmentedButton`으로 전환. `localStorage` 저장.
+
+**컴포넌트 트리 (현행):**
 ```
-SchedulePage (AuthGuard 미사용 — 익명 허용)
-  ├── ScheduleHeader (_components/ScheduleHeader.tsx)
-  │     └── 타이틀 + 현재 날짜 + PDF 다운로드 버튼
-  ├── ScheduleGridSection (_components/ScheduleGridSection.tsx)
-  │     └── TimeTableGrid (organisms)
-  │           ├── 좌측: 요일 헤더 (월~일)
-  │           ├── 상단: 시간 헤더 (09:00~23:30, 30분 단위)
-  │           └── 셀: SessionBlock (molecules) × N
-  ├── StudentPanelSection (_components/StudentPanelSection.tsx)
-  │     └── StudentPanel (organisms) — 플로팅, 드래그 이동 가능
-  ├── PdfDownloadSection (_components/PdfDownloadSection.tsx)
-  ├── GroupSessionModal (_components/GroupSessionModal.tsx)
-  └── EditSessionModal (_components/EditSessionModal.tsx)
+SchedulePage
+  ├── ScheduleHeader (_components/)
+  │     └── 타이틀("일별/주간/월별 시간표") + SegmentedButton(뷰 전환) + ColorByToggle
+  ├── StudentFilterChipBar (_components/) — colorBy=student 시만 표시
+  ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
+  ├── ScheduleActionBar (_components/) — PDF·템플릿·공유 링크
+  ├── ScheduleDateNavigator (molecules) — 전 뷰 공통, ‹/›(±1일/주/월) + 오늘 버튼
+  ├── [viewMode === "daily"]
+  │     └── ScheduleDailyView (organisms) — 수업 카드 리스트 + 스와이프 제스처
+  ├── [viewMode === "weekly"]
+  │     └── ScheduleGridSection (_components/)
+  │           └── TimeTableGrid (organisms)
+  │                 ├── 헤더: Stacked Circle(요일명+날짜, 오늘=amber 배지)
+  │                 └── 셀: TimeTableRow(molecules) × 7
+  │                       ├── 수평 시간선 overlay
+  │                       ├── now-line (오늘 컬럼만)
+  │                       ├── TimeTableCell (drop zone) × 30
+  │                       └── SessionBlock × N
+  ├── [viewMode === "monthly"]
+  │     └── ScheduleMonthlyView (organisms) — 달력 셀(MonthDayCell) × N
+  ├── FAB (`+` button, fixed bottom-right, z-40) — 전 뷰 공통
+  ├── GroupSessionModal (_components/) — 3-step Glass Stepper wizard
+  └── EditSessionModal (_components/)
 ```
 
-**레이아웃:**
-- 전체 화면 활용, `paddingBottom: 60px` (footer 공간)
-- TimeTableGrid: 가로/세로 스크롤, `max-height: 80vh`
-- StudentPanel: `position: fixed`, 드래그로 위치 이동, 기본 280px 너비
+**ScheduleDateNavigator 상세:**
+- 위치: ScheduleActionBar 아래, 뷰 컨텐츠 위
+- 좌: `ChevronLeft` 버튼(이전 날/주/월) + 라벨 + `ChevronRight` 버튼
+- 우: "오늘" 버튼 — `selectedDate`를 현재 시각으로 reset
+- 라벨 포맷: 일별="YYYY년 M월 D일 (요)", 주간="YYYY년 M월 D일 — M월 D일", 월별="YYYY년 M월"
 
-**TimeTableGrid 상세:**
-- 그리드 칼럼: `80px (요일) + 30 × 100px (시간슬롯)`
-- 시간 범위: 09:00 ~ 23:30 (30분 단위, 30슬롯)
-- 요일: 월~일 (7행), 높이는 `yPosition × SESSION_CELL_HEIGHT` (동적)
-- 시간 헤더: sticky top, `z-index: 999`
-- 가상 스크롤바: 하단 12px 높이 (dark/light 모두)
+**TimeTableGrid 상세 (주간 뷰):**
+- 그리드 칼럼: `56px(시간 라벨) + weekdayWidths[7]` (lane 수 × laneWidth px 동적)
+- 시간 범위: 09:00 ~ 23:30 (30분 단위, SLOT_HEIGHT_PX=32px per slot)
+- 헤더 높이: 60px. Stacked Circle: 요일명(10px) 위 + 날짜 숫자(22px bold, w-9 h-9 rounded-full) 아래
+- 오늘: amber 원 배지(`var(--color-accent-hover)`) + 컬럼 배경 `rgba(245,158,11,0.025)` + now-line
+- 수평 시간선: 정시 `rgba(255,255,255,0.09)` / 30분 `rgba(255,255,255,0.04)`, pointer-events:none
+- 가상 스크롤바: 하단 12px
 - 스크롤 위치 localStorage 보존: 키 `schedule_scroll_position`, 5분 TTL
+
+**GroupSessionModal 상세 (3-step Glass Stepper):**
+- 데스크톱: 중앙 `rounded-2xl` 카드, `backdrop-blur-xl`, max-w-md
+- 모바일: BottomSheet (기존 유지)
+- Step 1 — 학생: amber chip 태그 + 검색 input + 아바타(초성) autocomplete
+- Step 2 — 과목/시간: 과목 select(전체 너비) + 요일/강의실(2열) + 통합 시간 range input
+- Step 3 — 확인: 과목 색상 accent 헤더 카드 + 학생/요일/시간 구조화 요약
+- Footer: "N / 3" 진행 표시 + 이전/다음/수업추가 버튼 (단계별 비활성화 조건 포함)
+
+**FAB 상세:**
+- `fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 z-40`
+- 클릭 → `openGroupModal(selectedWeekday, currentTime, 1)` (전 뷰 동일)
+- `bg-accent` (amber) + 흰색 `Plus` 아이콘(24px)
 
 **SessionCard (Phase 6 공유 primitive) 상세:**
 - Weekly는 SessionBlock 유지. Daily/Monthly/Landing은 SessionCard로 통일.
-- `data-variant`: `block`(weekly legacy) / `row`(daily) / `chip`(monthly) / `preview`(landing)
+- `data-variant`: `block`(weekly) / `row`(daily) / `chip`(monthly) / `preview`(landing)
 - `data-state`: `default` / `ongoing` / `done` / `conflict`
 - 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
 - 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 2개 + `SessionOverflowPopover` "+N" pill
 
-**SessionBlock 상세 (Weekly 전용):**
-```
-┌─────────────────────────┐
-│ 과목명(좌)    HH:MM-HH:MM(우) │
-│                              │
-│            학생명들(우하단)   │
-└─────────────────────────┘
-```
-- 배경색: 해당 과목 color
-- 폰트 크기 동적 조정: 3명 이하 14px → 9명+ 5px
-- 학생명 최대 표시: 8명 (`이름1, 이름2... 외 N명`)
-- 드래그 가능 (`draggable=true`), 이동 시 `cursor: move`, 드래그 중 `opacity: 0.5`
-
-**StudentPanel 상세:**
-- 플로팅 패널 (position fixed)
-- 헤더: "수강생 리스트" — 드래그로 패널 위치 이동
-- 검색: 실시간 이름 필터
-- 학생 아이템: 드래그 시작 → 시간표 셀에 드롭하여 수업 추가
-- 선택된 학생: 하이라이트 표시, 해당 학생의 수업 블록 강조
+**StudentFilterChipBar (colorBy=student 시):**
+- 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 표시
+- 학생 칩을 SessionBlock에 드롭 → 해당 수업에 학생 추가(드래그앤드롭)
 
 ### 2.3 학생 관리 (`/students`)
 
@@ -281,11 +292,12 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `AboutPageLayout` | `AboutPageLayout.tsx` | /about 페이지 전체 레이아웃 |
 | `LoginButton` | `LoginButton.tsx` + `.module.css` | Nav bar 로그인 버튼. 모달로 Google OAuth 트리거. 로그인 시 아바타+드롭다운 |
 | `StudentManagementSection` | `StudentManagementSection.tsx` | /students 메인 섹션. StudentInputSection + StudentList 조합 |
-| `StudentPanel` | `StudentPanel.tsx` | 시간표 플로팅 패널. 학생 리스트, 검색, 드래그 소스 |
+| `ScheduleDailyView` | `ScheduleDailyView.tsx` | 일별 수업 목록. SessionCard(row variant) + 스와이프 제스처 |
+| `ScheduleMonthlyView` | `ScheduleMonthlyView.tsx` | 월별 달력. MonthDayCell × N, 날짜 클릭 → 일별 뷰 이동 |
 | `StudentsPageLayout` | `StudentsPageLayout.tsx` | /students 페이지 레이아웃. 2열 그리드 (340px \| 1fr) |
 | `SubjectManagementSection` | `SubjectManagementSection.tsx` | /subjects 메인 섹션. SubjectInputSection + SubjectList 조합 |
 | `SubjectsPageLayout` | `SubjectsPageLayout.tsx` | /subjects 페이지 레이아웃. 2열 그리드 (340px \| 1fr) |
-| `TimeTableGrid` | `TimeTableGrid.tsx` | 주간 시간표 그리드. 드래그앤드롭, 스크롤 보존, 가상 스크롤바 포함 |
+| `TimeTableGrid` | `TimeTableGrid.tsx` | 주간 시간표 그리드. Stacked Circle 헤더(요일+날짜), 수평 시간선, now-line, 드래그앤드롭, 스크롤 보존, 가상 스크롤바 |
 | `about/FeatureCard` | `about/FeatureCard.tsx` | 소개 페이지 기능 카드 |
 | `about/FeatureDetail` | `about/FeatureDetail.tsx` | 소개 페이지 기능 상세 설명 |
 | `about/HeroSection` | `about/HeroSection.tsx` | 소개 페이지 히어로 섹션 |
@@ -294,11 +306,11 @@ OnboardingPage (src/app/onboarding/page.tsx)
 
 | 컴포넌트 | 설명 |
 |----------|------|
-| `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트 |
-| `StudentPanelSection` | StudentPanel을 감싸는 섹션 컴포넌트 |
-| `PdfDownloadSection` | PDF 다운로드 버튼 섹션 |
-| `ScheduleHeader` | 시간표 페이지 헤더 (타이틀, 날짜) |
-| `GroupSessionModal` | 그룹 수업 생성/수정 모달 |
+| `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
+| `ScheduleHeader` | 시간표 페이지 헤더. 타이틀 + SegmentedButton(뷰 전환) + ColorByToggle |
+| `ScheduleActionBar` | PDF 다운로드 + 템플릿 저장/적용 + 공유 링크 버튼 바 |
+| `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
+| `GroupSessionModal` | 수업 추가 3-step Glass Stepper wizard (학생→과목/시간→확인) |
 | `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |
 
 ---
@@ -319,7 +331,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 |----|------|------|
 | `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync) |
 | `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync) |
-| `useStudentPanel` | `src/hooks/useStudentPanel.ts` | StudentPanel 상태 관리 (검색, 선택, 드래그 소스) |
+| `useScheduleView` | `src/hooks/useScheduleView.ts` | 뷰 모드(일별/주간/월별) + selectedDate 상태. goToNextDay/PrevDay/Week/PrevWeek/NextMonth/PrevMonth/Today 제공 |
 | `useTimeValidation` | `src/hooks/useTimeValidation.ts` | 시간 유효성 검사 (시작 < 종료, 범위 체크) |
 
 ### 4.3 Schedule 전용
@@ -359,21 +371,29 @@ SchedulePage
 
 ### 5.1 수업 추가 Flow (Golden Path)
 
+**FAB 경로 (주 경로):**
 ```
-1. /schedule 접속
-2. StudentPanel에서 학생 클릭 → 학생 하이라이트
-3. 학생 아이템을 시간표 셀로 드래그 → 드롭
-   → GroupSessionModal 오픈 (과목/시간 pre-fill)
-4. 과목 선택 + 시간 확인 → "추가" 클릭
-   → localStorage 즉시 반영 → 시간표에 SessionBlock 렌더
+1. 우하단 FAB(+) 클릭 (일별/주간/월별 전 뷰)
+   → GroupSessionModal Step 1 오픈 (selectedWeekday, currentTime pre-fill)
+2. Step 1 — 학생 이름 검색 → 자동완성 클릭으로 추가 → amber chip 표시 → "다음"
+3. Step 2 — 과목 선택 + 요일/시간 설정 → "다음"
+4. Step 3 — 확인 카드 검토 → "수업 추가"
+   → localStorage 즉시 반영 → 시간표에 세션 렌더
    → 서버 동기화 (fire-and-forget, apiSync.ts)
 ```
 
-**대안 경로 — 빈 셀 클릭:**
+**대안 경로 — 빈 셀 클릭 (주간 뷰):**
 ```
-1. 빈 시간표 셀 클릭
-   → GroupSessionModal 오픈 (요일/시간 pre-fill)
-2. 학생 선택 + 과목 선택 → "추가"
+1. 빈 TimeTableCell 클릭
+   → GroupSessionModal Step 1 오픈 (weekday/time pre-fill)
+2. Step 1~3 동일
+```
+
+**대안 경로 — 학생 드래그앤드롭 (주간 뷰):**
+```
+1. StudentFilterChipBar 학생 칩 → 시간표 셀로 드래그 → 드롭
+   → GroupSessionModal 오픈 (학생 pre-fill)
+2. Step 2부터 진행
 ```
 
 ### 5.2 수업 수정/삭제
