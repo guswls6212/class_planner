@@ -1,6 +1,6 @@
 "use client";
-import React, { useRef, useState, useEffect } from "react";
-import { Trash2, X, Palette } from "lucide-react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import { Trash2, X, ChevronDown } from "lucide-react";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
@@ -40,6 +40,22 @@ interface EditSessionModalProps {
 
 const DEFAULT_COLOR = "#6366f1";
 
+// 과목에 어울리는 대표 프리셋 팔레트
+const PRESET_COLORS = [
+  { hex: "#F59E0B", label: "앰버" },
+  { hex: "#EF4444", label: "빨강" },
+  { hex: "#EC4899", label: "핑크" },
+  { hex: "#A855F7", label: "보라" },
+  { hex: "#6366F1", label: "인디고" },
+  { hex: "#3B82F6", label: "파랑" },
+  { hex: "#06B6D4", label: "하늘" },
+  { hex: "#14B8A6", label: "청록" },
+  { hex: "#22C55E", label: "초록" },
+  { hex: "#84CC16", label: "연두" },
+  { hex: "#F97316", label: "주황" },
+  { hex: "#64748B", label: "회색" },
+];
+
 const EditSessionModal: React.FC<EditSessionModalProps> = ({
   isOpen,
   selectedStudents,
@@ -71,27 +87,68 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const swatchPanelRef = useRef<HTMLDivElement>(null);
 
   const currentSubject = subjects.find((s) => s.id === tempSubjectId);
-  const [previewColor, setPreviewColor] = useState(
-    currentSubject?.color ?? DEFAULT_COLOR
-  );
 
-  // Sync preview color when selected subject changes
+  // 원본 색상 (모달 열릴 때 스냅샷) — 취소 시 복원에 사용
+  const [originalColor, setOriginalColor] = useState(currentSubject?.color ?? DEFAULT_COLOR);
+  const [previewColor, setPreviewColor] = useState(originalColor);
+  const [showSwatches, setShowSwatches] = useState(false);
+
+  // 모달이 열릴 때만 원본/프리뷰 초기화
   useEffect(() => {
-    setPreviewColor(currentSubject?.color ?? DEFAULT_COLOR);
-  }, [tempSubjectId, currentSubject?.color]);
-
-  const handleColorChange = (newColor: string) => {
-    setPreviewColor(newColor);
-    if (tempSubjectId && onSubjectColorChange) {
-      onSubjectColorChange(tempSubjectId, newColor);
+    if (isOpen) {
+      const c = currentSubject?.color ?? DEFAULT_COLOR;
+      setOriginalColor(c);
+      setPreviewColor(c);
+      setShowSwatches(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // 과목 변경 시 해당 과목 색으로 previewColor 갱신 (원본도 리셋)
+  useEffect(() => {
+    const c = currentSubject?.color ?? DEFAULT_COLOR;
+    setOriginalColor(c);
+    setPreviewColor(c);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tempSubjectId]);
+
+  // 스와치 패널 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!showSwatches) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (swatchPanelRef.current && !swatchPanelRef.current.contains(e.target as Node)) {
+        setShowSwatches(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [showSwatches]);
+
+  // 색상은 previewColor에만 반영 — persist는 저장 시에만
+  const handleColorSelect = (color: string) => {
+    setPreviewColor(color);
   };
+
+  // 취소: previewColor를 원본으로 되돌리고 닫기
+  const handleCancel = useCallback(() => {
+    setPreviewColor(originalColor);
+    setShowSwatches(false);
+    onCancel();
+  }, [originalColor, onCancel]);
+
+  // 저장: 색상이 바뀐 경우에만 persist 후 onSave 호출
+  const handleSave = useCallback(() => {
+    if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
+      onSubjectColorChange(tempSubjectId, previewColor);
+    }
+    onSave();
+  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave]);
 
   const studentNames = selectedStudents.map((s) => s.name).join(" · ") || "학생 없음";
 
-  // Hex → rgba with alpha for the gradient overlay
   const hexToRgba = (hex: string, alpha: number) => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -102,9 +159,93 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const fieldClass =
     "w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors";
 
+  // ── 색상 선택 패널 ──────────────────────────────────────────────
+  const colorPanel = onSubjectColorChange && tempSubjectId ? (
+    <div className="relative" ref={swatchPanelRef}>
+      {/* 팔레트 버튼 (현재 색 미리보기 dot) */}
+      <button
+        type="button"
+        onClick={() => setShowSwatches((v) => !v)}
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors"
+        aria-label="과목 색상 변경"
+        title="색상 선택"
+      >
+        <span
+          className="w-4 h-4 rounded-full ring-2 ring-white/30 flex-shrink-0"
+          style={{ backgroundColor: previewColor }}
+        />
+        <ChevronDown size={11} strokeWidth={2.5} style={{ color: previewColor, opacity: 0.8 }} />
+      </button>
+
+      {/* 스와치 패널 (드롭다운) */}
+      {showSwatches && (
+        <div
+          className="absolute right-0 top-full mt-2 z-[100] rounded-2xl border border-white/10 bg-[var(--color-bg-primary)] p-3 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+          style={{ minWidth: 220 }}
+        >
+          {/* 패널 제목 + 색상 의미 설명 */}
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2.5 px-0.5">
+            과목 대표색 (텍스트 · 강조)
+          </p>
+
+          {/* 프리셋 스와치 그리드 */}
+          <div className="grid grid-cols-6 gap-1.5 mb-3">
+            {PRESET_COLORS.map(({ hex, label }) => {
+              const isActive = previewColor.toLowerCase() === hex.toLowerCase();
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => handleColorSelect(hex)}
+                  className="relative w-8 h-8 rounded-full transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/40"
+                  style={{ backgroundColor: hex }}
+                  aria-label={label}
+                  title={label}
+                >
+                  {isActive && (
+                    <span className="absolute inset-0 rounded-full ring-[3px] ring-white/80" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 현재 선택 색 미리보기 */}
+          <div className="flex items-center gap-2 mb-2.5 px-0.5">
+            <span
+              className="w-5 h-5 rounded-md flex-shrink-0 ring-1 ring-white/20"
+              style={{ backgroundColor: previewColor }}
+            />
+            <span className="text-[12px] font-mono text-[var(--color-text-secondary)]">
+              {previewColor.toUpperCase()}
+            </span>
+          </div>
+
+          {/* 세밀한 선택 버튼 */}
+          <button
+            type="button"
+            onClick={() => colorInputRef.current?.click()}
+            className="w-full rounded-xl border border-[var(--color-border)] py-2 text-[12px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          >
+            + 직접 색상 선택
+          </button>
+          <input
+            ref={colorInputRef}
+            type="color"
+            className="absolute opacity-0 w-0 h-0 pointer-events-none"
+            value={previewColor}
+            onChange={(e) => handleColorSelect(e.target.value)}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  // ── Form content ────────────────────────────────────────────────
   const formContent = (
     <div className="flex flex-col">
-      {/* ── Colored Header ─────────────────────────────── */}
+      {/* Colored Header */}
       <div
         className="relative px-5 pt-5 pb-4"
         style={{
@@ -121,7 +262,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               />
               <span
                 className="text-[18px] font-extrabold leading-tight truncate"
-                style={{ color: previewColor === DEFAULT_COLOR ? "#a5b4fc" : previewColor }}
+                style={{ color: previewColor }}
               >
                 {currentSubject?.name ?? "과목 미선택"}
               </span>
@@ -137,32 +278,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {/* Color picker trigger */}
-            {onSubjectColorChange && tempSubjectId && (
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => colorInputRef.current?.click()}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 transition-colors"
-                  style={{ color: previewColor }}
-                  aria-label="과목 색상 변경"
-                  title="과목 색상 변경"
-                >
-                  <Palette size={15} strokeWidth={2} />
-                </button>
-                <input
-                  ref={colorInputRef}
-                  type="color"
-                  className="absolute opacity-0 w-0 h-0 pointer-events-none"
-                  value={previewColor}
-                  onChange={(e) => handleColorChange(e.target.value)}
-                  aria-hidden="true"
-                />
-              </div>
-            )}
-
-            {/* Delete */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {colorPanel}
             <button
               type="button"
               onClick={onDelete}
@@ -171,11 +288,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             >
               <Trash2 size={14} strokeWidth={2} />
             </button>
-
-            {/* Close */}
             <button
               type="button"
-              onClick={onCancel}
+              onClick={handleCancel}
               className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--color-text-muted)] transition-colors"
               aria-label="닫기"
             >
@@ -185,13 +300,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         </div>
       </div>
 
-      {/* ── Form body ──────────────────────────────────── */}
+      {/* Form body */}
       <div className="px-5 py-4 flex flex-col gap-4 max-h-[55vh] overflow-y-auto">
         {/* Students */}
         <div className="flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            학생
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">학생</span>
           <div className="min-h-[40px] flex flex-wrap gap-1.5 items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2">
             {selectedStudents.length === 0 && (
               <span className="text-[12px] text-[var(--color-text-muted)]">선택된 학생 없음</span>
@@ -235,9 +348,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           {editStudentInputValue?.trim() && (
             <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
               {editSearchResults.length === 0 ? (
-                <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">
-                  <span>검색 결과가 없습니다</span>
-                </div>
+                <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">검색 결과가 없습니다</div>
               ) : (
                 editSearchResults.map((student) => (
                   <button
@@ -278,19 +389,10 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
           {teachers.length > 0 ? (
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-modal-teacher" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                강사
-              </label>
-              <select
-                id="edit-modal-teacher"
-                className={fieldClass}
-                value={tempTeacherId}
-                onChange={(e) => onTeacherChange(e.target.value)}
-              >
+              <label htmlFor="edit-modal-teacher" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
+              <select id="edit-modal-teacher" className={fieldClass} value={tempTeacherId} onChange={(e) => onTeacherChange(e.target.value)}>
                 <option value="">선택사항</option>
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
+                {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             </div>
           ) : (
@@ -298,34 +400,22 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 요일 <span className="text-[var(--color-danger)]">*</span>
               </label>
-              <select
-                id="edit-modal-weekday"
-                className={fieldClass}
-                defaultValue={defaultWeekday}
-              >
-                {weekdays.map((w, idx) => (
-                  <option key={idx} value={idx}>{w}</option>
-                ))}
+              <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
+                {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
               </select>
             </div>
           )}
         </div>
 
-        {/* Weekday (when teachers shown above) + Time */}
+        {/* Weekday (when teachers shown) + Time */}
         <div className="grid grid-cols-2 gap-3">
           {teachers.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 요일 <span className="text-[var(--color-danger)]">*</span>
               </label>
-              <select
-                id="edit-modal-weekday"
-                className={fieldClass}
-                defaultValue={defaultWeekday}
-              >
-                {weekdays.map((w, idx) => (
-                  <option key={idx} value={idx}>{w}</option>
-                ))}
+              <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
+                {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
               </select>
             </div>
           )}
@@ -359,18 +449,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         </div>
       </div>
 
-      {/* ── Footer ─────────────────────────────────────── */}
+      {/* Footer */}
       <div className="px-5 pb-5 pt-3 border-t border-[var(--color-border)] flex items-center justify-end gap-2">
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
           className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
         >
           취소
         </button>
         <button
           type="button"
-          onClick={onSave}
+          onClick={handleSave}
           className="rounded-xl px-6 py-2 text-[13px] font-semibold text-[var(--color-bg-primary)] hover:opacity-90 transition-opacity"
           style={{ backgroundColor: previewColor }}
         >
@@ -382,12 +472,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
   if (!isDesktop && isOpen) {
     return (
-      <BottomSheet
-        isOpen={isOpen}
-        onClose={onCancel}
-        title="수업 편집"
-        aria-labelledby="edit-session-modal-title"
-      >
+      <BottomSheet isOpen={isOpen} onClose={handleCancel} title="수업 편집" aria-labelledby="edit-session-modal-title">
         {formContent}
       </BottomSheet>
     );
