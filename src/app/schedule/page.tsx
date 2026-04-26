@@ -38,6 +38,7 @@ import { useStudentFilter } from "./_hooks/useStudentFilter";
 import { filterSessionsByStudents } from "@/features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { syncSubjectUpdate } from "../../lib/apiSync";
 import { logger } from "../../lib/logger";
 import { showError, showToast } from "../../lib/toast";
 import type { Session, Student } from "../../lib/planner";
@@ -1302,10 +1303,15 @@ function SchedulePageContent(): JSX.Element {
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
         subjects={subjects.map((s) => ({ id: s.id, name: s.name, color: s.color }))}
         onSubjectColorChange={(subjectId, newColor) => {
+          const subject = subjects.find((s) => s.id === subjectId);
+          if (!subject) return;
+          // 1. React 상태 + localStorage 업데이트
           const updated = subjects.map((s) =>
             s.id === subjectId ? { ...s, color: newColor } : s
           );
           updateData({ subjects: updated });
+          // 2. 서버 fire-and-forget sync (API는 name 필수)
+          syncSubjectUpdate(userId, subjectId, { name: subject.name, color: newColor });
         }}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         tempSubjectId={tempSubjectId}
