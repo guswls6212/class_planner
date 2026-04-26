@@ -164,4 +164,23 @@ describe("TimeTableGrid", () => {
     // Dynamic positioning is still inline
     expect(scrollbarThumb).toHaveStyle({ left: "0px" });
   });
+
+  it("baseDate 제공 시 헤더에 날짜 숫자가 표시된다", () => {
+    // 2026-04-20 (월요일) 기준
+    const baseDate = new Date("2026-04-20T12:00:00");
+    render(<TimeTableGrid {...defaultProps} baseDate={baseDate} />);
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("26")).toBeInTheDocument();
+  });
+
+  it("오늘 날짜의 헤더 숫자는 둥근 배지로 렌더된다", () => {
+    const today = new Date();
+    const monday = new Date(today);
+    const dow = (monday.getDay() + 6) % 7;
+    monday.setDate(monday.getDate() - dow);
+    render(<TimeTableGrid {...defaultProps} baseDate={monday} />);
+    const todayNum = today.getDate().toString();
+    const badge = screen.getByText(todayNum);
+    expect(badge).toHaveClass("rounded-full");
+  });
 });

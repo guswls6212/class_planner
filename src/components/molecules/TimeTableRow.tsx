@@ -52,6 +52,9 @@ interface TimeTableRowProps {
   onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   onDragEnd?: () => void;
   dragPreview?: DragPreviewState;
+  // 오늘 열 강조 (주간 헤더 날짜 표시용)
+  isToday?: boolean;
+  nowLinePx?: number | null;
 }
 
 /**
