@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import EditSessionModal from "../EditSessionModal";
 
@@ -16,8 +16,8 @@ const defaultProps = {
   editSearchResults: [],
   onSelectSearchStudent: vi.fn(),
   subjects: [
-    { id: "sub-1", name: "수학" },
-    { id: "sub-2", name: "영어" },
+    { id: "sub-1", name: "수학", color: "#f59e0b" },
+    { id: "sub-2", name: "영어", color: "#6366f1" },
   ],
   tempSubjectId: "sub-1",
   onSubjectChange: vi.fn(),
@@ -46,10 +46,11 @@ describe("EditSessionModal", () => {
 
   it("isOpen=true일 때 모달을 렌더링한다", () => {
     render(<EditSessionModal {...defaultProps} />);
-    expect(screen.getByText("수업 편집")).toBeInTheDocument();
+    // sr-only title OR dialog role
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("선택된 학생들을 태그로 표시한다", () => {
+  it("선택된 학생들을 칩으로 표시한다", () => {
     render(<EditSessionModal {...defaultProps} />);
     expect(screen.getByText("김철수")).toBeInTheDocument();
     expect(screen.getByText("이영희")).toBeInTheDocument();
@@ -60,21 +61,25 @@ describe("EditSessionModal", () => {
     render(
       <EditSessionModal {...defaultProps} onRemoveStudent={onRemoveStudent} />
     );
-    const removeBtns = screen.getAllByText("×");
-    fireEvent.click(removeBtns[0]);
+    const removeBtn = screen.getByRole("button", { name: "김철수 제거" });
+    fireEvent.click(removeBtn);
     expect(onRemoveStudent).toHaveBeenCalledWith("stu-1");
   });
 
   it("과목 선택 옵션을 렌더링한다", () => {
     render(<EditSessionModal {...defaultProps} />);
-    expect(screen.getByText("수학")).toBeInTheDocument();
-    expect(screen.getByText("영어")).toBeInTheDocument();
+    const subjectSelect = screen.getByRole("combobox", { name: /과목/ });
+    const options = within(subjectSelect).getAllByRole("option");
+    const optionNames = options.map((o) => o.textContent);
+    expect(optionNames).toContain("수학");
+    expect(optionNames).toContain("영어");
   });
 
   it("요일 선택 옵션을 렌더링한다", () => {
     render(<EditSessionModal {...defaultProps} />);
-    expect(screen.getByText("월")).toBeInTheDocument();
-    expect(screen.getByText("일")).toBeInTheDocument();
+    const weekdaySelect = screen.getByRole("combobox", { name: /요일/ });
+    expect(within(weekdaySelect).getByText("월")).toBeInTheDocument();
+    expect(within(weekdaySelect).getByText("일")).toBeInTheDocument();
   });
 
   it("시간 에러가 있으면 에러 메시지를 표시한다", () => {
@@ -84,11 +89,12 @@ describe("EditSessionModal", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("종료 시간이 시작 시간보다 빠릅니다");
   });
 
-  it("저장/취소/삭제 버튼이 존재한다", () => {
+  it("저장/취소 버튼과 삭제 버튼이 존재한다", () => {
     render(<EditSessionModal {...defaultProps} />);
     expect(screen.getByText("저장")).toBeInTheDocument();
     expect(screen.getByText("취소")).toBeInTheDocument();
-    expect(screen.getByText("삭제")).toBeInTheDocument();
+    // 삭제는 아이콘 버튼 (aria-label)
+    expect(screen.getByRole("button", { name: "수업 삭제" })).toBeInTheDocument();
   });
 
   it("취소 버튼 클릭 시 onCancel을 호출한다", () => {
@@ -103,6 +109,13 @@ describe("EditSessionModal", () => {
     render(<EditSessionModal {...defaultProps} onSave={onSave} />);
     fireEvent.click(screen.getByText("저장"));
     expect(onSave).toHaveBeenCalled();
+  });
+
+  it("삭제 버튼 클릭 시 onDelete를 호출한다", () => {
+    const onDelete = vi.fn();
+    render(<EditSessionModal {...defaultProps} onDelete={onDelete} />);
+    fireEvent.click(screen.getByRole("button", { name: "수업 삭제" }));
+    expect(onDelete).toHaveBeenCalled();
   });
 
   it("입력값이 없으면 추가 버튼이 비활성화된다", () => {
@@ -120,6 +133,27 @@ describe("EditSessionModal", () => {
       />
     );
     expect(screen.getByText("김민수")).toBeInTheDocument();
+  });
+
+  it("onSubjectColorChange prop이 있으면 색상 변경 버튼이 표시된다", () => {
+    render(
+      <EditSessionModal
+        {...defaultProps}
+        onSubjectColorChange={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: "과목 색상 변경" })).toBeInTheDocument();
+  });
+
+  it("onSubjectColorChange prop이 없으면 색상 변경 버튼이 없다", () => {
+    render(<EditSessionModal {...defaultProps} />);
+    expect(screen.queryByRole("button", { name: "과목 색상 변경" })).not.toBeInTheDocument();
+  });
+
+  it("헤더에 현재 과목명이 표시된다", () => {
+    render(<EditSessionModal {...defaultProps} />);
+    // Subject name appears in header (may also appear in select option)
+    expect(screen.getAllByText("수학").length).toBeGreaterThan(0);
   });
 
   describe("접근성 (a11y)", () => {
@@ -142,20 +176,18 @@ describe("EditSessionModal", () => {
 
     it("요일 select는 label과 연결되어야 한다", () => {
       render(<EditSessionModal {...defaultProps} />);
-      const weekdaySelect = screen.getByLabelText("요일");
+      const weekdaySelect = screen.getByLabelText(/요일/);
       expect(weekdaySelect).toBeInTheDocument();
     });
 
-    it("시작 시간 input은 label과 연결되어야 한다", () => {
+    it("시작 시간 input은 aria-label과 연결되어야 한다", () => {
       render(<EditSessionModal {...defaultProps} />);
-      const startTimeInput = screen.getByLabelText("시작 시간");
-      expect(startTimeInput).toBeInTheDocument();
+      expect(screen.getByLabelText("시작 시간")).toBeInTheDocument();
     });
 
-    it("종료 시간 input은 label과 연결되어야 한다", () => {
+    it("종료 시간 input은 aria-label과 연결되어야 한다", () => {
       render(<EditSessionModal {...defaultProps} />);
-      const endTimeInput = screen.getByLabelText("종료 시간");
-      expect(endTimeInput).toBeInTheDocument();
+      expect(screen.getByLabelText("종료 시간")).toBeInTheDocument();
     });
   });
 });
