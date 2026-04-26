@@ -185,6 +185,7 @@ src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
+src/components/molecules/ScheduleDateNavigator.tsx
 src/components/molecules/SessionBlock.tsx
 src/components/molecules/SessionBlock.utils.ts
 src/components/molecules/SessionCard.tsx
