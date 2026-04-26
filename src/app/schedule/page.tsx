@@ -1182,6 +1182,7 @@ function SchedulePageContent(): JSX.Element {
           isStudentDragging={isStudentDragging}
           teachers={teachers}
           colorBy={colorBy}
+          baseDate={selectedDate}
         />
       )}
 

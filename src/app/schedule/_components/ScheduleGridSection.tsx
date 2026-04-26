@@ -39,6 +39,7 @@ type Props = {
   isStudentDragging: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
+  baseDate: Date;
 };
 
 export default function ScheduleGridSection({
@@ -57,6 +58,7 @@ export default function ScheduleGridSection({
   isStudentDragging,
   teachers = [],
   colorBy = "subject",
+  baseDate,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -75,6 +77,7 @@ export default function ScheduleGridSection({
         isStudentDragging={isStudentDragging}
         teachers={teachers}
         colorBy={colorBy}
+        baseDate={baseDate}
       />
     </div>
   );

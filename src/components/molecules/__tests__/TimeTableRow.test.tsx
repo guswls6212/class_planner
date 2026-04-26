@@ -301,6 +301,36 @@ describe("TimeTableRow Component", () => {
     expect(sessionElement).toBeInTheDocument();
   });
 
+  describe("시간선 overlay + 현재 시각 선", () => {
+    const minimalProps = {
+      weekday: 0,
+      width: 120,
+      sessions: new Map(),
+      subjects: [],
+      enrollments: [],
+      students: [],
+      onSessionClick: vi.fn(),
+      onDrop: vi.fn(),
+      onEmptySpaceClick: vi.fn(),
+    };
+
+    it("시간선 overlay가 렌더된다", () => {
+      render(<TimeTableRow {...minimalProps} />);
+      const overlay = document.querySelector('[aria-hidden="true"]');
+      expect(overlay).toBeInTheDocument();
+    });
+
+    it("isToday=true + nowLinePx 제공 시 현재 시각 선이 렌더된다", () => {
+      render(<TimeTableRow {...minimalProps} isToday={true} nowLinePx={96} />);
+      expect(document.querySelector('[aria-label="현재 시각"]')).toBeInTheDocument();
+    });
+
+    it("isToday=false 일 때 현재 시각 선이 없다", () => {
+      render(<TimeTableRow {...minimalProps} isToday={false} nowLinePx={96} />);
+      expect(document.querySelector('[aria-label="현재 시각"]')).not.toBeInTheDocument();
+    });
+  });
+
   describe("D-hybrid overflow (B3)", () => {
     const makeSession = (
       id: string,

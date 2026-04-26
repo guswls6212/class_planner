@@ -49,6 +49,8 @@ interface TimeTableGridProps {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isReadOnly?: boolean;
+  // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.
+  baseDate?: Date;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -73,6 +75,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       teachers = [],
       colorBy = "subject",
       isReadOnly = false,
+      baseDate,
     },
     ref
   ) => {
@@ -356,7 +359,31 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;
-    const headerRowHeight = 40;
+
+    // 주 날짜 배열 및 오늘 계산
+    const weekDates = useMemo(() => {
+      const base = baseDate ?? new Date();
+      const monday = new Date(base);
+      const dayOfWeek = (monday.getDay() + 6) % 7; // 0=Mon
+      monday.setDate(monday.getDate() - dayOfWeek);
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        return d;
+      });
+    }, [baseDate]);
+
+    const todayStr = useMemo(() => new Date().toDateString(), []);
+
+    // 현재 시각 → 픽셀 위치 (9:00 기준, SLOT_HEIGHT_PX per 30min)
+    const nowLinePx = useMemo(() => {
+      const now = new Date();
+      const minutesSince9 = (now.getHours() - 9) * 60 + now.getMinutes();
+      if (minutesSince9 < 0 || minutesSince9 > 870) return null; // 870 = (23-9)*60+30 — last slot is 23:30
+      return (minutesSince9 / 30) * SLOT_HEIGHT_PX;
+    }, []);
+
+    const headerRowHeight = 60;
     const contentHeight = slotCount * SLOT_HEIGHT_PX;
 
     const gridTemplateColumns = useMemo(
@@ -461,16 +488,36 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             style={{ gridColumn: 1, gridRow: 1 }}
           />
 
-          {/* (1, 2..8) 요일 헤더 — sticky top */}
-          {WEEKDAY_LABELS.map((label, weekday) => (
-            <div
-              key={`header-${weekday}`}
-              className={`shadow-sm sticky top-0 z-[999] flex items-center justify-center font-bold ${isMobile ? "text-[11px]" : "text-sm"} text-[var(--color-text-primary)] bg-[var(--color-bg-primary)] border border-[var(--color-border)]`}
-              style={{ gridColumn: weekday + 2, gridRow: 1 }}
-            >
-              {label}
-            </div>
-          ))}
+          {/* (1, 2..8) 요일 헤더 — sticky top, Stacked Circle */}
+          {WEEKDAY_LABELS.map((label, weekday) => {
+            const date = weekDates[weekday];
+            const dateNum = date.getDate();
+            const isToday = date.toDateString() === todayStr;
+            return (
+              <div
+                key={`header-${weekday}`}
+                className="shadow-sm sticky top-0 z-[999] flex flex-col items-center justify-center gap-[2px] bg-[var(--color-bg-primary)] border border-[var(--color-border)]"
+                style={{ gridColumn: weekday + 2, gridRow: 1 }}
+              >
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wide leading-none ${
+                    isToday ? "text-[var(--color-accent-hover)]" : "text-[var(--color-text-muted)]"
+                  }`}
+                >
+                  {label}
+                </span>
+                <span
+                  className={`text-[22px] font-bold leading-none flex items-center justify-center w-9 h-9 rounded-full ${
+                    isToday
+                      ? "bg-[var(--color-accent-hover)] text-[var(--color-bg-primary)]"
+                      : "text-[var(--color-text-primary)]"
+                  }`}
+                >
+                  {dateNum}
+                </span>
+              </div>
+            );
+          })}
 
           {/* (2, 1) 시간 라벨 컬럼 — sticky left */}
           <div
@@ -489,32 +536,42 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           </div>
 
           {/* (2, 2..8) 요일별 컬럼 */}
-          {Array.from({ length: 7 }, (_, weekday) => (
-            <TimeTableRow
-              key={weekday}
-              weekday={weekday}
-              width={weekdayWidths[weekday]}
-              sessions={sessionsForRender}
-              subjects={subjects}
-              enrollments={enrollments}
-              students={students}
-              onSessionClick={isReadOnly ? () => {} : onSessionClick}
-              onSessionDelete={isReadOnly ? undefined : onSessionDelete}
-              onDrop={isReadOnly ? () => {} : onDrop}
-              onSessionDrop={isReadOnly ? undefined : onSessionDrop}
-              onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
-              selectedStudentIds={selectedStudentIds}
-              isAnyDragging={isAnyDragging || isStudentDragging}
-              teachers={teachers}
-              colorBy={colorBy}
-              isMobile={isMobile}
-              onDragStart={isTouchDevice ? undefined : handleDragStart}
-              onDragOver={isTouchDevice ? undefined : handleDragOver}
-              onDragEnd={isTouchDevice ? undefined : handleDragEnd}
-              dragPreview={isTouchDevice ? undefined : dragPreview}
-              style={{ gridColumn: weekday + 2, gridRow: 2 }}
-            />
-          ))}
+          {Array.from({ length: 7 }, (_, weekday) => {
+            const isToday = weekDates[weekday].toDateString() === todayStr;
+            return (
+              <TimeTableRow
+                key={weekday}
+                weekday={weekday}
+                width={weekdayWidths[weekday]}
+                sessions={sessionsForRender}
+                subjects={subjects}
+                enrollments={enrollments}
+                students={students}
+                onSessionClick={isReadOnly ? () => {} : onSessionClick}
+                onSessionDelete={isReadOnly ? undefined : onSessionDelete}
+                onDrop={isReadOnly ? () => {} : onDrop}
+                onSessionDrop={isReadOnly ? undefined : onSessionDrop}
+                onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
+                selectedStudentIds={selectedStudentIds}
+                isAnyDragging={isAnyDragging || isStudentDragging}
+                teachers={teachers}
+                colorBy={colorBy}
+                isMobile={isMobile}
+                onDragStart={isTouchDevice ? undefined : handleDragStart}
+                onDragOver={isTouchDevice ? undefined : handleDragOver}
+                onDragEnd={isTouchDevice ? undefined : handleDragEnd}
+                dragPreview={isTouchDevice ? undefined : dragPreview}
+                isToday={isToday}
+                nowLinePx={isToday ? nowLinePx : null}
+                style={{
+                  gridColumn: weekday + 2,
+                  gridRow: 2,
+                  // amber tint — raw hex needed for alpha
+                  ...(isToday && { backgroundColor: "rgba(245,158,11,0.025)" }),
+                }}
+              />
+            );
+          })}
         </div>
 
         {/* 가상 가로 스크롤바 */}
