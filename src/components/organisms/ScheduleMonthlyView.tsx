@@ -7,9 +7,6 @@ interface ScheduleMonthlyViewProps {
   subjects: Subject[];
   enrollments: Enrollment[];
   currentDate: Date;
-  goToNextMonth: () => void;
-  goToPrevMonth: () => void;
-  goToToday: () => void;
   onDayClick: (date: Date) => void;
 }
 
@@ -40,12 +37,8 @@ export default function ScheduleMonthlyView({
   subjects,
   enrollments,
   currentDate,
-  goToNextMonth,
-  goToPrevMonth,
-  goToToday,
   onDayClick,
 }: ScheduleMonthlyViewProps) {
-  const monthLabel = `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월`;
   const today = useMemo(() => new Date(), []);
 
   const calendarDays = useMemo(() => buildCalendarDays(currentDate), [currentDate]);
@@ -62,37 +55,6 @@ export default function ScheduleMonthlyView({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Month navigation */}
-      <div className="flex items-center justify-between px-1">
-        <button
-          type="button"
-          aria-label="이전 달"
-          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToPrevMonth}
-        >
-          ‹
-        </button>
-        <span className="text-base font-semibold text-[var(--color-text-primary)]">
-          {monthLabel}
-        </span>
-        <button
-          type="button"
-          aria-label="다음 달"
-          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToNextMonth}
-        >
-          ›
-        </button>
-        <button
-          type="button"
-          aria-label="오늘"
-          className="ml-2 rounded border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToToday}
-        >
-          오늘
-        </button>
-      </div>
-
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAY_LABELS.map((label) => (

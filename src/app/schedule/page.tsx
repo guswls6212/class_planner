@@ -28,6 +28,7 @@ import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
+import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
@@ -157,6 +158,8 @@ function SchedulePageContent(): JSX.Element {
     selectedWeekday,
     goToNextDay,
     goToPrevDay,
+    goToNextWeek,
+    goToPrevWeek,
     goToToday,
     setSelectedDate,
     goToNextMonth,
@@ -1100,6 +1103,36 @@ function SchedulePageContent(): JSX.Element {
         isSaving={templateSaving}
       />
 
+      {/* 날짜 네비게이터 (일별/주간/월별 공통) */}
+      <ScheduleDateNavigator
+        label={(() => {
+          if (viewMode === "daily") {
+            const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+            return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`;
+          }
+          if (viewMode === "weekly") {
+            const mon = new Date(selectedDate);
+            mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+            const sun = new Date(mon);
+            sun.setDate(sun.getDate() + 6);
+            const sameMonth = mon.getMonth() === sun.getMonth();
+            const start = `${mon.getFullYear()}년 ${mon.getMonth() + 1}월 ${mon.getDate()}일`;
+            const end = sameMonth
+              ? `${sun.getDate()}일`
+              : sun.getFullYear() !== mon.getFullYear()
+                ? `${sun.getFullYear()}년 ${sun.getMonth() + 1}월 ${sun.getDate()}일`
+                : `${sun.getMonth() + 1}월 ${sun.getDate()}일`;
+            return `${start} — ${end}`;
+          }
+          return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
+        })()}
+        onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
+        onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
+        onToday={goToToday}
+        prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
+        nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
+      />
+
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
         <ScheduleDailyView
@@ -1126,9 +1159,6 @@ function SchedulePageContent(): JSX.Element {
           subjects={subjects}
           enrollments={enrollments}
           currentDate={selectedDate}
-          goToNextMonth={goToNextMonth}
-          goToPrevMonth={goToPrevMonth}
-          goToToday={goToToday}
           onDayClick={(date) => {
             setSelectedDate(date);
             setViewMode("daily");
