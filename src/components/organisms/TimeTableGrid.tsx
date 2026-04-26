@@ -379,7 +379,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const nowLinePx = useMemo(() => {
       const now = new Date();
       const minutesSince9 = (now.getHours() - 9) * 60 + now.getMinutes();
-      if (minutesSince9 < 0 || minutesSince9 > 870) return null;
+      if (minutesSince9 < 0 || minutesSince9 > 870) return null; // 870 = (23-9)*60+30 — last slot is 23:30
       return (minutesSince9 / 30) * SLOT_HEIGHT_PX;
     }, []);
 
@@ -501,7 +501,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
               >
                 <span
                   className={`text-[10px] font-semibold uppercase tracking-wide leading-none ${
-                    isToday ? "text-[#f59e0b]" : "text-[var(--color-text-muted)]"
+                    isToday ? "text-[var(--color-accent-hover)]" : "text-[var(--color-text-muted)]"
                   }`}
                 >
                   {label}
@@ -509,7 +509,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 <span
                   className={`text-[22px] font-bold leading-none flex items-center justify-center w-9 h-9 rounded-full ${
                     isToday
-                      ? "bg-[#f59e0b] text-[var(--color-bg-primary)]"
+                      ? "bg-[var(--color-accent-hover)] text-[var(--color-bg-primary)]"
                       : "text-[var(--color-text-primary)]"
                   }`}
                 >
@@ -566,6 +566,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
+                  // amber tint — raw hex needed for alpha
                   ...(isToday && { backgroundColor: "rgba(245,158,11,0.025)" }),
                 }}
               />
