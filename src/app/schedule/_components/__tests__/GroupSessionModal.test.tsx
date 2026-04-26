@@ -72,6 +72,9 @@ describe("GroupSessionModal - state updates", () => {
       />
     );
 
+    // Step 0 → 1 이동 (studentIds가 이미 있으므로 다음 버튼 활성화)
+    fireEvent.click(screen.getByRole("button", { name: /다음/ }));
+
     // 과목 선택 변경 (접근성 이름으로 조회)
     const subjectSelect = getByRole("combobox", {
       name: /과목/,
@@ -86,7 +89,7 @@ describe("GroupSessionModal - state updates", () => {
     fireEvent.change(weekdaySelect, { target: { value: "2" } });
     expect(controller.get().weekday).toBe(2);
 
-    // 강의실 입력 변경
+    // 강의실 입력 변경 (teacher 없으므로 modal-room id)
     const roomInput = getByLabelText("강의실") as HTMLInputElement;
     fireEvent.change(roomInput, { target: { value: "A-101" } });
     expect(controller.get().room).toBe("A-101");
