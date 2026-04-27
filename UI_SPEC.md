@@ -80,12 +80,15 @@ RootLayout
 **컴포넌트 트리 (현행):**
 ```
 SchedulePage
-  ├── ScheduleHeader (_components/)
-  │     └── 타이틀("일별/주간/월별 시간표") + SegmentedButton(뷰 전환) + ColorByToggle
+  ├── [Row 1: flex justify-between, border-b]
+  │     ├── ScheduleHeader (_components/) — 타이틀("일별/주간/월별 시간표") + 로딩 상태
+  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenu▼ + 공유 아이콘
+  │           └── TemplateMenu (molecules) — 드롭다운: "템플릿 저장" / "템플릿 적용"
   ├── StudentFilterChipBar (_components/) — colorBy=student 시만 표시
   ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
-  ├── ScheduleActionBar (_components/) — PDF·템플릿·공유 링크
-  ├── ScheduleDateNavigator (molecules) — 전 뷰 공통, ‹/›(±1일/주/월) + 오늘 버튼
+  ├── [Row 2: flex justify-between, 그리드 직전]
+  │     ├── ScheduleDateNavigator (molecules) — ‹/›(±1일/주/월) + 오늘 버튼
+  │     └── SegmentedButton(뷰 전환) + ColorByToggle + HelpTooltip(색상 기준, 1개)
   ├── [viewMode === "daily"]
   │     └── ScheduleDailyView (organisms) — 수업 카드 리스트 + 스와이프 제스처
   ├── [viewMode === "weekly"]
@@ -105,7 +108,7 @@ SchedulePage
 ```
 
 **ScheduleDateNavigator 상세:**
-- 위치: ScheduleActionBar 아래, 뷰 컨텐츠 위
+- 위치: Row 2 좌측 (그리드 바로 위, 뷰 컨트롤과 같은 행)
 - 좌: `ChevronLeft` 버튼(이전 날/주/월) + 라벨 + `ChevronRight` 버튼
 - 우: "오늘" 버튼 — `selectedDate`를 현재 시각으로 reset
 - 라벨 포맷: 일별="YYYY년 M월 D일 (요)", 주간="YYYY년 M월 D일 — M월 D일", 월별="YYYY년 M월"
@@ -307,8 +310,8 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | 컴포넌트 | 설명 |
 |----------|------|
 | `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
-| `ScheduleHeader` | 시간표 페이지 헤더. 타이틀 + SegmentedButton(뷰 전환) + ColorByToggle |
-| `ScheduleActionBar` | PDF 다운로드 + 템플릿 저장/적용 + 공유 링크 버튼 바 |
+| `ScheduleHeader` | 시간표 페이지 헤더(Row 1 좌). title prop + 로딩 상태만 렌더 (뷰/색상 토글 제거됨) |
+| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenu + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
 | `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
 | `GroupSessionModal` | 수업 추가 3-step Glass Stepper wizard (학생→과목/시간→확인) |
 | `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |
