@@ -30,6 +30,10 @@ import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateType
 import { Plus } from "lucide-react";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
+import SegmentedButton from "../../components/atoms/SegmentedButton";
+import ColorByToggle from "../../components/molecules/ColorByToggle";
+import { HelpTooltip } from "../../components/molecules/HelpTooltip";
+import type { ScheduleViewMode } from "../../hooks/useScheduleView";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
@@ -1044,19 +1048,63 @@ function SchedulePageContent(): JSX.Element {
   const handleDragEnd = (e: React.DragEvent) =>
     onDragEndStudent(e, setIsStudentDragging, () => {});
 
+  const VIEW_MODES: readonly { label: string; value: ScheduleViewMode }[] = [
+    { label: "일별", value: "daily" },
+    { label: "주간", value: "weekly" },
+    { label: "월별", value: "monthly" },
+  ] as const;
+
+  const scheduleTitle =
+    viewMode === "daily" ? "일별 시간표"
+    : viewMode === "monthly" ? "월별 시간표"
+    : "주간 시간표";
+
+  const dateLabel = (() => {
+    if (viewMode === "daily") {
+      const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+      return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`;
+    }
+    if (viewMode === "weekly") {
+      const mon = new Date(selectedDate);
+      mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+      const sun = new Date(mon);
+      sun.setDate(sun.getDate() + 6);
+      const sameMonth = mon.getMonth() === sun.getMonth();
+      const start = `${mon.getFullYear()}년 ${mon.getMonth() + 1}월 ${mon.getDate()}일`;
+      const end = sameMonth
+        ? `${sun.getDate()}일`
+        : sun.getFullYear() !== mon.getFullYear()
+          ? `${sun.getFullYear()}년 ${sun.getMonth() + 1}월 ${sun.getDate()}일`
+          : `${sun.getMonth() + 1}월 ${sun.getDate()}일`;
+      return `${start} — ${end}`;
+    }
+    return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
+  })();
+
   return (
     <div className="timetable-container p-4">
-      <ScheduleHeader
-        dataLoading={dataLoading}
-        error={error ?? undefined}
-        colorBy={colorBy}
-        onColorByChange={(mode) => {
-          setColorBy(mode);
-          if (mode !== "student") clearStudentFilter();
-        }}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+      {/* Row 1: 제목(좌) + 액션(우) */}
+      <div className="flex items-start justify-between mb-4 border-b border-[--color-border] pb-3">
+        <ScheduleHeader
+          dataLoading={dataLoading}
+          error={error ?? undefined}
+          title={scheduleTitle}
+        />
+        <ScheduleActionBar
+          viewLabel={scheduleTitle}
+          onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
+          isDownloading={isDownloading}
+          onDownloadStart={() => {}}
+          onDownloadEnd={() => {}}
+          userId={userId}
+          onSaveTemplate={() => setShowSaveTemplateModal(true)}
+          onApplyTemplate={() => {
+            _fetchTemplates();
+            setShowApplyTemplateModal(true);
+          }}
+          isSaving={templateSaving}
+        />
+      </div>
 
       {colorBy === "student" && (
         <StudentFilterChipBar
@@ -1083,57 +1131,38 @@ function SchedulePageContent(): JSX.Element {
         />
       )}
 
-      {/* 액션 바: PDF · 템플릿 · 공유 */}
-      <ScheduleActionBar
-        viewLabel={
-          viewMode === "daily"
-            ? "일별 시간표"
-            : viewMode === "monthly"
-              ? "월별 시간표"
-              : "주간 시간표"
-        }
-        onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
-        isDownloading={isDownloading}
-        onDownloadStart={() => {}}
-        onDownloadEnd={() => {}}
-        userId={userId}
-        onSaveTemplate={() => setShowSaveTemplateModal(true)}
-        onApplyTemplate={() => {
-          _fetchTemplates();
-          setShowApplyTemplateModal(true);
-        }}
-        isSaving={templateSaving}
-      />
-
-      {/* 날짜 네비게이터 (일별/주간/월별 공통) */}
-      <ScheduleDateNavigator
-        label={(() => {
-          if (viewMode === "daily") {
-            const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-            return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`;
-          }
-          if (viewMode === "weekly") {
-            const mon = new Date(selectedDate);
-            mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-            const sun = new Date(mon);
-            sun.setDate(sun.getDate() + 6);
-            const sameMonth = mon.getMonth() === sun.getMonth();
-            const start = `${mon.getFullYear()}년 ${mon.getMonth() + 1}월 ${mon.getDate()}일`;
-            const end = sameMonth
-              ? `${sun.getDate()}일`
-              : sun.getFullYear() !== mon.getFullYear()
-                ? `${sun.getFullYear()}년 ${sun.getMonth() + 1}월 ${sun.getDate()}일`
-                : `${sun.getMonth() + 1}월 ${sun.getDate()}일`;
-            return `${start} — ${end}`;
-          }
-          return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
-        })()}
-        onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
-        onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
-        onToday={goToToday}
-        prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
-        nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
-      />
+      {/* Row 2: 날짜 네비(좌) + 뷰·색상 토글(우) — 그리드 직전 */}
+      <div className="flex items-center justify-between gap-2 px-1 py-2">
+        <ScheduleDateNavigator
+          label={dateLabel}
+          onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
+          onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
+          onToday={goToToday}
+          prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
+          nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
+        />
+        <div className="flex items-center gap-2 shrink-0">
+          <SegmentedButton
+            options={VIEW_MODES}
+            value={viewMode}
+            onChange={setViewMode}
+            aria-label="뷰 모드"
+          />
+          <div className="flex items-center gap-1">
+            <ColorByToggle
+              colorBy={colorBy}
+              onChange={(mode) => {
+                setColorBy(mode);
+                if (mode !== "student") clearStudentFilter();
+              }}
+            />
+            <HelpTooltip
+              label="색상 기준 도움말"
+              content="과목별로 색을 구분하거나, 학생·강사 기준으로 전환할 수 있습니다."
+            />
+          </div>
+        </div>
+      </div>
 
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (

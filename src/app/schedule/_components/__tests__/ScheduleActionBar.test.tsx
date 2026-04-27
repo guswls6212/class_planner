@@ -2,12 +2,6 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../../components/molecules/HelpTooltip", () => ({
-  HelpTooltip: ({ label }: { label: string; content: string }) => (
-    <button aria-label={label}>도움말</button>
-  ),
-}));
-
 vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   default: ({
     viewLabel,
@@ -19,9 +13,25 @@ vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
     onDownloadStart: () => void;
     onDownloadEnd: () => void;
   }) => (
-    <button onClick={onDownload}>
+    <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF 다운로드`}>
       {viewLabel ?? "시간표"} PDF 다운로드
     </button>
+  ),
+}));
+
+vi.mock("../../../../components/molecules/TemplateMenu", () => ({
+  TemplateMenu: ({
+    onSave,
+    onApply,
+  }: {
+    onSave: () => void;
+    onApply: () => void;
+    isSaving?: boolean;
+  }) => (
+    <div>
+      <button onClick={onSave}>템플릿 저장 트리거</button>
+      <button onClick={onApply}>템플릿 적용 트리거</button>
+    </div>
   ),
 }));
 
@@ -63,46 +73,46 @@ describe("ScheduleActionBar", () => {
     expect(screen.getByText("주간 시간표 PDF 다운로드")).toBeDefined();
   });
 
-  it("userId가 null이면 템플릿/공유 버튼이 없다", () => {
+  it("userId가 null이면 TemplateMenu와 공유 링크가 없다", () => {
     render(<ScheduleActionBar {...baseProps} userId={null} />);
-    expect(screen.queryByText("현재 주를 템플릿으로 저장")).toBeNull();
-    expect(screen.queryByText("저장된 템플릿 적용하기")).toBeNull();
-    expect(screen.queryByText("공유 링크")).toBeNull();
+    expect(screen.queryByText("템플릿 저장 트리거")).toBeNull();
+    expect(screen.queryByRole("link", { name: /공유/ })).toBeNull();
   });
 
-  it("userId가 있으면 템플릿·공유 버튼이 모두 렌더된다", () => {
+  it("userId가 있으면 TemplateMenu가 렌더된다", () => {
     render(<ScheduleActionBar {...baseProps} userId="user-1" />);
-    expect(screen.getByText("현재 주를 템플릿으로 저장")).toBeDefined();
-    expect(screen.getByText("저장된 템플릿 적용하기")).toBeDefined();
-    expect(screen.getByText("공유 링크")).toBeDefined();
+    expect(screen.getByText("템플릿 저장 트리거")).toBeDefined();
+    expect(screen.getByText("템플릿 적용 트리거")).toBeDefined();
   });
 
-  it("템플릿 저장 버튼 클릭 시 onSaveTemplate이 호출된다", () => {
+  it("userId가 있으면 공유 링크가 렌더된다", () => {
+    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
+    expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
+  });
+
+  it("TemplateMenu의 저장 트리거 클릭 시 onSaveTemplate이 호출된다", () => {
     const onSaveTemplate = vi.fn();
     render(<ScheduleActionBar {...baseProps} userId="user-1" onSaveTemplate={onSaveTemplate} />);
-    fireEvent.click(screen.getByText("현재 주를 템플릿으로 저장"));
+    fireEvent.click(screen.getByText("템플릿 저장 트리거"));
     expect(onSaveTemplate).toHaveBeenCalledTimes(1);
   });
 
-  it("템플릿 적용 버튼 클릭 시 onApplyTemplate이 호출된다", () => {
+  it("TemplateMenu의 적용 트리거 클릭 시 onApplyTemplate이 호출된다", () => {
     const onApplyTemplate = vi.fn();
     render(<ScheduleActionBar {...baseProps} userId="user-1" onApplyTemplate={onApplyTemplate} />);
-    fireEvent.click(screen.getByText("저장된 템플릿 적용하기"));
+    fireEvent.click(screen.getByText("템플릿 적용 트리거"));
     expect(onApplyTemplate).toHaveBeenCalledTimes(1);
-  });
-
-  it("userId가 있을 때 템플릿 버튼 옆에 도움말 버튼이 있다", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
-    const helpBtns = screen.getAllByRole("button", { name: /도움말/ });
-    expect(helpBtns.length).toBeGreaterThanOrEqual(1);
   });
 
   it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
     const onOpenPdfDialog = vi.fn();
-    render(
-      <ScheduleActionBar {...baseProps} onOpenPdfDialog={onOpenPdfDialog} />
-    );
+    render(<ScheduleActionBar {...baseProps} onOpenPdfDialog={onOpenPdfDialog} />);
     fireEvent.click(screen.getByRole("button", { name: /PDF 다운로드/ }));
     expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
+  });
+
+  it("HelpTooltip이 렌더되지 않는다 (i 버튼 제거됨)", () => {
+    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
+    expect(screen.queryByRole("button", { name: /도움말/ })).toBeNull();
   });
 });
