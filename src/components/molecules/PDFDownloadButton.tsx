@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { Download } from "lucide-react";
 import { showError } from "../../lib/toast";
 import Button from "../atoms/Button";
 
@@ -30,15 +31,16 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   };
 
   return (
-    <div className="mb-4 text-right">
-      <Button
-        variant="primary"
-        onClick={handlePDFDownload}
-        disabled={isDownloading}
-      >
-        {isDownloading ? "다운로드 중..." : `${viewLabel} PDF 다운로드`}
-      </Button>
-    </div>
+    <Button
+      variant="primary"
+      size="small"
+      onClick={handlePDFDownload}
+      disabled={isDownloading}
+      aria-label={`${viewLabel} PDF 다운로드`}
+    >
+      <Download size={14} strokeWidth={2} className="mr-1.5" />
+      {isDownloading ? "다운로드 중..." : `${viewLabel} PDF 다운로드`}
+    </Button>
   );
 };
 
