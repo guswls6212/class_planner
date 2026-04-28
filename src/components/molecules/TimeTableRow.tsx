@@ -2,6 +2,7 @@ import React from "react";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import type { ColorByMode } from "../../hooks/useColorBy";
+import { resolveSessionTone } from "./SessionCard.utils";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
@@ -117,9 +118,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
-
-  // Effective lanes for column layout (cap at 2 when overflow)
   const effectiveLanes = isOverflow ? 2 : rawMaxYPosition;
+
+  // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
+  // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
+  const DRAG_HOVER_PAD = 10;
+  const isDraggingToThis = isDragging && dragPreview?.targetWeekday === weekday;
+  const baseWidth = isDraggingToThis ? width - DRAG_HOVER_PAD * 2 : width;
 
   // 30-minute time slots (9:00 – 23:30)
   const timeSlots30Min = React.useMemo(() => {
@@ -132,7 +137,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   }, []);
 
   // Lane width for horizontal overlap stacking within this weekday column
-  const laneWidth = width / Math.max(1, effectiveLanes);
+  const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
   // Visible sessions (yPos ≤2 when overflow; all otherwise)
@@ -164,7 +169,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const durationSlots = Math.max(1, (endMin - startMin) / 30);
       return {
         session,
-        left: Math.round(laneIdx * laneWidth),
+        left: Math.round(laneIdx * laneWidth) + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
         width: Math.round(laneWidth),
         top: Math.round(timeIdx * SLOT_HEIGHT_PX),
         height: Math.round(durationSlots * SLOT_HEIGHT_PX),
@@ -230,7 +235,15 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
       data-testid={`time-table-column-${weekday}`}
       data-weekday={weekday}
-      style={{ height: `${totalHeight}px`, width: `${width}px`, ...style }}
+      style={{
+        height: `${totalHeight}px`,
+        width: `${width}px`,
+        // target 컬럼: 미묘한 inner glow로 "여기에 드래그 중" 표시
+        boxShadow: isDraggingToThis
+          ? "inset 0 0 0 1.5px rgba(99,179,237,0.35)"
+          : undefined,
+        ...style,
+      }}
     >
       {/* 수평 시간선 overlay — pointer-events:none, 세션 블록보다 낮은 z-index */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -287,7 +300,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               style={{
                 position: "absolute",
                 top: `${timeIndex * SLOT_HEIGHT_PX}px`,
-                left: `${laneIdx * laneWidth}px`,
+                left: `${laneIdx * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0)}px`,
                 width: `${laneWidth}px`,
                 height: `${SLOT_HEIGHT_PX}px`,
                 zIndex: 1,
@@ -299,6 +312,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height }) => (
+        // target weekday에서만 SessionBlock을 skip하고 DragGhost가 대신 렌더.
+        // targetWeekday === null (아직 셀 위를 안 지남)이면 원본 위치에 정상 렌더.
+        session.id === dragPreview?.draggedSession?.id
+          && dragPreview?.targetWeekday === weekday
+          ? null :
         <SessionBlock
           key={session.id}
           session={session}
@@ -335,6 +353,107 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isAnyDragging={isAnyDragging}
         />
       ))}
+
+      {/* Source placeholder — 세션이 이 요일에서 빠져나갔을 때 원래 자리에 흐릿한 표시 */}
+      {(() => {
+        const ds = dragPreview?.draggedSession;
+        // source weekday이고, hover 중인 target이 있고, 이 요일에서 세션이 사라졌을 때
+        if (!ds || ds.weekday !== weekday || dragPreview?.targetWeekday === null) return null;
+        // laidOutSessions에 없어야 함 (다른 요일로 이동된 경우)
+        if (laidOutSessions.some(({ session }) => session.id === ds.id)) return null;
+
+        const [sh, sm] = (ds.startsAt ?? "").split(":").map(Number);
+        const [eh, em] = (ds.endsAt ?? "").split(":").map(Number);
+        const timeIdx = Math.max(0, (sh * 60 + sm - 9 * 60) / 30);
+        const durationSlots = Math.max(1, ((eh * 60 + em) - (sh * 60 + sm)) / 30);
+        const laneIdx = Math.min(Math.max(0, (ds.yPosition ?? 1) - 1), effectiveLanes - 1);
+
+        const firstEnrollId = ds.enrollmentIds?.[0];
+        const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
+        const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
+        const srcColor = subj?.color ?? "#6B7280";
+
+        return (
+          <div
+            key="drag-source"
+            style={{
+              position: "absolute",
+              left: Math.round(laneIdx * laneWidth),
+              top: Math.round(timeIdx * SLOT_HEIGHT_PX) + 1,
+              width: Math.round(laneWidth),
+              height: Math.round(durationSlots * SLOT_HEIGHT_PX) - 1,
+              backgroundColor: srcColor,
+              opacity: 0.18,
+              borderRadius: 4,
+              pointerEvents: "none",
+              zIndex: 90,
+            }}
+            data-testid="drag-source"
+          />
+        );
+      })()}
+
+      {/* DragGhost — 드래그 대상 위치에 세션 내용이 담긴 반투명 미리보기 카드 */}
+      {(() => {
+        const ds = dragPreview?.draggedSession;
+        if (!ds || dragPreview?.targetWeekday !== weekday) return null;
+
+        const ghostLayout = laidOutSessions.find(({ session }) => session.id === ds.id);
+        if (!ghostLayout) return null;
+
+        // 과목·학생 정보 추출 (sessionsForRender의 세션 = 이미 target 시간으로 업데이트됨)
+        const { session: ghostSession } = ghostLayout;
+        const firstEnrollId = ds.enrollmentIds?.[0];
+        const enr = firstEnrollId ? enrollments.find((e) => e.id === firstEnrollId) : null;
+        const subj = enr ? subjects.find((s) => s.id === enr.subjectId) : null;
+        const ghostColor = subj?.color ?? "#6B7280";
+        const tone = resolveSessionTone(ghostColor);
+        const studentNames = (ds.enrollmentIds ?? [])
+          .flatMap((eid) => {
+            const e = enrollments.find((en) => en.id === eid);
+            const st = e ? students.find((s) => s.id === e.studentId) : null;
+            return st ? [st.name] : [];
+          })
+          .slice(0, 4);
+
+        return (
+          <div
+            key="drag-ghost"
+            data-testid="drag-ghost"
+            style={{
+              position: "absolute",
+              left: ghostLayout.left + 1,
+              top: ghostLayout.top + 1,
+              width: ghostLayout.width - 2,
+              height: ghostLayout.height - 2,
+              backgroundColor: tone.bg,
+              borderRadius: 6,
+              pointerEvents: "none",
+              zIndex: 200,
+              opacity: 0.82,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.18), 0 0 0 2px rgba(255,255,255,0.25)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              padding: "3px 6px",
+              gap: 1,
+              borderLeft: `3px solid ${tone.accent}`,
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: tone.fg, lineHeight: 1.3, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+              {subj?.name ?? "과목 없음"}
+            </div>
+            <div style={{ fontSize: 10, color: tone.fg, opacity: 0.75, lineHeight: 1.2 }}>
+              {ghostSession.startsAt}–{ghostSession.endsAt}
+            </div>
+            {studentNames.length > 0 && (
+              <div style={{ fontSize: 10, color: tone.fg, opacity: 0.65, lineHeight: 1.2, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                {studentNames.join(", ")}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Overflow pills — one per contiguous group of slots sharing the same hidden session set */}
       {isOverflow &&

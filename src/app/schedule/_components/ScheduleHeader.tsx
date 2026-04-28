@@ -2,14 +2,23 @@ type Props = {
   dataLoading: boolean;
   error?: string;
   title: string;
+  isSyncingSession?: boolean;
 };
 
-export default function ScheduleHeader({ dataLoading, error, title }: Props) {
+export default function ScheduleHeader({
+  dataLoading,
+  error,
+  title,
+  isSyncingSession = false,
+}: Props) {
   return (
     <div>
       <div className="flex items-center gap-3">
         <h2 className="text-2xl font-semibold text-[--color-text-primary]">{title}</h2>
-        {dataLoading && !error && (
+        {isSyncingSession && (
+          <span className="text-xs text-[--color-text-secondary] opacity-70">저장 중...</span>
+        )}
+        {dataLoading && !error && !isSyncingSession && (
           <span className="text-sm text-blue-500">로드 중...</span>
         )}
       </div>

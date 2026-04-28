@@ -27,7 +27,7 @@ export async function PUT(
     const body = await request.json();
     const { weekday, time, endTime, yPosition } = body;
 
-    if (!weekday || !time || !endTime) {
+    if (weekday === undefined || weekday === null || !time || !endTime) {
       return NextResponse.json(
         { success: false, error: "Weekday, time, and endTime are required" },
         { status: 400 }

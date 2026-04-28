@@ -79,8 +79,10 @@ export const getSessionBlockStyles = (
   // 전역 드래그 상태 (학생 드래그 또는 세션 드래그) 처리
   if (isAnyDragging) {
     if (isDraggedSession) {
-      // 드래그 중인 세션: 반투명으로 표시. pointer-events auto 유지 — none으로 바꾸면
-      // Chrome이 소스 요소를 비인터랙티브로 판단해 네이티브 드래그를 즉시 취소함.
+      // 드래그 중인 세션(원본): 반투명으로 표시. pointer-events auto 유지.
+      // none으로 바꾸면 React 리렌더 시점에 Chrome이 네이티브 드래그를 즉시 취소함.
+      // drop 가로채기 문제는 computeTentativeLayout에서 드래그 세션을 결과에서 제외하고
+      // DragGhost(pointer-events:none)를 target 위치에 별도 렌더하는 방식으로 해결.
       opacity = 0.4;
       visibility = "visible";
       pointerEvents = "auto";

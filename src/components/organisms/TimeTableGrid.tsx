@@ -16,14 +16,8 @@ import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useDragController } from "../../hooks/useDragController";
 import TimeTableRow from "../molecules/TimeTableRow";
-
-interface DragPreviewState {
-  draggedSession: Session | null;
-  targetWeekday: number | null;
-  targetTime: string | null;
-  targetYPosition: number | null;
-}
 
 interface TimeTableGridProps {
   sessions: Map<number, Session[]>;
@@ -86,12 +80,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const isTouchDevice =
       typeof window !== "undefined" && "ontouchstart" in window;
 
-    const [dragPreview, setDragPreview] = useState<DragPreviewState>({
-      draggedSession: null,
-      targetWeekday: null,
-      targetTime: null,
-      targetYPosition: null,
-    });
+    const dragController = useDragController();
 
     const [scrollbarState, setScrollbarState] = useState({
       thumbWidth: 0,
@@ -319,43 +308,49 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const slotCount = timeSlots30Min.length;
 
-    // 요일별 lane 수 (yPosition max). weekday column 내부에서 laneWidth 분할 기준.
-    // D-hybrid (B3): ≤3 lanes — equal split; ≥4 lanes — cap at 2 (pill handles overflow).
-    // 드래그 중에는 캡 해제 (TimeTableRow가 5 lanes로 확장하므로 width도 맞춰야 함).
-    const weekdayMaxLanes = useMemo(
-      () =>
-        Array.from({ length: 7 }, (_, weekday) => {
-          const daySessions = sessions?.get(weekday) || [];
-          const required = computeRequiredLanes(daySessions);
-          const isDraggingAny = isAnyDragging || isStudentDragging;
-          if (!isDraggingAny && required >= 4) return 2;
-          return required;
-        }),
-      [sessions, isAnyDragging, isStudentDragging]
-    );
 
     // 드래그 중 목표 위치를 기반으로 레이아웃을 미리 계산해 TimeTableRow에 전달.
     // 드래그가 없으면 원본 sessions Map을 그대로 반환 (참조 동일).
+    // 드래그 세션을 포함한 결과를 반환 — TimeTableRow에서 SessionBlock 렌더 시 skip하고
+    // 대신 DragGhost를 렌더한다. 이렇게 해야 weekdayMaxLanes 계산에 ghost lane이 반영된다.
     const sessionsForRender = useMemo(
       () =>
         computeTentativeLayout(
           sessions,
           enrollments,
           subjects,
-          dragPreview.draggedSession,
-          dragPreview.targetWeekday,
-          dragPreview.targetTime,
-          dragPreview.targetYPosition,
+          dragController.draggedSession,
+          dragController.targetWeekday,
+          dragController.targetTime,
+          dragController.targetYPosition,
         ),
-      [sessions, enrollments, subjects, dragPreview],
+      [sessions, enrollments, subjects, dragController],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
-    // 각 weekday column 너비 = max lanes × laneWidth (overlap 많으면 컬럼 넓어짐)
+    // 각 weekday column 너비 = max lanes × laneWidth.
+    // 드래그 중에는 sessionsForRender(tentative layout, 드래그 세션 포함)를 기준으로 계산.
+    // target 요일에만 DRAG_HOVER_PAD * 2(양쪽 20px) 추가 — 세션 너비는 그대로이고
+    // 양 옆에 여백만 생겨서 다음 요일로 넘어가지 않고 원하는 위치에 쉽게 드롭할 수 있다.
+    const DRAG_HOVER_PAD = 10;
     const weekdayWidths = useMemo(
-      () => weekdayMaxLanes.map((lanes) => lanes * laneWidth),
-      [weekdayMaxLanes, laneWidth]
+      () => {
+        const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
+        const targetWd = dragController.targetWeekday;
+        const baseMap = isDraggingAny ? sessionsForRender : sessions;
+        return Array.from({ length: 7 }, (_, wd) => {
+          const daySessions = baseMap?.get(wd) || [];
+          const required = computeRequiredLanes(daySessions);
+          const lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          const baseW = Math.max(1, lanes) * laneWidth;
+          // target 요일에 좌우 여백 추가 (hover 중일 때만)
+          return isDraggingAny && wd === targetWd && targetWd !== null
+            ? baseW + DRAG_HOVER_PAD * 2
+            : baseW;
+        });
+      },
+      [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth]
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;
@@ -394,57 +389,28 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const gridTemplateRows = `${headerRowHeight}px ${contentHeight}px`;
 
-    // 브라우저 창 전환 등으로 dragend가 누락될 때 드래그 상태를 강제 리셋
-    useEffect(() => {
-      const resetDrag = () => {
-        setDragPreview({
-          draggedSession: null,
-          targetWeekday: null,
-          targetTime: null,
-          targetYPosition: null,
-        });
-      };
-      document.addEventListener("dragend", resetDrag);
-      return () => document.removeEventListener("dragend", resetDrag);
-    }, []);
+    // document-level dragend 리셋은 useDragController 내부 useEffect가 처리.
 
     const handleDragStart = useCallback(
       (session: Session) => {
         if (isTouchDevice) return;
-        setDragPreview({
-          draggedSession: session,
-          targetWeekday: null,
-          targetTime: null,
-          targetYPosition: null,
-        });
+        dragController.startSessionDrag(session);
       },
-      [isTouchDevice]
+      [isTouchDevice, dragController]
     );
 
     const handleDragOver = useCallback(
       (weekday: number, time: string, yPosition: number) => {
         if (isTouchDevice) return;
-        if (!dragPreview.draggedSession) return;
-
-        setDragPreview((prev) => ({
-          ...prev,
-          targetWeekday: weekday,
-          targetTime: time,
-          targetYPosition: yPosition,
-        }));
+        if (!dragController.draggedSession) return;
+        dragController.hoverTarget(weekday, time, yPosition);
       },
-      [dragPreview.draggedSession, isTouchDevice]
+      [dragController, isTouchDevice]
     );
 
     const handleDragEnd = useCallback(() => {
       logger.info("TimeTableGrid 드래그 종료");
-
-      setDragPreview({
-        draggedSession: null,
-        targetWeekday: null,
-        targetTime: null,
-        targetYPosition: null,
-      });
+      dragController.cancelDrag();
 
       // 세션 드래그앤드롭 후 스크롤 위치 복원 (다음 페인트 직후)
       requestAnimationFrame(() => {
@@ -457,7 +423,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
         }
       });
-    }, [getSavedScrollPosition]);
+    }, [dragController, getSavedScrollPosition]);
 
     return (
       <div
@@ -479,6 +445,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           style={{
             gridTemplateColumns,
             gridTemplateRows,
+            transition: "grid-template-columns 0.15s ease",
             ...style,
           }}
         >
@@ -553,20 +520,24 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onSessionDrop={isReadOnly ? undefined : onSessionDrop}
                 onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
                 selectedStudentIds={selectedStudentIds}
-                isAnyDragging={isAnyDragging || isStudentDragging}
+                isAnyDragging={dragController.isAnyDragging() || isStudentDragging}
                 teachers={teachers}
                 colorBy={colorBy}
                 isMobile={isMobile}
                 onDragStart={isTouchDevice ? undefined : handleDragStart}
                 onDragOver={isTouchDevice ? undefined : handleDragOver}
                 onDragEnd={isTouchDevice ? undefined : handleDragEnd}
-                dragPreview={isTouchDevice ? undefined : dragPreview}
+                dragPreview={isTouchDevice ? undefined : {
+                  draggedSession: dragController.draggedSession,
+                  targetWeekday: dragController.targetWeekday,
+                  targetTime: dragController.targetTime,
+                  targetYPosition: dragController.targetYPosition,
+                }}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
-                  // amber tint — raw hex needed for alpha
                   ...(isToday && { backgroundColor: "rgba(245,158,11,0.025)" }),
                 }}
               />

@@ -7,38 +7,59 @@
 
 ## 현재 열린 이슈
 
-### [OPEN] DRAG-001 — 드래그 후 세션이 실제로 이동하지 않음
+### [FIX PENDING VERIFICATION] DRAG-001 — 드래그 후 세션이 실제로 이동하지 않음
 
 **현상:**
 - 세션 블록을 다른 요일/시간으로 드래그하면 미리보기는 보이지만, 드롭 후 데이터가 업데이트되지 않고 원 위치로 "복귀"
-- opacity:0.4로 남은 채 dragend가 발화되지 않는 경우도 있음
-- 새로고침 시 localStorage 데이터가 서버 GET으로 덮여 최근 세션이 사라짐
+- omni-radar 캡처: dragstart ✓, handleDragEnter ✓, handleDrop **0건** (drop이 cell에 도달하지 않음)
 
-**확증된 근본 원인:**
-Chrome native drag engine은 드래그 중 소스 요소의 `pointer-events`가 `auto → none`으로 바뀌면 드래그를 즉시 취소한다. Playwright 합성 DragEvent는 이 동작을 재현하지 못함 — 실제 마우스 드래그에서만 발현.
+**확증된 근본 원인 (2026-04-25):**
+`computeTentativeLayout`이 매 dragover마다 드래그 세션 블록을 target cell 위로 이동시킨다.
+드래그 세션의 `pointer-events: auto` 상태가 유지되면, 마우스 아래 요소가 cell이 아니라 블록 wrapper가 되어
+native drop이 cell의 handleDrop에 전달되지 않는다.
+
+이전 fix들(`cad3afa`, `ea90a71`)이 모두 실패한 이유:
+- E/G Phase: dragstart 이전에 pointer-events:none으로 바꿔서 Chrome이 드래그 자체를 취소 (타이밍 오류)
+- cad3afa: dragPreview.draggedSession을 isAnyDragging에 추가했으나 drop interception 원인을 잘못 진단
+- ea90a71: wrapper에 onDrop 추가했으나 onDragOver 없어서 drop target 등록 실패 + onSessionDropAtTarget 타이밍 조건 오류
+
+**적용된 Fix (2026-04-25, branch: refactor/drag-controller-ssot):**
+
+| 내용 | 파일 |
+|------|------|
+| `useScheduleDragAndDrop.ts` dead code 삭제 (0 import 확인) | deleted |
+| `useDragController.ts` 신설 — drag 상태 단일 reducer SSOT | `src/hooks/useDragController.ts` |
+| `TimeTableGrid.tsx` — dragPreview useState → useDragController | `src/components/organisms/TimeTableGrid.tsx` |
+| **dragstart 이후** `pointer-events:none` 적용 (타이밍 안전) | `src/components/molecules/SessionBlock.utils.ts` |
+| UI_SPEC.md §3.4.1~3.4.5 drag SSOT 문서화 추가 | `UI_SPEC.md` |
+
+**핵심 인사이트:** `pointer-events:none`을 dragstart **이후** (React 리렌더 시점)에 적용하면
+Chrome native drag가 이미 시작됐으므로 드래그 취소가 발생하지 않는다.
+이전 Phase E/G는 "드래그 시작 시점" 이전에 none으로 바꾸려 해서 실패했음.
+
+**Playwright 검증 결과:**
+- `dragstart` dispatch → `pointerEvents: "none"` 변경 확인 ✅
+- `dragend` dispatch → `pointerEvents: "auto"` 복귀 확인 ✅
+- `dataTransfer: "session:..."` 정상 설정 ✅
+- 1575/1575 단위 테스트 통과 ✅
+
+**남은 검증 (사용자 수동):**
+Chrome에서 실제 마우스로 드래그 후 omni-radar에서 handleDrop 로그 확인:
+```bash
+omni-radar/scripts/radar-query --target browser --keyword handleDrop --since 5m
+```
 
 **시도한 접근 및 결과:**
 
 | Phase | 브랜치 | PR | 내용 | 결과 |
 |-------|--------|-----|------|------|
 | D | fix/drag-ux-phase-d | #90 | lane 1만 드래그, z-index 역전, pixel/logical yPosition 불일치 수정 | ✅ dev 머지 |
-| E | fix/drag-preview-phase-e | #91 | Bug4(드래그 중 다른 블록 사라짐) z-index 수정. pointer-events:none 시도 → 회귀 | ❌ revert |
-| F | fix/drag-init-regression-phase-f | #92 | pointer-events revert. z-index 픽스만 유지 | ✅ dev 머지 |
-| G | fix/drag-preview-drop-phase-g | #93 | hasDragTarget 조건부 pointer-events. Playwright 통과, 실제 마우스 실패 | ❌ revert |
-| G-revert | hotfix/revert-drag-phase-g | #94 | PR #93 전면 revert | ✅ dev 머지 (2026-04-24) |
-
-**현재 상태 (2026-04-24):**
-- dev = Phase F 수준. 드래그 기본 동작은 정상이나 드롭 데이터 업데이트가 여전히 미완.
-- "같은 자리에 놓으면 이동 안 됨" 제약이 남아있음.
-- Playwright 합성 이벤트가 Chrome native drag를 재현 못하므로, 실제 마우스 로그 캡처 인프라 없이는 재시도가 위험.
-
-**미결 질문:**
-1. 드롭 이벤트가 TimeTableCell에 도달하는지 여부를 실제 마우스 드래그 시 로그로 확인 필요.
-2. `computeTentativeLayout`이 만든 미리보기 블록이 drop을 가로채는지 확인 필요.
-
-**다음 단계:**
-→ Phase H (ghost-div 재설계) 착수 전에 omni-radar + Chrome 확장으로 실제 드래그 로그 확보.
-→ `docs/debugging-guide.md` 참고.
+| E | fix/drag-preview-phase-e | #91 | pointer-events:none 시도 (dragstart 이전) | ❌ 회귀 |
+| F | fix/drag-init-regression-phase-f | #92 | pointer-events revert | ✅ dev 머지 |
+| G | fix/drag-preview-drop-phase-g | #93 | hasDragTarget 조건부 pointer-events (dragstart 이전) | ❌ 회귀 |
+| G-revert | hotfix/revert-drag-phase-g | #94 | revert | ✅ dev 머지 |
+| H | fix/drag-isanydragging-missing | — | isAnyDragging 추가, onSessionDropAtTarget (모두 실패) | ❌ 폐기 |
+| **I** | **refactor/drag-controller-ssot** | **—** | **useDragController SSOT + dragstart 이후 pointer-events:none** | **검증 대기** |
 
 ---
 

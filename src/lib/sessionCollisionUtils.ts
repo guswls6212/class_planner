@@ -429,6 +429,7 @@ export function computeTentativeLayout(
   targetWeekday: number | null,
   targetStartTime: string | null,
   targetYPosition: number | null,
+  options?: { excludeDraggedFromResult?: boolean },
 ): Map<number, Session[]> {
   if (
     !dragged ||
@@ -461,6 +462,9 @@ export function computeTentativeLayout(
 
   const result = new Map<number, Session[]>();
   for (const s of tentative) {
+    // excludeDraggedFromResult: 드래그 세션을 결과에서 제외하여 SessionBlock이
+    // target 위치에 렌더되지 않게 함. 대신 DragGhost(pointer-events:none)를 사용.
+    if (options?.excludeDraggedFromResult && s.id === dragged.id) continue;
     if (!result.has(s.weekday)) result.set(s.weekday, []);
     result.get(s.weekday)!.push(s);
   }
