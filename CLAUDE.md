@@ -179,29 +179,6 @@ Playwright MCP 설정에서 viewport를 375×667로 변경 후 재확인.
 
 Claude Max 구독 내 실행 (추가 API 비용 없음). computer-use tool로 브라우저를 직접 조작하며 시각적 이상을 탐지한다.
 
-### 드래그 관련 변경 시 필수 수동 체크 (Non-negotiable)
-
-아래 파일 중 하나라도 수정된 PR은 머지 전 반드시 수동 드래그 검증을 수행한다:
-- `src/components/organisms/TimeTableGrid.tsx`
-- `src/components/molecules/TimeTableRow.tsx`
-- `src/components/molecules/TimeTableCell.tsx`
-- `src/components/molecules/SessionBlock.tsx`
-- `src/hooks/useDragController.ts`
-- `src/app/schedule/_utils/dndHelpers.ts`
-- `src/app/schedule/page.tsx` (handleSessionDrop / isStudentDragging 관련)
-
-**검증 체크리스트 (computer-use 또는 직접 브라우저):**
-- [ ] SessionBlock을 다른 요일 cell로 drag → drop → weekday 변경됨 (localStorage DevTools 확인)
-- [ ] SessionBlock을 같은 요일 다른 시간으로 drag → drop → startsAt 변경됨
-- [ ] drag 시작 시 target 요일 컬럼 좌우 10px 여백 표시됨
-- [ ] drag 중 DragGhost가 마우스 위치에 따라 이동함
-- [ ] source block이 원 위치에 흐릿하게(opacity 0.18) 유지됨
-- [ ] 같은 위치 drop → 이동 없음 (조용한 취소)
-- [ ] drag 취소(Esc / 창 전환) → `useDragController.isAnyDragging()` false로 복구됨
-
-**왜 Playwright E2E가 충분하지 않은가:**
-Chrome native drag-and-drop은 pointer-events hit-test와 z-index 기반 drop 타겟 결정이 브라우저 native 레이어에서 처리된다. Playwright의 합성 DragEvent는 이를 재현하지 못한다(TASKS.md Phase H 교훈). 이 체크리스트는 그 한계를 보완하는 필수 수동 gate이다.
-
 ### UI Verification Report 포맷
 
 ```
