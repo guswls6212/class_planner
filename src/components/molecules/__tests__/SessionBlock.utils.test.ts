@@ -69,7 +69,8 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함.
+    // drop 가로채기 방지는 computeTentativeLayout excludeDraggedFromResult + DragGhost로 처리.
     expect(styles.pointerEvents).toBe("auto");
   });
 
@@ -102,7 +103,7 @@ describe("getSessionBlockStyles", () => {
 
     expect(styles.opacity).toBe(0.4);
     expect(styles.visibility).toBe("visible");
-    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함
+    // pointer-events auto 유지 — none으로 하면 Chrome이 네이티브 드래그를 즉시 취소함.
     expect(styles.pointerEvents).toBe("auto");
   });
 

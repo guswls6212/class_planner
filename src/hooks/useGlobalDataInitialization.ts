@@ -183,6 +183,7 @@ export const useGlobalDataInitialization = () => {
         }
 
         // use-server: 정상 경로
+        // 서버가 source of truth. 새로고침 시 서버 데이터를 localStorage에 적용.
         // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
         if (subjectsFetched && serverData.subjects.length === 0) {
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
