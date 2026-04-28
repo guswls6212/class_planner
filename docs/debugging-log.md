@@ -180,3 +180,41 @@ grep '"event_type":"console_log"' \
 |-------|------|------|----------|
 | H | ghost-div 드래그 재설계 — 소스 블록은 제자리 유지, 별도 고스트 div가 타겟에 렌더 | BACKLOG | omni-radar 실제 마우스 로그 확보 |
 | I | (원래 계획) logger.ts → JSONL 파일 저장 | SUPERSEDED | Chrome 확장 경로로 대체됨 |
+
+---
+
+## Phase H 완료 (2026-04-28) — useDragController SSOT 도입
+
+### 배경 (회귀 원인)
+PR #94(Phase G-revert, 2026-04-24)로 dev가 Phase F 수준으로 되돌아갔다.
+같은 날 `refactor/drag-controller-ssot` 브랜치(ghost-div 재설계 완성본)가 만들어졌으나
+2일간 dev에 머지되지 않고 방치됐다.
+
+그 사이 toolbar PR(#102, 2026-04-27)이 dev에 머지됐다.
+사용자가 dev 동기화 후 드래그가 안 된다고 보고 — toolbar PR 때문이 아니라
+**Phase F 이후 fix가 미머지 상태였던 것**이 드러난 것.
+
+### 근본 원인
+- **세션 이동 안 됨**: `weekdayMaxLanes`가 `isStudentDragging || isAnyDragging`만 체크. 세션 드래그 시 둘 다 false → lane cap 해제 안 됨. + preview SessionBlock이 drop 이벤트 가로챔.
+- **10px 여백 미표시**: `DRAG_HOVER_PAD` 상수 자체가 dev에 없었음.
+- **자동화 그물 없음**: Playwright 합성 이벤트로는 native drag 재현 불가. CI e2e는 drag 0줄. unit test에 drag 회귀 케이스 없음.
+
+### 해결책 (PR #103)
+`refactor/drag-controller-ssot`를 dev에 머지 (toolbar PR conflict 해결 포함):
+- `useDragController` SSOT 상태 머신 (idle/dragging/hovering)
+- `computeTentativeLayout({ excludeDraggedFromResult: true })` — preview block skip → drop 가로챔 구조 해소
+- `DRAG_HOVER_PAD = 10` — 타겟 요일 좌우 10px 여백
+- DragGhost + source placeholder UX
+- `/api/sessions/:id/position` endpoint 올바른 라우팅
+- `weekday=0` falsy 버그 수정
+
+### 추가된 회귀 테스트 (TimeTableRow.test.tsx +6)
+- dragPreview 없으면 SessionBlock 정상 렌더 (기준선)
+- targetWeekday === weekday → SessionBlock 숨김, DragGhost 표시
+- targetWeekday !== weekday → SessionBlock 정상 렌더
+- source-placeholder 조건 (다른 요일로 이동 중일 때만)
+
+### 교훈
+1. **stale drag 브랜치가 감지됐을 때 무조건 처리 후 다른 작업**: `fix/drag-*`, `refactor/drag-*`는 BLOCKER 취급.
+2. **CLAUDE.md 드래그 체크리스트가 강제 gate여야 함**: 수동 검증 권장으로는 부족. 해당 파일 수정 시 ui-verify 체크리스트 항목으로 명시.
+3. **unit-level 회귀 그물이 Playwright e2e를 대체**: `useDragController.test.ts` + `TimeTableRow drag-preview 6 cases`가 1차 안전망.

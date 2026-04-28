@@ -405,5 +405,120 @@ describe("TimeTableRow Component", () => {
     });
   });
 
+  // ===================================================================
+  // 드래그 회귀 테스트 (Regression: 세션 이동 안 됨 + 10px padding 미표시)
+  // ===================================================================
+  describe("dragPreview 회귀 테스트", () => {
+    const dragSession: Session = {
+      id: "drag-session-1",
+      startsAt: "09:00",
+      endsAt: "10:00",
+      enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+      weekday: 0,
+      yPosition: 1,
+    };
+
+    const draggingSessions = new Map<number, Session[]>();
+    draggingSessions.set(0, [dragSession]);
+
+    it("dragPreview 없으면 SessionBlock이 정상 렌더된다 (회귀 기준선)", () => {
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={draggingSessions}
+        />
+      );
+      expect(screen.getByTestId("session-drag-session-1")).toBeInTheDocument();
+    });
+
+    it("dragPreview.targetWeekday === weekday이면 SessionBlock이 숨겨진다 (drop 가로챔 방지)", () => {
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={draggingSessions}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: 0,
+            targetTime: "10:00",
+            targetYPosition: 1,
+          }}
+        />
+      );
+      expect(screen.queryByTestId("session-drag-session-1")).toBeNull();
+    });
+
+    it("dragPreview.targetWeekday === weekday이면 DragGhost가 렌더된다", () => {
+      const sessionsForGhost = new Map<number, Session[]>();
+      sessionsForGhost.set(0, [{ ...dragSession, startsAt: "10:00", endsAt: "11:00" }]);
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={sessionsForGhost}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: 0,
+            targetTime: "10:00",
+            targetYPosition: 1,
+          }}
+        />
+      );
+      expect(screen.getByTestId("drag-ghost")).toBeInTheDocument();
+    });
+
+    it("dragPreview.targetWeekday !== weekday이면 SessionBlock이 정상 렌더된다", () => {
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={draggingSessions}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: 2,
+            targetTime: "09:00",
+            targetYPosition: 1,
+          }}
+        />
+      );
+      expect(screen.getByTestId("session-drag-session-1")).toBeInTheDocument();
+    });
+
+    it("원본 요일에서 세션이 다른 요일로 이동 중이면 source-placeholder가 렌더된다", () => {
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={new Map()}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: 2,
+            targetTime: "09:00",
+            targetYPosition: 1,
+          }}
+        />
+      );
+      expect(screen.getByTestId("drag-source")).toBeInTheDocument();
+    });
+
+    it("targetWeekday === null이면 source-placeholder가 렌더되지 않는다 (아직 타겟 셀 위를 안 지남)", () => {
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          weekday={0}
+          sessions={draggingSessions}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: null,
+            targetTime: null,
+            targetYPosition: null,
+          }}
+        />
+      );
+      expect(screen.queryByTestId("drag-source")).toBeNull();
+    });
+  });
+
 });
 
