@@ -52,6 +52,7 @@ interface TimeTableRowProps {
   // 오늘 열 강조 (주간 헤더 날짜 표시용)
   isToday?: boolean;
   nowLinePx?: number | null;
+  nowTimeStr?: string;
 }
 
 /**
@@ -85,6 +86,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   dragPreview,
   isToday = false,
   nowLinePx = null,
+  nowTimeStr,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
 
@@ -224,17 +226,27 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         {/* 현재 시각 선 (오늘 열만) */}
         {isToday && nowLinePx !== null && (
           <div
-            className="absolute left-0 right-0"
-            style={{ top: nowLinePx, zIndex: 10 }}
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{ top: nowLinePx, zIndex: 150, transition: "top 0.5s ease-out" }}
             aria-label="현재 시각"
           >
+            {/* Amber time pill on the left */}
+            {nowTimeStr && (
+              <div
+                className="absolute left-0 -top-[11px] text-[10px] font-semibold px-[6px] py-0.5 rounded-[10px] leading-[1.4] whitespace-nowrap z-[151]"
+                style={{
+                  background: "var(--color-accent-hover)",
+                  color: "var(--color-bg, #0f1115)",
+                  fontFeatureSettings: '"tnum"',
+                }}
+              >
+                {nowTimeStr}
+              </div>
+            )}
+            {/* 2px horizontal line */}
             <div
-              className="absolute rounded-full"
-              style={{ width: 10, height: 10, background: "var(--color-accent-hover)", top: -4, left: -4 }}
-            />
-            <div
-              className="absolute left-0 right-0"
-              style={{ height: 2, background: "var(--color-accent-hover)", borderRadius: 1 }}
+              className="absolute left-0 right-0 h-[2px] rounded-[1px]"
+              style={{ background: "var(--color-accent-hover)" }}
             />
           </div>
         )}

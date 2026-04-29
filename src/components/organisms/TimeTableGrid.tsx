@@ -17,6 +17,7 @@ import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useDragController } from "../../hooks/useDragController";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import TimeTableRow from "../molecules/TimeTableRow";
 
 interface TimeTableGridProps {
@@ -368,15 +369,21 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       });
     }, [baseDate]);
 
-    const todayStr = useMemo(() => new Date().toDateString(), []);
+    const now = useNowMinute();
+    const todayStr = now.toDateString();
 
     // 현재 시각 → 픽셀 위치 (9:00 기준, SLOT_HEIGHT_PX per 30min)
     const nowLinePx = useMemo(() => {
-      const now = new Date();
       const minutesSince9 = (now.getHours() - 9) * 60 + now.getMinutes();
       if (minutesSince9 < 0 || minutesSince9 > 870) return null; // 870 = (23-9)*60+30 — last slot is 23:30
       return (minutesSince9 / 30) * SLOT_HEIGHT_PX;
-    }, []);
+    }, [now]);
+
+    const nowTimeStr = useMemo(() => {
+      const h = now.getHours().toString().padStart(2, "0");
+      const m = now.getMinutes().toString().padStart(2, "0");
+      return `${h}:${m}`;
+    }, [now]);
 
     const headerRowHeight = 60;
     const contentHeight = slotCount * SLOT_HEIGHT_PX;
@@ -535,6 +542,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 }}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
+                nowTimeStr={isToday ? nowTimeStr : undefined}
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
