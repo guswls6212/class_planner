@@ -160,13 +160,19 @@ export const resolveSessionColor = (
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
   subjects: Subject[],
   _students: Array<{ id: string; name: string }>,
-  teachers: Array<{ id: string; name: string; color: string }>
+  teachers: Array<{ id: string; name: string; color: string }>,
+  selectedStudentIds?: string[]
 ): string => {
   const firstEnrollment = enrollments.find(
     (e) => e.id === session.enrollmentIds?.[0]
   );
 
   if (colorBy === "student") {
+    // When no chip is selected, fall through to subject color (same as subject mode)
+    if (!selectedStudentIds || selectedStudentIds.length === 0) {
+      const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
+      return subject?.color ?? "#888";
+    }
     const studentId = firstEnrollment?.studentId;
     if (studentId) return getStudentDeterministicColor(studentId);
     return "#888";

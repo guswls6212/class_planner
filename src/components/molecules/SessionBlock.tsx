@@ -103,7 +103,8 @@ function SessionBlock({
     enrollments || [],
     subjects || [],
     students || [],
-    teachers
+    teachers,
+    selectedStudentIds
   );
 
   // 강사 정보
@@ -292,9 +293,15 @@ function SessionBlock({
     position: "relative",
   };
 
+  // When colorBy='student' but no chip is selected, treat as subject mode for labels
+  const isStudentModeActive =
+    colorBy === "student" &&
+    selectedStudentIds != null &&
+    selectedStudentIds.length > 0;
+
   // Primary label based on colorBy
   const primaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? studentNames[0] || "학생 없음"
       : colorBy === "teacher"
         ? teacher?.name || "강사 없음"
@@ -302,12 +309,12 @@ function SessionBlock({
 
   // Secondary info based on colorBy
   const secondaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
   const extraStudentCount = (() => {
-    if (colorBy !== "student" || !selectedStudentIds || selectedStudentIds.length === 0) return 0;
+    if (!isStudentModeActive) return 0;
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
       return enrollment ? [enrollment.studentId] : [];

@@ -713,6 +713,87 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
   });
 });
 
+describe("student mode + no chip selected → subject mode fallback", () => {
+  const mockSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: [
+      "550e8400-e29b-41d4-a716-446655440301",
+      "550e8400-e29b-41d4-a716-446655440302",
+    ],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const mockSubjects = [
+    { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
+  ];
+  const mockEnrollments = [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440301",
+      studentId: "550e8400-e29b-41d4-a716-446655440001",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440302",
+      studentId: "550e8400-e29b-41d4-a716-446655440002",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+  ];
+  const mockStudents = [
+    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
+    { id: "550e8400-e29b-41d4-a716-446655440002", name: "이영희" },
+  ];
+
+  const baseProps = {
+    session: mockSession,
+    subjects: mockSubjects,
+    enrollments: mockEnrollments,
+    students: mockStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+  };
+
+  it("colorBy='student' + selectedStudentIds=[] → primaryLabel은 과목명, secondaryLabel은 학생 이름들", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={[]}
+      />
+    );
+    // primaryLabel should be subject name (not student name)
+    expect(screen.getByText("수학")).toBeInTheDocument();
+    // secondaryLabel should include student names
+    expect(screen.getByText(/김철수/)).toBeInTheDocument();
+    expect(screen.getByText(/이영희/)).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + selectedStudentIds=undefined → subject mode 동일 동작", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={undefined}
+      />
+    );
+    expect(screen.getByText("수학")).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + chip 선택됨 → primaryLabel은 학생명", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={["550e8400-e29b-41d4-a716-446655440001"]}
+      />
+    );
+    // In student mode with chip selected, primaryLabel = first student name
+    expect(screen.getByText("김철수")).toBeInTheDocument();
+  });
+});
+
 describe("SessionBlock Utility Functions", () => {
   describe("validateSessionBlockProps", () => {
     it("유효한 props일 때 true를 반환해야 한다", () => {
