@@ -244,6 +244,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           studentNames,
           accent,
           toneBg: tone.bg,
+          toneFg: tone.fg,
           startTime: session.startsAt,
           endTime: session.endsAt,
           teacherName,
