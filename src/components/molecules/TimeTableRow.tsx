@@ -188,6 +188,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         width: Math.round(laneWidth),
         top: Math.round(timeIdx * SLOT_HEIGHT_PX),
         height: Math.round(durationSlots * SLOT_HEIGHT_PX),
+        yPosition: laneIdx + 1,
       };
     });
   }, [visibleSessions, timeToMinutes, laneWidth]);
@@ -283,7 +284,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       })}
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
-      {laidOutSessions.map(({ session, left, width: sWidth, top, height }) => (
+      {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition }) => (
         // target weekday에서만 SessionBlock을 skip하고 DragGhost가 대신 렌더.
         // targetWeekday === null (아직 셀 위를 안 지남)이면 원본 위치에 정상 렌더.
         session.id === dragPreview?.draggedSession?.id
@@ -301,6 +302,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           left={left}
           width={sWidth}
           yOffset={top}
+          yPosition={yPosition}
           height={height}
           onClick={() => onSessionClick(session)}
           onDelete={
