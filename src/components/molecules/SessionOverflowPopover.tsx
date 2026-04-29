@@ -9,7 +9,8 @@ export interface OverflowSessionItem {
   subject: Subject | null;
   studentNames: string[];
   accent: string;
-  toneBg: string;       // tone.bg for mini-card background
+  toneBg: string;       // tone.bg — light pastel card background
+  toneFg: string;       // tone.fg — dark text color that contrasts on toneBg
   startTime: string;
   endTime: string;
   teacherName?: string;
@@ -168,6 +169,7 @@ export function SessionOverflowPopover({
                   style={{
                     background: item.toneBg,
                     borderLeftColor: item.accent,
+                    color: item.toneFg,   // dark fg that contrasts on light pastel bg
                   }}
                   className={[
                     "group w-full flex items-center gap-2.5 rounded-[5px]",
