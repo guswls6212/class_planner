@@ -236,7 +236,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 className="absolute left-0 -top-[11px] text-[10px] font-semibold px-[6px] py-0.5 rounded-[10px] leading-[1.4] whitespace-nowrap z-[151]"
                 style={{
                   background: "var(--color-accent-hover)",
-                  color: "var(--color-bg, #0f1115)",
+                  color: "var(--color-bg-primary)",
                   fontFeatureSettings: '"tnum"',
                 }}
               >

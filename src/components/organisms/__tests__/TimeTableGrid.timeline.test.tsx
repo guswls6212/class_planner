@@ -57,4 +57,14 @@ describe("TimeTableGrid — real-time timeline", () => {
     const indicator = screen.getByLabelText("현재 시각");
     expect(indicator).toHaveStyle({ transition: "top 0.5s ease-out" });
   });
+
+  it("09:00 이전 시각에는 현재 시각 선이 렌더링되지 않는다", () => {
+    // Mock useNowMinute to return 08:30 (before 09:00)
+    vi.setSystemTime(new Date("2026-04-29T08:30:00.000"));
+
+    render(<TimeTableGrid {...defaultProps} />);
+
+    // Verify no aria-label="현재 시각" element in DOM
+    expect(screen.queryByLabelText("현재 시각")).not.toBeInTheDocument();
+  });
 });

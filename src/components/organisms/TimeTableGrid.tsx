@@ -356,9 +356,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const timeLabelColWidth = isMobile ? 40 : 56;
 
+    const now = useNowMinute();
+
     // 주 날짜 배열 및 오늘 계산
     const weekDates = useMemo(() => {
-      const base = baseDate ?? new Date();
+      const base = baseDate ?? now;
       const monday = new Date(base);
       const dayOfWeek = (monday.getDay() + 6) % 7; // 0=Mon
       monday.setDate(monday.getDate() - dayOfWeek);
@@ -367,9 +369,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         d.setDate(monday.getDate() + i);
         return d;
       });
-    }, [baseDate]);
+    }, [baseDate, now]);
 
-    const now = useNowMinute();
     const todayStr = now.toDateString();
 
     // 현재 시각 → 픽셀 위치 (9:00 기준, SLOT_HEIGHT_PX per 30min)
