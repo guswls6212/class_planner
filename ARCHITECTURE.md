@@ -62,6 +62,8 @@
   - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.
   - `ScheduleMonthlyView` — 월별 캘린더. `onDayClick`으로 일별 뷰 이동.
   - `HelpDrawer`, `AppShell` — 앱 쉘/도움말 드로어.
+  - `StudentsPageLayout`, `StudentDetailPanel` — 학생 관리 두 패널 레이아웃 (Admin Amber).
+  - `TeachersPageLayout`, `TeacherDetailPanel` — 강사 관리 두 패널 레이아웃 (학생 패턴 동일, 색상 dot 아바타 + Summary Cards + 색상 팔레트 편집).
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
 ## 2. 컴포넌트 구조

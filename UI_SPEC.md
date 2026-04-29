@@ -176,31 +176,58 @@ SchedulePage
 
 ### 2.3 학생 관리 (`/students`)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (Phase 3 Admin Amber, organism 단일 파일):**
 ```
 StudentsPage
-  └── StudentsPageLayout
-        └── StudentManagementSection (좌측 340px 고정)
-              ├── StudentInputSection (molecule) — 이름 입력 + 추가 버튼
-              └── StudentList (molecule) — 학생 목록
-                    └── StudentListItem (atom) × N
+  └── StudentsPageLayout          # 좌측 목록 + 우측 상세 2패널
+        └── StudentDetailPanel   # 선택된 학생 상세 (우측)
 ```
 
 **레이아웃:**
-- 2열 그리드: `340px | 1fr` (현재 우측 영역 미사용)
-- padding: 16px
+- 좌측 패널: `lg:w-[360px]` 고정, 모바일에서 `showDetail` state로 토글
+- 우측 패널: `flex-1`, 미선택 시 "학생을 선택하세요" placeholder
 
-**StudentInputSection:**
-- 이름 텍스트 입력 (placeholder: "학생 이름 입력")
-- IME 한글 조합 중 Enter 방지 (`composing` 상태 체크)
-- 이미 존재하는 이름 입력 시 에러 메시지
-- `+` 버튼 또는 Enter 키로 추가
+**좌측 패널:**
+- 헤더: "학생 목록"
+- 추가 폼: input (placeholder: "학생 이름 (검색 가능)") + `+ 추가` 앰버 버튼. Enter 키 지원.
+- 검색: `Search` 아이콘 + 이름으로 검색 input
+- 학생 리스트: Amber 아바타(이니셜) + 이름 + 메타(학년·학교 또는 "프로필 미입력"). 선택 시 `border-l-2 border-l-accent`
 
-**StudentList:**
-- 학생 아이템 클릭 → 선택 상태 (highlight)
-- 선택된 학생 → 삭제 버튼 노출 → ConfirmModal 확인 후 삭제
+**우측 패널 (StudentDetailPanel):**
+- 헤더: 아바타(48px Amber 원형) + 이름 + 메타 + 편집(`Pencil`) / 삭제(`Trash2`) 버튼
+- Summary Cards (2열 grid): "등록 과목" (enrollments 카운트) / "주간 수업" (sessions 카운트)
+- 수업 일정: subject 색 dot + 과목명 + 요일 + 시간 리스트
+- 프로필: 보기 모드(`<dl>`) / 편집 모드(name/grade/school/phone/gender/birthDate input 목록)
 
-### 2.4 과목 관리 (`/subjects`)
+### 2.4 강사 관리 (`/teachers`)
+
+**컴포넌트 트리 (Phase 3 Admin Amber, organism 단일 파일):**
+```
+TeachersPage
+  └── TeachersPageLayout          # 좌측 목록 + 우측 상세 2패널 (학생과 동일 구조)
+        └── TeacherDetailPanel   # 선택된 강사 상세 (우측)
+```
+
+**레이아웃:**
+- 학생 화면과 동일 구조. 좌측 `lg:w-[360px]` / 우측 `flex-1`.
+
+**좌측 패널:**
+- 헤더: "강사 목록"
+- 추가 폼: input (placeholder: "강사 이름 (검색 가능)") + `+ 추가` 앰버 버튼. 색상은 `DEFAULT_TEACHER_COLORS`에서 자동 순환 할당.
+- 검색: `Search` 아이콘 + 이름으로 검색 input
+- 강사 리스트: `teacher.color` 배경 12px 색상 dot + 이름 + "주간 N회". 선택 시 `border-l-2 border-l-accent`
+
+**우측 패널 (TeacherDetailPanel):**
+- 헤더: 강사 색상 배경 아바타(48px, 이니셜 흰색) + 이름 + 메타("주간 N회 · 담당 M명") + 편집/삭제 버튼
+- Summary Cards (2열 grid): "담당 학생" (`Session.teacherId` → `Enrollment.studentId` join으로 unique 수) / "주간 수업" (sessions 카운트)
+- 수업 일정: subject 색 dot + 과목명 + 요일 + 시간 리스트
+- 프로필 (보기/편집):
+  - 보기: 이름 + 색상 dot
+  - 편집: 이름 input + 8색 팔레트(`DEFAULT_TEACHER_COLORS`) + `<input type="color">` 직접 선택 + 저장/취소 버튼
+
+**색상 상수:** `src/lib/teacherColors.ts` — `DEFAULT_TEACHER_COLORS` (8색, 인디고/시안/에메랄드/앰버/레드/바이올렛/핑크/틸)
+
+### 2.5 과목 관리 (`/subjects`)
 
 **컴포넌트 트리:**
 ```
@@ -223,7 +250,7 @@ SubjectsPage
 - 편집 모드: 이름/색상 수정, 저장/취소
 - 삭제 버튼 → ConfirmModal 확인 후 삭제
 
-### 2.5 소개 (`/about`)
+### 2.6 소개 (`/about`)
 
 **컴포넌트 트리:**
 ```
@@ -237,7 +264,7 @@ AboutPage
 - 정적 마케팅 페이지
 - 인증 불필요, 익명 접근 가능
 
-### 2.6 로그인 (`/login`)
+### 2.7 로그인 (`/login`)
 
 **컴포넌트 트리:**
 ```
@@ -260,7 +287,7 @@ LoginPage (src/app/login/page.tsx, 309줄)
 - 미로그인 상태: "로그인" 버튼 → `/login`으로 이동
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
 
-### 2.7 온보딩 (`/onboarding`)
+### 2.8 온보딩 (`/onboarding`)
 
 **컴포넌트 트리:**
 ```
