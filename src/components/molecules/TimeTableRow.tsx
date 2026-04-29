@@ -8,12 +8,8 @@ import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
-import {
-  SessionOverflowPopover,
-  type OverflowSessionItem,
-} from "./SessionOverflowPopover";
 
-// D-hybrid: columns with ≥4 yPositions show only the first 2 + "+N" pill
+// D-hybrid: columns with ≥4 yPositions show only the first 3 + "+N" inline chip
 const OVERFLOW_THRESHOLD = 4;
 
 // Drag preview state (same shape as TimeTableGrid)
@@ -56,13 +52,14 @@ interface TimeTableRowProps {
   // 오늘 열 강조 (주간 헤더 날짜 표시용)
   isToday?: boolean;
   nowLinePx?: number | null;
+  nowTimeStr?: string;
 }
 
 /**
  * TimeTableRow — weekday column (B2+).
  * 시간축이 세로(rows), 요일이 가로(cols).
  * yPosition(=overlap lane)은 column 내부에서 가로로 스택된다.
- * B3: D-hybrid — ≤3 lanes equal-split, ≥4 lanes cap at 2 + overflow pill.
+ * Phase 4: ≤3 lanes equal-split, ≥4 lanes show 3 inline + "+N" expand chip.
  */
 export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   weekday,
@@ -89,10 +86,9 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   dragPreview,
   isToday = false,
   nowLinePx = null,
+  nowTimeStr,
 }) => {
-  const [openPillSlot, setOpenPillSlot] = React.useState<string | null>(null);
-  // Ref to whichever trigger button last opened the popover — used for portal positioning
-  const openTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const [isExpanded, setIsExpanded] = React.useState(false);
 
   // Convert time string to minutes helper
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -109,6 +105,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return sessions?.get(weekday) || [];
   }, [sessions, weekday]);
 
+  // Reset expanded state when weekday switches or session list changes
+  React.useEffect(() => {
+    setIsExpanded(false);
+  }, [weekday, weekdaySessions]);
+
   // Required lane count based on actual time overlaps (not stored yPosition max)
   const rawMaxYPosition = React.useMemo(() => {
     return computeRequiredLanes(weekdaySessions);
@@ -120,7 +121,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
-  const effectiveLanes = isOverflow ? 2 : rawMaxYPosition;
+  const effectiveLanes = isExpanded ? rawMaxYPosition : (isOverflow ? 3 : rawMaxYPosition);
 
   // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
   // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
@@ -142,18 +143,30 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // Visible sessions (yPos ≤2 when overflow; all otherwise)
+  // Visible sessions: yPos ≤3 when overflow and not expanded; all otherwise
   const visibleSessions = React.useMemo(() => {
-    return isOverflow
-      ? weekdaySessions.filter((s) => (s.yPosition || 1) <= 2)
+    return (isOverflow && !isExpanded)
+      ? weekdaySessions.filter((s) => (s.yPosition || 1) <= 3)
       : weekdaySessions;
-  }, [weekdaySessions, isOverflow]);
+  }, [weekdaySessions, isOverflow, isExpanded]);
 
-  // Hidden sessions (yPos ≥3 when overflow; empty otherwise)
+  // Hidden sessions: yPos ≥4 when overflow and not expanded; empty otherwise
   const hiddenSessions = React.useMemo(() => {
-    return isOverflow
-      ? weekdaySessions.filter((s) => (s.yPosition || 1) >= 3)
+    return (isOverflow && !isExpanded)
+      ? weekdaySessions.filter((s) => (s.yPosition || 1) >= 4)
       : [];
+  }, [weekdaySessions, isOverflow, isExpanded]);
+
+  // Position the +N chip near the first hidden session's start time.
+  // Use all yPos≥4 sessions (unaffected by isExpanded) so the position
+  // is stable whether the chip shows +N or the collapse "−" symbol.
+  const chipTopPx = React.useMemo(() => {
+    if (!isOverflow) return null;
+    const candidates = weekdaySessions.filter((s) => (s.yPosition || 1) >= 4);
+    if (candidates.length === 0) return null;
+    const first = candidates[0];
+    const [h, m] = first.startsAt.split(":").map(Number);
+    return Math.max(4, ((h * 60 + m - 9 * 60) / 30) * SLOT_HEIGHT_PX);
   }, [weekdaySessions, isOverflow]);
 
   // Compute per-session layout (top/height from time, left/width from lane)
@@ -178,83 +191,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       };
     });
   }, [visibleSessions, timeToMinutes, laneWidth]);
-
-  // Per-slot hidden sessions (for overflow pills)
-  const slotHiddenSessions = React.useMemo(() => {
-    if (!isOverflow) return [];
-    return timeSlots30Min.map((slot) => {
-      const slotMin = timeToMinutes(slot);
-      return hiddenSessions.filter((s) => {
-        const start = timeToMinutes(s.startsAt);
-        const end = timeToMinutes(s.endsAt);
-        return start <= slotMin && slotMin < end;
-      });
-    });
-  }, [timeSlots30Min, hiddenSessions, isOverflow, timeToMinutes]);
-
-  // Group contiguous time slots sharing the same hidden session set → one pill per group
-  const overflowGroups = React.useMemo(() => {
-    if (!isOverflow) return [];
-    const groups: { startIdx: number; endIdx: number; hidden: Session[] }[] = [];
-    slotHiddenSessions.forEach((hidden, idx) => {
-      if (hidden.length === 0) return;
-      const hiddenKey = hidden.map((s) => s.id).sort().join(",");
-      if (groups.length > 0) {
-        const last = groups[groups.length - 1];
-        const lastKey = last.hidden.map((s) => s.id).sort().join(",");
-        if (idx === last.endIdx + 1 && hiddenKey === lastKey) {
-          last.endIdx = idx;
-          return;
-        }
-      }
-      groups.push({ startIdx: idx, endIdx: idx, hidden });
-    });
-    return groups;
-  }, [isOverflow, slotHiddenSessions]);
-
-  // Map hidden sessions to OverflowSessionItem for the popover
-  const toOverflowItems = React.useCallback(
-    (sessions: Session[]): OverflowSessionItem[] =>
-      sessions.map((session) => {
-        const firstEnrollment = enrollments.find((e) =>
-          session.enrollmentIds?.includes(e.id)
-        );
-        const subject = firstEnrollment
-          ? (subjects.find((s) => s.id === firstEnrollment.subjectId) ?? null)
-          : null;
-
-        const studentNames = (session.enrollmentIds || []).flatMap((eid) => {
-          const enr = enrollments.find((e) => e.id === eid);
-          const st = enr ? students.find((s) => s.id === enr.studentId) : null;
-          return st ? [st.name] : [];
-        });
-
-        // Resolve accent color from subject color (same logic as SessionBlock)
-        const tone = resolveSessionTone(subject?.color);
-        const accent = tone.accent;
-
-        // Resolve teacher name from session.teacherId (optional field on Session)
-        const teacherName = session.teacherId
-          ? (teachers?.find((t) => t.id === session.teacherId)?.name ?? undefined)
-          : undefined;
-
-        return {
-          id: session.id,
-          subject,
-          studentNames,
-          accent,
-          toneBg: tone.bg,
-          toneFg: tone.fg,
-          startTime: session.startsAt,
-          endTime: session.endsAt,
-          teacherName,
-          studentCount: studentNames.length,
-        };
-      }),
-    [enrollments, subjects, students, teachers]
-  );
-
-  const MAX_DOTS = 4;
 
   return (
     <div
@@ -290,17 +226,27 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         {/* 현재 시각 선 (오늘 열만) */}
         {isToday && nowLinePx !== null && (
           <div
-            className="absolute left-0 right-0"
-            style={{ top: nowLinePx, zIndex: 10 }}
+            className="absolute left-0 right-0 pointer-events-none"
+            style={{ top: nowLinePx, zIndex: 150, transition: "top 0.5s ease-out" }}
             aria-label="현재 시각"
           >
+            {/* Amber time pill on the left */}
+            {nowTimeStr && (
+              <div
+                className="absolute left-0 -top-[11px] text-[10px] font-semibold px-[6px] py-0.5 rounded-[10px] leading-[1.4] whitespace-nowrap z-[151]"
+                style={{
+                  background: "var(--color-accent-hover)",
+                  color: "var(--color-bg-primary)",
+                  fontFeatureSettings: '"tnum"',
+                }}
+              >
+                {nowTimeStr}
+              </div>
+            )}
+            {/* 2px horizontal line */}
             <div
-              className="absolute rounded-full"
-              style={{ width: 10, height: 10, background: "var(--color-accent-hover)", top: -4, left: -4 }}
-            />
-            <div
-              className="absolute left-0 right-0"
-              style={{ height: 2, background: "var(--color-accent-hover)", borderRadius: 1 }}
+              className="absolute left-0 right-0 h-[2px] rounded-[1px]"
+              style={{ background: "var(--color-accent-hover)" }}
             />
           </div>
         )}
@@ -481,110 +427,27 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         );
       })()}
 
-      {/* Overflow dot-track triggers — one per contiguous group */}
-      {isOverflow &&
-        overflowGroups.map(({ startIdx, endIdx, hidden }) => {
-          const timeString = timeSlots30Min[startIdx];
-          const groupHeight = (endIdx - startIdx + 1) * SLOT_HEIGHT_PX - 4;
-          const overflowItems = toOverflowItems(hidden);
-
-          // Show up to 4 dots; if more, last slot becomes "+N" chip
-          const showDots = overflowItems.slice(0, MAX_DOTS);
-          const extraCount =
-            overflowItems.length > MAX_DOTS
-              ? overflowItems.length - (MAX_DOTS - 1)
-              : 0;
-          const dotsToShow = extraCount > 0 ? showDots.slice(0, MAX_DOTS - 1) : showDots;
-
-          return (
-            <div
-              key={`pill-group-${startIdx}`}
-              style={{
-                position: "absolute",
-                top: startIdx * SLOT_HEIGHT_PX + 2,
-                right: 4,
-                height: groupHeight,
-                zIndex: 110,
-                display: "flex",
-                alignItems: "flex-start",
-              }}
-              data-testid={`overflow-pill-wrapper-${timeString}`}
-            >
-              <button
-                type="button"
-                className="cluster-dot-enter flex flex-col items-center gap-[3px] p-1 rounded-[6px] border-0 cursor-pointer min-w-[14px] min-h-6 transition-shadow duration-150"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openTriggerRef.current = e.currentTarget;
-                  setOpenPillSlot((prev) =>
-                    prev === timeString ? null : timeString
-                  );
-                }}
-                aria-label={`${hidden.length}개 세션 더 보기`}
-                aria-haspopup="dialog"
-                aria-expanded={openPillSlot === timeString}
-                data-testid={`overflow-pill-${timeString}`}
-                style={{
-                  background: "var(--color-cluster-overflow-bg)",
-                  backdropFilter: "blur(4px)",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)",
-                }}
-              >
-                {dotsToShow.map((item) => (
-                  <span
-                    key={item.id}
-                    aria-hidden="true"
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 3,
-                      background: item.accent,
-                      display: "block",
-                      flexShrink: 0,
-                    }}
-                  />
-                ))}
-                {extraCount > 0 && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      color: "var(--color-text-muted)",
-                      textAlign: "center",
-                    }}
-                  >
-                    +{extraCount}
-                  </span>
-                )}
-              </button>
-
-              {openPillSlot === timeString && openTriggerRef.current && (
-                <SessionOverflowPopover
-                  title={`${timeString} · 숨은 세션 ${hidden.length}개`}
-                  items={overflowItems}
-                  sessions={hidden}
-                  triggerRef={openTriggerRef as React.RefObject<HTMLButtonElement>}
-                  onSelect={(id) => {
-                    const session = hidden.find((s) => s.id === id);
-                    if (session) onSessionClick(session);
-                    setOpenPillSlot(null);
-                  }}
-                  onClose={() => setOpenPillSlot(null)}
-                  onSessionDragStart={(session, e) => {
-                    e.dataTransfer.setDragImage(
-                      e.currentTarget,
-                      e.currentTarget.offsetWidth / 2,
-                      e.currentTarget.offsetHeight / 2
-                    );
-                    onDragStart?.(session);
-                    setOpenPillSlot(null);
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
+      {/* Inline +N chip — visible when overflow (collapsed or expanded) so user can toggle */}
+      {isOverflow && chipTopPx !== null && (
+        <button
+          type="button"
+          className="absolute cursor-pointer border-0 rounded-[6px] text-[var(--color-text-primary)] text-[10px] font-bold leading-tight whitespace-nowrap backdrop-blur-sm"
+          onClick={(e) => { e.stopPropagation(); setIsExpanded((prev) => !prev); }}
+          aria-label={isExpanded ? "세션 접기" : `${hiddenSessions.length}개 세션 더 보기`}
+          aria-expanded={isExpanded}
+          data-testid={`overflow-expand-btn-${weekday}`}
+          style={{
+            top: chipTopPx ?? 4,
+            right: 4,
+            zIndex: 115,
+            padding: "3px 6px",
+            background: "var(--color-cluster-overflow-bg, rgba(30,41,59,0.9))",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1)",
+          }}
+        >
+          {isExpanded ? "−" : `+${hiddenSessions.length}`}
+        </button>
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@
   "_meta": {
     "description": "vitest --related(import 그래프)이 잡지 못하는 cross-cutting 테스트 의존 관계",
     "maintained_by": "AI — Documentation Sync Protocol 6번째 단계: 파일 추가/이동/삭제 시 업데이트",
-    "last_updated": "2026-04-28"
+    "last_updated": "2026-04-29"
   },
 
   "src/components/organisms/TimeTableGrid.tsx": [
@@ -47,5 +47,17 @@
   "src/hooks/useGlobalDataInitialization.ts": [
     "src/hooks/__tests__/useGlobalDataInitialization.test.ts",
     "src/hooks/__tests__/useGlobalDataInitialization.conflict.test.ts"
+  ],
+  "src/components/molecules/SessionBlock.utils.ts": [
+    "src/components/molecules/__tests__/SessionBlock.utils.test.ts",
+    "src/components/organisms/__tests__/ScheduleDailyView.test.tsx",
+    "src/components/molecules/__tests__/MonthDayCell.test.tsx"
+  ],
+  "src/hooks/useNowMinute.ts": [
+    "src/hooks/__tests__/useNowMinute.test.ts",
+    "src/components/organisms/__tests__/TimeTableGrid.timeline.test.tsx"
+  ],
+  "src/lib/colors/hexToRgba.ts": [
+    "src/components/molecules/__tests__/SessionBlock.test.tsx"
   ]
 }

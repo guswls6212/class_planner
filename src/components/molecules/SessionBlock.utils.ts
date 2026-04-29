@@ -103,13 +103,15 @@ export const getSessionBlockStyles = (
     }
   }
 
+  const background = subjectColor ?? "#888";
+
   return {
     position: "absolute",
     left,
     top: yOffset + 1, // 경계선과 겹치지 않도록 1px 여백 추가
     height: `${height ?? SESSION_CELL_HEIGHT}px`,
     width,
-    background: subjectColor ?? "#888",
+    background,
     color: "#fff",
     borderRadius: 4,
     padding: "0px",
@@ -118,7 +120,6 @@ export const getSessionBlockStyles = (
     alignItems: "center",
     overflow: "hidden",
     zIndex: 100 + yOffset,
-    border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity,
     visibility,
@@ -154,19 +155,37 @@ export const getStudentDeterministicColor = (studentId: string): string => {
 
 export type ColorByMode = "subject" | "student" | "teacher";
 
+export const sessionContainsSelected = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  selectedStudentIds: string[]
+): boolean => {
+  if (!selectedStudentIds.length || !session.enrollmentIds?.length) return false;
+  return session.enrollmentIds.some((eid) => {
+    const enrollment = enrollments.find((e) => e.id === eid);
+    return enrollment ? selectedStudentIds.includes(enrollment.studentId) : false;
+  });
+};
+
 export const resolveSessionColor = (
   session: Session,
   colorBy: ColorByMode,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
   subjects: Subject[],
   _students: Array<{ id: string; name: string }>,
-  teachers: Array<{ id: string; name: string; color: string }>
+  teachers: Array<{ id: string; name: string; color: string }>,
+  selectedStudentIds?: string[]
 ): string => {
   const firstEnrollment = enrollments.find(
     (e) => e.id === session.enrollmentIds?.[0]
   );
 
   if (colorBy === "student") {
+    // When no chip is selected, fall through to subject color (same as subject mode)
+    if (!selectedStudentIds || selectedStudentIds.length === 0) {
+      const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
+      return subject?.color ?? "#888";
+    }
     const studentId = firstEnrollment?.studentId;
     if (studentId) return getStudentDeterministicColor(studentId);
     return "#888";

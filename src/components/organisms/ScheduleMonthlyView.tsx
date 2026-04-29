@@ -1,11 +1,16 @@
 import React, { useMemo } from "react";
 import MonthDayCell from "../molecules/MonthDayCell";
-import type { Enrollment, Session, Subject } from "../../lib/planner";
+import type { Enrollment, Session, Student, Subject, Teacher } from "../../lib/planner";
+import type { ColorByMode } from "@/hooks/useColorBy";
 
 interface ScheduleMonthlyViewProps {
   sessions: Map<number, Session[]>;
   subjects: Subject[];
   enrollments: Enrollment[];
+  students?: Student[];
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
+  selectedStudentIds?: string[];
   currentDate: Date;
   onDayClick: (date: Date) => void;
 }
@@ -36,6 +41,10 @@ export default function ScheduleMonthlyView({
   sessions,
   subjects,
   enrollments,
+  students = [],
+  teachers = [],
+  colorBy = "subject",
+  selectedStudentIds,
   currentDate,
   onDayClick,
 }: ScheduleMonthlyViewProps) {
@@ -77,6 +86,10 @@ export default function ScheduleMonthlyView({
               sessions={daySessions}
               subjects={subjects}
               enrollments={enrollments}
+              students={students}
+              teachers={teachers}
+              colorBy={colorBy}
+              selectedStudentIds={selectedStudentIds}
               isToday={isSameDay(date, today)}
               isCurrentMonth={date.getMonth() === currentMonth}
               onDayClick={onDayClick}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getSessionBlockStyles,
+  resolveSessionColor,
 } from "../SessionBlock.utils";
 
 describe("getSessionBlockStyles", () => {
@@ -161,7 +162,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.zIndex).toBe(100 + yOffset);
   });
 
-  it("과목 색상이 없을 때 기본 색상(#888)을 사용해야 한다", () => {
+  it("과목 색상이 없을 때 기본 색상(#888)을 단색으로 사용해야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -170,9 +171,11 @@ describe("getSessionBlockStyles", () => {
     );
 
     expect(styles.background).toBe("#888");
+    // borderLeft는 getSessionBlockStyles 반환값에 포함되지 않음 (SessionBlock.tsx에서 처리)
+    expect(styles.borderLeft).toBeUndefined();
   });
 
-  it("과목 색상이 있을 때 해당 색상을 사용해야 한다", () => {
+  it("유효한 6자리 hex 과목 색상이 있을 때 해당 색상을 단색으로 반환해야 한다 (gradient는 SessionBlock.tsx에서 처리)", () => {
     const customColor = "#FF5733";
     const styles = getSessionBlockStyles(
       defaultParams.left,
@@ -181,6 +184,110 @@ describe("getSessionBlockStyles", () => {
       customColor
     );
 
+    // getSessionBlockStyles는 flat color만 반환 — gradient 변환은 SessionBlock.tsx에서 수행
     expect(styles.background).toBe(customColor);
+    expect(styles.borderLeft).toBeUndefined();
+  });
+});
+
+describe("resolveSessionColor", () => {
+  const mockSession = {
+    id: "session-1",
+    enrollmentIds: ["enroll-1"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+
+  const mockEnrollments = [
+    { id: "enroll-1", studentId: "student-1", subjectId: "subject-1" },
+  ];
+
+  const mockSubjects = [
+    { id: "subject-1", name: "수학", color: "#FF0000" },
+  ];
+
+  const mockStudents = [
+    { id: "student-1", name: "김철수" },
+  ];
+
+  const mockTeachers = [
+    { id: "teacher-1", name: "홍길동", color: "#0000FF" },
+  ];
+
+  it("colorBy='subject' 일 때 과목 색상을 반환한다 (regression)", () => {
+    const color = resolveSessionColor(
+      mockSession as any,
+      "subject",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers
+    );
+    expect(color).toBe("#FF0000");
+  });
+
+  it("colorBy='student', selectedStudentIds 없음 → 과목 색상 폴백", () => {
+    const color = resolveSessionColor(
+      mockSession as any,
+      "student",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers,
+      undefined
+    );
+    expect(color).toBe("#FF0000");
+  });
+
+  it("colorBy='student', selectedStudentIds=[] (빈 배열) → 과목 색상 폴백", () => {
+    const color = resolveSessionColor(
+      mockSession as any,
+      "student",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers,
+      []
+    );
+    expect(color).toBe("#FF0000");
+  });
+
+  it("colorBy='student', selectedStudentIds 있음 → 학생 해시 색상 반환", () => {
+    const color = resolveSessionColor(
+      mockSession as any,
+      "student",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers,
+      ["student-1"]
+    );
+    // Should NOT be the subject color — should be a student hash color
+    expect(color).not.toBe("#FF0000");
+    // Should be a valid hex color from Q_PASTEL_PALETTE
+    expect(color).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it("colorBy='subject' 일 때 selectedStudentIds를 무시한다 (regression)", () => {
+    const colorWithout = resolveSessionColor(
+      mockSession as any,
+      "subject",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers
+    );
+    const colorWith = resolveSessionColor(
+      mockSession as any,
+      "subject",
+      mockEnrollments,
+      mockSubjects as any,
+      mockStudents,
+      mockTeachers,
+      ["student-1"]
+    );
+    expect(colorWithout).toBe("#FF0000");
+    expect(colorWith).toBe("#FF0000");
   });
 });

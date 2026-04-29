@@ -140,11 +140,39 @@ SchedulePage
 - `data-variant`: `block`(weekly) / `row`(daily) / `chip`(monthly) / `preview`(landing)
 - `data-state`: `default` / `ongoing` / `done` / `conflict`
 - 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
-- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 2개 + `SessionOverflowPopover` "+N" pill
+- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 3개 표시, 4+는 inline +N 칩 클릭 시 모든 세션 표시 (토글 가능)
 
 **StudentFilterChipBar (colorBy=student 시):**
 - 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 표시
 - 학생 칩을 SessionBlock에 드롭 → 해당 수업에 학생 추가(드래그앤드롭)
+
+**ColorBy 모드 동작 (student 모드 상세):**
+- Student mode + 칩 미선택 → 과목 색상·라벨로 폴백 (이전: 학생 해시 색상). `resolveSessionColor`의 `selectedStudentIds` 빈 배열 → 과목 색 반환.
+- Student mode + 칩 선택 → 비선택 세션 opacity 0.25로 dim; 선택된 세션은 학생 해시 색상 + outer glow ring (1.5px)
+- 드래그 중 glow/dim 비활성 (포인터 인터랙션 우선)
+- 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity)
+- 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달
+
+**Session Overflow (인라인 확장):**
+- 겹침 세션 ≥ 4개: 최대 3개 인라인 표시 + `+N` 인라인 칩 버튼
+- `+N` 클릭 → 그리드 내에서 모든 세션을 확장 표시 (토글)
+- Portal/popover 없음 (`SessionOverflowPopover` 삭제됨) — PDF 인쇄·드래그 동작 보존
+- ≤ 3개: 균등 분할 표시 (변경 없음)
+
+**현재 시각 타임라인 (now-line):**
+- `useNowMinute` hook: 분 boundary에 동기화 (`setTimeout` → 60초 `setInterval` + `visibilitychange` resync)
+- 업데이트 주기: 매 분 경계에 정확히 동기화 (탭 비활성화 복귀 시 즉시 재동기화)
+- z-index: 150 (세션 블록 z-index 상위, 클릭 포인터 이벤트는 none)
+- 시각: 2px amber(`var(--color-accent)`) 수평선 + 좌측 `HH:MM` amber pill
+- 이동 애니메이션: `transition: top 0.5s ease-out`
+
+**SessionBlock 시각 디자인 (Editorial Polish):**
+- 배경: gradient — `tintFromHex(color, 0.08)` (연한) → `color` (진한), `hexToRgba` 유틸 활용
+- 좌측 accent stripe: 3px solid `rgba(0,0,0,0.2)` (유효한 hex 색상에만 적용)
+- 타이포: 주 라벨 13px / font-weight 600; 시간 표시 `tabular-nums`; 보조 텍스트 opacity 0.85
+- hover: ring 효과 (주 색상 기반)
+- Today 컬럼 배경: amber wash gradient `rgba(251,191,36,0.04)` → `rgba(251,191,36,0.02)`
+- 시간 라벨 계층화: 정시(`:00`) `font-semibold`, 반시(`:30`) `font-normal opacity-60`
 
 ### 2.3 학생 관리 (`/students`)
 
@@ -278,7 +306,6 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
 | `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
 | `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 주간 시간표 전용 수업 블록. 드래그 이동 가능. Phase 6 이후 Daily/Monthly/Landing은 SessionCard로 대체됨. |
-| `SessionOverflowPopover` | `SessionOverflowPopover.tsx` | `sessions`, `subjects`, `students`, `enrollments`, `overflowCount`, `onClick?` | 겹침 세션 4개↑일 때 "+N" pill 클릭 시 팝오버로 목록 표시 (D-hybrid). |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
 | `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
 | `StudentList` | `StudentList.tsx` | `students`, `selectedStudentId`, `onSelect`, `onDelete` | 학생 목록 (StudentListItem 반복) |
@@ -415,6 +442,7 @@ omni-radar/scripts/radar-query --target browser --keyword "드래그\|dragstart\
 | `useScheduleSessionManagement` | `src/hooks/useScheduleSessionManagement.ts` | 세션 CRUD + 충돌 해결 (repositionSessions 연동) |
 | `useDragController` | `src/hooks/useDragController.ts` | **Drag SSOT.** 드래그 상태 단일 reducer (idle/dragging/hovering). 모든 drag 상태의 유일한 소유자. |
 | `useDisplaySessions` | `src/hooks/useDisplaySessions.ts` | 표시용 세션 데이터 가공 (필터링, 정렬, yPosition 계산) |
+| `useNowMinute` | `src/hooks/useNowMinute.ts` | 현재 시각(분 단위) 실시간 제공. 분 boundary `setTimeout` 동기화 + 60s interval + `visibilitychange` resync. TimeTableGrid now-line에서 소비. |
 | `useEditModalState` | `src/app/schedule/_hooks/useEditModalState.ts` | EditSessionModal 열기/닫기 상태 |
 | `useUiState` | `src/app/schedule/_hooks/useUiState.ts` | Schedule 페이지 UI 상태 (선택, 하이라이트 등) |
 

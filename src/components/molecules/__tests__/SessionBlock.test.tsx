@@ -212,20 +212,28 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("기본 상태에서 좌측 accent 바가 없어야 한다 (borderLeft: undefined)", () => {
+  it("기본 상태에서 좌측 accent 바는 subtle stripe(rgba 0.2)이어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 
     const button = screen.getByRole("button");
-    // 기본 상태: in-progress/conflict 아님 → borderLeft 없음
-    expect(button.style.borderLeft).toBe("");
+    // 기본 상태: in-progress/conflict 아님이지만 유효한 6자리 hex tone.bg → subtle accent stripe 표시
+    expect(button.style.borderLeft).toBe("3px solid rgba(0, 0, 0, 0.2)");
   });
 
   it("파스텔 tone이 버튼 배경에 적용되어야 한다 (#FF0000 → tintFromHex 0.8)", () => {
     render(<SessionBlock {...defaultProps} />);
 
     const button = screen.getByRole("button");
-    // #FF0000 → tint 0.8 → rgb(255, 204, 204)
-    expect(button).toHaveStyle({ backgroundColor: "rgb(255, 204, 204)" });
+    // #FF0000 → resolveSessionTone → tone.bg = tintFromHex(#FF0000, 0.8) → pastel pink
+    // buttonBg applies linear-gradient over tone.bg, so background contains "linear-gradient"
+    expect(button.style.background).toMatch(/^linear-gradient\(180deg,/);
+  });
+
+  it("유효한 6자리 hex 과목 색상일 때 버튼 background가 linear-gradient이어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const button = screen.getByRole("button");
+    expect(button.style.background).toContain("linear-gradient");
   });
 
   it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {
@@ -710,6 +718,198 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
     fireEvent.click(deleteButton);
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("student mode + no chip selected → subject mode fallback", () => {
+  const mockSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: [
+      "550e8400-e29b-41d4-a716-446655440301",
+      "550e8400-e29b-41d4-a716-446655440302",
+    ],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const mockSubjects = [
+    { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
+  ];
+  const mockEnrollments = [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440301",
+      studentId: "550e8400-e29b-41d4-a716-446655440001",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440302",
+      studentId: "550e8400-e29b-41d4-a716-446655440002",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+  ];
+  const mockStudents = [
+    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
+    { id: "550e8400-e29b-41d4-a716-446655440002", name: "이영희" },
+  ];
+
+  const baseProps = {
+    session: mockSession,
+    subjects: mockSubjects,
+    enrollments: mockEnrollments,
+    students: mockStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+  };
+
+  it("colorBy='student' + selectedStudentIds=[] → primaryLabel은 과목명, secondaryLabel은 학생 이름들", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={[]}
+      />
+    );
+    // primaryLabel should be subject name (not student name)
+    expect(screen.getByText("수학")).toBeInTheDocument();
+    // secondaryLabel should include student names
+    expect(screen.getByText(/김철수/)).toBeInTheDocument();
+    expect(screen.getByText(/이영희/)).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + selectedStudentIds=undefined → subject mode 동일 동작", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={undefined}
+      />
+    );
+    expect(screen.getByText("수학")).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + chip 선택됨 → primaryLabel은 학생명", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={["550e8400-e29b-41d4-a716-446655440001"]}
+      />
+    );
+    // In student mode with chip selected, primaryLabel = first student name
+    expect(screen.getByText("김철수")).toBeInTheDocument();
+  });
+});
+
+describe("student mode dim/glow on session blocks", () => {
+  const glowSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const otherSession = {
+    id: "550e8400-e29b-41d4-a716-446655440202",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "11:00",
+  };
+  const glowSubjects = [
+    { id: "sub-1", name: "수학", color: "#FF0000" },
+  ];
+  const glowEnrollments = [
+    { id: "550e8400-e29b-41d4-a716-446655440301", studentId: "student-A", subjectId: "sub-1" },
+    { id: "550e8400-e29b-41d4-a716-446655440302", studentId: "student-B", subjectId: "sub-1" },
+  ];
+  const glowStudents = [
+    { id: "student-A", name: "학생A" },
+    { id: "student-B", name: "학생B" },
+  ];
+  const baseGlowProps = {
+    subjects: glowSubjects,
+    enrollments: glowEnrollments,
+    students: glowStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+    colorBy: "student" as const,
+  };
+
+  it("student mode + chip selected + session CONTAINS selected student → wrapper has box-shadow (glow)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    // box-shadow should be set (glow ring)
+    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+  });
+
+  it("student mode + chip selected + session does NOT contain selected student → wrapper has opacity 0.25 (dim)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // opacity should be 0.25 (dim)
+    expect(wrapper.style.opacity).toBe("0.25");
+    // no box-shadow
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isDragging → no dim/glow (drag logic takes over)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isDragging={true}
+        draggedSessionId={otherSession.id}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed — no opacity 0.25 on wrapper, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isAnyDragging → no dim/glow (drag bypass)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isAnyDragging={true}
+        draggedSessionId="different-session-id"
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed when any drag is in progress — no opacity 0.25, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + no chip selected → no dim/glow (existing behavior)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={[]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
   });
 });
 

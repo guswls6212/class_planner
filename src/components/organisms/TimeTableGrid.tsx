@@ -17,6 +17,7 @@ import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useDragController } from "../../hooks/useDragController";
+import { useNowMinute } from "../../hooks/useNowMinute";
 import TimeTableRow from "../molecules/TimeTableRow";
 
 interface TimeTableGridProps {
@@ -355,9 +356,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const timeLabelColWidth = isMobile ? 40 : 56;
 
+    const now = useNowMinute();
+
     // 주 날짜 배열 및 오늘 계산
     const weekDates = useMemo(() => {
-      const base = baseDate ?? new Date();
+      const base = baseDate ?? now;
       const monday = new Date(base);
       const dayOfWeek = (monday.getDay() + 6) % 7; // 0=Mon
       monday.setDate(monday.getDate() - dayOfWeek);
@@ -366,17 +369,22 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         d.setDate(monday.getDate() + i);
         return d;
       });
-    }, [baseDate]);
+    }, [baseDate, now]);
 
-    const todayStr = useMemo(() => new Date().toDateString(), []);
+    const todayStr = now.toDateString();
 
     // 현재 시각 → 픽셀 위치 (9:00 기준, SLOT_HEIGHT_PX per 30min)
     const nowLinePx = useMemo(() => {
-      const now = new Date();
       const minutesSince9 = (now.getHours() - 9) * 60 + now.getMinutes();
       if (minutesSince9 < 0 || minutesSince9 > 870) return null; // 870 = (23-9)*60+30 — last slot is 23:30
       return (minutesSince9 / 30) * SLOT_HEIGHT_PX;
-    }, []);
+    }, [now]);
+
+    const nowTimeStr = useMemo(() => {
+      const h = now.getHours().toString().padStart(2, "0");
+      const m = now.getMinutes().toString().padStart(2, "0");
+      return `${h}:${m}`;
+    }, [now]);
 
     const headerRowHeight = 60;
     const contentHeight = slotCount * SLOT_HEIGHT_PX;
@@ -491,15 +499,25 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             className="sticky left-0 z-[998] flex flex-col bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]"
             style={{ gridColumn: 1, gridRow: 2, height: contentHeight }}
           >
-            {timeSlots30Min.map((timeString) => (
-              <div
-                key={`time-${timeString}`}
-                className={`flex items-start justify-end pr-1 pt-0.5 ${isMobile ? "text-[9px]" : "text-[10px]"} text-[var(--color-text-secondary)] border-b border-[var(--color-border-grid-light)]`}
-                style={{ height: SLOT_HEIGHT_PX }}
-              >
-                {timeString}
-              </div>
-            ))}
+            {timeSlots30Min.map((timeString) => {
+              const isHour = timeString.endsWith(":00");
+              return (
+                <div
+                  key={`time-${timeString}`}
+                  className={[
+                    "flex items-start justify-end pr-1 pt-0.5",
+                    "border-b border-[var(--color-border-grid-light)]",
+                    isMobile ? "text-[9px]" : "text-[10px]",
+                    isHour
+                      ? "font-semibold text-[var(--color-text-secondary)]"
+                      : "font-normal text-[var(--color-text-secondary)] opacity-60",
+                  ].join(" ")}
+                  style={{ height: SLOT_HEIGHT_PX }}
+                >
+                  {timeString}
+                </div>
+              );
+            })}
           </div>
 
           {/* (2, 2..8) 요일별 컬럼 */}
@@ -535,10 +553,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 }}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
+                nowTimeStr={isToday ? nowTimeStr : undefined}
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
-                  ...(isToday && { backgroundColor: "rgba(245,158,11,0.025)" }),
+                  ...(isToday && { background: "linear-gradient(180deg, rgba(251,191,36,0.04) 0%, rgba(251,191,36,0.02) 100%)" }),
                 }}
               />
             );

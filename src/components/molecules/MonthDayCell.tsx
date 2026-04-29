@@ -1,12 +1,18 @@
 import React from "react";
-import type { Enrollment, Session, Subject } from "../../lib/planner";
+import type { Enrollment, Session, Student, Subject, Teacher } from "../../lib/planner";
 import { SessionCard } from "./SessionCard";
+import { resolveSessionColor, sessionContainsSelected } from "./SessionBlock.utils";
+import type { ColorByMode } from "@/hooks/useColorBy";
 
 interface MonthDayCellProps {
   date: Date;
   sessions: Session[];
   subjects: Subject[];
   enrollments: Enrollment[];
+  students?: Student[];
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
+  selectedStudentIds?: string[];
   isToday: boolean;
   isCurrentMonth: boolean;
   onDayClick: (date: Date) => void;
@@ -19,6 +25,10 @@ export default function MonthDayCell({
   sessions,
   subjects,
   enrollments,
+  students = [],
+  teachers = [],
+  colorBy = "subject",
+  selectedStudentIds,
   isToday,
   isCurrentMonth,
   onDayClick,
@@ -62,9 +72,31 @@ export default function MonthDayCell({
         <ul className="flex w-full flex-col gap-0.5">
           {visibleSessions.map((session) => {
             const subj = getSessionSubject(session);
+            const resolvedColor = resolveSessionColor(
+              session,
+              colorBy,
+              enrollments,
+              subjects,
+              students,
+              teachers,
+              selectedStudentIds
+            );
+            const isStudentFilterActive =
+              colorBy === "student" && selectedStudentIds != null && selectedStudentIds.length > 0;
+            const containsSelected = isStudentFilterActive
+              ? sessionContainsSelected(session, enrollments, selectedStudentIds!)
+              : false;
+            const isDimmed = isStudentFilterActive && !containsSelected;
+            const isHighlighted = isStudentFilterActive && containsSelected;
             return (
               <li key={session.id} className="w-full">
-                <SessionCard variant="chip" subject={subj ?? null} />
+                <SessionCard
+                  variant="chip"
+                  subject={subj ?? null}
+                  overrideColor={resolvedColor}
+                  dimmed={isDimmed}
+                  highlighted={isHighlighted}
+                />
               </li>
             );
           })}

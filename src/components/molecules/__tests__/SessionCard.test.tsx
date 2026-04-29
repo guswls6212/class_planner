@@ -190,6 +190,47 @@ describe("SessionCard — chip variant", () => {
   });
 });
 
+describe("SessionCard — dimmed / highlighted props", () => {
+  it("row variant: dimmed=true → wrapper의 opacity가 0.25", () => {
+    const { container } = render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        dimmed={true}
+        data-testid="row-dimmed"
+      />
+    );
+    const wrapper = container.querySelector('[data-variant="row"]') as HTMLElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.style.opacity).toBe("0.25");
+  });
+
+  it("chip variant: dimmed=true → chip의 opacity가 0.25", () => {
+    render(
+      <SessionCard
+        variant="chip"
+        subject={blueSubject}
+        dimmed={true}
+        data-testid="chip-dimmed"
+      />
+    );
+    const chip = screen.getByTestId("chip-dimmed") as HTMLElement;
+    expect(chip.style.opacity).toBe("0.25");
+  });
+
+  it("row variant: dimmed과 highlighted 모두 미지정이면 opacity 변경 없음", () => {
+    const { container } = render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        data-testid="row-normal"
+      />
+    );
+    const wrapper = container.querySelector('[data-variant="row"]') as HTMLElement;
+    expect(wrapper.style.opacity).toBe("");
+  });
+});
+
 describe("SessionCard — preview variant", () => {
   it("block처럼 렌더하지만 pointer-events-none이 적용된다", () => {
     render(

@@ -25,4 +25,10 @@ export interface SessionCardProps {
   attendanceStatus?: AttendanceStatus;
   className?: string;
   "data-testid"?: string;
+  /** If provided, replaces subject.color when resolving the tone */
+  overrideColor?: string;
+  /** Dims the card to opacity 0.25 (non-matching student filter) */
+  dimmed?: boolean;
+  /** Adds a glow ring using overrideColor (matching student filter) */
+  highlighted?: boolean;
 }

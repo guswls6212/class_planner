@@ -1,5 +1,5 @@
 import type { Session, Subject } from "@lib/planner";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { logger } from "../../../lib/logger";
 import { TimeTableRow } from "../TimeTableRow";
@@ -331,7 +331,7 @@ describe("TimeTableRow Component", () => {
     });
   });
 
-  describe("D-hybrid overflow (B3)", () => {
+  describe("Phase 4: inline overflow expansion", () => {
     const makeSession = (
       id: string,
       yPosition: number,
@@ -348,7 +348,7 @@ describe("TimeTableRow Component", () => {
         yPosition,
       }) as Session;
 
-    it("yPosition ≤3이면 모든 세션이 보인다", () => {
+    it("yPosition ≤3이면 모든 세션이 보인다 (overflow 없음)", () => {
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
         makeSession("s1", 1),
@@ -359,9 +359,11 @@ describe("TimeTableRow Component", () => {
       expect(screen.getByTestId("session-s1")).toBeInTheDocument();
       expect(screen.getByTestId("session-s2")).toBeInTheDocument();
       expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+      // No +N chip when no overflow
+      expect(screen.queryByTestId("overflow-expand-btn-0")).not.toBeInTheDocument();
     });
 
-    it("yPosition ≥4이면 yPos 1,2는 보이고 3+는 숨겨진다", () => {
+    it("4개 세션 overlap: s1~s3 표시, s4 숨김, +1 chip 렌더", () => {
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
         makeSession("s1", 1),
@@ -370,41 +372,141 @@ describe("TimeTableRow Component", () => {
         makeSession("s4", 4),
       ]);
       render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      // First 3 visible
       expect(screen.getByTestId("session-s1")).toBeInTheDocument();
       expect(screen.getByTestId("session-s2")).toBeInTheDocument();
-      expect(screen.queryByTestId("session-s3")).not.toBeInTheDocument();
+      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+      // 4th hidden
       expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
+      // +1 chip rendered (not a portal)
+      const chip = screen.getByTestId("overflow-expand-btn-0");
+      expect(chip).toBeInTheDocument();
+      expect(chip.textContent).toBe("+1");
     });
 
-    it("overflow 시 활성 슬롯에 pill이 렌더된다", () => {
-      const sessions = new Map<number, Session[]>();
-      sessions.set(0, [
-        makeSession("s1", 1),
-        makeSession("s2", 2),
-        makeSession("s3", 3), // hidden
-        makeSession("s4", 4), // hidden — needed to trigger threshold (rawMaxYPos=4≥4)
-      ]);
-      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
-      // s3, s4이 09:00-10:00에 있으므로 09:00 슬롯에 pill이 있어야 한다
-      const pill = screen.getByTestId("overflow-pill-09:00");
-      expect(pill).toBeInTheDocument();
-      // 새 dot-track 디자인: 색상 dot을 렌더하므로 "+2" 텍스트 대신 aria-hidden span 2개 확인
-      const dots = pill.querySelectorAll('span[aria-hidden="true"]');
-      expect(dots).toHaveLength(2);
-    });
-
-    it("pill 클릭 시 popover가 열린다", async () => {
+    it("5개 세션: +2 chip 렌더", () => {
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
         makeSession("s1", 1),
         makeSession("s2", 2),
         makeSession("s3", 3),
-        makeSession("s4", 4), // needed to trigger overflow
+        makeSession("s4", 4),
+        makeSession("s5", 5),
       ]);
       render(<TimeTableRow {...defaultProps} sessions={sessions} />);
-      const pill = screen.getByTestId("overflow-pill-09:00");
-      pill.click();
-      expect(await screen.findByTestId("overflow-popover-backdrop")).toBeInTheDocument();
+      const chip = screen.getByTestId("overflow-expand-btn-0");
+      expect(chip.textContent).toBe("+2");
+    });
+
+    it("+N chip 클릭 시 모든 세션이 표시된다 (isExpanded=true)", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+
+      // Before expand: s4 hidden, chip shows +1
+      expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
+      const chip = screen.getByTestId("overflow-expand-btn-0");
+      expect(chip.textContent).toBe("+1");
+
+      // Click the chip to expand
+      fireEvent.click(chip);
+
+      // After expand: all 4 visible
+      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s4")).toBeInTheDocument();
+      // Chip still visible (shows "−" for collapse)
+      expect(screen.getByTestId("overflow-expand-btn-0")).toBeInTheDocument();
+      expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("−");
+
+      // Click again to collapse
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
+      expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
+      expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("+1");
+    });
+
+    it("weekday 변경 시 isExpanded가 리셋된다", () => {
+      const sessions4 = new Map<number, Session[]>();
+      sessions4.set(1, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      const sessions2 = new Map<number, Session[]>();
+      sessions2.set(2, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+
+      // Start on weekday 1 with overflow
+      const { rerender } = render(
+        <TimeTableRow {...defaultProps} weekday={1} sessions={sessions4} />
+      );
+
+      // Expand
+      const chip = screen.getByTestId("overflow-expand-btn-1");
+      fireEvent.click(chip);
+      expect(screen.getByTestId("overflow-expand-btn-1").textContent).toBe("−");
+
+      // Switch to weekday 2 (also has overflow)
+      rerender(
+        <TimeTableRow {...defaultProps} weekday={2} sessions={sessions2} />
+      );
+
+      // isExpanded should be reset — chip shows +N again, not "−"
+      expect(screen.getByTestId("overflow-expand-btn-2").textContent).toBe("+1");
+    });
+
+    it("isDragging=true 이면 overflow 없고 chip 없음", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      const dragSession = makeSession("s1", 1);
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          sessions={sessions}
+          dragPreview={{
+            draggedSession: dragSession,
+            targetWeekday: 1,
+            targetTime: "09:00",
+            targetYPosition: 1,
+          }}
+        />
+      );
+      // No overflow chip when dragging
+      expect(screen.queryByTestId("overflow-expand-btn-0")).not.toBeInTheDocument();
+      // All sessions visible (overflow suppressed during drag)
+      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s4")).toBeInTheDocument();
+    });
+
+    it("SessionOverflowPopover 또는 portal 백드롭이 DOM에 없다", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      expect(screen.queryByTestId("overflow-popover-backdrop")).not.toBeInTheDocument();
+      expect(document.querySelector('[role="dialog"]')).not.toBeInTheDocument();
     });
   });
 
@@ -524,4 +626,3 @@ describe("TimeTableRow Component", () => {
   });
 
 });
-

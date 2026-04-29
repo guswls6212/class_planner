@@ -8,8 +8,11 @@ import {
   getImprovedStudentDisplayText,
   getSessionBlockStyles,
   getSessionSubject,
+  getStudentDeterministicColor,
   resolveSessionColor,
 } from "./SessionBlock.utils";
+import { hexToRgba } from "@/lib/colors/hexToRgba";
+import { tintFromHex } from "@/lib/colors/tintFromHex";
 import { resolveSessionTone } from "./SessionCard.utils";
 
 interface SessionBlockProps {
@@ -103,7 +106,8 @@ function SessionBlock({
     enrollments || [],
     subjects || [],
     students || [],
-    teachers
+    teachers,
+    selectedStudentIds
   );
 
   // 강사 정보
@@ -229,14 +233,6 @@ function SessionBlock({
 
   const isDraggedSession = session.id === draggedSessionId;
 
-  const isFiltered =
-    selectedStudentIds != null &&
-    selectedStudentIds.length > 0 &&
-    !(session.enrollmentIds ?? []).some((eid) => {
-      const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment != null && selectedStudentIds.includes(enrollment.studentId);
-    });
-
   const weekdayLabel =
     ["월", "화", "수", "목", "금", "토", "일"][session.weekday] ?? "";
   const ariaLabel = [
@@ -257,6 +253,37 @@ function SessionBlock({
   const cursorClassName =
     isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
 
+  // When colorBy='student' but no chip is selected, treat as subject mode for labels
+  const isStudentModeActive =
+    colorBy === "student" &&
+    selectedStudentIds != null &&
+    selectedStudentIds.length > 0;
+
+  // Dim/glow logic: only active when student mode is on and not dragging
+  const sessionContainsSelectedStudent =
+    isStudentModeActive &&
+    (session.enrollmentIds ?? []).some((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      return enrollment != null && selectedStudentIds!.includes(enrollment.studentId);
+    });
+
+  const isDragActive = isAnyDragging || isDragging;
+
+  let dimGlowStyle: React.CSSProperties = {};
+  if (isStudentModeActive && !isDragActive) {
+    if (sessionContainsSelectedStudent) {
+      // Color from first chip — multi-chip selection uses first selected student's color
+      const hex = getStudentDeterministicColor(selectedStudentIds![0]);
+      dimGlowStyle = {
+        boxShadow: `0 0 0 1.5px ${hexToRgba(hex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
+      };
+    } else {
+      // Combined with completed session's 0.55 inner opacity this results in ~0.14 total
+      // visual opacity — intentional: completed non-matching sessions fade further.
+      dimGlowStyle = { opacity: 0.25 };
+    }
+  }
+
   const wrapperStyle: React.CSSProperties = {
     position: "absolute",
     left: styles.left,
@@ -264,6 +291,8 @@ function SessionBlock({
     width: styles.width,
     height: styles.height,
     zIndex: styles.zIndex,
+    transition: "opacity 0.2s ease, box-shadow 0.2s ease",
+    ...dimGlowStyle,
   };
 
   const accentColor = hasConflict
@@ -272,11 +301,20 @@ function SessionBlock({
       ? tone.accent
       : undefined;
 
+  // Gradient background for session button
+  const buttonBg = (() => {
+    const isValidHex6 = /^#[0-9a-fA-F]{6}$/.test(tone.bg);
+    if (!isValidHex6) return tone.bg;
+    return `linear-gradient(180deg, ${tintFromHex(tone.bg, 0.08)} 0%, ${tone.bg} 100%)`;
+  })();
+
   const buttonStyle: React.CSSProperties = {
-    backgroundColor: tone.bg,
+    background: buttonBg,
     color: tone.fg,
     borderRadius: 4,
-    borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
+    borderLeft: accentColor
+      ? `3px solid ${accentColor}`
+      : /^#[0-9a-fA-F]{6}$/.test(tone.bg) ? "3px solid rgba(0,0,0,0.2)" : undefined,
     padding: 0,
     fontSize: 12,
     display: "flex",
@@ -294,7 +332,7 @@ function SessionBlock({
 
   // Primary label based on colorBy
   const primaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? studentNames[0] || "학생 없음"
       : colorBy === "teacher"
         ? teacher?.name || "강사 없음"
@@ -302,12 +340,12 @@ function SessionBlock({
 
   // Secondary info based on colorBy
   const secondaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
   const extraStudentCount = (() => {
-    if (colorBy !== "student" || !selectedStudentIds || selectedStudentIds.length === 0) return 0;
+    if (!isStudentModeActive) return 0;
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
       return enrollment ? [enrollment.studentId] : [];
@@ -327,7 +365,6 @@ function SessionBlock({
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
       aria-label={ariaLabel}
-      className={isFiltered ? "opacity-30" : ""}
     >
       <button
         type="button"
@@ -341,7 +378,7 @@ function SessionBlock({
         onTouchEnd={handleTouchEnd}
         className={[
           "session-block",
-          "hover:-translate-y-0.5 hover:shadow-md transition-all duration-150",
+          "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-white/30 transition-all duration-150",
           cursorClassName,
         ]
           .filter(Boolean)
@@ -358,14 +395,14 @@ function SessionBlock({
         )}
 
         <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
-          <div className="font-semibold truncate text-[11px] leading-tight">
+          <div className="font-semibold truncate text-[13px] leading-tight">
             {primaryLabel}
           </div>
-          <div className="text-[10px] opacity-75 truncate leading-tight">
+          <div className="text-[10px] opacity-75 truncate leading-tight [font-feature-settings:'tnum']">
             {session.startsAt}-{session.endsAt}
           </div>
           {secondaryLabel && (
-            <div className="text-[10px] opacity-80 truncate leading-tight">
+            <div className="text-[10px] opacity-[0.85] truncate leading-tight">
               {secondaryLabel}
             </div>
           )}
