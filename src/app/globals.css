@@ -1049,8 +1049,8 @@ body {
 
 /* Cluster overflow dot-track entrance */
 @keyframes clusterDotIn {
-  from { opacity: 0; transform: scale(0.8); }
-  to   { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
 }
 .cluster-dot-enter { animation: clusterDotIn 200ms ease-out; }
 @media (prefers-reduced-motion: reduce) { .cluster-dot-enter { animation: none; } }
