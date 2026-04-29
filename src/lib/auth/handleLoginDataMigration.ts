@@ -10,7 +10,7 @@
  * 마이그레이션 완료 후 서버 데이터를 re-fetch하여 localStorage를 최신 상태로 갱신한다.
  */
 
-import { ANONYMOUS_STORAGE_KEY, setClassPlannerData } from "../localStorageCrud";
+import { ANONYMOUS_STORAGE_KEY, getClassPlannerData, setClassPlannerData } from "../localStorageCrud";
 import type { ClassPlannerData } from "../localStorageCrud";
 import { migrateLocalDataToServer } from "./fullDataMigration";
 import { logger } from "../logger";
@@ -40,18 +40,35 @@ function getAnonymousData(): ClassPlannerData | null {
   }
 }
 
+// userId 키(classPlannerData:{userId})에서 데이터를 읽는다.
+// 호출 시점에 supabase_user_id가 이미 localStorage에 설정되어 있어야 한다.
+function getUserKeyData(): ClassPlannerData | null {
+  if (typeof window === "undefined") return null;
+  const data = getClassPlannerData();
+  return isEmptyData(data) ? null : data;
+}
+
 export function checkLoginDataConflict(serverData: ClassPlannerData): MigrationResult {
   const anonymousData = getAnonymousData();
 
-  if (!anonymousData || isEmptyData(anonymousData)) {
-    return { action: "use-server" };
+  // anonymous 키 데이터가 있으면 기존 로직 그대로
+  if (anonymousData && !isEmptyData(anonymousData)) {
+    if (isEmptyData(serverData)) {
+      return { action: "upload-local" };
+    }
+    return { action: "conflict", localData: anonymousData, serverData };
   }
 
-  if (isEmptyData(serverData)) {
-    return { action: "upload-local" };
+  // anonymous 없음 → userId 키 데이터 확인 (온보딩 전 로그인 상태에서 입력한 데이터)
+  const userKeyData = getUserKeyData();
+  if (userKeyData) {
+    if (isEmptyData(serverData)) {
+      return { action: "upload-local" };
+    }
+    return { action: "conflict", localData: userKeyData, serverData };
   }
 
-  return { action: "conflict", localData: anonymousData, serverData };
+  return { action: "use-server" };
 }
 
 export function applyServerChoice(): void {
@@ -66,13 +83,15 @@ export async function applyLocalDataChoice(
 ): Promise<void> {
   if (typeof window === "undefined") return;
 
+  // anonymous 키 우선, 없으면 userId 키 데이터를 소스로 사용
   const anonymousData = getAnonymousData();
-  if (!anonymousData) {
+  const localData = anonymousData ?? getUserKeyData();
+  if (!localData) {
     throw new Error("로컬 데이터를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
   }
 
   // 1. 전체 마이그레이션 파이프라인 실행
-  const result = await migrateLocalDataToServer(userId, anonymousData, serverData);
+  const result = await migrateLocalDataToServer(userId, localData, serverData);
   logger.info("handleLoginDataMigration - 마이그레이션 결과", {
     success: result.success,
     syncedCounts: result.syncedCounts,
@@ -122,18 +141,20 @@ export async function applyLocalDataChoice(
     lastModified: new Date().toISOString(),
   });
 
-  // 5. anonymous 키 삭제 — 전혀 동기화된 데이터가 없으면 보존
-  const totalSynced =
-    result.syncedCounts.students +
-    result.syncedCounts.subjects +
-    result.syncedCounts.enrollments +
-    result.syncedCounts.sessions;
-  if (totalSynced > 0 || anonymousData.students.length === 0) {
-    localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
-  } else {
-    logger.warn("handleLoginDataMigration - 동기화된 데이터 없음, anonymous 키 보존", {
-      errors: result.errors,
-    });
+  // 5. anonymous 키 삭제 — userId 키 소스인 경우 삭제 불필요 (서버 데이터로 이미 갱신됨)
+  if (anonymousData) {
+    const totalSynced =
+      result.syncedCounts.students +
+      result.syncedCounts.subjects +
+      result.syncedCounts.enrollments +
+      result.syncedCounts.sessions;
+    if (totalSynced > 0 || anonymousData.students.length === 0) {
+      localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
+    } else {
+      logger.warn("handleLoginDataMigration - 동기화된 데이터 없음, anonymous 키 보존", {
+        errors: result.errors,
+      });
+    }
   }
 
   logger.info("handleLoginDataMigration - 로컬 데이터 선택 완료", { userId });
