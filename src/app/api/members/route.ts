@@ -23,25 +23,45 @@ export async function GET(request: NextRequest) {
 
   try {
     const client = getServiceRoleClient();
-    const { data, error } = await client
+
+    // academy_members만 조회 (auth.users PostgREST join은 지원 안 됨)
+    const { data: rows, error } = await client
       .from("academy_members")
-      .select("user_id, role, joined_at, users:user_id(email, raw_user_meta_data)")
+      .select("user_id, role, joined_at")
       .eq("academy_id", academyId)
       .order("joined_at");
 
     if (error) {
       logger.error("멤버 목록 조회 실패", { userId }, error as Error);
-      return NextResponse.json({ success: false, error: "멤버 목록 조회에 실패했습니다." }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: "멤버 목록 조회에 실패했습니다." },
+        { status: 500 }
+      );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const members = (data ?? []).map((row: any) => ({
-      userId: row.user_id,
-      role: row.role,
-      joinedAt: row.joined_at,
-      email: row.users?.email ?? null,
-      name: row.users?.raw_user_meta_data?.full_name ?? null,
-    }));
+    // 각 멤버의 auth 정보를 admin API로 병렬 조회
+    const members = await Promise.all(
+      (rows ?? []).map(async (row) => {
+        try {
+          const { data: { user } } = await client.auth.admin.getUserById(row.user_id);
+          return {
+            userId: row.user_id,
+            role: row.role,
+            joinedAt: row.joined_at,
+            email: user?.email ?? null,
+            name: (user?.user_metadata?.full_name as string | undefined) ?? null,
+          };
+        } catch {
+          return {
+            userId: row.user_id,
+            role: row.role,
+            joinedAt: row.joined_at,
+            email: null,
+            name: null,
+          };
+        }
+      })
+    );
 
     return NextResponse.json({ success: true, data: members, hasAcademy: true });
   } catch (error) {
