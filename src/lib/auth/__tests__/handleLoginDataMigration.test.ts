@@ -98,6 +98,31 @@ describe("checkLoginDataConflict", () => {
     expect(result.action).toBe("use-server");
   });
 
+  // userId 키 보호 케이스 (온보딩 전 로그인 상태에서 입력한 데이터)
+  it("anonymous 없고 userId 키에 데이터 있고 서버 비어있으면 upload-local", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(localData);
+    const result = checkLoginDataConflict(emptyData);
+    expect(result.action).toBe("upload-local");
+  });
+
+  it("anonymous 없고 userId 키에 데이터 있고 서버도 있으면 conflict", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(localData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("conflict");
+    if (result.action === "conflict") {
+      expect(result.localData.students[0].name).toBe("Anonymous Student");
+    }
+  });
+
+  it("anonymous 없고 userId 키도 비어있으면 use-server", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(emptyData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("use-server");
+  });
+
   it("anon에 subjects만 9개 있고 students/sessions/enrollments는 0 → use-server", () => {
     const subjectsOnlyData: ClassPlannerData = {
       students: [],
@@ -156,11 +181,38 @@ describe("applyLocalDataChoice", () => {
     });
   });
 
-  it("anonymous 데이터 없으면 에러 throw", async () => {
+  it("anonymous도 없고 userId 키도 없으면 에러 throw", async () => {
+    storage["supabase_user_id"] = "user-999";
+    // userId 키 데이터도 없는 상태
     await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
       "로컬 데이터를 찾을 수 없습니다"
     );
-    expect(storage["classPlannerData:user-999"]).toBeUndefined();
+  });
+
+  it("userId 키 데이터로 마이그레이션 — anonymous 키 삭제 안 함", async () => {
+    // anonymous 없음, userId 키에 데이터 있음 (온보딩 전 로그인 상태)
+    storage["supabase_user_id"] = "user-999";
+    storage["classPlannerData:user-999"] = JSON.stringify(localData);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyLocalDataChoice("user-999", emptyData);
+
+    // anonymous 키가 원래 없었으니 삭제 시도 없음 (anonymous 키 없음 유지)
+    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
+    // supabase_user_id 설정 확인
+    expect(storage["supabase_user_id"]).toBe("user-999");
+    // re-fetch 4번 호출
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    vi.unstubAllGlobals();
   });
 
   it("마이그레이션 완료 후 anonymous 키 삭제, supabase_user_id 설정", async () => {
