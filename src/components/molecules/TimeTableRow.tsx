@@ -220,14 +220,34 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         const subject = firstEnrollment
           ? (subjects.find((s) => s.id === firstEnrollment.subjectId) ?? null)
           : null;
+
         const studentNames = (session.enrollmentIds || []).flatMap((eid) => {
           const enr = enrollments.find((e) => e.id === eid);
           const st = enr ? students.find((s) => s.id === enr.studentId) : null;
           return st ? [st.name] : [];
         });
-        return { id: session.id, subject, studentNames };
+
+        // Resolve accent color from subject color (same logic as SessionBlock)
+        const tone = resolveSessionTone(subject?.color);
+        const accent = tone.accent;
+
+        // Resolve teacher name from session.teacherId (optional field on Session)
+        const teacherName = session.teacherId
+          ? (teachers?.find((t) => t.id === session.teacherId)?.name ?? undefined)
+          : undefined;
+
+        return {
+          id: session.id,
+          subject,
+          studentNames,
+          accent,
+          startTime: session.startsAt,
+          endTime: session.endsAt,
+          teacherName,
+          studentCount: studentNames.length,
+        };
       }),
-    [enrollments, subjects, students]
+    [enrollments, subjects, students, teachers]
   );
 
   return (
