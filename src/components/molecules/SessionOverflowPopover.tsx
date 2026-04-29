@@ -8,6 +8,11 @@ export interface OverflowSessionItem {
   id: string;
   subject: Subject | null;
   studentNames: string[];
+  accent: string;       // pre-computed tone.accent value (CSS var or hex)
+  startTime: string;    // "11:30"
+  endTime: string;      // "12:30"
+  teacherName?: string;
+  studentCount: number;
 }
 
 interface Props {

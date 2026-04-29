@@ -11,11 +11,20 @@ const items: OverflowSessionItem[] = [
     id: "s1",
     subject: { id: "sub1", name: "피아노", color: "blue" } as any,
     studentNames: ["김지우"],
+    accent: "var(--color-subject-blue-accent)",
+    startTime: "11:30",
+    endTime: "12:30",
+    teacherName: "김선생",
+    studentCount: 1,
   },
   {
     id: "s2",
     subject: { id: "sub2", name: "기타", color: "amber" } as any,
     studentNames: ["이서연"],
+    accent: "var(--color-subject-amber-accent)",
+    startTime: "13:00",
+    endTime: "14:00",
+    studentCount: 1,
   },
 ];
 
