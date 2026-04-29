@@ -3,6 +3,7 @@
 import React from "react";
 import type { SessionCardProps } from "./SessionCard.types";
 import { resolveSessionTone } from "./SessionCard.utils";
+import { hexToRgba } from "@/lib/colors/hexToRgba";
 
 export function SessionCard(props: SessionCardProps) {
   const { variant } = props;
@@ -120,14 +121,27 @@ function SessionCardRow({
   onAttendanceClick,
   attendanceStatus = "unmarked",
   className,
+  overrideColor,
+  dimmed,
+  highlighted,
   "data-testid": testId,
 }: SessionCardProps) {
-  const tone = resolveSessionTone(subject?.color);
+  const tone = resolveSessionTone(overrideColor ?? subject?.color);
   const label = subject?.name ?? "과목 없음";
   const students =
     studentNames && studentNames.length > 0
       ? studentNames.join(", ")
       : undefined;
+
+  const glowShadow =
+    highlighted && overrideColor
+      ? `0 0 0 1.5px ${hexToRgba(overrideColor, 0.55)}`
+      : undefined;
+
+  const wrapperStyle: React.CSSProperties = {
+    opacity: dimmed ? 0.25 : undefined,
+    transition: "opacity 0.2s ease",
+  };
 
   return (
     <div
@@ -137,6 +151,7 @@ function SessionCardRow({
       data-testid={testId}
       data-variant="row"
       data-state={state}
+      style={wrapperStyle}
     >
       {timeRange && (
         <span className="text-[11px] text-[var(--color-text-muted)] w-10 flex-shrink-0 text-right">
@@ -154,6 +169,7 @@ function SessionCardRow({
           borderLeft:
             state === "ongoing" ? `3px solid ${tone.accent}` : undefined,
           opacity: state === "done" ? 0.55 : undefined,
+          boxShadow: glowShadow,
         }}
       >
         <div className="text-[12px] font-semibold truncate">{label}</div>
@@ -190,10 +206,18 @@ function SessionCardChip({
   state = "default",
   onClick,
   className,
+  overrideColor,
+  dimmed,
+  highlighted,
   "data-testid": testId,
 }: SessionCardProps) {
-  const tone = resolveSessionTone(subject?.color);
+  const tone = resolveSessionTone(overrideColor ?? subject?.color);
   const label = subject?.name ?? "수업";
+
+  const glowShadow =
+    highlighted && overrideColor
+      ? `0 0 0 1.5px ${hexToRgba(overrideColor, 0.55)}`
+      : undefined;
 
   const baseClass = [
     "rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium truncate w-full text-left",
@@ -206,7 +230,9 @@ function SessionCardChip({
   const toneStyle: React.CSSProperties = {
     backgroundColor: tone.bg,
     color: tone.fg,
-    opacity: state === "done" ? 0.55 : undefined,
+    opacity: dimmed ? 0.25 : state === "done" ? 0.55 : undefined,
+    transition: "opacity 0.2s ease",
+    boxShadow: glowShadow,
   };
 
   if (onClick) {

@@ -154,6 +154,18 @@ export const getStudentDeterministicColor = (studentId: string): string => {
 
 export type ColorByMode = "subject" | "student" | "teacher";
 
+export const sessionContainsSelected = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  selectedStudentIds: string[]
+): boolean => {
+  if (!selectedStudentIds.length || !session.enrollmentIds?.length) return false;
+  return session.enrollmentIds.some((eid) => {
+    const enrollment = enrollments.find((e) => e.id === eid);
+    return enrollment ? selectedStudentIds.includes(enrollment.studentId) : false;
+  });
+};
+
 export const resolveSessionColor = (
   session: Session,
   colorBy: ColorByMode,

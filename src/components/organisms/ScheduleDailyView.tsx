@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
 import { SessionCard } from "@/components/molecules/SessionCard";
+import { resolveSessionColor, sessionContainsSelected } from "@/components/molecules/SessionBlock.utils";
 
 type AttendanceStatus = "all-present" | "partial" | "absent" | "unmarked";
 
@@ -15,6 +16,7 @@ interface ScheduleDailyViewProps {
   teachers: Teacher[];
   selectedWeekday: number;
   colorBy: ColorByMode;
+  selectedStudentIds?: string[];
   onSessionClick: (session: Session) => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
@@ -24,7 +26,7 @@ interface ScheduleDailyViewProps {
 
 export function ScheduleDailyView({
   sessions, subjects, students, enrollments, teachers,
-  selectedWeekday, colorBy, onSessionClick,
+  selectedWeekday, colorBy, selectedStudentIds, onSessionClick,
   onSwipeLeft, onSwipeRight, onAttendanceClick, attendanceStatusMap,
 }: ScheduleDailyViewProps) {
   const daySessions = useMemo(() => {
@@ -89,6 +91,24 @@ export function ScheduleDailyView({
               studentNames,
               teacher ? `${teacher.name} 선생님` : "",
             ].filter(Boolean);
+
+            const resolvedColor = resolveSessionColor(
+              session,
+              colorBy,
+              enrollments,
+              subjects,
+              students,
+              teachers,
+              selectedStudentIds
+            );
+            const isStudentFilterActive =
+              colorBy === "student" && selectedStudentIds != null && selectedStudentIds.length > 0;
+            const containsSelected = isStudentFilterActive
+              ? sessionContainsSelected(session, enrollments, selectedStudentIds!)
+              : false;
+            const isDimmed = isStudentFilterActive && !containsSelected;
+            const isHighlighted = isStudentFilterActive && containsSelected;
+
             return (
               <SessionCard
                 key={session.id}
@@ -96,6 +116,9 @@ export function ScheduleDailyView({
                 subject={subject ?? null}
                 studentNames={subLabelParts.length > 0 ? subLabelParts : undefined}
                 timeRange={session.startsAt}
+                overrideColor={resolvedColor}
+                dimmed={isDimmed}
+                highlighted={isHighlighted}
                 onClick={() => onSessionClick(session)}
                 onAttendanceClick={
                   onAttendanceClick ? () => onAttendanceClick(session) : undefined

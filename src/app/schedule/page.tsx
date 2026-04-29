@@ -39,7 +39,6 @@ import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
-import { filterSessionsByStudents } from "@/features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { syncSubjectUpdate } from "../../lib/apiSync";
@@ -559,15 +558,6 @@ function SchedulePageContent(): JSX.Element {
     enrollments,
     ""
   );
-
-  const filteredDisplaySessions = useMemo(() => {
-    if (selectedStudentIds.length === 0) return displaySessions;
-    const filtered = new Map<number, Session[]>();
-    displaySessions.forEach((daySessions, weekday) => {
-      filtered.set(weekday, filterSessionsByStudents(daySessions, selectedStudentIds, enrollments));
-    });
-    return filtered;
-  }, [displaySessions, selectedStudentIds, enrollments]);
 
   const {
     validateTimeRange,
@@ -1216,6 +1206,7 @@ function SchedulePageContent(): JSX.Element {
           teachers={teachers}
           selectedWeekday={selectedWeekday}
           colorBy={colorBy}
+          selectedStudentIds={selectedStudentIds}
           onSessionClick={handleSessionClick}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
@@ -1226,6 +1217,10 @@ function SchedulePageContent(): JSX.Element {
           sessions={displaySessions}
           subjects={subjects}
           enrollments={enrollments}
+          students={students}
+          teachers={teachers}
+          colorBy={colorBy}
+          selectedStudentIds={selectedStudentIds}
           currentDate={selectedDate}
           onDayClick={(date) => {
             setSelectedDate(date);

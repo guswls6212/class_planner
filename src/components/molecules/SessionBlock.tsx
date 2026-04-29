@@ -11,6 +11,7 @@ import {
   getStudentDeterministicColor,
   resolveSessionColor,
 } from "./SessionBlock.utils";
+import { hexToRgba } from "@/lib/colors/hexToRgba";
 import { resolveSessionTone } from "./SessionCard.utils";
 
 interface SessionBlockProps {
@@ -265,21 +266,22 @@ function SessionBlock({
       return enrollment != null && selectedStudentIds!.includes(enrollment.studentId);
     });
 
-  const isDraggingAny = isAnyDragging || isDragging;
+  const isDragActive = isAnyDragging || isDragging;
 
-  const dimGlowStyle: React.CSSProperties = (() => {
-    if (!isStudentModeActive || isDraggingAny) return {};
+  let dimGlowStyle: React.CSSProperties = {};
+  if (isStudentModeActive && !isDragActive) {
     if (sessionContainsSelectedStudent) {
+      // Color from first chip — multi-chip selection uses first selected student's color
       const hex = getStudentDeterministicColor(selectedStudentIds![0]);
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return {
-        boxShadow: `0 0 0 1.5px rgba(${r}, ${g}, ${b}, 0.55), 0 1px 2px rgba(0,0,0,0.3)`,
+      dimGlowStyle = {
+        boxShadow: `0 0 0 1.5px ${hexToRgba(hex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
       };
+    } else {
+      // Combined with completed session's 0.55 inner opacity this results in ~0.14 total
+      // visual opacity — intentional: completed non-matching sessions fade further.
+      dimGlowStyle = { opacity: 0.25 };
     }
-    return { opacity: 0.25 };
-  })();
+  }
 
   const wrapperStyle: React.CSSProperties = {
     position: "absolute",
