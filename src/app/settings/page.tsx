@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
+import { UserPlus, Link2, Plus } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
@@ -248,16 +249,29 @@ export default function SettingsPage() {
 
       {/* 멤버 섹션 */}
       <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            멤버 ({members.length}명)
-          </h2>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center flex-shrink-0">
+              <UserPlus size={18} strokeWidth={1.5} />
+            </div>
+            <div>
+              <h2 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
+                팀 멤버{" "}
+                <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
+                  {members.length}명
+                </span>
+              </h2>
+              <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
+                직원·강사를 초대해 시간표를 함께 편집하세요
+              </p>
+            </div>
+          </div>
           {canManage && (
             <button
               onClick={() => setShowInviteModal(true)}
-              className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+              className="flex items-center gap-1.5 px-3 py-2 bg-accent text-[var(--color-admin-ink)] text-[13px] font-medium rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
             >
-              + 초대하기
+              <Plus size={14} strokeWidth={2} /> 초대하기
             </button>
           )}
         </div>
@@ -275,10 +289,10 @@ export default function SettingsPage() {
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${
                     member.role === "owner"
-                      ? "bg-purple-100 text-purple-700"
+                      ? "bg-accent/15 text-accent"
                       : member.role === "admin"
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-100 text-gray-600"
+                      ? "bg-indigo-400/15 text-indigo-400"
+                      : "bg-[var(--color-overlay-light)] text-[var(--color-text-secondary)]"
                   }`}
                 >
                   {ROLE_LABEL[member.role] ?? member.role}
@@ -312,10 +326,10 @@ export default function SettingsPage() {
               return (
                 <div
                   key={invite.id}
-                  className="flex justify-between items-center p-3 rounded-lg bg-amber-50 border border-amber-200"
+                  className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)]"
                 >
                   <div>
-                    <span className="text-sm text-amber-800">
+                    <span className="text-sm text-[var(--color-text-primary)]">
                       {ROLE_LABEL[invite.role] ?? invite.role} 역할 초대
                     </span>
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
@@ -346,19 +360,62 @@ export default function SettingsPage() {
       {/* 공유 링크 섹션 */}
       {canManage && (
         <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mt-4 border border-[var(--color-border)]">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-              공유 링크 ({shareTokens.length}개)
-            </h2>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-400/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                <Link2 size={18} strokeWidth={1.5} />
+              </div>
+              <div>
+                <h2 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
+                  시간표 공유{" "}
+                  <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
+                    {shareTokens.length}개
+                  </span>
+                </h2>
+                <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
+                  학부모에게 로그인 없이 시간표를 공유하세요
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => setShowShareModal(true)}
-              className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+              className="flex items-center gap-1.5 px-3 py-2 bg-accent text-[var(--color-admin-ink)] text-[13px] font-medium rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
             >
-              + 링크 생성
+              <Plus size={14} strokeWidth={2} /> 링크 만들기
             </button>
           </div>
           {shareTokens.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">활성 공유 링크가 없습니다.</p>
+            <div className="space-y-3">
+              <p className="text-[12px] text-[var(--color-text-muted)] text-center py-1">
+                아직 공유 링크가 없어요
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { n: 1, title: "링크 만들기", desc: "만료일·학생 필터 설정" },
+                    { n: 2, title: "URL 복사", desc: "카톡·문자로 전달" },
+                    { n: 3, title: "읽기 전용", desc: "로그인 없이 열람" },
+                  ] as const
+                ).map(({ n, title, desc }) => (
+                  <div
+                    key={n}
+                    className="bg-[var(--color-bg-primary)] rounded-lg p-2.5 flex items-start gap-2"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-[var(--color-overlay-light)] text-[var(--color-text-muted)] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {n}
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                        {title}
+                      </p>
+                      <p className="text-[10px] text-[var(--color-text-muted)] leading-relaxed">
+                        {desc}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col gap-2">
               {shareTokens.map((st) => {
@@ -413,30 +470,30 @@ export default function SettingsPage() {
           onClick={() => setShowShareModal(false)}
         >
           <div
-            className="bg-white rounded-2xl p-7 w-full max-w-sm mx-4"
+            className="bg-[var(--color-bg-secondary)] rounded-2xl p-6 w-full max-w-sm mx-4 border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-1">공유 링크 생성</h3>
-            <p className="text-sm text-gray-500 mb-5">인증 없이 시간표를 볼 수 있는 링크를 만듭니다</p>
+            <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">공유 링크 만들기</h3>
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-5">인증 없이 시간표를 볼 수 있는 링크를 만듭니다</p>
 
             <div className="mb-4">
-              <label className="text-sm font-medium text-gray-700 block mb-1">제목 (선택)</label>
+              <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">제목 (선택)</label>
               <input
                 type="text"
                 value={shareLabel}
                 onChange={(e) => setShareLabel(e.target.value)}
                 placeholder="예: 학부모 공유용"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
 
             {localStudents.length > 0 && (
               <div className="mb-4">
-                <label className="text-sm font-medium text-gray-700 block mb-1">학생 필터 (선택)</label>
+                <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">학생 필터 (선택)</label>
                 <select
                   value={shareStudentId}
                   onChange={(e) => setShareStudentId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="">전체 학생</option>
                   {localStudents.map((s) => (
@@ -447,11 +504,11 @@ export default function SettingsPage() {
             )}
 
             <div className="mb-5">
-              <label className="text-sm font-medium text-gray-700 block mb-1">만료 기간</label>
+              <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">만료 기간</label>
               <select
                 value={shareExpiresInDays}
                 onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value={7}>7일</option>
                 <option value={30}>30일</option>
@@ -463,14 +520,14 @@ export default function SettingsPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowShareModal(false)}
-                className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
+                className="flex-1 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleCreateShareToken}
                 disabled={isCreatingShare}
-                className="flex-1 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+                className="flex-1 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
                 {isCreatingShare ? "생성 중..." : "생성"}
               </button>
@@ -486,24 +543,24 @@ export default function SettingsPage() {
           onClick={closeModal}
         >
           <div
-            className="bg-white rounded-2xl p-7 w-full max-w-sm mx-4"
+            className="bg-[var(--color-bg-secondary)] rounded-2xl p-6 w-full max-w-sm mx-4 border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-bold text-gray-800 mb-1">멤버 초대</h3>
-            <p className="text-sm text-gray-500 mb-5">초대 링크를 생성하여 공유하세요</p>
+            <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">멤버 초대</h3>
+            <p className="text-[13px] text-[var(--color-text-muted)] mb-5">초대 링크를 생성하여 공유하세요</p>
 
             {!generatedLink ? (
               <>
                 <fieldset className="mb-5">
-                  <legend className="text-sm font-medium text-gray-700 mb-2">역할 선택</legend>
+                  <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
                   <div className="flex gap-3">
                     {(["member", "admin"] as const).map((r) => (
                       <label
                         key={r}
                         className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
                           inviteRole === r
-                            ? "border-purple-500 bg-purple-50"
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-accent bg-accent/10"
+                            : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
                         }`}
                       >
                         <input
@@ -514,8 +571,8 @@ export default function SettingsPage() {
                           onChange={() => setInviteRole(r)}
                           className="sr-only"
                         />
-                        <div className="font-medium text-sm text-gray-800">{ROLE_LABEL[r]}</div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
                           {r === "member" ? "시간표 조회" : "학생·수업 관리 + 초대"}
                         </div>
                       </label>
@@ -526,14 +583,14 @@ export default function SettingsPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={closeModal}
-                    className="flex-1 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
+                    className="flex-1 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleCreateInvite}
                     disabled={isCreatingInvite}
-                    className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 disabled:opacity-50"
+                    className="flex-1 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
                   >
                     {isCreatingInvite ? "생성 중..." : "링크 생성"}
                   </button>
@@ -541,22 +598,22 @@ export default function SettingsPage() {
               </>
             ) : (
               <>
-                <label className="text-sm font-medium text-gray-700 block mb-2">초대 링크</label>
+                <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-2">초대 링크</label>
                 <div className="flex gap-2 mb-2">
-                  <div className="flex-1 px-3 py-2 bg-gray-100 rounded-lg text-xs text-gray-500 truncate border border-gray-200">
+                  <div className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] rounded-lg text-xs text-[var(--color-text-muted)] truncate border border-[var(--color-border)]">
                     {generatedLink}
                   </div>
                   <button
                     onClick={() => handleCopyLink(generatedLink)}
-                    className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 whitespace-nowrap"
+                    className="px-3 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 whitespace-nowrap transition-opacity"
                   >
                     {copied ? "복사됨!" : "복사"}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mb-5">7일 후 만료 · 1회만 사용 가능</p>
+                <p className="text-[11px] text-[var(--color-text-muted)] mb-5">7일 후 만료 · 1회만 사용 가능</p>
                 <button
                   onClick={closeModal}
-                  className="w-full py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50"
+                  className="w-full py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
                 >
                   닫기
                 </button>

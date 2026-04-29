@@ -78,7 +78,7 @@ describe("Settings Page", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("+ 초대하기")).toBeInTheDocument();
+      expect(screen.getByText("초대하기")).toBeInTheDocument();
     });
   });
 });
