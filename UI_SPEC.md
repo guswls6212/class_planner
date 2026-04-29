@@ -140,7 +140,7 @@ SchedulePage
 - `data-variant`: `block`(weekly) / `row`(daily) / `chip`(monthly) / `preview`(landing)
 - `data-state`: `default` / `ongoing` / `done` / `conflict`
 - 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
-- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 2개 + `SessionOverflowPopover` "+N" pill
+- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 3개 표시, 4+는 inline +N 칩 클릭 시 모든 세션 표시 (토글 가능)
 
 **StudentFilterChipBar (colorBy=student 시):**
 - 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 표시
@@ -278,7 +278,6 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
 | `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
 | `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 주간 시간표 전용 수업 블록. 드래그 이동 가능. Phase 6 이후 Daily/Monthly/Landing은 SessionCard로 대체됨. |
-| `SessionOverflowPopover` | `SessionOverflowPopover.tsx` | `sessions`, `subjects`, `students`, `enrollments`, `overflowCount`, `onClick?` | 겹침 세션 4개↑일 때 "+N" pill 클릭 시 팝오버로 목록 표시 (D-hybrid). |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
 | `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
 | `StudentList` | `StudentList.tsx` | `students`, `selectedStudentId`, `onSelect`, `onDelete` | 학생 목록 (StudentListItem 반복) |

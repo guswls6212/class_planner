@@ -193,7 +193,6 @@ src/components/molecules/SessionCard.tsx
 src/components/molecules/SessionCard.types.ts
 src/components/molecules/SessionCard.utils.ts
 src/components/molecules/SessionForm.tsx
-src/components/molecules/SessionOverflowPopover.tsx
 src/components/molecules/Sidebar.tsx
 src/components/molecules/StudentInputSection.tsx
 src/components/molecules/StudentList.tsx
@@ -220,7 +219,6 @@ src/components/molecules/__tests__/SessionBlock.utils.test.ts
 src/components/molecules/__tests__/SessionCard.test.tsx
 src/components/molecules/__tests__/SessionCard.utils.test.ts
 src/components/molecules/__tests__/SessionForm.test.tsx
-src/components/molecules/__tests__/SessionOverflowPopover.test.tsx
 src/components/molecules/__tests__/StudentInputSection.test.tsx
 src/components/molecules/__tests__/StudentList.test.tsx
 src/components/molecules/__tests__/SubjectInputSection.test.tsx
