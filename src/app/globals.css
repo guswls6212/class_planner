@@ -170,6 +170,8 @@
   --color-scrollbar-button-border:#bbbbbb;
   --color-scrollbar-button-alt:   #cccccc;
   --color-bg-deep:                #111827;
+  --color-cluster-overflow-bg: rgba(255, 255, 255, 0.06);
+  --color-cluster-overflow-ring: var(--color-accent);
 }
 
 /* 리스트 불릿 완전 제거 */
