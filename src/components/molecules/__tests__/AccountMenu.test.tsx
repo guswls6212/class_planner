@@ -56,10 +56,13 @@ describe("AccountMenu", () => {
     });
   });
 
-  it("compact=true 비로그인 상태에서 아무것도 렌더하지 않는다", async () => {
-    const { container } = render(<AccountMenu compact />);
-    await waitFor(() => expect(mockGetUser).toHaveBeenCalled());
-    expect(container.firstChild).toBeNull();
+  it("compact=true 비로그인 상태에서 로그인 아이콘 링크를 렌더한다", async () => {
+    render(<AccountMenu compact />);
+    await waitFor(() => {
+      const link = screen.getByRole("link", { name: "로그인" });
+      expect(link).toBeDefined();
+      expect(link.getAttribute("href")).toBe("/login");
+    });
   });
 
   it("로그인 상태에서 아바타 버튼을 렌더한다", async () => {

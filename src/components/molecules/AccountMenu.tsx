@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { LogIn } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { clearUserClassPlannerData } from "../../lib/localStorageCrud";
 
@@ -56,7 +57,17 @@ export function AccountMenu({ compact = false }: AccountMenuProps) {
   };
 
   if (!user) {
-    if (compact) return null;
+    if (compact) {
+      return (
+        <Link
+          href="/login"
+          aria-label="로그인"
+          className="flex items-center justify-center w-8 h-8 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors"
+        >
+          <LogIn size={18} strokeWidth={1.5} />
+        </Link>
+      );
+    }
     return (
       <Link
         href="/login"
