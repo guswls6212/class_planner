@@ -153,7 +153,6 @@ src/components/atoms/Label.tsx
 src/components/atoms/SegmentedButton.tsx
 src/components/atoms/StudentListItem.tsx
 src/components/atoms/SubjectListItem.tsx
-src/components/atoms/TeacherListItem.tsx
 src/components/atoms/ThemeToggle.tsx
 src/components/atoms/__tests__/AuthGuard.test.tsx
 src/components/atoms/__tests__/Button.test.tsx
@@ -198,8 +197,6 @@ src/components/molecules/StudentInputSection.tsx
 src/components/molecules/StudentList.tsx
 src/components/molecules/SubjectInputSection.tsx
 src/components/molecules/SubjectList.tsx
-src/components/molecules/TeacherInputSection.tsx
-src/components/molecules/TeacherList.tsx
 src/components/molecules/TimeTableCell.tsx
 src/components/molecules/TimeTableRow.tsx
 src/components/molecules/TopBar.tsx
@@ -237,7 +234,7 @@ src/components/organisms/StudentsPageLayout.tsx
 src/components/organisms/SubjectDetailPanel.tsx
 src/components/organisms/SubjectManagementSection.tsx
 src/components/organisms/SubjectsPageLayout.tsx
-src/components/organisms/TeacherManagementSection.tsx
+src/components/organisms/TeacherDetailPanel.tsx
 src/components/organisms/TeachersPageLayout.tsx
 src/components/organisms/TimeTableGrid.tsx
 src/components/organisms/__tests__/AboutPageLayout.test.tsx
@@ -248,6 +245,8 @@ src/components/organisms/__tests__/ScheduleDailyView.test.tsx
 src/components/organisms/__tests__/ScheduleMonthlyView.test.tsx
 src/components/organisms/__tests__/StudentDetailPanel.test.tsx
 src/components/organisms/__tests__/StudentsPageLayout.test.tsx
+src/components/organisms/__tests__/TeacherDetailPanel.test.tsx
+src/components/organisms/__tests__/TeachersPageLayout.test.tsx
 src/components/organisms/__tests__/SubjectsPageLayout.test.tsx
 src/components/organisms/__tests__/TimeTableGrid.scrollPosition.test.tsx
 src/components/organisms/__tests__/TimeTableGrid.timeline.test.tsx
@@ -401,6 +400,7 @@ src/lib/pdf/__tests__/PdfRenderer.test.ts
 src/lib/pdf/fonts/pretendard-bold.ts
 src/lib/pdf/fonts/pretendard-regular.ts
 src/lib/planner.ts
+src/lib/teacherColors.ts
 src/lib/rateLimit.ts
 src/lib/resolveAcademyId.ts
 src/lib/resolveAcademyMembership.ts
