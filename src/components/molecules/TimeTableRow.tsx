@@ -475,27 +475,39 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         );
       })()}
 
-      {/* Overflow pills — one per contiguous group of slots sharing the same hidden session set */}
+      {/* Overflow dot-track triggers — one per contiguous group */}
       {isOverflow &&
         overflowGroups.map(({ startIdx, endIdx, hidden }) => {
           const timeString = timeSlots30Min[startIdx];
-          const pillHeight = (endIdx - startIdx + 1) * SLOT_HEIGHT_PX - 4;
+          const groupHeight = (endIdx - startIdx + 1) * SLOT_HEIGHT_PX - 4;
+          const overflowItems = toOverflowItems(hidden);
+
+          // Show up to 4 dots; if more, last slot becomes "+N" chip
+          const MAX_DOTS = 4;
+          const showDots = overflowItems.slice(0, MAX_DOTS);
+          const extraCount =
+            overflowItems.length > MAX_DOTS
+              ? overflowItems.length - (MAX_DOTS - 1)
+              : 0;
+          const dotsToShow = extraCount > 0 ? showDots.slice(0, MAX_DOTS - 1) : showDots;
+
           return (
             <div
               key={`pill-group-${startIdx}`}
               style={{
                 position: "absolute",
                 top: startIdx * SLOT_HEIGHT_PX + 2,
-                right: 2,
-                height: pillHeight,
-                width: 20,
+                right: 4,
+                height: groupHeight,
                 zIndex: 110,
+                display: "flex",
+                alignItems: "flex-start",
               }}
               data-testid={`overflow-pill-wrapper-${timeString}`}
             >
               <button
                 type="button"
-                className="flex items-center justify-center w-full h-full text-[9px] font-bold text-white bg-[#27272A] rounded-sm hover:bg-[#3f3f46] transition-colors leading-none"
+                className="cluster-dot-enter"
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpenPillSlot((prev) =>
@@ -503,14 +515,68 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                   );
                 }}
                 aria-label={`${hidden.length}개 세션 더 보기`}
+                aria-haspopup="dialog"
+                aria-expanded={openPillSlot === timeString}
                 data-testid={`overflow-pill-${timeString}`}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: 4,
+                  background: "var(--color-cluster-overflow-bg)",
+                  backdropFilter: "blur(4px)",
+                  borderRadius: 6,
+                  border: "none",
+                  cursor: "pointer",
+                  boxShadow:
+                    "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)",
+                  minWidth: 14,
+                  minHeight: 24,
+                  transition: "box-shadow 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 1px 2px rgba(0,0,0,0.25), 0 0 0 1.5px var(--color-cluster-overflow-ring), inset 0 0 0 1px rgba(255,255,255,0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                    "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)";
+                }}
               >
-                +{hidden.length}
+                {dotsToShow.map((item, i) => (
+                  <span
+                    key={i}
+                    aria-hidden="true"
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 3,
+                      background: item.accent,
+                      display: "block",
+                      flexShrink: 0,
+                    }}
+                  />
+                ))}
+                {extraCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: "var(--color-text-muted)",
+                      textAlign: "center",
+                    }}
+                  >
+                    +{extraCount}
+                  </span>
+                )}
               </button>
+
               {openPillSlot === timeString && (
                 <SessionOverflowPopover
-                  title={`${timeString} 숨겨진 세션`}
-                  items={toOverflowItems(hidden)}
+                  title={`${timeString} · 숨은 세션 ${hidden.length}개`}
+                  items={overflowItems}
                   onSelect={(id) => {
                     const session = hidden.find((s) => s.id === id);
                     if (session) onSessionClick(session);

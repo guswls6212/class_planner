@@ -386,8 +386,11 @@ describe("TimeTableRow Component", () => {
       ]);
       render(<TimeTableRow {...defaultProps} sessions={sessions} />);
       // s3, s4이 09:00-10:00에 있으므로 09:00 슬롯에 pill이 있어야 한다
-      expect(screen.getByTestId("overflow-pill-09:00")).toBeInTheDocument();
-      expect(screen.getByTestId("overflow-pill-09:00")).toHaveTextContent("+2");
+      const pill = screen.getByTestId("overflow-pill-09:00");
+      expect(pill).toBeInTheDocument();
+      // 새 dot-track 디자인: 색상 dot을 렌더하므로 "+2" 텍스트 대신 aria-hidden span 2개 확인
+      const dots = pill.querySelectorAll('span[aria-hidden="true"]');
+      expect(dots).toHaveLength(2);
     });
 
     it("pill 클릭 시 popover가 열린다", async () => {
