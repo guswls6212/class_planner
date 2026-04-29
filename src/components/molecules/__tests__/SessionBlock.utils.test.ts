@@ -9,6 +9,7 @@ describe("getSessionBlockStyles", () => {
     left: 100,
     width: 200,
     yOffset: 0,
+    yPosition: 1,
     subjectColor: "#FF0000",
   };
 
@@ -17,6 +18,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor
     );
 
@@ -30,6 +32,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       false, // isDragging
       false, // isDraggedSession
@@ -46,6 +49,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       false, // isDragging
       false, // isDraggedSession (드래그된 세션이 아님)
@@ -62,6 +66,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       false, // isDragging
       true, // isDraggedSession (드래그된 세션)
@@ -80,6 +85,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       true, // isDragging
       false, // isDraggedSession (드래그된 세션이 아님)
@@ -96,6 +102,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       true, // isDragging
       true, // isDraggedSession (드래그된 세션)
@@ -114,6 +121,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       true, // isDragging
       false, // isDraggedSession
@@ -127,6 +135,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       defaultParams.subjectColor,
       false, // isDragging
       false, // isDraggedSession
@@ -136,30 +145,30 @@ describe("getSessionBlockStyles", () => {
     expect(styles2.opacity).toBe(1); // 동일한 결과
   });
 
-  it("드래그 중 비-대상 세션도 zIndex를 100+yOffset으로 유지한다 (Bug4 fix)", () => {
-    const yOffset = 94;
+  it("드래그 중 비-대상 세션도 zIndex를 100+yPosition으로 유지한다", () => {
+    const yPosition = 2;
     const styles = getSessionBlockStyles(
-      0, 100, yOffset, "#FF0000",
+      0, 100, 94, yPosition, "#FF0000",
       true, // isDragging
       false, // not the dragged session
       true   // isAnyDragging
     );
-    expect(styles.zIndex).toBe(100 + yOffset);
+    expect(styles.zIndex).toBe(100 + yPosition);
   });
 
-  it("드래그 중 드래그 대상 세션도 zIndex를 100+yOffset으로 유지한다", () => {
-    const yOffset = 47;
+  it("드래그 중 드래그 대상 세션도 zIndex를 100+yPosition으로 유지한다", () => {
+    const yPosition = 3;
     const styles = getSessionBlockStyles(
-      0, 100, yOffset, "#FF0000",
+      0, 100, 47, yPosition, "#FF0000",
       true, true, true
     );
-    expect(styles.zIndex).toBe(100 + yOffset);
+    expect(styles.zIndex).toBe(100 + yPosition);
   });
 
-  it("비드래그 상태의 기본 zIndex는 100+yOffset이다", () => {
-    const yOffset = 0;
-    const styles = getSessionBlockStyles(0, 100, yOffset, "#FF0000");
-    expect(styles.zIndex).toBe(100 + yOffset);
+  it("비드래그 상태의 기본 zIndex는 100+yPosition이다", () => {
+    const yPosition = 1;
+    const styles = getSessionBlockStyles(0, 100, 0, yPosition, "#FF0000");
+    expect(styles.zIndex).toBe(100 + yPosition);
   });
 
   it("과목 색상이 없을 때 기본 색상(#888)을 단색으로 사용해야 한다", () => {
@@ -167,6 +176,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       undefined // subjectColor 없음
     );
 
@@ -181,6 +191,7 @@ describe("getSessionBlockStyles", () => {
       defaultParams.left,
       defaultParams.width,
       defaultParams.yOffset,
+      defaultParams.yPosition,
       customColor
     );
 

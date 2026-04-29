@@ -25,6 +25,7 @@ interface SessionBlockProps {
   left: number;
   width: number;
   yOffset: number;
+  yPosition?: number;
   height?: number;
   onClick: () => void;
   onDragStart?: (e: React.DragEvent, session: Session) => void;
@@ -61,6 +62,7 @@ function SessionBlock({
   left,
   width,
   yOffset,
+  yPosition = 1,
   height,
   onClick,
   onDragStart,
@@ -127,6 +129,7 @@ function SessionBlock({
     left,
     width,
     yOffset,
+    yPosition,
     blockColor,
     isDragging,
     session.id === draggedSessionId,
