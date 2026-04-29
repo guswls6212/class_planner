@@ -103,13 +103,15 @@ export const getSessionBlockStyles = (
     }
   }
 
+  const background = subjectColor ?? "#888";
+
   return {
     position: "absolute",
     left,
     top: yOffset + 1, // 경계선과 겹치지 않도록 1px 여백 추가
     height: `${height ?? SESSION_CELL_HEIGHT}px`,
     width,
-    background: subjectColor ?? "#888",
+    background,
     color: "#fff",
     borderRadius: 4,
     padding: "0px",
@@ -118,7 +120,6 @@ export const getSessionBlockStyles = (
     alignItems: "center",
     overflow: "hidden",
     zIndex: 100 + yOffset,
-    border: "1px solid rgba(255,255,255,0.2)",
     cursor: "pointer",
     opacity,
     visibility,

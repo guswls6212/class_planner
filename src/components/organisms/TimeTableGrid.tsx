@@ -499,15 +499,25 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             className="sticky left-0 z-[998] flex flex-col bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]"
             style={{ gridColumn: 1, gridRow: 2, height: contentHeight }}
           >
-            {timeSlots30Min.map((timeString) => (
-              <div
-                key={`time-${timeString}`}
-                className={`flex items-start justify-end pr-1 pt-0.5 ${isMobile ? "text-[9px]" : "text-[10px]"} text-[var(--color-text-secondary)] border-b border-[var(--color-border-grid-light)]`}
-                style={{ height: SLOT_HEIGHT_PX }}
-              >
-                {timeString}
-              </div>
-            ))}
+            {timeSlots30Min.map((timeString) => {
+              const isHour = timeString.endsWith(":00");
+              return (
+                <div
+                  key={`time-${timeString}`}
+                  className={[
+                    "flex items-start justify-end pr-1 pt-0.5",
+                    "border-b border-[var(--color-border-grid-light)]",
+                    isMobile ? "text-[9px]" : "text-[10px]",
+                    isHour
+                      ? "font-semibold text-[var(--color-text-secondary)]"
+                      : "font-normal text-[var(--color-text-secondary)] opacity-60",
+                  ].join(" ")}
+                  style={{ height: SLOT_HEIGHT_PX }}
+                >
+                  {timeString}
+                </div>
+              );
+            })}
           </div>
 
           {/* (2, 2..8) 요일별 컬럼 */}
@@ -547,7 +557,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
-                  ...(isToday && { backgroundColor: "rgba(245,158,11,0.025)" }),
+                  ...(isToday && { background: "linear-gradient(180deg, rgba(251,191,36,0.04) 0%, rgba(251,191,36,0.02) 100%)" }),
                 }}
               />
             );

@@ -212,20 +212,28 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("기본 상태에서 좌측 accent 바가 없어야 한다 (borderLeft: undefined)", () => {
+  it("기본 상태에서 좌측 accent 바는 subtle stripe(rgba 0.2)이어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 
     const button = screen.getByRole("button");
-    // 기본 상태: in-progress/conflict 아님 → borderLeft 없음
-    expect(button.style.borderLeft).toBe("");
+    // 기본 상태: in-progress/conflict 아님이지만 유효한 6자리 hex tone.bg → subtle accent stripe 표시
+    expect(button.style.borderLeft).toBe("3px solid rgba(0, 0, 0, 0.2)");
   });
 
   it("파스텔 tone이 버튼 배경에 적용되어야 한다 (#FF0000 → tintFromHex 0.8)", () => {
     render(<SessionBlock {...defaultProps} />);
 
     const button = screen.getByRole("button");
-    // #FF0000 → tint 0.8 → rgb(255, 204, 204)
-    expect(button).toHaveStyle({ backgroundColor: "rgb(255, 204, 204)" });
+    // #FF0000 → resolveSessionTone → tone.bg = tintFromHex(#FF0000, 0.8) → pastel pink
+    // buttonBg applies linear-gradient over tone.bg, so background contains "linear-gradient"
+    expect(button.style.background).toMatch(/^linear-gradient\(180deg,/);
+  });
+
+  it("유효한 6자리 hex 과목 색상일 때 버튼 background가 linear-gradient이어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const button = screen.getByRole("button");
+    expect(button.style.background).toContain("linear-gradient");
   });
 
   it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {

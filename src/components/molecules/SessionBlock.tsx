@@ -12,6 +12,7 @@ import {
   resolveSessionColor,
 } from "./SessionBlock.utils";
 import { hexToRgba } from "@/lib/colors/hexToRgba";
+import { tintFromHex } from "@/lib/colors/tintFromHex";
 import { resolveSessionTone } from "./SessionCard.utils";
 
 interface SessionBlockProps {
@@ -300,11 +301,20 @@ function SessionBlock({
       ? tone.accent
       : undefined;
 
+  // Gradient background for session button
+  const buttonBg = (() => {
+    const isValidHex6 = /^#[0-9a-fA-F]{6}$/.test(tone.bg);
+    if (!isValidHex6) return tone.bg;
+    return `linear-gradient(180deg, ${tintFromHex(tone.bg, 0.08)} 0%, ${tone.bg} 100%)`;
+  })();
+
   const buttonStyle: React.CSSProperties = {
-    backgroundColor: tone.bg,
+    background: buttonBg,
     color: tone.fg,
     borderRadius: 4,
-    borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
+    borderLeft: accentColor
+      ? `3px solid ${accentColor}`
+      : /^#[0-9a-fA-F]{6}$/.test(tone.bg) ? "3px solid rgba(0,0,0,0.2)" : undefined,
     padding: 0,
     fontSize: 12,
     display: "flex",
@@ -368,7 +378,7 @@ function SessionBlock({
         onTouchEnd={handleTouchEnd}
         className={[
           "session-block",
-          "hover:-translate-y-0.5 hover:shadow-md transition-all duration-150",
+          "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-white/30 transition-all duration-150",
           cursorClassName,
         ]
           .filter(Boolean)
@@ -385,14 +395,14 @@ function SessionBlock({
         )}
 
         <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
-          <div className="font-semibold truncate text-[11px] leading-tight">
+          <div className="font-semibold truncate text-[13px] leading-tight">
             {primaryLabel}
           </div>
-          <div className="text-[10px] opacity-75 truncate leading-tight">
+          <div className="text-[10px] opacity-75 truncate leading-tight [font-feature-settings:'tnum']">
             {session.startsAt}-{session.endsAt}
           </div>
           {secondaryLabel && (
-            <div className="text-[10px] opacity-80 truncate leading-tight">
+            <div className="text-[10px] opacity-[0.85] truncate leading-tight">
               {secondaryLabel}
             </div>
           )}

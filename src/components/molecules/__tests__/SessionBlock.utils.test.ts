@@ -162,7 +162,7 @@ describe("getSessionBlockStyles", () => {
     expect(styles.zIndex).toBe(100 + yOffset);
   });
 
-  it("과목 색상이 없을 때 기본 색상(#888)을 사용해야 한다", () => {
+  it("과목 색상이 없을 때 기본 색상(#888)을 단색으로 사용해야 한다", () => {
     const styles = getSessionBlockStyles(
       defaultParams.left,
       defaultParams.width,
@@ -171,9 +171,11 @@ describe("getSessionBlockStyles", () => {
     );
 
     expect(styles.background).toBe("#888");
+    // borderLeft는 getSessionBlockStyles 반환값에 포함되지 않음 (SessionBlock.tsx에서 처리)
+    expect(styles.borderLeft).toBeUndefined();
   });
 
-  it("과목 색상이 있을 때 해당 색상을 사용해야 한다", () => {
+  it("유효한 6자리 hex 과목 색상이 있을 때 해당 색상을 단색으로 반환해야 한다 (gradient는 SessionBlock.tsx에서 처리)", () => {
     const customColor = "#FF5733";
     const styles = getSessionBlockStyles(
       defaultParams.left,
@@ -182,7 +184,9 @@ describe("getSessionBlockStyles", () => {
       customColor
     );
 
+    // getSessionBlockStyles는 flat color만 반환 — gradient 변환은 SessionBlock.tsx에서 수행
     expect(styles.background).toBe(customColor);
+    expect(styles.borderLeft).toBeUndefined();
   });
 });
 
