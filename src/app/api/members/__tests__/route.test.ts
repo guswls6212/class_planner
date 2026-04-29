@@ -23,7 +23,7 @@ import { DELETE } from "../[userId]/route";
 describe("GET /api/members", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("멤버 목록을 반환한다", async () => {
+  it("멤버 목록을 반환하고 hasAcademy:true를 포함한다", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -44,8 +44,22 @@ describe("GET /api/members", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
+    expect(body.hasAcademy).toBe(true);
     expect(body.data).toHaveLength(2);
     expect(body.data[0].role).toBe("owner");
+  });
+
+  it("academy_members에 row가 없으면 200 + hasAcademy:false + 빈 배열을 반환한다", async () => {
+    mockMembership.mockRejectedValue(new Error("온보딩이 완료되지 않은 사용자"));
+
+    const req = new NextRequest("http://localhost/api/members?userId=u-new");
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.hasAcademy).toBe(false);
+    expect(body.data).toEqual([]);
   });
 });
 

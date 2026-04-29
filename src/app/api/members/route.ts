@@ -5,17 +5,24 @@ import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get("userId");
+
+  if (!userId) {
+    return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
+  }
+
+  let academyId: string;
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    ({ academyId } = await resolveAcademyMembership(userId));
+  } catch (error) {
+    // academy_members에 row가 없는 사용자 — 온보딩 미완 상태
+    logger.warn("멤버 조회: 학원 없는 사용자", { userId });
+    return NextResponse.json({ success: true, data: [], hasAcademy: false });
+  }
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
-
-    const { academyId } = await resolveAcademyMembership(userId);
+  try {
     const client = getServiceRoleClient();
-
     const { data, error } = await client
       .from("academy_members")
       .select("user_id, role, joined_at, users:user_id(email, raw_user_meta_data)")
@@ -36,7 +43,7 @@ export async function GET(request: NextRequest) {
       name: row.users?.raw_user_meta_data?.full_name ?? null,
     }));
 
-    return NextResponse.json({ success: true, data: members });
+    return NextResponse.json({ success: true, data: members, hasAcademy: true });
   } catch (error) {
     return toErrorResponse(error);
   }
