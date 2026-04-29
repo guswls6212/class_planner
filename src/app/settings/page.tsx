@@ -87,8 +87,9 @@ export default function SettingsPage() {
         const me = (data ?? []).find((m: Member) => m.userId === userId);
         if (me) setMyRole(me.role);
       } else {
-        showError("멤버 목록을 불러오지 못했습니다.");
-        setHasAcademy(false);
+        // API 서버 오류 — hasAcademy를 false로 바꾸지 않음
+        // 일시적 오류로 "학원 만들기" 화면이 표시되는 것을 방지
+        showError("멤버 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       if (invitesRes.ok) {
