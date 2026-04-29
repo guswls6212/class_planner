@@ -8,6 +8,7 @@ import {
   getImprovedStudentDisplayText,
   getSessionBlockStyles,
   getSessionSubject,
+  getStudentDeterministicColor,
   resolveSessionColor,
 } from "./SessionBlock.utils";
 import { resolveSessionTone } from "./SessionCard.utils";
@@ -230,14 +231,6 @@ function SessionBlock({
 
   const isDraggedSession = session.id === draggedSessionId;
 
-  const isFiltered =
-    selectedStudentIds != null &&
-    selectedStudentIds.length > 0 &&
-    !(session.enrollmentIds ?? []).some((eid) => {
-      const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment != null && selectedStudentIds.includes(enrollment.studentId);
-    });
-
   const weekdayLabel =
     ["월", "화", "수", "목", "금", "토", "일"][session.weekday] ?? "";
   const ariaLabel = [
@@ -258,6 +251,36 @@ function SessionBlock({
   const cursorClassName =
     isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
 
+  // When colorBy='student' but no chip is selected, treat as subject mode for labels
+  const isStudentModeActive =
+    colorBy === "student" &&
+    selectedStudentIds != null &&
+    selectedStudentIds.length > 0;
+
+  // Dim/glow logic: only active when student mode is on and not dragging
+  const sessionContainsSelectedStudent =
+    isStudentModeActive &&
+    (session.enrollmentIds ?? []).some((eid) => {
+      const enrollment = enrollments.find((e) => e.id === eid);
+      return enrollment != null && selectedStudentIds!.includes(enrollment.studentId);
+    });
+
+  const isDraggingAny = isAnyDragging || isDragging;
+
+  const dimGlowStyle: React.CSSProperties = (() => {
+    if (!isStudentModeActive || isDraggingAny) return {};
+    if (sessionContainsSelectedStudent) {
+      const hex = getStudentDeterministicColor(selectedStudentIds![0]);
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return {
+        boxShadow: `0 0 0 1.5px rgba(${r}, ${g}, ${b}, 0.55), 0 1px 2px rgba(0,0,0,0.3)`,
+      };
+    }
+    return { opacity: 0.25 };
+  })();
+
   const wrapperStyle: React.CSSProperties = {
     position: "absolute",
     left: styles.left,
@@ -265,6 +288,8 @@ function SessionBlock({
     width: styles.width,
     height: styles.height,
     zIndex: styles.zIndex,
+    transition: "opacity 0.2s ease, box-shadow 0.2s ease",
+    ...dimGlowStyle,
   };
 
   const accentColor = hasConflict
@@ -292,12 +317,6 @@ function SessionBlock({
     height: "100%",
     position: "relative",
   };
-
-  // When colorBy='student' but no chip is selected, treat as subject mode for labels
-  const isStudentModeActive =
-    colorBy === "student" &&
-    selectedStudentIds != null &&
-    selectedStudentIds.length > 0;
 
   // Primary label based on colorBy
   const primaryLabel =
@@ -334,7 +353,6 @@ function SessionBlock({
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
       aria-label={ariaLabel}
-      className={isFiltered ? "opacity-30" : ""}
     >
       <button
         type="button"

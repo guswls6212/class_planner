@@ -1237,7 +1237,7 @@ function SchedulePageContent(): JSX.Element {
         <ScheduleGridSection
           containerRef={timeTableRef}
           gridVersion={gridVersion}
-          sessions={filteredDisplaySessions}
+          sessions={displaySessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}

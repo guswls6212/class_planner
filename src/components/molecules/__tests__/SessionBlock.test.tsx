@@ -794,6 +794,117 @@ describe("student mode + no chip selected → subject mode fallback", () => {
   });
 });
 
+describe("student mode dim/glow on session blocks", () => {
+  const glowSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  };
+  const otherSession = {
+    id: "550e8400-e29b-41d4-a716-446655440202",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "11:00",
+  };
+  const glowSubjects = [
+    { id: "sub-1", name: "수학", color: "#FF0000" },
+  ];
+  const glowEnrollments = [
+    { id: "550e8400-e29b-41d4-a716-446655440301", studentId: "student-A", subjectId: "sub-1" },
+    { id: "550e8400-e29b-41d4-a716-446655440302", studentId: "student-B", subjectId: "sub-1" },
+  ];
+  const glowStudents = [
+    { id: "student-A", name: "학생A" },
+    { id: "student-B", name: "학생B" },
+  ];
+  const baseGlowProps = {
+    subjects: glowSubjects,
+    enrollments: glowEnrollments,
+    students: glowStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+    colorBy: "student" as const,
+  };
+
+  it("student mode + chip selected + session CONTAINS selected student → wrapper has box-shadow (glow)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    // box-shadow should be set (glow ring)
+    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+  });
+
+  it("student mode + chip selected + session does NOT contain selected student → wrapper has opacity 0.25 (dim)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // opacity should be 0.25 (dim)
+    expect(wrapper.style.opacity).toBe("0.25");
+    // no box-shadow
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isDragging → no dim/glow (drag logic takes over)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isDragging={true}
+        draggedSessionId={otherSession.id}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed — no opacity 0.25 on wrapper, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isAnyDragging → no dim/glow (drag bypass)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isAnyDragging={true}
+        draggedSessionId="different-session-id"
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed when any drag is in progress — no opacity 0.25, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + no chip selected → no dim/glow (existing behavior)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={[]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+});
+
 describe("SessionBlock Utility Functions", () => {
   describe("validateSessionBlockProps", () => {
     it("유효한 props일 때 true를 반환해야 한다", () => {
