@@ -89,8 +89,7 @@ export function SessionOverflowPopover({ title, items, onSelect, onClose }: Prop
         ref={popoverRef}
         role="dialog"
         aria-label={title}
-        className={`absolute ${posY} ${posX} z-[999] overflow-hidden rounded-[var(--radius-admin-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-admin-md`}
-        style={{ width: 272 }}
+        className={`absolute ${posY} ${posX} z-[999] w-[272px] overflow-hidden rounded-[var(--radius-admin-md)] border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-admin-md`}
       >
         {/* Header */}
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-border)]">
@@ -124,7 +123,7 @@ export function SessionOverflowPopover({ title, items, onSelect, onClose }: Prop
                 data-overflow-item="true"
                 onClick={() => onSelect(item.id)}
                 onKeyDown={(e) => handleItemKeyDown(e, idx)}
-                className="w-full flex items-stretch gap-2.5 px-2.5 py-2 text-left hover:bg-[var(--color-overlay-light)] focus:outline-none focus:bg-[var(--color-overlay-light)]"
+                className="w-full flex items-stretch gap-2.5 px-2.5 py-2 text-left hover:bg-[var(--color-overlay-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus:bg-[var(--color-overlay-light)]"
               >
                 {/* 3px accent bar */}
                 <span
