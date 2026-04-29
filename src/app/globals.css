@@ -170,6 +170,7 @@
   --color-scrollbar-button-border:#bbbbbb;
   --color-scrollbar-button-alt:   #cccccc;
   --color-bg-deep:                #111827;
+  /* Overflow Cluster */
   --color-cluster-overflow-bg: rgba(255, 255, 255, 0.06);
   --color-cluster-overflow-ring: var(--color-accent);
 }
