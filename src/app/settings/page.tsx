@@ -40,6 +40,7 @@ interface ShareToken {
 export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
+  const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [myRole, setMyRole] = useState<string>("member");
@@ -80,10 +81,14 @@ export default function SettingsPage() {
       ]);
 
       if (membersRes.ok) {
-        const { data } = await membersRes.json();
+        const { data, hasAcademy: ha } = await membersRes.json();
+        setHasAcademy(ha ?? true);
         setMembers(data ?? []);
         const me = (data ?? []).find((m: Member) => m.userId === userId);
         if (me) setMyRole(me.role);
+      } else {
+        showError("멤버 목록을 불러오지 못했습니다.");
+        setHasAcademy(false);
       }
 
       if (invitesRes.ok) {
@@ -210,6 +215,28 @@ export default function SettingsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-[var(--color-text-secondary)]">불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (hasAcademy === false) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">학원 설정</h1>
+        <div className="bg-[var(--color-bg-secondary)] rounded-xl p-10 border border-[var(--color-border)] flex flex-col items-center gap-4 text-center">
+          <p className="text-[var(--color-text-secondary)] text-sm">
+            아직 등록된 학원이 없습니다.
+          </p>
+          <p className="text-[11px] text-[var(--color-text-muted)]">
+            학원을 먼저 만들어야 멤버 초대와 공유 링크를 사용할 수 있습니다.
+          </p>
+          <button
+            onClick={() => router.push("/onboarding")}
+            className="mt-2 px-5 py-2 bg-accent text-[var(--color-admin-ink)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity"
+          >
+            학원 만들기
+          </button>
+        </div>
       </div>
     );
   }
