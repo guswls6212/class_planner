@@ -250,6 +250,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     [enrollments, subjects, students, teachers]
   );
 
+  const MAX_DOTS = 4;
+
   return (
     <div
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
@@ -483,7 +485,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           const overflowItems = toOverflowItems(hidden);
 
           // Show up to 4 dots; if more, last slot becomes "+N" chip
-          const MAX_DOTS = 4;
           const showDots = overflowItems.slice(0, MAX_DOTS);
           const extraCount =
             overflowItems.length > MAX_DOTS
@@ -507,7 +508,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             >
               <button
                 type="button"
-                className="cluster-dot-enter"
+                className="cluster-dot-enter flex flex-col items-center gap-[3px] p-1 rounded-[6px] border-0 cursor-pointer min-w-[14px] min-h-6 transition-shadow duration-150"
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpenPillSlot((prev) =>
@@ -519,34 +520,14 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 aria-expanded={openPillSlot === timeString}
                 data-testid={`overflow-pill-${timeString}`}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 3,
-                  padding: 4,
                   background: "var(--color-cluster-overflow-bg)",
                   backdropFilter: "blur(4px)",
-                  borderRadius: 6,
-                  border: "none",
-                  cursor: "pointer",
-                  boxShadow:
-                    "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)",
-                  minWidth: 14,
-                  minHeight: 24,
-                  transition: "box-shadow 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                    "0 1px 2px rgba(0,0,0,0.25), 0 0 0 1.5px var(--color-cluster-overflow-ring), inset 0 0 0 1px rgba(255,255,255,0.08)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                    "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)";
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.08)",
                 }}
               >
-                {dotsToShow.map((item, i) => (
+                {dotsToShow.map((item) => (
                   <span
-                    key={i}
+                    key={item.id}
                     aria-hidden="true"
                     style={{
                       width: 8,

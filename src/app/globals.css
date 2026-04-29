@@ -1046,3 +1046,16 @@ body {
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
 }
+
+/* Cluster overflow dot-track entrance */
+@keyframes clusterDotIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.cluster-dot-enter { animation: clusterDotIn 200ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .cluster-dot-enter { animation: none; } }
+.cluster-dot-enter:hover {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25),
+              0 0 0 1.5px var(--color-cluster-overflow-ring),
+              inset 0 0 0 1px rgba(255,255,255,0.08);
+}
