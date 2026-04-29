@@ -91,6 +91,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   nowLinePx = null,
 }) => {
   const [openPillSlot, setOpenPillSlot] = React.useState<string | null>(null);
+  // Ref to whichever trigger button last opened the popover — used for portal positioning
+  const openTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   // Convert time string to minutes helper
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -241,6 +243,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           subject,
           studentNames,
           accent,
+          toneBg: tone.bg,
           startTime: session.startsAt,
           endTime: session.endsAt,
           teacherName,
@@ -511,6 +514,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 className="cluster-dot-enter flex flex-col items-center gap-[3px] p-1 rounded-[6px] border-0 cursor-pointer min-w-[14px] min-h-6 transition-shadow duration-150"
                 onClick={(e) => {
                   e.stopPropagation();
+                  openTriggerRef.current = e.currentTarget;
                   setOpenPillSlot((prev) =>
                     prev === timeString ? null : timeString
                   );
@@ -554,16 +558,27 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 )}
               </button>
 
-              {openPillSlot === timeString && (
+              {openPillSlot === timeString && openTriggerRef.current && (
                 <SessionOverflowPopover
                   title={`${timeString} · 숨은 세션 ${hidden.length}개`}
                   items={overflowItems}
+                  sessions={hidden}
+                  triggerRef={openTriggerRef as React.RefObject<HTMLButtonElement>}
                   onSelect={(id) => {
                     const session = hidden.find((s) => s.id === id);
                     if (session) onSessionClick(session);
                     setOpenPillSlot(null);
                   }}
                   onClose={() => setOpenPillSlot(null)}
+                  onSessionDragStart={(session, e) => {
+                    e.dataTransfer.setDragImage(
+                      e.currentTarget,
+                      e.currentTarget.offsetWidth / 2,
+                      e.currentTarget.offsetHeight / 2
+                    );
+                    onDragStart?.(session);
+                    setOpenPillSlot(null);
+                  }}
                 />
               )}
             </div>
