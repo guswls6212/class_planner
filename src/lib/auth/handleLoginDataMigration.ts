@@ -65,7 +65,10 @@ export function checkLoginDataConflict(serverData: ClassPlannerData): MigrationR
     if (isEmptyData(serverData)) {
       return { action: "upload-local" };
     }
-    return { action: "conflict", localData: userKeyData, serverData };
+    // 서버에 이미 데이터가 있으면 use-server로 처리.
+    // userId 키는 이전 서버 동기화 데이터이므로 충돌 모달이 불필요하다.
+    // anonymous 키와 달리 "로그인 전 입력한 미동기화 데이터"가 아님.
+    return { action: "use-server" };
   }
 
   return { action: "use-server" };

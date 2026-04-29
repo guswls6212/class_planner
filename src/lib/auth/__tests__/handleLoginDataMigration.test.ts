@@ -106,14 +106,11 @@ describe("checkLoginDataConflict", () => {
     expect(result.action).toBe("upload-local");
   });
 
-  it("anonymous 없고 userId 키에 데이터 있고 서버도 있으면 conflict", () => {
+  it("anonymous 없고 userId 키에 데이터 있고 서버도 있으면 use-server (이전 동기화 데이터, 충돌 불필요)", () => {
     storage["supabase_user_id"] = "user-local";
     storage["classPlannerData:user-local"] = JSON.stringify(localData);
     const result = checkLoginDataConflict(serverData);
-    expect(result.action).toBe("conflict");
-    if (result.action === "conflict") {
-      expect(result.localData.students[0].name).toBe("Anonymous Student");
-    }
+    expect(result.action).toBe("use-server");
   });
 
   it("anonymous 없고 userId 키도 비어있으면 use-server", () => {
