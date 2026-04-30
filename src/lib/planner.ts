@@ -15,6 +15,13 @@ export type Teacher = {
   name: string;
   color: string;
   userId?: string | null;
+  // New profile fields (Phase 2)
+  email?: string | null;
+  phone?: string | null;
+  role?: string | null;
+  notes?: string | null;
+  // Subject associations (from teacher_subjects join table)
+  subjectIds?: string[];
 };
 
 export type Subject = {
