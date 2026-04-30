@@ -118,14 +118,15 @@ export const useGlobalDataInitialization = () => {
 
         if (mounted) setIsInitializing(true);
 
-        // 4개 API 병렬 fetch
+        // 5개 API 병렬 fetch
         logger.info("서버에서 데이터를 병렬 조회합니다");
-        const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =
+        const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes, teachersRes] =
           await Promise.allSettled([
             fetch(`/api/students?userId=${userId}`),
             fetch(`/api/subjects?userId=${userId}`),
             fetch(`/api/sessions?userId=${userId}`),
             fetch(`/api/enrollments?userId=${userId}`),
+            fetch(`/api/teachers?userId=${userId}`),
           ]);
 
         /** fetch 에러와 "데이터 없음"을 구분: null=에러, []=정상 빈 배열 */
@@ -146,13 +147,14 @@ export const useGlobalDataInitialization = () => {
         const subjectsFetched = subjects !== null;
         const sessions = (await parseJson(sessionsRes)) ?? [];
         const enrollments = (await parseJson(enrollmentsRes)) ?? [];
+        const teachers = (await parseJson(teachersRes)) ?? [];
 
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
           sessions,
           enrollments,
-          teachers: [],
+          teachers,
           version: "1.0",
           lastModified: new Date().toISOString(),
         };
@@ -162,6 +164,7 @@ export const useGlobalDataInitialization = () => {
           subjectCount: serverData.subjects.length,
           sessionCount: sessions.length,
           enrollmentCount: enrollments.length,
+          teacherCount: teachers.length,
         });
 
         // 충돌 체크
