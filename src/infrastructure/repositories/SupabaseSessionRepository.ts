@@ -40,6 +40,7 @@ export class SupabaseSessionRepository implements SessionRepository {
       weekday: row.weekday,
       startsAt: this.toTimeString(row.starts_at),
       endsAt: this.toTimeString(row.ends_at),
+      weekStartDate: row.week_start_date ?? "",
       room: row.room ?? "",
       yPosition: row.y_position ?? undefined,
       createdAt: new Date(row.created_at),
@@ -47,11 +48,11 @@ export class SupabaseSessionRepository implements SessionRepository {
     };
   }
 
-  async getAll(academyId: string): Promise<Session[]> {
+  async getAll(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]> {
     try {
       const client = this.createServiceRoleClient();
 
-      const { data, error } = await client
+      let q = client
         .from("sessions")
         .select(`
           *,
@@ -60,8 +61,13 @@ export class SupabaseSessionRepository implements SessionRepository {
             enrollments(subject_id)
           )
         `)
-        .eq("academy_id", academyId)
-        .order("created_at");
+        .eq("academy_id", academyId);
+
+      if (opts?.weekStartDate) {
+        q = q.eq("week_start_date", opts.weekStartDate);
+      }
+
+      const { data, error } = await q.order("created_at");
 
       if (error) {
         logger.error("세션 데이터 조회 실패:", undefined, error as Error);
@@ -117,6 +123,7 @@ export class SupabaseSessionRepository implements SessionRepository {
           weekday: sessionData.weekday,
           starts_at: sessionData.startsAt,
           ends_at: sessionData.endsAt,
+          week_start_date: sessionData.weekStartDate || "",
           room: sessionData.room ?? "",
           y_position: sessionData.yPosition ?? 1,
         })

@@ -31,7 +31,7 @@ export interface SubjectRepository {
 }
 
 export interface SessionRepository {
-  getAll(academyId: string): Promise<Session[]>;
+  getAll(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]>;
   getById(id: string): Promise<Session | null>;
   create(
     session: Omit<Session, "id" | "createdAt" | "updatedAt">,

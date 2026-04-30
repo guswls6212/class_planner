@@ -11,6 +11,7 @@ const makeSession = (id: string): Session => ({
   weekday: 1,
   startsAt: "09:00",
   endsAt: "10:00",
+  weekStartDate: "",
   createdAt: new Date(),
   updatedAt: new Date(),
 });
@@ -39,7 +40,7 @@ describe("SessionApplicationService", () => {
       const result = await service.getAllSessions("test-academy-id");
 
       expect(result).toHaveLength(2);
-      expect(mockSessionRepository.getAll).toHaveBeenCalledWith("test-academy-id");
+      expect(mockSessionRepository.getAll).toHaveBeenCalledWith("test-academy-id", undefined);
     });
 
     it("repository 에러 시 에러를 전파해야 한다", async () => {
@@ -93,7 +94,10 @@ describe("SessionApplicationService", () => {
       const result = await service.addSession(sessionData, "test-academy-id");
 
       expect(result.id).toBe("s1");
-      expect(mockSessionRepository.create).toHaveBeenCalledWith(sessionData, "test-academy-id");
+      expect(mockSessionRepository.create).toHaveBeenCalledWith(
+        { ...sessionData, weekStartDate: "" },
+        "test-academy-id"
+      );
     });
 
     it("repository 에러 시 에러를 전파해야 한다", async () => {
