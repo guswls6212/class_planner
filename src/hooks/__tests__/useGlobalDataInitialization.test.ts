@@ -196,6 +196,28 @@ describe("로그인 사용자 — 충돌 없음", () => {
     await waitFor(() => expect(result.current.isInitialized).toBe(true));
     expect(result.current.conflictState).toBeNull();
   });
+
+  it("서버에서 받은 teachers가 localStorage에 저장된다 (빈 배열 덮어쓰기 버그 방지)", async () => {
+    const serverTeachers = [{ id: "t1", name: "김선생", userId: "user-123" }];
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const data = url.includes("/api/teachers") ? serverTeachers : [];
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data }),
+      });
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const setItemCalls: string[][] = localStorageMock.setItem.mock.calls;
+    const dataCall = setItemCalls.find((args) => args[0].startsWith("classPlannerData:"));
+    expect(dataCall).toBeDefined();
+
+    const saved = JSON.parse(dataCall![1]);
+    expect(saved.teachers).toEqual(serverTeachers);
+  });
 });
 
 describe("로그인 사용자 — 충돌 처리", () => {
