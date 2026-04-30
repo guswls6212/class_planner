@@ -2,10 +2,15 @@ export interface TemplateSessionDef {
   weekday: number;        // 0-6 (Mon=0)
   startsAt: string;       // "HH:MM"
   endsAt: string;         // "HH:MM"
-  subjectName: string;
-  subjectColor: string;
-  studentNames: string[];
-  teacherName?: string;
+  subjectId: string;      // id 기반 매칭
+  subjectName: string;    // 표시/경고용
+  subjectColor: string;   // 표시용
+  studentIds: string[];   // id 기반 매칭
+  studentNames: string[]; // 표시/경고용 (studentIds와 동일 순서)
+  teacherId?: string;     // id 기반 매칭
+  teacherName?: string;   // 표시/경고용
+  room?: string;
+  yPosition?: number;
 }
 
 export interface TemplateData {

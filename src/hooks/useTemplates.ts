@@ -67,5 +67,29 @@ export function useTemplates(userId: string | null) {
     [userId, fetchTemplates]
   );
 
-  return { templates, isLoading, isSaving, fetchTemplates, saveTemplate, deleteTemplate };
+  const updateTemplate = useCallback(
+    async (id: string, fields: { name?: string; description?: string; template_data?: TemplateData }) => {
+      if (!userId) return null;
+      setIsSaving(true);
+      try {
+        const res = await fetch(`/api/templates/${id}?userId=${userId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(fields),
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        setTemplates((prev) => prev.map((t) => (t.id === id ? mapTemplate(json.data) : t)));
+        return json.data;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [userId]
+  );
+
+  // 가장 최근 1개 (API가 created_at DESC 정렬)
+  const activeTemplate = templates.length > 0 ? templates[0] : null;
+
+  return { templates, activeTemplate, isLoading, isSaving, fetchTemplates, saveTemplate, deleteTemplate, updateTemplate };
 }

@@ -976,12 +976,21 @@ function SchedulePageContent(): JSX.Element {
             return students.find((st) => st.id === enrollment.studentId)?.name ?? null;
           })
           .filter((n): n is string => n !== null);
+        const sessionStudentIds = (session.enrollmentIds ?? [])
+          .map((eid) => {
+            const enrollment = enrollments.find((e) => e.id === eid);
+            if (!enrollment) return null;
+            return students.find((st) => st.id === enrollment.studentId)?.id ?? null;
+          })
+          .filter((id): id is string => id !== null);
         return {
           weekday: session.weekday,
           startsAt: session.startsAt,
           endsAt: session.endsAt,
+          subjectId: subject?.id ?? "",
           subjectName: subject?.name ?? "미지정",
           subjectColor: subject?.color ?? "#6366f1",
+          studentIds: sessionStudentIds,
           studentNames: sessionStudentNames,
         };
       }),
