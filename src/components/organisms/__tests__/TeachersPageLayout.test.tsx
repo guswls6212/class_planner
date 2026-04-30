@@ -18,6 +18,8 @@ const baseProps = {
   onAddTeacher: vi.fn().mockResolvedValue(true),
   onDeleteTeacher: vi.fn(),
   onUpdateTeacher: vi.fn(),
+  onAddTeacherSubject: vi.fn(),
+  onRemoveTeacherSubject: vi.fn(),
   errorMessage: undefined,
   onClearError: vi.fn(),
 };
