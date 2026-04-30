@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Search } from "lucide-react";
-import type { Teacher, Session, Enrollment, Subject, Student } from "@/lib/planner";
+import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from "@/lib/planner";
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
 
@@ -16,7 +16,16 @@ interface TeachersPageLayoutProps {
   onSelectTeacher: (id: string) => void;
   onAddTeacher: (name: string, color: string) => Promise<boolean>;
   onDeleteTeacher: (id: string) => void;
-  onUpdateTeacher: (id: string, name: string, color: string) => void;
+  onUpdateTeacher: (id: string, updates: {
+    name?: string;
+    color?: string;
+    email?: string | null;
+    phone?: string | null;
+    role?: TeacherRole | null;
+    notes?: string | null;
+  }) => void;
+  onAddTeacherSubject: (teacherId: string, subjectId: string) => void;
+  onRemoveTeacherSubject: (teacherId: string, subjectId: string) => void;
   errorMessage?: string;
   onClearError: () => void;
 }
@@ -164,7 +173,9 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
             enrollments={props.enrollments}
             subjects={props.subjects}
             students={props.students}
-            onUpdate={props.onUpdateTeacher}
+            onUpdate={(id, updates) => props.onUpdateTeacher(id, updates)}
+            onAddSubject={props.onAddTeacherSubject}
+            onRemoveSubject={props.onRemoveTeacherSubject}
             onDelete={props.onDeleteTeacher}
             onBack={() => setShowDetail(false)}
           />

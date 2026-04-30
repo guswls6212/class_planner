@@ -23,7 +23,7 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import type { Teacher } from "../lib/planner";
+import type { Teacher, TeacherRole } from "../lib/planner";
 
 // ===== 타입 정의 =====
 
@@ -40,7 +40,15 @@ export interface UseTeacherManagementLocalReturn {
   ) => Promise<boolean>;
   updateTeacher: (
     id: string,
-    updates: { name?: string; color?: string; userId?: string | null }
+    updates: {
+      name?: string;
+      color?: string;
+      userId?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      role?: TeacherRole | null;
+      notes?: string | null;
+    }
   ) => Promise<boolean>;
   deleteTeacher: (id: string) => Promise<boolean>;
   getTeacher: (id: string) => Teacher | null;
@@ -158,7 +166,15 @@ export const useTeacherManagementLocal =
     const updateTeacher = useCallback(
       async (
         id: string,
-        updates: { name?: string; color?: string; userId?: string | null }
+        updates: {
+          name?: string;
+          color?: string;
+          userId?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          role?: TeacherRole | null;
+          notes?: string | null;
+        }
       ): Promise<boolean> => {
         try {
           setError(null);
