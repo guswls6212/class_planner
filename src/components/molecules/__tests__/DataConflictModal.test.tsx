@@ -6,7 +6,7 @@ import type { ClassPlannerData } from "../../../lib/localStorageCrud";
 const makeData = (
   students: { id: string; name: string; gender?: string; birthDate?: string }[],
   subjects: { id: string; name: string; color?: string }[],
-  sessions: { id: string; weekday: number; startsAt: string; endsAt: string; enrollmentIds?: string[] }[]
+  sessions: { id: string; weekday: number; startsAt: string; endsAt: string; weekStartDate: string; enrollmentIds?: string[] }[]
 ): ClassPlannerData => ({
   students,
   subjects,
@@ -27,7 +27,7 @@ const localData = makeData(
     { id: "sub1", name: "피아노", color: "#f00" },
     { id: "default-1", name: "초등수학", color: "#fbbf24" },
   ],
-  [{ id: "sess1", weekday: 0, startsAt: "09:00", endsAt: "10:00" }]
+  [{ id: "sess1", weekday: 0, startsAt: "09:00", endsAt: "10:00", weekStartDate: "" }]
 );
 
 const serverData = makeData(

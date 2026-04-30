@@ -17,6 +17,7 @@ function buildSession(
     weekday,
     startsAt,
     endsAt,
+    weekStartDate: "",
     room: "",
     enrollmentIds,
     yPosition,

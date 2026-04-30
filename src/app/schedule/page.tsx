@@ -265,6 +265,7 @@ function SchedulePageContent(): JSX.Element {
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
+        weekStartDate: "", // stub: Task 1.2 — normalized in Phase 3
         room: sessionData.room || "",
         enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
         yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가

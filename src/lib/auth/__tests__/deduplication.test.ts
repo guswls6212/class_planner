@@ -172,6 +172,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: ["srv-en1"],
     },
   ];
@@ -194,6 +195,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: [localEnrollmentId],
     };
     expect(
@@ -215,6 +217,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "10:00", // 다른 시간
       endsAt: "11:00",
+      weekStartDate: "",
       enrollmentIds: [localEnrollmentId],
     };
     expect(
@@ -241,6 +244,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: [localEnrollmentId],
     };
     expect(
@@ -262,6 +266,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: [], // 빈 배열
     };
     expect(
@@ -283,6 +288,7 @@ describe("findDuplicateSession", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       // enrollmentIds 없음
     };
     expect(

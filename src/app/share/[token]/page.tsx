@@ -47,6 +47,7 @@ function mapSessions(raw: RawSession[]): Session[] {
   return raw.map((s) => ({
     id: s.id, enrollmentIds: s.enrollment_ids ?? [], weekday: s.weekday,
     startsAt: s.starts_at, endsAt: s.ends_at, room: s.room,
+    weekStartDate: (s as any).week_start_date ?? "",
     yPosition: s.y_position, teacherId: s.teacher_id,
   }));
 }

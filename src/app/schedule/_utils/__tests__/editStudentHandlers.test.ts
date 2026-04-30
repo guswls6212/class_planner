@@ -30,6 +30,7 @@ describe("editStudentHandlers", () => {
     startsAt: "09:00",
     endsAt: "10:00",
     weekday: 0,
+    weekStartDate: "",
     room: "A101",
     enrollmentIds: ["enrollment-1"],
   };

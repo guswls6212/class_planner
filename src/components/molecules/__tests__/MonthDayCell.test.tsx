@@ -10,6 +10,7 @@ const makeSession = (id: string, enrollmentId: string): Session => ({
   weekday: 1,
   startsAt: "09:00",
   endsAt: "10:00",
+  weekStartDate: "",
   yPosition: 0,
 });
 

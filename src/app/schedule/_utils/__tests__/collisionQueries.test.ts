@@ -3,10 +3,10 @@ import { findCollidingSessionsImpl, checkCollisionsAtYPositionImpl } from "../co
 import type { Session } from "../../../../lib/planner";
 
 const makeSessions = (): Session[] => [
-  { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1 },
-  { id: "s2", weekday: 1, startsAt: "09:30", endsAt: "10:30", yPosition: 1 },
-  { id: "s3", weekday: 1, startsAt: "11:00", endsAt: "12:00", yPosition: 2 },
-  { id: "s4", weekday: 2, startsAt: "09:00", endsAt: "10:00", yPosition: 1 },
+  { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "" },
+  { id: "s2", weekday: 1, startsAt: "09:30", endsAt: "10:30", yPosition: 1, weekStartDate: "" },
+  { id: "s3", weekday: 1, startsAt: "11:00", endsAt: "12:00", yPosition: 2, weekStartDate: "" },
+  { id: "s4", weekday: 2, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "" },
 ];
 
 describe("findCollidingSessionsImpl", () => {
@@ -37,7 +37,7 @@ describe("checkCollisionsAtYPositionImpl", () => {
   it("같은 yPosition에서 겹치는 세션이 있으면 true를 반환한다", () => {
     const map = new Map<number, Session[]>();
     map.set(1, [
-      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1 },
+      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "" },
     ]);
 
     const result = checkCollisionsAtYPositionImpl(map, 1, "09:30", "10:30");
@@ -47,7 +47,7 @@ describe("checkCollisionsAtYPositionImpl", () => {
   it("겹치지 않으면 false를 반환한다", () => {
     const map = new Map<number, Session[]>();
     map.set(1, [
-      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1 },
+      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "" },
     ]);
 
     const result = checkCollisionsAtYPositionImpl(map, 1, "10:00", "11:00");
@@ -63,8 +63,8 @@ describe("checkCollisionsAtYPositionImpl", () => {
   it("priorityLevel 필터가 동작한다", () => {
     const map = new Map<number, (Session & { priorityLevel?: number })[]>();
     map.set(1, [
-      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, priorityLevel: 1 },
-      { id: "s2", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, priorityLevel: 2 },
+      { id: "s1", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "", priorityLevel: 1 },
+      { id: "s2", weekday: 1, startsAt: "09:00", endsAt: "10:00", yPosition: 1, weekStartDate: "", priorityLevel: 2 },
     ]);
 
     const result = checkCollisionsAtYPositionImpl(map, 1, "09:00", "10:00", true);

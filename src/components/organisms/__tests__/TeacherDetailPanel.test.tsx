@@ -5,9 +5,9 @@ import { TeacherDetailPanel } from "../TeacherDetailPanel";
 const teacher = { id: "1", name: "김선생", color: "#6366f1" };
 
 const sessions = [
-  { id: "s1", teacherId: "1", weekday: 0, startsAt: "10:00", endsAt: "11:00", enrollmentIds: ["e1"] },
-  { id: "s2", teacherId: "1", weekday: 2, startsAt: "14:00", endsAt: "15:00", enrollmentIds: ["e2"] },
-  { id: "s3", teacherId: "2", weekday: 1, startsAt: "09:00", endsAt: "10:00", enrollmentIds: [] },
+  { id: "s1", teacherId: "1", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "", enrollmentIds: ["e1"] },
+  { id: "s2", teacherId: "1", weekday: 2, startsAt: "14:00", endsAt: "15:00", weekStartDate: "", enrollmentIds: ["e2"] },
+  { id: "s3", teacherId: "2", weekday: 1, startsAt: "09:00", endsAt: "10:00", weekStartDate: "", enrollmentIds: [] },
 ];
 
 const enrollments = [
