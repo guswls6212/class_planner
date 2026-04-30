@@ -561,18 +561,29 @@ function SchedulePageContent(): JSX.Element {
     checkAuthState();
   }, []);
 
-  // 현재 주 세션만 — 그리드 표시 + EmptyWeekState 조건 양쪽에 사용
+  // 현재 주 세션만 — 주간/일별 그리드 표시 + EmptyWeekState 조건에 사용
   const weekFilteredSessions = useMemo(
     () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
     [sessions, currentWeekStart]
   );
 
-  // 커스텀 훅 사용 — 주 필터된 세션을 weekday Map으로 변환
+  // 주간·일별 뷰용: 현재 주 세션만 weekday Map으로 변환
   const { sessions: displaySessions } = useDisplaySessions(
     weekFilteredSessions,
     enrollments,
     ""
   );
+
+  // 월별 뷰용: 전체 세션 weekday Map (주 필터 없음 — 월별은 패턴 전체 표시)
+  const monthlyDisplaySessions = useMemo(() => {
+    const map = new Map<number, typeof sessions>();
+    sessions.forEach((s) => {
+      const list = map.get(s.weekday) ?? [];
+      list.push(s);
+      map.set(s.weekday, list);
+    });
+    return map;
+  }, [sessions]);
 
   const {
     validateTimeRange,
@@ -1315,7 +1326,7 @@ function SchedulePageContent(): JSX.Element {
         />
       ) : viewMode === "monthly" ? (
         <ScheduleMonthlyView
-          sessions={displaySessions}
+          sessions={monthlyDisplaySessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}
