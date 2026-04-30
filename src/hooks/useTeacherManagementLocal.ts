@@ -9,13 +9,17 @@ import { useCallback, useEffect, useState } from "react";
 import {
   syncTeacherCreate,
   syncTeacherDelete,
+  syncTeacherSubjectAdd,
+  syncTeacherSubjectRemove,
   syncTeacherUpdate,
 } from "../lib/apiSync";
 import {
+  addTeacherSubjectToLocal,
   addTeacherToLocal,
   deleteTeacherFromLocal,
   getAllTeachersFromLocal,
   getTeacherFromLocal,
+  removeTeacherSubjectFromLocal,
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
@@ -40,6 +44,8 @@ export interface UseTeacherManagementLocalReturn {
   ) => Promise<boolean>;
   deleteTeacher: (id: string) => Promise<boolean>;
   getTeacher: (id: string) => Teacher | null;
+  addTeacherSubject: (teacherId: string, subjectId: string) => Promise<boolean>;
+  removeTeacherSubject: (teacherId: string, subjectId: string) => Promise<boolean>;
 
   // 유틸리티
   refreshTeachers: () => void;
@@ -234,6 +240,52 @@ export const useTeacherManagementLocal =
       [loadTeachersFromLocal]
     );
 
+    // ===== 강사-과목 추가 =====
+
+    const addTeacherSubject = useCallback(
+      async (teacherId: string, subjectId: string): Promise<boolean> => {
+        try {
+          setError(null);
+          const result = addTeacherSubjectToLocal(teacherId, subjectId);
+          if (result.success) {
+            loadTeachersFromLocal();
+            const currentUserId = localStorage.getItem("supabase_user_id");
+            syncTeacherSubjectAdd(currentUserId, teacherId, subjectId);
+            return true;
+          }
+          setError(result.error || "강사-과목 추가 실패");
+          return false;
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "강사-과목 추가 실패");
+          return false;
+        }
+      },
+      [loadTeachersFromLocal]
+    );
+
+    // ===== 강사-과목 삭제 =====
+
+    const removeTeacherSubject = useCallback(
+      async (teacherId: string, subjectId: string): Promise<boolean> => {
+        try {
+          setError(null);
+          const result = removeTeacherSubjectFromLocal(teacherId, subjectId);
+          if (result.success) {
+            loadTeachersFromLocal();
+            const currentUserId = localStorage.getItem("supabase_user_id");
+            syncTeacherSubjectRemove(currentUserId, teacherId, subjectId);
+            return true;
+          }
+          setError(result.error || "강사-과목 삭제 실패");
+          return false;
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "강사-과목 삭제 실패");
+          return false;
+        }
+      },
+      [loadTeachersFromLocal]
+    );
+
     // ===== 강사 조회 =====
 
     const getTeacher = useCallback((id: string): Teacher | null => {
@@ -260,6 +312,8 @@ export const useTeacherManagementLocal =
       updateTeacher,
       deleteTeacher,
       getTeacher,
+      addTeacherSubject,
+      removeTeacherSubject,
 
       refreshTeachers,
       clearError,

@@ -7,7 +7,7 @@
 
 import { logger } from "./logger";
 import { migrateLocalSessionsIfNeeded } from "./migrateLocalSessions";
-import type { Enrollment, Session, Student, Subject, Teacher } from "./planner";
+import type { Enrollment, Session, Student, Subject, Teacher, TeacherRole } from "./planner";
 
 // ===== 타입 정의 =====
 
@@ -681,7 +681,14 @@ export const getAllSubjectsFromLocal = (): Subject[] => {
 export const addTeacherToLocal = (
   name: string,
   color: string,
-  userId?: string | null
+  userId?: string | null,
+  profile?: {
+    email?: string | null;
+    phone?: string | null;
+    role?: TeacherRole | null;
+    notes?: string | null;
+    subjectIds?: string[];
+  }
 ): CrudResult<Teacher> => {
   try {
     const data = getClassPlannerData();
@@ -699,6 +706,11 @@ export const addTeacherToLocal = (
       name: name.trim(),
       color,
       userId: userId ?? null,
+      ...(profile?.email !== undefined && { email: profile.email }),
+      ...(profile?.phone !== undefined && { phone: profile.phone }),
+      ...(profile?.role !== undefined && { role: profile.role }),
+      ...(profile?.notes !== undefined && { notes: profile.notes }),
+      ...(profile?.subjectIds !== undefined && { subjectIds: profile.subjectIds }),
     };
 
     data.teachers.push(newTeacher);
@@ -726,7 +738,16 @@ export const addTeacherToLocal = (
  */
 export const updateTeacherInLocal = (
   id: string,
-  updates: { name?: string; color?: string; userId?: string | null }
+  updates: {
+    name?: string;
+    color?: string;
+    userId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: TeacherRole | null;
+    notes?: string | null;
+    subjectIds?: string[];
+  }
 ): CrudResult<Teacher> => {
   try {
     const data = getClassPlannerData();
@@ -750,6 +771,11 @@ export const updateTeacherInLocal = (
       ...(updates.name !== undefined && { name: updates.name.trim() }),
       ...(updates.color !== undefined && { color: updates.color }),
       ...(updates.userId !== undefined && { userId: updates.userId }),
+      ...(updates.email !== undefined && { email: updates.email }),
+      ...(updates.phone !== undefined && { phone: updates.phone }),
+      ...(updates.role !== undefined && { role: updates.role }),
+      ...(updates.notes !== undefined && { notes: updates.notes }),
+      ...(updates.subjectIds !== undefined && { subjectIds: updates.subjectIds }),
     };
 
     data.teachers[teacherIndex] = updatedTeacher;
@@ -834,6 +860,45 @@ export const getAllTeachersFromLocal = (): Teacher[] => {
   } catch (error) {
     logger.error("localStorageCrud - 강사 목록 조회 실패:", undefined, error as Error);
     return [];
+  }
+};
+
+export const addTeacherSubjectToLocal = (
+  teacherId: string,
+  subjectId: string
+): CrudResult<boolean> => {
+  try {
+    const data = getClassPlannerData();
+    const teacher = data.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return { success: false, error: "강사를 찾을 수 없습니다." };
+    if (!teacher.subjectIds) teacher.subjectIds = [];
+    if (!teacher.subjectIds.includes(subjectId)) {
+      teacher.subjectIds.push(subjectId);
+      data.lastModified = new Date().toISOString();
+      if (!setClassPlannerData(data)) return { success: false, error: "localStorage 저장 실패" };
+    }
+    return { success: true, data: true };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사-과목 추가 실패:", undefined, error as Error);
+    return { success: false, error: error instanceof Error ? error.message : "강사-과목 추가 실패" };
+  }
+};
+
+export const removeTeacherSubjectFromLocal = (
+  teacherId: string,
+  subjectId: string
+): CrudResult<boolean> => {
+  try {
+    const data = getClassPlannerData();
+    const teacher = data.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return { success: false, error: "강사를 찾을 수 없습니다." };
+    teacher.subjectIds = (teacher.subjectIds ?? []).filter((id) => id !== subjectId);
+    data.lastModified = new Date().toISOString();
+    if (!setClassPlannerData(data)) return { success: false, error: "localStorage 저장 실패" };
+    return { success: true, data: true };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사-과목 삭제 실패:", undefined, error as Error);
+    return { success: false, error: error instanceof Error ? error.message : "강사-과목 삭제 실패" };
   }
 };
 

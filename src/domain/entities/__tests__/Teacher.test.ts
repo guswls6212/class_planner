@@ -38,6 +38,35 @@ describe("Teacher Entity", () => {
       const teacher = Teacher.create("박강사", "#0891b2", userId);
       expect(teacher.userId).toBe(userId);
     });
+
+    it("profile 없이 create 시 새 프로필 필드는 null이어야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1");
+      expect(teacher.email).toBeNull();
+      expect(teacher.phone).toBeNull();
+      expect(teacher.role).toBeNull();
+      expect(teacher.notes).toBeNull();
+    });
+
+    it("profile을 지정하여 create 시 새 프로필 필드가 설정되어야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1", undefined, {
+        email: "kim@example.com",
+        phone: "010-1234-5678",
+        role: "admin",
+        notes: "주요 강사",
+      });
+      expect(teacher.email).toBe("kim@example.com");
+      expect(teacher.phone).toBe("010-1234-5678");
+      expect(teacher.role).toBe("admin");
+      expect(teacher.notes).toBe("주요 강사");
+    });
+
+    it("create 시 유효한 role(owner/admin/member)은 정상 생성되어야 한다", () => {
+      const roles = ["owner", "admin", "member"] as const;
+      for (const role of roles) {
+        const teacher = Teacher.create("김선생", "#6366f1", undefined, { role });
+        expect(teacher.role).toBe(role);
+      }
+    });
   });
 
   describe("이름 변경", () => {
@@ -62,6 +91,16 @@ describe("Teacher Entity", () => {
     it("유효하지 않은 이름으로 변경하면 에러를 던져야 한다", () => {
       const teacher = Teacher.create("김선생", "#6366f1");
       expect(() => teacher.changeName("")).toThrow("강사 이름을 입력해주세요.");
+    });
+
+    it("changeName 시 프로필 필드가 보존되어야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1", undefined, {
+        email: "kim@example.com",
+        role: "admin",
+      });
+      const renamed = teacher.changeName("박강사");
+      expect(renamed.email).toBe("kim@example.com");
+      expect(renamed.role).toBe("admin");
     });
   });
 
@@ -100,6 +139,73 @@ describe("Teacher Entity", () => {
     });
   });
 
+  describe("프로필 업데이트", () => {
+    it("updateProfile로 이름, 색상, 프로필 필드를 한 번에 변경할 수 있어야 한다", async () => {
+      const teacher = Teacher.create("김선생", "#6366f1");
+      const initialUpdatedAt = teacher.updatedAt;
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const updated = teacher.updateProfile({
+        name: "박강사",
+        color: "#0891b2",
+        email: "park@example.com",
+        phone: "010-9999-8888",
+        role: "member",
+        notes: "신규 강사",
+      });
+
+      expect(updated.name).toBe("박강사");
+      expect(updated.color.value).toBe("#0891b2");
+      expect(updated.email).toBe("park@example.com");
+      expect(updated.phone).toBe("010-9999-8888");
+      expect(updated.role).toBe("member");
+      expect(updated.notes).toBe("신규 강사");
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(initialUpdatedAt.getTime());
+    });
+
+    it("updateProfile에서 지정하지 않은 필드는 기존 값을 유지해야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1", undefined, {
+        email: "kim@example.com",
+        phone: "010-1234-5678",
+        role: "admin",
+        notes: "주요 강사",
+      });
+      const updated = teacher.updateProfile({ notes: "업데이트됨" });
+
+      expect(updated.email).toBe("kim@example.com");
+      expect(updated.phone).toBe("010-1234-5678");
+      expect(updated.role).toBe("admin");
+      expect(updated.notes).toBe("업데이트됨");
+    });
+
+    it("updateProfile로 프로필 필드를 null로 초기화할 수 있어야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1", undefined, {
+        email: "kim@example.com",
+      });
+      const updated = teacher.updateProfile({ email: null });
+      expect(updated.email).toBeNull();
+    });
+
+    it("updateProfile은 id와 userId, createdAt을 변경하지 않아야 한다", () => {
+      const userId = "550e8400-e29b-41d4-a716-446655440000";
+      const teacher = Teacher.create("김선생", "#6366f1", userId);
+      const updated = teacher.updateProfile({ name: "박강사" });
+
+      expect(updated.id.value).toBe(teacher.id.value);
+      expect(updated.userId).toBe(userId);
+      expect(updated.createdAt.getTime()).toBe(teacher.createdAt.getTime());
+    });
+
+    it("updateProfile에 유효하지 않은 role을 넘기면 에러를 던져야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1");
+      // Type assertion needed to test runtime guard with an invalid value
+      expect(() =>
+        teacher.updateProfile({ role: "superuser" as never })
+      ).toThrow("Invalid teacher role: superuser");
+    });
+  });
+
   describe("중복 검사", () => {
     it("같은 이름이 있으면 중복으로 판단해야 한다", () => {
       const teachers = [Teacher.create("김선생", "#6366f1")];
@@ -131,7 +237,7 @@ describe("Teacher Entity", () => {
   });
 
   describe("JSON 직렬화", () => {
-    it("toJSON 메서드가 올바른 JSON을 반환해야 한다", () => {
+    it("toJSON 메서드가 올바른 JSON을 반환해야 한다 (프로필 필드 포함)", () => {
       const teacher = Teacher.create("김선생", "#6366f1");
       const json = teacher.toJSON();
 
@@ -142,6 +248,10 @@ describe("Teacher Entity", () => {
         userId: null,
         createdAt: teacher.createdAt.toISOString(),
         updatedAt: teacher.updatedAt.toISOString(),
+        email: null,
+        phone: null,
+        role: null,
+        notes: null,
       });
     });
 
@@ -155,6 +265,10 @@ describe("Teacher Entity", () => {
       expect(restored.color.value).toBe(original.color.value);
       expect(restored.userId).toBeNull();
       expect(restored.createdAt.getTime()).toBe(original.createdAt.getTime());
+      expect(restored.email).toBeNull();
+      expect(restored.phone).toBeNull();
+      expect(restored.role).toBeNull();
+      expect(restored.notes).toBeNull();
     });
 
     it("userId가 있는 경우도 직렬화/복원 가능해야 한다", () => {
@@ -162,6 +276,21 @@ describe("Teacher Entity", () => {
       const original = Teacher.create("김선생", "#6366f1", userId);
       const restored = Teacher.fromJSON(original.toJSON());
       expect(restored.userId).toBe(userId);
+    });
+
+    it("프로필 필드가 있는 경우 fromJSON 라운드트립이 정확해야 한다", () => {
+      const original = Teacher.create("김선생", "#6366f1", undefined, {
+        email: "kim@example.com",
+        phone: "010-1234-5678",
+        role: "admin",
+        notes: "주요 강사",
+      });
+      const restored = Teacher.fromJSON(original.toJSON());
+
+      expect(restored.email).toBe("kim@example.com");
+      expect(restored.phone).toBe("010-1234-5678");
+      expect(restored.role).toBe("admin");
+      expect(restored.notes).toBe("주요 강사");
     });
   });
 
@@ -179,6 +308,32 @@ describe("Teacher Entity", () => {
       expect(teacher.userId).toBeNull();
       expect(teacher.createdAt.getTime()).toBe(createdAt.getTime());
       expect(teacher.updatedAt.getTime()).toBe(updatedAt.getTime());
+    });
+
+    it("profile 없이 restore 시 새 프로필 필드는 null이어야 한다", () => {
+      const id = "550e8400-e29b-41d4-a716-446655440000";
+      const teacher = Teacher.restore(id, "김선생", "#6366f1");
+      expect(teacher.email).toBeNull();
+      expect(teacher.phone).toBeNull();
+      expect(teacher.role).toBeNull();
+      expect(teacher.notes).toBeNull();
+    });
+
+    it("profile과 함께 restore 시 프로필 필드가 복원되어야 한다", () => {
+      const id = "550e8400-e29b-41d4-a716-446655440000";
+      const teacher = Teacher.restore(
+        id,
+        "김선생",
+        "#6366f1",
+        null,
+        undefined,
+        undefined,
+        { email: "kim@example.com", role: "owner" }
+      );
+      expect(teacher.email).toBe("kim@example.com");
+      expect(teacher.role).toBe("owner");
+      expect(teacher.phone).toBeNull();
+      expect(teacher.notes).toBeNull();
     });
   });
 });

@@ -298,3 +298,33 @@ export function syncTeacherDelete(userId: string | null, id: string): void {
     });
   fireAndForget(makeRequest, "teacher:delete");
 }
+
+export function syncTeacherSubjectAdd(
+  userId: string | null,
+  teacherId: string,
+  subjectId: string
+): void {
+  if (!userId) return;
+  const makeRequest = () =>
+    fetch(`/api/teacher-subjects?userId=${encodeURIComponent(userId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, subjectId }),
+    });
+  fireAndForget(makeRequest, "teacher:subject:add");
+}
+
+export function syncTeacherSubjectRemove(
+  userId: string | null,
+  teacherId: string,
+  subjectId: string
+): void {
+  if (!userId) return;
+  const makeRequest = () =>
+    fetch(`/api/teacher-subjects?userId=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId, subjectId }),
+    });
+  fireAndForget(makeRequest, "teacher:subject:remove");
+}
