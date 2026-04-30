@@ -1214,7 +1214,7 @@ function SchedulePageContent(): JSX.Element {
         <div className="flex items-center gap-2">
           {userId && viewMode === "weekly" && (
             <TemplateMenuV2
-              onApply={() => { _fetchTemplates(); activeTemplate && handleApplyTemplate(activeTemplate); }}
+              onApply={() => { _fetchTemplates(); if (activeTemplate) handleApplyTemplate(activeTemplate); }}
               onClearWeek={handleClearWeek}
               onSave={() => setShowSaveTemplateModal(true)}
               onPreview={handlePreviewTemplate}
@@ -1352,7 +1352,7 @@ function SchedulePageContent(): JSX.Element {
           {currentWeekSessions.length === 0 && (
             <EmptyWeekState
               hasTemplate={Boolean(activeTemplate)}
-              onApplyTemplate={() => activeTemplate && handleApplyTemplate(activeTemplate)}
+              onApplyTemplate={() => { if (activeTemplate) handleApplyTemplate(activeTemplate); }}
               onAddSession={() => {
                 const now = new Date();
                 const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
