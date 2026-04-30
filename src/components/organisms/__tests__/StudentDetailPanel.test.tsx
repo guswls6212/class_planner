@@ -27,6 +27,7 @@ const mockSessions: Session[] = [
     weekday: 0,
     startsAt: "14:00",
     endsAt: "15:00",
+    weekStartDate: "",
     enrollmentIds: ["e1"],
   },
 ];

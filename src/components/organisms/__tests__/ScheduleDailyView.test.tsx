@@ -35,6 +35,7 @@ const makeSession = (
   weekday,
   startsAt,
   endsAt,
+  weekStartDate: "",
   yPosition: 0,
 });
 

@@ -29,6 +29,7 @@ const mockSessions = [
     subjectId: "subject-1",
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
     weekday: 0,
     enrollmentIds: ["enrollment-1"],
     yPosition: 1,

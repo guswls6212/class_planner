@@ -33,6 +33,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 1,
         enrollmentIds: ["e1"],
         room: "",
+        weekStartDate: "",
       },
       {
         id: "sess2",
@@ -42,6 +43,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 2,
         enrollmentIds: ["e2"],
         room: "",
+        weekStartDate: "",
       },
     ];
 
@@ -88,6 +90,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 3,
         enrollmentIds: ["e1"],
         room: "",
+        weekStartDate: "",
       },
       {
         id: "a",
@@ -97,6 +100,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 3,
         enrollmentIds: ["e2"],
         room: "",
+        weekStartDate: "",
       },
       {
         id: "b",
@@ -106,6 +110,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 4,
         enrollmentIds: ["e3"],
         room: "",
+        weekStartDate: "",
       },
       {
         id: "c",
@@ -115,6 +120,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 5,
         enrollmentIds: ["e4"],
         room: "",
+        weekStartDate: "",
       },
     ];
 
@@ -151,6 +157,7 @@ describe("repositionSessions - 충돌/재배치", () => {
         yPosition: 1,
         enrollmentIds: ["e1"],
         room: "",
+        weekStartDate: "",
       },
     ];
 
@@ -181,6 +188,7 @@ const makeSession = (
   weekday: 0,
   startsAt,
   endsAt,
+  weekStartDate: "",
   yPosition,
   enrollmentIds: [],
 });
@@ -243,6 +251,7 @@ describe("computeTentativeLayout", () => {
     weekday,
     startsAt,
     endsAt,
+    weekStartDate: "",
     yPosition,
     enrollmentIds: ["e1"],
     room: "",

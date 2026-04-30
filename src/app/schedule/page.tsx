@@ -27,6 +27,11 @@ import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
+import { getWeekStartDate } from "../../lib/weekStart";
+import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
+import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
+import { ApplyTemplateConfirm } from "../../components/molecules/ApplyTemplateConfirm";
+import { TemplatePreviewModal } from "../../components/molecules/TemplatePreviewModal";
 import { Plus } from "lucide-react";
 import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
@@ -265,6 +270,7 @@ function SchedulePageContent(): JSX.Element {
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
+        weekStartDate: "", // stub: Task 1.2 — normalized in Phase 3
         room: sessionData.room || "",
         enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
         yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
@@ -954,8 +960,20 @@ function SchedulePageContent(): JSX.Element {
   // ================================
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
+  const [applyConfirmTemplate, setApplyConfirmTemplate] = useState<ScheduleTemplate | null>(null);
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<ScheduleTemplate | null>(null);
 
-  const { templates, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate } = useTemplates(userId);
+  const { templates, activeTemplate, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate, updateTemplate } = useTemplates(userId);
+
+  // 현재 주 시작일 (KST 기준 월요일)
+  const currentWeekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
+
+  // 현재 주의 세션만
+  const currentWeekSessions = useMemo(
+    () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
+    [sessions, currentWeekStart]
+  );
 
   // 현재 세션 → TemplateData 변환
   const buildTemplateData = useCallback((): TemplateData => {
@@ -975,64 +993,135 @@ function SchedulePageContent(): JSX.Element {
             return students.find((st) => st.id === enrollment.studentId)?.name ?? null;
           })
           .filter((n): n is string => n !== null);
+        const sessionStudentIds = (session.enrollmentIds ?? [])
+          .map((eid) => {
+            const enrollment = enrollments.find((e) => e.id === eid);
+            if (!enrollment) return null;
+            return students.find((st) => st.id === enrollment.studentId)?.id ?? null;
+          })
+          .filter((id): id is string => id !== null);
         return {
           weekday: session.weekday,
           startsAt: session.startsAt,
           endsAt: session.endsAt,
+          subjectId: subject?.id ?? "",
           subjectName: subject?.name ?? "미지정",
           subjectColor: subject?.color ?? "#6366f1",
+          studentIds: sessionStudentIds,
           studentNames: sessionStudentNames,
         };
       }),
     };
   }, [displaySessions, subjects, enrollments, students]);
 
-  const handleApplyTemplate = useCallback(
+  // 실제 적용 로직 (id 기반 매칭)
+  const doApplyTemplate = useCallback(
     async (template: ScheduleTemplate) => {
-      const { sessions: templateSessions } = template.templateData;
-      let applied = 0;
-      let skipped = 0;
-
-      for (const tplSession of templateSessions) {
-        let subject = subjects.find((s) => s.name === tplSession.subjectName);
-        if (!subject) {
-          const newSubjectId = crypto.randomUUID();
-          subject = { id: newSubjectId, name: tplSession.subjectName, color: tplSession.subjectColor };
-          await updateData({ subjects: [...subjects, subject] });
+      setIsApplyingTemplate(true);
+      try {
+        // 1. 현재 주 세션 일괄 삭제
+        for (const s of currentWeekSessions) {
+          await updateData({ sessions: sessions.filter((x) => x.id !== s.id) });
         }
 
-        const studentIds: string[] = [];
-        for (const name of tplSession.studentNames) {
-          const student = students.find((s) => s.name === name);
-          if (student) {
-            studentIds.push(student.id);
-          } else {
-            skipped++;
+        // 2. 템플릿 세션 생성 (id 기반 매칭)
+        let applied = 0;
+        const missingEntities: string[] = [];
+
+        for (const tplSession of template.templateData.sessions) {
+          const subject = subjects.find((s) => s.id === tplSession.subjectId);
+          if (!subject) {
+            missingEntities.push(`과목 "${tplSession.subjectName ?? tplSession.subjectId}"`);
+            continue;
           }
+
+          const matchedStudentIds: string[] = [];
+          for (const stId of tplSession.studentIds ?? []) {
+            const st = students.find((s) => s.id === stId);
+            if (st) {
+              matchedStudentIds.push(st.id);
+            } else {
+              const nameIdx = (tplSession.studentIds ?? []).indexOf(stId);
+              const name = tplSession.studentNames?.[nameIdx];
+              missingEntities.push(`학생 "${name ?? stId}"`);
+            }
+          }
+          if (matchedStudentIds.length === 0) continue;
+
+          await addSession({
+            subjectId: subject.id,
+            studentIds: matchedStudentIds,
+            weekday: tplSession.weekday,
+            startTime: tplSession.startsAt,
+            endTime: tplSession.endsAt,
+            yPosition: tplSession.yPosition ?? 1,
+            room: tplSession.room,
+          });
+          applied++;
         }
 
-        if (studentIds.length === 0) continue;
-
-        await addSession({
-          subjectId: subject.id,
-          studentIds,
-          weekday: tplSession.weekday,
-          startTime: tplSession.startsAt,
-          endTime: tplSession.endsAt,
-          yPosition: 1,
-        });
-        applied++;
-      }
-
-      setShowApplyTemplateModal(false);
-      if (applied > 0) {
-        showToast("success", `${applied}개 세션이 적용되었습니다.${skipped > 0 ? ` (${skipped}명 학생 매칭 실패)` : ""}`);
-      } else {
-        showToast("error", "매칭된 학생이 없어 세션을 생성하지 못했습니다.");
+        const uniqueMissing = [...new Set(missingEntities)];
+        const warningText = uniqueMissing.length > 0
+          ? ` (매칭 실패: ${uniqueMissing.slice(0, 3).join(", ")}${uniqueMissing.length > 3 ? " 외" : ""})`
+          : "";
+        showToast("success", `${applied}개 수업이 템플릿으로 교체되었습니다${warningText}`);
+      } catch (e) {
+        showToast("error", "템플릿 적용 실패: " + (e as Error).message);
+      } finally {
+        setIsApplyingTemplate(false);
+        setApplyConfirmTemplate(null);
       }
     },
-    [subjects, students, enrollments, sessions, updateData, addSession]
+    [currentWeekSessions, sessions, subjects, students, updateData, addSession]
   );
+
+  const handleApplyTemplate = useCallback(
+    (template: ScheduleTemplate) => {
+      if (currentWeekSessions.length > 0) {
+        setApplyConfirmTemplate(template);
+        return;
+      }
+      doApplyTemplate(template);
+    },
+    [currentWeekSessions, doApplyTemplate]
+  );
+
+  const handleClearWeek = useCallback(async () => {
+    if (currentWeekSessions.length === 0) {
+      showToast("info", "이번 주는 이미 비어있어요.");
+      return;
+    }
+    if (!confirm(`이 주의 ${currentWeekSessions.length}개 수업을 모두 삭제할까요?`)) return;
+    let remaining = sessions;
+    for (const s of currentWeekSessions) {
+      remaining = remaining.filter((x) => x.id !== s.id);
+    }
+    await updateData({ sessions: remaining });
+    showToast("success", `${currentWeekSessions.length}개 수업이 삭제되었습니다.`);
+  }, [currentWeekSessions, sessions, updateData]);
+
+  const handleSaveTemplate = useCallback(
+    async (name: string, description?: string) => {
+      const data = buildTemplateData();
+      if (data.sessions.length === 0) {
+        showToast("error", "저장할 수업이 없습니다.");
+        return;
+      }
+      if (activeTemplate) {
+        await updateTemplate(activeTemplate.id, { name, description, template_data: data });
+        showToast("success", "템플릿이 갱신되었습니다.");
+      } else {
+        await saveTemplate({ name, description: description ?? "", templateData: data });
+        showToast("success", "템플릿이 저장되었습니다.");
+      }
+      setShowSaveTemplateModal(false);
+    },
+    [buildTemplateData, activeTemplate, updateTemplate, saveTemplate]
+  );
+
+  const handlePreviewTemplate = useCallback(() => {
+    if (activeTemplate) setPreviewTemplate(activeTemplate);
+  }, [activeTemplate]);
 
   // ================================
   // 🎯 출석 관리 섹션
@@ -1122,20 +1211,32 @@ function SchedulePageContent(): JSX.Element {
           title={scheduleTitle}
           isSyncingSession={isSyncingSession}
         />
-        <ScheduleActionBar
-          viewLabel={scheduleTitle}
-          onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
-          isDownloading={isDownloading}
-          onDownloadStart={() => {}}
-          onDownloadEnd={() => {}}
-          userId={userId}
-          onSaveTemplate={() => setShowSaveTemplateModal(true)}
-          onApplyTemplate={() => {
-            _fetchTemplates();
-            setShowApplyTemplateModal(true);
-          }}
-          isSaving={templateSaving}
-        />
+        <div className="flex items-center gap-2">
+          {userId && viewMode === "weekly" && (
+            <TemplateMenuV2
+              onApply={() => { _fetchTemplates(); if (activeTemplate) handleApplyTemplate(activeTemplate); }}
+              onClearWeek={handleClearWeek}
+              onSave={() => setShowSaveTemplateModal(true)}
+              onPreview={handlePreviewTemplate}
+              canManage={true}
+              hasTemplate={Boolean(activeTemplate)}
+            />
+          )}
+          <ScheduleActionBar
+            viewLabel={scheduleTitle}
+            onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
+            isDownloading={isDownloading}
+            onDownloadStart={() => {}}
+            onDownloadEnd={() => {}}
+            userId={userId}
+            onSaveTemplate={() => setShowSaveTemplateModal(true)}
+            onApplyTemplate={() => {
+              _fetchTemplates();
+              setShowApplyTemplateModal(true);
+            }}
+            isSaving={templateSaving}
+          />
+        </div>
       </div>
 
       {colorBy === "student" && (
@@ -1229,24 +1330,37 @@ function SchedulePageContent(): JSX.Element {
         />
       ) : (
         /* 주간 시간표 그리드 */
-        <ScheduleGridSection
-          containerRef={timeTableRef}
-          gridVersion={gridVersion}
-          sessions={displaySessions}
-          subjects={subjects}
-          enrollments={enrollments}
-          students={students}
-          onSessionClick={handleSessionClick}
-          onSessionDelete={handleSessionDelete}
-          onDrop={handleDrop}
-          onSessionDrop={handleSessionDrop}
-          onEmptySpaceClick={handleEmptySpaceClick}
-          selectedStudentIds={selectedStudentIds}
-          isStudentDragging={isStudentDragging}
-          teachers={teachers}
-          colorBy={colorBy}
-          baseDate={selectedDate}
-        />
+        <div className="relative">
+          <ScheduleGridSection
+            containerRef={timeTableRef}
+            gridVersion={gridVersion}
+            sessions={displaySessions}
+            subjects={subjects}
+            enrollments={enrollments}
+            students={students}
+            onSessionClick={handleSessionClick}
+            onSessionDelete={handleSessionDelete}
+            onDrop={handleDrop}
+            onSessionDrop={handleSessionDrop}
+            onEmptySpaceClick={handleEmptySpaceClick}
+            selectedStudentIds={selectedStudentIds}
+            isStudentDragging={isStudentDragging}
+            teachers={teachers}
+            colorBy={colorBy}
+            baseDate={selectedDate}
+          />
+          {currentWeekSessions.length === 0 && (
+            <EmptyWeekState
+              hasTemplate={Boolean(activeTemplate)}
+              onApplyTemplate={() => { if (activeTemplate) handleApplyTemplate(activeTemplate); }}
+              onAddSession={() => {
+                const now = new Date();
+                const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+                openGroupModal(selectedWeekday, currentTime, 1);
+              }}
+            />
+          )}
+        </div>
       )}
 
       {/* FAB — 모든 뷰(일별/주간/월별)에서 공통 표시 */}
@@ -1445,19 +1559,13 @@ function SchedulePageContent(): JSX.Element {
         isOpen={showSaveTemplateModal}
         onClose={() => setShowSaveTemplateModal(false)}
         onSave={async (payload) => {
-          const ok = await saveTemplate(payload);
-          if (ok) {
-            setShowSaveTemplateModal(false);
-            showToast("success", "템플릿이 저장되었습니다.");
-          } else {
-            showError("템플릿 저장에 실패했습니다.");
-          }
+          await handleSaveTemplate(payload.name, payload.description ?? undefined);
         }}
         templateData={buildTemplateData()}
         isSaving={templateSaving}
       />
 
-      {/* 템플릿 적용 모달 */}
+      {/* 템플릿 적용 모달 (기존) */}
       <ApplyTemplateModal
         isOpen={showApplyTemplateModal}
         onClose={() => setShowApplyTemplateModal(false)}
@@ -1466,6 +1574,35 @@ function SchedulePageContent(): JSX.Element {
         isApplying={false}
         isLoading={templatesLoading}
       />
+
+      {/* 템플릿 적용 확인 모달 (교체 충돌 감지) */}
+      {applyConfirmTemplate && (
+        <ApplyTemplateConfirm
+          existingSessionCount={currentWeekSessions.length}
+          onConfirm={() => doApplyTemplate(applyConfirmTemplate)}
+          onCancel={() => setApplyConfirmTemplate(null)}
+          isApplying={isApplyingTemplate}
+        />
+      )}
+
+      {/* 템플릿 미리보기 모달 */}
+      {previewTemplate && (
+        <TemplatePreviewModal
+          template={{
+            name: previewTemplate.name,
+            template_data: {
+              sessions: previewTemplate.templateData.sessions.map((s) => ({
+                weekday: s.weekday,
+                startsAt: s.startsAt,
+                endsAt: s.endsAt,
+                subjectName: s.subjectName,
+                studentNames: s.studentNames,
+              })),
+            },
+          }}
+          onClose={() => setPreviewTemplate(null)}
+        />
+      )}
 
       {/* PDF 범위 선택 다이얼로그 */}
       <PdfExportRangeModal

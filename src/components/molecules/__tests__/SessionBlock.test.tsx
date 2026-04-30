@@ -36,6 +36,7 @@ describe("SessionBlock Component", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
     room: "A101",
   };
 
@@ -638,6 +639,7 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
   };
   const contextMenuSubjects = [
     { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
@@ -731,6 +733,7 @@ describe("student mode + no chip selected → subject mode fallback", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
   };
   const mockSubjects = [
     { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
@@ -809,6 +812,7 @@ describe("student mode dim/glow on session blocks", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
   };
   const otherSession = {
     id: "550e8400-e29b-41d4-a716-446655440202",
@@ -816,6 +820,7 @@ describe("student mode dim/glow on session blocks", () => {
     weekday: 1,
     startsAt: "10:00",
     endsAt: "11:00",
+    weekStartDate: "",
   };
   const glowSubjects = [
     { id: "sub-1", name: "수학", color: "#FF0000" },

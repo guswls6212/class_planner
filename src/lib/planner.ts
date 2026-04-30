@@ -36,6 +36,7 @@ export type Session = {
   weekday: number; // 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
   startsAt: string; // 시작 시간 (HH:MM 형식)
   endsAt: string; // 종료 시간 (HH:MM 형식)
+  weekStartDate: string; // 주 월요일 ISO date "YYYY-MM-DD" (KST 기준)
   room?: string; // 강의실 (선택적)
   yPosition?: number; // 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
   teacherId?: string; // 담당 강사 ID (선택적)
@@ -158,6 +159,7 @@ export function createGroupSession(
     weekday: candidate.weekday,
     startsAt: candidate.startsAt,
     endsAt: candidate.endsAt,
+    weekStartDate: "",
     room: candidate.room,
   };
 }

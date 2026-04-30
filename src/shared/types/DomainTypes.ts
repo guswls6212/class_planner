@@ -34,6 +34,7 @@ export interface Session {
   readonly weekday: number; // 0: 월요일, 1: 화요일, ..., 6: 일요일
   readonly startsAt: string; // HH:MM 형식
   readonly endsAt: string; // HH:MM 형식
+  readonly weekStartDate: string; // 주 월요일 ISO date "YYYY-MM-DD" (KST 기준)
   readonly room?: string;
   readonly yPosition?: number;
   readonly teacherId?: string;

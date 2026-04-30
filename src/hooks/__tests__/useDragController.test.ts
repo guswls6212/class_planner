@@ -8,6 +8,7 @@ const mockSession: Session = {
   weekday: 1,
   startsAt: "10:00",
   endsAt: "11:00",
+  weekStartDate: "",
   enrollmentIds: ["enrollment-1"],
 };
 

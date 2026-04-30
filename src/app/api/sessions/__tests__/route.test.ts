@@ -45,6 +45,16 @@ describe("/api/sessions API Routes", () => {
       expect(typeof response.status).toBe("number");
       expect(data).toHaveProperty("success");
     });
+
+    it("weekStartDate 파라미터를 서비스로 전달한다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user&weekStartDate=2026-04-27"
+      );
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(data.success).toBe(true);
+    });
   });
 
   describe("POST /api/sessions", () => {
@@ -63,6 +73,30 @@ describe("/api/sessions API Routes", () => {
 
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
+    });
+
+    it("weekStartDate 없으면 400을 반환한다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: [],
+            weekday: 0,
+            // weekStartDate 없음
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("weekStartDate");
     });
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { use } from "react";
 import { RefreshCw, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import TimeTableGrid from "@/components/organisms/TimeTableGrid";
@@ -8,6 +8,7 @@ import { ScheduleDailyView } from "@/components/organisms/ScheduleDailyView";
 import ScheduleMonthlyView from "@/components/organisms/ScheduleMonthlyView";
 import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
 import SegmentedButton from "@/components/atoms/SegmentedButton";
+import { getWeekStartDate } from "@/lib/weekStart";
 import type { Session, Student, Subject, Enrollment, Teacher } from "@/lib/planner";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -24,6 +25,7 @@ interface ShareData {
   scheduleUpdatedAt: string;
   lastViewedAt: string | null;
   hasChanges: boolean;
+  currentWeek: string;
 }
 
 interface RawSession {
@@ -47,6 +49,7 @@ function mapSessions(raw: RawSession[]): Session[] {
   return raw.map((s) => ({
     id: s.id, enrollmentIds: s.enrollment_ids ?? [], weekday: s.weekday,
     startsAt: s.starts_at, endsAt: s.ends_at, room: s.room,
+    weekStartDate: (s as any).week_start_date ?? "",
     yPosition: s.y_position, teacherId: s.teacher_id,
   }));
 }
@@ -82,11 +85,13 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchData = async (silent = false) => {
+  const weekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
+
+  const fetchData = async (silent = false, week = weekStart) => {
     if (!silent) setLoading(true);
     else setIsRefreshing(true);
     try {
-      const res = await fetch(`/api/share/${token}`);
+      const res = await fetch(`/api/share/${token}?week=${week}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -103,10 +108,11 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   };
 
   useEffect(() => {
-    fetchData();
-    pollerRef.current = setInterval(() => fetchData(true), POLL_INTERVAL_MS);
+    fetchData(false, weekStart);
+    if (pollerRef.current) clearInterval(pollerRef.current);
+    pollerRef.current = setInterval(() => fetchData(true, weekStart), POLL_INTERVAL_MS);
     return () => { if (pollerRef.current) clearInterval(pollerRef.current); };
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, weekStart]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 날짜 네비게이션
   const navigate = (dir: -1 | 1) => {

@@ -67,10 +67,17 @@ function buildFromMock(
       };
     }
     // sessions, students, subjects, enrollments, teachers
+    // Support chained .eq() calls (eq().eq() for sessions: academy_id + week_start_date)
+    const resolved = { data: [], error: null };
+    const makeEq = (): Record<string, unknown> => ({
+      eq: vi.fn().mockImplementation(() => makeEq()),
+      in: vi.fn().mockResolvedValue(resolved),
+      // Make thenable so Promise.all() can await it
+      then: (resolve: (v: typeof resolved) => unknown) => Promise.resolve(resolved).then(resolve),
+      catch: (reject: (e: unknown) => unknown) => Promise.resolve(resolved).catch(reject),
+    });
     return {
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-      }),
+      select: vi.fn().mockReturnValue(makeEq()),
     };
   };
 }
@@ -91,6 +98,7 @@ describe("GET /api/share/[token]", () => {
     expect(body.success).toBe(true);
     expect(body.data).toBeDefined();
     expect(body.data.academyName).toBe("테스트학원");
+    expect(body.data.currentWeek).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("최초 방문(last_viewed_at=null)이면 hasChanges=false — 배너 미표시 의도", async () => {

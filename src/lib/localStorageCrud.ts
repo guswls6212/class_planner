@@ -6,6 +6,7 @@
  */
 
 import { logger } from "./logger";
+import { migrateLocalSessionsIfNeeded } from "./migrateLocalSessions";
 import type { Enrollment, Session, Student, Subject, Teacher } from "./planner";
 
 // ===== 타입 정의 =====
@@ -84,14 +85,15 @@ export const getClassPlannerData = (): ClassPlannerData => {
     }
 
     // 기본 구조 확인 및 마이그레이션
+    const migrated = migrateLocalSessionsIfNeeded(parsed);
     const result: ClassPlannerData = {
-      students: parsed.students || [],
-      subjects: parsed.subjects || [],
-      sessions: parsed.sessions || [],
-      enrollments: parsed.enrollments || [],
-      teachers: parsed.teachers || [],
-      version: parsed.version || "1.0",
-      lastModified: parsed.lastModified || new Date().toISOString(),
+      students: migrated.students || [],
+      subjects: migrated.subjects || [],
+      sessions: migrated.sessions || [],
+      enrollments: migrated.enrollments || [],
+      teachers: migrated.teachers || [],
+      version: migrated.version || "1.0",
+      lastModified: migrated.lastModified || new Date().toISOString(),
     };
 
     // lastModified가 없으면 추가하고 저장

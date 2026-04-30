@@ -53,6 +53,7 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -110,6 +111,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: ["srv-en1"],
     };
 
@@ -133,6 +135,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -178,6 +181,7 @@ describe("migrateLocalDataToServer — student upload error cascades", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -245,6 +249,7 @@ describe("migrateLocalDataToServer — session with unmapped enrollments", () =>
           weekday: 2,
           startsAt: "14:00",
           endsAt: "15:00",
+          weekStartDate: "",
           enrollmentIds: ["orphan-en1"], // 매핑 테이블에 없음
         },
       ],
@@ -423,6 +428,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
           weekday: 2,
           startsAt: "14:00",
           endsAt: "15:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],

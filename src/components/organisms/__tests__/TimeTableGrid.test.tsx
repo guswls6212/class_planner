@@ -17,6 +17,7 @@ mockSessions.set(0, [
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
     yPosition: 1,
   },
 ]);

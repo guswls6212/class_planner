@@ -5,8 +5,8 @@ import { AppError } from "@/lib/errors/AppError";
 export class SessionApplicationServiceImpl {
   constructor(private sessionRepository: SessionRepository) {}
 
-  async getAllSessions(academyId: string): Promise<Session[]> {
-    return this.sessionRepository.getAll(academyId);
+  async getAllSessions(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]> {
+    return this.sessionRepository.getAll(academyId, opts);
   }
 
   async getSessionById(id: string): Promise<Session | null> {
@@ -20,10 +20,14 @@ export class SessionApplicationServiceImpl {
       endsAt: string;
       enrollmentIds: string[];
       weekday: number;
+      weekStartDate?: string;
     },
     academyId: string
   ): Promise<Session> {
-    return this.sessionRepository.create(sessionData, academyId);
+    return this.sessionRepository.create(
+      { ...sessionData, weekStartDate: sessionData.weekStartDate ?? "" },
+      academyId
+    );
   }
 
   async updateSession(
