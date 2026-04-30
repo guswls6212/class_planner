@@ -574,17 +574,6 @@ function SchedulePageContent(): JSX.Element {
     ""
   );
 
-  // 월별 뷰용: 전체 세션 weekday Map (주 필터 없음 — 월별은 패턴 전체 표시)
-  const monthlyDisplaySessions = useMemo(() => {
-    const map = new Map<number, typeof sessions>();
-    sessions.forEach((s) => {
-      const list = map.get(s.weekday) ?? [];
-      list.push(s);
-      map.set(s.weekday, list);
-    });
-    return map;
-  }, [sessions]);
-
   const {
     validateTimeRange,
     validateDurationWithinLimit,
@@ -1326,7 +1315,7 @@ function SchedulePageContent(): JSX.Element {
         />
       ) : viewMode === "monthly" ? (
         <ScheduleMonthlyView
-          sessions={monthlyDisplaySessions}
+          sessions={sessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}
