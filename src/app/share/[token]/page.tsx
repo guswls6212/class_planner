@@ -202,12 +202,15 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
             />
           </div>
 
-          {/* 갱신 표시 */}
+          {/* 시간표 마지막 수정 시각 */}
           <div className="flex-shrink-0 flex items-center gap-1.5">
             {isRefreshing && <RefreshCw size={13} className="text-[var(--color-text-muted)] animate-spin" />}
-            {lastUpdated && !isRefreshing && (
+            {data && !isRefreshing && (
               <span className="text-[10px] text-[var(--color-text-muted)] hidden sm:block">
-                {lastUpdated.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 업데이트
+                {new Date(data.scheduleUpdatedAt).toLocaleString("ko-KR", {
+                  month: "numeric", day: "numeric",
+                  hour: "2-digit", minute: "2-digit",
+                })} 수정
               </span>
             )}
           </div>

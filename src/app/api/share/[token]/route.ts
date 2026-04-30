@@ -51,7 +51,6 @@ export async function GET(
       .single();
 
     // 3. Fetch schedule data
-    // enrollments 테이블에는 academy_id가 없으므로 students → enrollments 순으로 조회
     const [sessionsRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
       client.from("sessions").select("*").eq("academy_id", academyId),
       client.from("students").select("*").eq("academy_id", academyId),
@@ -59,13 +58,32 @@ export async function GET(
       client.from("teachers").select("*").eq("academy_id", academyId),
     ]);
 
+    // session_enrollments join 테이블로 enrollment_ids 구성
+    const sessionIds = (sessionsRes.data ?? []).map((s: { id: string }) => s.id);
+    const sessionEnrollmentsRes = sessionIds.length > 0
+      ? await client.from("session_enrollments").select("session_id, enrollment_id").in("session_id", sessionIds)
+      : { data: [] };
+
+    const seMap = new Map<string, string[]>();
+    for (const se of (sessionEnrollmentsRes.data ?? [])) {
+      const list = seMap.get(se.session_id) ?? [];
+      list.push(se.enrollment_id);
+      seMap.set(se.session_id, list);
+    }
+
+    // students의 enrollment_ids는 enrollments 테이블로 가져오기
     const studentIds = (studentsRes.data ?? []).map((s: { id: string }) => s.id);
     const enrollmentsRes = studentIds.length > 0
       ? await client.from("enrollments").select("*").in("student_id", studentIds)
       : { data: [] };
 
+    // sessions에 enrollment_ids 매핑
+    const sessionsWithEnrollments = (sessionsRes.data ?? []).map(
+      (s: Record<string, unknown>) => ({ ...s, enrollment_ids: seMap.get(s.id as string) ?? [] })
+    );
+
     // 4. Apply student filter if set
-    let sessions = sessionsRes.data ?? [];
+    let sessions = sessionsWithEnrollments;
     let students = studentsRes.data ?? [];
     const filterStudentId: string | null = tokenRow.filter_student_id;
 
@@ -74,8 +92,8 @@ export async function GET(
         (e: { student_id: string }) => e.student_id === filterStudentId
       );
       const enrollmentIds = new Set(enrollmentsForStudent.map((e: { id: string }) => e.id));
-      sessions = sessions.filter((s: { enrollment_ids?: string[] }) =>
-        (s.enrollment_ids ?? []).some((eid: string) => enrollmentIds.has(eid))
+      sessions = sessions.filter((s: { enrollment_ids: string[] }) =>
+        s.enrollment_ids.some((eid: string) => enrollmentIds.has(eid))
       );
       students = students.filter((st: { id: string }) => st.id === filterStudentId);
     }
