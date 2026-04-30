@@ -15,7 +15,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, color, userId: bodyUserId } = body;
+    const { name, color, userId: bodyUserId, email, phone, role, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -38,7 +38,15 @@ export async function PUT(
     const academyId = await resolveAcademyId(userId);
     const updated = await getTeacherService().updateTeacher(
       id,
-      { name, color, userId: "userId" in body ? bodyUserId : undefined },
+      {
+        name,
+        color,
+        userId: "userId" in body ? bodyUserId : undefined,
+        email: "email" in body ? (email ?? null) : undefined,
+        phone: "phone" in body ? (phone ?? null) : undefined,
+        role: "role" in body ? (role ?? null) : undefined,
+        notes: "notes" in body ? (notes ?? null) : undefined,
+      },
       academyId
     );
     return NextResponse.json({ success: true, data: updated });

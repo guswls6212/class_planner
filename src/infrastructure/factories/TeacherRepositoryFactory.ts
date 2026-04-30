@@ -38,4 +38,12 @@ class MockTeacherRepository implements TeacherRepository {
   }
 
   async delete(): Promise<void> {}
+
+  async getSubjectIds(): Promise<string[]> {
+    return [];
+  }
+
+  async addSubject(): Promise<void> {}
+
+  async removeSubject(): Promise<void> {}
 }

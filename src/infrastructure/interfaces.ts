@@ -47,13 +47,19 @@ export interface SessionRepository {
 export interface TeacherRepository {
   getAll(academyId: string): Promise<Teacher[]>;
   getById(id: string, academyId?: string): Promise<Teacher | null>;
-  create(teacher: { name: string; color: string; userId?: string | null }, academyId: string): Promise<Teacher>;
+  create(
+    teacher: { name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: import("@/domain/entities/Teacher").TeacherRole | null; notes?: string | null },
+    academyId: string
+  ): Promise<Teacher>;
   update(
     id: string,
-    teacher: { name?: string; color?: string; userId?: string | null },
+    teacher: { name?: string; color?: string; userId?: string | null; email?: string | null; phone?: string | null; role?: import("@/domain/entities/Teacher").TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher>;
   delete(id: string, academyId: string): Promise<void>;
+  getSubjectIds(teacherId: string): Promise<string[]>;
+  addSubject(teacherId: string, subjectId: string, academyId: string): Promise<void>;
+  removeSubject(teacherId: string, subjectId: string): Promise<void>;
 }
 
 export interface EnrollmentRepository {

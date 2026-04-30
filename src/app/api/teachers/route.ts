@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, color, userId: bodyUserId } = body;
+    const { name, color, userId: bodyUserId, email, phone, role, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const academyId = await resolveAcademyId(userId);
     const newTeacher = await getTeacherService().addTeacher(
-      { name, color, userId: bodyUserId ?? null },
+      { name, color, userId: bodyUserId ?? null, email: email ?? null, phone: phone ?? null, role: role ?? null, notes: notes ?? null },
       academyId
     );
     return NextResponse.json({ success: true, data: newTeacher }, { status: 201 });

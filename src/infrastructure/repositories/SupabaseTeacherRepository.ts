@@ -1,4 +1,5 @@
 import { Teacher } from "@/domain/entities/Teacher";
+import type { TeacherRole } from "@/domain/entities/Teacher";
 import type { TeacherRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
@@ -24,7 +25,13 @@ export class SupabaseTeacherRepository implements TeacherRepository {
       (row.color as string) ?? "#6366f1",
       (row.user_id as string | null) ?? null,
       new Date(row.created_at as string),
-      new Date(row.updated_at as string)
+      new Date(row.updated_at as string),
+      {
+        email: (row.email as string | null) ?? null,
+        phone: (row.phone as string | null) ?? null,
+        role: (row.role as TeacherRole | null) ?? null,
+        notes: (row.notes as string | null) ?? null,
+      }
     );
   }
 
@@ -66,7 +73,7 @@ export class SupabaseTeacherRepository implements TeacherRepository {
   }
 
   async create(
-    teacherData: { name: string; color: string; userId?: string | null },
+    teacherData: { name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher> {
     try {
@@ -78,6 +85,10 @@ export class SupabaseTeacherRepository implements TeacherRepository {
           name: teacherData.name,
           color: teacherData.color,
           user_id: teacherData.userId ?? null,
+          email: teacherData.email ?? null,
+          phone: teacherData.phone ?? null,
+          role: teacherData.role ?? null,
+          notes: teacherData.notes ?? null,
         })
         .select()
         .single();
@@ -96,7 +107,7 @@ export class SupabaseTeacherRepository implements TeacherRepository {
 
   async update(
     id: string,
-    teacherData: { name?: string; color?: string; userId?: string | null },
+    teacherData: { name?: string; color?: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher> {
     try {
@@ -105,6 +116,10 @@ export class SupabaseTeacherRepository implements TeacherRepository {
       if (teacherData.name !== undefined) updatePayload.name = teacherData.name;
       if (teacherData.color !== undefined) updatePayload.color = teacherData.color;
       if ("userId" in teacherData) updatePayload.user_id = teacherData.userId ?? null;
+      if ("email" in teacherData) updatePayload.email = teacherData.email ?? null;
+      if ("phone" in teacherData) updatePayload.phone = teacherData.phone ?? null;
+      if ("role" in teacherData) updatePayload.role = teacherData.role ?? null;
+      if ("notes" in teacherData) updatePayload.notes = teacherData.notes ?? null;
 
       const { data, error } = await client
         .from("teachers")
@@ -141,6 +156,42 @@ export class SupabaseTeacherRepository implements TeacherRepository {
       }
     } catch (error) {
       logger.error("강사 삭제 중 오류:", undefined, error as Error);
+      throw error;
+    }
+  }
+
+  async getSubjectIds(teacherId: string): Promise<string[]> {
+    const client = this.createServiceRoleClient();
+    const { data, error } = await client
+      .from("teacher_subjects")
+      .select("subject_id")
+      .eq("teacher_id", teacherId);
+    if (error || !data) return [];
+    return data.map((r) => r.subject_id as string);
+  }
+
+  async addSubject(teacherId: string, subjectId: string, academyId: string): Promise<void> {
+    const client = this.createServiceRoleClient();
+    const { error } = await client.from("teacher_subjects").insert({
+      teacher_id: teacherId,
+      subject_id: subjectId,
+      academy_id: academyId,
+    });
+    if (error && error.code !== "23505") {
+      logger.error("강사-과목 추가 실패:", undefined, error as Error);
+      throw error;
+    }
+  }
+
+  async removeSubject(teacherId: string, subjectId: string): Promise<void> {
+    const client = this.createServiceRoleClient();
+    const { error } = await client
+      .from("teacher_subjects")
+      .delete()
+      .eq("teacher_id", teacherId)
+      .eq("subject_id", subjectId);
+    if (error) {
+      logger.error("강사-과목 삭제 실패:", undefined, error as Error);
       throw error;
     }
   }
