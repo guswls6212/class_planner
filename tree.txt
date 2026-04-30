@@ -2,6 +2,7 @@ src/__tests__/middleware.test.ts
 src/app/__tests__/page.test.tsx
 src/app/about/__tests__/page.test.tsx
 src/app/about/page.tsx
+src/app/dev/button-feedback/page.tsx
 src/app/admin/layout.tsx
 src/app/admin/logs/page.tsx
 src/app/api/admin/logs/__tests__/route.test.ts
@@ -375,6 +376,7 @@ src/lib/auth/deduplication.ts
 src/lib/auth/fullDataMigration.ts
 src/lib/auth/handleLoginDataMigration.ts
 src/lib/authUtils.ts
+src/lib/formatExpiry.ts
 src/lib/colors/__tests__/tintFromHex.test.ts
 src/lib/colors/hexToRgba.ts
 src/lib/colors/tintFromHex.ts

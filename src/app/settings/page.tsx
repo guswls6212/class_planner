@@ -7,6 +7,8 @@ import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { Button } from "../../components/atoms/Button";
+import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "원장",
@@ -167,7 +169,7 @@ export default function SettingsPage() {
   };
 
   const handleCancelInvite = async (id: string) => {
-    if (!userId) return;
+    if (!userId || !confirm("이 초대를 취소하시겠습니까?")) return;
     await fetch(`/api/invites/${id}?userId=${userId}`, { method: "DELETE" });
     await fetchData();
   };
@@ -259,12 +261,9 @@ export default function SettingsPage() {
           <p className="text-[11px] text-[var(--color-text-muted)]">
             학원을 먼저 만들어야 멤버 초대와 공유 링크를 사용할 수 있습니다.
           </p>
-          <button
-            onClick={() => router.push("/onboarding")}
-            className="mt-2 px-5 py-2 bg-accent text-[var(--color-admin-ink)] rounded-md font-medium text-sm hover:opacity-90 transition-opacity"
-          >
+          <Button variant="accent" onClick={() => router.push("/onboarding")} className="mt-2">
             학원 만들기
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -291,19 +290,21 @@ export default function SettingsPage() {
                   maxLength={50}
                   className="flex-1 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
                 />
-                <button
+                <Button
+                  variant="accent"
+                  size="small"
                   onClick={handleSaveAcademyName}
-                  disabled={isSavingName}
-                  className="px-3 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  loading={isSavingName}
                 >
-                  {isSavingName ? "저장 중..." : "저장"}
-                </button>
-                <button
+                  저장
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="small"
                   onClick={() => setIsEditingName(false)}
-                  className="px-3 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
                 >
                   취소
-                </button>
+                </Button>
               </div>
             ) : (
               <>
@@ -312,13 +313,14 @@ export default function SettingsPage() {
                   <p className="text-base font-semibold text-[var(--color-text-primary)]">{academyName}</p>
                 </div>
                 {canManage && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="small"
                     onClick={() => { setEditNameValue(academyName); setIsEditingName(true); }}
-                    className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
                     aria-label="학원 이름 편집"
                   >
                     <Pencil size={15} strokeWidth={1.5} />
-                  </button>
+                  </Button>
                 )}
               </>
             )}
@@ -346,12 +348,14 @@ export default function SettingsPage() {
             </div>
           </div>
           {canManage && (
-            <button
+            <Button
+              variant="accent"
+              size="small"
               onClick={() => setShowInviteModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-accent text-[var(--color-admin-ink)] text-[13px] font-medium rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
+              className="flex-shrink-0 gap-1.5"
             >
               <Plus size={14} strokeWidth={2} /> 초대하기
-            </button>
+            </Button>
           )}
         </div>
 
@@ -381,12 +385,14 @@ export default function SettingsPage() {
                 )}
               </div>
               {myRole === "owner" && member.userId !== userId && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="small"
                   onClick={() => handleRemoveMember(member.userId)}
-                  className="text-xs px-3 py-1 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                  className="hover:text-red-400"
                 >
                   제거
-                </button>
+                </Button>
               )}
             </div>
           ))}
@@ -412,22 +418,30 @@ export default function SettingsPage() {
                       {ROLE_LABEL[invite.role] ?? invite.role} 역할 초대
                     </span>
                     <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                      만료: {new Date(invite.expiresAt).toLocaleDateString("ko-KR")}
+                      <span className={getExpiryColorClass(invite.expiresAt)}>
+                        {formatExpiry(invite.expiresAt)}
+                      </span>
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="tonal"
+                      size="small"
+                      feedback="inline"
+                      successLabel="복사됨"
+                      toastMessage="초대 링크가 복사되었습니다"
                       onClick={() => handleCopyLink(link)}
-                      className="text-xs px-3 py-1 border border-gray-300 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-primary)] transition-colors"
                     >
                       복사
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="small"
                       onClick={() => handleCancelInvite(invite.id)}
-                      className="text-xs px-3 py-1 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                      className="hover:text-red-400"
                     >
                       취소
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );
@@ -456,12 +470,14 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
-            <button
+            <Button
+              variant="accent"
+              size="small"
               onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-accent text-[var(--color-admin-ink)] text-[13px] font-medium rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
+              className="flex-shrink-0 gap-1.5"
             >
               <Plus size={14} strokeWidth={2} /> 링크 만들기
-            </button>
+            </Button>
           </div>
           {shareTokens.length === 0 ? (
             <div className="space-y-3">
@@ -509,7 +525,11 @@ export default function SettingsPage() {
                   >
                     <div className="min-w-0 flex-1 mr-3">
                       <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                        {st.label ?? "(제목 없음)"}
+                        {st.label ? (
+                          st.label
+                        ) : (
+                          <span className="italic text-[var(--color-text-muted)]">(제목 없음)</span>
+                        )}
                         {studentName && (
                           <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
                             · {studentName}
@@ -517,22 +537,30 @@ export default function SettingsPage() {
                         )}
                       </p>
                       <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                        만료: {new Date(st.expires_at).toLocaleDateString("ko-KR")}
+                        <span className={getExpiryColorClass(st.expires_at)}>
+                          {formatExpiry(st.expires_at)}
+                        </span>
                       </p>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <button
+                      <Button
+                        variant="tonal"
+                        size="small"
+                        feedback="inline"
+                        successLabel="복사됨"
+                        toastMessage="공유 링크가 복사되었습니다"
                         onClick={() => handleCopyLink(shareUrl)}
-                        className="text-xs px-3 py-1 border border-gray-300 text-[var(--color-text-secondary)] rounded-md hover:bg-[var(--color-bg-secondary)] transition-colors"
                       >
                         복사
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="small"
                         onClick={() => handleRevokeShareToken(st.id)}
-                        className="text-xs px-3 py-1 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                        className="hover:text-red-400"
                       >
                         취소
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
