@@ -1,5 +1,8 @@
 import { logger } from "./logger";
 
+// Duplicated from domain entity — planner.ts must not import from domain layer
+export type TeacherRole = 'owner' | 'admin' | 'member';
+
 export type Student = {
   id: string;
   name: string;
@@ -18,7 +21,7 @@ export type Teacher = {
   // New profile fields (Phase 2)
   email?: string | null;
   phone?: string | null;
-  role?: string | null;
+  role?: TeacherRole | null;
   notes?: string | null;
   // Subject associations (from teacher_subjects join table)
   subjectIds?: string[];

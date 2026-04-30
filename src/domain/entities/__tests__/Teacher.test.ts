@@ -59,6 +59,14 @@ describe("Teacher Entity", () => {
       expect(teacher.role).toBe("admin");
       expect(teacher.notes).toBe("주요 강사");
     });
+
+    it("create 시 유효한 role(owner/admin/member)은 정상 생성되어야 한다", () => {
+      const roles = ["owner", "admin", "member"] as const;
+      for (const role of roles) {
+        const teacher = Teacher.create("김선생", "#6366f1", undefined, { role });
+        expect(teacher.role).toBe(role);
+      }
+    });
   });
 
   describe("이름 변경", () => {
@@ -187,6 +195,14 @@ describe("Teacher Entity", () => {
       expect(updated.id.value).toBe(teacher.id.value);
       expect(updated.userId).toBe(userId);
       expect(updated.createdAt.getTime()).toBe(teacher.createdAt.getTime());
+    });
+
+    it("updateProfile에 유효하지 않은 role을 넘기면 에러를 던져야 한다", () => {
+      const teacher = Teacher.create("김선생", "#6366f1");
+      // Type assertion needed to test runtime guard with an invalid value
+      expect(() =>
+        teacher.updateProfile({ role: "superuser" as never })
+      ).toThrow("Invalid teacher role: superuser");
     });
   });
 

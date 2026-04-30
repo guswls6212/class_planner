@@ -8,10 +8,12 @@
 import { Color } from '../value-objects/Color';
 import { TeacherId } from '../value-objects/TeacherId';
 
+export type TeacherRole = 'owner' | 'admin' | 'member';
+
 export interface TeacherProfile {
   email?: string | null;
   phone?: string | null;
-  role?: string | null;
+  role?: TeacherRole | null;
   notes?: string | null;
 }
 
@@ -24,7 +26,7 @@ export class Teacher {
   private readonly _updatedAt: Date;
   private readonly _email: string | null;
   private readonly _phone: string | null;
-  private readonly _role: string | null;
+  private readonly _role: TeacherRole | null;
   private readonly _notes: string | null;
 
   private constructor(
@@ -36,7 +38,7 @@ export class Teacher {
     updatedAt: Date = new Date(),
     email: string | null = null,
     phone: string | null = null,
-    role: string | null = null,
+    role: TeacherRole | null = null,
     notes: string | null = null
   ) {
     this._id = id;
@@ -121,7 +123,7 @@ export class Teacher {
     return new Teacher(this._id, this._name, this._color, null, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes);
   }
 
-  updateProfile(profile: { name?: string; color?: string; email?: string | null; phone?: string | null; role?: string | null; notes?: string | null }): Teacher {
+  updateProfile(profile: { name?: string; color?: string; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null }): Teacher {
     const newName = profile.name !== undefined ? profile.name.trim() : this._name;
     const newColor = profile.color !== undefined ? Color.fromString(profile.color) : this._color;
     const newEmail = profile.email !== undefined ? profile.email : this._email;
@@ -168,6 +170,9 @@ export class Teacher {
     if (!validation.isValid) {
       throw new Error(`Invalid teacher: ${validation.errors.map(e => e.message).join(', ')}`);
     }
+    if (this._role !== null && !(['owner', 'admin', 'member'] as TeacherRole[]).includes(this._role)) {
+      throw new Error(`Invalid teacher role: ${this._role}`);
+    }
   }
 
   // ===== 접근자 =====
@@ -204,7 +209,7 @@ export class Teacher {
     return this._phone;
   }
 
-  get role(): string | null {
+  get role(): TeacherRole | null {
     return this._role;
   }
 
@@ -292,7 +297,7 @@ export interface TeacherDto {
   updatedAt: string;
   email: string | null;
   phone: string | null;
-  role: string | null;
+  role: TeacherRole | null;
   notes: string | null;
 }
 
@@ -305,6 +310,6 @@ export interface TeacherJson {
   updatedAt: string;
   email: string | null;
   phone: string | null;
-  role: string | null;
+  role: TeacherRole | null;
   notes: string | null;
 }
