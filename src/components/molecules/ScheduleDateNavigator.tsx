@@ -28,7 +28,7 @@ export function ScheduleDateNavigator({
         <button type="button" aria-label={prevAriaLabel} className={arrowClass} onClick={onPrev}>
           <ChevronLeft size={20} strokeWidth={2} />
         </button>
-        <span className="min-w-[10rem] text-center text-base font-semibold text-[var(--color-text-primary)]">
+        <span className="w-[15rem] text-center text-base font-semibold text-[var(--color-text-primary)]">
           {label}
         </span>
         <button type="button" aria-label={nextAriaLabel} className={arrowClass} onClick={onNext}>

@@ -225,6 +225,16 @@ li::after {
   --color-border-grid: #6b7280;
   --color-border-grid-light: #9ca3af;
   --color-border-grid-lighter: #d1d5db;
+
+  /* 스크롤바 색상 - 다크모드 (기본값은 라이트라 흰줄로 보이는 문제 방지) */
+  --color-scrollbar-track:        #374151;
+  --color-scrollbar-track-border: #4b5563;
+  --color-scrollbar-thumb:        #6b7280;
+  --color-scrollbar-thumb-hover:  #9ca3af;
+  --color-scrollbar-thumb-active: #d1d5db;
+  --color-scrollbar-button:       #4b5563;
+  --color-scrollbar-button-border:#6b7280;
+  --color-scrollbar-button-alt:   #374151;
 }
 
 /* Surface Mode — schedule grid + PDF output.
