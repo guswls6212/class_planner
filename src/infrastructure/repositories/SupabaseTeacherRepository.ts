@@ -161,37 +161,52 @@ export class SupabaseTeacherRepository implements TeacherRepository {
   }
 
   async getSubjectIds(teacherId: string): Promise<string[]> {
-    const client = this.createServiceRoleClient();
-    const { data, error } = await client
-      .from("teacher_subjects")
-      .select("subject_id")
-      .eq("teacher_id", teacherId);
-    if (error || !data) return [];
-    return data.map((r) => r.subject_id as string);
+    try {
+      const client = this.createServiceRoleClient();
+      const { data, error } = await client
+        .from("teacher_subjects")
+        .select("subject_id")
+        .eq("teacher_id", teacherId);
+      if (error || !data) return [];
+      return data.map((r) => r.subject_id as string);
+    } catch (error) {
+      logger.error("강사-과목 조회 중 오류:", undefined, error as Error);
+      return [];
+    }
   }
 
   async addSubject(teacherId: string, subjectId: string, academyId: string): Promise<void> {
-    const client = this.createServiceRoleClient();
-    const { error } = await client.from("teacher_subjects").insert({
-      teacher_id: teacherId,
-      subject_id: subjectId,
-      academy_id: academyId,
-    });
-    if (error && error.code !== "23505") {
-      logger.error("강사-과목 추가 실패:", undefined, error as Error);
+    try {
+      const client = this.createServiceRoleClient();
+      const { error } = await client.from("teacher_subjects").insert({
+        teacher_id: teacherId,
+        subject_id: subjectId,
+        academy_id: academyId,
+      });
+      if (error && error.code !== "23505") {
+        logger.error("강사-과목 추가 실패:", undefined, error as Error);
+        throw error;
+      }
+    } catch (error) {
+      logger.error("강사-과목 추가 중 오류:", undefined, error as Error);
       throw error;
     }
   }
 
   async removeSubject(teacherId: string, subjectId: string): Promise<void> {
-    const client = this.createServiceRoleClient();
-    const { error } = await client
-      .from("teacher_subjects")
-      .delete()
-      .eq("teacher_id", teacherId)
-      .eq("subject_id", subjectId);
-    if (error) {
-      logger.error("강사-과목 삭제 실패:", undefined, error as Error);
+    try {
+      const client = this.createServiceRoleClient();
+      const { error } = await client
+        .from("teacher_subjects")
+        .delete()
+        .eq("teacher_id", teacherId)
+        .eq("subject_id", subjectId);
+      if (error) {
+        logger.error("강사-과목 삭제 실패:", undefined, error as Error);
+        throw error;
+      }
+    } catch (error) {
+      logger.error("강사-과목 삭제 중 오류:", undefined, error as Error);
       throw error;
     }
   }
