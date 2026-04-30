@@ -86,11 +86,8 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           value={subjectName}
           onChange={handleInputChange}
           maxLength={6}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAddSubject();
-            }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddSubject();
           }}
         />
       </div>

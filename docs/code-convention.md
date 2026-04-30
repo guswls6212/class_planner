@@ -24,6 +24,12 @@
 
 Allowed prefixes: `feature/`, `fix/`, `hotfix/`, `docs/`, `chore/`, `test/`, `phaseN/`
 
+## Keyboard Event Handling
+
+- `onKeyDown` + `!e.nativeEvent.isComposing` guard is mandatory for any Enter-key handler. Omitting the guard causes double-submit with Korean (and other CJK) IME input.
+- Do not use `onKeyPress` (deprecated in HTML5, removed from React 19 roadmap). Replace with `onKeyDown`.
+- Reference: `src/app/schedule/page.tsx:767`
+
 ## Testing
 
 - Vitest for unit/integration. Playwright for E2E.
