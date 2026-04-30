@@ -1,5 +1,6 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { getWeekStartDate } from "@/lib/weekStart";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -42,6 +43,8 @@ export async function GET(
     }
 
     const academyId: string = tokenRow.academy_id;
+    const { searchParams } = new URL(request.url);
+    const weekStart = searchParams.get("week") ?? getWeekStartDate(new Date());
 
     // 2. Fetch academy name + change tracking timestamp
     const { data: academyRow } = await client
@@ -52,7 +55,7 @@ export async function GET(
 
     // 3. Fetch schedule data
     const [sessionsRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
-      client.from("sessions").select("*").eq("academy_id", academyId),
+      client.from("sessions").select("*").eq("academy_id", academyId).eq("week_start_date", weekStart),
       client.from("students").select("*").eq("academy_id", academyId),
       client.from("subjects").select("*").eq("academy_id", academyId),
       client.from("teachers").select("*").eq("academy_id", academyId),
@@ -126,6 +129,7 @@ export async function GET(
         scheduleUpdatedAt,
         lastViewedAt: previousLastViewedAt,
         hasChanges,
+        currentWeek: weekStart,
       },
     });
   } catch (error) {
