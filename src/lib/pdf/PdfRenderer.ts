@@ -21,12 +21,20 @@ export interface PdfRenderOptions {
   academyName?: string;
   filterStudentId?: string;
   filename?: string;
+  title?: string;
   weekRange?: { startDate: string; endDate: string };
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const START_HOUR = 9;
 const END_HOUR = 23;
+
+function hexToRgb(hex: string): [number, number, number] {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+    : [100, 100, 100];
+}
 
 function getStudentNames(
   session: Session,
@@ -66,6 +74,34 @@ function filterSessions(
   );
 }
 
+function drawTeacherLegend(
+  doc: jsPDF,
+  dims: ReturnType<typeof calculateGridDimensions>,
+  sessions: Session[],
+  teachers: Teacher[]
+): void {
+  const assignedTeachers = teachers.filter((t) =>
+    sessions.some((s) => s.teacherId === t.id)
+  );
+  if (assignedTeachers.length === 0) return;
+
+  const legendY = dims.pageHeight - dims.margin.bottom + 3;
+  let legendX = dims.margin.left;
+  doc.setFont("Pretendard", "normal");
+  doc.setFontSize(6.5);
+
+  assignedTeachers.forEach((teacher) => {
+    const [r, g, b] = hexToRgb(teacher.color);
+    doc.setFillColor(r, g, b);
+    doc.circle(legendX + 1.5, legendY - 1, 1.5, "F");
+    doc.setTextColor(60, 60, 60);
+    const label = teacher.name;
+    doc.text(label, legendX + 4.5, legendY);
+    const textWidth = doc.getTextWidth(label);
+    legendX += textWidth + 10;
+  });
+}
+
 function drawWeekPage(
   doc: jsPDF,
   weekStart: Date,
@@ -73,6 +109,7 @@ function drawWeekPage(
   subjects: Subject[],
   students: Student[],
   enrollments: Enrollment[],
+  teachers: Teacher[],
   options: PdfRenderOptions
 ): void {
   const usedWeekdays = new Set(sessions.map((s) => s.weekday));
@@ -82,7 +119,7 @@ function drawWeekPage(
   const weekdayLabels = WEEKDAY_LABELS.slice(0, weekdayCount);
 
   drawHeader(doc, dims, {
-    academyName: options.academyName ?? "CLASS PLANNER",
+    academyName: options.title ?? options.academyName ?? "CLASS PLANNER",
     dateRange: formatWeekRangeLabel(weekStart),
     printDate: new Date().toISOString().slice(0, 10),
   });
@@ -110,6 +147,7 @@ function drawWeekPage(
       ? subjects.find((s) => s.id === enrollment.subjectId)
       : undefined;
     const studentNames = getStudentNames(session, enrollments, students);
+    const teacher = teachers.find((t) => t.id === session.teacherId);
 
     drawSessionBlock(doc, cell, {
       subjectName: subject?.name ?? "",
@@ -117,9 +155,11 @@ function drawWeekPage(
       color: subject?.color ?? "#3b82f6",
       startsAt: session.startsAt,
       endsAt: session.endsAt,
+      teacherName: teacher?.name,
     });
   }
 
+  drawTeacherLegend(doc, dims, targetSessions, teachers);
   drawFooter(doc, dims);
 }
 
@@ -137,7 +177,7 @@ export function renderSchedulePdf(
   subjects: Subject[],
   students: Student[],
   enrollments: Enrollment[],
-  _teachers: Teacher[],
+  teachers: Teacher[],
   options: PdfRenderOptions = {}
 ): void {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -152,7 +192,7 @@ export function renderSchedulePdf(
 
   weekStarts.forEach((weekStart, idx) => {
     if (idx > 0) doc.addPage();
-    drawWeekPage(doc, weekStart, sessions, subjects, students, enrollments, options);
+    drawWeekPage(doc, weekStart, sessions, subjects, students, enrollments, teachers, options);
   });
 
   doc.save(buildFilename(options));

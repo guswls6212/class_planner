@@ -15,6 +15,9 @@ const rectMock = vi.fn();
 const saveMock = vi.fn();
 const addPageMock = vi.fn();
 
+const circlesMock = vi.fn();
+const getTextWidthMock = vi.fn().mockReturnValue(10);
+
 vi.mock("jspdf", () => ({
   default: vi.fn().mockImplementation(() => ({
     addFileToVFS: addFileToVFSMock,
@@ -28,8 +31,10 @@ vi.mock("jspdf", () => ({
     text: textMock,
     line: lineMock,
     rect: rectMock,
+    circle: circlesMock,
     save: saveMock,
     addPage: addPageMock,
+    getTextWidth: getTextWidthMock,
     internal: { scaleFactor: 1 },
   })),
 }));
@@ -159,5 +164,57 @@ describe("renderSchedulePdf — weekRange 옵션", () => {
       }
     );
     expect(saveMock).toHaveBeenCalledWith(expect.stringContaining("우리학원"));
+  });
+});
+
+describe("renderSchedulePdf — teachers 파라미터", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("teachers 배열 포함 시 예외 없이 실행된다", () => {
+    const teachers: Teacher[] = [
+      { id: "t1", name: "김선생", color: "#a78bfa" },
+      { id: "t2", name: "이선생", color: "#34d399" },
+    ];
+    expect(() =>
+      renderSchedulePdf(emptySessions, emptySubjects, emptyStudents, emptyEnrollments, teachers)
+    ).not.toThrow();
+  });
+
+  it("teachers와 세션이 있을 때 예외 없이 실행된다", () => {
+    const teachers: Teacher[] = [
+      { id: "t1", name: "김선생", color: "#a78bfa" },
+    ];
+    const sessions: Session[] = [
+      {
+        id: "s1",
+        weekday: 0,
+        startsAt: "10:00",
+        endsAt: "11:00",
+        weekStartDate: "2026-04-13",
+        teacherId: "t1",
+        enrollmentIds: [],
+      },
+    ];
+    expect(() =>
+      renderSchedulePdf(sessions, emptySubjects, emptyStudents, emptyEnrollments, teachers)
+    ).not.toThrow();
+  });
+
+  it("title 옵션이 있으면 doc.save 호출 시 filename 옵션이 우선 적용된다", () => {
+    const teachers: Teacher[] = [{ id: "t1", name: "김선생", color: "#a78bfa" }];
+    renderSchedulePdf(
+      emptySessions,
+      emptySubjects,
+      emptyStudents,
+      emptyEnrollments,
+      teachers,
+      {
+        filename: "김선생_시간표_2026-04-13.pdf",
+        title: "김선생 선생님 시간표",
+      }
+    );
+    expect(saveMock).toHaveBeenCalledWith("김선생_시간표_2026-04-13.pdf");
   });
 });
