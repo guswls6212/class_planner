@@ -4,6 +4,7 @@ import { Trash2, X, ChevronDown } from "lucide-react";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
+import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
 
 type StudentOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; color?: string };
@@ -368,58 +369,45 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           )}
         </div>
 
-        {/* Subject + Teacher */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="edit-modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              과목 <span className="text-[var(--color-danger)]">*</span>
-            </label>
-            <select
-              id="edit-modal-subject"
-              className={fieldClass}
-              value={tempSubjectId}
-              onChange={(e) => onSubjectChange(e.target.value)}
-            >
-              <option value="">과목 선택</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {teachers.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-modal-teacher" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
-              <select id="edit-modal-teacher" className={fieldClass} value={tempTeacherId} onChange={(e) => onTeacherChange(e.target.value)}>
-                <option value="">선택사항</option>
-                {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                요일 <span className="text-[var(--color-danger)]">*</span>
-              </label>
-              <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
-                {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
-              </select>
-            </div>
-          )}
+        {/* Subject */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="edit-modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            과목 <span className="text-[var(--color-danger)]">*</span>
+          </label>
+          <select
+            id="edit-modal-subject"
+            className={fieldClass}
+            value={tempSubjectId}
+            onChange={(e) => onSubjectChange(e.target.value)}
+          >
+            <option value="">과목 선택</option>
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
         </div>
 
-        {/* Weekday (when teachers shown) + Time */}
+        {/* Teacher (always shown, pills) */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
+          <TeacherPillPicker
+            teachers={teachers}
+            selectedTeacherId={tempTeacherId || null}
+            onSelect={(id) => onTeacherChange(id ?? "")}
+          />
+        </div>
+
+        {/* Weekday + Time */}
         <div className="grid grid-cols-2 gap-3">
-          {teachers.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                요일 <span className="text-[var(--color-danger)]">*</span>
-              </label>
-              <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
-                {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
-              </select>
-            </div>
-          )}
-          <div className={`flex flex-col gap-1.5 ${teachers.length > 0 ? "" : "col-span-2"}`}>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              요일 <span className="text-[var(--color-danger)]">*</span>
+            </label>
+            <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
+              {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               수업 시간 <span className="text-[var(--color-danger)]">*</span>
             </span>

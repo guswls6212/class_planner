@@ -5,6 +5,7 @@ import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
+import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
 
 type SubjectOption = { id: string; name: string; color?: string };
 type StudentOption = { id: string; name: string };
@@ -264,56 +265,33 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         </select>
       </div>
 
-      {/* Weekday + Teacher row */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            요일 <span className="text-[var(--color-danger)]">*</span>
-          </label>
-          <select
-            id="modal-weekday"
-            className="w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-            value={groupModalData.weekday}
-            onChange={(e) => setGroupModalData((prev) => ({ ...prev, weekday: Number(e.target.value) }))}
-          >
-            {weekdays.map((w, idx) => (
-              <option key={idx} value={idx}>{w}</option>
-            ))}
-          </select>
-        </div>
+      {/* Weekday */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          요일 <span className="text-[var(--color-danger)]">*</span>
+        </label>
+        <select
+          id="modal-weekday"
+          className="w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
+          value={groupModalData.weekday}
+          onChange={(e) => setGroupModalData((prev) => ({ ...prev, weekday: Number(e.target.value) }))}
+        >
+          {weekdays.map((w, idx) => (
+            <option key={idx} value={idx}>{w}</option>
+          ))}
+        </select>
+      </div>
 
-        {teachers.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="modal-teacher" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              강사
-            </label>
-            <select
-              id="modal-teacher"
-              className="w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-              value={groupModalData.teacherId || ""}
-              onChange={(e) => setGroupModalData((prev) => ({ ...prev, teacherId: e.target.value || undefined }))}
-            >
-              <option value="">강사 선택 (선택사항)</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="modal-room" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              강의실
-            </label>
-            <input
-              id="modal-room"
-              type="text"
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-              placeholder="선택사항"
-              value={groupModalData.room || ""}
-              onChange={(e) => setGroupModalData((prev) => ({ ...prev, room: e.target.value }))}
-            />
-          </div>
-        )}
+      {/* Teacher (always shown, pills) */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          강사
+        </label>
+        <TeacherPillPicker
+          teachers={teachers}
+          selectedTeacherId={groupModalData.teacherId ?? null}
+          onSelect={(id) => setGroupModalData((prev) => ({ ...prev, teacherId: id ?? undefined }))}
+        />
       </div>
 
       {/* Time range */}
@@ -343,22 +321,20 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         )}
       </div>
 
-      {/* Room field (when teachers shown in the other slot) */}
-      {teachers.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="modal-room-2" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            강의실
-          </label>
-          <input
-            id="modal-room-2"
-            type="text"
-            className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-            placeholder="강의실 (선택사항)"
-            value={groupModalData.room || ""}
-            onChange={(e) => setGroupModalData((prev) => ({ ...prev, room: e.target.value }))}
-          />
-        </div>
-      )}
+      {/* Room (always shown) */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="modal-room" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          강의실
+        </label>
+        <input
+          id="modal-room"
+          type="text"
+          className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
+          placeholder="강의실 (선택사항)"
+          value={groupModalData.room || ""}
+          onChange={(e) => setGroupModalData((prev) => ({ ...prev, room: e.target.value }))}
+        />
+      </div>
     </div>
   );
 
