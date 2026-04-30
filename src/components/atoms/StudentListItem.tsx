@@ -54,7 +54,7 @@ export const StudentListItem: React.FC<StudentListItemProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSave();
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSave();
     if (e.key === "Escape") setIsEditing(false);
   };
 

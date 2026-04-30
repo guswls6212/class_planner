@@ -283,7 +283,7 @@ export default function SettingsPage() {
                   value={editNameValue}
                   onChange={(e) => setEditNameValue(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSaveAcademyName();
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSaveAcademyName();
                     if (e.key === "Escape") setIsEditingName(false);
                   }}
                   autoFocus

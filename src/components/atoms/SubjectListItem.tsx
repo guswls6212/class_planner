@@ -44,7 +44,7 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       handleSave();
     } else if (e.key === "Escape") {
       handleCancel();

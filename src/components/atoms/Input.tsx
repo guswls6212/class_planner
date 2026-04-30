@@ -7,6 +7,7 @@ interface InputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onKeyPress?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   size?: "small" | "medium" | "large";
   error?: boolean;
   disabled?: boolean;
@@ -29,6 +30,7 @@ export const Input: React.FC<InputProps> = ({
   value,
   onChange,
   onKeyPress,
+  onKeyDown,
   size = "medium",
   error = false,
   disabled = false,
@@ -59,6 +61,7 @@ export const Input: React.FC<InputProps> = ({
       value={value}
       onChange={onChange}
       onKeyPress={onKeyPress}
+      onKeyDown={onKeyDown}
       disabled={disabled}
       required={required}
       maxLength={maxLength}

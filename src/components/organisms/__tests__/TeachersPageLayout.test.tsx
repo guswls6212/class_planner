@@ -77,4 +77,18 @@ describe("TeachersPageLayout", () => {
     render(<TeachersPageLayout {...baseProps} errorMessage="테스트 에러" />);
     expect(screen.getByText("테스트 에러")).toBeInTheDocument();
   });
+
+  it("한글 IME 조합 중 Enter는 onAddTeacher를 호출하지 않는다 (회귀)", async () => {
+    render(<TeachersPageLayout {...baseProps} />);
+    const input = screen.getByPlaceholderText("강사 이름 (검색 가능)");
+    fireEvent.change(input, { target: { value: "이강사" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(baseProps.onAddTeacher).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: "Enter", isComposing: false });
+    await waitFor(() => {
+      expect(baseProps.onAddTeacher).toHaveBeenCalledTimes(1);
+      expect(baseProps.onAddTeacher).toHaveBeenCalledWith("이강사", expect.any(String));
+    });
+  });
 });
