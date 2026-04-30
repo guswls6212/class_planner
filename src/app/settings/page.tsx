@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
-import { UserPlus, Link2, Plus } from "lucide-react";
+import { UserPlus, Link2, Plus, Pencil } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
@@ -42,6 +42,10 @@ export default function SettingsPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
+  const [academyName, setAcademyName] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [myRole, setMyRole] = useState<string>("member");
@@ -82,8 +86,9 @@ export default function SettingsPage() {
       ]);
 
       if (membersRes.ok) {
-        const { data, hasAcademy: ha } = await membersRes.json();
+        const { data, hasAcademy: ha, academyName: an } = await membersRes.json();
         setHasAcademy(ha ?? true);
+        setAcademyName(an ?? "");
         setMembers(data ?? []);
         const me = (data ?? []).find((m: Member) => m.userId === userId);
         if (me) setMyRole(me.role);
@@ -113,6 +118,28 @@ export default function SettingsPage() {
   useEffect(() => {
     if (userId) fetchData();
   }, [userId, fetchData]);
+
+  const handleSaveAcademyName = async () => {
+    if (!userId || !editNameValue.trim()) return;
+    setIsSavingName(true);
+    try {
+      const res = await fetch(`/api/academies?userId=${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editNameValue.trim() }),
+      });
+      if (res.ok) {
+        setAcademyName(editNameValue.trim());
+        setIsEditingName(false);
+      } else {
+        showError("학원 이름 변경에 실패했습니다.");
+      }
+    } catch {
+      showError("학원 이름 변경 중 오류가 발생했습니다.");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   const handleCreateInvite = async () => {
     if (!userId) return;
@@ -246,6 +273,58 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">학원 설정</h1>
+
+      {/* 학원 이름 섹션 */}
+      {academyName !== "" && (
+        <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
+          <div className="flex items-center justify-between gap-3">
+            {isEditingName ? (
+              <div className="flex-1 flex items-center gap-2">
+                <input
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveAcademyName();
+                    if (e.key === "Escape") setIsEditingName(false);
+                  }}
+                  autoFocus
+                  maxLength={50}
+                  className="flex-1 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <button
+                  onClick={handleSaveAcademyName}
+                  disabled={isSavingName}
+                  className="px-3 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {isSavingName ? "저장 중..." : "저장"}
+                </button>
+                <button
+                  onClick={() => setIsEditingName(false)}
+                  className="px-3 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <p className="text-[11px] text-[var(--color-text-muted)] mb-0.5">학원 이름</p>
+                  <p className="text-base font-semibold text-[var(--color-text-primary)]">{academyName}</p>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={() => { setEditNameValue(academyName); setIsEditingName(true); }}
+                    className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
+                    aria-label="학원 이름 편집"
+                  >
+                    <Pencil size={15} strokeWidth={1.5} />
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* 멤버 섹션 */}
       <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">

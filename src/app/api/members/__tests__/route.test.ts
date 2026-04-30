@@ -33,18 +33,23 @@ describe("GET /api/members", () => {
 
   it("멤버 목록을 반환하고 hasAcademy:true를 포함한다", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({
-            data: [
-              { user_id: "u1", role: "owner", joined_at: "2026-04-01" },
-              { user_id: "u2", role: "admin", joined_at: "2026-04-10" },
-            ],
-            error: null,
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "academies") {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트 학원" } }) }) }) };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                { user_id: "u1", role: "owner", joined_at: "2026-04-01" },
+                { user_id: "u2", role: "admin", joined_at: "2026-04-10" },
+              ],
+              error: null,
+            }),
           }),
         }),
-      }),
+      };
     });
     mockGetUserById
       .mockResolvedValueOnce({ data: { user: { email: "owner@test.com", user_metadata: { full_name: "김원장" } } } })
@@ -77,15 +82,20 @@ describe("GET /api/members", () => {
 
   it("admin API 실패 시 email/name을 null로 반환한다", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
-    mockFrom.mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({
-            data: [{ user_id: "u1", role: "owner", joined_at: "2026-04-01" }],
-            error: null,
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "academies") {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트" } }) }) }) };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [{ user_id: "u1", role: "owner", joined_at: "2026-04-01" }],
+              error: null,
+            }),
           }),
         }),
-      }),
+      };
     });
     mockGetUserById.mockRejectedValue(new Error("admin API 실패"));
 
