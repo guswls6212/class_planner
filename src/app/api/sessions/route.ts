@@ -23,8 +23,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const weekStartDate = searchParams.get("weekStartDate");
     const academyId = await resolveAcademyId(userId);
-    const sessions = await getSessionService().getAllSessions(academyId);
+    const sessions = await getSessionService().getAllSessions(academyId, {
+      weekStartDate: weekStartDate ?? undefined,
+    });
     return NextResponse.json({ success: true, data: sessions });
   } catch (error) {
     return toErrorResponse(error);
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { subjectId, startsAt, endsAt, enrollmentIds, weekday } = body;
+    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -52,6 +55,13 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields for session" },
+        { status: 400 }
+      );
+    }
+
+    if (!weekStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
+      return NextResponse.json(
+        { success: false, error: "weekStartDate (YYYY-MM-DD) is required" },
         { status: 400 }
       );
     }
@@ -71,6 +81,7 @@ export async function POST(request: NextRequest) {
         endsAt,
         enrollmentIds,
         weekday: Number(weekday),
+        weekStartDate,
       },
       academyId
     );
