@@ -1,12 +1,23 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+
+  // IP별 분당 30회 제한 (DDoS 방어)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = checkRateLimit(`share:${ip}`, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429 }
+    );
+  }
 
   try {
     const client = getServiceRoleClient();
@@ -40,14 +51,18 @@ export async function GET(
       .single();
 
     // 3. Fetch schedule data
-    const [sessionsRes, studentsRes, subjectsRes, enrollmentsRes, teachersRes] =
-      await Promise.all([
-        client.from("sessions").select("*").eq("academy_id", academyId),
-        client.from("students").select("*").eq("academy_id", academyId),
-        client.from("subjects").select("*").eq("academy_id", academyId),
-        client.from("enrollments").select("*").eq("academy_id", academyId),
-        client.from("teachers").select("*").eq("academy_id", academyId),
-      ]);
+    // enrollments 테이블에는 academy_id가 없으므로 students → enrollments 순으로 조회
+    const [sessionsRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
+      client.from("sessions").select("*").eq("academy_id", academyId),
+      client.from("students").select("*").eq("academy_id", academyId),
+      client.from("subjects").select("*").eq("academy_id", academyId),
+      client.from("teachers").select("*").eq("academy_id", academyId),
+    ]);
+
+    const studentIds = (studentsRes.data ?? []).map((s: { id: string }) => s.id);
+    const enrollmentsRes = studentIds.length > 0
+      ? await client.from("enrollments").select("*").in("student_id", studentIds)
+      : { data: [] };
 
     // 4. Apply student filter if set
     let sessions = sessionsRes.data ?? [];
