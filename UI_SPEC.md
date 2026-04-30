@@ -315,7 +315,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | 컴포넌트 | 파일 | 주요 Props | 설명 |
 |----------|------|-----------|------|
 | `AuthGuard` | `AuthGuard.tsx` | `children` | 인증된 사용자만 접근 허용. 미인증 시 로그인 안내 렌더 |
-| `Button` | `Button.tsx` | `variant: primary\|secondary\|transparent`, `type`, `disabled` | 공통 버튼 원자 |
+| `Button` | `Button.tsx` | `variant: primary\|secondary\|danger\|transparent\|accent\|tonal\|ghost`, `size`, `loading`, `feedback: inline\|toast\|both\|none`, `successLabel`, `toastMessage` | 공통 버튼 원자. `feedback="inline"` 시 클릭 후 ✓ 라벨 swap (1.5s). 모든 variant에 press state(scale+shadow) 내장. `accent`=amber 주 액션, `tonal`=옅은 accent(복사 등), `ghost`=배경 없음(취소 등) |
 | `ErrorBoundary` | `ErrorBoundary.tsx` | `children`, `fallback?` | React 에러 경계. 전체 앱 감쌈 |
 | `Input` | `Input.tsx` | `type`, `value`, `onChange`, `placeholder` | 공통 텍스트 입력 |
 | `Label` | `Label.tsx` | `htmlFor`, `children` | 폼 레이블 |
