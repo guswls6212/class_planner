@@ -24,6 +24,14 @@ export async function GET(request: NextRequest) {
   try {
     const client = getServiceRoleClient();
 
+    // 학원 이름 조회 (settings 페이지 표시용)
+    const { data: academyRow } = await client
+      .from("academies")
+      .select("name")
+      .eq("id", academyId)
+      .single();
+    const academyName = academyRow?.name ?? "";
+
     // academy_members만 조회 (auth.users PostgREST join은 지원 안 됨)
     const { data: rows, error } = await client
       .from("academy_members")
@@ -63,7 +71,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ success: true, data: members, hasAcademy: true });
+    return NextResponse.json({ success: true, data: members, hasAcademy: true, academyName });
   } catch (error) {
     return toErrorResponse(error);
   }
