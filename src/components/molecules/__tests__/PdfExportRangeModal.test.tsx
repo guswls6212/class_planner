@@ -123,4 +123,37 @@ describe("PdfExportRangeModal", () => {
     fireEvent.click(screen.getByTestId("pdf-export-modal-backdrop"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("teachers prop 있을 때 '강사별로 1장씩' 라디오 옵션이 렌더된다", () => {
+    const teachers = [
+      { id: "t1", name: "김선생" },
+      { id: "t2", name: "이선생" },
+    ];
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    expect(screen.getByLabelText("강사별로 1장씩")).toBeInTheDocument();
+  });
+
+  it("teachers=[] 일 때 '강사별로 1장씩' 라디오가 disabled 처리된다", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={[]} />);
+    const radio = screen.getByLabelText("강사별로 1장씩");
+    expect(radio).toBeDisabled();
+  });
+
+  it("teachers=[] 일 때 '강사가 없습니다' 안내 문구가 노출된다", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={[]} />);
+    expect(screen.getByText("(강사가 없습니다)")).toBeInTheDocument();
+  });
+
+  it("'강사별로 1장씩' 선택 후 출력 클릭 시 perTeacher: true로 onExport 호출", () => {
+    const onExport = vi.fn();
+    const teachers = [{ id: "t1", name: "김선생" }];
+    render(
+      <PdfExportRangeModal {...baseProps} onExport={onExport} teachers={teachers} />
+    );
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(onExport).toHaveBeenCalledWith(
+      expect.objectContaining({ perTeacher: true })
+    );
+  });
 });

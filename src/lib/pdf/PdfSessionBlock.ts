@@ -8,6 +8,7 @@ export interface SessionBlockData {
   color: string; // hex e.g. "#a78bfa"
   startsAt: string;
   endsAt: string;
+  teacherName?: string;
 }
 
 /** Parse "#rrggbb" or "#rgb" hex to [r, g, b] */
@@ -60,6 +61,14 @@ export function drawSessionBlock(
   doc.setFontSize(7);
   doc.text(data.subjectName, textX, textY);
   textY += 3.5;
+
+  // Teacher name
+  if (data.teacherName && cell.height > 7) {
+    doc.setFontSize(6);
+    doc.setTextColor(120, 120, 120);
+    doc.text(`▸ ${data.teacherName}`, textX, textY);
+    textY += 3;
+  }
 
   // Student names
   if (data.studentNames.length > 0 && cell.height > 8) {

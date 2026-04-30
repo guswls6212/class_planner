@@ -964,18 +964,40 @@ function SchedulePageContent(): JSX.Element {
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
     try {
-      await renderSchedulePdf(
-        Array.from(displaySessions.values()).flat(),
-        subjects,
-        students,
-        enrollments,
-        teachers,
-        {
-          academyName: "CLASS PLANNER",
-          filterStudentId: selectedStudentIds[0] ?? undefined,
-          weekRange: range,
+      if (range.perTeacher) {
+        const allSessions = Array.from(displaySessions.values()).flat();
+        for (const teacher of teachers) {
+          const teacherSessions = allSessions.filter(
+            (s) => s.teacherId === teacher.id
+          );
+          renderSchedulePdf(
+            teacherSessions,
+            subjects,
+            students,
+            enrollments,
+            teachers,
+            {
+              academyName: "CLASS PLANNER",
+              title: `${teacher.name} 선생님 시간표`,
+              filename: `${teacher.name}_시간표_${range.startDate}.pdf`,
+              weekRange: { startDate: range.startDate, endDate: range.endDate },
+            }
+          );
         }
-      );
+      } else {
+        await renderSchedulePdf(
+          Array.from(displaySessions.values()).flat(),
+          subjects,
+          students,
+          enrollments,
+          teachers,
+          {
+            academyName: "CLASS PLANNER",
+            filterStudentId: selectedStudentIds[0] ?? undefined,
+            weekRange: range,
+          }
+        );
+      }
       setIsPdfDialogOpen(false);
     } finally {
       setIsDownloading(false);
@@ -1645,6 +1667,7 @@ function SchedulePageContent(): JSX.Element {
         viewMode={viewMode}
         selectedDate={selectedDate}
         isExporting={isDownloading}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
       />
     </div>
   );

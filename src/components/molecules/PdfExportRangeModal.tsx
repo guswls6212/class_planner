@@ -13,6 +13,7 @@ import {
 export interface PdfExportRange {
   startDate: string;
   endDate: string;
+  perTeacher?: boolean;
 }
 
 interface Props {
@@ -22,9 +23,10 @@ interface Props {
   viewMode: ScheduleViewMode;
   selectedDate: Date;
   isExporting?: boolean;
+  teachers?: { id: string; name: string }[];
 }
 
-type Scope = "current" | "range";
+type Scope = "current" | "range" | "per-teacher";
 
 export default function PdfExportRangeModal({
   isOpen,
@@ -33,6 +35,7 @@ export default function PdfExportRangeModal({
   viewMode,
   selectedDate,
   isExporting = false,
+  teachers = [],
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
@@ -51,6 +54,7 @@ export default function PdfExportRangeModal({
   if (!isOpen) return null;
 
   const rangeInvalid = scope === "range" && rangeEnd < rangeStart;
+  const noTeachers = teachers.length === 0;
 
   const handleExport = () => {
     if (isMonthly) {
@@ -63,6 +67,10 @@ export default function PdfExportRangeModal({
     }
     if (scope === "current") {
       onExport({ startDate: formatLocalISO(weekStart), endDate: formatLocalISO(weekEnd) });
+      return;
+    }
+    if (scope === "per-teacher") {
+      onExport({ startDate: rangeStart, endDate: rangeEnd, perTeacher: true });
       return;
     }
     onExport({ startDate: rangeStart, endDate: rangeEnd });
@@ -91,7 +99,7 @@ export default function PdfExportRangeModal({
 
         {isMonthly ? (
           <label className="flex items-center gap-2 mb-4 cursor-pointer">
-            <input type="radio" checked readOnly />
+            <input type="radio" checked readOnly aria-label="해당 월 전체 출력" />
             <span className="text-sm text-[var(--color-text-primary)]">
               해당 월 전체 출력
             </span>
@@ -102,6 +110,7 @@ export default function PdfExportRangeModal({
               <input
                 type="radio"
                 name="pdf-scope"
+                aria-label="현재 뷰만 출력"
                 checked={scope === "current"}
                 onChange={() => setScope("current")}
               />
@@ -113,6 +122,7 @@ export default function PdfExportRangeModal({
               <input
                 type="radio"
                 name="pdf-scope"
+                aria-label="여러 주 범위 출력"
                 checked={scope === "range"}
                 onChange={() => setScope("range")}
               />
@@ -149,6 +159,31 @@ export default function PdfExportRangeModal({
                 )}
               </div>
             )}
+            <label
+              className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
+            >
+              <input
+                type="radio"
+                name="pdf-scope"
+                aria-label="강사별로 1장씩"
+                value="per-teacher"
+                checked={scope === "per-teacher"}
+                onChange={() => setScope("per-teacher")}
+                disabled={noTeachers}
+              />
+              <span className="text-sm text-[var(--color-text-primary)]">
+                강사별로 1장씩
+              </span>
+              {noTeachers ? (
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  (강사가 없습니다)
+                </span>
+              ) : (
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  (강사 수만큼 파일 다운로드)
+                </span>
+              )}
+            </label>
           </div>
         )}
 
