@@ -47,6 +47,8 @@
   - `DayChipBar` — 일별 뷰 상단 주중 7일 칩 바. 오늘 강조.
   - `MonthDayCell` — 월별 캘린더 단위 셀.
   - `StudentFilterChipBar` — 학생 멀티셀렉트 필터 칩바. colorBy=student 시 표시.
+  - `TeacherFilterChipBar` — 강사 멀티셀렉트 필터 칩바. colorBy=teacher 시 표시. 색상 dot 포함.
+  - `TeacherPillPicker` — 수업 모달용 강사 단일선택 pill bar. 색상 dot + 보라 accent. Group/Edit 모달에서 소비.
   - `AttendanceSheet` — 출석 체크 시트.
   - `BottomSheet` — 모바일 하단 슬라이드 시트. GroupSessionModal 모바일 렌더에 사용.
   - `BottomTabBar` — 모바일 하단 탭 네비게이션.
@@ -63,7 +65,7 @@
   - `ScheduleMonthlyView` — 월별 캘린더. `onDayClick`으로 일별 뷰 이동.
   - `HelpDrawer`, `AppShell` — 앱 쉘/도움말 드로어.
   - `StudentsPageLayout`, `StudentDetailPanel` — 학생 관리 두 패널 레이아웃 (Admin Amber).
-  - `TeachersPageLayout`, `TeacherDetailPanel` — 강사 관리 두 패널 레이아웃 (학생 패턴 동일, 색상 dot 아바타 + Summary Cards + 색상 팔레트 편집).
+  - `TeachersPageLayout`, `TeacherDetailPanel` — 강사 관리 두 패널 레이아웃. Stacked Sections: Header → Summary Cards → 담당 과목 M:N chip → 연락처·역할(email/phone/role/notes) → 수업 일정 → 색상 팔레트.
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
 ## 2. 컴포넌트 구조
@@ -269,6 +271,11 @@ templates          (id UUID PK, academy_id UUID FK, name TEXT, description TEXT,
 
 -- 출석 관리 (W5 — supabase/migrations/028)
 attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_id UUID FK, date DATE, status TEXT CHECK('present','absent','late','excused'), notes TEXT, marked_by UUID FK NULL, marked_at TIMESTAMPTZ, UNIQUE(session_id, student_id, date))
+
+-- 강사 (Phase 4 확장 — migration 032: email/phone/role/notes 추가)
+teachers           (id UUID PK, academy_id UUID FK, name TEXT NOT NULL, color TEXT, user_id UUID FK NULL, email TEXT NULL, phone TEXT NULL, role TEXT CHECK('owner','admin','member') DEFAULT 'member', notes TEXT NULL)
+-- 강사↔과목 M:N (migration 032)
+teacher_subjects   (teacher_id UUID FK, subject_id UUID FK, academy_id UUID FK, created_at TIMESTAMPTZ, PRIMARY KEY(teacher_id, subject_id))
 ```
 
 ### 3.3 보조 테이블
