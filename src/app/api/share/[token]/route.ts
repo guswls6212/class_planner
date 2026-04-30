@@ -1,12 +1,23 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+
+  // IP별 분당 30회 제한 (DDoS 방어)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { allowed } = checkRateLimit(`share:${ip}`, 30, 60_000);
+  if (!allowed) {
+    return NextResponse.json(
+      { success: false, error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+      { status: 429 }
+    );
+  }
 
   try {
     const client = getServiceRoleClient();
@@ -40,17 +51,39 @@ export async function GET(
       .single();
 
     // 3. Fetch schedule data
-    const [sessionsRes, studentsRes, subjectsRes, enrollmentsRes, teachersRes] =
-      await Promise.all([
-        client.from("sessions").select("*").eq("academy_id", academyId),
-        client.from("students").select("*").eq("academy_id", academyId),
-        client.from("subjects").select("*").eq("academy_id", academyId),
-        client.from("enrollments").select("*").eq("academy_id", academyId),
-        client.from("teachers").select("*").eq("academy_id", academyId),
-      ]);
+    const [sessionsRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
+      client.from("sessions").select("*").eq("academy_id", academyId),
+      client.from("students").select("*").eq("academy_id", academyId),
+      client.from("subjects").select("*").eq("academy_id", academyId),
+      client.from("teachers").select("*").eq("academy_id", academyId),
+    ]);
+
+    // session_enrollments join 테이블로 enrollment_ids 구성
+    const sessionIds = (sessionsRes.data ?? []).map((s: { id: string }) => s.id);
+    const sessionEnrollmentsRes = sessionIds.length > 0
+      ? await client.from("session_enrollments").select("session_id, enrollment_id").in("session_id", sessionIds)
+      : { data: [] };
+
+    const seMap = new Map<string, string[]>();
+    for (const se of (sessionEnrollmentsRes.data ?? [])) {
+      const list = seMap.get(se.session_id) ?? [];
+      list.push(se.enrollment_id);
+      seMap.set(se.session_id, list);
+    }
+
+    // students의 enrollment_ids는 enrollments 테이블로 가져오기
+    const studentIds = (studentsRes.data ?? []).map((s: { id: string }) => s.id);
+    const enrollmentsRes = studentIds.length > 0
+      ? await client.from("enrollments").select("*").in("student_id", studentIds)
+      : { data: [] };
+
+    // sessions에 enrollment_ids 매핑
+    const sessionsWithEnrollments = (sessionsRes.data ?? []).map(
+      (s: Record<string, unknown>) => ({ ...s, enrollment_ids: seMap.get(s.id as string) ?? [] })
+    );
 
     // 4. Apply student filter if set
-    let sessions = sessionsRes.data ?? [];
+    let sessions = sessionsWithEnrollments;
     let students = studentsRes.data ?? [];
     const filterStudentId: string | null = tokenRow.filter_student_id;
 
@@ -59,8 +92,8 @@ export async function GET(
         (e: { student_id: string }) => e.student_id === filterStudentId
       );
       const enrollmentIds = new Set(enrollmentsForStudent.map((e: { id: string }) => e.id));
-      sessions = sessions.filter((s: { enrollment_ids?: string[] }) =>
-        (s.enrollment_ids ?? []).some((eid: string) => enrollmentIds.has(eid))
+      sessions = sessions.filter((s: { enrollment_ids: string[] }) =>
+        s.enrollment_ids.some((eid: string) => enrollmentIds.has(eid))
       );
       students = students.filter((st: { id: string }) => st.id === filterStudentId);
     }
