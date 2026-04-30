@@ -177,6 +177,9 @@ function SchedulePageContent(): JSX.Element {
     goToPrevMonth,
   } = useScheduleView();
 
+  // 현재 주 시작일 (KST 기준 월요일) — addSession stub 정상화 + 그리드 필터에 모두 사용
+  const currentWeekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
+
   // 성능 모니터링
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
     usePerformanceMonitoring();
@@ -270,7 +273,7 @@ function SchedulePageContent(): JSX.Element {
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
-        weekStartDate: "", // stub: Task 1.2 — normalized in Phase 3
+        weekStartDate: getWeekStartDate(selectedDate),
         room: sessionData.room || "",
         enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
         yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
@@ -338,7 +341,7 @@ function SchedulePageContent(): JSX.Element {
         }
       }, 0);
     },
-    [sessions, enrollments, updateData]
+    [sessions, enrollments, updateData, selectedDate]
   );
 
   // ================================
@@ -558,9 +561,15 @@ function SchedulePageContent(): JSX.Element {
     checkAuthState();
   }, []);
 
-  // 커스텀 훅 사용
+  // 현재 주 세션만 — 그리드 표시 + EmptyWeekState 조건 양쪽에 사용
+  const weekFilteredSessions = useMemo(
+    () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
+    [sessions, currentWeekStart]
+  );
+
+  // 커스텀 훅 사용 — 주 필터된 세션을 weekday Map으로 변환
   const { sessions: displaySessions } = useDisplaySessions(
-    sessions,
+    weekFilteredSessions,
     enrollments,
     ""
   );
@@ -966,15 +975,6 @@ function SchedulePageContent(): JSX.Element {
 
   const { templates, activeTemplate, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate, updateTemplate } = useTemplates(userId);
 
-  // 현재 주 시작일 (KST 기준 월요일)
-  const currentWeekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
-
-  // 현재 주의 세션만
-  const currentWeekSessions = useMemo(
-    () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
-    [sessions, currentWeekStart]
-  );
-
   // 현재 세션 → TemplateData 변환
   const buildTemplateData = useCallback((): TemplateData => {
     if (!displaySessions) return { version: "1.0", sessions: [] };
@@ -1020,7 +1020,7 @@ function SchedulePageContent(): JSX.Element {
       setIsApplyingTemplate(true);
       try {
         // 1. 현재 주 세션 일괄 삭제
-        for (const s of currentWeekSessions) {
+        for (const s of weekFilteredSessions) {
           await updateData({ sessions: sessions.filter((x) => x.id !== s.id) });
         }
 
@@ -1072,33 +1072,33 @@ function SchedulePageContent(): JSX.Element {
         setApplyConfirmTemplate(null);
       }
     },
-    [currentWeekSessions, sessions, subjects, students, updateData, addSession]
+    [weekFilteredSessions, sessions, subjects, students, updateData, addSession]
   );
 
   const handleApplyTemplate = useCallback(
     (template: ScheduleTemplate) => {
-      if (currentWeekSessions.length > 0) {
+      if (weekFilteredSessions.length > 0) {
         setApplyConfirmTemplate(template);
         return;
       }
       doApplyTemplate(template);
     },
-    [currentWeekSessions, doApplyTemplate]
+    [weekFilteredSessions, doApplyTemplate]
   );
 
   const handleClearWeek = useCallback(async () => {
-    if (currentWeekSessions.length === 0) {
+    if (weekFilteredSessions.length === 0) {
       showToast("info", "이번 주는 이미 비어있어요.");
       return;
     }
-    if (!confirm(`이 주의 ${currentWeekSessions.length}개 수업을 모두 삭제할까요?`)) return;
+    if (!confirm(`이 주의 ${weekFilteredSessions.length}개 수업을 모두 삭제할까요?`)) return;
     let remaining = sessions;
-    for (const s of currentWeekSessions) {
+    for (const s of weekFilteredSessions) {
       remaining = remaining.filter((x) => x.id !== s.id);
     }
     await updateData({ sessions: remaining });
-    showToast("success", `${currentWeekSessions.length}개 수업이 삭제되었습니다.`);
-  }, [currentWeekSessions, sessions, updateData]);
+    showToast("success", `${weekFilteredSessions.length}개 수업이 삭제되었습니다.`);
+  }, [weekFilteredSessions, sessions, updateData]);
 
   const handleSaveTemplate = useCallback(
     async (name: string, description?: string) => {
@@ -1349,7 +1349,7 @@ function SchedulePageContent(): JSX.Element {
             colorBy={colorBy}
             baseDate={selectedDate}
           />
-          {currentWeekSessions.length === 0 && (
+          {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
               hasTemplate={Boolean(activeTemplate)}
               onApplyTemplate={() => { if (activeTemplate) handleApplyTemplate(activeTemplate); }}
@@ -1578,7 +1578,7 @@ function SchedulePageContent(): JSX.Element {
       {/* 템플릿 적용 확인 모달 (교체 충돌 감지) */}
       {applyConfirmTemplate && (
         <ApplyTemplateConfirm
-          existingSessionCount={currentWeekSessions.length}
+          existingSessionCount={weekFilteredSessions.length}
           onConfirm={() => doApplyTemplate(applyConfirmTemplate)}
           onCancel={() => setApplyConfirmTemplate(null)}
           isApplying={isApplyingTemplate}
