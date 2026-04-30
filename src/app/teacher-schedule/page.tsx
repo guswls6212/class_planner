@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
+import { useColorBy } from "../../hooks/useColorBy";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 
@@ -33,6 +34,8 @@ export default function TeacherSchedulePage() {
     enrollments,
     myTeacherId
   );
+
+  const { colorBy } = useColorBy();
 
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -79,7 +82,7 @@ export default function TeacherSchedulePage() {
           enrollments={enrollments}
           students={students}
           teachers={teachers}
-          colorBy="student"
+          colorBy={colorBy}
           isReadOnly={true}
           onSessionClick={() => {}}
           onDrop={() => {}}

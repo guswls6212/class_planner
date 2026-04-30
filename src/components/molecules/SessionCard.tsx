@@ -21,8 +21,11 @@ function SessionCardBlock({
   onClick,
   className,
   "data-testid": testId,
+  colorBy,
+  teacherName,
+  overrideColor,
 }: SessionCardProps) {
-  const tone = resolveSessionTone(subject?.color);
+  const tone = resolveSessionTone(overrideColor ?? subject?.color);
   const label = subject?.name ?? "과목 없음";
   const subLabel =
     studentNames && studentNames.length > 0
@@ -56,6 +59,11 @@ function SessionCardBlock({
       <div className="font-semibold truncate">{label}</div>
       {subLabel && (
         <div className="text-[10px] opacity-75 truncate">{subLabel}</div>
+      )}
+      {colorBy === "teacher" && (
+        <p className="text-[10px] text-[var(--color-text-muted)] truncate">
+          {teacherName ?? "강사 없음"}
+        </p>
       )}
       {state === "conflict" && (
         <span
@@ -125,6 +133,8 @@ function SessionCardRow({
   dimmed,
   highlighted,
   "data-testid": testId,
+  colorBy,
+  teacherName,
 }: SessionCardProps) {
   const tone = resolveSessionTone(overrideColor ?? subject?.color);
   const label = subject?.name ?? "과목 없음";
@@ -175,6 +185,11 @@ function SessionCardRow({
         <div className="text-[12px] font-semibold truncate">{label}</div>
         {students && (
           <div className="text-[10px] opacity-75 truncate">{students}</div>
+        )}
+        {colorBy === "teacher" && (
+          <p className="text-[10px] text-[var(--color-text-muted)] truncate">
+            {teacherName ?? "강사 없음"}
+          </p>
         )}
       </button>
       {onAttendanceClick && (
