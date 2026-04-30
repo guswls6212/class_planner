@@ -1,5 +1,6 @@
 import type React from "react";
 import type { Subject } from "@/lib/planner";
+import type { ColorByMode } from "@/hooks/useColorBy";
 
 export type SessionCardVariant = "block" | "row" | "chip" | "preview";
 
@@ -31,4 +32,8 @@ export interface SessionCardProps {
   dimmed?: boolean;
   /** Adds a glow ring using overrideColor (matching student filter) */
   highlighted?: boolean;
+  /** Controls color-by mode; when "teacher", shows teacherName below subject */
+  colorBy?: ColorByMode;
+  /** Teacher name to display when colorBy="teacher" */
+  teacherName?: string;
 }

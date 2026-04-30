@@ -1317,6 +1317,11 @@ function SchedulePageContent(): JSX.Element {
                 if (mode !== "teacher") clearTeacherFilter();
               }}
             />
+            {colorBy === "teacher" && teachers.length > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(167,139,250,0.15)] text-[var(--color-accent)] border border-[rgba(167,139,250,0.3)]">
+                강사 {teachers.length}명
+              </span>
+            )}
             <HelpTooltip
               label="색상 기준 도움말"
               content="과목별로 색을 구분하거나, 학생·강사 기준으로 전환할 수 있습니다."

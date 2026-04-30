@@ -231,6 +231,66 @@ describe("SessionCard — dimmed / highlighted props", () => {
   });
 });
 
+describe("SessionCard — teacher display (colorBy='teacher')", () => {
+  it("block: colorBy='teacher'이면 teacherName을 렌더한다", () => {
+    render(
+      <SessionCard
+        variant="block"
+        subject={blueSubject}
+        colorBy="teacher"
+        teacherName="김강사"
+      />,
+    );
+    expect(screen.getByText("김강사")).toBeDefined();
+  });
+
+  it("block: colorBy='teacher'이고 teacherName이 없으면 '강사 없음'을 표시한다", () => {
+    render(
+      <SessionCard
+        variant="block"
+        subject={blueSubject}
+        colorBy="teacher"
+      />,
+    );
+    expect(screen.getByText("강사 없음")).toBeDefined();
+  });
+
+  it("block: colorBy가 'teacher'가 아니면 teacherName을 렌더하지 않는다", () => {
+    render(
+      <SessionCard
+        variant="block"
+        subject={blueSubject}
+        colorBy="subject"
+        teacherName="김강사"
+      />,
+    );
+    expect(screen.queryByText("김강사")).toBeNull();
+  });
+
+  it("row: colorBy='teacher'이면 teacherName을 렌더한다", () => {
+    render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        colorBy="teacher"
+        teacherName="이강사"
+      />,
+    );
+    expect(screen.getByText("이강사")).toBeDefined();
+  });
+
+  it("row: colorBy='teacher'이고 teacherName이 없으면 '강사 없음'을 표시한다", () => {
+    render(
+      <SessionCard
+        variant="row"
+        subject={blueSubject}
+        colorBy="teacher"
+      />,
+    );
+    expect(screen.getByText("강사 없음")).toBeDefined();
+  });
+});
+
 describe("SessionCard — preview variant", () => {
   it("block처럼 렌더하지만 pointer-events-none이 적용된다", () => {
     render(
