@@ -44,6 +44,7 @@ import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
+import { filterSessionsByTeachers } from "../../features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { syncSubjectUpdate } from "../../lib/apiSync";
@@ -60,12 +61,14 @@ import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
+import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import {
   DEFAULT_GROUP_SESSION_DATA,
   ERROR_MESSAGES,
   MAX_SESSION_DURATION_MINUTES,
 } from "./_constants/scheduleConstants";
 import { useEditModalState } from "./_hooks/useEditModalState";
+import { useTeacherFilter } from "./_hooks/useTeacherFilter";
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
 import {
@@ -224,6 +227,12 @@ function SchedulePageContent(): JSX.Element {
     toggleStudent: toggleStudentFilter,
     clearFilter: clearStudentFilter,
   } = useStudentFilter(userId);
+
+  const {
+    selectedTeacherIds,
+    toggleTeacher: toggleTeacherFilter,
+    clearFilter: clearTeacherFilter,
+  } = useTeacherFilter(userId);
 
   // ================================
   // 🧩 핵심 콜백: 세션 추가
@@ -567,9 +576,18 @@ function SchedulePageContent(): JSX.Element {
     [sessions, currentWeekStart]
   );
 
+  // 강사 필터 적용 (colorBy === "teacher"일 때 선택된 강사의 세션만 표시)
+  const teacherFilteredSessions = useMemo(
+    () =>
+      colorBy === "teacher"
+        ? filterSessionsByTeachers(weekFilteredSessions, selectedTeacherIds)
+        : weekFilteredSessions,
+    [colorBy, weekFilteredSessions, selectedTeacherIds]
+  );
+
   // 주간·일별 뷰용: 현재 주 세션만 weekday Map으로 변환
   const { sessions: displaySessions } = useDisplaySessions(
-    weekFilteredSessions,
+    teacherFilteredSessions,
     enrollments,
     ""
   );
@@ -1250,6 +1268,15 @@ function SchedulePageContent(): JSX.Element {
         />
       )}
 
+      {colorBy === "teacher" && (
+        <TeacherFilterChipBar
+          teachers={teachers}
+          selectedTeacherIds={selectedTeacherIds}
+          onToggleTeacher={toggleTeacherFilter}
+          onClearFilter={clearTeacherFilter}
+        />
+      )}
+
       {/* 일별 뷰: 요일 칩 바 */}
       {viewMode === "daily" && (
         <DayChipBar
@@ -1287,6 +1314,7 @@ function SchedulePageContent(): JSX.Element {
               onChange={(mode) => {
                 setColorBy(mode);
                 if (mode !== "student") clearStudentFilter();
+                if (mode !== "teacher") clearTeacherFilter();
               }}
             />
             <HelpTooltip
