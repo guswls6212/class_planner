@@ -1,10 +1,11 @@
 import React, { useMemo } from "react";
 import MonthDayCell from "../molecules/MonthDayCell";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../../lib/planner";
+import { getWeekStartDate } from "../../lib/weekStart";
 import type { ColorByMode } from "@/hooks/useColorBy";
 
 interface ScheduleMonthlyViewProps {
-  sessions: Map<number, Session[]>;
+  sessions: Session[];
   subjects: Subject[];
   enrollments: Enrollment[];
   students?: Student[];
@@ -78,7 +79,10 @@ export default function ScheduleMonthlyView({
         {/* Day cells */}
         {calendarDays.map((date, idx) => {
           const weekday = (date.getDay() + 6) % 7; // Mon=0
-          const daySessions = sessions.get(weekday) ?? [];
+          const weekStart = getWeekStartDate(date);
+          const daySessions = sessions.filter(
+            (s) => s.weekday === weekday && s.weekStartDate === weekStart
+          );
           return (
             <MonthDayCell
               key={idx}

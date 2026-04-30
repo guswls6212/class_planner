@@ -280,7 +280,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
         {viewMode === "monthly" && (
           <div className="h-full overflow-y-auto p-4">
             <ScheduleMonthlyView
-              sessions={sessionMap}
+              sessions={sessions}
               subjects={subjects}
               enrollments={enrollments}
               students={students}

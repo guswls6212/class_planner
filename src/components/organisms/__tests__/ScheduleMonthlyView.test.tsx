@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import ScheduleMonthlyView from "../ScheduleMonthlyView";
 
 const defaultProps = {
-  sessions: new Map(),
+  sessions: [],
   subjects: [],
   enrollments: [],
   currentDate: new Date("2026-04-01T12:00:00"),
