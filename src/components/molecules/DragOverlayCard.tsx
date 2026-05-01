@@ -1,3 +1,4 @@
+import React from "react";
 import type { Session, Subject } from "@/lib/planner";
 
 interface DragOverlayCardProps {
@@ -11,8 +12,8 @@ export default function DragOverlayCard({ session, subjects }: DragOverlayCardPr
 
   return (
     <div
-      className="rounded text-white text-[12px] font-semibold shadow-xl opacity-90 flex flex-col justify-center px-2 py-1 pointer-events-none"
-      style={{ background: color, width: 120, minHeight: 56 }}
+      className="rounded text-white text-[12px] font-semibold shadow-xl opacity-90 flex flex-col justify-center px-2 py-1 pointer-events-none w-[120px] min-h-[56px] bg-[var(--overlay-card-color)]"
+      style={{ "--overlay-card-color": color } as React.CSSProperties}
     >
       <div className="truncate">{subject?.name ?? ""}</div>
       <div className="text-[10px] opacity-80">

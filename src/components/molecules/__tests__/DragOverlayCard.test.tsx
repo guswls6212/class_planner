@@ -25,13 +25,11 @@ describe("DragOverlayCard", () => {
     expect(screen.getByText("09:00-10:00")).toBeInTheDocument();
   });
 
-  it("과목 색상을 배경으로 사용한다", () => {
+  it("과목 색상을 CSS 변수로 설정한다 (Tailwind bg-[var(--overlay-card-color)])", () => {
     const { container } = render(<DragOverlayCard session={session} subjects={subjects} />);
     const card = container.firstChild as HTMLElement;
-    // jsdom normalizes hex to rgb — accept both forms
-    const bg = card.style.background;
-    const hasHex = bg.toUpperCase().includes("3B82F6");
-    const hasRgb = bg.includes("59, 130, 246") || bg.includes("59,130,246");
-    expect(hasHex || hasRgb).toBe(true);
+    // 색상은 CSS custom property로 전달 (인라인 background 스타일 위반 방지)
+    const colorVar = card.style.getPropertyValue("--overlay-card-color");
+    expect(colorVar).toContain("3B82F6");
   });
 });
