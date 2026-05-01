@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Phone, Mail, User, FileText } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from "@/lib/planner";
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
@@ -84,10 +84,24 @@ export function TeacherDetailPanel({
     setIsEditing(false);
   };
 
-  const handleColorClick = (c: string) => {
-    setEditColor(c);
-    onUpdate(teacher.id, { color: c });
-  };
+  const colorSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleColorClick = useCallback(
+    (c: string) => {
+      setEditColor(c);
+      if (colorSyncTimerRef.current) clearTimeout(colorSyncTimerRef.current);
+      colorSyncTimerRef.current = setTimeout(() => {
+        onUpdate(teacher.id, { color: c });
+      }, 400);
+    },
+    [teacher.id, onUpdate]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (colorSyncTimerRef.current) clearTimeout(colorSyncTimerRef.current);
+    };
+  }, []);
 
   const initial = teacher.name.charAt(0).toUpperCase();
 

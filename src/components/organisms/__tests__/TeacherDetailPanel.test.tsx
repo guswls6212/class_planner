@@ -140,13 +140,32 @@ describe("TeacherDetailPanel", () => {
     expect(screen.getByText("담당 수업이 없습니다.")).toBeInTheDocument();
   });
 
-  it("색상 팔레트 클릭 시 onUpdate가 color만 즉시 호출된다", () => {
+  it("색상 팔레트 클릭 시 onUpdate가 400ms 후 color만 호출된다", () => {
+    vi.useFakeTimers();
     render(<TeacherDetailPanel {...baseProps} />);
     const colorButtons = screen.getAllByLabelText(/#[0-9a-fA-F]{6}/);
     fireEvent.click(colorButtons[0]);
+    expect(baseProps.onUpdate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(400);
     expect(baseProps.onUpdate).toHaveBeenCalledWith(
       "1",
       expect.objectContaining({ color: expect.any(String) })
     );
+    vi.useRealTimers();
+  });
+
+  it("색상 버튼 연속 클릭 시 onUpdate는 400ms 후 한 번만 호출된다", () => {
+    vi.useFakeTimers();
+    const onUpdate = vi.fn();
+    render(<TeacherDetailPanel {...baseProps} onUpdate={onUpdate} />);
+    const colorButtons = screen.getAllByLabelText(/#[0-9a-fA-F]{6}/);
+    fireEvent.click(colorButtons[0]);
+    fireEvent.click(colorButtons[1]);
+    fireEvent.click(colorButtons[2]);
+    vi.advanceTimersByTime(300);
+    expect(onUpdate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });
