@@ -120,6 +120,18 @@ export const repositionSessions = (
   const anchorYPosition = targetYPosition;
   let propagateYPosition = targetYPosition;
 
+  // Bug fix: 같은 요일 내에서 더 높은 레인(높은 yPos)으로 이동 시,
+  // 기존 chain propagation(충돌 세션을 yPos+1으로 밀기)은 compaction 후
+  // 이동 세션이 소스 자리로 돌아오는 문제가 있음.
+  // → 첫 충돌(loopCount=1)에서 충돌 세션을 yPos+1이 아닌 소스 빈 자리로 이동해야 함.
+  const movingSessionForChain = sessions.find((s) => s.id === movingSessionId);
+  const sourceYPosForChain =
+    movingSessionForChain?.weekday === targetWeekday
+      ? (movingSessionForChain?.yPosition ?? undefined)
+      : undefined;
+  const isMovingToHigherLane =
+    sourceYPosForChain !== undefined && targetYPosition > sourceYPosForChain;
+
   // 초기 충돌 확인
   let hasCollisions = checkCollisionsAtYPosition(
     targetDaySessions,
@@ -176,7 +188,13 @@ export const repositionSessions = (
 
     // 첫 번째 루프에서는 우선순위 체크하지 않고 모든 충돌 세션 이동
     if (loopCount === 1) {
-      const nextYPosition = propagateYPosition + 1;
+      // isMovingToHigherLane: 같은 요일 내 더 높은 레인으로 이동 시
+      // 충돌 세션을 yPos+1(아래)로 미는 대신 소스 빈 자리(sourceYPos)로 이동.
+      // 이렇게 해야 compaction 후에도 이동 세션이 targetYPos에 정착.
+      const nextYPosition =
+        isMovingToHigherLane && sourceYPosForChain !== undefined
+          ? sourceYPosForChain
+          : propagateYPosition + 1;
 
       collidingSessions.forEach((session) => {
         // 기존 위치에서 제거
