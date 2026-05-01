@@ -107,12 +107,13 @@ export async function applyLocalDataChoice(
   }
 
   // 2. 서버에서 최신 데이터 re-fetch (병렬)
-  const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes] =
+  const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes, teachersRes] =
     await Promise.allSettled([
       fetch(`/api/students?userId=${userId}`),
       fetch(`/api/subjects?userId=${userId}`),
       fetch(`/api/sessions?userId=${userId}`),
       fetch(`/api/enrollments?userId=${userId}`),
+      fetch(`/api/teachers?userId=${encodeURIComponent(userId)}`),
     ]);
 
   const parseJson = async (settled: PromiseSettledResult<Response>) => {
@@ -129,6 +130,7 @@ export async function applyLocalDataChoice(
   const subjects = await parseJson(subjectsRes);
   const sessions = await parseJson(sessionsRes);
   const enrollments = await parseJson(enrollmentsRes);
+  const teachers = await parseJson(teachersRes);
 
   // 3. supabase_user_id 설정 (getStorageKey()가 올바른 키를 반환하도록)
   localStorage.setItem("supabase_user_id", userId);
@@ -139,7 +141,7 @@ export async function applyLocalDataChoice(
     subjects,
     sessions,
     enrollments,
-    teachers: [],
+    teachers,
     version: "1.0",
     lastModified: new Date().toISOString(),
   });
