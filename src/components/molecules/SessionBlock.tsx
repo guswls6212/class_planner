@@ -30,8 +30,6 @@ interface SessionBlockProps {
   yPosition?: number;
   height?: number;
   onClick: () => void;
-  onDragStart?: (e: React.DragEvent, session: Session) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
   selectedStudentIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
@@ -67,8 +65,6 @@ function SessionBlock({
   yPosition = 1,
   height,
   onClick,
-  onDragStart,
-  onDragEnd,
   selectedStudentIds,
   isMobile = false,
   isDragging = false,

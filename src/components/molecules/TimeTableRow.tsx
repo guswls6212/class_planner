@@ -452,16 +452,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           onDelete={
             onSessionDelete ? () => onSessionDelete(session) : undefined
           }
-          onDragStart={(_e, s) => {
-            if (onDragStart) {
-              onDragStart(s);
-            }
-          }}
-          onDragEnd={() => {
-            if (onDragEnd) {
-              onDragEnd();
-            }
-          }}
           selectedStudentIds={selectedStudentIds}
           teachers={teachers}
           colorBy={colorBy}
