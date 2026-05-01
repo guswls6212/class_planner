@@ -56,6 +56,7 @@ import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionC
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
+import { preflightCheck } from "@/lib/pdf/preflightCheck";
 import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
 import ConfirmModal from "../../components/molecules/ConfirmModal";
 import ScheduleGridSection from "./_components/ScheduleGridSection";
@@ -961,6 +962,12 @@ function SchedulePageContent(): JSX.Element {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
 
+  const pdfPreflightResult = useMemo(() => {
+    if (!isPdfDialogOpen) return undefined;
+    const allSessions = Array.from(displaySessions.values()).flat();
+    return preflightCheck(allSessions, {});
+  }, [isPdfDialogOpen, displaySessions]);
+
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
     try {
@@ -1668,6 +1675,7 @@ function SchedulePageContent(): JSX.Element {
         selectedDate={selectedDate}
         isExporting={isDownloading}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
+        preflightResult={pdfPreflightResult}
       />
     </div>
   );

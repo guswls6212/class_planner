@@ -9,6 +9,7 @@ import { drawSessionBlock } from "./PdfSessionBlock";
 import { PRETENDARD_REGULAR_BASE64 } from "./fonts/pretendard-regular";
 import { PRETENDARD_BOLD_BASE64 } from "./fonts/pretendard-bold";
 import { eachWeekStart, formatWeekRangeLabel, getWeekStart } from "@/lib/dateUtils";
+import { computeRequiredLanes } from "@/lib/sessionCollisionUtils";
 import type {
   Session,
   Subject,
@@ -23,6 +24,10 @@ export interface PdfRenderOptions {
   filename?: string;
   title?: string;
   weekRange?: { startDate: string; endDate: string };
+  /** 표시할 요일 인덱스 배열 (0=월, 6=일). 미설정 시 7일 전체 표시. */
+  operatingDays?: number[];
+  /** 강사별 분할 여부 — 푸터 메타 표기용 */
+  perTeacher?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -112,11 +117,10 @@ function drawWeekPage(
   teachers: Teacher[],
   options: PdfRenderOptions
 ): void {
-  const usedWeekdays = new Set(sessions.map((s) => s.weekday));
-  const maxWeekday = usedWeekdays.size > 0 ? Math.max(...usedWeekdays) : 4;
-  const weekdayCount = Math.max(5, maxWeekday + 1);
+  const operatingDays = options.operatingDays ?? [0, 1, 2, 3, 4, 5, 6];
+  const weekdayCount = operatingDays.length;
   const dims = calculateGridDimensions(weekdayCount, START_HOUR, END_HOUR);
-  const weekdayLabels = WEEKDAY_LABELS.slice(0, weekdayCount);
+  const weekdayLabels = operatingDays.map((d) => WEEKDAY_LABELS[d]);
 
   drawHeader(doc, dims, {
     academyName: options.title ?? options.academyName ?? "CLASS PLANNER",
@@ -128,17 +132,32 @@ function drawWeekPage(
 
   const targetSessions = filterSessions(sessions, enrollments, options.filterStudentId);
 
+  // 요일별 lane 수 사전 계산 (computeRequiredLanes는 시간 겹침 sweep-line)
+  const lanesByWeekday = new Map<number, number>();
+  for (const wd of operatingDays) {
+    const daySessions = targetSessions.filter((s) => s.weekday === wd);
+    lanesByWeekday.set(wd, computeRequiredLanes(daySessions));
+  }
+
   for (const session of targetSessions) {
     if (!session.startsAt || !session.endsAt) continue;
     const [sh] = session.startsAt.split(":").map(Number);
     if (sh < START_HOUR || sh >= END_HOUR) continue;
 
+    const colIndex = operatingDays.indexOf(session.weekday);
+    if (colIndex === -1) continue; // 운영 요일 밖 세션 스킵
+
+    const totalLanes = lanesByWeekday.get(session.weekday) ?? 1;
+    const laneIndex = Math.max(0, (session.yPosition ?? 1) - 1);
+
     const cell = getCellPosition(
       dims,
-      session.weekday,
+      colIndex,
       session.startsAt,
       session.endsAt,
-      START_HOUR
+      START_HOUR,
+      laneIndex,
+      totalLanes
     );
     const enrollment = enrollments.find((e) =>
       session.enrollmentIds?.includes(e.id)
@@ -160,7 +179,12 @@ function drawWeekPage(
   }
 
   drawTeacherLegend(doc, dims, targetSessions, teachers);
-  drawFooter(doc, dims);
+
+  const maxLanes = Math.max(1, ...operatingDays.map((wd) => lanesByWeekday.get(wd) ?? 1));
+  const splitLabel = options.perTeacher ? "강사별" : "전체";
+  drawFooter(doc, dims, {
+    meta: `출력 범위 ${START_HOUR}:00~${END_HOUR}:00 · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
+  });
 }
 
 function buildFilename(opts: PdfRenderOptions): string {

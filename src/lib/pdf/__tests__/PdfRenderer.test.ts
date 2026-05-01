@@ -218,3 +218,68 @@ describe("renderSchedulePdf — teachers 파라미터", () => {
     expect(saveMock).toHaveBeenCalledWith("김선생_시간표_2026-04-13.pdf");
   });
 });
+
+describe("renderSchedulePdf — 30분 시간 라벨 (A-3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("30분 라벨(예: '9:30')이 time column에 출력된다", () => {
+    renderSchedulePdf([], [], [], [], []);
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    expect(textArgs).toContain("9:30");
+  });
+
+  it("정시 라벨(예: '10:00')도 여전히 출력된다", () => {
+    renderSchedulePdf([], [], [], [], []);
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    expect(textArgs).toContain("10:00");
+  });
+});
+
+describe("renderSchedulePdf — lane 분할 (겹침 처리)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("같은 weekday·시간대 세션 2개가 서로 다른 x에 rect를 그린다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 2, startsAt: "11:00", endsAt: "12:00", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 1 },
+      { id: "s2", weekday: 2, startsAt: "11:00", endsAt: "16:30", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 2 },
+    ];
+    renderSchedulePdf(sessions, [], [], [], []);
+
+    // rect(x, y, w, h, style) — x 값만 추출 (padding 1mm 포함된 실제 x)
+    const xValues = (rectMock.mock.calls as number[][]).map(([x]) => Math.round(x * 10));
+    const uniqueX = new Set(xValues);
+    expect(uniqueX.size).toBeGreaterThan(1);
+  });
+
+  it("단일 세션은 weekday 컬럼 전체 너비로 그려진다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [] },
+    ];
+    renderSchedulePdf(sessions, [], [], [], []);
+
+    // 7컬럼 기준 각 컬럼 폭 ≈ 262/7 ≈ 37.4mm — rect width가 컬럼 폭에 근접해야 함
+    const widths = (rectMock.mock.calls as number[][]).map(([,, w]) => w);
+    const maxWidth = Math.max(...widths);
+    expect(maxWidth).toBeGreaterThan(30); // 단일 lane이면 컬럼 전체 폭 사용
+  });
+
+  it("operatingDays=[0,1,2,3,4,5]이면 6컬럼으로 그려진다 (weekdayCount=6)", () => {
+    renderSchedulePdf([], [], [], [], [], { operatingDays: [0, 1, 2, 3, 4, 5] });
+    // text 호출 중 요일 라벨(월화수목금토)이 6번 출력되어야 한다
+    // textMock.mock.calls에서 "월","화",...,"토" 중 하나 이상이 포함되는지 확인
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    const dayLabels = textArgs.filter((t) => ["월","화","수","목","금","토","일"].includes(t));
+    expect(dayLabels.length).toBe(6);
+  });
+
+  it("operatingDays 미지정이면 기본 7컬럼으로 그려진다", () => {
+    renderSchedulePdf([], [], [], [], []);
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    const dayLabels = textArgs.filter((t) => ["월","화","수","목","금","토","일"].includes(t));
+    expect(dayLabels.length).toBe(7);
+  });
+});

@@ -9,6 +9,7 @@ import {
   getMonthWeekRange,
   getWeekStart,
 } from "@/lib/dateUtils";
+import type { PreflightResult } from "@/lib/pdf/preflightCheck";
 
 export interface PdfExportRange {
   startDate: string;
@@ -24,6 +25,7 @@ interface Props {
   selectedDate: Date;
   isExporting?: boolean;
   teachers?: { id: string; name: string }[];
+  preflightResult?: PreflightResult;
 }
 
 type Scope = "current" | "range" | "per-teacher";
@@ -36,6 +38,7 @@ export default function PdfExportRangeModal({
   selectedDate,
   isExporting = false,
   teachers = [],
+  preflightResult,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
@@ -96,6 +99,33 @@ export default function PdfExportRangeModal({
         >
           PDF 출력 범위
         </h3>
+
+        {preflightResult && preflightResult.warnings.length > 0 && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm"
+          >
+            <p className="font-medium text-amber-800 dark:text-amber-300 mb-1.5">
+              ⚠ 출력 시 확인
+            </p>
+            <ul className="space-y-1">
+              {preflightResult.warnings.map((w, i) => (
+                <li key={i} className="text-amber-700 dark:text-amber-400">
+                  • {w.message}
+                </li>
+              ))}
+            </ul>
+            {preflightResult.suggestSplit === "per-teacher" && (
+              <button
+                type="button"
+                onClick={() => setScope("per-teacher")}
+                className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-300 underline underline-offset-2 hover:no-underline"
+              >
+                강사별 분할로 전환
+              </button>
+            )}
+          </div>
+        )}
 
         {isMonthly ? (
           <label className="flex items-center gap-2 mb-4 cursor-pointer">

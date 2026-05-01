@@ -111,8 +111,14 @@ describe("ScheduleActionBar", () => {
     expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
   });
 
-  it("HelpTooltip이 렌더되지 않는다 (i 버튼 제거됨)", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
-    expect(screen.queryByRole("button", { name: /도움말/ })).toBeNull();
+  it("PDF 가이드 i 버튼이 렌더된다", () => {
+    render(<ScheduleActionBar {...baseProps} />);
+    expect(screen.getByRole("button", { name: /PDF 출력 가이드/ })).toBeInTheDocument();
+  });
+
+  it("PDF 가이드 i 버튼 클릭 시 가이드 모달이 열린다", () => {
+    render(<ScheduleActionBar {...baseProps} />);
+    fireEvent.click(screen.getByRole("button", { name: /PDF 출력 가이드/ }));
+    expect(screen.getByText("PDF 출력 가이드")).toBeInTheDocument();
   });
 });
