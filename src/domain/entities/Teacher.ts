@@ -15,6 +15,7 @@ export interface TeacherProfile {
   phone?: string | null;
   role?: TeacherRole | null;
   notes?: string | null;
+  subjectIds?: string[];
 }
 
 export class Teacher {
@@ -28,6 +29,7 @@ export class Teacher {
   private readonly _phone: string | null;
   private readonly _role: TeacherRole | null;
   private readonly _notes: string | null;
+  private readonly _subjectIds: string[];
 
   private constructor(
     id: TeacherId,
@@ -39,7 +41,8 @@ export class Teacher {
     email: string | null = null,
     phone: string | null = null,
     role: TeacherRole | null = null,
-    notes: string | null = null
+    notes: string | null = null,
+    subjectIds: string[] = []
   ) {
     this._id = id;
     this._name = name;
@@ -51,6 +54,7 @@ export class Teacher {
     this._phone = phone;
     this._role = role;
     this._notes = notes;
+    this._subjectIds = subjectIds;
     this.validate();
   }
 
@@ -70,7 +74,8 @@ export class Teacher {
       profile?.email ?? null,
       profile?.phone ?? null,
       profile?.role ?? null,
-      profile?.notes ?? null
+      profile?.notes ?? null,
+      profile?.subjectIds ?? []
     );
   }
 
@@ -97,7 +102,8 @@ export class Teacher {
       profile?.email ?? null,
       profile?.phone ?? null,
       profile?.role ?? null,
-      profile?.notes ?? null
+      profile?.notes ?? null,
+      profile?.subjectIds ?? []
     );
   }
 
@@ -106,21 +112,21 @@ export class Teacher {
   changeName(newName: string): Teacher {
     const trimmedName = newName.trim();
     if (trimmedName === this._name) return this;
-    return new Teacher(this._id, trimmedName, this._color, this._userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes);
+    return new Teacher(this._id, trimmedName, this._color, this._userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes, this._subjectIds);
   }
 
   changeColor(newColor: string): Teacher {
     const colorValue = Color.fromString(newColor);
     if (colorValue.equals(this._color)) return this;
-    return new Teacher(this._id, this._name, colorValue, this._userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes);
+    return new Teacher(this._id, this._name, colorValue, this._userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes, this._subjectIds);
   }
 
   linkUser(userId: string): Teacher {
-    return new Teacher(this._id, this._name, this._color, userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes);
+    return new Teacher(this._id, this._name, this._color, userId, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes, this._subjectIds);
   }
 
   unlinkUser(): Teacher {
-    return new Teacher(this._id, this._name, this._color, null, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes);
+    return new Teacher(this._id, this._name, this._color, null, this._createdAt, new Date(), this._email, this._phone, this._role, this._notes, this._subjectIds);
   }
 
   updateProfile(profile: { name?: string; color?: string; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null }): Teacher {
@@ -130,7 +136,7 @@ export class Teacher {
     const newPhone = profile.phone !== undefined ? profile.phone : this._phone;
     const newRole = profile.role !== undefined ? profile.role : this._role;
     const newNotes = profile.notes !== undefined ? profile.notes : this._notes;
-    return new Teacher(this._id, newName, newColor, this._userId, this._createdAt, new Date(), newEmail, newPhone, newRole, newNotes);
+    return new Teacher(this._id, newName, newColor, this._userId, this._createdAt, new Date(), newEmail, newPhone, newRole, newNotes, this._subjectIds);
   }
 
   static validateName(name: string): ValidationResult {
@@ -217,6 +223,10 @@ export class Teacher {
     return this._notes;
   }
 
+  get subjectIds(): string[] {
+    return this._subjectIds;
+  }
+
   // ===== 직렬화 =====
 
   toDto(): TeacherDto {
@@ -246,6 +256,7 @@ export class Teacher {
       phone: this._phone,
       role: this._role,
       notes: this._notes,
+      subjectIds: this._subjectIds,
     };
   }
 
@@ -262,6 +273,7 @@ export class Teacher {
         phone: json.phone,
         role: json.role,
         notes: json.notes,
+        subjectIds: json.subjectIds,
       }
     );
   }
@@ -312,4 +324,5 @@ export interface TeacherJson {
   phone: string | null;
   role: TeacherRole | null;
   notes: string | null;
+  subjectIds?: string[];
 }

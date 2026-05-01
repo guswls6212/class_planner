@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Teacher } from "../Teacher";
+import { Teacher, TeacherJson } from "../Teacher";
 
 describe("Teacher Entity", () => {
   describe("생성 및 검증", () => {
@@ -252,6 +252,7 @@ describe("Teacher Entity", () => {
         phone: null,
         role: null,
         notes: null,
+        subjectIds: [],
       });
     });
 
@@ -291,6 +292,45 @@ describe("Teacher Entity", () => {
       expect(restored.phone).toBe("010-1234-5678");
       expect(restored.role).toBe("admin");
       expect(restored.notes).toBe("주요 강사");
+    });
+
+    it("fromJSON — subjectIds가 보존된다", () => {
+      const json: TeacherJson = {
+        id: "550e8400-e29b-41d4-a716-446655440001",
+        name: "김강사",
+        color: "#FF0000",
+        userId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        email: null,
+        phone: null,
+        role: null,
+        notes: null,
+        subjectIds: ["sub-1", "sub-2"],
+      };
+
+      const teacher = Teacher.fromJSON(json);
+      const backToJson = teacher.toJSON();
+      expect(backToJson.subjectIds).toEqual(["sub-1", "sub-2"]);
+    });
+
+    it("fromJSON — subjectIds 없을 때 빈 배열로 직렬화된다", () => {
+      const json: TeacherJson = {
+        id: "550e8400-e29b-41d4-a716-446655440002",
+        name: "박강사",
+        color: "#00FF00",
+        userId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        email: null,
+        phone: null,
+        role: null,
+        notes: null,
+      };
+
+      const teacher = Teacher.fromJSON(json);
+      const backToJson = teacher.toJSON();
+      expect(backToJson.subjectIds).toEqual([]);
     });
   });
 
