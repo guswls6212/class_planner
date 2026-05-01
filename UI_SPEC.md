@@ -149,6 +149,8 @@ SchedulePage
 **ColorBy 모드 동작 (student 모드 상세):**
 - Student mode + 칩 미선택 → 과목 색상·라벨로 폴백 (이전: 학생 해시 색상). `resolveSessionColor`의 `selectedStudentIds` 빈 배열 → 과목 색 반환.
 - Student mode + 칩 선택 → 비선택 세션 opacity 0.25로 dim; 선택된 세션은 학생 해시 색상 + outer glow ring (1.5px)
+- Student mode + 칩 선택 + 세션 총 인원 ≥ 2명 → 블록 우측 상단에 `Users 아이콘 + 총 N명` 뱃지 노출 (`aria-label="총 N명"`). 선택한 학생이 미포함된 dim 블록에는 뱃지 미표시.
+- `getGroupStudentNames` 시그니처: `selectedStudentIds?: string[]` — multi-select 시 매칭된 모든 학생명 반환 (구: 단일 ID만 매칭).
 - 드래그 중 glow/dim 비활성 (포인터 인터랙션 우선)
 - 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity)
 - 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달

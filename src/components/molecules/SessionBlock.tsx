@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from "react";
+import { Users } from "lucide-react";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
 import type { Session, Subject } from "@/lib/planner";
@@ -98,7 +99,7 @@ function SessionBlock({
     session,
     enrollments || [],
     students || [],
-    selectedStudentIds?.[0]
+    selectedStudentIds
   );
 
   // colorBy에 따라 블록 색상 결정
@@ -347,16 +348,18 @@ function SessionBlock({
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
-  const extraStudentCount = (() => {
-    if (!isStudentModeActive) return 0;
+  const totalStudentCount = (() => {
+    if (!isStudentModeActive || !selectedStudentIds?.length) return 0;
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
       return enrollment ? [enrollment.studentId] : [];
     });
-    const selectedInSession = allStudentIds.filter((id) => selectedStudentIds.includes(id));
-    // Only show +N badge if at least one selected student is in this session
-    if (selectedInSession.length === 0) return 0;
-    return allStudentIds.length - selectedInSession.length;
+    // 게이트: 선택된 학생이 이 세션에 없으면 표시 안 함 (비매칭 dim 블록)
+    const hasSelectedInSession = allStudentIds.some((id) =>
+      selectedStudentIds.includes(id)
+    );
+    if (!hasSelectedInSession) return 0;
+    return allStudentIds.length;
   })();
 
   return (
@@ -412,12 +415,13 @@ function SessionBlock({
         </div>
       </button>
 
-      {extraStudentCount > 0 && (
+      {totalStudentCount >= 2 && (
         <span
-          className="absolute top-0.5 right-0.5 text-[9px] font-bold text-white/80 bg-black/25 rounded-full px-1 leading-4 pointer-events-none"
-          aria-label={`외 ${extraStudentCount}명`}
+          className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-md bg-white/20 px-1 py-px text-[10px] font-semibold text-white/95 backdrop-blur-sm pointer-events-none"
+          aria-label={`총 ${totalStudentCount}명`}
         >
-          +{extraStudentCount}
+          <Users className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />
+          {totalStudentCount}
         </span>
       )}
 

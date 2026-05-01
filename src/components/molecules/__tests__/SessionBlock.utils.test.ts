@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getGroupStudentNames,
   getSessionBlockStyles,
   resolveSessionColor,
 } from "../SessionBlock.utils";
@@ -300,5 +301,70 @@ describe("resolveSessionColor", () => {
     );
     expect(colorWithout).toBe("#FF0000");
     expect(colorWith).toBe("#FF0000");
+  });
+});
+
+describe("getGroupStudentNames", () => {
+  const session = {
+    id: "s1",
+    enrollmentIds: ["e1", "e2", "e3"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  } as any;
+
+  const enrollments = [
+    { id: "e1", studentId: "sid-A", subjectId: "sub-1" },
+    { id: "e2", studentId: "sid-B", subjectId: "sub-1" },
+    { id: "e3", studentId: "sid-C", subjectId: "sub-1" },
+  ];
+
+  const students = [
+    { id: "sid-A", name: "이현진" },
+    { id: "sid-B", name: "김요섭" },
+    { id: "sid-C", name: "강지원" },
+  ];
+
+  it("selectedStudentIds 없음(undefined) → 모든 학생 이름 반환", () => {
+    const result = getGroupStudentNames(session, enrollments, students, undefined);
+    expect(result).toEqual(["이현진", "김요섭", "강지원"]);
+  });
+
+  it("selectedStudentIds=[] (빈 배열) → 모든 학생 이름 반환 (비필터 모드)", () => {
+    const result = getGroupStudentNames(session, enrollments, students, []);
+    expect(result).toEqual(["이현진", "김요섭", "강지원"]);
+  });
+
+  it("selectedStudentIds=[sid-A] → 이 세션에서 sid-A의 이름만 반환", () => {
+    const result = getGroupStudentNames(session, enrollments, students, ["sid-A"]);
+    expect(result).toEqual(["이현진"]);
+  });
+
+  it("selectedStudentIds=[sid-A, sid-B] → 두 학생 모두 이 세션에 있으면 두 이름 반환", () => {
+    const result = getGroupStudentNames(session, enrollments, students, ["sid-A", "sid-B"]);
+    expect(result).toEqual(["이현진", "김요섭"]);
+  });
+
+  it("selectedStudentIds=[sid-A] 이고 세션에 sid-A 미포함 → 빈 배열 (비매칭 세션)", () => {
+    const sessionWithoutA = { ...session, enrollmentIds: ["e2", "e3"] } as any;
+    const result = getGroupStudentNames(sessionWithoutA, enrollments, students, ["sid-A"]);
+    expect(result).toEqual([]);
+  });
+
+  it("멀티셀렉트: selectedStudentIds=[sid-A, sid-B] 이고 세션에 sid-B만 있음 → sid-B 이름만 반환", () => {
+    const sessionOnlyB = { ...session, enrollmentIds: ["e2"] } as any;
+    const result = getGroupStudentNames(sessionOnlyB, enrollments, students, ["sid-A", "sid-B"]);
+    expect(result).toEqual(["김요섭"]);
+  });
+
+  it("enrollmentIds 없는 세션 → 빈 배열", () => {
+    const emptySession = { ...session, enrollmentIds: [] } as any;
+    const result = getGroupStudentNames(emptySession, enrollments, students, ["sid-A"]);
+    expect(result).toEqual([]);
+  });
+
+  it("students 배열에 record 없는 enrollment → 해당 항목 제외", () => {
+    const result = getGroupStudentNames(session, enrollments, [{ id: "sid-A", name: "이현진" }], ["sid-A", "sid-B"]);
+    expect(result).toEqual(["이현진"]);
   });
 });

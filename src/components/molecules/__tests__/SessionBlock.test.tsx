@@ -957,3 +957,180 @@ describe("SessionBlock Utility Functions", () => {
     });
   });
 });
+
+describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () => {
+  const sid1 = "550e8400-e29b-41d4-a716-446655440001";
+  const sid2 = "550e8400-e29b-41d4-a716-446655440002";
+  const sid3 = "550e8400-e29b-41d4-a716-446655440003";
+
+  const eid1 = "550e8400-e29b-41d4-a716-446655440301";
+  const eid2 = "550e8400-e29b-41d4-a716-446655440302";
+  const eid3 = "550e8400-e29b-41d4-a716-446655440303";
+
+  const sessionId = "550e8400-e29b-41d4-a716-446655440201";
+
+  const session3 = {
+    id: sessionId,
+    enrollmentIds: [eid1, eid2, eid3],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const session2 = {
+    id: sessionId,
+    enrollmentIds: [eid1, eid2],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const session1 = {
+    id: sessionId,
+    enrollmentIds: [eid1],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const enrollments3 = [
+    { id: eid1, studentId: sid1, subjectId: "sub-1" },
+    { id: eid2, studentId: sid2, subjectId: "sub-1" },
+    { id: eid3, studentId: sid3, subjectId: "sub-1" },
+  ];
+
+  const enrollments2 = enrollments3.slice(0, 2);
+  const enrollments1 = enrollments3.slice(0, 1);
+
+  const students = [
+    { id: sid1, name: "이현진" },
+    { id: sid2, name: "김요섭" },
+    { id: sid3, name: "강지원" },
+  ];
+
+  const subjects = [{ id: "sub-1", name: "수학", color: "#FF0000" }];
+
+  const baseProps = {
+    subjects,
+    enrollments: enrollments3,
+    students,
+    teachers: [],
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+    colorBy: "student" as const,
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("학생 3명 세션에서 selectedStudentIds=[sid1] → aria-label='총 3명' 뱃지 노출", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("학생 3명 세션에서 selectedStudentIds=[sid1] → 뱃지 텍스트가 '3'", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    const badge = screen.getByLabelText("총 3명");
+    expect(badge).toHaveTextContent("3");
+  });
+
+  it("학생 2명 세션에서 selectedStudentIds=[sid1] → aria-label='총 2명' 뱃지 노출", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.getByLabelText("총 2명")).toBeInTheDocument();
+  });
+
+  it("학생 1명만 있는 세션에서 selectedStudentIds=[sid1] → 뱃지 미표시 (1명은 카운트 불필요)", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session1}
+        enrollments={enrollments1}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("selectedStudentIds=[] (비필터 모드) → 뱃지 미표시", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[]}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("selectedStudentIds=undefined → 뱃지 미표시", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={undefined}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("비매칭 세션 (선택한 학생이 미포함) → 뱃지 미표시", () => {
+    const sessionOnlySid2 = { ...session1, enrollmentIds: [eid2] };
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={sessionOnlySid2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("멀티셀렉트 [sid1, sid2]: 세션에 sid1·sid2·sid3 → 총 3명 뱃지", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1, sid2]}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("멀티셀렉트 [sid1, sid2]: 세션에 sid2만 → primaryLabel이 '이현진'이 아닌 '김요섭'", () => {
+    const sessionOnlySid2 = { ...session1, enrollmentIds: [eid2] };
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={sessionOnlySid2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1, sid2]}
+      />
+    );
+    expect(screen.getByText("김요섭")).toBeInTheDocument();
+    expect(screen.queryByText("학생 없음")).not.toBeInTheDocument();
+  });
+});
