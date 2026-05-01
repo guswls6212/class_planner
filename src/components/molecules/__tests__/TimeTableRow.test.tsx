@@ -2,7 +2,7 @@ import type { Session, Subject } from "@lib/planner";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { logger } from "../../../lib/logger";
-import { TimeTableRow } from "../TimeTableRow";
+import { TimeTableRow, coordsToDropTarget } from "../TimeTableRow";
 
 // Mock dependencies
 vi.mock("../TimeTableCell", () => ({
@@ -927,5 +927,66 @@ describe("5423339 회귀 — 필터 미활성: yPosition 기반 laneIdx (left �
     render(<TimeTableRow {...baseProps} />);
     const el = screen.getByTestId("session-s_y3");
     expect(el.getAttribute("data-left")).toBe("80");
+  });
+});
+
+// ===================================================================
+// coordsToDropTarget — 좌표→(time, yPosition) 변환 단위 테스트 (Task 2A)
+// ===================================================================
+describe("coordsToDropTarget — 좌표→(time, yPosition) 변환", () => {
+  const timeSlots = ["09:00", "09:30", "10:00", "10:30"];
+  const SLOT_H = 32;
+  const LANE_W = 40;
+  const LANES = 3;
+  const PAD = 10;
+
+  it("x=0, y=0 → lane 1, 09:00", () => {
+    const r = coordsToDropTarget(0, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 1 });
+  });
+
+  it("x=40, y=0 → lane 2, 09:00", () => {
+    const r = coordsToDropTarget(40, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x=79, y=0 → still lane 2 (floor division)", () => {
+    const r = coordsToDropTarget(79, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x=80, y=0 → lane 3", () => {
+    const r = coordsToDropTarget(80, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 3 });
+  });
+
+  it("y=32 → 09:30 slot", () => {
+    const r = coordsToDropTarget(0, 32, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:30", yPosition: 1 });
+  });
+
+  it("isDraggingToThis=true: x=10 → lane 1 (subtract PAD)", () => {
+    const r = coordsToDropTarget(10, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, true);
+    expect(r).toEqual({ time: "09:00", yPosition: 1 });
+  });
+
+  it("isDraggingToThis=true: x=50 → lane 2 (subtract PAD → 40)", () => {
+    const r = coordsToDropTarget(50, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, true);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x 범위 초과 → 마지막 lane으로 클램프", () => {
+    const r = coordsToDropTarget(9999, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 3 });
+  });
+
+  it("y 범위 초과 → 마지막 slot으로 클램프", () => {
+    const r = coordsToDropTarget(0, 9999, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "10:30", yPosition: 1 });
+  });
+
+  it("timeSlots가 비어있으면 null 반환", () => {
+    const r = coordsToDropTarget(0, 0, LANE_W, LANES, SLOT_H, [], PAD, false);
+    expect(r).toBeNull();
   });
 });
