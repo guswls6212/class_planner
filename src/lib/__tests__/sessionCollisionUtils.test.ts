@@ -14,7 +14,9 @@ const enr = (id: string, studentId: string, subjectId: string): Enrollment => ({
 });
 
 describe("repositionSessions - 충돌/재배치", () => {
-  it("드래그 이동: 이동 대상은 목표 y 유지, 겹치는 세션만 한 칸 아래로", () => {
+  it("드래그 이동: 이동 세션이 목표 y에 정착, 기존 세션과 swap", () => {
+    // Fix: 기존 동작은 compaction으로 이동 세션이 다시 원래 위치로 돌아오는 버그가 있었음.
+    // 올바른 동작: sess1(yPos=1→2), sess2(yPos=2→1) 스왑.
     const subjects: Subject[] = [
       sub("sub1", "중등수학"),
       sub("sub2", "초등수학"),
@@ -59,9 +61,9 @@ describe("repositionSessions - 충돌/재배치", () => {
     );
 
     const byId = Object.fromEntries(result.map((s) => [s.id, s]));
-    // 압축 로직에 의해 yPosition이 1부터 연속적으로 재배치됨
-    expect(byId["sess1"].yPosition).toBe(1); // 이동한 세션이 첫 번째 위치
-    expect(byId["sess2"].yPosition).toBe(2); // 밀려난 세션이 두 번째 위치
+    // sess1은 목표 yPos=2에 정착, sess2는 sess1이 있던 yPos=1로 이동
+    expect(byId["sess1"].yPosition).toBe(2); // 이동 세션이 목표 위치에 정착
+    expect(byId["sess2"].yPosition).toBe(1); // 기존 세션이 소스 위치로 이동
   });
 
   it("편집 저장: 체인 전파로 연쇄 밀어내기, 비겹침 항목은 고정", () => {
@@ -317,5 +319,86 @@ describe("computeTentativeLayout", () => {
     expect(day0.find((s) => s.id === "s1")).toBeUndefined();
     expect(day1.find((s) => s.id === "s1")).toBeDefined();
     expect(day1.find((s) => s.id === "s1")?.weekday).toBe(1);
+  });
+});
+
+// ===================================================================
+// repositionSessions — 더 높은 레인으로 이동 시 compaction 회귀 방지
+// 사용자 보고: "3번째레인의 고등국어를 4번째레인에 드롭했는데 3번째레인으로 돌아옴"
+// ===================================================================
+describe("repositionSessions — 더 높은 레인으로 이동 시 올바른 lane 정착", () => {
+  const makeSession = (id: string, yPos: number, startsAt = "11:00", endsAt = "12:00"): Session => ({
+    id,
+    weekday: 0,
+    startsAt,
+    endsAt,
+    yPosition: yPos,
+    enrollmentIds: [],
+    room: "",
+    weekStartDate: "",
+  });
+
+  const emptyEnrollments: Enrollment[] = [];
+  const emptySubjects: Subject[] = [];
+
+  it("yPos=3 세션을 yPos=4(점유)로 이동 → 결과가 yPos=4에 정착해야 함 (3으로 돌아오면 안됨)", () => {
+    // 4개 세션 겹침: A(1), B(2), C-국어(3), H(4)
+    // C를 yPos=4로 이동 → 예상: A(1), B(2), H(3), C(4)
+    const sessions: Session[] = [
+      makeSession("A", 1),
+      makeSession("B", 2),
+      makeSession("C", 3),  // 이동할 세션
+      makeSession("H", 4),
+    ];
+
+    const result = repositionSessions(
+      sessions, emptyEnrollments, emptySubjects,
+      0, "11:00", "12:00", 4, "C"
+    );
+
+    const byId = Object.fromEntries(result.filter(s => s.weekday === 0).map(s => [s.id, s]));
+    expect(byId["C"].yPosition).toBe(4);  // C는 4번째 레인에 정착해야 함
+    expect(byId["H"].yPosition).toBe(3);  // H는 C가 있던 자리로
+    expect(byId["A"].yPosition).toBe(1);  // 나머지 유지
+    expect(byId["B"].yPosition).toBe(2);
+  });
+
+  it("yPos=2 세션을 yPos=3(점유)로 이동 → 결과가 yPos=3에 정착", () => {
+    // B(2)를 yPos=3으로 → 예상: A(1), C(2), B(3)
+    const sessions: Session[] = [
+      makeSession("A", 1),
+      makeSession("B", 2),
+      makeSession("C", 3),
+    ];
+
+    const result = repositionSessions(
+      sessions, emptyEnrollments, emptySubjects,
+      0, "11:00", "12:00", 3, "B"
+    );
+
+    const byId = Object.fromEntries(result.filter(s => s.weekday === 0).map(s => [s.id, s]));
+    expect(byId["B"].yPosition).toBe(3);
+    expect(byId["C"].yPosition).toBe(2);
+    expect(byId["A"].yPosition).toBe(1);
+  });
+
+  it("yPos=1 세션을 yPos=3(점유)로 이동 → 결과가 yPos=3에 정착", () => {
+    // A(1)를 yPos=3으로 → 예상: B(1), C(2), A(3)
+    const sessions: Session[] = [
+      makeSession("A", 1),
+      makeSession("B", 2),
+      makeSession("C", 3),
+    ];
+
+    const result = repositionSessions(
+      sessions, emptyEnrollments, emptySubjects,
+      0, "11:00", "12:00", 3, "A"
+    );
+
+    const byId = Object.fromEntries(result.filter(s => s.weekday === 0).map(s => [s.id, s]));
+    expect(byId["A"].yPosition).toBe(3);
+    // B와 C는 앞으로 당겨짐
+    const positions = [byId["B"].yPosition, byId["C"].yPosition].sort();
+    expect(positions).toEqual([1, 2]);
   });
 });
