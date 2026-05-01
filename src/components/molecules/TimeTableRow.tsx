@@ -6,6 +6,7 @@ import { resolveSessionTone } from "./SessionCard.utils";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
+import { sessionContainsSelected } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
 
@@ -143,41 +144,50 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // Visible sessions: yPos ≤3 when overflow and not expanded; all otherwise
+  // 학생 필터 활성 시 매칭 세션을 앞 lane에 우선 배치 (렌더 타임 재정렬, yPosition 불변)
+  const isStudentFilterActive = Boolean(selectedStudentIds?.length);
+  const orderedSessions = React.useMemo(() => {
+    if (!isStudentFilterActive) return weekdaySessions;
+    const sortByYPos = (a: Session, b: Session) => (a.yPosition || 1) - (b.yPosition || 1);
+    const matching = weekdaySessions
+      .filter((s) => sessionContainsSelected(s, enrollments, selectedStudentIds!))
+      .sort(sortByYPos);
+    const nonMatching = weekdaySessions
+      .filter((s) => !sessionContainsSelected(s, enrollments, selectedStudentIds!))
+      .sort(sortByYPos);
+    return [...matching, ...nonMatching];
+  }, [weekdaySessions, selectedStudentIds, enrollments, isStudentFilterActive]);
+
+  // Visible sessions: first 3 when overflow and collapsed; all otherwise
   const visibleSessions = React.useMemo(() => {
     return (isOverflow && !isExpanded)
-      ? weekdaySessions.filter((s) => (s.yPosition || 1) <= 3)
-      : weekdaySessions;
-  }, [weekdaySessions, isOverflow, isExpanded]);
+      ? orderedSessions.slice(0, 3)
+      : orderedSessions;
+  }, [orderedSessions, isOverflow, isExpanded]);
 
-  // Hidden sessions: yPos ≥4 when overflow and not expanded; empty otherwise
+  // Hidden sessions: slice(3+) when overflow and collapsed; empty otherwise
   const hiddenSessions = React.useMemo(() => {
     return (isOverflow && !isExpanded)
-      ? weekdaySessions.filter((s) => (s.yPosition || 1) >= 4)
+      ? orderedSessions.slice(3)
       : [];
-  }, [weekdaySessions, isOverflow, isExpanded]);
+  }, [orderedSessions, isOverflow, isExpanded]);
 
-  // Position the +N chip near the first hidden session's start time.
-  // Use all yPos≥4 sessions (unaffected by isExpanded) so the position
-  // is stable whether the chip shows +N or the collapse "−" symbol.
+  // Position the +N chip near the first hidden session's start time (stable regardless of isExpanded).
   const chipTopPx = React.useMemo(() => {
     if (!isOverflow) return null;
-    const candidates = weekdaySessions.filter((s) => (s.yPosition || 1) >= 4);
+    const candidates = orderedSessions.slice(3);
     if (candidates.length === 0) return null;
     const first = candidates[0];
     const [h, m] = first.startsAt.split(":").map(Number);
     return Math.max(4, ((h * 60 + m - 9 * 60) / 30) * SLOT_HEIGHT_PX);
-  }, [weekdaySessions, isOverflow]);
+  }, [orderedSessions, isOverflow]);
 
   // Compute per-session layout (top/height from time, left/width from lane)
   const laidOutSessions = React.useMemo(() => {
     return visibleSessions.map((session) => {
-      // Clamp laneIdx to valid range — orphan yPosition values (e.g., yPos=2 with no yPos=1)
-      // would place blocks outside the column without this clamp.
-      const laneIdx = Math.min(
-        Math.max(0, (session.yPosition || 1) - 1),
-        effectiveLanes - 1
-      );
+      // Lane index from position in orderedSessions (filter-aware), clamped to valid range.
+      const rawIdx = visibleSessions.findIndex((s) => s.id === session.id);
+      const laneIdx = Math.min(Math.max(0, rawIdx), effectiveLanes - 1);
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
       const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
@@ -433,7 +443,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       {isOverflow && chipTopPx !== null && (
         <button
           type="button"
-          className="absolute cursor-pointer border-0 rounded-[6px] text-[var(--color-text-primary)] text-[10px] font-bold leading-tight whitespace-nowrap backdrop-blur-sm"
+          className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
           onClick={(e) => { e.stopPropagation(); setIsExpanded((prev) => !prev); }}
           aria-label={isExpanded ? "세션 접기" : `${hiddenSessions.length}개 세션 더 보기`}
           aria-expanded={isExpanded}
@@ -443,8 +453,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             right: 4,
             zIndex: 115,
             padding: "3px 6px",
-            background: "var(--color-cluster-overflow-bg, rgba(30,41,59,0.9))",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.1)",
           }}
         >
           {isExpanded ? "−" : `+${hiddenSessions.length}`}

@@ -417,7 +417,7 @@ function SessionBlock({
 
       {totalStudentCount >= 2 && (
         <span
-          className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-md bg-white/20 px-1 py-px text-[10px] font-semibold text-white/95 backdrop-blur-sm pointer-events-none"
+          className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-md session-overlay-pill backdrop-blur-sm px-1 py-px text-[10px] font-semibold text-white pointer-events-none"
           aria-label={`총 ${totalStudentCount}명`}
         >
           <Users className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />

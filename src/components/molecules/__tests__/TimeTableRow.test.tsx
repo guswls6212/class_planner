@@ -635,3 +635,95 @@ describe("TimeTableRow Component", () => {
   });
 
 });
+
+describe("학생 필터 활성 시 매칭 세션 우선 lane 배치", () => {
+  const sid1 = "student-match";
+  const sid2 = "student-other-a";
+  const sid3 = "student-other-b";
+  const sid4 = "student-other-c";
+
+  const enrollments = [
+    { id: "e1", studentId: sid1, subjectId: "sub-1" },
+    { id: "e2", studentId: sid2, subjectId: "sub-1" },
+    { id: "e3", studentId: sid3, subjectId: "sub-1" },
+    { id: "e4", studentId: sid4, subjectId: "sub-1" },
+  ];
+
+  const students = [
+    { id: sid1, name: "이현진" },
+    { id: sid2, name: "김A" },
+    { id: sid3, name: "김B" },
+    { id: sid4, name: "김C" },
+  ];
+
+  const subjects = [{ id: "sub-1", name: "수학", color: "#f472b6" }];
+
+  // 4개 겹침 세션: yPosition 1~4
+  // 매칭 세션(이현진)은 yPosition=4 (숨겨지는 위치)
+  const makeOverlapSessions = (): Session[] => [
+    { id: "s1", weekday: 0, startsAt: "09:00", endsAt: "10:00", enrollmentIds: ["e2"], yPosition: 1, weekStartDate: "" } as any,
+    { id: "s2", weekday: 0, startsAt: "09:00", endsAt: "10:00", enrollmentIds: ["e3"], yPosition: 2, weekStartDate: "" } as any,
+    { id: "s3", weekday: 0, startsAt: "09:00", endsAt: "10:00", enrollmentIds: ["e4"], yPosition: 3, weekStartDate: "" } as any,
+    { id: "s4-match", weekday: 0, startsAt: "09:00", endsAt: "10:00", enrollmentIds: ["e1"], yPosition: 4, weekStartDate: "" } as any,
+  ];
+
+  const baseProps = {
+    weekday: 0,
+    width: 120,
+    subjects,
+    enrollments,
+    students,
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+    teachers: [],
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("학생 필터 미활성: 매칭 세션(yPos=4)이 숨겨져 렌더되지 않음", () => {
+    const sessions = new Map([[0, makeOverlapSessions()]]);
+    render(
+      <TimeTableRow
+        {...baseProps}
+        sessions={sessions}
+        selectedStudentIds={[]}
+      />
+    );
+    // yPos=4는 overflow threshold 이상 → 숨겨짐
+    expect(screen.queryByTestId("session-s4-match")).not.toBeInTheDocument();
+    // yPos 1~3은 보임
+    expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+    expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+    expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+  });
+
+  it("학생 필터 활성: 매칭 세션(yPos=4)이 앞으로 올라와 렌더됨", () => {
+    const sessions = new Map([[0, makeOverlapSessions()]]);
+    render(
+      <TimeTableRow
+        {...baseProps}
+        sessions={sessions}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    // 매칭 세션이 앞으로 재배치되어 visible에 포함됨
+    expect(screen.getByTestId("session-s4-match")).toBeInTheDocument();
+  });
+
+  it("학생 필터 활성: 비매칭 세션 중 하나가 overflow로 밀려남 (총 4개 중 3개만 visible)", () => {
+    const sessions = new Map([[0, makeOverlapSessions()]]);
+    render(
+      <TimeTableRow
+        {...baseProps}
+        sessions={sessions}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    // 총 4개 세션, 매칭 1개 + 비매칭 3개 → visible 3개 (매칭 포함)
+    // 비매칭 중 마지막 1개(yPos가 가장 높은)가 overflow로 밀림
+    const visibleCount = ["session-s1","session-s2","session-s3","session-s4-match"]
+      .filter(id => screen.queryByTestId(id) !== null).length;
+    expect(visibleCount).toBe(3);
+  });
+});
