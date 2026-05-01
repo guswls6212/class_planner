@@ -83,6 +83,23 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const dragController = useDragController();
 
+    // 요일별 overflow 펼침 상태 (controlled — column 폭 계산에 사용)
+    const [expandedWeekdays, setExpandedWeekdays] = useState<Set<number>>(new Set());
+
+    const toggleWeekdayExpand = useCallback((weekday: number) => {
+      setExpandedWeekdays((prev) => {
+        const next = new Set(prev);
+        if (next.has(weekday)) next.delete(weekday);
+        else next.add(weekday);
+        return next;
+      });
+    }, []);
+
+    // 주(week) 데이터가 바뀌면 펼침 상태 초기화
+    useEffect(() => {
+      setExpandedWeekdays(new Set());
+    }, [sessions]);
+
     const [scrollbarState, setScrollbarState] = useState({
       thumbWidth: 0,
       thumbPosition: 0,
@@ -343,7 +360,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         return Array.from({ length: 7 }, (_, wd) => {
           const daySessions = baseMap?.get(wd) || [];
           const required = computeRequiredLanes(daySessions);
-          const lanes = (!isDraggingAny && required >= 4) ? 2 : required;
+          // 4+ 겹침 시:
+          //   - 드래그 중: 실제 required 사용 (드래그 중에는 overflow chip 없어 lanes = required)
+          //   - collapsed: 3 lanes 폭 (≥4 sessions이어도 column 폭을 3 lanes로 제한)
+          //   - expanded: required lanes 폭 (사용자가 +N 펼쳤으니 실제 폭 확보)
+          let lanes: number;
+          if (isDraggingAny || required < 4) {
+            lanes = required;
+          } else if (expandedWeekdays.has(wd)) {
+            lanes = required;
+          } else {
+            lanes = 3;
+          }
           const baseW = Math.max(1, lanes) * laneWidth;
           // target 요일에 좌우 여백 추가 (hover 중일 때만)
           return isDraggingAny && wd === targetWd && targetWd !== null
@@ -351,7 +379,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             : baseW;
         });
       },
-      [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth]
+      [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth, expandedWeekdays]
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;
@@ -551,6 +579,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                   targetTime: dragController.targetTime,
                   targetYPosition: dragController.targetYPosition,
                 }}
+                isExpanded={expandedWeekdays.has(weekday)}
+                onToggleExpand={() => toggleWeekdayExpand(weekday)}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}

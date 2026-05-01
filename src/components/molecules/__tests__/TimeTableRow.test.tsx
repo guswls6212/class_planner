@@ -516,6 +516,36 @@ describe("TimeTableRow Component", () => {
       expect(screen.queryByTestId("overflow-popover-backdrop")).not.toBeInTheDocument();
       expect(document.querySelector('[role="dialog"]')).not.toBeInTheDocument();
     });
+
+    it("isExpanded=true prop 제공 시 chip 클릭 없이 overflow 세션 모두 표시된다 (controlled mode)", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} isExpanded={true} onToggleExpand={vi.fn()} />);
+      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+      expect(screen.getByTestId("session-s4")).toBeInTheDocument();
+      expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("−");
+    });
+
+    it("onToggleExpand 콜백 제공 시 chip 클릭이 콜백을 호출한다 (controlled mode)", () => {
+      const onToggleExpand = vi.fn();
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} isExpanded={false} onToggleExpand={onToggleExpand} />);
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
+      expect(onToggleExpand).toHaveBeenCalledOnce();
+    });
   });
 
   // ===================================================================

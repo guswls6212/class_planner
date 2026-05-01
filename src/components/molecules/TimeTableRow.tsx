@@ -54,6 +54,9 @@ interface TimeTableRowProps {
   isToday?: boolean;
   nowLinePx?: number | null;
   nowTimeStr?: string;
+  // Controlled overflow expansion (부모가 column 폭까지 같이 관리할 때 사용)
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 /**
@@ -88,8 +91,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   isToday = false,
   nowLinePx = null,
   nowTimeStr,
+  isExpanded: isExpandedProp,
+  onToggleExpand,
 }) => {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [internalExpanded, setInternalExpanded] = React.useState(false);
+  // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
+  const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
+  const handleToggleExpand = onToggleExpand ?? (() => setInternalExpanded((p) => !p));
 
   // Convert time string to minutes helper
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -106,9 +114,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return sessions?.get(weekday) || [];
   }, [sessions, weekday]);
 
-  // Reset expanded state when weekday switches or session list changes
+  // Reset internal expanded state when weekday switches or session list changes.
+  // Controlled mode에서는 부모(TimeTableGrid)가 expandedWeekdays를 직접 관리한다.
   React.useEffect(() => {
-    setIsExpanded(false);
+    setInternalExpanded(false);
   }, [weekday, weekdaySessions]);
 
   // Required lane count based on actual time overlaps (not stored yPosition max)
@@ -455,7 +464,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         <button
           type="button"
           className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
-          onClick={(e) => { e.stopPropagation(); setIsExpanded((prev) => !prev); }}
+          onClick={(e) => { e.stopPropagation(); handleToggleExpand(); }}
           aria-label={isExpanded ? "세션 접기" : `${hiddenSessions.length}개 세션 더 보기`}
           aria-expanded={isExpanded}
           data-testid={`overflow-expand-btn-${weekday}`}
