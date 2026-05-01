@@ -7,42 +7,30 @@ export const getGroupStudentNames = (
   session: Session,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
   students: Array<{ id: string; name: string }>,
-  selectedStudentId?: string
+  selectedStudentIds?: string[]
 ): string[] => {
-  // enrollmentIds가 undefined이거나 비어있는 경우 처리
   if (!session.enrollmentIds || session.enrollmentIds.length === 0) {
     return [];
   }
 
-  // 필터링된 상태에서는 선택된 학생의 이름만 반환
-  if (selectedStudentId) {
-    const selectedStudentEnrollment = session.enrollmentIds.find(
-      (enrollmentId) => {
-        const enrollment = enrollments?.find((e) => e.id === enrollmentId);
-        return enrollment?.studentId === selectedStudentId;
-      }
-    );
-
-    if (selectedStudentEnrollment) {
-      const enrollment = enrollments?.find(
-        (e) => e.id === selectedStudentEnrollment
-      );
-      const student = students?.find((s) => s.id === enrollment?.studentId);
-      return student?.name ? [student.name] : [];
-    }
-    return [];
+  // 필터링된 상태: 선택된 학생들 중 이 세션에 등록된 학생의 이름만 반환
+  if (selectedStudentIds && selectedStudentIds.length > 0) {
+    return session.enrollmentIds
+      .map((eid) => enrollments?.find((e) => e.id === eid))
+      .filter(
+        (e): e is NonNullable<typeof e> =>
+          e != null && selectedStudentIds.includes(e.studentId)
+      )
+      .map((e) => students?.find((s) => s.id === e.studentId)?.name)
+      .filter((n): n is string => Boolean(n));
   }
 
-  // 전체 학생 이름 반환 (기존 로직)
+  // 전체 학생 이름 반환 (비필터 모드)
   return session.enrollmentIds
-    .map((enrollmentId) => {
-      const enrollment = enrollments?.find((e) => e.id === enrollmentId);
-      if (!enrollment) return null;
-
-      const student = students?.find((s) => s.id === enrollment.studentId);
-      return student?.name;
-    })
-    .filter(Boolean) as string[];
+    .map((eid) => enrollments?.find((e) => e.id === eid))
+    .filter((e): e is NonNullable<typeof e> => e != null)
+    .map((e) => students?.find((s) => s.id === e.studentId)?.name)
+    .filter((n): n is string => Boolean(n));
 };
 
 // 과목 정보를 가져오는 함수 — src/lib/schedule/getSessionSubject.ts로 승격됨 (Phase 5-B)
