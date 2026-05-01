@@ -36,7 +36,13 @@ export interface UseTeacherManagementLocalReturn {
   addTeacher: (
     name: string,
     color: string,
-    userId?: string | null
+    userId?: string | null,
+    profile?: {
+      email?: string | null;
+      phone?: string | null;
+      role?: TeacherRole | null;
+      notes?: string | null;
+    }
   ) => Promise<boolean>;
   updateTeacher: (
     id: string,
@@ -118,7 +124,13 @@ export const useTeacherManagementLocal =
       async (
         name: string,
         color: string,
-        userId?: string | null
+        userId?: string | null,
+        profile?: {
+          email?: string | null;
+          phone?: string | null;
+          role?: TeacherRole | null;
+          notes?: string | null;
+        }
       ): Promise<boolean> => {
         try {
           setError(null);
@@ -134,7 +146,7 @@ export const useTeacherManagementLocal =
             loadTeachersFromLocal();
 
             const currentUserId = localStorage.getItem("supabase_user_id");
-            syncTeacherCreate(currentUserId, { name, color, userId });
+            syncTeacherCreate(currentUserId, { name, color, userId, ...profile });
 
             logger.info("useTeacherManagementLocal - 강사 추가 성공", {
               name,

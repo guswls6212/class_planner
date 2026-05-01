@@ -21,6 +21,7 @@ export class SessionApplicationServiceImpl {
       enrollmentIds: string[];
       weekday: number;
       weekStartDate?: string;
+      teacherId?: string | null;
     },
     academyId: string
   ): Promise<Session> {
@@ -39,6 +40,7 @@ export class SessionApplicationServiceImpl {
       enrollmentIds: string[];
       weekday: number;
       room?: string;
+      teacherId?: string | null;
     }
   ): Promise<Session> {
     return this.sessionRepository.update(id, sessionData);

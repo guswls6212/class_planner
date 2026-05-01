@@ -54,14 +54,26 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { enrollmentIds, subjectId, weekday, startTime, endTime, room } = body;
+    const {
+      enrollmentIds,
+      subjectId,
+      weekday,
+      startTime,
+      endTime,
+      startsAt: startsAtBody,
+      endsAt: endsAtBody,
+      room,
+      teacherId,
+    } = body;
+    const resolvedStart = startTime ?? startsAtBody;
+    const resolvedEnd = endTime ?? endsAtBody;
 
     if (
       !enrollmentIds ||
       !subjectId ||
       weekday === undefined ||
-      !startTime ||
-      !endTime
+      !resolvedStart ||
+      !resolvedEnd
     ) {
       return NextResponse.json(
         { success: false, error: "Required fields are missing" },
@@ -73,9 +85,10 @@ export async function PUT(
       enrollmentIds,
       subjectId,
       weekday,
-      startsAt: startTime,
-      endsAt: endTime,
+      startsAt: resolvedStart,
+      endsAt: resolvedEnd,
       room,
+      ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
     });
 
     return NextResponse.json({

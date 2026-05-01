@@ -43,6 +43,7 @@ export class SupabaseSessionRepository implements SessionRepository {
       weekStartDate: row.week_start_date ?? "",
       room: row.room ?? "",
       yPosition: row.y_position ?? undefined,
+      teacherId: row.teacher_id ?? undefined,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -126,6 +127,7 @@ export class SupabaseSessionRepository implements SessionRepository {
           week_start_date: sessionData.weekStartDate || "",
           room: sessionData.room ?? "",
           y_position: sessionData.yPosition ?? 1,
+          teacher_id: sessionData.teacherId ?? null,
         })
         .select()
         .single();
@@ -175,6 +177,7 @@ export class SupabaseSessionRepository implements SessionRepository {
       if (sessionData.endsAt !== undefined) updates.ends_at = sessionData.endsAt;
       if (sessionData.room !== undefined) updates.room = sessionData.room;
       if (sessionData.yPosition !== undefined) updates.y_position = sessionData.yPosition;
+      if ("teacherId" in sessionData) updates.teacher_id = (sessionData.teacherId as string | null | undefined) ?? null;
 
       if (Object.keys(updates).length > 0) {
         const { error } = await client
