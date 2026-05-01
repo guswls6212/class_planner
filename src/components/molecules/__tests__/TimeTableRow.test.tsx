@@ -17,8 +17,8 @@ vi.mock("../TimeTableCell", () => ({
 }));
 
 vi.mock("../SessionBlock", () => ({
-  default: ({ session, onClick }: any) => (
-    <div data-testid={`session-${session.id}`} onClick={onClick}>
+  default: ({ session, onClick, left }: any) => (
+    <div data-testid={`session-${session.id}`} data-left={left} onClick={onClick}>
       Session: {session.id}
     </div>
   ),
@@ -725,5 +725,131 @@ describe("학생 필터 활성 시 매칭 세션 우선 lane 배치", () => {
     const visibleCount = ["session-s1","session-s2","session-s3","session-s4-match"]
       .filter(id => screen.queryByTestId(id) !== null).length;
     expect(visibleCount).toBe(3);
+  });
+});
+
+// ===================================================================
+// 회귀 테스트 — 5423339 lane 회귀
+// (startsAt 정렬 순서 ≠ yPosition 순서일 때 laneIdx/visibility가 yPosition 기반이어야 함)
+// ===================================================================
+
+describe("5423339 회귀 — 필터 미활성: yPosition 기반 visibility (overflow)", () => {
+  // 4개 세션이 동시에 겹쳐 overflow 발생.
+  // startsAt 정렬 순서가 yPosition 순서와 반대이므로 버그가 명확히 드러남.
+  //
+  // 입력 순서 (useDisplaySessions startsAt 정렬 시뮬레이션):
+  //   sZ: startsAt=09:00, yPosition=3  ← index 0
+  //   sW: startsAt=10:00, yPosition=4  ← index 1  (yPos=4이어야 hidden)
+  //   sX: startsAt=11:00, yPosition=1  ← index 2
+  //   sY: startsAt=12:00, yPosition=2  ← index 3  (yPos=2이어야 visible)
+  //
+  // BUG (slice(0,3)):  visible=[sZ,sW,sX], hidden=[sY]  → sW(yPos=4) 노출, sY(yPos=2) 숨김
+  // FIX (yPos<=3):     visible=[sZ,sX,sY], hidden=[sW]  → 올바른 동작
+
+  const subjects = [{ id: "sub-1", name: "수학", color: "#3B82F6" }];
+  const students = [{ id: "stu-1", name: "테스트" }];
+  const enrollments = [{ id: "enr-1", studentId: "stu-1", subjectId: "sub-1" }];
+
+  const makeSess = (id: string, yPos: number, startsAt: string, endsAt: string) =>
+    ({ id, weekday: 0, startsAt, endsAt, enrollmentIds: ["enr-1"], yPosition: yPos, weekStartDate: "" }) as Session;
+
+  // 입력을 startsAt 오름차순으로 넣어 useDisplaySessions 동작 시뮬레이션
+  const sessions = new Map([[0, [
+    makeSess("sZ", 3, "09:00", "13:00"),
+    makeSess("sW", 4, "10:00", "13:00"),
+    makeSess("sX", 1, "11:00", "13:00"),
+    makeSess("sY", 2, "12:00", "13:00"),
+  ]]]);
+
+  const baseProps = {
+    weekday: 0,
+    width: 120,
+    sessions,
+    subjects,
+    enrollments,
+    students,
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+    selectedStudentIds: [],
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("yPos=4인 세션이 startsAt이 빨라도 숨겨진다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    expect(screen.queryByTestId("session-sW")).not.toBeInTheDocument();
+  });
+
+  it("yPos=2인 세션이 startsAt이 늦어도 visible이다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    expect(screen.getByTestId("session-sY")).toBeInTheDocument();
+  });
+
+  it("+N chip이 yPos>=4 세션 1개를 카운트한다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    const chip = screen.getByTestId("overflow-expand-btn-0");
+    expect(chip.textContent).toBe("+1");
+  });
+});
+
+describe("5423339 회귀 — 필터 미활성: yPosition 기반 laneIdx (left 위치)", () => {
+  // 3개 세션이 동시에 겹침. startsAt 정렬 순서와 yPosition 순서가 반대.
+  // 각 세션의 left 위치가 yPosition 기반이어야 함을 검증.
+  //
+  // 입력 순서 (startsAt 오름차순):
+  //   s_y3: startsAt=09:00, yPosition=3  ← index 0  → left=(3-1)*40=80이어야 함
+  //   s_y1: startsAt=10:00, yPosition=1  ← index 1  → left=(1-1)*40=0이어야 함
+  //   s_y2: startsAt=11:00, yPosition=2  ← index 2  → left=(2-1)*40=40이어야 함
+  //
+  // BUG (findIndex): s_y3→left=0, s_y1→left=40, s_y2→left=80 (yPos와 반대)
+  // FIX (yPos-1):    s_y3→left=80, s_y1→left=0, s_y2→left=40 (올바름)
+
+  const subjects = [{ id: "sub-1", name: "수학", color: "#3B82F6" }];
+  const students = [{ id: "stu-1", name: "테스트" }];
+  const enrollments = [{ id: "enr-1", studentId: "stu-1", subjectId: "sub-1" }];
+
+  const makeSess = (id: string, yPos: number, startsAt: string, endsAt: string) =>
+    ({ id, weekday: 0, startsAt, endsAt, enrollmentIds: ["enr-1"], yPosition: yPos, weekStartDate: "" }) as Session;
+
+  // startsAt 오름차순 입력, yPosition은 역순
+  const sessions = new Map([[0, [
+    makeSess("s_y3", 3, "09:00", "12:00"),
+    makeSess("s_y1", 1, "10:00", "12:00"),
+    makeSess("s_y2", 2, "11:00", "12:00"),
+  ]]]);
+  // 11:00에 세 세션 모두 겹침 → computeRequiredLanes=3, effectiveLanes=3, laneWidth=40
+
+  const baseProps = {
+    weekday: 0,
+    width: 120,
+    sessions,
+    subjects,
+    enrollments,
+    students,
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+    selectedStudentIds: [],
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("yPos=1인 세션은 lane 0 (left=0)에 위치한다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    const el = screen.getByTestId("session-s_y1");
+    expect(el.getAttribute("data-left")).toBe("0");
+  });
+
+  it("yPos=2인 세션은 lane 1 (left=40)에 위치한다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    const el = screen.getByTestId("session-s_y2");
+    expect(el.getAttribute("data-left")).toBe("40");
+  });
+
+  it("yPos=3인 세션은 lane 2 (left=80)에 위치한다", () => {
+    render(<TimeTableRow {...baseProps} />);
+    const el = screen.getByTestId("session-s_y3");
+    expect(el.getAttribute("data-left")).toBe("80");
   });
 });
