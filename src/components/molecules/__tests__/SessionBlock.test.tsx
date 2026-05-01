@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 // import { logger } from "../../../lib/logger";
 import { describe, expect, it, vi } from "vitest";
+import type { Session } from "../../../lib/planner";
 import SessionBlock, {
   shouldShowSubjectName,
   validateSessionBlockProps,
@@ -590,25 +591,25 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveTextContent("외 1명");
   });
 
-  it("onDragStart가 드래그 시작 시 호출되어야 한다", () => {
+  it("onDragStart가 드래그 핸들에서 시작 시 호출되어야 한다", () => {
     const onDragStart = vi.fn();
     render(
       <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
     );
-    // drag handlers are on the button (direct mousedown target)
-    const button = screen.getByRole("button");
-    fireEvent.dragStart(button);
+    // 2C: drag handlers are on the grip handle, not the button itself
+    const handle = screen.getByTestId("session-drag-handle");
+    fireEvent.dragStart(handle);
     expect(onDragStart).toHaveBeenCalledTimes(1);
   });
 
-  it("onDragEnd가 드래그 종료 시 호출되어야 한다", () => {
+  it("onDragEnd가 드래그 핸들에서 종료 시 호출되어야 한다", () => {
     const onDragEnd = vi.fn();
     render(
       <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
     );
-    // drag handlers are on the button (direct mousedown target)
-    const button = screen.getByRole("button");
-    fireEvent.dragEnd(button);
+    // 2C: drag handlers are on the grip handle, not the button itself
+    const handle = screen.getByTestId("session-drag-handle");
+    fireEvent.dragEnd(handle);
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
@@ -1132,5 +1133,65 @@ describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () 
     );
     expect(screen.getByText("김요섭")).toBeInTheDocument();
     expect(screen.queryByText("학생 없음")).not.toBeInTheDocument();
+  });
+});
+
+// ===================================================================
+// 2C: 드래그 핸들 (grip) 회귀 테스트
+// ===================================================================
+describe("2C 드래그 핸들 — grip 영역만 draggable", () => {
+  const baseSession: Session = {
+    id: "handle-test-session",
+    subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    enrollmentIds: [],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+    yPosition: 1,
+  };
+  const baseProps = {
+    session: baseSession,
+    subjects: [{ id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#3B82F6" }],
+    enrollments: [],
+    students: [],
+    left: 0,
+    width: 120,
+    yOffset: 0,
+    yPosition: 1,
+    height: 64,
+    isReadOnly: false,
+    isMobile: false,
+    isDragging: false,
+    isAnyDragging: false,
+    onClick: vi.fn(),
+  };
+
+  it("desktop + not readOnly: drag-handle 요소가 렌더된다", () => {
+    render(<SessionBlock {...baseProps} />);
+    expect(screen.getByTestId("session-drag-handle")).toBeInTheDocument();
+  });
+
+  it("drag-handle 요소는 draggable=true이다", () => {
+    render(<SessionBlock {...baseProps} />);
+    expect(screen.getByTestId("session-drag-handle")).toHaveAttribute("draggable", "true");
+  });
+
+  it("main button은 draggable이 아니다", () => {
+    render(<SessionBlock {...baseProps} />);
+    const button = screen.getByRole("button");
+    // draggable 속성이 없거나 false이어야 함
+    const draggable = button.getAttribute("draggable");
+    expect(draggable === null || draggable === "false").toBe(true);
+  });
+
+  it("isReadOnly=true 시 drag-handle이 렌더되지 않는다", () => {
+    render(<SessionBlock {...baseProps} isReadOnly={true} />);
+    expect(screen.queryByTestId("session-drag-handle")).not.toBeInTheDocument();
+  });
+
+  it("isMobile=true 시 drag-handle이 렌더되지 않는다", () => {
+    render(<SessionBlock {...baseProps} isMobile={true} />);
+    expect(screen.queryByTestId("session-drag-handle")).not.toBeInTheDocument();
   });
 });

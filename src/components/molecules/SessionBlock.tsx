@@ -80,6 +80,7 @@ function SessionBlock({
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMovedRef = useRef(false);
+  const cardRef = useRef<HTMLButtonElement>(null);
 
   // Hook must be called before any early return (Rules of Hooks).
   const sessionStatus = useSessionStatus(
@@ -216,7 +217,9 @@ function SessionBlock({
       logger.error("드래그 데이터 설정 실패", undefined, error as Error);
     }
     try {
-      e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
+      // 2C: drag image = whole card (cardRef), not the grip handle element
+      const imageEl: HTMLElement = cardRef.current ?? (e.currentTarget as HTMLElement);
+      e.dataTransfer.setDragImage(imageEl, 0, 0);
     } catch (_) {
       // jsdom 등 setDragImage 미지원 환경에서 안전하게 무시
     }
@@ -373,23 +376,42 @@ function SessionBlock({
       aria-label={ariaLabel}
     >
       <button
+        ref={cardRef}
         type="button"
-        draggable={!isMobile && !isReadOnly}
-        onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
-        onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
         style={buttonStyle}
         onClick={handleClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={[
-          "session-block",
+          "session-block group",
           "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-white/30 transition-all duration-150",
-          cursorClassName,
         ]
           .filter(Boolean)
           .join(" ")}
       >
+        {/* 2C: 드래그 핸들 — grip 영역만 draggable. 카드 전체 클릭(=모달)과 분리. */}
+        {!isMobile && !isReadOnly && (
+          <div
+            draggable={true}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onClick={(e) => e.stopPropagation()}
+            data-testid="session-drag-handle"
+            className="absolute top-1 left-0.5 z-[2] flex flex-col gap-[2px] p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            aria-label="드래그하여 이동"
+          >
+            {/* 6-dot grip icon */}
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="flex gap-[2px]">
+                {[0, 1].map((col) => (
+                  <div key={col} className="w-[3px] h-[3px] rounded-full bg-current opacity-80" />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 충돌 경고 아이콘 */}
         {hasConflict && (
           <span
