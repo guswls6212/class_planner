@@ -34,6 +34,34 @@ const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const START_HOUR = 9;
 const END_HOUR = 23;
 
+function toMin(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * 요일별 세션에 lane 번호를 자동 할당한다 (greedy interval graph coloring).
+ * yPosition을 완전히 무시하고 시작 시각 순으로 정렬한 뒤 비어있는 lane을 재사용.
+ * - totalLanes = computeRequiredLanes 결과와 항상 일치
+ * - yPosition 오염(삭제된 세션 흔적, 드래그 잔상)에 면역
+ */
+function assignLanesForDay(sessions: Session[]): Map<string, number> {
+  const sorted = [...sessions].sort((a, b) => toMin(a.startsAt) - toMin(b.startsAt));
+  const laneEndTimes: number[] = [];
+  const result = new Map<string, number>();
+
+  for (const s of sorted) {
+    const start = toMin(s.startsAt);
+    const end = toMin(s.endsAt);
+    const available = laneEndTimes.findIndex((t) => t <= start);
+    const lane = available === -1 ? laneEndTimes.length : available;
+    laneEndTimes[lane] = end;
+    result.set(s.id, lane);
+  }
+
+  return result;
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
@@ -132,10 +160,14 @@ function drawWeekPage(
 
   const targetSessions = filterSessions(sessions, enrollments, options.filterStudentId);
 
-  // 요일별 lane 수 사전 계산 (computeRequiredLanes는 시간 겹침 sweep-line)
+  // 요일별 lane 수 + 세션별 lane 번호 사전 계산
+  // yPosition에 의존하지 않는 greedy 자동 할당으로 overflow 버그 방지
   const lanesByWeekday = new Map<number, number>();
+  const laneMapByWeekday = new Map<number, Map<string, number>>();
   for (const wd of operatingDays) {
     const daySessions = targetSessions.filter((s) => s.weekday === wd);
+    const laneMap = assignLanesForDay(daySessions);
+    laneMapByWeekday.set(wd, laneMap);
     lanesByWeekday.set(wd, computeRequiredLanes(daySessions));
   }
 
@@ -145,10 +177,10 @@ function drawWeekPage(
     if (sh < START_HOUR || sh >= END_HOUR) continue;
 
     const colIndex = operatingDays.indexOf(session.weekday);
-    if (colIndex === -1) continue; // 운영 요일 밖 세션 스킵
+    if (colIndex === -1) continue;
 
     const totalLanes = lanesByWeekday.get(session.weekday) ?? 1;
-    const laneIndex = Math.max(0, (session.yPosition ?? 1) - 1);
+    const laneIndex = laneMapByWeekday.get(session.weekday)?.get(session.id) ?? 0;
 
     const cell = getCellPosition(
       dims,

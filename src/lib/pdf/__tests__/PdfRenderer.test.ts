@@ -283,3 +283,57 @@ describe("renderSchedulePdf — lane 분할 (겹침 처리)", () => {
     expect(dayLabels.length).toBe(7);
   });
 });
+
+describe("renderSchedulePdf — yPosition overflow 버그 (fix/pdf-lane-overflow)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // 버그 재현: 월요일에 혼자 있는 세션의 yPosition=2이면
+  // totalLanes=1, laneIndex=1 → x가 화요일 위치로 이동
+  it("yPosition이 totalLanes를 초과해도 월요일 세션은 월요일 컬럼 내에 그려진다", () => {
+    const sessions: Session[] = [
+      // 월요일 혼자 있음 + yPosition=2 (버그 트리거)
+      { id: "s1", weekday: 0, startsAt: "20:00", endsAt: "21:00", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 2 },
+      // 화요일 세션 (비교 기준)
+      { id: "s2", weekday: 1, startsAt: "20:30", endsAt: "21:30", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 1 },
+    ];
+    renderSchedulePdf(sessions, [], [], [], []);
+
+    // 7컬럼 기준: dayColWidth = 262/7 ≈ 37.4mm
+    // 월요일 컬럼 x 범위: [25, 62.4), 화요일: [62.4, 99.8)
+    const MONDAY_COL_END = 10 + 15 + 262 / 7; // ≈ 62.43mm
+    const rectXValues = (rectMock.mock.calls as number[][]).map(([x]) => x);
+    // s1(월)과 s2(화)가 같은 y에 있지 않으므로 가장 작은 x가 월요일 것
+    const minX = Math.min(...rectXValues);
+    expect(minX).toBeLessThan(MONDAY_COL_END); // 월요일 컬럼 내
+  });
+
+  it("yPosition=3이고 혼자인 세션도 올바른 요일 컬럼 내에 그려진다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 2, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 3 },
+    ];
+    renderSchedulePdf(sessions, [], [], [], []);
+
+    // 수요일(colIndex=2) x 범위: [25 + 2*37.4, 25 + 3*37.4) = [99.8, 137.2)
+    const dayW = 262 / 7;
+    const WED_COL_START = 10 + 15 + 2 * dayW;
+    const WED_COL_END = WED_COL_START + dayW;
+    const rectXValues = (rectMock.mock.calls as number[][]).map(([x]) => x);
+    const minX = Math.min(...rectXValues);
+    expect(minX).toBeGreaterThanOrEqual(WED_COL_START - 2); // padding 허용
+    expect(minX).toBeLessThan(WED_COL_END);
+  });
+
+  it("같은 요일에 yPosition이 중복된 두 세션이 다른 lane에 할당된다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 1 },
+      { id: "s2", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [], yPosition: 1 }, // 중복!
+    ];
+    renderSchedulePdf(sessions, [], [], [], []);
+
+    const rectXValues = (rectMock.mock.calls as number[][]).map(([x]) => Math.round(x * 10));
+    const uniqueX = new Set(rectXValues);
+    expect(uniqueX.size).toBeGreaterThan(1); // 서로 다른 lane
+  });
+});
