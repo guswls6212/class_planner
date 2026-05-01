@@ -19,6 +19,19 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useDragController } from "../../hooks/useDragController";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import TimeTableRow from "../molecules/TimeTableRow";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import DragOverlayCard from "../molecules/DragOverlayCard";
 
 interface TimeTableGridProps {
   sessions: Map<number, Session[]>;
@@ -82,6 +95,19 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       typeof window !== "undefined" && "ontouchstart" in window;
 
     const dragController = useDragController();
+
+    // dnd-kit sensors: PointerSensor (desktop + mobile), TouchSensor (long-press fallback)
+    const sensors = useSensors(
+      useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+      useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    );
+
+    // session lookup by id (for onDragStart)
+    const sessionById = useMemo(() => {
+      const map = new Map<string, Session>();
+      sessions?.forEach((daySessions) => daySessions.forEach((s) => map.set(s.id, s)));
+      return map;
+    }, [sessions]);
 
     // 요일별 overflow 펼침 상태 (controlled — column 폭 계산에 사용)
     const [expandedWeekdays, setExpandedWeekdays] = useState<Set<number>>(new Set());
@@ -427,6 +453,54 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // document-level dragend 리셋은 useDragController 내부 useEffect가 처리.
 
+    const handleDndDragStart = useCallback(
+      ({ active }: DragStartEvent) => {
+        const session = sessionById.get(active.id as string);
+        if (session) dragController.startSessionDrag(session);
+      },
+      [sessionById, dragController],
+    );
+
+    const handleDndDragOver = useCallback(
+      ({ over }: DragOverEvent) => {
+        if (!over) { dragController.leaveTarget(); return; }
+        // over.id format: "weekday:time:yPosition"
+        const parts = (over.id as string).split(":");
+        if (parts.length < 3) return;
+        const [wd, time, yPos] = parts;
+        dragController.hoverTarget(Number(wd), time, Number(yPos));
+      },
+      [dragController],
+    );
+
+    const handleDndDragEnd = useCallback(
+      ({ active, over }: DragEndEvent) => {
+        if (over && onSessionDrop) {
+          const sessionId = active.id as string;
+          const parts = (over.id as string).split(":");
+          if (parts.length >= 3) {
+            const [wd, time, yPos] = parts;
+            onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+          }
+          dragController.completeDrop();
+        } else {
+          dragController.cancelDrag();
+        }
+        // 드래그 후 스크롤 위치 복원
+        requestAnimationFrame(() => {
+          const element = gridRef.current;
+          if (element) {
+            const savedPosition = getSavedScrollPosition();
+            if (savedPosition) {
+              element.scrollLeft = savedPosition.scrollLeft;
+              element.scrollTop = savedPosition.scrollTop;
+            }
+          }
+        });
+      },
+      [dragController, onSessionDrop, getSavedScrollPosition],
+    );
+
     const handleDragStart = useCallback(
       (session: Session) => {
         if (isTouchDevice) return;
@@ -462,6 +536,13 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     }, [dragController, getSavedScrollPosition]);
 
     return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDndDragStart}
+        onDragOver={handleDndDragOver}
+        onDragEnd={handleDndDragEnd}
+      >
       <div
         className="time-table-container"
         data-testid="time-table-grid"
@@ -609,7 +690,16 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             onMouseDown={handleScrollbarMouseDown}
           />
         </div>
+        <DragOverlay>
+          {dragController.draggedSession ? (
+            <DragOverlayCard
+              session={dragController.draggedSession}
+              subjects={subjects}
+            />
+          ) : null}
+        </DragOverlay>
       </div>
+      </DndContext>
     );
   }
 );

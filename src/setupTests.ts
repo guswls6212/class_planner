@@ -59,9 +59,12 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   disconnect: vi.fn(),
 }));
 
-// Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Mock ResizeObserver — use class syntax so `new ResizeObserver(cb)` returns a proper instance
+// with callable methods. @dnd-kit/core does `const { ResizeObserver } = window;` then
+// `new ResizeObserver(cb)` and expects `.observe` / `.disconnect` on the instance.
+class ResizeObserverMock {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
