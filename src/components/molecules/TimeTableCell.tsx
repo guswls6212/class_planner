@@ -28,8 +28,9 @@ export default function TimeTableCell({
   style,
   isReadOnly = false,
 }: TimeTableCellProps) {
-  // dnd-kit drop zone. id format: "weekday:time:yPosition" (parsed in DndContext.onDragEnd)
-  const { setNodeRef } = useDroppable({ id: `${weekday}:${time}:${yPosition}` });
+  // dnd-kit drop zone. id format: "weekday|time|yPosition"
+  // "|" 구분자 사용 — time("HH:MM")에 ":" 포함되어 있어 ":" 구분 불가능.
+  const { setNodeRef } = useDroppable({ id: `${weekday}|${time}|${yPosition}` });
 
   // HTML5 drop kept for enrollment (student chip) drag only
   const handleDrop = (e: React.DragEvent) => {

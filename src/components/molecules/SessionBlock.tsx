@@ -339,6 +339,7 @@ function SessionBlock({
 
   return (
     <div
+      ref={setDragRef}
       style={wrapperStyle}
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
@@ -347,6 +348,8 @@ function SessionBlock({
       data-status={sessionStatus}
       aria-label={ariaLabel}
     >
+      {/* Bug2 fix: setNodeRef(setDragRef)는 outer wrapper에 — dnd-kit이 전체 블록 rect를 충돌 감지에 사용.
+          grip div는 listeners만 보유(activation handle). attributes는 grip에 유지(aria 접근성). */}
       <button
         type="button"
         style={buttonStyle}
@@ -361,10 +364,9 @@ function SessionBlock({
           .filter(Boolean)
           .join(" ")}
       >
-        {/* Tier 3: 드래그 핸들 — dnd-kit useDraggable. isMobile 게이트 제거(TouchSensor 처리). */}
+        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에. */}
         {!isReadOnly && (
           <div
-            ref={setDragRef}
             {...attributes}
             {...listeners}
             onClick={(e) => e.stopPropagation()}
