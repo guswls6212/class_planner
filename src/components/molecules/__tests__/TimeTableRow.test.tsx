@@ -406,7 +406,7 @@ describe("TimeTableRow Component", () => {
       expect(chip.textContent).toBe("+2");
     });
 
-    it("+N chip 클릭 시 모든 세션이 표시된다 (isExpanded=true)", () => {
+    it("+N chip 클릭 시 overflow popover가 열린다 (숨겨진 세션 직접 드래그 가능)", () => {
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
         makeSession("s1", 1),
@@ -416,27 +416,68 @@ describe("TimeTableRow Component", () => {
       ]);
       render(<TimeTableRow {...defaultProps} sessions={sessions} />);
 
-      // Before expand: s4 hidden, chip shows +1
+      // Before: s4 hidden, chip shows +1
       expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
       const chip = screen.getByTestId("overflow-expand-btn-0");
       expect(chip.textContent).toBe("+1");
 
-      // Click the chip to expand
+      // Click +N → popover opens (lane expand은 하지 않음)
       fireEvent.click(chip);
+      expect(screen.getByTestId("overflow-popover")).toBeInTheDocument();
+      // s4 mini-card visible in popover
+      expect(screen.getByTestId("overflow-popover-session-s4")).toBeInTheDocument();
+      // s4 NOT rendered in main lane view yet
+      expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
+      // chip still shows +1 (not collapsed/expanded)
+      expect(chip.textContent).toBe("+1");
+    });
 
-      // After expand: all 4 visible
-      expect(screen.getByTestId("session-s1")).toBeInTheDocument();
-      expect(screen.getByTestId("session-s2")).toBeInTheDocument();
-      expect(screen.getByTestId("session-s3")).toBeInTheDocument();
+    it("popover 내 '모두 펼치기' 버튼으로 expand, − 클릭으로 collapse", () => {
+      const onToggleExpand = vi.fn();
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+
+      const { rerender } = render(
+        <TimeTableRow {...defaultProps} sessions={sessions} isExpanded={false} onToggleExpand={onToggleExpand} />
+      );
+
+      // Open popover
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
+      expect(screen.getByTestId("overflow-popover")).toBeInTheDocument();
+
+      // Click "모두 펼치기" → onToggleExpand called
+      fireEvent.click(screen.getByTestId("overflow-popover-expand-btn"));
+      expect(onToggleExpand).toHaveBeenCalledOnce();
+      // Popover closes after expand
+      expect(screen.queryByTestId("overflow-popover")).not.toBeInTheDocument();
+
+      // Simulate parent setting isExpanded=true
+      rerender(<TimeTableRow {...defaultProps} sessions={sessions} isExpanded={true} onToggleExpand={onToggleExpand} />);
       expect(screen.getByTestId("session-s4")).toBeInTheDocument();
-      // Chip still visible (shows "−" for collapse)
-      expect(screen.getByTestId("overflow-expand-btn-0")).toBeInTheDocument();
       expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("−");
 
-      // Click again to collapse
+      // Click − to collapse
       fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
-      expect(screen.queryByTestId("session-s4")).not.toBeInTheDocument();
-      expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("+1");
+      expect(onToggleExpand).toHaveBeenCalledTimes(2);
+    });
+
+    it("popover 내 숨겨진 세션 mini-card는 draggable이다", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("s1", 1),
+        makeSession("s2", 2),
+        makeSession("s3", 3),
+        makeSession("s4", 4),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
+      const card = screen.getByTestId("overflow-popover-session-s4");
+      expect(card).toHaveAttribute("draggable", "true");
     });
 
     it("weekday 변경 시 isExpanded가 리셋된다", () => {
@@ -460,9 +501,10 @@ describe("TimeTableRow Component", () => {
         <TimeTableRow {...defaultProps} weekday={1} sessions={sessions4} />
       );
 
-      // Expand
+      // +N 클릭 → popover 열기, 모두 펼치기 → expand
       const chip = screen.getByTestId("overflow-expand-btn-1");
       fireEvent.click(chip);
+      fireEvent.click(screen.getByTestId("overflow-popover-expand-btn"));
       expect(screen.getByTestId("overflow-expand-btn-1").textContent).toBe("−");
 
       // Switch to weekday 2 (also has overflow)
@@ -533,7 +575,7 @@ describe("TimeTableRow Component", () => {
       expect(screen.getByTestId("overflow-expand-btn-0").textContent).toBe("−");
     });
 
-    it("onToggleExpand 콜백 제공 시 chip 클릭이 콜백을 호출한다 (controlled mode)", () => {
+    it("onToggleExpand 콜백은 popover '모두 펼치기' 버튼으로 호출된다 (controlled mode)", () => {
       const onToggleExpand = vi.fn();
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
@@ -543,7 +585,11 @@ describe("TimeTableRow Component", () => {
         makeSession("s4", 4),
       ]);
       render(<TimeTableRow {...defaultProps} sessions={sessions} isExpanded={false} onToggleExpand={onToggleExpand} />);
+      // chip 클릭 → popover 오픈 (onToggleExpand 직접 호출 안 함)
       fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
+      expect(onToggleExpand).not.toHaveBeenCalled();
+      // popover 내 펼치기 버튼 클릭 → onToggleExpand 호출
+      fireEvent.click(screen.getByTestId("overflow-popover-expand-btn"));
       expect(onToggleExpand).toHaveBeenCalledOnce();
     });
   });
