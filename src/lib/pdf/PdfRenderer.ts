@@ -208,7 +208,6 @@ function drawWeekPage(
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       teacherName: teacher?.name,
-      teacherColor: isFilterMode ? teacher?.color : undefined,
     });
   }
 

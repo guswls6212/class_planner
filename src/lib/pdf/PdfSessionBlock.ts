@@ -9,8 +9,6 @@ export interface SessionBlockData {
   startsAt: string;
   endsAt: string;
   teacherName?: string;
-  /** 설정 시 ▸ 텍스트 대신 컬러 도트 + 이름으로 렌더 (학생 필터 모드) */
-  teacherColor?: string;
 }
 
 /** Parse "#rrggbb" or "#rgb" hex to [r, g, b] */
