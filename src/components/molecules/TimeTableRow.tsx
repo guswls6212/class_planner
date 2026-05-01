@@ -408,12 +408,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               time={timeString}
               yPosition={yPosition}
               onDrop={onDrop}
-              onSessionDrop={onSessionDrop}
               onEmptySpaceClick={onEmptySpaceClick}
-              onDragOver={onDragOver}
-              isAnyDragging={isAnyDragging}
-              isDragging={isDragging}
-              dragPreview={dragPreview}
+              isReadOnly={false}
               style={{
                 position: "absolute",
                 top: `${timeIndex * SLOT_HEIGHT_PX}px`,
@@ -604,13 +600,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           onExpandAll={() => {
             handleToggleExpand();
             setIsPopoverOpen(false);
-          }}
-          onDragStart={(_e, session) => {
-            if (onDragStart) onDragStart(session);
-          }}
-          onDragEnd={() => {
-            setIsPopoverOpen(false);
-            if (onDragEnd) onDragEnd();
           }}
         />
       )}

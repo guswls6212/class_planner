@@ -4,6 +4,21 @@ import { describe, expect, it, vi } from "vitest";
 import { logger } from "../../../lib/logger";
 import { TimeTableRow, coordsToDropTarget } from "../TimeTableRow";
 
+// Mock dnd-kit so HiddenSessionsPopover's useDraggable works without a real DndContext
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  return {
+    ...actual,
+    useDroppable: () => ({ setNodeRef: vi.fn(), isOver: false, over: null }),
+    useDraggable: () => ({
+      setNodeRef: vi.fn(),
+      attributes: {},
+      listeners: {},
+      isDragging: false,
+    }),
+  };
+});
+
 // Mock dependencies
 vi.mock("../TimeTableCell", () => ({
   default: ({ time, weekday, onDrop, onEmptySpaceClick }: any) => (
@@ -466,7 +481,7 @@ describe("TimeTableRow Component", () => {
       expect(onToggleExpand).toHaveBeenCalledTimes(2);
     });
 
-    it("popover 내 숨겨진 세션 mini-card는 draggable이다", () => {
+    it("popover 내 숨겨진 세션 mini-card는 dnd-kit useDraggable로 동작한다 (HTML5 draggable 없음)", () => {
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
         makeSession("s1", 1),
@@ -477,7 +492,8 @@ describe("TimeTableRow Component", () => {
       render(<TimeTableRow {...defaultProps} sessions={sessions} />);
       fireEvent.click(screen.getByTestId("overflow-expand-btn-0"));
       const card = screen.getByTestId("overflow-popover-session-s4");
-      expect(card).toHaveAttribute("draggable", "true");
+      expect(card).toBeInTheDocument();
+      expect(card).not.toHaveAttribute("draggable", "true");
     });
 
     it("weekday 변경 시 isExpanded가 리셋된다", () => {

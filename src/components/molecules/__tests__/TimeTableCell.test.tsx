@@ -2,15 +2,21 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import TimeTableCell from "../TimeTableCell";
 
+// Mock useDroppable so we don't need a real DndContext in unit tests
+vi.mock("@dnd-kit/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@dnd-kit/core")>();
+  return {
+    ...actual,
+    useDroppable: () => ({ setNodeRef: vi.fn(), isOver: false, over: null }),
+  };
+});
+
 const sharedProps = {
   weekday: 0,
   time: "15:00",
   yPosition: 1,
   onDrop: vi.fn(),
-  onSessionDrop: vi.fn(),
   onEmptySpaceClick: vi.fn(),
-  isAnyDragging: false,
-  isDragging: false,
   isReadOnly: false,
 };
 
@@ -45,7 +51,7 @@ describe("TimeTableCell", () => {
     expect(screen.getByTestId("time-table-cell-2-17:00")).toBeDefined();
   });
 
-  it("드래그 오버 시 dragOver 상태를 업데이트한다", () => {
+  it("드래그 오버 시 이벤트 핸들러가 동작한다", () => {
     render(<TimeTableCell {...sharedProps} />);
     const cell = screen.getByTestId("time-table-cell-0-15:00");
     fireEvent.dragOver(cell);
@@ -63,27 +69,22 @@ describe("TimeTableCell", () => {
     expect(onDrop).toHaveBeenCalledWith(0, "15:00", "enrollment-1");
   });
 
-  it("드롭 이벤트 시 세션 드롭 처리 — logical yPosition(1-based)을 그대로 전달", () => {
+  it("session: 프리픽스 drop은 무시된다 (DndContext.onDragEnd가 처리)", () => {
     const onSessionDrop = vi.fn();
     render(
-      <TimeTableCell {...sharedProps} yPosition={2} onSessionDrop={onSessionDrop} />
+      <TimeTableCell
+        weekday={0}
+        time="09:00"
+        yPosition={1}
+        onDrop={vi.fn()}
+        onEmptySpaceClick={vi.fn()}
+      />
     );
-    const cell = screen.getByTestId("time-table-cell-0-15:00");
-
-    const dropEvent = createDragEvent("drop", "session:abc-123");
-    fireEvent(cell, dropEvent);
-
-    expect(onSessionDrop).toHaveBeenCalledWith("abc-123", 0, "15:00", 2);
-  });
-
-  it("dragOver 시 onDragOver에 logical yPosition(1-based)을 그대로 전달", () => {
-    const onDragOver = vi.fn();
-    render(
-      <TimeTableCell {...sharedProps} yPosition={3} onDragOver={onDragOver} isAnyDragging={true} isDragging={true} />
-    );
-    const cell = screen.getByTestId("time-table-cell-0-15:00");
-    fireEvent.dragOver(cell);
-    expect(onDragOver).toHaveBeenCalledWith(0, "15:00", 3);
+    const cell = screen.getByTestId("time-table-cell-0-09:00");
+    // simulate HTML5 drop with session: prefix — should be ignored
+    const dt = { getData: () => "session:abc-123", clearData: vi.fn() };
+    fireEvent.drop(cell, { dataTransfer: dt });
+    expect(onSessionDrop).not.toHaveBeenCalled();
   });
 
   it("isReadOnly 이면 드롭 이벤트가 무시된다", () => {
