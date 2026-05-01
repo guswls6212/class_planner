@@ -108,7 +108,8 @@ export const getSessionBlockStyles = (
     display: "flex",
     alignItems: "center",
     overflow: "hidden",
-    zIndex: 100 + yPosition,
+    // dragstart 이후 React 리렌더 시점 적용 → Chrome native drag 취소 없음 (pointer-events 불변 법칙 준수)
+    zIndex: (isDraggedSession && isAnyDragging) ? 500 : 100 + yPosition,
     cursor: "pointer",
     opacity,
     visibility,
