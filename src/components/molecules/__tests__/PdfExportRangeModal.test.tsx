@@ -196,3 +196,77 @@ describe("PdfExportRangeModal — preflight 경고 패널", () => {
     expect(screen.getByLabelText("강사별로 1장씩")).toBeChecked();
   });
 });
+
+describe("PdfExportRangeModal — teacher chip selector", () => {
+  const teachers = [
+    { id: "t1", name: "테스트강사", color: "#7c3aed" },
+    { id: "t2", name: "이강사", color: "#06b6d4" },
+  ];
+
+  it("'강사별로 1장씩' 선택 시 강사 chip이 렌더된다", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    expect(screen.getByRole("button", { name: /테스트강사/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /이강사/ })).toBeInTheDocument();
+  });
+
+  it("초기 상태: 모든 강사 chip이 선택됨 (aria-pressed=true)", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    expect(screen.getByRole("button", { name: /테스트강사/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /이강사/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("강사 chip 클릭 시 deselect됨 (aria-pressed=false)", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: /테스트강사/ }));
+    expect(screen.getByRole("button", { name: /테스트강사/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("전체 해제 클릭 시 모든 chip deselect됨", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "전체 해제" }));
+    expect(screen.getByRole("button", { name: /테스트강사/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: /이강사/ })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("전체 해제 후 전체 선택 클릭 시 모두 선택됨", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "전체 해제" }));
+    fireEvent.click(screen.getByRole("button", { name: "전체 선택" }));
+    expect(screen.getByRole("button", { name: /테스트강사/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /이강사/ })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("0명 선택 시 출력 버튼 disabled + 에러 메시지", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "전체 해제" }));
+    expect(screen.getByRole("button", { name: "출력" })).toBeDisabled();
+    expect(screen.getByText("강사를 1명 이상 선택해주세요.")).toBeInTheDocument();
+  });
+
+  it("1명만 선택 후 출력 시 selectedTeacherIds: ['t1']로 onExport 호출", () => {
+    const onExport = vi.fn();
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} onExport={onExport} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: /이강사/ }));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(onExport).toHaveBeenCalledWith(
+      expect.objectContaining({ perTeacher: true, selectedTeacherIds: ["t1"] })
+    );
+  });
+
+  it("전체 선택 상태 출력 시 selectedTeacherIds에 모든 id 포함", () => {
+    const onExport = vi.fn();
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} onExport={onExport} />);
+    fireEvent.click(screen.getByLabelText("강사별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(onExport).toHaveBeenCalledWith(
+      expect.objectContaining({ selectedTeacherIds: ["t1", "t2"] })
+    );
+  });
+});
