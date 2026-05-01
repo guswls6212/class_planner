@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { syncSubjectCreate } from "../lib/apiSync";
+import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
   clearUserClassPlannerData,
@@ -149,12 +150,29 @@ export const useGlobalDataInitialization = () => {
         const enrollments = (await parseJson(enrollmentsRes)) ?? [];
         const teachers = (await parseJson(teachersRes)) ?? [];
 
+        // teacher별 subjectIds를 병렬로 fetch
+        const teachersWithSubjects = await Promise.all(
+          teachers.map(async (teacher: Teacher) => {
+            try {
+              const res = await fetch(
+                `/api/teacher-subjects?userId=${encodeURIComponent(userId)}&teacherId=${encodeURIComponent(teacher.id)}`
+              );
+              if (!res.ok) return teacher;
+              const json = await res.json();
+              const subjectIds: string[] = json?.data ?? [];
+              return { ...teacher, subjectIds };
+            } catch {
+              return teacher; // subjectIds 없이 graceful fallback
+            }
+          })
+        );
+
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
           sessions,
           enrollments,
-          teachers,
+          teachers: teachersWithSubjects,
           version: "1.0",
           lastModified: new Date().toISOString(),
         };
