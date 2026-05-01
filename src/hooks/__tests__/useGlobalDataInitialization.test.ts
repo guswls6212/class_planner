@@ -216,7 +216,8 @@ describe("로그인 사용자 — 충돌 없음", () => {
     expect(dataCall).toBeDefined();
 
     const saved = JSON.parse(dataCall![1]);
-    expect(saved.teachers).toEqual(serverTeachers);
+    // teacher-subjects fetch가 빈 배열 반환 → subjectIds: [] 가 hydration되는 것이 올바른 동작
+    expect(saved.teachers).toEqual([{ ...serverTeachers[0], subjectIds: [] }]);
   });
 });
 

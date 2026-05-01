@@ -25,7 +25,7 @@ interface EditSessionModalProps {
   tempSubjectId: string;
   onSubjectChange: (subjectId: string) => void;
   tempTeacherId: string;
-  onTeacherChange: (teacherId: string) => void;
+  onTeacherChange: (teacherId: string | null) => void;
   weekdays: string[];
   defaultWeekday: number;
   startTime: string;
@@ -393,7 +393,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           <TeacherPillPicker
             teachers={teachers}
             selectedTeacherId={tempTeacherId || null}
-            onSelect={(id) => onTeacherChange(id ?? "")}
+            onSelect={(id) => onTeacherChange(id ?? null)}
           />
         </div>
 

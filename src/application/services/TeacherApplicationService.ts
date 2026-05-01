@@ -21,9 +21,7 @@ export class TeacherApplicationServiceImpl {
   ): Promise<Teacher> {
     try {
       const existingTeachers = await this.teacherRepository.getAll(academyId);
-      const isDuplicate = existingTeachers.some(
-        (t) => t.name === teacherData.name
-      );
+      const isDuplicate = Teacher.isNameDuplicate(teacherData.name, existingTeachers);
 
       if (isDuplicate) {
         throw new AppError("TEACHER_NAME_DUPLICATE", { statusHint: 409 });
@@ -32,7 +30,13 @@ export class TeacherApplicationServiceImpl {
       const newTeacher = Teacher.create(
         teacherData.name,
         teacherData.color,
-        teacherData.userId ?? undefined
+        teacherData.userId ?? undefined,
+        {
+          email: teacherData.email,
+          phone: teacherData.phone,
+          role: teacherData.role ?? "member",
+          notes: teacherData.notes,
+        }
       );
 
       return await this.teacherRepository.create(
@@ -40,10 +44,10 @@ export class TeacherApplicationServiceImpl {
           name: newTeacher.name,
           color: newTeacher.color.value,
           userId: newTeacher.userId,
-          email: teacherData.email ?? null,
-          phone: teacherData.phone ?? null,
-          role: teacherData.role ?? null,
-          notes: teacherData.notes ?? null,
+          email: newTeacher.email,
+          phone: newTeacher.phone,
+          role: newTeacher.role,
+          notes: newTeacher.notes,
         },
         academyId
       );
@@ -66,10 +70,8 @@ export class TeacherApplicationServiceImpl {
 
       if (teacherData.name) {
         const existingTeachers = await this.teacherRepository.getAll(academyId);
-        const isDuplicate = existingTeachers.some(
-          (t) => t.name === teacherData.name && t.id.value !== id
-        );
-        if (isDuplicate) {
+        const otherTeachers = existingTeachers.filter((t) => t.id.value !== id);
+        if (Teacher.isNameDuplicate(teacherData.name, otherTeachers)) {
           throw new AppError("TEACHER_NAME_DUPLICATE", { statusHint: 409 });
         }
       }

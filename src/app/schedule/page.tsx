@@ -427,7 +427,7 @@ function SchedulePageContent(): JSX.Element {
             subjectId: changed.subjectId,
             enrollmentIds: changed.enrollmentIds,
             ...(hasTeacherId && {
-              teacherId: (sessionData as SessionUpdateInput).teacherId ?? undefined,
+              teacherId: (sessionData as SessionUpdateInput).teacherId,
             }),
           });
         }
@@ -669,8 +669,8 @@ function SchedulePageContent(): JSX.Element {
     setEditTimeError,
   } = useEditModalState();
 
-  // 강사 선택 상태 (편집 모달용; undefined = 변경 없음, "" = 제거)
-  const [tempTeacherId, setTempTeacherId] = useState<string | undefined>(undefined);
+  // 강사 선택 상태 (편집 모달용; undefined = 변경 없음, null = 제거, "uuid" = 할당)
+  const [tempTeacherId, setTempTeacherId] = useState<string | null | undefined>(undefined);
 
   // 🆕 수업 편집 모달 시간 변경 핸들러 (헬퍼 적용)
   const { handleEditStartTimeChange, handleEditEndTimeChange } = useMemo(
@@ -833,6 +833,13 @@ function SchedulePageContent(): JSX.Element {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentInputValue]);
+
+  // 편집 모달이 열릴 때 tempTeacherId 초기화 (BUG #3 fix)
+  useEffect(() => {
+    if (showEditModal) {
+      setTempTeacherId(undefined);
+    }
+  }, [showEditModal]);
 
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = async (data: GroupSessionData) => {
@@ -1579,7 +1586,11 @@ function SchedulePageContent(): JSX.Element {
         teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
         tempSubjectId={tempSubjectId}
         onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
-        tempTeacherId={tempTeacherId ?? (editModalData?.teacherId || "")}
+        tempTeacherId={
+          tempTeacherId === undefined
+            ? (editModalData?.teacherId || "")
+            : (tempTeacherId ?? "")
+        }
         onTeacherChange={(teacherId) => setTempTeacherId(teacherId)}
         weekdays={weekdays}
         defaultWeekday={editModalData?.weekday ?? 0}

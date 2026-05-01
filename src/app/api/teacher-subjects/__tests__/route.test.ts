@@ -13,7 +13,7 @@ const mockGetTeacherSubjects = vi.hoisted(() => vi.fn().mockResolvedValue(["subj
 const mockAddTeacherSubject = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const mockRemoveTeacherSubject = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
-vi.mock("@/app/api/teachers/route", () => ({
+vi.mock("@/lib/server/teacherServiceFactory", () => ({
   getTeacherService: () => ({
     getTeacherSubjects: mockGetTeacherSubjects,
     addTeacherSubject: mockAddTeacherSubject,

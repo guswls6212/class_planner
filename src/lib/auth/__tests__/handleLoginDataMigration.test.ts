@@ -206,8 +206,8 @@ describe("applyLocalDataChoice", () => {
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
     // supabase_user_id 설정 확인
     expect(storage["supabase_user_id"]).toBe("user-999");
-    // re-fetch 4번 호출
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // re-fetch 5번 호출 (students, subjects, sessions, enrollments, teachers)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
 
     vi.unstubAllGlobals();
   });
@@ -231,8 +231,8 @@ describe("applyLocalDataChoice", () => {
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
     // supabase_user_id 설정 확인
     expect(storage["supabase_user_id"]).toBe("user-999");
-    // re-fetch 4번 호출 확인 (students, subjects, sessions, enrollments)
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // re-fetch 5번 호출 확인 (students, subjects, sessions, enrollments, teachers)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
 
     vi.unstubAllGlobals();
   });

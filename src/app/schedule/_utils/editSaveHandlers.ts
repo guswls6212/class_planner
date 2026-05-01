@@ -32,7 +32,7 @@ export function buildEditOnSave(params: {
     enrollmentIds: string[],
     allEnrollments: Enrollment[]
   ) => string[];
-  tempTeacherId?: string;
+  tempTeacherId?: string | null;
   buildSessionSaveData: (
     currentEnrollmentIds: string[],
     currentStudentIds: string[],
@@ -41,12 +41,12 @@ export function buildEditOnSave(params: {
     startTime: string,
     endTime: string,
     room: string,
-    teacherId?: string
+    teacherId?: string | null
   ) => {
     enrollmentIds: string[];
     studentIds: string[];
     subjectId: string;
-    teacherId?: string;
+    teacherId?: string | null;
     weekday: number;
     startTime: string;
     endTime: string;
@@ -58,7 +58,7 @@ export function buildEditOnSave(params: {
       enrollmentIds: string[];
       studentIds: string[];
       subjectId: string;
-      teacherId?: string;
+      teacherId?: string | null;
       weekday: number;
       startTime: string;
       endTime: string;
@@ -149,9 +149,9 @@ export function buildEditOnSave(params: {
           return first?.subjectId || "";
         })();
 
-      const resolvedTeacherId =
+      const resolvedTeacherId: string | null | undefined =
         tempTeacherId !== undefined
-          ? tempTeacherId || undefined
+          ? tempTeacherId // null = clear intent, "uuid" = assign; keep as-is
           : editModalData.teacherId;
 
       const sessionData = buildSessionSaveData(
@@ -162,7 +162,7 @@ export function buildEditOnSave(params: {
         startTime,
         endTime,
         editModalData.room || "",
-        resolvedTeacherId ?? undefined
+        resolvedTeacherId
       );
 
       await updateSession(editModalData.id, sessionData);

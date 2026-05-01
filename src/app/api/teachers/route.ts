@@ -1,12 +1,8 @@
-import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { getTeacherService } from "@/lib/server/teacherServiceFactory";
 import { toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { NextRequest, NextResponse } from "next/server";
-
-export function getTeacherService() {
-  return ServiceFactory.createTeacherService();
-}
 
 export async function GET(request: NextRequest) {
   try {

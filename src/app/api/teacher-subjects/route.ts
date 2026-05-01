@@ -1,4 +1,4 @@
-import { getTeacherService } from "@/app/api/teachers/route";
+import { getTeacherService } from "@/lib/server/teacherServiceFactory";
 import { toErrorResponse } from "@/lib/errors";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { NextRequest, NextResponse } from "next/server";
