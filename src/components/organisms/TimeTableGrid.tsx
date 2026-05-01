@@ -26,10 +26,19 @@ import {
   useSensor,
   useSensors,
   closestCenter,
+  pointerWithin,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+
+// 포인터가 실제로 들어있는 droppable을 우선 선택, 없으면 가장 가까운 중심으로 fallback.
+// 시간 슬롯이 30px로 좁고 lane 경계 부근에서 closestCenter가 부정확한 문제 해소.
+const gridCollisionDetection: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  return within.length > 0 ? within : closestCenter(args);
+};
 import DragOverlayCard from "../molecules/DragOverlayCard";
 
 interface TimeTableGridProps {
@@ -352,18 +361,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 드래그가 없으면 원본 sessions Map을 그대로 반환 (참조 동일).
     // 드래그 세션을 포함한 결과를 반환 — TimeTableRow에서 SessionBlock 렌더 시 skip하고
     // 대신 DragGhost를 렌더한다. 이렇게 해야 weekdayMaxLanes 계산에 ghost lane이 반영된다.
+    // Bug5 fix: dragController 객체(매 렌더마다 새 참조)가 아닌 primitive 값으로 deps 지정.
+    const { draggedSession, targetWeekday, targetTime, targetYPosition } = dragController;
     const sessionsForRender = useMemo(
       () =>
         computeTentativeLayout(
           sessions,
           enrollments,
           subjects,
-          dragController.draggedSession,
-          dragController.targetWeekday,
-          dragController.targetTime,
-          dragController.targetYPosition,
+          draggedSession,
+          targetWeekday,
+          targetTime,
+          targetYPosition,
         ),
-      [sessions, enrollments, subjects, dragController],
+      [sessions, enrollments, subjects, draggedSession, targetWeekday, targetTime, targetYPosition],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
@@ -375,8 +386,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const DRAG_HOVER_PAD = 10;
     const weekdayWidths = useMemo(
       () => {
-        const isDraggingAny = dragController.isAnyDragging() || isStudentDragging;
-        const targetWd = dragController.targetWeekday;
+        const isDraggingAny = (dragController.isAnyDragging()) || isStudentDragging;
+        const targetWd = targetWeekday;
         const baseMap = isDraggingAny ? sessionsForRender : sessions;
         return Array.from({ length: 7 }, (_, wd) => {
           const daySessions = baseMap?.get(wd) || [];
@@ -400,7 +411,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             : baseW;
         });
       },
-      [sessions, sessionsForRender, dragController, isStudentDragging, laneWidth, expandedWeekdays]
+      // Bug5 fix: primitive values 사용. dragController.isAnyDragging()은 함수 호출이므로
+      // draggedSession null 여부로 대체 (drag 중이면 draggedSession !== null).
+      [sessions, sessionsForRender, draggedSession, targetWeekday, isStudentDragging, laneWidth, expandedWeekdays]
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;
@@ -459,8 +472,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const handleDndDragOver = useCallback(
       ({ over }: DragOverEvent) => {
         if (!over) { dragController.leaveTarget(); return; }
-        // over.id format: "weekday:time:yPosition"
-        const parts = (over.id as string).split(":");
+        // over.id format: "weekday|time|yPosition" ("|" 구분 — time에 ":" 포함)
+        const parts = (over.id as string).split("|");
         if (parts.length < 3) return;
         const [wd, time, yPos] = parts;
         dragController.hoverTarget(Number(wd), time, Number(yPos));
@@ -472,7 +485,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       ({ active, over }: DragEndEvent) => {
         if (over && onSessionDrop) {
           const sessionId = active.id as string;
-          const parts = (over.id as string).split(":");
+          const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
             const [wd, time, yPos] = parts;
             onSessionDrop(sessionId, Number(wd), time, Number(yPos));
@@ -499,7 +512,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     return (
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={gridCollisionDetection}
         onDragStart={handleDndDragStart}
         onDragOver={handleDndDragOver}
         onDragEnd={handleDndDragEnd}

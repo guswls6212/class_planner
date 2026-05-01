@@ -114,11 +114,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
-  // dnd-kit drag 시작 시 popover 자동 닫기 (drag source가 popover 카드일 때)
+  // Bug4 fix: drag 시작 시 popover 닫기는 DraggableSessionCard 노드를 mid-drag 중 unmount해서
+  // dnd-kit이 active draggable을 잃는다. 대신 drag가 종료(draggedSession → null)될 때 닫는다.
+  const prevDraggedRef = React.useRef<Session | null>(null);
   React.useEffect(() => {
-    if (dragPreview?.draggedSession) {
+    const current = dragPreview?.draggedSession ?? null;
+    if (prevDraggedRef.current !== null && current === null) {
+      // drag 완료 후 popover 닫기 (drag 중에는 노드 유지)
       setIsPopoverOpen(false);
     }
+    prevDraggedRef.current = current;
   }, [dragPreview?.draggedSession]);
 
   // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
