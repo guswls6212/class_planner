@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Users } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
 import type { Session, Subject } from "@/lib/planner";
@@ -29,8 +30,6 @@ interface SessionBlockProps {
   yPosition?: number;
   height?: number;
   onClick: () => void;
-  onDragStart?: (e: React.DragEvent, session: Session) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
   selectedStudentIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
@@ -66,8 +65,6 @@ function SessionBlock({
   yPosition = 1,
   height,
   onClick,
-  onDragStart,
-  onDragEnd,
   selectedStudentIds,
   isMobile = false,
   isDragging = false,
@@ -80,7 +77,12 @@ function SessionBlock({
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMovedRef = useRef(false);
-  const cardRef = useRef<HTMLButtonElement>(null);
+
+  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
+    id: session?.id ?? "__null__",
+    disabled: isReadOnly || !session,
+    data: { session },
+  });
 
   // Hook must be called before any early return (Rules of Hooks).
   const sessionStatus = useSessionStatus(
@@ -205,36 +207,6 @@ function SessionBlock({
     e.stopPropagation();
     if (!isReadOnly && onClick) {
       onClick();
-    }
-  };
-
-  const handleDragStart = (e: React.DragEvent) => {
-    try {
-      e.dataTransfer.setData("text/plain", `session:${session.id}`);
-      e.dataTransfer.effectAllowed = "move";
-      logger.info("드래그 데이터 설정 완료", { sessionId: session.id });
-    } catch (error) {
-      logger.error("드래그 데이터 설정 실패", undefined, error as Error);
-    }
-    try {
-      // 2C: drag image = whole card (cardRef), not the grip handle element
-      const imageEl: HTMLElement = cardRef.current ?? (e.currentTarget as HTMLElement);
-      e.dataTransfer.setDragImage(imageEl, 0, 0);
-    } catch (_) {
-      // jsdom 등 setDragImage 미지원 환경에서 안전하게 무시
-    }
-    if (onDragStart) {
-      onDragStart(e, session);
-    }
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    logger.info("SessionBlock 드래그 종료", {
-      sessionId: session.id,
-      dropEffect: e.dataTransfer?.dropEffect,
-    });
-    if (onDragEnd) {
-      onDragEnd(e);
     }
   };
 
@@ -376,7 +348,6 @@ function SessionBlock({
       aria-label={ariaLabel}
     >
       <button
-        ref={cardRef}
         type="button"
         style={buttonStyle}
         onClick={handleClick}
@@ -390,12 +361,12 @@ function SessionBlock({
           .filter(Boolean)
           .join(" ")}
       >
-        {/* 2C: 드래그 핸들 — grip 영역만 draggable. 카드 전체 클릭(=모달)과 분리. */}
-        {!isMobile && !isReadOnly && (
+        {/* Tier 3: 드래그 핸들 — dnd-kit useDraggable. isMobile 게이트 제거(TouchSensor 처리). */}
+        {!isReadOnly && (
           <div
-            draggable={true}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
+            ref={setDragRef}
+            {...attributes}
+            {...listeners}
             onClick={(e) => e.stopPropagation()}
             data-testid="session-drag-handle"
             className="absolute top-1 left-0.5 z-[2] flex flex-col gap-[2px] p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing"

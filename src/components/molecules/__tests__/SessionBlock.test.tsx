@@ -1,3 +1,4 @@
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 // import { logger } from "../../../lib/logger";
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +12,25 @@ import SessionBlock, {
 // tests deterministic regardless of the day/time tests run.
 vi.mock("../../../hooks/useSessionStatus", () => ({
   useSessionStatus: () => "upcoming",
+}));
+
+// Mock @dnd-kit/core so useDraggable works outside a real DndContext
+vi.mock("@dnd-kit/core", () => ({
+  useDraggable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: () => {},
+  }),
+  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PointerSensor: class {},
+  TouchSensor: class {},
+  MouseSensor: class {},
+  KeyboardSensor: class {},
+  useSensor: () => ({}),
+  useSensors: (...args: unknown[]) => args,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  closestCenter: () => null,
+  closestCorners: () => null,
 }));
 
 // Mock console.log to avoid noise in tests
@@ -591,26 +611,12 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveTextContent("외 1명");
   });
 
-  it("onDragStart가 드래그 핸들에서 시작 시 호출되어야 한다", () => {
-    const onDragStart = vi.fn();
-    render(
-      <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
-    );
-    // 2C: drag handlers are on the grip handle, not the button itself
+  it("drag handle이 렌더되고 포인터 이벤트를 받을 수 있다", () => {
+    render(<SessionBlock {...defaultProps} isReadOnly={false} />);
     const handle = screen.getByTestId("session-drag-handle");
-    fireEvent.dragStart(handle);
-    expect(onDragStart).toHaveBeenCalledTimes(1);
-  });
-
-  it("onDragEnd가 드래그 핸들에서 종료 시 호출되어야 한다", () => {
-    const onDragEnd = vi.fn();
-    render(
-      <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
-    );
-    // 2C: drag handlers are on the grip handle, not the button itself
-    const handle = screen.getByTestId("session-drag-handle");
-    fireEvent.dragEnd(handle);
-    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(handle).toBeInTheDocument();
+    // dnd-kit useDraggable uses pointer events — no HTML5 draggable attribute
+    expect(handle).not.toHaveAttribute("draggable", "true");
   });
 
   it("hasConflict=true 일 때 빨간 borderLeft + ⚠ 아이콘이 렌더되어야 한다", () => {
@@ -1172,9 +1178,12 @@ describe("2C 드래그 핸들 — grip 영역만 draggable", () => {
     expect(screen.getByTestId("session-drag-handle")).toBeInTheDocument();
   });
 
-  it("drag-handle 요소는 draggable=true이다", () => {
+  it("drag-handle은 HTML5 draggable 속성 없이 dnd-kit으로 동작한다", () => {
     render(<SessionBlock {...baseProps} />);
-    expect(screen.getByTestId("session-drag-handle")).toHaveAttribute("draggable", "true");
+    const handle = screen.getByTestId("session-drag-handle");
+    expect(handle).toBeInTheDocument();
+    // dnd-kit useDraggable uses pointer events — no HTML5 draggable attribute
+    expect(handle).not.toHaveAttribute("draggable", "true");
   });
 
   it("main button은 draggable이 아니다", () => {
@@ -1190,8 +1199,10 @@ describe("2C 드래그 핸들 — grip 영역만 draggable", () => {
     expect(screen.queryByTestId("session-drag-handle")).not.toBeInTheDocument();
   });
 
-  it("isMobile=true 시 drag-handle이 렌더되지 않는다", () => {
+  // isMobile 게이트 제거됨 (Tier 3): TouchSensor가 모바일 드래그를 처리하므로
+  // grip은 isMobile=true 시에도 렌더된다.
+  it("isMobile=true 시에도 drag-handle이 렌더된다 (TouchSensor 처리)", () => {
     render(<SessionBlock {...baseProps} isMobile={true} />);
-    expect(screen.queryByTestId("session-drag-handle")).not.toBeInTheDocument();
+    expect(screen.getByTestId("session-drag-handle")).toBeInTheDocument();
   });
 });
