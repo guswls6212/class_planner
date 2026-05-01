@@ -94,3 +94,45 @@ describe("preflightCheck — 경고 없는 경우", () => {
     expect(result.suggestSplit).toBeNull();
   });
 });
+
+describe("preflightCheck — 학생 필터 모드 (isStudentFilter)", () => {
+  it("isStudentFilter=true이면 overlap 경고가 제거된다", () => {
+    const sessions = [
+      s("a", 0, "10:00", "12:00"),
+      s("b", 0, "10:00", "12:00"),
+      s("c", 0, "10:00", "12:00"),
+      s("d", 0, "10:00", "12:00"), // 4건 → 기본 모드에서 overlap 경고
+    ];
+    const result = preflightCheck(sessions, { isStudentFilter: true });
+    expect(result.warnings.some((w) => w.type === "overlap")).toBe(false);
+  });
+
+  it("isStudentFilter=true이면 suggestSplit이 null이다", () => {
+    const sessions = [
+      s("a", 0, "10:00", "12:00"),
+      s("b", 0, "10:00", "12:00"),
+      s("c", 0, "10:00", "12:00"),
+      s("d", 0, "10:00", "12:00"),
+    ];
+    const result = preflightCheck(sessions, { isStudentFilter: true });
+    expect(result.suggestSplit).toBeNull();
+  });
+
+  it("isStudentFilter=true여도 out-of-range 경고는 유지된다", () => {
+    const sessions = [s("a", 1, "08:00", "09:00")];
+    const result = preflightCheck(sessions, { isStudentFilter: true });
+    expect(result.warnings.some((w) => w.type === "out-of-range")).toBe(true);
+  });
+
+  it("isStudentFilter=false(기본)이면 overlap 경고가 나온다", () => {
+    const sessions = [
+      s("a", 0, "10:00", "12:00"),
+      s("b", 0, "10:00", "12:00"),
+      s("c", 0, "10:00", "12:00"),
+      s("d", 0, "10:00", "12:00"),
+    ];
+    const result = preflightCheck(sessions, {});
+    expect(result.warnings.some((w) => w.type === "overlap")).toBe(true);
+    expect(result.suggestSplit).toBe("per-teacher");
+  });
+});

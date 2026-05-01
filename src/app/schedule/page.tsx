@@ -965,8 +965,8 @@ function SchedulePageContent(): JSX.Element {
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
     const allSessions = Array.from(displaySessions.values()).flat();
-    return preflightCheck(allSessions, {});
-  }, [isPdfDialogOpen, displaySessions]);
+    return preflightCheck(allSessions, { isStudentFilter: selectedStudentIds.length > 0 });
+  }, [isPdfDialogOpen, displaySessions, selectedStudentIds]);
 
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
