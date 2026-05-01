@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useReducer } from "react";
 import type { Session } from "@/lib/planner";
 
 // ── State machine ──────────────────────────────────────────────────────────
@@ -71,13 +71,6 @@ export interface DragControllerResult {
 
 export function useDragController(): DragControllerResult {
   const [state, dispatch] = useReducer(dragReducer, { phase: "idle" });
-
-  // 창 전환 등으로 dragend 누락 시 자동 리셋 (기존 TimeTableGrid useEffect 흡수)
-  useEffect(() => {
-    const reset = () => dispatch({ type: "CANCEL" });
-    document.addEventListener("dragend", reset);
-    return () => document.removeEventListener("dragend", reset);
-  }, []);
 
   const startSessionDrag = useCallback((session: Session) => {
     dispatch({ type: "START_SESSION", session });

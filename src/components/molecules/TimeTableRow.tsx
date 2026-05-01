@@ -69,10 +69,6 @@ interface TimeTableRowProps {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isMobile?: boolean;
-  // Drag handlers
-  onDragStart?: (session: Session) => void;
-  onDragOver?: (weekday: number, time: string, yPosition: number) => void;
-  onDragEnd?: () => void;
   dragPreview?: DragPreviewState;
   // 오늘 열 강조 (주간 헤더 날짜 표시용)
   isToday?: boolean;
@@ -108,9 +104,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   teachers = [],
   colorBy = "subject",
   isMobile = false,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
   dragPreview,
   isToday = false,
   nowLinePx = null,
@@ -120,7 +113,14 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // dnd-kit drag 시작 시 popover 자동 닫기 (drag source가 popover 카드일 때)
+  React.useEffect(() => {
+    if (dragPreview?.draggedSession) {
+      setIsPopoverOpen(false);
+    }
+  }, [dragPreview?.draggedSession]);
+
   // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
   const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
   const handleToggleExpand = onToggleExpand ?? (() => setInternalExpanded((p) => !p));
@@ -178,58 +178,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // Lane width for horizontal overlap stacking within this weekday column
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
-
-  // 컨테이너 레벨 dragover — 커서 좌표로 (time, yPosition) 직접 계산.
-  // 드래그 중인 세션(pointer-events:auto, z=500)이 셀을 가로막아도 버블링으로 도달.
-  const handleContainerDragOver = React.useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      if (!isAnyDragging) return;
-      e.preventDefault();
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect || !onDragOver) return;
-      const target = coordsToDropTarget(
-        e.clientX - rect.left,
-        e.clientY - rect.top,
-        laneWidth,
-        effectiveLanes,
-        SLOT_HEIGHT_PX,
-        timeSlots30Min,
-        DRAG_HOVER_PAD,
-        isDraggingToThis,
-      );
-      if (target) onDragOver(weekday, target.time, target.yPosition);
-    },
-    [isAnyDragging, weekday, onDragOver, laneWidth, effectiveLanes, timeSlots30Min, isDraggingToThis],
-  );
-
-  // 컨테이너 레벨 onDrop — 셀이 drop을 받지 못한 경우의 fallback
-  const handleContainerDrop = React.useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      if (!isAnyDragging) return;
-      e.preventDefault();
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const target = coordsToDropTarget(
-        e.clientX - rect.left,
-        e.clientY - rect.top,
-        laneWidth,
-        effectiveLanes,
-        SLOT_HEIGHT_PX,
-        timeSlots30Min,
-        DRAG_HOVER_PAD,
-        isDraggingToThis,
-      );
-      if (!target) return;
-      const data = e.dataTransfer?.getData("text/plain");
-      if (data?.startsWith("session:")) {
-        const sessionId = data.replace("session:", "");
-        if (onSessionDrop) onSessionDrop(sessionId, weekday, target.time, target.yPosition);
-      } else if (data) {
-        if (onDrop) onDrop(weekday, target.time, data);
-      }
-    },
-    [isAnyDragging, weekday, onDrop, onSessionDrop, laneWidth, effectiveLanes, timeSlots30Min, isDraggingToThis],
-  );
 
   // 학생 필터 활성 시 매칭 세션을 앞 lane에 우선 배치 (렌더 타임 재정렬, yPosition 불변)
   // 필터 미활성 시에는 yPosition 오름차순 정렬 — useDisplaySessions의 startsAt 정렬과 독립적으로
@@ -303,12 +251,9 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   return (
     <div
-      ref={containerRef}
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
       data-testid={`time-table-column-${weekday}`}
       data-weekday={weekday}
-      onDragOver={handleContainerDragOver}
-      onDrop={handleContainerDrop}
       style={{
         height: `${totalHeight}px`,
         width: `${width}px`,

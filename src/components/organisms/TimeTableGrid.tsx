@@ -11,7 +11,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { logger } from "../../lib/logger";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
@@ -89,10 +88,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
   ) => {
     // 반응형: 모바일 뷰포트 감지 (SSR-safe)
     const isMobile = useMediaQuery("(max-width: 767px)");
-
-    // 터치 디바이스 감지 (drag-and-drop 비활성화용)
-    const isTouchDevice =
-      typeof window !== "undefined" && "ontouchstart" in window;
 
     const dragController = useDragController();
 
@@ -501,40 +496,6 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [dragController, onSessionDrop, getSavedScrollPosition],
     );
 
-    const handleDragStart = useCallback(
-      (session: Session) => {
-        if (isTouchDevice) return;
-        dragController.startSessionDrag(session);
-      },
-      [isTouchDevice, dragController]
-    );
-
-    const handleDragOver = useCallback(
-      (weekday: number, time: string, yPosition: number) => {
-        if (isTouchDevice) return;
-        if (!dragController.draggedSession) return;
-        dragController.hoverTarget(weekday, time, yPosition);
-      },
-      [dragController, isTouchDevice]
-    );
-
-    const handleDragEnd = useCallback(() => {
-      logger.info("TimeTableGrid 드래그 종료");
-      dragController.cancelDrag();
-
-      // 세션 드래그앤드롭 후 스크롤 위치 복원 (다음 페인트 직후)
-      requestAnimationFrame(() => {
-        const element = gridRef.current;
-        if (element) {
-          const savedPosition = getSavedScrollPosition();
-          if (savedPosition) {
-            element.scrollLeft = savedPosition.scrollLeft;
-            element.scrollTop = savedPosition.scrollTop;
-          }
-        }
-      });
-    }, [dragController, getSavedScrollPosition]);
-
     return (
       <DndContext
         sensors={sensors}
@@ -651,10 +612,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 teachers={teachers}
                 colorBy={colorBy}
                 isMobile={isMobile}
-                onDragStart={isTouchDevice ? undefined : handleDragStart}
-                onDragOver={isTouchDevice ? undefined : handleDragOver}
-                onDragEnd={isTouchDevice ? undefined : handleDragEnd}
-                dragPreview={isTouchDevice ? undefined : {
+                dragPreview={{
                   draggedSession: dragController.draggedSession,
                   targetWeekday: dragController.targetWeekday,
                   targetTime: dragController.targetTime,
