@@ -73,7 +73,7 @@ export default function PdfExportRangeModal({
       return;
     }
     if (scope === "per-teacher") {
-      onExport({ startDate: rangeStart, endDate: rangeEnd, perTeacher: true });
+      onExport({ startDate: formatLocalISO(weekStart), endDate: formatLocalISO(weekEnd), perTeacher: true });
       return;
     }
     onExport({ startDate: rangeStart, endDate: rangeEnd });
