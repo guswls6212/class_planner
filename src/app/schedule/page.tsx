@@ -1293,6 +1293,11 @@ function SchedulePageContent(): JSX.Element {
     return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
   })();
 
+  const teachersForPdfModal = useMemo(
+    () => teachers.map((t) => ({ id: t.id, name: t.name, color: t.color })),
+    [teachers]
+  );
+
   return (
     <div className="timetable-container p-4">
       {/* Row 1: 제목(좌) + 액션(우) */}
@@ -1723,7 +1728,7 @@ function SchedulePageContent(): JSX.Element {
         viewMode={viewMode}
         selectedDate={selectedDate}
         isExporting={isDownloading}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? undefined }))}
+        teachers={teachersForPdfModal}
         preflightResult={pdfPreflightResult}
         hasStudentFilter={selectedStudentIds.length > 0}
       />
