@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import type { ScheduleViewMode } from "@/hooks/useScheduleView";
 import {
@@ -26,6 +26,7 @@ interface Props {
   isExporting?: boolean;
   teachers?: { id: string; name: string }[];
   preflightResult?: PreflightResult;
+  hasStudentFilter?: boolean;
 }
 
 type Scope = "current" | "range" | "per-teacher";
@@ -39,10 +40,17 @@ export default function PdfExportRangeModal({
   isExporting = false,
   teachers = [],
   preflightResult,
+  hasStudentFilter = false,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
   const [scope, setScope] = useState<Scope>("current");
+
+  useEffect(() => {
+    if (hasStudentFilter && scope === "per-teacher") {
+      setScope("current");
+    }
+  }, [hasStudentFilter, scope]);
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => {
@@ -115,7 +123,7 @@ export default function PdfExportRangeModal({
                 </li>
               ))}
             </ul>
-            {preflightResult.suggestSplit === "per-teacher" && (
+            {preflightResult.suggestSplit === "per-teacher" && !hasStudentFilter && (
               <button
                 type="button"
                 onClick={() => setScope("per-teacher")}
@@ -189,31 +197,33 @@ export default function PdfExportRangeModal({
                 )}
               </div>
             )}
-            <label
-              className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
-            >
-              <input
-                type="radio"
-                name="pdf-scope"
-                aria-label="강사별로 1장씩"
-                value="per-teacher"
-                checked={scope === "per-teacher"}
-                onChange={() => setScope("per-teacher")}
-                disabled={noTeachers}
-              />
-              <span className="text-sm text-[var(--color-text-primary)]">
-                강사별로 1장씩
-              </span>
-              {noTeachers ? (
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  (강사가 없습니다)
+            {!hasStudentFilter && (
+              <label
+                className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
+              >
+                <input
+                  type="radio"
+                  name="pdf-scope"
+                  aria-label="강사별로 1장씩"
+                  value="per-teacher"
+                  checked={scope === "per-teacher"}
+                  onChange={() => setScope("per-teacher")}
+                  disabled={noTeachers}
+                />
+                <span className="text-sm text-[var(--color-text-primary)]">
+                  강사별로 1장씩
                 </span>
-              ) : (
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  (강사 수만큼 파일 다운로드)
-                </span>
-              )}
-            </label>
+                {noTeachers ? (
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    (강사가 없습니다)
+                  </span>
+                ) : (
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    (강사 수만큼 파일 다운로드)
+                  </span>
+                )}
+              </label>
+            )}
           </div>
         )}
 

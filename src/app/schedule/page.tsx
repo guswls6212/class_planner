@@ -1721,6 +1721,7 @@ function SchedulePageContent(): JSX.Element {
         isExporting={isDownloading}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
         preflightResult={pdfPreflightResult}
+        hasStudentFilter={selectedStudentIds.length > 0}
       />
     </div>
   );
