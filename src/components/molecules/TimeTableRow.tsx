@@ -9,6 +9,7 @@ import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { sessionContainsSelected } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
+import HiddenSessionsPopover from "./HiddenSessionsPopover";
 
 // D-hybrid: columns with ≥4 yPositions show only the first 3 + "+N" inline chip
 const OVERFLOW_THRESHOLD = 4;
@@ -95,6 +96,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onToggleExpand,
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
   // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
   const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
   const handleToggleExpand = onToggleExpand ?? (() => setInternalExpanded((p) => !p));
@@ -459,12 +461,21 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         );
       })()}
 
-      {/* Inline +N chip — visible when overflow (collapsed or expanded) so user can toggle */}
+      {/* Overflow chip:
+            - 미펼침: "+N" 클릭 → popover 오픈 (직접 드래그 가능)
+            - 펼침:   "−"  클릭 → collapse (handleToggleExpand) */}
       {isOverflow && chipTopPx !== null && (
         <button
           type="button"
           className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
-          onClick={(e) => { e.stopPropagation(); handleToggleExpand(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isExpanded) {
+              handleToggleExpand();
+            } else {
+              setIsPopoverOpen((p) => !p);
+            }
+          }}
           aria-label={isExpanded ? "세션 접기" : `${hiddenSessions.length}개 세션 더 보기`}
           aria-expanded={isExpanded}
           data-testid={`overflow-expand-btn-${weekday}`}
@@ -477,6 +488,29 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         >
           {isExpanded ? "−" : `+${hiddenSessions.length}`}
         </button>
+      )}
+
+      {/* Overflow popover — 미펼침 상태에서 +N 칩 클릭 시 숨겨진 세션을 직접 드래그 */}
+      {isPopoverOpen && !isExpanded && hiddenSessions.length > 0 && chipTopPx !== null && (
+        <HiddenSessionsPopover
+          hiddenSessions={hiddenSessions}
+          subjects={subjects || []}
+          enrollments={enrollments}
+          students={students}
+          anchorTop={chipTopPx}
+          onClose={() => setIsPopoverOpen(false)}
+          onExpandAll={() => {
+            handleToggleExpand();
+            setIsPopoverOpen(false);
+          }}
+          onDragStart={(_e, session) => {
+            if (onDragStart) onDragStart(session);
+          }}
+          onDragEnd={() => {
+            setIsPopoverOpen(false);
+            if (onDragEnd) onDragEnd();
+          }}
+        />
       )}
     </div>
   );
