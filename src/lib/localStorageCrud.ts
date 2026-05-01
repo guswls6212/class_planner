@@ -693,7 +693,9 @@ export const addTeacherToLocal = (
   try {
     const data = getClassPlannerData();
 
-    const isDuplicate = data.teachers.some((t) => t.name === name.trim());
+    const isDuplicate = data.teachers.some(
+      (t) => t.name.trim().toLowerCase() === name.trim().toLowerCase()
+    );
     if (isDuplicate) {
       return {
         success: false,
@@ -708,7 +710,7 @@ export const addTeacherToLocal = (
       userId: userId ?? null,
       ...(profile?.email !== undefined && { email: profile.email }),
       ...(profile?.phone !== undefined && { phone: profile.phone }),
-      ...(profile?.role !== undefined && { role: profile.role }),
+      role: profile?.role !== undefined ? profile.role : "member",
       ...(profile?.notes !== undefined && { notes: profile.notes }),
       ...(profile?.subjectIds !== undefined && { subjectIds: profile.subjectIds }),
     };
@@ -759,7 +761,9 @@ export const updateTeacherInLocal = (
 
     if (updates.name) {
       const isDuplicate = data.teachers.some(
-        (t, index) => t.name === updates.name!.trim() && index !== teacherIndex
+        (t, index) =>
+          t.name.trim().toLowerCase() === updates.name!.trim().toLowerCase() &&
+          index !== teacherIndex
       );
       if (isDuplicate) {
         return { success: false, error: "이미 같은 이름의 강사가 존재합니다." };

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addStudentToLocal,
   addSubjectToLocal,
+  addTeacherToLocal,
   clearClassPlannerData,
   clearUserClassPlannerData,
   deleteStudentFromLocal,
@@ -18,6 +19,7 @@ import {
   setClassPlannerData,
   updateStudentInLocal,
   updateSubjectInLocal,
+  updateTeacherInLocal,
 } from "../localStorageCrud";
 
 // Mock dependencies
@@ -407,6 +409,75 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(subjects).toHaveLength(2);
       expect(subjects[0].name).toBe("수학");
       expect(subjects[1].name).toBe("영어");
+    });
+  });
+
+  describe("Teachers CRUD", () => {
+    beforeEach(() => {
+      localStorageMock.getItem.mockReturnValue(
+        JSON.stringify({
+          students: [],
+          subjects: [],
+          sessions: [],
+          enrollments: [],
+          teachers: [
+            { id: "teacher-1", name: "김강사", color: "#ff0000", userId: null, role: "member" },
+          ],
+          version: "1.0",
+          lastModified: new Date().toISOString(),
+        })
+      );
+    });
+
+    it("강사를 성공적으로 추가해야 한다", () => {
+      const result = addTeacherToLocal("이선생", "#0000ff", null);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("이선생");
+      expect(result.data?.color).toBe("#0000ff");
+    });
+
+    it("role이 제공되지 않으면 기본값 member로 저장해야 한다", () => {
+      const result = addTeacherToLocal("박선생", "#00ff00", null);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.role).toBe("member");
+    });
+
+    it("중복 이름 강사 추가 시 에러를 반환해야 한다", () => {
+      const result = addTeacherToLocal("김강사", "#ff0000", null);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
+    });
+
+    it("중복 이름(공백 포함) 강사 추가 시 에러를 반환해야 한다", () => {
+      const result = addTeacherToLocal(" 김강사 ", "#ff0000", null);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
+    });
+
+    it("강사 수정 시 다른 강사와 중복 이름이면 에러를 반환해야 한다", () => {
+      localStorageMock.getItem.mockReturnValue(
+        JSON.stringify({
+          students: [],
+          subjects: [],
+          sessions: [],
+          enrollments: [],
+          teachers: [
+            { id: "teacher-1", name: "김강사", color: "#ff0000", userId: null, role: "member" },
+            { id: "teacher-2", name: "이선생", color: "#0000ff", userId: null, role: "member" },
+          ],
+          version: "1.0",
+          lastModified: new Date().toISOString(),
+        })
+      );
+
+      const result = updateTeacherInLocal("teacher-2", { name: "김강사" });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
     });
   });
 
