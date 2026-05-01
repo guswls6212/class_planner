@@ -1001,7 +1001,10 @@ function SchedulePageContent(): JSX.Element {
     try {
       if (range.perTeacher) {
         const allSessions = Array.from(displaySessions.values()).flat();
-        for (const teacher of teachers) {
+        const teachersToExport = range.selectedTeacherIds?.length
+          ? teachers.filter((t) => range.selectedTeacherIds!.includes(t.id))
+          : teachers;
+        for (const teacher of teachersToExport) {
           const teacherSessions = allSessions.filter(
             (s) => s.teacherId === teacher.id
           );
@@ -1720,7 +1723,7 @@ function SchedulePageContent(): JSX.Element {
         viewMode={viewMode}
         selectedDate={selectedDate}
         isExporting={isDownloading}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? undefined }))}
         preflightResult={pdfPreflightResult}
         hasStudentFilter={selectedStudentIds.length > 0}
       />
