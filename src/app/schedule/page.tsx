@@ -1022,6 +1022,16 @@ function SchedulePageContent(): JSX.Element {
           );
         }
       } else {
+        // Determine context title based on active filter
+        let pdfTitle: string | undefined;
+        if (selectedStudentIds.length > 0) {
+          const student = students.find((s) => s.id === selectedStudentIds[0]);
+          if (student) pdfTitle = `${student.name} 학생 시간표`;
+        } else if (selectedTeacherIds.length > 0) {
+          const teacher = teachers.find((t) => t.id === selectedTeacherIds[0]);
+          if (teacher) pdfTitle = `${teacher.name} 선생님 시간표`;
+        }
+
         await renderSchedulePdf(
           Array.from(displaySessions.values()).flat(),
           subjects,
@@ -1030,6 +1040,7 @@ function SchedulePageContent(): JSX.Element {
           teachers,
           {
             academyName: "CLASS PLANNER",
+            title: pdfTitle,
             filterStudentId: selectedStudentIds[0] ?? undefined,
             weekRange: range,
           }
