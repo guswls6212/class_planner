@@ -2,7 +2,7 @@ import type { Session, Subject } from "@lib/planner";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { logger } from "../../../lib/logger";
-import { TimeTableRow } from "../TimeTableRow";
+import { TimeTableRow, coordsToDropTarget } from "../TimeTableRow";
 
 // Mock dependencies
 vi.mock("../TimeTableCell", () => ({
@@ -927,5 +927,165 @@ describe("5423339 회귀 — 필터 미활성: yPosition 기반 laneIdx (left �
     render(<TimeTableRow {...baseProps} />);
     const el = screen.getByTestId("session-s_y3");
     expect(el.getAttribute("data-left")).toBe("80");
+  });
+});
+
+// ===================================================================
+// coordsToDropTarget — 좌표→(time, yPosition) 변환 단위 테스트 (Task 2A)
+// ===================================================================
+describe("coordsToDropTarget — 좌표→(time, yPosition) 변환", () => {
+  const timeSlots = ["09:00", "09:30", "10:00", "10:30"];
+  const SLOT_H = 32;
+  const LANE_W = 40;
+  const LANES = 3;
+  const PAD = 10;
+
+  it("x=0, y=0 → lane 1, 09:00", () => {
+    const r = coordsToDropTarget(0, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 1 });
+  });
+
+  it("x=40, y=0 → lane 2, 09:00", () => {
+    const r = coordsToDropTarget(40, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x=79, y=0 → still lane 2 (floor division)", () => {
+    const r = coordsToDropTarget(79, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x=80, y=0 → lane 3", () => {
+    const r = coordsToDropTarget(80, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 3 });
+  });
+
+  it("y=32 → 09:30 slot", () => {
+    const r = coordsToDropTarget(0, 32, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:30", yPosition: 1 });
+  });
+
+  it("isDraggingToThis=true: x=10 → lane 1 (subtract PAD)", () => {
+    const r = coordsToDropTarget(10, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, true);
+    expect(r).toEqual({ time: "09:00", yPosition: 1 });
+  });
+
+  it("isDraggingToThis=true: x=50 → lane 2 (subtract PAD → 40)", () => {
+    const r = coordsToDropTarget(50, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, true);
+    expect(r).toEqual({ time: "09:00", yPosition: 2 });
+  });
+
+  it("x 범위 초과 → 마지막 lane으로 클램프", () => {
+    const r = coordsToDropTarget(9999, 0, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "09:00", yPosition: 3 });
+  });
+
+  it("y 범위 초과 → 마지막 slot으로 클램프", () => {
+    const r = coordsToDropTarget(0, 9999, LANE_W, LANES, SLOT_H, timeSlots, PAD, false);
+    expect(r).toEqual({ time: "10:30", yPosition: 1 });
+  });
+
+  it("timeSlots가 비어있으면 null 반환", () => {
+    const r = coordsToDropTarget(0, 0, LANE_W, LANES, SLOT_H, [], PAD, false);
+    expect(r).toBeNull();
+  });
+});
+
+// ===================================================================
+// Task 3 (B): 드래그 중 레인 시각화 — 경계선 + 하이라이트
+// ===================================================================
+describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () => {
+  const makeS = (id: string, yPos: number) =>
+    ({
+      id,
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+      startsAt: "09:00",
+      endsAt: "10:00",
+      weekStartDate: "",
+      enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+      weekday: 0,
+      yPosition: yPos,
+    }) as Session;
+
+  const twoSessionMap = () => {
+    const m = new Map<number, Session[]>();
+    m.set(0, [makeS("s1", 1), makeS("s2", 2)]);
+    return m;
+  };
+
+  const dragPreviewAt = (targetWeekday: number | null, yPos: number | null) => ({
+    draggedSession: makeS("s1", 1),
+    targetWeekday,
+    targetTime: "09:00",
+    targetYPosition: yPos,
+  });
+
+  const defaultProps = {
+    weekday: 0,
+    width: 240,
+    subjects: [{ id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#3B82F6" }],
+    enrollments: [{ id: "550e8400-e29b-41d4-a716-446655440301", studentId: "550e8400-e29b-41d4-a716-446655440001", subjectId: "550e8400-e29b-41d4-a716-446655440101" }],
+    students: [{ id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" }],
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("드래그 중 effectiveLanes>=2이면 lane-boundary-0 렌더된다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(1, 1)}
+      />
+    );
+    expect(screen.getByTestId("lane-boundary-0")).toBeInTheDocument();
+  });
+
+  it("드래그 안 하면 lane-boundary 없다", () => {
+    render(<TimeTableRow {...defaultProps} sessions={twoSessionMap()} />);
+    expect(screen.queryByTestId("lane-boundary-0")).not.toBeInTheDocument();
+  });
+
+  it("targetWeekday===weekday && targetYPosition!=null → lane-highlight 렌더된다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2)}
+      />
+    );
+    expect(screen.getByTestId("lane-highlight")).toBeInTheDocument();
+  });
+
+  it("targetWeekday!==weekday → lane-highlight 없다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(1, 2)}
+      />
+    );
+    expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
+  });
+
+  it("targetYPosition=null → lane-highlight 없다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, null)}
+      />
+    );
+    expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
   });
 });

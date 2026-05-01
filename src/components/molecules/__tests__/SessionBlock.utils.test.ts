@@ -157,13 +157,13 @@ describe("getSessionBlockStyles", () => {
     expect(styles.zIndex).toBe(100 + yPosition);
   });
 
-  it("드래그 중 드래그 대상 세션도 zIndex를 100+yPosition으로 유지한다", () => {
+  it("드래그 중인 세션의 zIndex는 500으로 상승한다 (항상 맨 앞)", () => {
     const yPosition = 3;
     const styles = getSessionBlockStyles(
       0, 100, 47, yPosition, "#FF0000",
       true, true, true
     );
-    expect(styles.zIndex).toBe(100 + yPosition);
+    expect(styles.zIndex).toBe(500);
   });
 
   it("비드래그 상태의 기본 zIndex는 100+yPosition이다", () => {
@@ -199,6 +199,30 @@ describe("getSessionBlockStyles", () => {
     // getSessionBlockStyles는 flat color만 반환 — gradient 변환은 SessionBlock.tsx에서 수행
     expect(styles.background).toBe(customColor);
     expect(styles.borderLeft).toBeUndefined();
+  });
+
+  it("드래그 중인 세션(isDraggedSession=true, isAnyDragging=true)의 zIndex는 500이다", () => {
+    const styles = getSessionBlockStyles(
+      0, 120, 0, 2, "#3B82F6",
+      /*isDragging*/ true, /*isDraggedSession*/ true, /*isAnyDragging*/ true
+    );
+    expect(styles.zIndex).toBe(500);
+  });
+
+  it("비드래그 세션의 zIndex는 100 + yPosition이다", () => {
+    const styles = getSessionBlockStyles(
+      0, 120, 0, 3, "#3B82F6",
+      false, false, false
+    );
+    expect(styles.zIndex).toBe(103);
+  });
+
+  it("isAnyDragging=true이지만 isDraggedSession=false이면 zIndex는 100 + yPosition이다", () => {
+    const styles = getSessionBlockStyles(
+      0, 120, 0, 2, "#3B82F6",
+      true, false, true
+    );
+    expect(styles.zIndex).toBe(102);
   });
 });
 

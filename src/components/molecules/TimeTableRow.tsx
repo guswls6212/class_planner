@@ -14,6 +14,29 @@ import HiddenSessionsPopover from "./HiddenSessionsPopover";
 // D-hybrid: columns with ≥4 yPositions show only the first 3 + "+N" inline chip
 const OVERFLOW_THRESHOLD = 4;
 
+/**
+ * 커서 상대좌표(relX, relY)를 drop 대상 {time, yPosition}으로 변환한다.
+ * 브라우저 hit-test(z-index/pointer-events)를 우회하여 픽셀 단위 정밀도 확보.
+ * dragover 이벤트는 pointer-events:auto인 드래그 소스에서 버블링되므로
+ * 이 함수를 컨테이너 레벨에서 호출하면 셀이 가려져도 항상 올바른 위치를 계산한다.
+ */
+export function coordsToDropTarget(
+  relX: number,
+  relY: number,
+  laneWidth: number,
+  effectiveLanes: number,
+  slotHeightPx: number,
+  timeSlots: string[],
+  dragHoverPad: number,
+  isDraggingToThis: boolean,
+): { time: string; yPosition: number } | null {
+  if (timeSlots.length === 0) return null;
+  const adjustedX = Math.max(0, relX - (isDraggingToThis ? dragHoverPad : 0));
+  const laneIdx = Math.min(Math.max(0, Math.floor(adjustedX / laneWidth)), effectiveLanes - 1);
+  const timeIdx = Math.min(Math.max(0, Math.floor(relY / slotHeightPx)), timeSlots.length - 1);
+  return { time: timeSlots[timeIdx], yPosition: laneIdx + 1 };
+}
+
 // Drag preview state (same shape as TimeTableGrid)
 interface DragPreviewState {
   draggedSession: Session | null;
@@ -97,6 +120,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
   // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
   const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
   const handleToggleExpand = onToggleExpand ?? (() => setInternalExpanded((p) => !p));
@@ -154,6 +178,58 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   // Lane width for horizontal overlap stacking within this weekday column
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
+
+  // 컨테이너 레벨 dragover — 커서 좌표로 (time, yPosition) 직접 계산.
+  // 드래그 중인 세션(pointer-events:auto, z=500)이 셀을 가로막아도 버블링으로 도달.
+  const handleContainerDragOver = React.useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!isAnyDragging) return;
+      e.preventDefault();
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect || !onDragOver) return;
+      const target = coordsToDropTarget(
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+        laneWidth,
+        effectiveLanes,
+        SLOT_HEIGHT_PX,
+        timeSlots30Min,
+        DRAG_HOVER_PAD,
+        isDraggingToThis,
+      );
+      if (target) onDragOver(weekday, target.time, target.yPosition);
+    },
+    [isAnyDragging, weekday, onDragOver, laneWidth, effectiveLanes, timeSlots30Min, isDraggingToThis],
+  );
+
+  // 컨테이너 레벨 onDrop — 셀이 drop을 받지 못한 경우의 fallback
+  const handleContainerDrop = React.useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!isAnyDragging) return;
+      e.preventDefault();
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const target = coordsToDropTarget(
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+        laneWidth,
+        effectiveLanes,
+        SLOT_HEIGHT_PX,
+        timeSlots30Min,
+        DRAG_HOVER_PAD,
+        isDraggingToThis,
+      );
+      if (!target) return;
+      const data = e.dataTransfer?.getData("text/plain");
+      if (data?.startsWith("session:")) {
+        const sessionId = data.replace("session:", "");
+        if (onSessionDrop) onSessionDrop(sessionId, weekday, target.time, target.yPosition);
+      } else if (data) {
+        if (onDrop) onDrop(weekday, target.time, data);
+      }
+    },
+    [isAnyDragging, weekday, onDrop, onSessionDrop, laneWidth, effectiveLanes, timeSlots30Min, isDraggingToThis],
+  );
 
   // 학생 필터 활성 시 매칭 세션을 앞 lane에 우선 배치 (렌더 타임 재정렬, yPosition 불변)
   // 필터 미활성 시에는 yPosition 오름차순 정렬 — useDisplaySessions의 startsAt 정렬과 독립적으로
@@ -227,9 +303,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
       data-testid={`time-table-column-${weekday}`}
       data-weekday={weekday}
+      onDragOver={handleContainerDragOver}
+      onDrop={handleContainerDrop}
       style={{
         height: `${totalHeight}px`,
         width: `${width}px`,
@@ -284,6 +363,39 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           </div>
         )}
       </div>
+
+      {/* 드래그 중 레인 경계선 — 어느 lane으로 떨어질지 시각적 힌트 */}
+      {isDragging && effectiveLanes >= 2 && (
+        Array.from({ length: effectiveLanes - 1 }, (_, i) => (
+          <div
+            key={`lane-bound-${i}`}
+            data-testid={`lane-boundary-${i}`}
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: (i + 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
+              width: 1,
+              background: "rgba(255,255,255,0.10)",
+              zIndex: 94,
+            }}
+          />
+        ))
+      )}
+
+      {/* 드래그 중 타겟 레인 하이라이트 — 현재 커서가 가리키는 lane 강조 */}
+      {isDragging && dragPreview?.targetWeekday === weekday && dragPreview?.targetYPosition != null && (
+        <div
+          data-testid="lane-highlight"
+          className="absolute top-0 bottom-0 pointer-events-none"
+          style={{
+            left: (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
+            width: laneWidth,
+            background: "rgba(99,179,237,0.10)",
+            borderLeft: "1.5px solid rgba(99,179,237,0.35)",
+            borderRight: "1.5px solid rgba(99,179,237,0.35)",
+            zIndex: 95,
+          }}
+        />
+      )}
 
       {/* Drop cells — timeSlots × effectiveLanes */}
       {timeSlots30Min.map((timeString, timeIndex) => {
