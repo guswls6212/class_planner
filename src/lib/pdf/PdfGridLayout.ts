@@ -107,23 +107,39 @@ export function drawGridLines(
   }
 
   // Horizontal lines (time slots) + time labels
+  // 정시: 실선 진하게 / 30분: 점선 연하게 + 점(·)으로 표시 (스타일 A)
   const totalSlots = (endHour - startHour) * 2;
   for (let slot = 0; slot <= totalSlots; slot++) {
     const y = gridTop + slot * slotHeight;
+    const isHour = slot % 2 === 0;
+
+    if (isHour) {
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.25);
+      doc.setLineDashPattern([], 0);
+    } else {
+      doc.setDrawColor(215, 215, 215);
+      doc.setLineWidth(0.15);
+      doc.setLineDashPattern([0.8, 1.5], 0);
+    }
     doc.line(
       margin.left + timeColWidth,
       y,
       margin.left + timeColWidth + weekdays.length * dayColWidth,
       y
     );
+    doc.setLineDashPattern([], 0); // 실선 복원
 
-    const totalMinutes = slot * 30;
-    const hour = startHour + Math.floor(totalMinutes / 60);
-    const minute = totalMinutes % 60;
-    const label = minute === 0 ? `${hour}:00` : `${hour}:30`;
-    doc.setFontSize(minute === 0 ? 7 : 5.5);
-    doc.setTextColor(minute === 0 ? 120 : 160, minute === 0 ? 120 : 160, minute === 0 ? 120 : 160);
-    doc.text(label, margin.left + timeColWidth - 1, y + 1, { align: "right" });
+    if (isHour) {
+      const hour = startHour + slot / 2;
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${hour}:00`, margin.left + timeColWidth - 1, y + 1, { align: "right" });
+    } else {
+      doc.setFontSize(8);
+      doc.setTextColor(200, 200, 200);
+      doc.text("·", margin.left + timeColWidth - 1, y + 1, { align: "right" });
+    }
   }
 
 }

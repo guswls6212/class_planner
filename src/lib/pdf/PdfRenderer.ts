@@ -199,18 +199,22 @@ function drawWeekPage(
       : undefined;
     const studentNames = getStudentNames(session, enrollments, students);
     const teacher = teachers.find((t) => t.id === session.teacherId);
+    const isFilterMode = !!options.filterStudentId;
 
     drawSessionBlock(doc, cell, {
       subjectName: subject?.name ?? "",
-      studentNames,
+      studentNames: isFilterMode ? [] : studentNames,
       color: subject?.color ?? "#3b82f6",
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       teacherName: teacher?.name,
+      teacherColor: isFilterMode ? teacher?.color : undefined,
     });
   }
 
-  drawTeacherLegend(doc, dims, targetSessions, teachers);
+  if (!options.filterStudentId) {
+    drawTeacherLegend(doc, dims, targetSessions, teachers);
+  }
 
   const maxLanes = Math.max(1, ...operatingDays.map((wd) => lanesByWeekday.get(wd) ?? 1));
   const splitLabel = options.perTeacher ? "강사별" : "전체";

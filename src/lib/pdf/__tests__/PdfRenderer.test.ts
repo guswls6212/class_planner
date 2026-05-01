@@ -17,6 +17,7 @@ const addPageMock = vi.fn();
 
 const circlesMock = vi.fn();
 const getTextWidthMock = vi.fn().mockReturnValue(10);
+const setLineDashPatternMock = vi.fn();
 
 vi.mock("jspdf", () => ({
   default: vi.fn().mockImplementation(() => ({
@@ -35,6 +36,7 @@ vi.mock("jspdf", () => ({
     save: saveMock,
     addPage: addPageMock,
     getTextWidth: getTextWidthMock,
+    setLineDashPattern: setLineDashPatternMock,
     internal: { scaleFactor: 1 },
   })),
 }));
@@ -219,21 +221,53 @@ describe("renderSchedulePdf — teachers 파라미터", () => {
   });
 });
 
-describe("renderSchedulePdf — 30분 시간 라벨 (A-3)", () => {
+describe("renderSchedulePdf — 시간 라벨 스타일 A (가독성 개선)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("30분 라벨(예: '9:30')이 time column에 출력된다", () => {
+  it("30분 슬롯에는 '·' 점이 출력된다 (숫자 ':30' 대신)", () => {
     renderSchedulePdf([], [], [], [], []);
     const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textArgs).toContain("9:30");
+    expect(textArgs).toContain("·");
+    expect(textArgs).not.toContain("9:30"); // 숫자 라벨은 정시에만
   });
 
-  it("정시 라벨(예: '10:00')도 여전히 출력된다", () => {
+  it("정시 라벨(예: '10:00')은 여전히 출력된다", () => {
     renderSchedulePdf([], [], [], [], []);
     const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
     expect(textArgs).toContain("10:00");
+  });
+
+  it("30분 슬롯에서 점선 패턴이 설정된다 (setLineDashPattern 호출)", () => {
+    vi.clearAllMocks();
+    renderSchedulePdf([], [], [], [], []);
+    expect(setLineDashPatternMock).toHaveBeenCalled();
+  });
+});
+
+describe("renderSchedulePdf — 학생 필터 모드 (가독성 개선)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const teacher: Teacher[] = [{ id: "t1", name: "이강사", color: "#7c3aed" }];
+
+  it("filterStudentId 없으면 강사 legend circle이 그려진다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [], teacherId: "t1" },
+    ];
+    renderSchedulePdf(sessions, [], [], [], teacher, {});
+    expect(circlesMock).toHaveBeenCalled();
+  });
+
+  it("filterStudentId 있으면 강사 legend circle이 그려지지 않는다", () => {
+    const sessions: Session[] = [
+      { id: "s1", weekday: 0, startsAt: "10:00", endsAt: "11:00", weekStartDate: "2026-04-27", enrollmentIds: [], teacherId: "t1" },
+    ];
+    renderSchedulePdf(sessions, [], [], [], teacher, { filterStudentId: "student-1" });
+    // legend용 circle은 없어야 함 (박스 내 도트 circle은 PdfSessionBlock에서)
+    expect(circlesMock).not.toHaveBeenCalled();
   });
 });
 
