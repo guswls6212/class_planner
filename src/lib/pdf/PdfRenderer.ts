@@ -29,6 +29,8 @@ export interface PdfRenderOptions {
   operatingDays?: number[];
   /** 강사별 분할 여부 — 푸터 메타 표기용 */
   perTeacher?: boolean;
+  /** 강사별 분할 모드에서 학생 이름 표시 여부 (기본값: false = 숨김) */
+  showStudentNames?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -204,10 +206,13 @@ function drawWeekPage(
     const studentNames = getStudentNames(session, enrollments, students);
     const teacher = teachers.find((t) => t.id === session.teacherId);
     const isFilterMode = !!options.filterStudentId;
+    const shouldShowStudentNames =
+      !isFilterMode &&
+      (options.filterTeacherId ? (options.showStudentNames ?? false) : true);
 
     drawSessionBlock(doc, cell, {
       subjectName: subject?.name ?? "",
-      studentNames: isFilterMode ? [] : studentNames,
+      studentNames: shouldShowStudentNames ? studentNames : [],
       color: subject?.color ?? "#3b82f6",
       startsAt: session.startsAt,
       endsAt: session.endsAt,

@@ -1018,6 +1018,7 @@ function SchedulePageContent(): JSX.Element {
               filename: `${teacher.name}_시간표_${range.startDate}.pdf`,
               weekRange: { startDate: range.startDate, endDate: range.endDate },
               filterTeacherId: teacher.id,
+              showStudentNames: range.showStudentNames ?? false,
             }
           );
         }
