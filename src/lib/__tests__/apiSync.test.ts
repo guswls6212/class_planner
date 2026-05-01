@@ -16,6 +16,8 @@ import {
   syncSessionCreate,
   syncSessionUpdate,
   syncSessionDelete,
+  syncTeacherCreate,
+  syncTeacherUpdate,
 } from "../apiSync";
 
 describe("apiSync", () => {
@@ -139,12 +141,64 @@ describe("apiSync", () => {
       );
     });
 
+    it("syncSessionUpdate body에 teacherId가 포함된다", () => {
+      const teacherId = "teacher-uuid-1";
+      syncSessionUpdate("user-1", "sess-1", {
+        weekday: 1,
+        startsAt: "09:00",
+        endsAt: "10:00",
+        teacherId,
+      } as any);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/sessions/sess-1"),
+        expect.objectContaining({
+          method: "PUT",
+          body: expect.stringContaining(teacherId),
+        })
+      );
+    });
+
+    it("syncSessionUpdate에 teacherId가 없으면 body에도 없다", () => {
+      syncSessionUpdate("user-1", "sess-1", { weekday: 2 });
+      const callArgs = mockFetch.mock.calls[0];
+      const body = JSON.parse(callArgs[1].body as string);
+      expect(body).not.toHaveProperty("teacherId");
+    });
+
     it("syncSessionDelete가 DELETE를 호출한다", () => {
       syncSessionDelete("user-1", "sess-1");
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/sessions?id=sess-1"),
         expect.objectContaining({ method: "DELETE" })
       );
+    });
+  });
+
+  describe("Teachers — profile fields", () => {
+    it("syncTeacherCreate body에 profile 필드(email/phone/role/notes)가 포함된다", () => {
+      syncTeacherCreate("user-1", {
+        name: "김강사",
+        color: "#FF0000",
+        email: "kim@test.com",
+        phone: "010-1234-5678",
+        role: "admin",
+        notes: "메모",
+      });
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+      expect(body.email).toBe("kim@test.com");
+      expect(body.phone).toBe("010-1234-5678");
+      expect(body.role).toBe("admin");
+      expect(body.notes).toBe("메모");
+    });
+
+    it("syncTeacherUpdate body에 profile 필드가 포함된다", () => {
+      syncTeacherUpdate("user-1", "t-1", {
+        email: "updated@test.com",
+        notes: "updated notes",
+      });
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+      expect(body.email).toBe("updated@test.com");
+      expect(body.notes).toBe("updated notes");
     });
   });
 

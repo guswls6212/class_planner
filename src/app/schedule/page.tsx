@@ -80,7 +80,7 @@ import {
   onDragEndStudent,
   onDragStartStudent,
 } from "./_utils/dndHelpers";
-import { syncSessionUpdateAsync } from "../../lib/apiSync";
+import { syncSessionUpdateAsync, syncSessionUpdate } from "../../lib/apiSync";
 import {
   buildEditOnCancel,
   buildEditOnDelete,
@@ -221,6 +221,8 @@ function SchedulePageContent(): JSX.Element {
     yPosition?: number;
     subjectId?: string;
     studentIds?: string[];
+    enrollmentIds?: string[];
+    teacherId?: string | null;
   };
 
   const {
@@ -411,8 +413,27 @@ function SchedulePageContent(): JSX.Element {
 
       await updateData({ sessions: repositioned });
       logger.info("세션 업데이트 및 재배치 완료");
+
+      if (userId) {
+        const changed = repositioned.find((s) => s.id === sessionId);
+        if (changed) {
+          const hasTeacherId = "teacherId" in (sessionData as object);
+          void syncSessionUpdate(userId, sessionId, {
+            weekday: changed.weekday,
+            startsAt: changed.startsAt,
+            endsAt: changed.endsAt,
+            yPosition: changed.yPosition,
+            room: changed.room,
+            subjectId: changed.subjectId,
+            enrollmentIds: changed.enrollmentIds,
+            ...(hasTeacherId && {
+              teacherId: (sessionData as SessionUpdateInput).teacherId ?? undefined,
+            }),
+          });
+        }
+      }
     },
-    [sessions, updateData, enrollments, subjects]
+    [sessions, updateData, enrollments, subjects, userId]
   );
 
   // ================================

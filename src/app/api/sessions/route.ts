@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate } = body;
+    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate, teacherId } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
         enrollmentIds,
         weekday: Number(weekday),
         weekStartDate,
+        ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
       },
       academyId
     );
@@ -102,7 +103,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday } = body;
+    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId } = body;
 
     if (
       !id ||
@@ -124,6 +125,7 @@ export async function PUT(request: NextRequest) {
       endsAt,
       enrollmentIds,
       weekday: Number(weekday),
+      ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
     });
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {

@@ -162,7 +162,7 @@ export function buildEditOnSave(params: {
         startTime,
         endTime,
         editModalData.room || "",
-        resolvedTeacherId
+        resolvedTeacherId ?? undefined
       );
 
       await updateSession(editModalData.id, sessionData);

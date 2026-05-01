@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST } from "../route";
+import { PUT as idPUT } from "../[id]/route";
 
 // Mock environment variables for tests
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
@@ -10,28 +11,39 @@ vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
 }));
 
+let mockAddSession: ReturnType<typeof vi.fn>;
+let mockUpdateSession: ReturnType<typeof vi.fn>;
+
 // Simple mock for ServiceFactory
 vi.mock("@/application/services/ServiceFactory", () => ({
   ServiceFactory: {
     createSessionService: () => ({
       getAllSessions: vi.fn().mockResolvedValue([]),
-      addSession: vi.fn().mockResolvedValue({
-        id: "test-session-id",
-        subjectId: "550e8400-e29b-41d4-a716-446655440101",
-        startsAt: "09:00",
-        endsAt: "10:00",
-        enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
-        weekday: 0,
-        createdAt: new Date(),
-      }),
+      addSession: (...args: unknown[]) => mockAddSession(...args),
+      updateSession: (...args: unknown[]) => mockUpdateSession(...args),
+      getSessionById: vi.fn().mockResolvedValue(null),
       deleteSession: vi.fn().mockResolvedValue(true),
     }),
   },
 }));
 
+const SESSION_STUB = {
+  id: "test-session-id",
+  subjectId: "550e8400-e29b-41d4-a716-446655440101",
+  startsAt: "09:00",
+  endsAt: "10:00",
+  enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+  weekday: 0,
+  weekStartDate: "2026-04-27",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
 describe("/api/sessions API Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAddSession = vi.fn().mockResolvedValue(SESSION_STUB);
+    mockUpdateSession = vi.fn().mockResolvedValue(SESSION_STUB);
   });
 
   describe("GET /api/sessions", () => {
@@ -97,6 +109,116 @@ describe("/api/sessions API Routes", () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toContain("weekStartDate");
+    });
+  });
+
+  describe("POST /api/sessions — teacherId", () => {
+    it("teacherId가 있으면 addSession에 전달된다", async () => {
+      const teacherId = "teacher-uuid-abc";
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: [],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+            teacherId,
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      await POST(request);
+
+      expect(mockAddSession).toHaveBeenCalledWith(
+        expect.objectContaining({ teacherId }),
+        expect.any(String)
+      );
+    });
+
+    it("teacherId가 없으면 addSession에 teacherId 키가 없다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: [],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      await POST(request);
+
+      const [sessionData] = mockAddSession.mock.calls[0];
+      expect(sessionData).not.toHaveProperty("teacherId");
+    });
+  });
+
+  describe("PUT /api/sessions/:id — teacherId (id route)", () => {
+    const makeIdPutRequest = (body: object) =>
+      new NextRequest("http://localhost:3000/api/sessions/sess-1", {
+        method: "PUT",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const mockParams = { params: Promise.resolve({ id: "sess-1" }) } as any;
+
+    it("teacherId가 있으면 updateSession에 전달된다", async () => {
+      const teacherId = "teacher-uuid-xyz";
+      const request = makeIdPutRequest({
+        enrollmentIds: ["e-1"],
+        subjectId: "sub-1",
+        weekday: 1,
+        startsAt: "09:00",
+        endsAt: "10:00",
+        teacherId,
+      });
+
+      await idPUT(request, mockParams);
+
+      expect(mockUpdateSession).toHaveBeenCalledWith(
+        "sess-1",
+        expect.objectContaining({ teacherId })
+      );
+    });
+
+    it("teacherId 없으면 updateSession 호출에 teacherId 키가 없다", async () => {
+      const request = makeIdPutRequest({
+        enrollmentIds: ["e-1"],
+        subjectId: "sub-1",
+        weekday: 1,
+        startsAt: "09:00",
+        endsAt: "10:00",
+      });
+
+      await idPUT(request, mockParams);
+
+      const [, sessionData] = mockUpdateSession.mock.calls[0];
+      expect(sessionData).not.toHaveProperty("teacherId");
+    });
+
+    it("startsAt/endsAt 필드명도 수용한다 (Session 타입 네이밍)", async () => {
+      const request = makeIdPutRequest({
+        enrollmentIds: ["e-1"],
+        subjectId: "sub-1",
+        weekday: 1,
+        startsAt: "09:30",
+        endsAt: "10:30",
+      });
+
+      const response = await idPUT(request, mockParams);
+      expect(response.status).not.toBe(400);
     });
   });
 

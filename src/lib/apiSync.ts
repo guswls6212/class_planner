@@ -263,7 +263,15 @@ export function syncSessionDelete(userId: string | null, id: string): void {
 
 export function syncTeacherCreate(
   userId: string | null,
-  data: { name: string; color: string; userId?: string | null }
+  data: {
+    name: string;
+    color: string;
+    userId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+    notes?: string | null;
+  }
 ): void {
   if (!userId) return;
   const makeRequest = () =>
@@ -278,7 +286,15 @@ export function syncTeacherCreate(
 export function syncTeacherUpdate(
   userId: string | null,
   id: string,
-  data: { name?: string; color?: string; userId?: string | null }
+  data: {
+    name?: string;
+    color?: string;
+    userId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+    notes?: string | null;
+  }
 ): void {
   if (!userId) return;
   const makeRequest = () =>
