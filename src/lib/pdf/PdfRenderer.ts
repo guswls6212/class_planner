@@ -21,6 +21,7 @@ import type {
 export interface PdfRenderOptions {
   academyName?: string;
   filterStudentId?: string;
+  filterTeacherId?: string;
   filename?: string;
   title?: string;
   weekRange?: { startDate: string; endDate: string };
@@ -158,7 +159,10 @@ function drawWeekPage(
 
   drawGridLines(doc, dims, weekdayLabels, START_HOUR, END_HOUR);
 
-  const targetSessions = filterSessions(sessions, enrollments, options.filterStudentId);
+  const studentFiltered = filterSessions(sessions, enrollments, options.filterStudentId);
+  const targetSessions = options.filterTeacherId
+    ? studentFiltered.filter((s) => s.teacherId === options.filterTeacherId)
+    : studentFiltered;
 
   // 요일별 lane 수 + 세션별 lane 번호 사전 계산
   // yPosition에 의존하지 않는 greedy 자동 할당으로 overflow 버그 방지

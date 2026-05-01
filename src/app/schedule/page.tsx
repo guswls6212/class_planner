@@ -1005,6 +1005,7 @@ function SchedulePageContent(): JSX.Element {
           const teacherSessions = allSessions.filter(
             (s) => s.teacherId === teacher.id
           );
+          if (teacherSessions.length === 0) continue;
           renderSchedulePdf(
             teacherSessions,
             subjects,
@@ -1016,6 +1017,7 @@ function SchedulePageContent(): JSX.Element {
               title: `${teacher.name} 선생님 시간표`,
               filename: `${teacher.name}_시간표_${range.startDate}.pdf`,
               weekRange: { startDate: range.startDate, endDate: range.endDate },
+              filterTeacherId: teacher.id,
             }
           );
         }
