@@ -21,6 +21,7 @@ import type {
 export interface PdfRenderOptions {
   academyName?: string;
   filterStudentId?: string;
+  filterTeacherId?: string;
   filename?: string;
   title?: string;
   weekRange?: { startDate: string; endDate: string };
@@ -28,6 +29,8 @@ export interface PdfRenderOptions {
   operatingDays?: number[];
   /** 강사별 분할 여부 — 푸터 메타 표기용 */
   perTeacher?: boolean;
+  /** 강사별 분할 모드에서 학생 이름 표시 여부 (기본값: false = 숨김) */
+  showStudentNames?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -158,7 +161,10 @@ function drawWeekPage(
 
   drawGridLines(doc, dims, weekdayLabels, START_HOUR, END_HOUR);
 
-  const targetSessions = filterSessions(sessions, enrollments, options.filterStudentId);
+  const studentFiltered = filterSessions(sessions, enrollments, options.filterStudentId);
+  const targetSessions = options.filterTeacherId
+    ? studentFiltered.filter((s) => s.teacherId === options.filterTeacherId)
+    : studentFiltered;
 
   // 요일별 lane 수 + 세션별 lane 번호 사전 계산
   // yPosition에 의존하지 않는 greedy 자동 할당으로 overflow 버그 방지
@@ -200,15 +206,17 @@ function drawWeekPage(
     const studentNames = getStudentNames(session, enrollments, students);
     const teacher = teachers.find((t) => t.id === session.teacherId);
     const isFilterMode = !!options.filterStudentId;
+    const shouldShowStudentNames =
+      !isFilterMode &&
+      (options.filterTeacherId ? (options.showStudentNames ?? false) : true);
 
     drawSessionBlock(doc, cell, {
       subjectName: subject?.name ?? "",
-      studentNames: isFilterMode ? [] : studentNames,
+      studentNames: shouldShowStudentNames ? studentNames : [],
       color: subject?.color ?? "#3b82f6",
       startsAt: session.startsAt,
       endsAt: session.endsAt,
       teacherName: teacher?.name,
-      teacherColor: isFilterMode ? teacher?.color : undefined,
     });
   }
 

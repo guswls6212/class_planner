@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import type { ScheduleViewMode } from "@/hooks/useScheduleView";
 import {
@@ -15,6 +15,7 @@ export interface PdfExportRange {
   startDate: string;
   endDate: string;
   perTeacher?: boolean;
+  showStudentNames?: boolean;
 }
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
   isExporting?: boolean;
   teachers?: { id: string; name: string }[];
   preflightResult?: PreflightResult;
+  hasStudentFilter?: boolean;
 }
 
 type Scope = "current" | "range" | "per-teacher";
@@ -39,10 +41,18 @@ export default function PdfExportRangeModal({
   isExporting = false,
   teachers = [],
   preflightResult,
+  hasStudentFilter = false,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
   const [scope, setScope] = useState<Scope>("current");
+  const [showStudentNames, setShowStudentNames] = useState(false);
+
+  useEffect(() => {
+    if (hasStudentFilter && scope === "per-teacher") {
+      setScope("current");
+    }
+  }, [hasStudentFilter, scope]);
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => {
@@ -73,7 +83,14 @@ export default function PdfExportRangeModal({
       return;
     }
     if (scope === "per-teacher") {
-      onExport({ startDate: rangeStart, endDate: rangeEnd, perTeacher: true });
+      const weekStartStr = formatLocalISO(weekStart);
+      const weekEndStr = formatLocalISO(weekEnd);
+      onExport({
+        startDate: weekStartStr,
+        endDate: weekEndStr,
+        perTeacher: true,
+        showStudentNames,
+      });
       return;
     }
     onExport({ startDate: rangeStart, endDate: rangeEnd });
@@ -115,7 +132,7 @@ export default function PdfExportRangeModal({
                 </li>
               ))}
             </ul>
-            {preflightResult.suggestSplit === "per-teacher" && (
+            {preflightResult.suggestSplit === "per-teacher" && !hasStudentFilter && (
               <button
                 type="button"
                 onClick={() => setScope("per-teacher")}
@@ -189,31 +206,46 @@ export default function PdfExportRangeModal({
                 )}
               </div>
             )}
-            <label
-              className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
-            >
-              <input
-                type="radio"
-                name="pdf-scope"
-                aria-label="강사별로 1장씩"
-                value="per-teacher"
-                checked={scope === "per-teacher"}
-                onChange={() => setScope("per-teacher")}
-                disabled={noTeachers}
-              />
-              <span className="text-sm text-[var(--color-text-primary)]">
-                강사별로 1장씩
-              </span>
-              {noTeachers ? (
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  (강사가 없습니다)
-                </span>
-              ) : (
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  (강사 수만큼 파일 다운로드)
-                </span>
-              )}
-            </label>
+            {!hasStudentFilter && (
+              <>
+                <label
+                  className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="pdf-scope"
+                    aria-label="강사별로 1장씩"
+                    value="per-teacher"
+                    checked={scope === "per-teacher"}
+                    onChange={() => setScope("per-teacher")}
+                    disabled={noTeachers}
+                  />
+                  <span className="text-sm text-[var(--color-text-primary)]">
+                    강사별로 1장씩
+                  </span>
+                  {noTeachers ? (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      (강사가 없습니다)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      (강사 수만큼 파일 다운로드)
+                    </span>
+                  )}
+                </label>
+                {scope === "per-teacher" && (
+                  <label className="flex items-center gap-2 ml-6 mt-1 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showStudentNames}
+                      onChange={(e) => setShowStudentNames(e.target.checked)}
+                      className="w-4 h-4 accent-[var(--color-accent)]"
+                    />
+                    학생 이름 포함
+                  </label>
+                )}
+              </>
+            )}
           </div>
         )}
 

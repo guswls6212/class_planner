@@ -9,8 +9,6 @@ export interface SessionBlockData {
   startsAt: string;
   endsAt: string;
   teacherName?: string;
-  /** 설정 시 ▸ 텍스트 대신 컬러 도트 + 이름으로 렌더 (학생 필터 모드) */
-  teacherColor?: string;
 }
 
 /** Parse "#rrggbb" or "#rgb" hex to [r, g, b] */
@@ -64,20 +62,11 @@ export function drawSessionBlock(
   doc.text(data.subjectName, textX, textY);
   textY += 3.5;
 
-  // Teacher — 컬러 도트 방식(필터 모드) 또는 기존 ▸ 텍스트
+  // Teacher name (plain text, no dot)
   if (data.teacherName && cell.height > 7) {
-    if (data.teacherColor) {
-      const [tr, tg, tb] = hexToRgb(data.teacherColor);
-      doc.setFillColor(tr, tg, tb);
-      doc.circle(textX + 1, textY - 1.2, 1, "F");
-      doc.setFontSize(6);
-      doc.setTextColor(80, 80, 80);
-      doc.text(data.teacherName, textX + 3.5, textY);
-    } else {
-      doc.setFontSize(6);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`▸ ${data.teacherName}`, textX, textY);
-    }
+    doc.setFontSize(6);
+    doc.setTextColor(80, 80, 80);
+    doc.text(data.teacherName, textX, textY);
     textY += 3;
   }
 
@@ -94,6 +83,6 @@ export function drawSessionBlock(
   if (cell.height > 8) {
     doc.setFontSize(5.5);
     doc.setTextColor(120, 120, 120);
-    doc.text(`${data.startsAt}–${data.endsAt}`, textX, textY);
+    doc.text(`${data.startsAt}~${data.endsAt}`, textX, textY);
   }
 }

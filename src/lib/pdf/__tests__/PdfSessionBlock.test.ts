@@ -45,7 +45,7 @@ describe("drawSessionBlock — 시각 표시 (A-4)", () => {
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
     drawSessionBlock(mockDoc, cell, baseData);
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).toContain("10:00–11:00");
+    expect(textCalls).toContain("10:00~11:00");
   });
 
   it("cell.height ≤ 8이면 시각 텍스트를 그리지 않는다 (30분 수업)", () => {
@@ -53,7 +53,7 @@ describe("drawSessionBlock — 시각 표시 (A-4)", () => {
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 5.4 };
     drawSessionBlock(mockDoc, cell, baseData);
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).not.toContain("10:00–11:00");
+    expect(textCalls).not.toContain("10:00~11:00");
   });
 
   it("항상 과목 이름을 그린다", () => {
@@ -64,51 +64,47 @@ describe("drawSessionBlock — 시각 표시 (A-4)", () => {
   });
 });
 
-describe("drawSessionBlock — 강사 컬러 도트 (필터 모드)", () => {
+describe("drawSessionBlock — 강사 이름 (plain text)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("teacherColor 있으면 강사 컬러 도트(circle)를 그린다", () => {
+  it("teacherName이 있으면 plain text로 강사 이름을 그린다", () => {
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
     drawSessionBlock(mockDoc, cell, {
       ...baseData,
       teacherName: "이강사",
-      teacherColor: "#7c3aed",
     });
-    expect(circleMock).toHaveBeenCalled();
+    const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
+    expect(textCalls).toContain("이강사");
   });
 
-  it("teacherColor 없으면 circle을 그리지 않는다 (기존 ▸ 방식)", () => {
+  it("teacherName을 그릴 때 컬러 도트(circle)는 그리지 않는다", () => {
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
     drawSessionBlock(mockDoc, cell, {
       ...baseData,
       teacherName: "이강사",
-      teacherColor: undefined,
     });
     expect(circleMock).not.toHaveBeenCalled();
   });
 
-  it("teacherColor 있을 때 강사 이름도 텍스트로 그린다", () => {
+  it("teacherName을 그릴 때 화살표(▸)를 붙이지 않는다", () => {
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
     drawSessionBlock(mockDoc, cell, {
       ...baseData,
       teacherName: "이강사",
-      teacherColor: "#7c3aed",
-    });
-    const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).toContain("이강사");
-  });
-
-  it("teacherColor 있으면 '▸ 이강사' 형식이 아니라 이름만 출력된다", () => {
-    const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
-    drawSessionBlock(mockDoc, cell, {
-      ...baseData,
-      teacherName: "이강사",
-      teacherColor: "#7c3aed",
     });
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
     expect(textCalls).not.toContain("▸ 이강사");
-    expect(textCalls).toContain("이강사");
+  });
+
+  it("cell.height ≤ 7이면 teacherName을 그리지 않는다", () => {
+    const cell: CellPosition = { x: 25, y: 35, width: 37, height: 5 };
+    drawSessionBlock(mockDoc, cell, {
+      ...baseData,
+      teacherName: "이강사",
+    });
+    const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
+    expect(textCalls).not.toContain("이강사");
   });
 });

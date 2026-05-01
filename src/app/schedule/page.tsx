@@ -1005,6 +1005,7 @@ function SchedulePageContent(): JSX.Element {
           const teacherSessions = allSessions.filter(
             (s) => s.teacherId === teacher.id
           );
+          if (teacherSessions.length === 0) continue;
           renderSchedulePdf(
             teacherSessions,
             subjects,
@@ -1016,10 +1017,22 @@ function SchedulePageContent(): JSX.Element {
               title: `${teacher.name} 선생님 시간표`,
               filename: `${teacher.name}_시간표_${range.startDate}.pdf`,
               weekRange: { startDate: range.startDate, endDate: range.endDate },
+              filterTeacherId: teacher.id,
+              showStudentNames: range.showStudentNames ?? false,
             }
           );
         }
       } else {
+        // Determine context title based on active filter
+        let pdfTitle: string | undefined;
+        if (selectedStudentIds.length > 0) {
+          const student = students.find((s) => s.id === selectedStudentIds[0]);
+          if (student) pdfTitle = `${student.name} 학생 시간표`;
+        } else if (selectedTeacherIds.length > 0) {
+          const teacher = teachers.find((t) => t.id === selectedTeacherIds[0]);
+          if (teacher) pdfTitle = `${teacher.name} 선생님 시간표`;
+        }
+
         await renderSchedulePdf(
           Array.from(displaySessions.values()).flat(),
           subjects,
@@ -1028,6 +1041,7 @@ function SchedulePageContent(): JSX.Element {
           teachers,
           {
             academyName: "CLASS PLANNER",
+            title: pdfTitle,
             filterStudentId: selectedStudentIds[0] ?? undefined,
             weekRange: range,
           }
@@ -1708,6 +1722,7 @@ function SchedulePageContent(): JSX.Element {
         isExporting={isDownloading}
         teachers={teachers.map((t) => ({ id: t.id, name: t.name }))}
         preflightResult={pdfPreflightResult}
+        hasStudentFilter={selectedStudentIds.length > 0}
       />
     </div>
   );
