@@ -188,6 +188,7 @@ src/components/molecules/HelpTooltip.tsx
 src/components/molecules/MonthDayCell.tsx
 src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/PdfExportRangeModal.tsx
+src/components/molecules/PdfGuideModal.tsx
 src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/ScheduleDateNavigator.tsx
@@ -221,6 +222,7 @@ src/components/molecules/__tests__/HelpTooltip.test.tsx
 src/components/molecules/__tests__/MonthDayCell.test.tsx
 src/components/molecules/__tests__/PDFDownloadButton.test.tsx
 src/components/molecules/__tests__/PdfExportRangeModal.test.tsx
+src/components/molecules/__tests__/PdfGuideModal.test.tsx
 src/components/molecules/__tests__/SaveTemplateModal.test.tsx
 src/components/molecules/__tests__/ScheduleChangeBanner.test.tsx
 src/components/molecules/__tests__/ScheduleDateNavigator.test.tsx
@@ -420,8 +422,11 @@ src/lib/pdf/PdfRenderer.ts
 src/lib/pdf/PdfSessionBlock.ts
 src/lib/pdf/__tests__/PdfGridLayout.test.ts
 src/lib/pdf/__tests__/PdfRenderer.test.ts
+src/lib/pdf/__tests__/PdfSessionBlock.test.ts
+src/lib/pdf/__tests__/preflightCheck.test.ts
 src/lib/pdf/fonts/pretendard-bold.ts
 src/lib/pdf/fonts/pretendard-regular.ts
+src/lib/pdf/preflightCheck.ts
 src/lib/planner.ts
 src/lib/rateLimit.ts
 src/lib/resolveAcademyId.ts

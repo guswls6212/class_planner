@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import PdfExportRangeModal from "../PdfExportRangeModal";
+import type { PreflightResult } from "@/lib/pdf/preflightCheck";
 
 // 수요일 2026-04-15 → 해당 주 월요일 = 2026-04-13
 const selectedDate = new Date(2026, 3, 15);
@@ -155,5 +156,43 @@ describe("PdfExportRangeModal", () => {
     expect(onExport).toHaveBeenCalledWith(
       expect.objectContaining({ perTeacher: true })
     );
+  });
+});
+
+describe("PdfExportRangeModal — preflight 경고 패널", () => {
+  const teachers = [{ id: "t1", name: "김선생" }];
+
+  it("preflightResult 없으면 경고 패널이 렌더되지 않는다", () => {
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("out-of-range 경고가 있으면 경고 패널이 렌더된다", () => {
+    const preflightResult: PreflightResult = {
+      warnings: [{ type: "out-of-range", message: "1개 수업이 출력 범위 밖" }],
+      suggestSplit: null,
+    };
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} preflightResult={preflightResult} />);
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText(/1개 수업이 출력 범위 밖/)).toBeInTheDocument();
+  });
+
+  it("suggestSplit=per-teacher이면 '강사별 분할로 전환' 버튼이 노출된다", () => {
+    const preflightResult: PreflightResult = {
+      warnings: [{ type: "overlap", message: "월요일에 동시 진행 4건" }],
+      suggestSplit: "per-teacher",
+    };
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} preflightResult={preflightResult} />);
+    expect(screen.getByRole("button", { name: "강사별 분할로 전환" })).toBeInTheDocument();
+  });
+
+  it("'강사별 분할로 전환' 버튼 클릭 시 scope가 per-teacher로 바뀐다", () => {
+    const preflightResult: PreflightResult = {
+      warnings: [{ type: "overlap", message: "월요일에 동시 진행 4건" }],
+      suggestSplit: "per-teacher",
+    };
+    render(<PdfExportRangeModal {...baseProps} teachers={teachers} preflightResult={preflightResult} />);
+    fireEvent.click(screen.getByRole("button", { name: "강사별 분할로 전환" }));
+    expect(screen.getByLabelText("강사별로 1장씩")).toBeChecked();
   });
 });

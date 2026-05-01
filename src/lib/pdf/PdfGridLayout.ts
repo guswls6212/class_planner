@@ -60,17 +60,20 @@ export function getCellPosition(
   weekday: number,
   startsAt: string,
   endsAt: string,
-  startHour: number = 9
+  startHour: number = 9,
+  laneIndex: number = 0,
+  totalLanes: number = 1
 ): CellPosition {
   const [sh, sm] = startsAt.split(":").map(Number);
   const [eh, em] = endsAt.split(":").map(Number);
   const startSlot = (sh - startHour) * 2 + sm / 30;
   const endSlot = (eh - startHour) * 2 + em / 30;
+  const laneWidth = dims.dayColWidth / totalLanes;
 
   return {
-    x: dims.margin.left + dims.timeColWidth + weekday * dims.dayColWidth,
+    x: dims.margin.left + dims.timeColWidth + weekday * dims.dayColWidth + laneIndex * laneWidth,
     y: dims.gridTop + startSlot * dims.slotHeight,
-    width: dims.dayColWidth,
+    width: laneWidth,
     height: (endSlot - startSlot) * dims.slotHeight,
   };
 }
@@ -114,14 +117,13 @@ export function drawGridLines(
       y
     );
 
-    if (slot % 2 === 0) {
-      const hour = startHour + slot / 2;
-      doc.setFontSize(7);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`${hour}:00`, margin.left + timeColWidth - 1, y + 1, {
-        align: "right",
-      });
-    }
+    const totalMinutes = slot * 30;
+    const hour = startHour + Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    const label = minute === 0 ? `${hour}:00` : `${hour}:30`;
+    doc.setFontSize(minute === 0 ? 7 : 5.5);
+    doc.setTextColor(minute === 0 ? 120 : 160, minute === 0 ? 120 : 160, minute === 0 ? 120 : 160);
+    doc.text(label, margin.left + timeColWidth - 1, y + 1, { align: "right" });
   }
 
 }

@@ -79,8 +79,8 @@ export function drawSessionBlock(
     textY += 3;
   }
 
-  // Time
-  if (cell.height > 12) {
+  // Time (1시간 수업 height ≈ 10.7mm이므로 8mm 임계로 표시)
+  if (cell.height > 8) {
     doc.setFontSize(5.5);
     doc.setTextColor(120, 120, 120);
     doc.text(`${data.startsAt}–${data.endsAt}`, textX, textY);
