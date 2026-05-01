@@ -364,6 +364,39 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         )}
       </div>
 
+      {/* 드래그 중 레인 경계선 — 어느 lane으로 떨어질지 시각적 힌트 */}
+      {isDragging && effectiveLanes >= 2 && (
+        Array.from({ length: effectiveLanes - 1 }, (_, i) => (
+          <div
+            key={`lane-bound-${i}`}
+            data-testid={`lane-boundary-${i}`}
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: (i + 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
+              width: 1,
+              background: "rgba(255,255,255,0.10)",
+              zIndex: 94,
+            }}
+          />
+        ))
+      )}
+
+      {/* 드래그 중 타겟 레인 하이라이트 — 현재 커서가 가리키는 lane 강조 */}
+      {isDragging && dragPreview?.targetWeekday === weekday && dragPreview?.targetYPosition != null && (
+        <div
+          data-testid="lane-highlight"
+          className="absolute top-0 bottom-0 pointer-events-none"
+          style={{
+            left: (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
+            width: laneWidth,
+            background: "rgba(99,179,237,0.10)",
+            borderLeft: "1.5px solid rgba(99,179,237,0.35)",
+            borderRight: "1.5px solid rgba(99,179,237,0.35)",
+            zIndex: 95,
+          }}
+        />
+      )}
+
       {/* Drop cells — timeSlots × effectiveLanes */}
       {timeSlots30Min.map((timeString, timeIndex) => {
         return Array.from({ length: effectiveLanes }, (_, laneIdx) => {

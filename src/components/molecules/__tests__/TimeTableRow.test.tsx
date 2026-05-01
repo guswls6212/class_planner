@@ -990,3 +990,102 @@ describe("coordsToDropTarget — 좌표→(time, yPosition) 변환", () => {
     expect(r).toBeNull();
   });
 });
+
+// ===================================================================
+// Task 3 (B): 드래그 중 레인 시각화 — 경계선 + 하이라이트
+// ===================================================================
+describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () => {
+  const makeS = (id: string, yPos: number) =>
+    ({
+      id,
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+      startsAt: "09:00",
+      endsAt: "10:00",
+      weekStartDate: "",
+      enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+      weekday: 0,
+      yPosition: yPos,
+    }) as Session;
+
+  const twoSessionMap = () => {
+    const m = new Map<number, Session[]>();
+    m.set(0, [makeS("s1", 1), makeS("s2", 2)]);
+    return m;
+  };
+
+  const dragPreviewAt = (targetWeekday: number | null, yPos: number | null) => ({
+    draggedSession: makeS("s1", 1),
+    targetWeekday,
+    targetTime: "09:00",
+    targetYPosition: yPos,
+  });
+
+  const defaultProps = {
+    weekday: 0,
+    width: 240,
+    subjects: [{ id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#3B82F6" }],
+    enrollments: [{ id: "550e8400-e29b-41d4-a716-446655440301", studentId: "550e8400-e29b-41d4-a716-446655440001", subjectId: "550e8400-e29b-41d4-a716-446655440101" }],
+    students: [{ id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" }],
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("드래그 중 effectiveLanes>=2이면 lane-boundary-0 렌더된다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(1, 1)}
+      />
+    );
+    expect(screen.getByTestId("lane-boundary-0")).toBeInTheDocument();
+  });
+
+  it("드래그 안 하면 lane-boundary 없다", () => {
+    render(<TimeTableRow {...defaultProps} sessions={twoSessionMap()} />);
+    expect(screen.queryByTestId("lane-boundary-0")).not.toBeInTheDocument();
+  });
+
+  it("targetWeekday===weekday && targetYPosition!=null → lane-highlight 렌더된다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2)}
+      />
+    );
+    expect(screen.getByTestId("lane-highlight")).toBeInTheDocument();
+  });
+
+  it("targetWeekday!==weekday → lane-highlight 없다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(1, 2)}
+      />
+    );
+    expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
+  });
+
+  it("targetYPosition=null → lane-highlight 없다", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, null)}
+      />
+    );
+    expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
+  });
+});
