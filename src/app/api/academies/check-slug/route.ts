@@ -14,12 +14,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ available: false, reason: 'invalid_format' })
   }
 
+  const excludeId = searchParams.get('excludeId')
+
   const client = getServiceRoleClient()
-  const { data } = await client
+  let query = client
     .from('academies')
     .select('id')
     .eq('slug', slug)
-    .maybeSingle()
+  if (excludeId) {
+    query = query.neq('id', excludeId)
+  }
+  const { data } = await query.maybeSingle()
 
   return NextResponse.json({ available: !data })
 }

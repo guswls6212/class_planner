@@ -10,6 +10,7 @@ const mockSupabase = {
   from: vi.fn().mockReturnThis(),
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
+  neq: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn(),
 }
 
@@ -38,5 +39,17 @@ describe('GET /api/academies/check-slug', () => {
     const { GET } = await import('../route')
     const res = await GET(new NextRequest('http://localhost/api/academies/check-slug'))
     expect(res.status).toBe(400)
+  })
+
+  it('excludeId가 있으면 해당 academy를 제외하고 조회한다 (자기 자신의 slug는 available)', async () => {
+    // The academy with the same slug is the one being excluded → no other match → available
+    mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
+    const { GET } = await import('../route')
+    const res = await GET(
+      new NextRequest('http://localhost/api/academies/check-slug?slug=my-academy&excludeId=acad-1')
+    )
+    expect(res.status).toBe(200)
+    expect((await res.json()).available).toBe(true)
+    expect(mockSupabase.neq).toHaveBeenCalledWith('id', 'acad-1')
   })
 })

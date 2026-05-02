@@ -545,7 +545,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Slug 편집 섹션 */}
-          {canManage && (
+          {myRole === 'owner' && (
             <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] text-[var(--color-text-muted)]">학부모 접속 URL</span>
@@ -620,6 +620,8 @@ export default function SettingsPage() {
                         !editSlugValue ||
                         slugAvailable === false ||
                         slugCheckLoading ||
+                        // Guard: input changed but availability check not yet done
+                        (editSlugValue !== (academySlug ?? '') && slugAvailable === null && !slugCheckLoading) ||
                         // If changing existing slug, require confirmation
                         (
                           !!academySlug &&

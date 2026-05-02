@@ -81,4 +81,62 @@ describe("Settings Page", () => {
       expect(screen.getByText("강사 추가")).toBeInTheDocument();
     });
   });
+
+  it("slug 섹션은 owner에게만 표시된다", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/api/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            hasAcademy: true,
+            academyName: "테스트 학원",
+            academyId: "acad-1",
+            academySlug: "test-slug",
+            data: [{ userId: "user-1", role: "owner", email: "test@test.com", name: "테스트", joinedAt: "2026-04-01" }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, data: [] }),
+      });
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("학부모 접속 URL")).toBeInTheDocument();
+    });
+  });
+
+  it("slug 섹션은 admin에게 표시되지 않는다", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/api/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            hasAcademy: true,
+            academyName: "테스트 학원",
+            academyId: "acad-1",
+            academySlug: "test-slug",
+            data: [{ userId: "user-1", role: "admin", email: "test@test.com", name: "테스트", joinedAt: "2026-04-01" }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, data: [] }),
+      });
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("학부모 접속 URL")).not.toBeInTheDocument();
+    });
+  });
 });
