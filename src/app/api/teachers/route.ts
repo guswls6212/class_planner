@@ -1,9 +1,23 @@
 import { getTeacherService } from "@/lib/server/teacherServiceFactory";
+import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
+
+export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
+
+export interface TeacherWithStatus {
+  id: string;
+  name: string;
+  color: string;
+  email: string | null;
+  phone: string | null;
+  user_id: string | null;
+  status: TeacherStatus;
+  inviteExpiresAt?: string | null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +37,68 @@ export async function GET(request: NextRequest) {
 
     const academyId = await resolveAcademyId(userId);
     const teachers = await getTeacherService().getAllTeachers(academyId);
-    const result = unlinkedOnly ? teachers.filter((t) => t.userId === null) : teachers;
+
+    if (unlinkedOnly) {
+      const result = teachers.filter((t) => t.userId === null);
+      return NextResponse.json({ success: true, data: result });
+    }
+
+    // Fetch invite token status for each teacher
+    const client = getServiceRoleClient();
+    const now = new Date().toISOString();
+
+    const [pendingResult, expiredResult] = await Promise.all([
+      client
+        .from("invite_tokens")
+        .select("teacher_id, expires_at")
+        .eq("academy_id", academyId)
+        .is("used_by", null)
+        .gt("expires_at", now),
+      client
+        .from("invite_tokens")
+        .select("teacher_id")
+        .eq("academy_id", academyId)
+        .is("used_by", null)
+        .lte("expires_at", now),
+    ]);
+
+    const pendingMap = new Map<string, string>();
+    for (const row of pendingResult.data ?? []) {
+      if (row.teacher_id) {
+        pendingMap.set(row.teacher_id, row.expires_at as string);
+      }
+    }
+
+    const expiredSet = new Set<string>();
+    for (const row of expiredResult.data ?? []) {
+      if (row.teacher_id) {
+        expiredSet.add(row.teacher_id);
+      }
+    }
+
+    const result = teachers.map((t) => {
+      let status: TeacherStatus;
+      let inviteExpiresAt: string | undefined;
+      const teacherIdStr = String(t.id);
+
+      if (t.userId !== null) {
+        status = "active";
+      } else if (pendingMap.has(teacherIdStr)) {
+        status = "invite_pending";
+        inviteExpiresAt = pendingMap.get(teacherIdStr);
+      } else if (expiredSet.has(teacherIdStr)) {
+        status = "invite_expired";
+      } else {
+        status = "none";
+      }
+
+      const base = { ...t, status };
+      if (inviteExpiresAt !== undefined) {
+        return { ...base, inviteExpiresAt };
+      }
+      return base;
+    });
+
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     return toErrorResponse(error);

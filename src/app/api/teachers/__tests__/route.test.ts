@@ -7,6 +7,12 @@ import { GET, POST } from "../route";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
+const mockSupabaseFrom = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/supabaseServiceRole", () => ({
+  getServiceRoleClient: () => ({ from: mockSupabaseFrom }),
+}));
+
 vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
 }));
@@ -82,6 +88,16 @@ vi.mock("@/lib/server/teacherServiceFactory", () => ({
 describe("/api/teachers API Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSupabaseFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          is: vi.fn().mockReturnValue({
+            gt: vi.fn().mockResolvedValue({ data: [], error: null }),
+            lte: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    });
     mockGetAllTeachers.mockResolvedValue([]);
     mockAddTeacher.mockResolvedValue({
       id: "test-teacher-id",
@@ -147,6 +163,82 @@ describe("/api/teachers API Routes", () => {
       expect(data.success).toBe(true);
       expect(data.data).toHaveLength(1);
       expect(data.data[0].id).toBe("unlinked-teacher");
+    });
+
+    it("각 teacher에 status 필드 포함 — active, invite_pending, invite_expired, none", async () => {
+      const futureDate = "2099-12-31T00:00:00.000Z";
+      const pastDate = "2020-01-01T00:00:00.000Z";
+
+      // t1: active (user_id not null)
+      // t2: invite_pending (user_id null, pending invite)
+      // t3: invite_expired (user_id null, expired invite)
+      // t4: none (user_id null, no invite)
+      const teachers = [
+        { id: "t1", name: "강사1", color: "#f00", email: null, phone: null, userId: "user-123" },
+        { id: "t2", name: "강사2", color: "#0f0", email: null, phone: null, userId: null },
+        { id: "t3", name: "강사3", color: "#00f", email: null, phone: null, userId: null },
+        { id: "t4", name: "강사4", color: "#ff0", email: null, phone: null, userId: null },
+      ];
+      mockGetAllTeachers.mockResolvedValueOnce(teachers);
+
+      // pending invite_tokens query: returns t2
+      const pendingQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockResolvedValue({
+                data: [{ teacher_id: "t2", expires_at: futureDate }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+      // expired invite_tokens query: returns t3
+      const expiredQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              lte: vi.fn().mockResolvedValue({
+                data: [{ teacher_id: "t3" }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+
+      // mockSupabaseFrom is called twice: first for pending, then for expired
+      mockSupabaseFrom
+        .mockReturnValueOnce(pendingQueryChain)
+        .mockReturnValueOnce(expiredQueryChain);
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/teachers?userId=test-user"
+      );
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(4);
+
+      const t1 = data.data.find((t: { id: string }) => t.id === "t1");
+      const t2 = data.data.find((t: { id: string }) => t.id === "t2");
+      const t3 = data.data.find((t: { id: string }) => t.id === "t3");
+      const t4 = data.data.find((t: { id: string }) => t.id === "t4");
+
+      expect(t1.status).toBe("active");
+      expect(t1.inviteExpiresAt).toBeUndefined();
+
+      expect(t2.status).toBe("invite_pending");
+      expect(t2.inviteExpiresAt).toBe(futureDate);
+
+      expect(t3.status).toBe("invite_expired");
+      expect(t3.inviteExpiresAt).toBeUndefined();
+
+      expect(t4.status).toBe("none");
+      expect(t4.inviteExpiresAt).toBeUndefined();
     });
   });
 
