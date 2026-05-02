@@ -17,7 +17,7 @@ import { GET } from "../route";
 describe("GET /api/invites/check", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("유효한 토큰이면 초대 정보를 반환한다", async () => {
+  it("유효한 토큰이면 초대 정보를 반환한다 (teacher_id 없음)", async () => {
     const futureDate = new Date(Date.now() + 86400000).toISOString();
     mockFrom.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -28,6 +28,7 @@ describe("GET /api/invites/check", () => {
               role: "admin",
               expires_at: futureDate,
               used_by: null,
+              teacher_id: null,
               academies: { name: "수학의 정석" },
             },
             error: null,
@@ -44,6 +45,53 @@ describe("GET /api/invites/check", () => {
     expect(body.valid).toBe(true);
     expect(body.academyName).toBe("수학의 정석");
     expect(body.role).toBe("admin");
+    expect(body.teacherName).toBeNull();
+  });
+
+  it("teacher_id가 있으면 teacherName을 포함한다", async () => {
+    const futureDate = new Date(Date.now() + 86400000).toISOString();
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "invite_tokens") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  id: "tok-2",
+                  role: "member",
+                  expires_at: futureDate,
+                  used_by: null,
+                  teacher_id: "teacher-1",
+                  academies: { name: "수학의 정석" },
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { name: "김강사" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {};
+    });
+
+    const req = new NextRequest("http://localhost/api/invites/check?token=member-invite");
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.valid).toBe(true);
+    expect(body.teacherName).toBe("김강사");
   });
 
   it("만료된 토큰은 valid:false를 반환한다", async () => {
@@ -57,6 +105,7 @@ describe("GET /api/invites/check", () => {
               role: "admin",
               expires_at: pastDate,
               used_by: null,
+              teacher_id: null,
               academies: { name: "수학의 정석" },
             },
             error: null,

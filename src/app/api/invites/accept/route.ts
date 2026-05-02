@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // 1. 토큰 조회 + 학원명 join
     const { data: inviteData, error: tokenError } = await client
       .from("invite_tokens")
-      .select("id, academy_id, role, expires_at, used_by, created_by, academies(name)")
+      .select("id, academy_id, role, expires_at, used_by, created_by, teacher_id, academies(name)")
       .eq("token", token)
       .single();
 
@@ -75,7 +75,21 @@ export async function POST(request: NextRequest) {
       return toErrorResponse(new AppError("INVITE_MEMBER_INSERT_FAILED", { statusHint: 500 }));
     }
 
-    // 4. 토큰 사용 처리
+    // 4. 강사 연동 (teacher_id가 있는 경우)
+    const teacherId = (inviteData as unknown as { teacher_id: string | null }).teacher_id;
+    if (teacherId) {
+      const { error: linkError } = await client
+        .from("teachers")
+        .update({ user_id: userId })
+        .eq("id", teacherId)
+        .is("user_id", null); // only link if currently unlinked
+      if (linkError) {
+        // UNIQUE INDEX violation = already linked by race condition
+        return NextResponse.json({ error: "TEACHER_ALREADY_LINKED" }, { status: 409 });
+      }
+    }
+
+    // 5. 토큰 사용 처리
     await client
       .from("invite_tokens")
       .update({ used_by: userId, used_at: new Date().toISOString() })
@@ -85,6 +99,7 @@ export async function POST(request: NextRequest) {
       userId,
       academyId: inviteData.academy_id,
       role: inviteData.role,
+      teacherId,
     });
 
     const response = NextResponse.json({

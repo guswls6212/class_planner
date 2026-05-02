@@ -37,6 +37,15 @@ describe("GET /api/members", () => {
       if (table === "academies") {
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트 학원" } }) }) }) };
       }
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -65,6 +74,56 @@ describe("GET /api/members", () => {
     expect(body.data[0].role).toBe("owner");
     expect(body.data[0].email).toBe("owner@test.com");
     expect(body.data[0].name).toBe("김원장");
+    expect(body.data[0].linkedTeacherId).toBeNull();
+    expect(body.data[0].linkedTeacherName).toBeNull();
+    expect(body.data[0].linkedTeacherColor).toBeNull();
+  });
+
+  it("강사와 연동된 멤버는 linkedTeacher 정보를 포함한다", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "academies") {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트 학원" } }) }) }) };
+      }
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({
+                data: [{ id: "teacher-1", name: "김강사", color: "#ff0000", user_id: "u2" }],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                { user_id: "u1", role: "owner", joined_at: "2026-04-01" },
+                { user_id: "u2", role: "member", joined_at: "2026-04-10" },
+              ],
+              error: null,
+            }),
+          }),
+        }),
+      };
+    });
+    mockGetUserById
+      .mockResolvedValueOnce({ data: { user: { email: "owner@test.com", user_metadata: { full_name: "김원장" } } } })
+      .mockResolvedValueOnce({ data: { user: { email: "teacher@test.com", user_metadata: { full_name: "김강사" } } } });
+
+    const req = new NextRequest("http://localhost/api/members?userId=u1");
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data[0].linkedTeacherId).toBeNull();
+    expect(body.data[1].linkedTeacherId).toBe("teacher-1");
+    expect(body.data[1].linkedTeacherName).toBe("김강사");
+    expect(body.data[1].linkedTeacherColor).toBe("#ff0000");
   });
 
   it("academy_members에 row가 없으면 200 + hasAcademy:false + 빈 배열을 반환한다", async () => {
@@ -86,6 +145,15 @@ describe("GET /api/members", () => {
       if (table === "academies") {
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트" } }) }) }) };
       }
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        };
+      }
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -106,6 +174,7 @@ describe("GET /api/members", () => {
     expect(res.status).toBe(200);
     expect(body.data[0].email).toBeNull();
     expect(body.data[0].name).toBeNull();
+    expect(body.data[0].linkedTeacherId).toBeNull();
   });
 });
 

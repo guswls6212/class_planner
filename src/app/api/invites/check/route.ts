@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await client
       .from("invite_tokens")
-      .select("id, role, expires_at, used_by, academies(name)")
+      .select("id, role, expires_at, used_by, teacher_id, academies(name)")
       .eq("token", token)
       .single();
 
@@ -33,12 +33,24 @@ export async function GET(request: NextRequest) {
 
     const academyName = (data.academies as unknown as { name: string } | null)?.name ?? "";
 
+    const teacherId = (data as unknown as { teacher_id: string | null }).teacher_id;
+    let teacherName: string | null = null;
+    if (teacherId) {
+      const { data: teacher } = await client
+        .from("teachers")
+        .select("name")
+        .eq("id", teacherId)
+        .single();
+      teacherName = teacher?.name ?? null;
+    }
+
     return NextResponse.json({
       valid: true,
       id: data.id,
       role: data.role,
       academyName,
       expiresAt: data.expires_at,
+      teacherName,
     });
   } catch (error) {
     logger.error("GET /api/invites/check 오류", undefined, error as Error);

@@ -47,9 +47,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const memberRows = rows ?? [];
+
+    // 연동된 강사 정보 일괄 조회
+    const memberUserIds = memberRows.map((r) => r.user_id);
+    let teachersByUserId: Record<string, { id: string; name: string; color: string }> = {};
+    if (memberUserIds.length > 0) {
+      const { data: teacherRows } = await client
+        .from("teachers")
+        .select("id, name, color, user_id")
+        .eq("academy_id", academyId)
+        .in("user_id", memberUserIds);
+      for (const t of teacherRows ?? []) {
+        if (t.user_id) {
+          teachersByUserId[t.user_id] = { id: t.id, name: t.name, color: t.color };
+        }
+      }
+    }
+
     // 각 멤버의 auth 정보를 admin API로 병렬 조회
     const members = await Promise.all(
-      (rows ?? []).map(async (row) => {
+      memberRows.map(async (row) => {
+        const linkedTeacher = teachersByUserId[row.user_id] ?? null;
         try {
           const { data: { user } } = await client.auth.admin.getUserById(row.user_id);
           return {
@@ -58,6 +77,9 @@ export async function GET(request: NextRequest) {
             joinedAt: row.joined_at,
             email: user?.email ?? null,
             name: (user?.user_metadata?.full_name as string | undefined) ?? null,
+            linkedTeacherId: linkedTeacher?.id ?? null,
+            linkedTeacherName: linkedTeacher?.name ?? null,
+            linkedTeacherColor: linkedTeacher?.color ?? null,
           };
         } catch {
           return {
@@ -66,6 +88,9 @@ export async function GET(request: NextRequest) {
             joinedAt: row.joined_at,
             email: null,
             name: null,
+            linkedTeacherId: linkedTeacher?.id ?? null,
+            linkedTeacherName: linkedTeacher?.name ?? null,
+            linkedTeacherColor: linkedTeacher?.color ?? null,
           };
         }
       })
