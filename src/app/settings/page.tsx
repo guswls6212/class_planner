@@ -48,9 +48,19 @@ export default function SettingsPage() {
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
   const [academyId, setAcademyId] = useState<string | null>(null);
+  const [academySlug, setAcademySlug] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
+  // Slug editor state
+  const [editSlugValue, setEditSlugValue] = useState("");
+  const [isEditingSlug, setIsEditingSlug] = useState(false);
+  const [isSavingSlug, setIsSavingSlug] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [slugCheckLoading, setSlugCheckLoading] = useState(false);
+  const [slugImpactConfirmed, setSlugImpactConfirmed] = useState(false);
+  const slugCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSlugTriedRef = useRef(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [teachers, setTeachers] = useState<TeacherWithStatus[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
@@ -95,13 +105,38 @@ export default function SettingsPage() {
       ]);
 
       if (membersRes.ok) {
-        const { data, hasAcademy: ha, academyName: an, academyId: aid } = await membersRes.json();
+        const { data, hasAcademy: ha, academyName: an, academyId: aid, academySlug: aslug } = await membersRes.json();
         setHasAcademy(ha ?? true);
         setAcademyName(an ?? "");
         setAcademyId(aid ?? null);
+        setAcademySlug(aslug ?? null);
         setMembers(data ?? []);
         const me = (data ?? []).find((m: Member) => m.userId === userId);
         if (me) setMyRole(me.role);
+
+        // Auto-generate slug on first load if missing (background, silent, only once).
+        // Owner/admin only — non-managers cannot PATCH and would just hit 403.
+        const meRow = (data ?? []).find((m: Member) => m.userId === userId);
+        const meRole = meRow?.role;
+        if (!aslug && an && userId && !autoSlugTriedRef.current && meRole === "owner") {
+          autoSlugTriedRef.current = true;
+          import("@/lib/slug").then(({ generateSlug }) => {
+            const autoSlug = generateSlug(an);
+            if (!autoSlug) return;
+            fetch(`/api/academies/slug?userId=${userId}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slug: autoSlug }),
+            })
+              .then(async (res) => {
+                if (res.ok) {
+                  const body = await res.json().catch(() => ({}));
+                  if (body?.slug) setAcademySlug(body.slug);
+                }
+              })
+              .catch(() => {});
+          });
+        }
       } else {
         // API 서버 오류 — hasAcademy를 false로 바꾸지 않음
         // 일시적 오류로 "학원 만들기" 화면이 표시되는 것을 방지
@@ -146,6 +181,53 @@ export default function SettingsPage() {
   useEffect(() => {
     if (userId) fetchData();
   }, [userId, fetchData]);
+
+  const checkSlugDebounced = useCallback((slug: string, currentSlug: string) => {
+    if (slugCheckTimerRef.current) clearTimeout(slugCheckTimerRef.current);
+    if (!slug || slug === currentSlug) {
+      setSlugAvailable(null);
+      setSlugCheckLoading(false);
+      return;
+    }
+    setSlugCheckLoading(true);
+    slugCheckTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/academies/check-slug?slug=${encodeURIComponent(slug)}`);
+        const data = await res.json();
+        setSlugAvailable(Boolean(data.available));
+      } catch {
+        setSlugAvailable(null);
+      } finally {
+        setSlugCheckLoading(false);
+      }
+    }, 500);
+  }, []);
+
+  const handleSaveSlug = async () => {
+    if (!userId) return;
+    setIsSavingSlug(true);
+    try {
+      const res = await fetch(`/api/academies/slug?userId=${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: editSlugValue }),
+      });
+      if (res.ok) {
+        showToast("success", "URL이 변경됐습니다.");
+        setIsEditingSlug(false);
+        setSlugImpactConfirmed(false);
+        setSlugAvailable(null);
+        await fetchData();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast("error", (err as { error?: string }).error ?? "URL 변경 실패");
+      }
+    } catch {
+      showToast("error", "URL 변경 실패");
+    } finally {
+      setIsSavingSlug(false);
+    }
+  };
 
   const handleSaveAcademyName = async () => {
     if (!userId || !editNameValue.trim()) return;
@@ -461,6 +543,105 @@ export default function SettingsPage() {
               </>
             )}
           </div>
+
+          {/* Slug 편집 섹션 */}
+          {canManage && (
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-[var(--color-text-muted)]">학부모 접속 URL</span>
+                {!isEditingSlug && (
+                  <button
+                    onClick={() => {
+                      setEditSlugValue(academySlug ?? "");
+                      setIsEditingSlug(true);
+                      setSlugAvailable(null);
+                      setSlugImpactConfirmed(false);
+                    }}
+                    className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors rounded"
+                    aria-label="slug 편집"
+                  >
+                    <Pencil size={13} strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+
+              {!isEditingSlug ? (
+                <p className="text-sm font-mono text-[var(--color-text-primary)]">
+                  {academySlug
+                    ? `/academy/${academySlug}`
+                    : <span className="text-[var(--color-text-muted)] italic text-xs">slug 미설정 — 편집 버튼으로 설정하세요</span>
+                  }
+                </p>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-xs text-[var(--color-text-muted)] flex-shrink-0">/academy/</span>
+                    <input
+                      value={editSlugValue}
+                      onChange={(e) => {
+                        setEditSlugValue(e.target.value);
+                        setSlugImpactConfirmed(false);
+                        checkSlugDebounced(e.target.value, academySlug ?? "");
+                      }}
+                      className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent font-mono min-w-0"
+                      placeholder="학원명"
+                    />
+                    <span className="text-xs flex-shrink-0 w-16 text-right">
+                      {slugCheckLoading && <span className="text-[var(--color-text-muted)]">확인 중</span>}
+                      {!slugCheckLoading && slugAvailable === true && <span className="text-emerald-400">✓ 가능</span>}
+                      {!slugCheckLoading && slugAvailable === false && <span className="text-red-400">✗ 중복</span>}
+                    </span>
+                  </div>
+
+                  {/* 변경 영향 경고 — 기존 slug가 있고 새 값이 다를 때 */}
+                  {academySlug && editSlugValue !== academySlug && (
+                    <div className="rounded-lg bg-yellow-900/20 border border-yellow-700/40 px-3 py-2.5 mb-3">
+                      <p className="text-xs text-yellow-400 font-semibold mb-1">⚠️ URL 변경 시 영향</p>
+                      <p className="text-xs text-slate-400 leading-relaxed">
+                        부모님들이 저장한 <code className="bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">/academy/{academySlug}</code> 링크가 자동으로 새 URL로 연결됩니다.
+                      </p>
+                      <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={slugImpactConfirmed}
+                          onChange={(e) => setSlugImpactConfirmed(e.target.checked)}
+                          className="accent-amber-500 w-3.5 h-3.5"
+                        />
+                        <span className="text-xs text-slate-400">위 내용을 확인했습니다</span>
+                      </label>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSaveSlug}
+                      disabled={
+                        isSavingSlug ||
+                        !editSlugValue ||
+                        slugAvailable === false ||
+                        slugCheckLoading ||
+                        // If changing existing slug, require confirmation
+                        (
+                          !!academySlug &&
+                          editSlugValue !== academySlug &&
+                          !slugImpactConfirmed
+                        )
+                      }
+                      className="flex-1 py-1.5 rounded-md text-xs font-semibold bg-accent text-[var(--color-admin-ink)] disabled:opacity-40 transition-opacity"
+                    >
+                      {isSavingSlug ? "저장 중..." : "저장"}
+                    </button>
+                    <button
+                      onClick={() => { setIsEditingSlug(false); setSlugAvailable(null); }}
+                      className="flex-1 py-1.5 rounded-md text-xs border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -581,13 +762,14 @@ export default function SettingsPage() {
                     <button
                       onClick={() => {
                         if (typeof window === "undefined") return;
-                        const url = `${window.location.origin}/academy/${academyId ?? ""}`;
+                        const identifier = academySlug ?? academyId ?? "";
+                        const url = `${window.location.origin}/academy/${identifier}`;
                         window.navigator.clipboard?.writeText(`${url}\n코드: ${code.access_code}`);
                         showToast("success", `${studentName} 코드가 복사됐습니다`);
                       }}
-                      disabled={!academyId}
+                      disabled={!academyId && !academySlug}
                       className={`ml-auto text-xs border border-[var(--color-border)] rounded px-2 py-1 transition-colors ${
-                        academyId
+                        academyId || academySlug
                           ? 'text-[var(--color-text-muted)] hover:border-[var(--color-accent)] cursor-pointer'
                           : 'opacity-40 cursor-not-allowed'
                       }`}
@@ -604,7 +786,7 @@ export default function SettingsPage() {
             <p className="text-xs text-[var(--color-text-muted)]">
               학부모 접속 URL:{" "}
               <span className="font-mono text-[var(--color-accent)]">
-                {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academyId ?? ""}
+                {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academySlug ?? academyId ?? ""}
               </span>
             </p>
           </div>

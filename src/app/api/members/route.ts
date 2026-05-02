@@ -24,13 +24,14 @@ export async function GET(request: NextRequest) {
   try {
     const client = getServiceRoleClient();
 
-    // Fetch academy name (displayed on the settings page)
+    // Fetch academy name + slug (displayed on the settings page)
     const { data: academyRow } = await client
       .from("academies")
-      .select("name")
+      .select("name, slug")
       .eq("id", academyId)
       .single();
     const academyName = academyRow?.name ?? "";
+    const academySlug = academyRow?.slug ?? null;
 
     // Fetch academy_members only (auth.users join not supported via PostgREST)
     const { data: rows, error } = await client
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ success: true, data: members, hasAcademy: true, academyName, academyId });
+    return NextResponse.json({ success: true, data: members, hasAcademy: true, academyName, academyId, academySlug });
   } catch (error) {
     return toErrorResponse(error);
   }
