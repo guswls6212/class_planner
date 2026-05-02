@@ -12,6 +12,7 @@ interface TeacherOption {
   id: string;
   name: string;
   color: string;
+  email: string | null;
 }
 
 interface InviteModalProps {
@@ -53,10 +54,11 @@ export default function InviteModal({
         const { data } = await res.json();
         if (cancelled) return;
         const options: TeacherOption[] = (data ?? []).map(
-          (t: { id: string; name: string; color: string }) => ({
+          (t: { id: string; name: string; color: string; email: string | null }) => ({
             id: t.id,
             name: t.name,
             color: t.color,
+            email: t.email ?? null,
           })
         );
         setTeachers(options);
@@ -117,6 +119,9 @@ export default function InviteModal({
 
   const noUnlinkedTeachers = inviteRole === "member" && !isFetchingTeachers && teachers.length === 0;
   const canSubmit = inviteRole === "admin" || (inviteRole === "member" && selectedTeacherId !== "");
+  const selectedTeacherEmail = selectedTeacherId
+    ? teachers.find((t) => t.id === selectedTeacherId)?.email ?? null
+    : null;
 
   if (!isOpen) return null;
 
@@ -180,17 +185,27 @@ export default function InviteModal({
                     페이지에서 강사를 추가해주세요
                   </p>
                 ) : (
-                  <select
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-                  >
-                    {teachers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      value={selectedTeacherId}
+                      onChange={(e) => setSelectedTeacherId(e.target.value)}
+                      className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedTeacherId && !selectedTeacherEmail && (
+                      <div className="mt-2 rounded-lg bg-yellow-900/20 border border-yellow-700/50 px-3 py-2">
+                        <p className="text-xs text-yellow-400">이 강사의 이메일이 등록되지 않았습니다.</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          이메일 없이도 초대할 수 있지만, 다른 사람이 링크를 사용할 수 있습니다.
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -225,7 +240,7 @@ export default function InviteModal({
                 {copied ? "복사됨!" : "복사"}
               </button>
             </div>
-            <p className="text-[11px] text-[var(--color-text-muted)] mb-5">7일 후 만료 · 1회만 사용 가능</p>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-5">24시간 후 만료 · 1회만 사용 가능</p>
             <button
               onClick={handleClose}
               className="w-full py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
