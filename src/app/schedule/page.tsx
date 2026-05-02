@@ -20,7 +20,7 @@
 
 import dynamic from "next/dynamic";
 import type { JSX } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useAttendance } from "../../hooks/useAttendance";
@@ -145,9 +145,16 @@ const ScheduleMonthlyView = dynamic(
 /**
  * 페이지 엔트리 컴포넌트
  * 인증 가드로 감싼 스케줄 페이지 컨테이너를 노출합니다.
+ *
+ * Suspense 경계: SchedulePageContent 내부의 useSearchParams가 Next.js 15
+ * Static Generation 빌드에서 CSR-bailout 경계를 요구하므로 여기서 감싼다.
  */
 export default function SchedulePage(): JSX.Element {
-  return <SchedulePageContent />;
+  return (
+    <Suspense fallback={null}>
+      <SchedulePageContent />
+    </Suspense>
+  );
 }
 
 /**
