@@ -158,6 +158,11 @@ const LoginPage: React.FC = () => {
             </button>
           </div>
 
+          <p className="mt-2 text-center text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+            Google 로그인 시 인증 서버 주소(supabase.co)로 이동 안내가 표시될 수 있습니다.
+            이는 클래스 플래너의 인증 백엔드이며 안전합니다.
+          </p>
+
           <p className="mt-6 text-center text-[11px] leading-relaxed text-[var(--color-text-muted)]">
             로그인하면 수업 시간표를 저장하고<br />팀원과 함께 관리할 수 있습니다
           </p>
