@@ -31,10 +31,35 @@ export interface CrudResult<T> {
 
 export const ANONYMOUS_STORAGE_KEY = "classPlannerData:anonymous";
 
-function getStorageKey(): string {
+// Active academy management
+const ACTIVE_ACADEMY_KEY_PREFIX = "active_academy";
+
+export function getActiveAcademyId(userId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
+}
+
+export function setActiveAcademyId(userId: string, academyId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`, academyId);
+}
+
+export function clearActiveAcademy(userId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
+}
+
+function getStorageKey(academyId?: string): string {
   if (typeof window === "undefined") return ANONYMOUS_STORAGE_KEY;
   const userId = localStorage.getItem("supabase_user_id");
-  return userId ? `classPlannerData:${userId}` : ANONYMOUS_STORAGE_KEY;
+  if (!userId) return ANONYMOUS_STORAGE_KEY;
+
+  const activeAcademyId = academyId ?? getActiveAcademyId(userId);
+  if (activeAcademyId) {
+    return `classPlannerData:${userId}:${activeAcademyId}`;
+  }
+  // Legacy fallback (single-academy era — still works)
+  return `classPlannerData:${userId}`;
 }
 
 function migrateUnkeyedStorage(): void {
@@ -62,7 +87,7 @@ const createDefaultData = (): ClassPlannerData => ({
 /**
  * localStorage에서 classPlannerData 안전하게 읽기
  */
-export const getClassPlannerData = (): ClassPlannerData => {
+export const getClassPlannerData = (academyId?: string): ClassPlannerData => {
   try {
     if (typeof window === "undefined") {
       logger.debug("localStorageCrud - SSR 환경, 기본 데이터 반환");
@@ -70,7 +95,30 @@ export const getClassPlannerData = (): ClassPlannerData => {
     }
 
     migrateUnkeyedStorage();
-    const stored = localStorage.getItem(getStorageKey());
+
+    const newKey = getStorageKey(academyId);
+    const userId = localStorage.getItem("supabase_user_id");
+
+    // One-time migration: if new scoped key is empty but legacy key has data, copy it
+    if (userId && academyId) {
+      const legacyKey = `classPlannerData:${userId}`;
+      const hasNewData = !!localStorage.getItem(newKey);
+      if (!hasNewData) {
+        const legacyRaw = localStorage.getItem(legacyKey);
+        if (legacyRaw) {
+          localStorage.setItem(newKey, legacyRaw);
+          // Keep legacy key — don't delete (safe rollback)
+          logger.info("localStorageCrud - academy 스코프 마이그레이션 실행", {
+            userId,
+            academyId,
+            legacyKey,
+            newKey,
+          });
+        }
+      }
+    }
+
+    const stored = localStorage.getItem(newKey);
     if (!stored) {
       logger.debug("localStorageCrud - 저장된 데이터 없음, 기본 데이터 반환");
       return createDefaultData();
@@ -99,7 +147,7 @@ export const getClassPlannerData = (): ClassPlannerData => {
     // lastModified가 없으면 추가하고 저장
     if (!parsed.lastModified) {
       logger.info("localStorageCrud - lastModified 마이그레이션 실행");
-      setClassPlannerData(result);
+      setClassPlannerData(result, academyId);
     }
 
     logger.debug("localStorageCrud - 데이터 로드 성공", {
@@ -123,7 +171,7 @@ export const getClassPlannerData = (): ClassPlannerData => {
 /**
  * localStorage에 classPlannerData 안전하게 저장
  */
-export const setClassPlannerData = (data: ClassPlannerData): boolean => {
+export const setClassPlannerData = (data: ClassPlannerData, academyId?: string): boolean => {
   try {
     if (typeof window === "undefined") {
       logger.debug("localStorageCrud - SSR 환경, 저장 건너뜀");
@@ -135,7 +183,7 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
       ...data,
     };
 
-    localStorage.setItem(getStorageKey(), JSON.stringify(dataToSave));
+    localStorage.setItem(getStorageKey(academyId), JSON.stringify(dataToSave));
 
     logger.debug("localStorageCrud - 데이터 저장 성공", {
       studentCount: dataToSave.students.length,
@@ -170,13 +218,13 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
 /**
  * localStorage 데이터 초기화
  */
-export const clearClassPlannerData = (): boolean => {
+export const clearClassPlannerData = (academyId?: string): boolean => {
   try {
     if (typeof window === "undefined") {
       return false;
     }
 
-    localStorage.removeItem(getStorageKey());
+    localStorage.removeItem(getStorageKey(academyId));
     logger.info("localStorageCrud - 데이터 초기화 완료");
 
     // 초기화 이벤트 발생 (실패해도 무시)

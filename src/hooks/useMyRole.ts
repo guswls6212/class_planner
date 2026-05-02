@@ -3,10 +3,18 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/utils/supabaseClient";
 
+export interface AcademyMembership {
+  id: string;
+  name: string;
+  slug: string | null;
+  role: string;
+}
+
 export interface CurrentMemberData {
   role: "owner" | "admin" | "member" | null;
   isLoading: boolean;
   canManage: boolean;
+  academies: AcademyMembership[];
   linkedTeacherId: string | null;
   linkedTeacherName: string | null;
   linkedTeacherColor: string | null;
@@ -22,12 +30,18 @@ export interface CurrentMemberData {
  * content because admin UI is rendered conditionally on canManage). Consumers
  * that need to render optimistically (e.g. the sidebar) should branch on
  * isLoading themselves.
+ *
+ * Also fetches the user's academies list (multi-academy support) and
+ * initializes the active academy in localStorage if not already set.
+ * The academies fetch is non-blocking — failure leaves academies=[] but
+ * does not affect role/canManage resolution.
  */
 export function useMyRole(): CurrentMemberData {
   const [data, setData] = useState<CurrentMemberData>({
     role: null,
     isLoading: true,
     canManage: false,
+    academies: [],
     linkedTeacherId: null,
     linkedTeacherName: null,
     linkedTeacherColor: null,
@@ -51,6 +65,7 @@ export function useMyRole(): CurrentMemberData {
               role: null,
               isLoading: false,
               canManage: true,
+              academies: [],
               linkedTeacherId: null,
               linkedTeacherName: null,
               linkedTeacherColor: null,
@@ -80,6 +95,7 @@ export function useMyRole(): CurrentMemberData {
             role: null,
             isLoading: false,
             canManage: false,
+            academies: [],
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,
@@ -91,6 +107,7 @@ export function useMyRole(): CurrentMemberData {
           role: me.role,
           isLoading: false,
           canManage: me.role === "owner" || me.role === "admin",
+          academies: [],
           linkedTeacherId: me.linkedTeacherId,
           linkedTeacherName: me.linkedTeacherName,
           linkedTeacherColor: me.linkedTeacherColor,
@@ -105,6 +122,34 @@ export function useMyRole(): CurrentMemberData {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ role: me.role }),
         }).catch(() => {});
+
+        // Multi-academy: fetch the user's academies list and initialize
+        // the active academy in localStorage if not yet set.
+        // This is non-blocking: failure here leaves academies=[] but
+        // does not affect role/canManage resolution above.
+        try {
+          const academiesRes = await fetch(`/api/academies/mine?userId=${userId}`);
+          if (academiesRes.ok && !cancelled) {
+            const { academies: list } = (await academiesRes.json()) as {
+              academies: AcademyMembership[];
+            };
+            if (!cancelled) {
+              setData((prev) => ({ ...prev, academies: list ?? [] }));
+
+              const { getActiveAcademyId, setActiveAcademyId } = await import(
+                "@/lib/localStorageCrud"
+              );
+              const currentActive = getActiveAcademyId(userId);
+              if (!currentActive && list && list.length > 0) {
+                // First entry is owner-priority sorted by /api/academies/mine.
+                setActiveAcademyId(userId, list[0].id);
+              }
+            }
+          }
+        } catch {
+          // Non-blocking: leave academies=[] on failure. Role/canManage
+          // already committed above.
+        }
       } catch {
         if (!cancelled) {
           // On network error, fail closed — deny access rather than grant it.
@@ -112,6 +157,7 @@ export function useMyRole(): CurrentMemberData {
             role: null,
             isLoading: false,
             canManage: false,
+            academies: [],
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,
