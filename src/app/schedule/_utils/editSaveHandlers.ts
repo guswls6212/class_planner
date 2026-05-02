@@ -92,13 +92,9 @@ export function buildEditOnSave(params: {
     onSaveComplete,
   } = params;
 
-  return async () => {
+  return async (weekday: number) => {
     if (!editModalData) return;
 
-    const weekday = Number(
-      (document.getElementById("edit-modal-weekday") as HTMLSelectElement)
-        ?.value
-    );
     const startTime = editModalTimeData.startTime;
     const endTime = editModalTimeData.endTime;
     if (!startTime || !endTime) return;

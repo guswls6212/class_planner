@@ -35,7 +35,7 @@ interface EditSessionModalProps {
   timeError: string;
   onDelete: () => Promise<void> | void;
   onCancel: () => void;
-  onSave: () => Promise<void> | void;
+  onSave: (weekday: number) => Promise<void> | void;
   onSubjectColorChange?: (subjectId: string, newColor: string) => void;
 }
 
@@ -149,8 +149,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
-    onSave();
-  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave]);
+    onSave(weekday);
+  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave, weekday]);
 
   const studentNames = selectedStudents.map((s) => s.name).join(" · ") || "학생 없음";
 

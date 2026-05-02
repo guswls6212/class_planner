@@ -36,7 +36,7 @@ export default function InviteModal({
   defaultTeacherId,
   defaultTeacherName,
 }: InviteModalProps) {
-  const isPreSelected = Boolean(defaultTeacherId);
+  const isPreSelected = Boolean(defaultTeacherId && defaultTeacherName);
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
