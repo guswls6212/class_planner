@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         .is("user_id", null); // only link if currently unlinked
       if (linkError) {
         // UNIQUE INDEX violation = already linked by race condition
-        return NextResponse.json({ error: "TEACHER_ALREADY_LINKED" }, { status: 409 });
+        return NextResponse.json({ success: false, error: "TEACHER_ALREADY_LINKED" }, { status: 409 });
       }
     }
 
