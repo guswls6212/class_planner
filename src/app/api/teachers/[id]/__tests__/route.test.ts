@@ -26,7 +26,6 @@ describe("PATCH /api/teachers/[id]", () => {
     color: "#ff0000",
     email: "kim@example.com",
     phone: "010-1234-5678",
-    bio: null,
     notes: null,
     user_id: "user-1",
     academy_id: "acad-1",

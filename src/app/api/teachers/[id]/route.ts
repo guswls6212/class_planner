@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Fields any owner/admin can update
 const PUBLIC_FIELDS = ["name", "color"] as const;
 // Fields owner/admin can always update; member can update only on their own teacher
-const PRIVATE_FIELDS = ["email", "phone", "bio", "notes"] as const;
+const PRIVATE_FIELDS = ["email", "phone", "notes"] as const;
 // All allowed fields combined (used to filter unknown/readonly fields)
 const ALL_ALLOWED_FIELDS = [...PUBLIC_FIELDS, ...PRIVATE_FIELDS] as const;
 type AllowedField = (typeof ALL_ALLOWED_FIELDS)[number];
@@ -38,7 +38,7 @@ export async function PATCH(
     // Fetch current teacher row to verify existence and ownership
     const { data: teacher, error: fetchError } = await client
       .from("teachers")
-      .select("id, name, color, email, phone, bio, notes, user_id, academy_id")
+      .select("id, name, color, email, phone, notes, user_id, academy_id")
       .eq("id", id)
       .eq("academy_id", academyId)
       .single();
