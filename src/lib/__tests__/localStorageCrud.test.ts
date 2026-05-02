@@ -7,15 +7,19 @@ import {
   addStudentToLocal,
   addSubjectToLocal,
   addTeacherToLocal,
+  clearActiveAcademy,
   clearClassPlannerData,
   clearUserClassPlannerData,
   deleteStudentFromLocal,
   deleteSubjectFromLocal,
+  ANONYMOUS_STORAGE_KEY,
   getAllStudentsFromLocal,
   getAllSubjectsFromLocal,
+  getActiveAcademyId,
   getClassPlannerData,
   getStudentFromLocal,
   getSubjectFromLocal,
+  setActiveAcademyId,
   setClassPlannerData,
   updateStudentInLocal,
   updateSubjectInLocal,
@@ -772,5 +776,177 @@ describe("clearUserClassPlannerData", () => {
     clearUserClassPlannerData("user-456");
     expect(localStorageMock.getItem("classPlannerData:user-456")).toBeNull();
     expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
+  });
+});
+
+// ===== Active academy management =====
+
+describe("active academy management", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+  });
+
+  it("active academy를 설정하고 조회할 수 있다", () => {
+    setActiveAcademyId("user-1", "academy-abc");
+    expect(getActiveAcademyId("user-1")).toBe("academy-abc");
+  });
+
+  it("active academy를 초기화하면 null 반환", () => {
+    setActiveAcademyId("user-1", "academy-abc");
+    clearActiveAcademy("user-1");
+    expect(getActiveAcademyId("user-1")).toBeNull();
+  });
+
+  it("사용자별 active academy가 격리된다", () => {
+    setActiveAcademyId("user-1", "academy-a");
+    setActiveAcademyId("user-2", "academy-b");
+    expect(getActiveAcademyId("user-1")).toBe("academy-a");
+    expect(getActiveAcademyId("user-2")).toBe("academy-b");
+  });
+
+  it("설정하지 않은 userId는 null 반환", () => {
+    expect(getActiveAcademyId("user-never-set")).toBeNull();
+  });
+});
+
+// ===== getStorageKey with academyId =====
+
+describe("getStorageKey per-academy scoping", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+  });
+
+  it("academyId 포함 시 userId:academyId 스코프 키에 저장", () => {
+    storage["supabase_user_id"] = "user-123";
+    setActiveAcademyId("user-123", "acad-xyz");
+    setClassPlannerData(
+      {
+        students: [{ id: "s1", name: "Test" }],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        teachers: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      },
+      "acad-xyz"
+    );
+    expect(
+      localStorageMock.getItem("classPlannerData:user-123:acad-xyz")
+    ).not.toBeNull();
+    // 기존 user-scoped 키에는 저장 안 됨
+    expect(localStorageMock.getItem("classPlannerData:user-123")).toBeNull();
+  });
+
+  it("academyId 없으면 active academy 키로 자동 라우팅", () => {
+    storage["supabase_user_id"] = "user-123";
+    setActiveAcademyId("user-123", "acad-xyz");
+    // active academy가 설정된 상태에서 academyId 미전달
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    // active academy 기반 키로 저장됨
+    expect(
+      localStorageMock.getItem("classPlannerData:user-123:acad-xyz")
+    ).not.toBeNull();
+  });
+
+  it("userId 없으면 academyId가 있어도 anonymous 키에 저장", () => {
+    // supabase_user_id 없음
+    setClassPlannerData(
+      {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        teachers: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      },
+      "some-academy"
+    );
+    expect(
+      localStorageMock.getItem(ANONYMOUS_STORAGE_KEY)
+    ).not.toBeNull();
+  });
+});
+
+// ===== One-time migration: legacy key → academy-scoped key =====
+
+describe("getClassPlannerData per-academy migration", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+  });
+
+  it("새 스코프 키가 비어있고 레거시 키에 데이터가 있으면 첫 조회 시 복사", () => {
+    const legacyData = JSON.stringify({
+      students: [{ id: "s1", name: "LegacyStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    storage["supabase_user_id"] = "user-111";
+    storage["classPlannerData:user-111"] = legacyData;
+
+    const result = getClassPlannerData("academy-new");
+
+    expect(result.students[0].name).toBe("LegacyStudent");
+    // 새 스코프 키에 복사됨
+    expect(
+      localStorageMock.getItem("classPlannerData:user-111:academy-new")
+    ).not.toBeNull();
+    // 레거시 키는 삭제 안 됨 (안전한 롤백)
+    expect(
+      localStorageMock.getItem("classPlannerData:user-111")
+    ).not.toBeNull();
+  });
+
+  it("새 스코프 키에 이미 데이터가 있으면 레거시 데이터를 덮어쓰지 않는다", () => {
+    storage["supabase_user_id"] = "user-111";
+    storage["classPlannerData:user-111"] = JSON.stringify({
+      students: [{ id: "s-legacy", name: "LegacyStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    storage["classPlannerData:user-111:academy-new"] = JSON.stringify({
+      students: [{ id: "s-new", name: "NewStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    const result = getClassPlannerData("academy-new");
+
+    // 기존 새 스코프 데이터 유지
+    expect(result.students[0].name).toBe("NewStudent");
+  });
+
+  it("userId 없이 academyId만 넘겨도 마이그레이션 없이 anonymous 기본값 반환", () => {
+    // no supabase_user_id in storage
+    const result = getClassPlannerData("academy-orphan");
+    expect(result.students).toHaveLength(0);
+    // anonymous 키에만 접근
+    expect(
+      localStorageMock.getItem("classPlannerData:academy-orphan")
+    ).toBeNull();
   });
 });
