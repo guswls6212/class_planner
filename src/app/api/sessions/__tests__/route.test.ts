@@ -275,6 +275,85 @@ describe("/api/sessions API Routes", () => {
     });
   });
 
+  describe("POST /api/sessions — note fields", () => {
+    const makePostRequest = (body: object, userId = "test-user") =>
+      new NextRequest(`http://localhost:3000/api/sessions?userId=${userId}`, {
+        method: "POST",
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+      });
+
+    const baseBody = {
+      subjectId: "sub-1",
+      startsAt: "09:00",
+      endsAt: "10:00",
+      enrollmentIds: [],
+      weekday: 0,
+      weekStartDate: "2026-04-27",
+    };
+
+    it("member가 public_description 설정하면 403", async () => {
+      mockRequireRole.mockResolvedValueOnce({ academyId: "test-academy-id", role: "member" });
+
+      const request = makePostRequest({
+        ...baseBody,
+        public_description: "test note",
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(403);
+    });
+
+    it("owner가 public_description 설정하면 200", async () => {
+      mockRequireRole.mockResolvedValueOnce({ academyId: "test-academy-id", role: "owner" });
+      mockAddSession.mockResolvedValueOnce({
+        ...SESSION_STUB,
+        public_description: "test note",
+      });
+
+      const request = makePostRequest({
+        ...baseBody,
+        public_description: "test note",
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+      expect(response.status).toBe(201);
+      expect(data.data.public_description).toBe("test note");
+    });
+
+    it("member가 internal_note 설정하면 200", async () => {
+      mockRequireRole.mockResolvedValueOnce({ academyId: "test-academy-id", role: "member" });
+      mockAddSession.mockResolvedValueOnce({
+        ...SESSION_STUB,
+        internal_note: "my note",
+      });
+
+      const request = makePostRequest({
+        ...baseBody,
+        internal_note: "my note",
+      });
+
+      const response = await POST(request);
+      const data = await response.json();
+      expect(response.status).toBe(201);
+      expect(data.data.internal_note).toBe("my note");
+    });
+
+    it("member가 public_description을 null로 보내면 200 (명시적 null은 허용)", async () => {
+      mockRequireRole.mockResolvedValueOnce({ academyId: "test-academy-id", role: "member" });
+      mockAddSession.mockResolvedValueOnce(SESSION_STUB);
+
+      const request = makePostRequest({
+        ...baseBody,
+        public_description: null,
+      });
+
+      const response = await POST(request);
+      expect(response.status).toBe(201);
+    });
+  });
+
   describe("DELETE /api/sessions", () => {
     it("ID 필수 검증을 수행한다", async () => {
       const request = new NextRequest("http://localhost:3000/api/sessions?userId=test-user"); // id 누락

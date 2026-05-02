@@ -22,6 +22,8 @@ export class SessionApplicationServiceImpl {
       weekday: number;
       weekStartDate?: string;
       teacherId?: string | null;
+      public_description?: string | null;
+      internal_note?: string | null;
     },
     academyId: string
   ): Promise<Session> {
@@ -41,6 +43,8 @@ export class SessionApplicationServiceImpl {
       weekday: number;
       room?: string;
       teacherId?: string | null;
+      public_description?: string | null;
+      internal_note?: string | null;
     },
     academyId?: string
   ): Promise<Session> {

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate, teacherId } = body;
+    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate, teacherId, public_description, internal_note } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -74,7 +74,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
+
+    // public_description은 owner/admin만 편집 가능
+    if (role === "member" && public_description != null) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: only owner/admin may set public_description" },
+        { status: 403 }
+      );
+    }
+
     const newSession = await getSessionService().addSession(
       {
         subjectId,
@@ -84,6 +93,8 @@ export async function POST(request: NextRequest) {
         weekday: Number(weekday),
         weekStartDate,
         ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
+        ...(public_description !== undefined && { public_description }),
+        ...(internal_note !== undefined && { internal_note }),
       },
       academyId
     );
@@ -104,7 +115,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId } = body;
+    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId, public_description, internal_note } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -129,7 +140,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
+
+    // public_description은 owner/admin만 편집 가능
+    if (role === "member" && public_description != null) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: only owner/admin may set public_description" },
+        { status: 403 }
+      );
+    }
+
     const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
       startsAt,
@@ -137,6 +157,8 @@ export async function PUT(request: NextRequest) {
       enrollmentIds,
       weekday: Number(weekday),
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
+      ...(public_description !== undefined && { public_description }),
+      ...(internal_note !== undefined && { internal_note }),
     }, academyId);
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
