@@ -21,6 +21,7 @@
 import dynamic from "next/dynamic";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
@@ -202,6 +203,17 @@ function SchedulePageContent(): JSX.Element {
 
   // Role-based UI gate — member role gets read-only schedule
   const { canManage } = useMyRole();
+
+  // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
+  // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get("toast") === "permission_denied") {
+      showToast("error", "해당 페이지는 원장과 관리자만 접근 가능합니다.");
+      router.replace("/schedule", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // ================================
   // 🧩 로컬 타입 (가독성 향상용)

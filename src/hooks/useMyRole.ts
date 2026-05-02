@@ -92,6 +92,16 @@ export function useMyRole(): CurrentMemberData {
           linkedTeacherName: me.linkedTeacherName,
           linkedTeacherColor: me.linkedTeacherColor,
         });
+
+        // Sync role to a server-readable cookie so the Next.js middleware
+        // can enforce route-level RBAC. Fire-and-forget — failure here is
+        // non-blocking; the middleware's missing-cookie path falls through
+        // to allow access (loading state semantics).
+        fetch("/api/auth/set-role-cookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: me.role }),
+        }).catch(() => {});
       } catch {
         if (!cancelled) {
           // On network error, fail closed — deny access rather than grant it.
