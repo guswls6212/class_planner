@@ -48,7 +48,13 @@
   - `MonthDayCell` — 월별 캘린더 단위 셀.
   - `StudentFilterChipBar` — 학생 멀티셀렉트 필터 칩바. colorBy=student 시 표시.
   - `TeacherFilterChipBar` — 강사 멀티셀렉트 필터 칩바. colorBy=teacher 시 표시. 색상 dot 포함.
+  - `TeacherAddModal` — 강사 초대 추가 모달. Smart CTA — 이메일 유무에 따라 "초대 링크 보내기" vs "바로 추가" 버튼 adaptive (K-2).
+  - `InviteModal` — 초대 링크 발송 모달. `defaultTeacherId` prop으로 강사 행 pre-selection (K-2, K-6).
+  - `MemberListItem` — 팀 멤버 목록 행. member에게는 이메일 비공개 (K-5).
   - `TeacherPillPicker` — 수업 모달용 강사 단일선택 pill bar. 색상 dot + 보라 accent. Group/Edit 모달에서 소비.
+  - `TeacherColorPicker`, `TeacherContactDisplay`, `TeacherEditForm`, `TeacherScheduleList`, `TeacherSubjectPills` — 강사 상세 패널 서브컴포넌트.
+  - `DragOverlayCard` — 드래그 중 오버레이 카드 (DnD Kit 연동).
+  - `HiddenSessionsPopover` — 겹침 overflow 팝오버.
   - `AttendanceSheet` — 출석 체크 시트.
   - `BottomSheet` — 모바일 하단 슬라이드 시트. GroupSessionModal 모바일 렌더에 사용.
   - `BottomTabBar` — 모바일 하단 탭 네비게이션.
@@ -59,6 +65,7 @@
   - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
   - `AccountMenu`, `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼.
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
+  - `TeacherStatusPill` — 강사 초대/공유 상태 6-state 표시 pill (active/invite_pending/invite_expired/share_only/none, K-1)
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃
   - `TimeTableGrid` — 주간 시간표 CSS Grid. `baseDate?: Date` prop으로 주 날짜 배열 계산. 헤더 Stacked Circle(요일명+날짜, 오늘 amber 배지). `nowLinePx` 계산 후 오늘 `TimeTableRow`에 전달. (J-2, PR#97)
   - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.
@@ -73,55 +80,78 @@
 ### 2.1 Pages (Next.js App Router)
 ```
 src/app/
-├── page.tsx                    # 랜딩 페이지
-├── layout.tsx                  # 루트 레이아웃 (AppShell)
-├── login/page.tsx              # OAuth 로그인
-├── onboarding/page.tsx         # 첫 로그인 온보딩 (학원명 + 역할 입력)
-├── students/page.tsx           # 학생 관리
-├── subjects/page.tsx           # 과목 관리
-├── teachers/page.tsx           # 강사 관리 (Phase 4)
-├── teacher-schedule/page.tsx   # 강사 전용 시간표 뷰 (읽기 전용, Phase 4)
-├── settings/page.tsx           # 학원 설정 (멤버 목록 + 초대 관리)
+├── page.tsx                        # 랜딩 페이지
+├── layout.tsx                      # 루트 레이아웃 (AppShell)
+├── login/page.tsx                  # OAuth 로그인
+├── onboarding/page.tsx             # 첫 로그인 온보딩 (학원명 + 역할 입력)
+├── students/page.tsx               # 학생 관리
+├── subjects/page.tsx               # 과목 관리
+├── teachers/page.tsx               # 강사 관리 (Phase 4)
+├── teacher-schedule/page.tsx       # 강사 전용 시간표 뷰 (읽기 전용, Phase 4)
+├── settings/page.tsx               # 학원 설정 (멤버 목록 + 초대 관리 + slug 편집기)
+├── academy/[identifier]/page.tsx   # 공개 학부모 접속 코드 입력 페이지 (K-4)
 ├── admin/
-│   ├── layout.tsx              # ADMIN_EMAILS env 화이트리스트 게이트
-│   └── logs/page.tsx           # 개발자 전용 로그 뷰어 (전체 학원 횡단 조회)
-├── invite/[token]/page.tsx     # 초대 수락 페이지 (비로그인/로그인 분기)
-├── share/[token]/              # 공유 시간표 (인증 불필요, W3)
-│   ├── page.tsx                # 공유 링크 시간표 뷰 (읽기 전용)
-│   └── layout.tsx              # 최소 레이아웃 (Nav 없음)
-├── schedule/                   # 시간표 관리 (가장 복잡)
+│   ├── layout.tsx                  # ADMIN_EMAILS env 화이트리스트 게이트
+│   └── logs/page.tsx               # 개발자 전용 로그 뷰어 (전체 학원 횡단 조회)
+├── invite/[token]/page.tsx         # 초대 수락 페이지 — 4-state (비로그인/수락/이메일불일치/이미멤버, K-2)
+├── share/[token]/                  # 공유 시간표 (인증 불필요, W3)
+│   ├── page.tsx                    # 공유 링크 시간표 뷰 (읽기 전용)
+│   └── layout.tsx                  # 최소 레이아웃 (Nav 없음)
+├── schedule/                       # 시간표 관리 (가장 복잡)
 │   ├── page.tsx
-│   ├── _components/            # 페이지 전용 컴포넌트
-│   ├── _hooks/                 # 페이지 전용 훅
-│   ├── _utils/                 # 페이지 전용 유틸리티
-│   └── _constants/             # 페이지 전용 상수
-└── about/page.tsx              # 소개 페이지
+│   ├── _components/                # 페이지 전용 컴포넌트
+│   ├── _hooks/                     # 페이지 전용 훅
+│   ├── _utils/                     # 페이지 전용 유틸리티
+│   └── _constants/                 # 페이지 전용 상수
+└── about/page.tsx                  # 소개 페이지
 ```
 
 ### 2.1.1 Middleware (`src/middleware.ts`)
 
-온보딩 가드. 로그인한 사용자가 데이터 페이지(`/students`, `/subjects`, `/schedule`) 접근 시 `onboarded` 쿠키를 확인한다. 쿠키 없음 → `/onboarding` 리디렉트. 비로그인 사용자는 Anonymous-First 정책으로 통과.
+온보딩 가드 + RBAC 라우트 보호. 로그인한 사용자가 데이터 페이지 접근 시 두 단계로 검증한다.
 
-matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`
+1. **온보딩 가드:** `onboarded` 쿠키 없음 → `/onboarding` 리디렉트.
+2. **RBAC 라우트 가드 (K-5):** `role_cookie` 쿠키가 `member`이면 `/students`, `/subjects`, `/teachers` 접근 시 `/schedule` 리디렉트.
+
+matcher: `/students/:path*`, `/subjects/:path*`, `/schedule/:path*`, `/teachers/:path*`
 
 ### 2.2 API Routes
 ```
 src/app/api/
-├── students/         # 학생 CRUD (GET, POST, [id] PUT/DELETE)
-├── subjects/         # 과목 CRUD (GET, POST, [id] PUT/DELETE)
-├── teachers/         # 강사 CRUD (GET, POST, [id] PUT/DELETE, Phase 4)
-├── sessions/         # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
-├── enrollments/      # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
-├── onboarding/       # 신규 사용자 온보딩 (Academy 생성)
-├── invites/          # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 수락)
-├── members/          # 멤버 관리 (GET 목록, [userId] DELETE 제거)
-├── share/[token]/    # 공유 링크 데이터 (GET — 인증 불필요, token 검증, W3)
-├── share-tokens/     # 공유 토큰 CRUD (GET/POST 목록·생성, [id] DELETE 취소, W3)
-├── templates/        # 시간표 템플릿 CRUD (GET/POST 목록·생성, [id] GET/PUT/DELETE, W4)
-├── attendance/       # 출석 관리 (GET 조회/POST 단건 upsert, bulk/ POST 일괄 upsert, W5)
+├── academies/            # 학원 CRUD
+│   ├── route.ts          # GET/POST 학원 목록·생성
+│   ├── check-slug/       # GET — slug 중복 확인 (K-7)
+│   ├── mine/             # GET — 내가 속한 학원 목록 (K-7, Multi-academy)
+│   └── slug/             # PATCH — slug 변경 (K-7)
+├── academy/[identifier]/
+│   └── public/           # GET — 공개 학원 정보 (UUID/slug 지원, K-4)
+├── audit-log/            # GET — 변경 이력 조회 (K-1, migration 035)
+├── auth/
+│   ├── set-active-academy/  # POST — active_academy_id 쿠키 설정 (K-7)
+│   └── set-role-cookie/     # POST — role 쿠키 설정
+├── students/             # 학생 CRUD (GET, POST, [id] PUT/DELETE)
+├── subjects/             # 과목 CRUD (GET, POST, [id] PUT/DELETE)
+├── teachers/             # 강사 CRUD (GET, POST, [id] PATCH/DELETE)
+│                         #   PATCH: M1 field-level guard (name/color: owner/admin only, K-1)
+│                         #   GET: invite/share status join → 6-state 응답 (K-1)
+├── teacher-subjects/     # 강사↔과목 M:N (POST/DELETE)
+├── sessions/             # 세션 CRUD + position 업데이트 (GET, POST, [id] PUT/DELETE, [id]/position PATCH)
+│                         #   public_description: owner/admin only, internal_note: all staff (K-3)
+├── enrollments/          # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
+├── onboarding/           # 신규 사용자 온보딩 (Academy 생성)
+├── invites/              # 초대 토큰 (GET/POST 목록·생성, [id] DELETE 취소, check GET 공개조회, accept POST 이메일 매칭 검증 K-2)
+├── members/              # 멤버 관리 (GET 목록, [userId] DELETE 제거, [userId] PATCH 역할 변경 K-3)
+├── share/
+│   ├── [token]/          # GET — 공개 링크 데이터 (인증 불필요, token 검증, W3)
+│   └── code/             # POST — 접속 코드 검증 → share token 반환 (K-4)
+├── share-tokens/         # 공유 토큰 CRUD (GET/POST 목록·생성, [id] DELETE 취소, W3)
+│   ├── access-codes/     # POST — 일괄 접속 코드 생성/갱신 (K-4)
+│   └── from-invite/      # POST — "링크만 받기" — 초대→share token 전환 (K-2)
+├── templates/            # 시간표 템플릿 CRUD (GET/POST 목록·생성, [id] GET/PUT/DELETE, W4)
+├── attendance/           # 출석 관리 (GET 조회/POST 단건 upsert, bulk/ POST 일괄 upsert, W5)
 ├── admin/
-│   └── logs/         # GET — 개발자 전용 (ADMIN_EMAILS 화이트리스트), 전체 학원 횡단 조회, 필터/페이지네이션
-└── user-settings/    # 사용자 설정
+│   └── logs/             # GET — 개발자 전용 (ADMIN_EMAILS 화이트리스트), 전체 학원 횡단 조회, 필터/페이지네이션
+└── user-settings/        # 사용자 설정
 ```
 모든 API Route는 Service Role 클라이언트로 RLS 우회. CORS 미들웨어는 POST/PUT/DELETE에만 적용 (GET은 same-origin이므로 불필요).
 
@@ -179,10 +209,15 @@ src/lib/               # 핵심 유틸리티
 ├── adminGuard.ts              # ADMIN_EMAILS env 화이트리스트 검증 유틸리티
 ├── supabaseServiceRole.ts     # Service Role 클라이언트 (서버 전용)
 ├── yPositionMigration.ts      # yPosition 마이그레이션 유틸리티
+├── accessCode.ts              # 학부모 접속 코드 생성/검증 유틸리티 (6자 alphanumeric, K-4)
+├── slug.ts                    # Academy slug 정규화/검증 유틸리티 (K-7)
+├── server/
+│   └── teacherServiceFactory.ts  # 서버사이드 강사 서비스 팩토리 (API Route 전용)
 └── auth/                      # 로그인 데이터 마이그레이션
     ├── handleLoginDataMigration.ts  # 로그인 시 로컬/서버 충돌 감지
     ├── fullDataMigration.ts         # 로컬 전체 데이터 서버 업로드
-    └── deduplication.ts             # 중복 데이터 제거
+    ├── deduplication.ts             # 중복 데이터 제거
+    └── permissions.ts               # Role 기반 권한 검사 유틸리티 (canManage, canEdit 등)
 
 src/hooks/             # 커스텀 React 훅
 ├── useStudentManagementLocal.ts   # 학생 관리 (Local-first)
@@ -204,6 +239,8 @@ src/hooks/             # 커스텀 React 훅
 ├── useSessionStatus.ts            # 세션 상태 계산 (Phase 4)
 ├── useLocal.ts                    # localStorage 기반 범용 훅
 ├── useStudentFilter (schedule/_hooks/) # 학생 멀티셀렉트 필터 (localStorage: ui:selectedStudentIds)
+├── useMyRole.ts                   # 현재 사용자 역할 조회. 초기값 canManage: false (Flash of Unauthorized UI 방지, K-5)
+├── useMyTeacher.ts                # 현재 로그인 사용자의 강사 프로필 조회
 ├── useTimeValidation.ts           # 시간 유효성 검사
 ├── useUserTracking.ts             # 사용자 행동 추적
 └── usePerformanceMonitoring.ts    # 성능 모니터링
@@ -253,7 +290,9 @@ academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ, sc
 academy_members (academy_id UUID FK, user_id UUID FK, role TEXT, invited_by UUID FK, joined_at TIMESTAMPTZ)
 
 -- 초대 토큰 (1회용 + 7일 만료)
-invite_tokens      (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, role TEXT, created_by UUID FK, expires_at TIMESTAMPTZ, used_by UUID FK NULL, used_at TIMESTAMPTZ NULL)
+-- 037: email 컬럼 추가 (이메일 바운드 초대 — 수락 시 로그인 이메일과 매칭 검증, K-2)
+-- 033: teacher_id FK 추가 (강사 초대 연결)
+invite_tokens      (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, role TEXT, created_by UUID FK, expires_at TIMESTAMPTZ, used_by UUID FK NULL, used_at TIMESTAMPTZ NULL, email TEXT NULL, teacher_id UUID FK NULL)
 
 -- 비즈니스 데이터: academy_id FK로 소유권 부여
 students           (id UUID PK, academy_id UUID FK, name TEXT, gender TEXT)
@@ -264,7 +303,9 @@ session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
 -- 공유 링크 (W3 — supabase/migrations/026 + 029)
 -- 029: last_viewed_at 추가 (방문 기준선 per-token)
-share_tokens       (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, label TEXT, filter_student_id UUID FK NULL, expires_at TIMESTAMPTZ, created_by UUID FK, revoked_at TIMESTAMPTZ NULL, last_viewed_at TIMESTAMPTZ NULL)
+-- 038: teacher_id FK 추가 (강사 스코프), watermark_meta JSONB 추가 (K-2)
+-- 040: access_code TEXT UNIQUE 추가 (학부모 6자 접속 코드, per-academy UNIQUE, K-4)
+share_tokens       (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, label TEXT, filter_student_id UUID FK NULL, expires_at TIMESTAMPTZ, created_by UUID FK, revoked_at TIMESTAMPTZ NULL, last_viewed_at TIMESTAMPTZ NULL, teacher_id UUID FK NULL, watermark_meta JSONB NULL, access_code TEXT NULL)
 
 -- 시간표 템플릿 (W4 — supabase/migrations/027)
 templates          (id UUID PK, academy_id UUID FK, name TEXT, description TEXT, template_data JSONB, created_by UUID FK, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)
@@ -272,10 +313,24 @@ templates          (id UUID PK, academy_id UUID FK, name TEXT, description TEXT,
 -- 출석 관리 (W5 — supabase/migrations/028)
 attendance         (id UUID PK, academy_id UUID FK, session_id UUID FK, student_id UUID FK, date DATE, status TEXT CHECK('present','absent','late','excused'), notes TEXT, marked_by UUID FK NULL, marked_at TIMESTAMPTZ, UNIQUE(session_id, student_id, date))
 
--- 강사 (Phase 4 확장 — migration 032: email/phone/role/notes 추가)
+-- 세션 노트 (migration 039 — K-3)
+-- public_description: owner/admin만 편집, 학부모 공유 링크에 노출 가능
+-- internal_note: 모든 staff(owner/admin/member) 편집 가능, 내부 전용
+sessions           (... public_description TEXT NULL, internal_note TEXT NULL)  -- 기존 컬럼 + 추가분
+
+-- 강사 (Phase 4 + K-1 확장 — migration 032: email/phone/role/notes 추가, migration 036: RLS member_own)
+-- RLS: name/color 수정은 owner/admin만, email/phone/notes는 본인(user_id 매칭) member도 가능 (K-1)
 teachers           (id UUID PK, academy_id UUID FK, name TEXT NOT NULL, color TEXT, user_id UUID FK NULL, email TEXT NULL, phone TEXT NULL, role TEXT CHECK('owner','admin','member') DEFAULT 'member', notes TEXT NULL)
 -- 강사↔과목 M:N (migration 032)
 teacher_subjects   (teacher_id UUID FK, subject_id UUID FK, academy_id UUID FK, created_at TIMESTAMPTZ, PRIMARY KEY(teacher_id, subject_id))
+
+-- 감사 로그 (migration 035 — K-1)
+-- 멤버 초대/역할 변경/강사 편집 등 중요 변경 이력
+audit_log          (id UUID PK, academy_id UUID FK, actor_id UUID FK, action TEXT, target_type TEXT, target_id UUID NULL, before_data JSONB NULL, after_data JSONB NULL, created_at TIMESTAMPTZ)
+
+-- 학원 slug (migration 041 — K-7)
+-- academies 테이블에 slug 컬럼 추가 (UNIQUE, 공개 URL용)
+academies          (... slug TEXT UNIQUE NULL)  -- 기존 컬럼 + 추가분
 ```
 
 ### 3.3 보조 테이블
@@ -283,6 +338,38 @@ teacher_subjects   (teacher_id UUID FK, subject_id UUID FK, academy_id UUID FK, 
 - `user_settings` — 사용자 설정 (JSONB)
 - `user_activity_logs` — 활동 로그
 - `migration_log` — 마이그레이션 추적
+
+## 3.2 신규 기능 아키텍처 (Phase K)
+
+### 학부모 접속 코드 시스템 (K-4)
+- 원장이 학생별 6자 alphanumeric 코드 생성 (Settings "학부모 접속 코드" 섹션)
+- 부모가 `/academy/[slug]` 공개 페이지에서 코드 입력 → 해당 학생 수업 시간표 `share_tokens`로 반환
+- 코드 만료 6개월, 원장이 `POST /api/share-tokens/access-codes`로 일괄 갱신 가능
+- `share_tokens.access_code` (UNIQUE per academy) 기반
+
+### Academy Slug (K-7)
+- 공개 URL: `/academy/[slug]` (예: `/academy/현진학원`)
+- `/academy/[UUID]` 접근 시 slug로 301 redirect
+- Settings에서 원장이 slug 커스텀 설정 (실시간 중복 확인: `GET /api/academies/check-slug`)
+- `academies.slug` 컬럼 UNIQUE 제약
+
+### Multi-academy 사용자 (K-7)
+- `classPlannerData:{userId}:{academyId}` — localStorage 학원별 완전 분리
+- 사이드바 상단 로고 클릭 → Academy Switcher 드롭다운 (`GET /api/academies/mine`)
+- `active_academy_id` 쿠키 (`POST /api/auth/set-active-academy`)로 서버 컨텍스트 결정
+
+### Member RBAC (K-5)
+- Sidebar: member 역할은 시간표 + 설정만 표시 (학생/과목/강사 nav 숨김)
+- Middleware: `/students`, `/subjects`, `/teachers` 접근 시 member → `/schedule` redirect
+- `ScheduleActionBar`: member에게 share 버튼 숨김
+- Settings 팀 멤버 리스트: member에게 타인 이메일 비공개
+- `useMyRole` 초기값 `canManage: false` — 역할 로드 전 UI 깜빡임(FOUU) 방지
+
+### 강사 Invite 흐름 (K-1, K-2)
+- `/invite/[token]` 4-state: A(비로그인 → OAuth 유도), B(수락), C(이메일 불일치 403), D(이미 멤버)
+- `invite_tokens.email` 바운드: 수락 시 로그인 이메일과 일치해야 함
+- "링크만 받기" (`POST /api/share-tokens/from-invite`): 초대 수락 없이 강사 뷰 share_token 발급
+- 링크 생성 후 자동 클립보드 복사 + 모달 닫힘 (K-6)
 
 ## 4. 인증 흐름
 1. 사용자 → Google/Kakao OAuth → Supabase Auth
@@ -327,3 +414,4 @@ teacher_subjects   (teacher_id UUID FK, subject_id UUID FK, academy_id UUID FK, 
 - 2026-04-17: Phase 5-B B-1 — SubjectChip + SchedulePreview Common Primitive 신설. getSessionSubject → src/lib/schedule/ 승격 (SessionBlock.utils.ts re-export). 랜딩 ScheduleMockup → SchedulePreview 교체. src/components/common/ 디렉터리 추가.
 - 2026-04-18: Phase 6 Schedule Body Unification — `tintFromHex` util(`src/lib/colors/`), `SessionCard` 4-variant primitive + `SessionOverflowPopover` 신설. Weekly grid CSS Grid transpose(rows=time cols=weekday) + D-hybrid overlap(≤3 균등/≥4 cap-2+pill). Daily/Monthly/Landing/PDF → SessionCard로 통일. HelpTooltip viewport flip + AccountMenu compact anchor 수정.
 - 2026-04-26: Phase J Schedule UX — `ScheduleDateNavigator` molecule 신설(PR#96). `TimeTableGrid` Stacked Circle 헤더+수평 시간선+now-line+`baseDate` prop, `TimeTableRow` 시간선 overlay 추가(PR#97). FAB `page.tsx`로 이동(전 뷰 공통화), `GroupSessionModal` 3-step Glass Stepper 재설계(PR#98). Organisms 목록 현행화(ScheduleDailyView, ScheduleMonthlyView 추가).
+- 2026-05-02: Phase K Teacher Invite 리디자인 + 보안 강화 (PR#152-161). migrations 032-041. Pages: `academy/[identifier]` 추가. API: `academies/check-slug`, `academies/mine`, `academies/slug`, `academy/[identifier]/public`, `audit-log`, `auth/set-active-academy`, `share/code`, `share-tokens/access-codes`, `share-tokens/from-invite`, `members/[userId] PATCH`, `teachers/[id] PATCH` 추가. Atoms: `TeacherStatusPill` 추가. Molecules: `TeacherAddModal`, `InviteModal`, `MemberListItem`, `DragOverlayCard`, `HiddenSessionsPopover`, teacher 서브컴포넌트 5개 추가. Hooks: `useMyRole`, `useMyTeacher` 추가. Lib: `accessCode.ts`, `slug.ts`, `server/teacherServiceFactory.ts`, `auth/permissions.ts` 추가. Data model: `invite_tokens.email/teacher_id`, `share_tokens.access_code/teacher_id/watermark_meta`, `academies.slug`, `sessions.public_description/internal_note`, `audit_log` 테이블, `teacher_subjects` M:N 추가. RBAC: middleware route guard + useMyRole FOUU fix + Sidebar/ScheduleActionBar member 필터링. Multi-academy: localStorage per-academy scope + Academy Switcher + active_academy_id 쿠키.
