@@ -12,7 +12,7 @@ const mockSupabase = {
   eq: vi.fn().mockReturnThis(),
   is: vi.fn().mockReturnThis(),
   gt: vi.fn().mockReturnThis(),
-  single: vi.fn(),
+  maybeSingle: vi.fn(),
 }
 
 beforeEach(() => {
@@ -29,8 +29,8 @@ function makeRequest(body: object) {
 
 describe('POST /api/share/code', () => {
   it('유효한 코드 → 200 + token 반환', async () => {
-    mockSupabase.single.mockResolvedValueOnce({
-      data: { token: 'abc123def', expires_at: new Date(Date.now() + 86400000).toISOString() },
+    mockSupabase.maybeSingle.mockResolvedValueOnce({
+      data: { token: 'abc123def', expires_at: new Date(Date.now() + 86400000).toISOString(), academy_id: 'academy-1' },
       error: null,
     })
 
@@ -42,8 +42,22 @@ describe('POST /api/share/code', () => {
     expect(body.token).toBe('abc123def')
   })
 
+  it('academyId 없어도 코드만으로 200 반환 (global search)', async () => {
+    mockSupabase.maybeSingle.mockResolvedValueOnce({
+      data: { token: 'xyz789', expires_at: new Date(Date.now() + 86400000).toISOString(), academy_id: 'academy-1' },
+      error: null,
+    })
+
+    const { POST } = await import('../route')
+    const res = await POST(makeRequest({ code: '이현2A' }))
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.token).toBe('xyz789')
+  })
+
   it('존재하지 않는 코드 → 404', async () => {
-    mockSupabase.single.mockResolvedValueOnce({ data: null, error: { code: 'PGRST116' } })
+    mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
 
     const { POST } = await import('../route')
     const res = await POST(makeRequest({ code: '없는코드', academyId: 'academy-1' }))
@@ -54,12 +68,6 @@ describe('POST /api/share/code', () => {
   it('code 없으면 400', async () => {
     const { POST } = await import('../route')
     const res = await POST(makeRequest({ academyId: 'academy-1' }))
-    expect(res.status).toBe(400)
-  })
-
-  it('academyId 없으면 400', async () => {
-    const { POST } = await import('../route')
-    const res = await POST(makeRequest({ code: '이현2A' }))
     expect(res.status).toBe(400)
   })
 })

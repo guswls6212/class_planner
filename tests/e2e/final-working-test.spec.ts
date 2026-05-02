@@ -32,11 +32,9 @@ test.describe("E2E 테스트 - 학생 관리", () => {
         // 사용자 ID 설정
         localStorage.setItem("supabase_user_id", config.TEST_USER_ID);
 
-        // 실제 Supabase 인증 토큰 설정 (우회 플래그 없이)
-        localStorage.setItem(
-          config.SUPABASE_TOKEN_KEY,
-          JSON.stringify(authData)
-        );
+        // Supabase 인증 토큰 미설정 → 익명 사용자로 실행
+        // 익명 사용자는 canManage: true (Anonymous-First 원칙)
+        // CI 환경에서 TEST_USER_ID의 academy_members 행이 없어도 정상 동작
 
         // 기본 데이터 설정
         localStorage.setItem("classPlannerData", JSON.stringify(defaultData));
