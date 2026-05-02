@@ -50,39 +50,24 @@ describe("GET /api/invites/check", () => {
 
   it("teacher_id가 있으면 teacherName을 포함한다", async () => {
     const futureDate = new Date(Date.now() + 86400000).toISOString();
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "invite_tokens") {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  id: "tok-2",
-                  role: "member",
-                  expires_at: futureDate,
-                  used_by: null,
-                  teacher_id: "teacher-1",
-                  academies: { name: "수학의 정석" },
-                },
-                error: null,
-              }),
-            }),
+    // teachers is now joined in the same invite_tokens query (no separate table call)
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: "tok-2",
+              role: "member",
+              expires_at: futureDate,
+              used_by: null,
+              teacher_id: "teacher-1",
+              academies: { name: "수학의 정석" },
+              teachers: { name: "김강사" },
+            },
+            error: null,
           }),
-        };
-      }
-      if (table === "teachers") {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: { name: "김강사" },
-                error: null,
-              }),
-            }),
-          }),
-        };
-      }
-      return {};
+        }),
+      }),
     });
 
     const req = new NextRequest("http://localhost/api/invites/check?token=member-invite");

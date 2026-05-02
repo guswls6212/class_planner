@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     const client = getServiceRoleClient();
 
-    // 1. 토큰 조회 + 학원명 join
+    // 1. Look up token + join academy name
     const { data: inviteData, error: tokenError } = await client
       .from("invite_tokens")
       .select("id, academy_id, role, expires_at, used_by, created_by, teacher_id, academies(name)")
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       return toErrorResponse(new AppError("INVITE_TOKEN_EXPIRED", { statusHint: 410 }));
     }
 
-    // 2. 이미 멤버인지 확인 (멱등)
+    // 2. Idempotency check — already a member?
     const { data: existingMember } = await client
       .from("academy_members")
       .select("academy_id, role")
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // 3. academy_members INSERT
+    // 3. Insert academy_members row
     const { error: insertError } = await client
       .from("academy_members")
       .insert({
@@ -71,11 +71,11 @@ export async function POST(request: NextRequest) {
       });
 
     if (insertError) {
-      logger.error("멤버 가입 실패", { userId, academyId: inviteData.academy_id }, insertError as Error);
+      logger.error("Member insert failed", { userId, academyId: inviteData.academy_id }, insertError as Error);
       return toErrorResponse(new AppError("INVITE_MEMBER_INSERT_FAILED", { statusHint: 500 }));
     }
 
-    // 4. 강사 연동 (teacher_id가 있는 경우)
+    // 4. Link teacher record (only when teacher_id is set on the invite)
     const teacherId = (inviteData as unknown as { teacher_id: string | null }).teacher_id;
     if (teacherId) {
       const { error: linkError } = await client
@@ -84,18 +84,23 @@ export async function POST(request: NextRequest) {
         .eq("id", teacherId)
         .is("user_id", null); // only link if currently unlinked
       if (linkError) {
-        // UNIQUE INDEX violation = already linked by race condition
+        // UNIQUE INDEX violation = already linked by race condition.
+        // Mark token as consumed even on link failure — prevents orphaned reusable token.
+        await client
+          .from("invite_tokens")
+          .update({ used_by: userId, used_at: new Date().toISOString() })
+          .eq("id", inviteData.id);
         return NextResponse.json({ success: false, error: "TEACHER_ALREADY_LINKED" }, { status: 409 });
       }
     }
 
-    // 5. 토큰 사용 처리
+    // 5. Mark token as consumed
     await client
       .from("invite_tokens")
       .update({ used_by: userId, used_at: new Date().toISOString() })
       .eq("id", inviteData.id);
 
-    logger.info("초대 수락 완료", {
+    logger.info("Invite accepted", {
       userId,
       academyId: inviteData.academy_id,
       role: inviteData.role,

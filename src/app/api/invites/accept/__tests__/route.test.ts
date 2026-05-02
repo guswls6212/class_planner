@@ -158,6 +158,10 @@ describe("POST /api/invites/accept", () => {
               }),
             }),
           }),
+          // token is consumed even when link fails (Fix 1)
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
         };
       }
       if (table === "academy_members") {

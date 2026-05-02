@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await client
       .from("invite_tokens")
-      .select("id, role, expires_at, used_by, teacher_id, academies(name)")
+      .select("id, role, expires_at, used_by, teacher_id, academies(name), teachers(name)")
       .eq("token", token)
       .single();
 
@@ -32,17 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     const academyName = (data.academies as unknown as { name: string } | null)?.name ?? "";
-
-    const teacherId = (data as unknown as { teacher_id: string | null }).teacher_id;
-    let teacherName: string | null = null;
-    if (teacherId) {
-      const { data: teacher } = await client
-        .from("teachers")
-        .select("name")
-        .eq("id", teacherId)
-        .single();
-      teacherName = teacher?.name ?? null;
-    }
+    const teacherName = (data.teachers as unknown as { name: string } | null)?.name ?? null;
 
     return NextResponse.json({
       valid: true,
@@ -53,7 +43,7 @@ export async function GET(request: NextRequest) {
       teacherName,
     });
   } catch (error) {
-    logger.error("GET /api/invites/check 오류", undefined, error as Error);
+    logger.error("GET /api/invites/check error", undefined, error as Error);
     return NextResponse.json({ valid: false, reason: "server_error" }, { status: 500 });
   }
 }

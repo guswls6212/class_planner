@@ -16,15 +16,15 @@ export async function GET(request: NextRequest) {
   try {
     ({ academyId } = await resolveAcademyMembership(userId));
   } catch (error) {
-    // academy_members에 row가 없는 사용자 — 온보딩 미완 상태
-    logger.warn("멤버 조회: 학원 없는 사용자", { userId });
+    // No academy_members row — user has not completed onboarding yet
+    logger.warn("Member lookup: user has no academy", { userId });
     return NextResponse.json({ success: true, data: [], hasAcademy: false });
   }
 
   try {
     const client = getServiceRoleClient();
 
-    // 학원 이름 조회 (settings 페이지 표시용)
+    // Fetch academy name (displayed on the settings page)
     const { data: academyRow } = await client
       .from("academies")
       .select("name")
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       .single();
     const academyName = academyRow?.name ?? "";
 
-    // academy_members만 조회 (auth.users PostgREST join은 지원 안 됨)
+    // Fetch academy_members only (auth.users join not supported via PostgREST)
     const { data: rows, error } = await client
       .from("academy_members")
       .select("user_id, role, joined_at")
@@ -40,16 +40,16 @@ export async function GET(request: NextRequest) {
       .order("joined_at");
 
     if (error) {
-      logger.error("멤버 목록 조회 실패", { userId }, error as Error);
+      logger.error("Member list query failed", { userId }, error as Error);
       return NextResponse.json(
-        { success: false, error: "멤버 목록 조회에 실패했습니다." },
+        { success: false, error: "Failed to fetch member list." },
         { status: 500 }
       );
     }
 
     const memberRows = rows ?? [];
 
-    // 연동된 강사 정보 일괄 조회
+    // Batch-fetch linked teacher records for all member user IDs
     const memberUserIds = memberRows.map((r) => r.user_id);
     let teachersByUserId: Record<string, { id: string; name: string; color: string }> = {};
     if (memberUserIds.length > 0) {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 각 멤버의 auth 정보를 admin API로 병렬 조회
+    // Fetch auth user info for each member in parallel via admin API
     const members = await Promise.all(
       memberRows.map(async (row) => {
         const linkedTeacher = teachersByUserId[row.user_id] ?? null;
