@@ -10,9 +10,17 @@ CREATE INDEX IF NOT EXISTS idx_invite_tokens_teacher_id
   ON public.invite_tokens(teacher_id);
 
 -- member invites MUST have teacher_id; admin invites may be NULL
-ALTER TABLE public.invite_tokens
-  ADD CONSTRAINT chk_invite_member_requires_teacher
-  CHECK (role = 'admin' OR (role = 'member' AND teacher_id IS NOT NULL));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'chk_invite_member_requires_teacher'
+  ) THEN
+    ALTER TABLE public.invite_tokens
+      ADD CONSTRAINT chk_invite_member_requires_teacher
+      CHECK (role = 'admin' OR (role = 'member' AND teacher_id IS NOT NULL));
+  END IF;
+END $$;
 
 -- Each user can be linked to at most one teacher per academy
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_teachers_academy_user

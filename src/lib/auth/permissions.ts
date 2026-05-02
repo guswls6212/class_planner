@@ -16,11 +16,17 @@ export async function requireRole(
 ): Promise<{ academyId: string; role: AcademyRole }> {
   const { academyId, role } = await resolveAcademyMembership(userId);
 
-  if (!allowed.includes(role as AcademyRole)) {
+  const VALID_ROLES: AcademyRole[] = ["owner", "admin", "member"];
+  if (!VALID_ROLES.includes(role as AcademyRole)) {
+    throw new Error(`Unknown role: ${role}`);
+  }
+  const typedRole = role as AcademyRole;
+
+  if (!allowed.includes(typedRole)) {
     throw new AppError(ErrorCodes.FORBIDDEN, { statusHint: 403 });
   }
 
-  return { academyId, role: role as AcademyRole };
+  return { academyId, role: typedRole };
 }
 
 /**
