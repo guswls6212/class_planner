@@ -13,6 +13,8 @@ interface Props {
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
   userId: string | null;
+  /** Whether the current user can manage academy resources (owner/admin). Members hide the share-link entry. */
+  canManage?: boolean;
   /** @deprecated Retained to keep the page-level call site unchanged. TemplateMenuV2 owns this action now. */
   onSaveTemplate?: () => void;
   /** @deprecated 동일 사유. */
@@ -28,6 +30,7 @@ export default function ScheduleActionBar({
   onDownloadStart,
   onDownloadEnd,
   userId,
+  canManage = true,
 }: Props) {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
@@ -49,7 +52,7 @@ export default function ScheduleActionBar({
       >
         <Info size={14} strokeWidth={2} />
       </button>
-      {userId && (
+      {userId && canManage && (
         <Link
           href="/settings"
           aria-label="공유 링크"
