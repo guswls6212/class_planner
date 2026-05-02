@@ -227,7 +227,8 @@ describe("/api/sessions API Routes", () => {
 
       expect(mockUpdateSession).toHaveBeenCalledWith(
         "sess-1",
-        expect.objectContaining({ teacherId })
+        expect.objectContaining({ teacherId }),
+        "test-academy-id"
       );
     });
 

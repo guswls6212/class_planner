@@ -129,7 +129,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    await requireRole(userId, ["owner", "admin"]);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
       startsAt,
@@ -137,7 +137,7 @@ export async function PUT(request: NextRequest) {
       enrollmentIds,
       weekday: Number(weekday),
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
-    });
+    }, academyId);
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
     return toErrorResponse(error);
@@ -169,8 +169,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await requireRole(userId, ["owner", "admin"]);
-    await getSessionService().deleteSession(id);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    await getSessionService().deleteSession(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Session deleted successfully",

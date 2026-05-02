@@ -16,7 +16,7 @@ export async function PUT(
   try {
     const { id } = await params;
     let body = await request.json();
-    const { name, color, userId: bodyUserId, email, phone, role, notes } = body;
+    const { name, color, userId: bodyUserId, email, phone, role: bodyRole, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -36,22 +36,28 @@ export async function PUT(
 
     logger.debug("API PUT /api/teachers/[id]", { id, userId });
 
-    const { role: memberRole, academyId } = await resolveAcademyMembership(userId);
+    const membership = await resolveAcademyMembership(userId);
+    const { academyId } = membership;
 
-    if (memberRole === "member") {
+    const VALID_ROLES = ["owner", "admin", "member"] as const;
+    const role = membership.role as (typeof VALID_ROLES)[number] | string;
+    if (!VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (role === "member") {
       // Member can only update their own teacher's private contact fields
       await requireOwnTeacher(userId, id);
       body = pickAllowedFields(body, ["email", "phone", "notes"]);
       if (Object.keys(body).length === 0) {
-        return NextResponse.json({ error: "FORBIDDEN: no allowed fields" }, { status: 403 });
+        return NextResponse.json({ error: "FORBIDDEN: no editable fields" }, { status: 403 });
       }
-    } else if (!["owner", "admin"].includes(memberRole)) {
-      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
+    // owner/admin: body unchanged
 
     const updated = await getTeacherService().updateTeacher(
       id,
-      memberRole === "member"
+      role === "member"
         ? {
             email: "email" in body ? (body.email ?? null) : undefined,
             phone: "phone" in body ? (body.phone ?? null) : undefined,
@@ -63,7 +69,7 @@ export async function PUT(
             userId: "userId" in body ? bodyUserId : undefined,
             email: "email" in body ? (email ?? null) : undefined,
             phone: "phone" in body ? (phone ?? null) : undefined,
-            role: "role" in body ? (role ?? null) : undefined,
+            role: "role" in body ? (bodyRole ?? null) : undefined,
             notes: "notes" in body ? (notes ?? null) : undefined,
           },
       academyId

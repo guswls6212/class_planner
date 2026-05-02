@@ -41,9 +41,10 @@ export class SessionApplicationServiceImpl {
       weekday: number;
       room?: string;
       teacherId?: string | null;
-    }
+    },
+    academyId?: string
   ): Promise<Session> {
-    return this.sessionRepository.update(id, sessionData);
+    return this.sessionRepository.update(id, sessionData, academyId);
   }
 
   async updateSessionPosition(
@@ -64,7 +65,7 @@ export class SessionApplicationServiceImpl {
     });
   }
 
-  async deleteSession(id: string): Promise<void> {
-    return this.sessionRepository.delete(id);
+  async deleteSession(id: string, academyId?: string): Promise<void> {
+    return this.sessionRepository.delete(id, academyId);
   }
 }

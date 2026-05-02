@@ -39,9 +39,10 @@ export interface SessionRepository {
   ): Promise<Session>;
   update(
     id: string,
-    session: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
+    session: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>,
+    academyId?: string
   ): Promise<Session>;
-  delete(id: string): Promise<void>;
+  delete(id: string, academyId?: string): Promise<void>;
 }
 
 export interface TeacherRepository {
