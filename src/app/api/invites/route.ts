@@ -42,8 +42,7 @@ export async function GET(request: NextRequest) {
       id: row.id,
       token: row.token,
       role: row.role,
-      expires_at: row.expires_at,
-      created_at: row.created_at,
+      expiresAt: row.expires_at,
       teacherName: (row.teachers as unknown as { name: string } | null)?.name ?? null,
     }));
 
