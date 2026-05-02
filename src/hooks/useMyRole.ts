@@ -90,11 +90,13 @@ export function useMyRole(): CurrentMemberData {
         });
       } catch {
         if (!cancelled) {
-          // On network error, default to full access (fail-open for UX; server enforces 403).
+          // On network error, fail closed — deny access rather than grant it.
+          // The loading state stays optimistic (canManage: true) to prevent flash
+          // of restricted UI for owners while the request is in flight.
           setData({
             role: null,
             isLoading: false,
-            canManage: true,
+            canManage: false,
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,

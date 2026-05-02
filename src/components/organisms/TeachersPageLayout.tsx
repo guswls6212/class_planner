@@ -179,7 +179,6 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
             sessions={props.sessions}
             enrollments={props.enrollments}
             subjects={props.subjects}
-            students={props.students}
             onUpdate={(id, updates) => props.onUpdateTeacher(id, updates)}
             onAddSubject={props.onAddTeacherSubject}
             onRemoveSubject={props.onRemoveTeacherSubject}
