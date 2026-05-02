@@ -2,13 +2,14 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { isUUID } from '@/lib/slug'
 
 export default function AcademyAccessPage({
   params,
 }: {
-  params: Promise<{ academyId: string }>
+  params: Promise<{ identifier: string }>
 }) {
-  const { academyId } = use(params)
+  const { identifier } = use(params)
   const router = useRouter()
   const [academyName, setAcademyName] = useState<string>('')
   const [code, setCode] = useState('')
@@ -16,11 +17,17 @@ export default function AcademyAccessPage({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/academy/${academyId}/public`)
+    fetch(`/api/academy/${identifier}/public`)
       .then((r) => r.json())
-      .then((d) => setAcademyName(d.name ?? '학원'))
+      .then((d) => {
+        setAcademyName(d.name ?? '학원')
+        // UUID로 접속했고 slug가 있으면 slug URL로 redirect
+        if (d.slug && isUUID(identifier)) {
+          router.replace(`/academy/${d.slug}`)
+        }
+      })
       .catch(() => setAcademyName('학원'))
-  }, [academyId])
+  }, [identifier, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,7 +41,7 @@ export default function AcademyAccessPage({
       const res = await fetch('/api/share/code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: trimmed, academyId }),
+        body: JSON.stringify({ code: trimmed }),
       })
 
       if (!res.ok) {

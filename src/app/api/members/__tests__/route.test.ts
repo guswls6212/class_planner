@@ -35,7 +35,7 @@ describe("GET /api/members", () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
     mockFrom.mockImplementation((table: string) => {
       if (table === "academies") {
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트 학원" } }) }) }) };
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { name: "테스트 학원", slug: "test-slug" } }) }) }) };
       }
       if (table === "teachers") {
         return {
@@ -70,6 +70,7 @@ describe("GET /api/members", () => {
 
     expect(res.status).toBe(200);
     expect(body.hasAcademy).toBe(true);
+    expect(body.academySlug).toBe("test-slug");
     expect(body.data).toHaveLength(2);
     expect(body.data[0].role).toBe("owner");
     expect(body.data[0].email).toBe("owner@test.com");
