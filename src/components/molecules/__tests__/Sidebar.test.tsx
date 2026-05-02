@@ -8,9 +8,18 @@ vi.mock("@/hooks/useMyRole", () => ({
   useMyRole: () => mockUseMyRole(),
 }));
 
-// Mock AccountMenu (doesn't matter for the switcher tests)
-vi.mock("../AccountMenu", () => ({
-  AccountMenu: () => <div data-testid="account-menu" />,
+// Mock supabase (UserSection inside Sidebar calls getUser)
+vi.mock("../../../utils/supabaseClient", () => ({
+  supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+    },
+  },
+}));
+
+// Mock signOut (used by UserSection)
+vi.mock("../../../lib/auth/signOut", () => ({
+  signOut: vi.fn(),
 }));
 
 // Mock localStorageCrud (dynamic import inside the component)

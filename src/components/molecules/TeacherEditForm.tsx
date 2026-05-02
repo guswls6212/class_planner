@@ -5,8 +5,8 @@ import type { TeacherRole } from "@/lib/planner";
 
 const ROLE_LABELS: Record<TeacherRole, string> = {
   owner: "원장",
-  admin: "강사",
-  member: "직원",
+  admin: "관리자",
+  member: "강사",
 };
 
 export interface TeacherEditFormProps {
