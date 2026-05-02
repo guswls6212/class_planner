@@ -5,18 +5,21 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, Users, BookOpen, GraduationCap, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AccountMenu } from "./AccountMenu";
+import { useMyRole } from "@/hooks/useMyRole";
 
 interface SidebarItem {
   href: string;
   icon: LucideIcon;
   label: string;
+  /** True if visible only to owner/admin (canManage=true). */
+  adminOnly?: boolean;
 }
 
 const topItems: SidebarItem[] = [
   { href: "/schedule", icon: CalendarDays, label: "시간표" },
-  { href: "/students", icon: Users, label: "학생" },
-  { href: "/subjects", icon: BookOpen, label: "과목" },
-  { href: "/teachers", icon: GraduationCap, label: "강사" },
+  { href: "/students", icon: Users, label: "학생", adminOnly: true },
+  { href: "/subjects", icon: BookOpen, label: "과목", adminOnly: true },
+  { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
 ];
 
 const bottomItems: SidebarItem[] = [
@@ -52,13 +55,23 @@ export function Sidebar() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
+  // Role-based nav filtering. While loading we show all items to avoid hiding
+  // admin nav from owners (the common case). Member users see admin items
+  // momentarily until /api/members resolves; clicking them is still safe
+  // because the middleware route guard redirects /students|/subjects|/teachers
+  // to /schedule with a toast for member role.
+  const { canManage, isLoading } = useMyRole();
+  const visibleTopItems = isLoading
+    ? topItems
+    : topItems.filter((item) => !item.adminOnly || canManage);
+
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-50 flex w-14 flex-col items-center gap-1 py-4 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]">
       <div className="mb-4 flex h-10 w-10 items-center justify-center">
         <span className="text-xs font-bold text-accent leading-none text-center">CP</span>
       </div>
       <div className="flex flex-col gap-1">
-        {topItems.map((item) => (
+        {visibleTopItems.map((item) => (
           <SidebarLink key={item.href} {...item} isActive={isActive(item.href)} />
         ))}
       </div>
