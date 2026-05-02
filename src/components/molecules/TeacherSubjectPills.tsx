@@ -31,7 +31,7 @@ export function TeacherSubjectPills({
             type="button"
             onClick={() => {
               if (!canManage) return;
-              isAssigned ? onRemove(subject.id) : onAdd(subject.id);
+              if (isAssigned) { onRemove(subject.id); } else { onAdd(subject.id); }
             }}
             disabled={!canManage}
             aria-pressed={isAssigned}
