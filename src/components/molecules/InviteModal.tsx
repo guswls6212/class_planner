@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { showError } from "@/lib/toast";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "관리자",
@@ -53,7 +54,7 @@ export default function InviteModal({
         if (cancelled) return;
         // Filter client-side: only unlinked teachers (userId IS NULL)
         const unlinked: TeacherOption[] = (data ?? [])
-          .filter((t: { id: string; name: string; color: string; userId: string | null }) => t.userId === null)
+          .filter((t: { id: string; name: string; color: string; userId: string | null }) => t.userId == null)
           .map((t: { id: string; name: string; color: string }) => ({
             id: t.id,
             name: t.name,
@@ -83,8 +84,12 @@ export default function InviteModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        showError("초대 링크 생성에 실패했습니다. 다시 시도해주세요.");
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         const link = `${window.location.origin}/invite/${data.data.token}`;
         setGeneratedLink(link);
         onInviteCreated?.();
