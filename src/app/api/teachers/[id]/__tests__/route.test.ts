@@ -88,6 +88,59 @@ describe("PATCH /api/teachers/[id]", () => {
     expect(body.teacher.name).toBe("이강사");
   });
 
+  it("admin이 name 변경하면 200 반환", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "admin" });
+
+    const updatedTeacher = { ...baseTeacher, name: "새이름" };
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: baseTeacher,
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: updatedTeacher,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "audit_log") {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      }
+      return {};
+    });
+
+    const req = new NextRequest("http://localhost/api/teachers/teacher-1?userId=user-1", {
+      method: "PATCH",
+      body: JSON.stringify({ name: "새이름" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "teacher-1" }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.teacher.name).toBe("새이름");
+  });
+
   it("member가 name 변경 시도하면 403", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
 
@@ -172,6 +225,7 @@ describe("PATCH /api/teachers/[id]", () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
+    expect(body.teacher.email).toBe("new@example.com");
   });
 
   it("member가 다른 teacher 수정 시도하면 403", async () => {
