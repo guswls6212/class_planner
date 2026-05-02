@@ -1341,7 +1341,7 @@ function SchedulePageContent(): JSX.Element {
           isSyncingSession={isSyncingSession}
         />
         <div className="flex items-center gap-2">
-          {userId && viewMode === "weekly" && (
+          {canManage && userId && viewMode === "weekly" && (
             <TemplateMenuV2
               onApply={() => { _fetchTemplates(); if (activeTemplate) handleApplyTemplate(activeTemplate); }}
               onClearWeek={handleClearWeek}

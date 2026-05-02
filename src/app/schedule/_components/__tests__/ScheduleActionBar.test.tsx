@@ -19,22 +19,6 @@ vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   ),
 }));
 
-vi.mock("../../../../components/molecules/TemplateMenu", () => ({
-  TemplateMenu: ({
-    onSave,
-    onApply,
-  }: {
-    onSave: () => void;
-    onApply: () => void;
-    isSaving?: boolean;
-  }) => (
-    <div>
-      <button onClick={onSave}>템플릿 저장 트리거</button>
-      <button onClick={onApply}>템플릿 적용 트리거</button>
-    </div>
-  ),
-}));
-
 vi.mock("next/link", () => ({
   default: ({
     href,
@@ -73,35 +57,20 @@ describe("ScheduleActionBar", () => {
     expect(screen.getByText("주간 시간표 PDF 다운로드")).toBeDefined();
   });
 
-  it("userId가 null이면 TemplateMenu와 공유 링크가 없다", () => {
+  it("userId가 null이면 공유 링크가 없다", () => {
     render(<ScheduleActionBar {...baseProps} userId={null} />);
-    expect(screen.queryByText("템플릿 저장 트리거")).toBeNull();
     expect(screen.queryByRole("link", { name: /공유/ })).toBeNull();
   });
 
-  it("userId가 있으면 TemplateMenu가 렌더된다", () => {
+  it("legacy TemplateMenu(저장/적용 트리거)는 렌더되지 않는다", () => {
     render(<ScheduleActionBar {...baseProps} userId="user-1" />);
-    expect(screen.getByText("템플릿 저장 트리거")).toBeDefined();
-    expect(screen.getByText("템플릿 적용 트리거")).toBeDefined();
+    expect(screen.queryByText("템플릿 저장 트리거")).toBeNull();
+    expect(screen.queryByText("템플릿 적용 트리거")).toBeNull();
   });
 
   it("userId가 있으면 공유 링크가 렌더된다", () => {
     render(<ScheduleActionBar {...baseProps} userId="user-1" />);
     expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
-  });
-
-  it("TemplateMenu의 저장 트리거 클릭 시 onSaveTemplate이 호출된다", () => {
-    const onSaveTemplate = vi.fn();
-    render(<ScheduleActionBar {...baseProps} userId="user-1" onSaveTemplate={onSaveTemplate} />);
-    fireEvent.click(screen.getByText("템플릿 저장 트리거"));
-    expect(onSaveTemplate).toHaveBeenCalledTimes(1);
-  });
-
-  it("TemplateMenu의 적용 트리거 클릭 시 onApplyTemplate이 호출된다", () => {
-    const onApplyTemplate = vi.fn();
-    render(<ScheduleActionBar {...baseProps} userId="user-1" onApplyTemplate={onApplyTemplate} />);
-    fireEvent.click(screen.getByText("템플릿 적용 트리거"));
-    expect(onApplyTemplate).toHaveBeenCalledTimes(1);
   });
 
   it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
