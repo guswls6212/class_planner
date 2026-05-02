@@ -47,6 +47,8 @@ export default function SettingsPage() {
   const [myRole, setMyRole] = useState<string>("member");
   const [isLoading, setIsLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteTargetTeacherId, setInviteTargetTeacherId] = useState<string | null>(null);
+  const [inviteTargetTeacherName, setInviteTargetTeacherName] = useState<string | null>(null);
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
 
   // 공유 링크
@@ -180,8 +182,10 @@ export default function SettingsPage() {
         }
         case "invite":
         case "reinvite": {
-          // Plan B에서 InviteModal에 teacherId pre-select 지원 예정
-          // 현재는 모달을 열어 사용자가 직접 강사를 선택하게 한다
+          // Pre-select the teacher so InviteModal skips the redundant dropdown
+          const teacher = teachers.find((t) => t.id === teacherId);
+          setInviteTargetTeacherId(teacherId);
+          setInviteTargetTeacherName(teacher?.name ?? null);
           setShowInviteModal(true);
           break;
         }
@@ -192,7 +196,7 @@ export default function SettingsPage() {
           logger.debug("Teacher action not yet implemented", { action, teacherId });
       }
     },
-    [userId, invites, fetchData]
+    [userId, invites, teachers, fetchData]
   );
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
@@ -584,9 +588,15 @@ export default function SettingsPage() {
       {userId && (
         <InviteModal
           isOpen={showInviteModal}
-          onClose={() => setShowInviteModal(false)}
+          onClose={() => {
+            setShowInviteModal(false);
+            setInviteTargetTeacherId(null);
+            setInviteTargetTeacherName(null);
+          }}
           userId={userId}
           onInviteCreated={fetchData}
+          defaultTeacherId={inviteTargetTeacherId ?? undefined}
+          defaultTeacherName={inviteTargetTeacherName ?? undefined}
         />
       )}
 
