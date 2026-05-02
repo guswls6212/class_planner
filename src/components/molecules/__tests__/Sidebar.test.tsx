@@ -188,4 +188,32 @@ describe("Sidebar — Academy Switcher", () => {
     expect(mockFetch).not.toHaveBeenCalled();
     expect(mockReload).not.toHaveBeenCalled();
   });
+
+  it("드롭다운 외부 mousedown 이벤트가 발생하면 드롭다운이 닫힌다", async () => {
+    mockUseMyRole.mockReturnValue({
+      role: "owner",
+      isLoading: false,
+      canManage: true,
+      academies: ACADEMIES_MULTI,
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+    render(<Sidebar />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "유빈학원" })).toBeInTheDocument();
+    });
+
+    // Open the dropdown
+    fireEvent.click(screen.getByRole("button", { name: "유빈학원" }));
+    expect(screen.getByText("내 학원")).toBeInTheDocument();
+
+    // Simulate a mousedown outside the switcher element
+    fireEvent.mouseDown(document.body);
+
+    // Dropdown should no longer be rendered
+    await waitFor(() => {
+      expect(screen.queryByText("내 학원")).not.toBeInTheDocument();
+    });
+  });
 });
