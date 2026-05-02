@@ -146,51 +146,68 @@ export function Sidebar() {
           {activeAcademy ? activeAcademy.name.slice(0, 2) : "CP"}
         </button>
 
-        {showSwitcher && academies.length > 0 && (
+        {showSwitcher && (
           <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
-            <div className="px-3 py-1 text-[10px] text-slate-500 font-medium tracking-wide uppercase">
-              내 학원
-            </div>
-            {academies.map((academy) => (
+            {academies.length > 0 ? (
+              <>
+                <div className="px-3 py-1 text-[10px] text-slate-500 font-medium tracking-wide uppercase">
+                  내 학원
+                </div>
+                {academies.map((academy) => (
+                  <button
+                    key={academy.id}
+                    type="button"
+                    onClick={() => handleSwitchAcademy(academy.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-700 ${
+                      academy.id === activeAcademyId ? "bg-amber-500/10" : ""
+                    }`}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                      style={
+                        {
+                          "--tc":
+                            academy.id === activeAcademyId ? "#fbbf24" : "#94a3b8",
+                          backgroundColor:
+                            "color-mix(in srgb, var(--tc) 20%, transparent)",
+                          color: "var(--tc)",
+                        } as React.CSSProperties
+                      }
+                    >
+                      {academy.name.slice(0, 2)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-slate-200 truncate">
+                        {academy.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        {academy.role === "owner"
+                          ? "원장"
+                          : academy.role === "admin"
+                            ? "관리자"
+                            : "강사"}
+                      </div>
+                    </div>
+                    {academy.id === activeAcademyId && (
+                      <span className="text-amber-400 text-xs flex-shrink-0">✓</span>
+                    )}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <div className="px-3 py-3 text-[11px] text-slate-500 text-center">
+                학원 정보를 불러오는 중...
+              </div>
+            )}
+            <div className="border-t border-slate-700 mt-1 pt-1">
               <button
-                key={academy.id}
                 type="button"
-                onClick={() => handleSwitchAcademy(academy.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-700 ${
-                  academy.id === activeAcademyId ? "bg-amber-500/10" : ""
-                }`}
+                onClick={() => { setShowSwitcher(false); window.location.href = '/onboarding'; }}
+                className="w-full px-3 py-2 text-left text-[11px] text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors rounded-lg"
               >
-                <div
-                  className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                  style={
-                    {
-                      "--tc":
-                        academy.id === activeAcademyId ? "#fbbf24" : "#94a3b8",
-                      backgroundColor:
-                        "color-mix(in srgb, var(--tc) 20%, transparent)",
-                      color: "var(--tc)",
-                    } as React.CSSProperties
-                  }
-                >
-                  {academy.name.slice(0, 2)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-slate-200 truncate">
-                    {academy.name}
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    {academy.role === "owner"
-                      ? "원장"
-                      : academy.role === "admin"
-                        ? "관리자"
-                        : "강사"}
-                  </div>
-                </div>
-                {academy.id === activeAcademyId && (
-                  <span className="text-amber-400 text-xs flex-shrink-0">✓</span>
-                )}
+                + 새 학원 만들기
               </button>
-            ))}
+            </div>
           </div>
         )}
       </div>

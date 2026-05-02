@@ -491,9 +491,8 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">학원 설정</h1>
 
-      {/* 학원 이름 섹션 */}
-      {academyName !== "" && (
-        <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
+      {/* 학원 이름 섹션 — hasAcademy는 위 early return에서 보장됨. academyName 조건 제거. */}
+      <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
           <div className="flex items-center justify-between gap-3">
             {isEditingName ? (
               <div className="flex-1 flex items-center gap-2">
@@ -645,7 +644,6 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
-      )}
 
       {/* 통합 팀 섹션 — 원장 + 강사 전체 (상태 pill 포함) */}
       <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
