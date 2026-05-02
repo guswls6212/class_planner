@@ -42,10 +42,12 @@ function buildSelectChain(role: string | null) {
   };
 }
 
-function buildUpdateChain(error: unknown = null) {
+function buildUpdateChain(error: unknown = null, rows: unknown[] = [{ user_id: "u-target", role: "member" }]) {
   return {
     eq: vi.fn().mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ error }),
+      eq: vi.fn().mockReturnValue({
+        select: vi.fn().mockResolvedValue({ data: error ? null : rows, error }),
+      }),
     }),
   };
 }
@@ -94,6 +96,8 @@ describe("PATCH /api/members/[userId] — role change", () => {
     const req = createPatchRequest("u-target", "u-owner", { role: "member" });
     const res = await PATCH(req, { params: Promise.resolve({ userId: "u-target" }) });
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data?.role).toBe("member");
   });
 
   it("admin이 역할 변경을 시도하면 403을 반환한다", async () => {
@@ -123,13 +127,13 @@ describe("PATCH /api/members/[userId] — role change", () => {
     expect(res.status).toBe(400);
   });
 
-  it("owner가 다른 owner를 강등하려 하면 410을 반환한다", async () => {
+  it("owner가 다른 owner를 강등하려 하면 403을 반환한다", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
     configureFrom({ targetRole: "owner" });
 
     const req = createPatchRequest("u-other-owner", "u-owner", { role: "admin" });
     const res = await PATCH(req, { params: Promise.resolve({ userId: "u-other-owner" }) });
-    expect(res.status).toBe(410);
+    expect(res.status).toBe(403);
   });
 
   it("body의 role이 'admin' 또는 'member'가 아니면 400을 반환한다", async () => {

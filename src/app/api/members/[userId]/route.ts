@@ -74,6 +74,15 @@ export async function PATCH(
       );
     }
 
+    const { academyId, role: actorRole } = await resolveAcademyMembership(requesterId);
+
+    if (actorRole !== "owner") {
+      return NextResponse.json(
+        { success: false, error: "역할 변경은 원장만 가능합니다." },
+        { status: 403 }
+      );
+    }
+
     const body = (await request.json().catch(() => ({}))) as { role?: unknown };
     const nextRole = body.role;
 
@@ -81,15 +90,6 @@ export async function PATCH(
       return NextResponse.json(
         { success: false, error: "role은 'admin' 또는 'member'여야 합니다." },
         { status: 400 }
-      );
-    }
-
-    const { academyId, role: actorRole } = await resolveAcademyMembership(requesterId);
-
-    if (actorRole !== "owner") {
-      return NextResponse.json(
-        { success: false, error: "역할 변경은 원장만 가능합니다." },
-        { status: 403 }
       );
     }
 
@@ -113,25 +113,28 @@ export async function PATCH(
     if (targetRow.role === "owner") {
       return NextResponse.json(
         { success: false, error: "원장은 강등할 수 없습니다." },
-        { status: 410 }
+        { status: 403 }
       );
     }
 
-    const { error: updateError } = await client
+    const { data: updatedRows, error: updateError } = await client
       .from("academy_members")
       .update({ role: nextRole })
       .eq("academy_id", academyId)
-      .eq("user_id", targetUserId);
+      .eq("user_id", targetUserId)
+      .select("user_id, role");
 
-    if (updateError) {
-      logger.error(
-        "멤버 역할 변경 실패",
-        { requesterId, targetUserId, nextRole },
-        updateError as Error
-      );
+    if (updateError || !updatedRows || updatedRows.length === 0) {
+      if (updateError) {
+        logger.error(
+          "멤버 역할 변경 실패",
+          { requesterId, targetUserId, nextRole },
+          updateError as Error
+        );
+      }
       return NextResponse.json(
         { success: false, error: "역할 변경에 실패했습니다." },
-        { status: 500 }
+        { status: updateError ? 500 : 404 }
       );
     }
 
