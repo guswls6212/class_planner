@@ -47,6 +47,8 @@ describe("GET /api/invites", () => {
     expect(body.success).toBe(true);
     expect(body.data).toHaveLength(1);
     expect(body.data[0].role).toBe("admin");
+    expect(body.data[0].expiresAt).toBe("2099-01-01");
+    expect(body.data[0].expires_at).toBeUndefined();
     expect(body.data[0].teacherName).toBeNull();
   });
 
