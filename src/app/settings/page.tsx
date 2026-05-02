@@ -1,30 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
-import { UserPlus, Link2, Plus, Pencil } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { UserPlus, Link2, Plus, Pencil, MoreHorizontal } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
-import { showError } from "../../lib/toast";
+import { showError, showSuccess, showToast } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { Button } from "../../components/atoms/Button";
+import { TeacherStatusPill } from "../../components/atoms/TeacherStatusPill";
+import type { TeacherWithStatus } from "../api/teachers/route";
 import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
-import MemberListItem, { type Member } from "../../components/molecules/MemberListItem";
-
-const ROLE_LABEL: Record<string, string> = {
-  owner: "원장",
-  admin: "관리자",
-  member: "강사",
-};
-
-// Member type is now imported from MemberListItem.tsx
+import type { Member } from "../../components/molecules/MemberListItem";
 
 interface PendingInvite {
   id: string;
   token: string;
   role: string;
   expiresAt: string;
+  teacherId: string | null;
+  teacherName: string | null;
 }
 
 interface ShareToken {
@@ -45,6 +41,7 @@ export default function SettingsPage() {
   const [editNameValue, setEditNameValue] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [teachers, setTeachers] = useState<TeacherWithStatus[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [myRole, setMyRole] = useState<string>("member");
   const [isLoading, setIsLoading] = useState(true);
@@ -73,8 +70,9 @@ export default function SettingsPage() {
     if (!userId) return;
     setIsLoading(true);
     try {
-      const [membersRes, invitesRes, shareRes] = await Promise.all([
+      const [membersRes, teachersRes, invitesRes, shareRes] = await Promise.all([
         fetch(`/api/members?userId=${userId}`),
+        fetch(`/api/teachers?userId=${userId}`),
         fetch(`/api/invites?userId=${userId}`),
         fetch(`/api/share-tokens?userId=${userId}`),
       ]);
@@ -90,6 +88,11 @@ export default function SettingsPage() {
         // API 서버 오류 — hasAcademy를 false로 바꾸지 않음
         // 일시적 오류로 "학원 만들기" 화면이 표시되는 것을 방지
         showError("멤버 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      }
+
+      if (teachersRes.ok) {
+        const { data } = await teachersRes.json();
+        setTeachers(data ?? []);
       }
 
       if (invitesRes.ok) {
@@ -135,31 +138,60 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCancelInvite = async (id: string) => {
-    if (!userId || !confirm("이 초대를 취소하시겠습니까?")) return;
-    const res = await fetch(`/api/invites/${id}?userId=${userId}`, { method: "DELETE" });
-    if (!res.ok) {
-      showError("작업에 실패했습니다. 다시 시도해주세요.");
-      return;
-    }
-    await fetchData();
-  };
-
-  const handleRemoveMember = async (targetUserId: string) => {
-    if (!userId || !confirm("이 멤버를 제거하시겠습니까?")) return;
-    const res = await fetch(`/api/members/${targetUserId}?userId=${userId}`, { method: "DELETE" });
-    if (!res.ok) {
-      showError("작업에 실패했습니다. 다시 시도해주세요.");
-      return;
-    }
-    await fetchData();
-  };
-
   const handleCopyShareLink = async (link: string) => {
     if (typeof window !== "undefined" && window.navigator?.clipboard) {
       await window.navigator.clipboard.writeText(link);
     }
   };
+
+  // 통합 강사 목록 액션 핸들러
+  const handleTeacherAction = useCallback(
+    async (action: string, teacherId: string) => {
+      if (!userId) return;
+      const invite = invites.find((i) => i.teacherId === teacherId);
+
+      switch (action) {
+        case "copy_invite": {
+          if (!invite) {
+            showError("초대 링크를 찾을 수 없습니다. 다시 시도해 주세요.");
+            return;
+          }
+          const link = `${window.location.origin}/invite/${invite.token}`;
+          if (typeof window !== "undefined" && window.navigator?.clipboard) {
+            await window.navigator.clipboard.writeText(link);
+            showSuccess("초대 링크가 복사되었습니다");
+          }
+          break;
+        }
+        case "cancel_invite": {
+          if (!invite) return;
+          if (!confirm("이 초대를 취소하시겠습니까?")) return;
+          const res = await fetch(`/api/invites/${invite.id}?userId=${userId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            showError("초대 취소에 실패했습니다. 다시 시도해 주세요.");
+            return;
+          }
+          await fetchData();
+          break;
+        }
+        case "invite":
+        case "reinvite": {
+          // Plan B에서 InviteModal에 teacherId pre-select 지원 예정
+          // 현재는 모달을 열어 사용자가 직접 강사를 선택하게 한다
+          setShowInviteModal(true);
+          break;
+        }
+        default:
+          // share_link / promote_to_invite / kick / change_role / edit_teacher / delete 등은
+          // Plan B에서 구현 예정
+          showToast("info", "준비 중입니다");
+          logger.debug("Teacher action not yet implemented", { action, teacherId });
+      }
+    },
+    [userId, invites, fetchData]
+  );
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
   useEffect(() => {
@@ -207,6 +239,9 @@ export default function SettingsPage() {
   };
 
   const canManage = myRole === "owner" || myRole === "admin";
+
+  // 원장(owner) 멤버 — 통합 강사 목록 상단에 별도 행으로 표시
+  const ownerMember = members.find((m) => m.role === "owner") ?? null;
 
   if (isLoading) {
     return (
@@ -294,7 +329,7 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* 멤버 섹션 */}
+      {/* 통합 팀 섹션 — 원장 + 강사 전체 (상태 pill 포함) */}
       <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-start gap-3">
@@ -303,13 +338,13 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
-                팀 멤버{" "}
+                팀{" "}
                 <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
-                  {members.length}명
+                  {teachers.length + (ownerMember ? 1 : 0)}명
                 </span>
               </h2>
               <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
-                직원·강사를 초대해 시간표를 함께 편집하세요
+                강사를 초대해 시간표를 함께 편집하세요
               </p>
             </div>
           </div>
@@ -326,69 +361,29 @@ export default function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {members.map((member) => (
-            <MemberListItem
-              key={member.userId}
-              member={member}
-              myRole={myRole}
-              userId={userId ?? ""}
-              onRemove={handleRemoveMember}
+          {/* 원장(현재 사용자) — 항상 상단 */}
+          {ownerMember && (
+            <OwnerRow member={ownerMember} isMe={ownerMember.userId === userId} />
+          )}
+
+          {/* 강사 목록 — 상태 pill + 액션 */}
+          {teachers.map((teacher) => (
+            <TeacherRow
+              key={teacher.id}
+              teacher={teacher}
+              invites={invites}
+              canManage={canManage}
+              onAction={handleTeacherAction}
             />
           ))}
+
+          {teachers.length === 0 && (
+            <p className="text-[12px] text-[var(--color-text-muted)] text-center py-3">
+              아직 등록된 강사가 없습니다.
+            </p>
+          )}
         </div>
       </section>
-
-      {/* 대기 중인 초대 섹션 */}
-      {canManage && invites.length > 0 && (
-        <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 border border-[var(--color-border)]">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">
-            대기 중인 초대 ({invites.length}개)
-          </h2>
-          <div className="flex flex-col gap-2">
-            {invites.map((invite) => {
-              const origin = typeof window !== "undefined" ? window.location.origin : "";
-              const link = `${origin}/invite/${invite.token}`;
-              return (
-                <div
-                  key={invite.id}
-                  className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)]"
-                >
-                  <div>
-                    <span className="text-sm text-[var(--color-text-primary)]">
-                      {ROLE_LABEL[invite.role] ?? invite.role} 역할 초대
-                    </span>
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                      <span className={getExpiryColorClass(invite.expiresAt)}>
-                        {formatExpiry(invite.expiresAt)}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="tonal"
-                      size="small"
-                      feedback="inline"
-                      successLabel="복사됨"
-                      toastMessage="초대 링크가 복사되었습니다"
-                      onClick={() => handleCopyShareLink(link)}
-                    >
-                      복사
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="small"
-                      onClick={() => handleCancelInvite(invite.id)}
-                      className="hover:text-red-400"
-                    >
-                      취소
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
       {/* 공유 링크 섹션 */}
       {canManage && (
@@ -591,6 +586,221 @@ export default function SettingsPage() {
           userId={userId}
           onInviteCreated={fetchData}
         />
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Helper components — local to settings/page.tsx
+// ────────────────────────────────────────────────────────────
+
+interface OwnerRowProps {
+  member: Member;
+  isMe: boolean;
+}
+
+function OwnerRow({ member, isMe }: OwnerRowProps) {
+  const display = member.name || member.email || member.userId.slice(0, 8);
+  const initial = display.charAt(0).toUpperCase();
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg-primary)]">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold bg-accent/15 text-accent flex-shrink-0">
+          {initial}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-[var(--color-text-primary)] truncate">
+              {member.name || display}
+            </span>
+            <TeacherStatusPill status="owner" />
+            {isMe && (
+              <span className="text-[11px] text-[var(--color-text-secondary)]">본인</span>
+            )}
+          </div>
+          <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
+            {member.email ?? "이메일 미입력"}
+          </p>
+        </div>
+      </div>
+      {/* 원장 행은 액션 메뉴 없음 */}
+    </div>
+  );
+}
+
+interface TeacherRowProps {
+  teacher: TeacherWithStatus;
+  invites: PendingInvite[];
+  canManage: boolean;
+  onAction: (action: string, teacherId: string) => void;
+}
+
+interface MenuItem {
+  key: string;
+  label: string;
+  variant?: "default" | "danger";
+}
+
+function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
+  switch (status) {
+    case "invite_pending":
+      return [
+        { key: "copy_invite", label: "링크 복사" },
+        { key: "reinvite", label: "재발송" },
+        { key: "cancel_invite", label: "초대 취소", variant: "danger" },
+      ];
+    case "invite_expired":
+      return [
+        { key: "reinvite", label: "재초대" },
+        { key: "share_link", label: "시간표만 공유" },
+        { key: "delete", label: "삭제", variant: "danger" },
+      ];
+    case "share_only":
+      return [
+        { key: "promote_to_invite", label: "초대로 승격" },
+        { key: "share_link", label: "링크 재발급" },
+        { key: "cancel_share", label: "공유 취소", variant: "danger" },
+      ];
+    case "active":
+      return [
+        { key: "change_role", label: "권한 변경" },
+        { key: "edit_teacher", label: "강사 정보" },
+        { key: "kick", label: "팀에서 제외", variant: "danger" },
+      ];
+    case "none":
+    default:
+      return [
+        { key: "invite", label: "초대 보내기" },
+        { key: "share_link", label: "시간표 공유 링크 발급" },
+        { key: "edit_teacher", label: "강사 정보 수정" },
+        { key: "delete", label: "삭제", variant: "danger" },
+      ];
+  }
+}
+
+function getQuickAction(status: TeacherWithStatus["status"]): { action: string; label: string } | null {
+  switch (status) {
+    case "invite_pending":
+      return { action: "copy_invite", label: "링크 복사" };
+    case "invite_expired":
+      return { action: "reinvite", label: "재초대" };
+    case "none":
+      return { action: "invite", label: "초대 보내기" };
+    case "active":
+    case "share_only":
+    default:
+      return null;
+  }
+}
+
+function TeacherRow({ teacher, invites, canManage, onAction }: TeacherRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // 외부 클릭 시 메뉴 닫기
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const menuItems = canManage ? getMenuItems(teacher.status) : [];
+  const quickAction = canManage ? getQuickAction(teacher.status) : null;
+  const initial = teacher.name.charAt(0).toUpperCase();
+  const pendingInvite = invites.find((i) => i.teacherId === teacher.id);
+  const expiresAt = teacher.status === "invite_pending" ? pendingInvite?.expiresAt ?? teacher.inviteExpiresAt ?? null : null;
+
+  return (
+    <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg-primary)]">
+      <div className="flex items-center gap-3 min-w-0">
+        {/*
+          teacher.color는 DB에서 오는 동적 hex 값이므로 CSS 변수로 주입.
+          docs/code-convention.md § 인라인 스타일 — 동적 색상 예외 적용.
+        */}
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold flex-shrink-0"
+          style={
+            {
+              "--tc": teacher.color,
+              backgroundColor: "color-mix(in srgb, var(--tc) 20%, transparent)",
+              color: "var(--tc)",
+            } as React.CSSProperties
+          }
+        >
+          {initial}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-[var(--color-text-primary)] truncate">
+              {teacher.name}
+            </span>
+            <TeacherStatusPill status={teacher.status} expiresAt={expiresAt} />
+          </div>
+          <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
+            {teacher.email ?? "이메일 미입력"}
+          </p>
+        </div>
+      </div>
+
+      {canManage && (
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {quickAction && (
+            <Button
+              variant="tonal"
+              size="small"
+              feedback={quickAction.action === "copy_invite" ? "inline" : "none"}
+              successLabel="복사됨"
+              onClick={() => onAction(quickAction.action, teacher.id)}
+            >
+              {quickAction.label}
+            </Button>
+          )}
+          {menuItems.length > 0 && (
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-secondary)] transition-colors"
+                aria-label="더 보기"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <MoreHorizontal size={16} strokeWidth={1.75} />
+              </button>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-1 z-20 min-w-[160px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg overflow-hidden"
+                >
+                  {menuItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onAction(item.key, teacher.id);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-[13px] transition-colors hover:bg-[var(--color-overlay-light)] ${
+                        item.variant === "danger"
+                          ? "text-red-400 hover:text-red-300"
+                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

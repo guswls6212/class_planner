@@ -17,6 +17,11 @@
 ## Styling (overrides global TypeScript rule)
 
 - **Tailwind CSS only** for new components. No inline styles.
+  **Exception — dynamic DB colors:** Teacher avatar colors come from the database as arbitrary hex strings and cannot be expressed as build-time Tailwind classes. Use CSS custom property `--tc` with `color-mix()`:
+  ```tsx
+  style={{ '--tc': teacher.color, backgroundColor: 'color-mix(in srgb, var(--tc) 20%, transparent)', color: 'var(--tc)' } as React.CSSProperties}
+  ```
+  Do NOT use `style={{ backgroundColor: teacher.color }}` directly.
 - **CSS Modules (`*.module.css`):** existing files stay; do not add new ones. Migrate to Tailwind when touching the component.
 - `globals.css` for CSS custom properties shared across pages.
 

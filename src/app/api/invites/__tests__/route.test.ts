@@ -30,7 +30,7 @@ describe("GET /api/invites", () => {
           is: vi.fn().mockReturnValue({
             gt: vi.fn().mockResolvedValue({
               data: [
-                { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: null },
+                { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: null, teacher_id: null },
               ],
               error: null,
             }),
@@ -50,6 +50,7 @@ describe("GET /api/invites", () => {
     expect(body.data[0].expiresAt).toBe("2099-01-01");
     expect(body.data[0].expires_at).toBeUndefined();
     expect(body.data[0].teacherName).toBeNull();
+    expect(body.data[0].teacherId).toBeNull();
   });
 
   it("강사 연동된 초대는 teacherName을 포함한다", async () => {
@@ -60,7 +61,7 @@ describe("GET /api/invites", () => {
           is: vi.fn().mockReturnValue({
             gt: vi.fn().mockResolvedValue({
               data: [
-                { id: "tok-2", token: "def456", role: "member", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: { name: "김강사" } },
+                { id: "tok-2", token: "def456", role: "member", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: { name: "김강사" }, teacher_id: "teacher-1" },
               ],
               error: null,
             }),
@@ -75,6 +76,7 @@ describe("GET /api/invites", () => {
 
     expect(res.status).toBe(200);
     expect(body.data[0].teacherName).toBe("김강사");
+    expect(body.data[0].teacherId).toBe("teacher-1");
   });
 
   it("member는 403을 받는다", async () => {

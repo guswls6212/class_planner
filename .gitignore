@@ -54,3 +54,6 @@ next-env.d.ts
 migration/backups/
 .superpowers/
 .claude/
+
+# Supabase CLI temp files
+supabase/.temp/
