@@ -55,14 +55,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ success: false, error: "userId, teacherId, subjectId required" }, { status: 400 });
     }
 
-    const { role } = await resolveAcademyMembership(userId);
+    const { role, academyId } = await resolveAcademyMembership(userId);
     if (role === "member") {
       await requireOwnTeacher(userId, teacherId);
     } else if (!["owner", "admin"].includes(role)) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
 
-    await getTeacherService().removeTeacherSubject(teacherId, subjectId);
+    await getTeacherService().removeTeacherSubject(teacherId, subjectId, academyId);
     return NextResponse.json({ success: true });
   } catch (error) {
     return toErrorResponse(error);

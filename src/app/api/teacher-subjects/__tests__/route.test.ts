@@ -164,7 +164,7 @@ describe("/api/teacher-subjects API Routes", () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockRemoveTeacherSubject).toHaveBeenCalledWith("teacher-1", "subject-1");
+      expect(mockRemoveTeacherSubject).toHaveBeenCalledWith("teacher-1", "subject-1", "test-academy-id");
     });
 
     it("member role은 자신의 teacherId로 DELETE할 수 있다", async () => {

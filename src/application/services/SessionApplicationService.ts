@@ -9,8 +9,8 @@ export class SessionApplicationServiceImpl {
     return this.sessionRepository.getAll(academyId, opts);
   }
 
-  async getSessionById(id: string): Promise<Session | null> {
-    return this.sessionRepository.getById(id);
+  async getSessionById(id: string, academyId?: string): Promise<Session | null> {
+    return this.sessionRepository.getById(id, academyId);
   }
 
   async addSession(

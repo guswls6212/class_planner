@@ -21,6 +21,10 @@ vi.mock("../../../../../lib/auth/permissions", () => ({
     Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
 }));
 
+vi.mock("../../../../../lib/resolveAcademyId", () => ({
+  resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
+}));
+
 // Mock all dependencies
 vi.mock("../../../../../application/services/ServiceFactory", () => ({
   ServiceFactory: {
@@ -59,15 +63,52 @@ describe("Sessions ID API Routes", () => {
 
   it("GET 요청이 에러 없이 처리되어야 한다", async () => {
     const request = new NextRequest(
+      "http://localhost:3000/api/sessions/test-id?userId=owner-user",
+      {
+        headers: { origin: "http://localhost:3000" },
+      }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(200);
+  });
+
+  it("GET: userId 없으면 400을 반환해야 한다", async () => {
+    const request = new NextRequest(
       "http://localhost:3000/api/sessions/test-id",
       {
         headers: { origin: "http://localhost:3000" },
       }
     );
 
-    expect(async () => {
-      await GET(request, { params: Promise.resolve({ id: "test-id" }) });
-    }).not.toThrow();
+    const response = await GET(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(400);
+  });
+
+  it("GET: 다른 academy의 세션은 404를 반환해야 한다", async () => {
+    const { ServiceFactory } = await import(
+      "../../../../../application/services/ServiceFactory"
+    );
+    vi.mocked(ServiceFactory.createSessionService).mockReturnValueOnce({
+      getSessionById: vi.fn().mockResolvedValue(null),
+      updateSession: vi.fn(),
+      deleteSession: vi.fn(),
+      getAllSessions: vi.fn(),
+      addSession: vi.fn(),
+      updateSessionPosition: vi.fn(),
+    } as never);
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/sessions/other-academy-session?userId=owner-user",
+      {
+        headers: { origin: "http://localhost:3000" },
+      }
+    );
+
+    const response = await GET(request, {
+      params: Promise.resolve({ id: "other-academy-session" }),
+    });
+    expect(response.status).toBe(404);
   });
 
   it("PUT 요청이 에러 없이 처리되어야 한다 (owner)", async () => {
@@ -206,7 +247,7 @@ describe("Sessions ID API Routes", () => {
 
   it("존재하지 않는 세션을 안전하게 처리해야 한다", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/sessions/nonexistent",
+      "http://localhost:3000/api/sessions/nonexistent?userId=owner-user",
       {
         headers: { origin: "http://localhost:3000" },
       }

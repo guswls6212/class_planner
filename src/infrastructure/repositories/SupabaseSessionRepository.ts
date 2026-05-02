@@ -82,11 +82,11 @@ export class SupabaseSessionRepository implements SessionRepository {
     }
   }
 
-  async getById(id: string): Promise<Session | null> {
+  async getById(id: string, academyId?: string): Promise<Session | null> {
     try {
       const client = this.createServiceRoleClient();
 
-      const { data, error } = await client
+      let query = client
         .from("sessions")
         .select(`
           *,
@@ -95,8 +95,13 @@ export class SupabaseSessionRepository implements SessionRepository {
             enrollments(subject_id)
           )
         `)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
+
+      if (academyId) {
+        query = query.eq("academy_id", academyId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
         return null;

@@ -56,15 +56,51 @@ describe("Subjects ID API Routes", () => {
 
   it("GET 요청이 에러 없이 처리되어야 한다", async () => {
     const request = new NextRequest(
+      "http://localhost:3000/api/subjects/test-id?userId=owner-user",
+      {
+        headers: { origin: "http://localhost:3000" },
+      }
+    );
+
+    const response = await GET(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(200);
+  });
+
+  it("GET: userId 없으면 400을 반환해야 한다", async () => {
+    const request = new NextRequest(
       "http://localhost:3000/api/subjects/test-id",
       {
         headers: { origin: "http://localhost:3000" },
       }
     );
 
-    expect(async () => {
-      await GET(request, { params: Promise.resolve({ id: "test-id" }) });
-    }).not.toThrow();
+    const response = await GET(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(400);
+  });
+
+  it("GET: 다른 academy의 과목은 404를 반환해야 한다", async () => {
+    const { ServiceFactory } = await import(
+      "../../../../../application/services/ServiceFactory"
+    );
+    vi.mocked(ServiceFactory.createSubjectService).mockReturnValueOnce({
+      getSubjectById: vi.fn().mockResolvedValue(null),
+      updateSubject: vi.fn(),
+      deleteSubject: vi.fn(),
+      getAllSubjects: vi.fn(),
+      addSubject: vi.fn(),
+    } as never);
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/subjects/other-academy-subject?userId=owner-user",
+      {
+        headers: { origin: "http://localhost:3000" },
+      }
+    );
+
+    const response = await GET(request, {
+      params: Promise.resolve({ id: "other-academy-subject" }),
+    });
+    expect(response.status).toBe(404);
   });
 
   it("PUT 요청이 에러 없이 처리되어야 한다 (owner)", async () => {

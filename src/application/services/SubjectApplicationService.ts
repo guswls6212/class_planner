@@ -10,8 +10,8 @@ export class SubjectApplicationServiceImpl {
     return this.subjectRepository.getAll(academyId);
   }
 
-  async getSubjectById(id: string): Promise<Subject | null> {
-    return this.subjectRepository.getById(id);
+  async getSubjectById(id: string, academyId?: string): Promise<Subject | null> {
+    return this.subjectRepository.getById(id, academyId);
   }
 
   async addSubject(

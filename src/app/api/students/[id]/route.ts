@@ -10,7 +10,7 @@ export function getStudentService() {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -23,7 +23,18 @@ export async function GET(
       );
     }
 
-    const student = await getStudentService().getStudentById(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const student = await getStudentService().getStudentById(id, academyId);
 
     if (!student) {
       return NextResponse.json(

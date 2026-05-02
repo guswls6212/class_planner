@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
@@ -25,7 +26,18 @@ export async function GET(
       );
     }
 
-    const session = await getSessionService().getSessionById(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const session = await getSessionService().getSessionById(id, academyId);
 
     if (!session) {
       return NextResponse.json(

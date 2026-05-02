@@ -104,7 +104,7 @@ describe("StudentApplicationService", () => {
 
       // Assert
       expect(result?.name).toBe("김철수");
-      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId);
+      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId, undefined);
     });
 
     it("존재하지 않는 학생 ID로 조회 시 null을 반환해야 한다", async () => {
