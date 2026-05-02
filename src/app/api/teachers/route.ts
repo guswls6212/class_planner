@@ -6,6 +6,7 @@ import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
 
+// 'share_only' added in Plan B when share_tokens gets teacher_id FK
 export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
 
 export interface TeacherWithStatus {
@@ -14,7 +15,7 @@ export interface TeacherWithStatus {
   color: string;
   email: string | null;
   phone: string | null;
-  user_id: string | null;
+  userId: string | null;
   status: TeacherStatus;
   inviteExpiresAt?: string | null;
 }
@@ -62,6 +63,13 @@ export async function GET(request: NextRequest) {
         .lte("expires_at", now),
     ]);
 
+    if (pendingResult.error) {
+      logger.error("Failed to fetch pending invites for status join", {}, pendingResult.error as Error);
+    }
+    if (expiredResult.error) {
+      logger.error("Failed to fetch expired invites for status join", {}, expiredResult.error as Error);
+    }
+
     const pendingMap = new Map<string, string>();
     for (const row of pendingResult.data ?? []) {
       if (row.teacher_id) {
@@ -79,9 +87,10 @@ export async function GET(request: NextRequest) {
     const result = teachers.map((t) => {
       let status: TeacherStatus;
       let inviteExpiresAt: string | undefined;
-      const teacherIdStr = String(t.id);
+      const dto = t.toJSON();
+      const teacherIdStr = dto.id;
 
-      if (t.userId !== null) {
+      if (dto.userId !== null) {
         status = "active";
       } else if (pendingMap.has(teacherIdStr)) {
         status = "invite_pending";
@@ -92,7 +101,7 @@ export async function GET(request: NextRequest) {
         status = "none";
       }
 
-      const base = { ...t, status };
+      const base = { ...dto, status };
       if (inviteExpiresAt !== undefined) {
         return { ...base, inviteExpiresAt };
       }

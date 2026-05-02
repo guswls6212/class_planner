@@ -173,11 +173,20 @@ describe("/api/teachers API Routes", () => {
       // t2: invite_pending (user_id null, pending invite)
       // t3: invite_expired (user_id null, expired invite)
       // t4: none (user_id null, no invite)
+      const makeTeacher = (id: string, name: string, color: string, userId: string | null) => ({
+        id,
+        name,
+        color,
+        userId,
+        email: null,
+        phone: null,
+        toJSON: () => ({ id, name, color, userId, email: null, phone: null }),
+      });
       const teachers = [
-        { id: "t1", name: "강사1", color: "#f00", email: null, phone: null, userId: "user-123" },
-        { id: "t2", name: "강사2", color: "#0f0", email: null, phone: null, userId: null },
-        { id: "t3", name: "강사3", color: "#00f", email: null, phone: null, userId: null },
-        { id: "t4", name: "강사4", color: "#ff0", email: null, phone: null, userId: null },
+        makeTeacher("t1", "강사1", "#f00", "user-123"),
+        makeTeacher("t2", "강사2", "#0f0", null),
+        makeTeacher("t3", "강사3", "#00f", null),
+        makeTeacher("t4", "강사4", "#ff0", null),
       ];
       mockGetAllTeachers.mockResolvedValueOnce(teachers);
 
