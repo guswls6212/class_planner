@@ -25,13 +25,29 @@ export async function GET(request: NextRequest) {
     const client = getServiceRoleClient();
 
     // Fetch academy name + slug (displayed on the settings page)
-    const { data: academyRow } = await client
+    const { data: academyRow, error: academyError } = await client
       .from("academies")
       .select("name, slug")
       .eq("id", academyId)
       .single();
-    const academyName = academyRow?.name ?? "";
-    const academySlug = academyRow?.slug ?? null;
+
+    let academyName: string;
+    let academySlug: string | null;
+
+    if (academyError) {
+      // slug 컬럼이 없거나 쿼리 실패 시 name만 단독 조회로 fallback
+      logger.warn("Academy name+slug query failed, falling back to name only", { academyId, error: academyError.message });
+      const { data: nameOnly } = await client
+        .from("academies")
+        .select("name")
+        .eq("id", academyId)
+        .single();
+      academyName = nameOnly?.name ?? "";
+      academySlug = null;
+    } else {
+      academyName = academyRow?.name ?? "";
+      academySlug = (academyRow as { name: string; slug?: string | null } | null)?.slug ?? null;
+    }
 
     // Fetch academy_members only (auth.users join not supported via PostgREST)
     const { data: rows, error } = await client
