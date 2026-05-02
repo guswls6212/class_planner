@@ -171,6 +171,7 @@ export default function InvitePage({
 
       if (!res.ok) {
         if (data.error_code === "email_mismatch") {
+          setError(null);
           setInviteState("state-c");
           return;
         }
@@ -218,6 +219,7 @@ export default function InvitePage({
       });
       const data = await res.json();
       if (res.ok && data.shareUrl) {
+        localStorage.removeItem(PENDING_INVITE_KEY);
         setShareUrl(data.shareUrl);
       } else {
         setError(data.error ?? "링크 생성에 실패했습니다.");
