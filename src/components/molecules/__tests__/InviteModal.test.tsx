@@ -46,10 +46,10 @@ describe("InviteModal", () => {
   it("기본 역할이 'member'일 때 강사 드롭다운을 불러온다", async () => {
     render(<InviteModal {...defaultProps} />);
 
-    // teacher fetch is triggered for 'member' role
+    // teacher fetch is triggered for 'member' role with unlinked=true server-side filter
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/teachers?userId=user-123")
+        "/api/teachers?userId=user-123&unlinked=true"
       );
     });
   });
@@ -88,10 +88,10 @@ describe("InviteModal", () => {
   });
 
   it("연동 가능한 강사가 없을 때 안내 메시지를 표시한다", async () => {
-    // API returns only linked teachers (userId !== null) — client-side filter makes list empty
+    // Server returns empty list when ?unlinked=true and all teachers are already linked
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, data: linkedTeachers }),
+      json: async () => ({ success: true, data: [] }),
     });
 
     render(<InviteModal {...defaultProps} />);
@@ -105,7 +105,7 @@ describe("InviteModal", () => {
   it("강사가 없으면 '링크 생성' 버튼이 disabled 된다", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, data: linkedTeachers }),
+      json: async () => ({ success: true, data: [] }),
     });
 
     render(<InviteModal {...defaultProps} />);

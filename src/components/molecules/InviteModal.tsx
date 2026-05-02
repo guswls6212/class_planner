@@ -48,20 +48,19 @@ export default function InviteModal({
     const fetchTeachers = async () => {
       setIsFetchingTeachers(true);
       try {
-        const res = await fetch(`/api/teachers?userId=${userId}`);
+        const res = await fetch(`/api/teachers?userId=${userId}&unlinked=true`);
         if (!res.ok) return;
         const { data } = await res.json();
         if (cancelled) return;
-        // Filter client-side: only unlinked teachers (userId IS NULL)
-        const unlinked: TeacherOption[] = (data ?? [])
-          .filter((t: { id: string; name: string; color: string; userId: string | null }) => t.userId == null)
-          .map((t: { id: string; name: string; color: string }) => ({
+        const options: TeacherOption[] = (data ?? []).map(
+          (t: { id: string; name: string; color: string }) => ({
             id: t.id,
             name: t.name,
             color: t.color,
-          }));
-        setTeachers(unlinked);
-        setSelectedTeacherId(unlinked.length > 0 ? unlinked[0].id : "");
+          })
+        );
+        setTeachers(options);
+        setSelectedTeacherId(options.length > 0 ? options[0].id : "");
       } finally {
         if (!cancelled) setIsFetchingTeachers(false);
       }
@@ -111,6 +110,7 @@ export default function InviteModal({
   const handleClose = () => {
     setGeneratedLink(null);
     setInviteRole("member");
+    setSelectedTeacherId("");
     setCopied(false);
     onClose();
   };

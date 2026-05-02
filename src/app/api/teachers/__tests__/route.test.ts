@@ -88,6 +88,33 @@ describe("/api/teachers API Routes", () => {
       expect(data.success).toBe(false);
       expect(data.error).toBe("User ID is required");
     });
+
+    it("unlinked=true 파라미터 전달 시 userId가 null인 강사만 반환해야 한다", async () => {
+      const linkedTeacher = {
+        id: "linked-teacher",
+        name: "연결된강사",
+        userId: "some-user-id",
+        toJSON: () => ({ id: "linked-teacher", name: "연결된강사", userId: "some-user-id" }),
+      };
+      const unlinkedTeacher = {
+        id: "unlinked-teacher",
+        name: "미연결강사",
+        userId: null,
+        toJSON: () => ({ id: "unlinked-teacher", name: "미연결강사", userId: null }),
+      };
+      mockGetAllTeachers.mockResolvedValueOnce([linkedTeacher, unlinkedTeacher]);
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/teachers?userId=test-user&unlinked=true"
+      );
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(1);
+      expect(data.data[0].id).toBe("unlinked-teacher");
+    });
   });
 
   describe("POST /api/teachers", () => {

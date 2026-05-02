@@ -137,13 +137,21 @@ export default function SettingsPage() {
 
   const handleCancelInvite = async (id: string) => {
     if (!userId || !confirm("이 초대를 취소하시겠습니까?")) return;
-    await fetch(`/api/invites/${id}?userId=${userId}`, { method: "DELETE" });
+    const res = await fetch(`/api/invites/${id}?userId=${userId}`, { method: "DELETE" });
+    if (!res.ok) {
+      showError("작업에 실패했습니다. 다시 시도해주세요.");
+      return;
+    }
     await fetchData();
   };
 
   const handleRemoveMember = async (targetUserId: string) => {
     if (!userId || !confirm("이 멤버를 제거하시겠습니까?")) return;
-    await fetch(`/api/members/${targetUserId}?userId=${userId}`, { method: "DELETE" });
+    const res = await fetch(`/api/members/${targetUserId}?userId=${userId}`, { method: "DELETE" });
+    if (!res.ok) {
+      showError("작업에 실패했습니다. 다시 시도해주세요.");
+      return;
+    }
     await fetchData();
   };
 
@@ -338,7 +346,8 @@ export default function SettingsPage() {
           </h2>
           <div className="flex flex-col gap-2">
             {invites.map((invite) => {
-              const link = `${window.location.origin}/invite/${invite.token}`;
+              const origin = typeof window !== "undefined" ? window.location.origin : "";
+              const link = `${origin}/invite/${invite.token}`;
               return (
                 <div
                   key={invite.id}

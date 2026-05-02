@@ -36,12 +36,12 @@ export default function InvitePage({
   const [isLoading, setIsLoading] = useState(true);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 
-  // token 파라미터 추출
+  // Extract token param
   useEffect(() => {
     params.then(({ token: t }) => setToken(t));
   }, [params]);
 
-  // 초대 정보 + 로그인 상태 로드
+  // Load invite info + auth state
   useEffect(() => {
     if (!token) return;
 
@@ -58,7 +58,7 @@ export default function InvitePage({
           setUserId(sessionData.data.session.user.id);
         }
 
-        // OAuth 리다이렉트 후 자동 수락 체크
+        // Check for pending token after OAuth redirect
         const pendingToken = localStorage.getItem(PENDING_INVITE_KEY);
         if (pendingToken === token && sessionData.data.session?.user.id) {
           localStorage.removeItem(PENDING_INVITE_KEY);

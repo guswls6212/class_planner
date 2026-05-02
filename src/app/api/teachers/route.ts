@@ -18,9 +18,12 @@ export async function GET(request: NextRequest) {
 
     logger.debug("API GET /api/teachers", { userId });
 
+    const unlinkedOnly = searchParams.get("unlinked") === "true";
+
     const academyId = await resolveAcademyId(userId);
     const teachers = await getTeacherService().getAllTeachers(academyId);
-    return NextResponse.json({ success: true, data: teachers });
+    const result = unlinkedOnly ? teachers.filter((t) => t.userId === null) : teachers;
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     return toErrorResponse(error);
   }
