@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await client
       .from("invite_tokens")
-      .select("id, token, role, expires_at, created_at, teachers(name)")
+      .select("id, token, role, expires_at, created_at, teacher_id, teachers(name)")
       .eq("academy_id", academyId)
       .is("used_by", null)
       .gt("expires_at", now);
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
       token: row.token,
       role: row.role,
       expiresAt: row.expires_at,
+      teacherId: (row as { teacher_id?: string | null }).teacher_id ?? null,
       teacherName: (row.teachers as unknown as { name: string } | null)?.name ?? null,
     }));
 
