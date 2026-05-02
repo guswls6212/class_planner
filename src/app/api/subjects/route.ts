@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const newSubject = await getSubjectService().addSubject(
       { name, color },
       academyId
@@ -97,7 +98,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedSubject = await getSubjectService().updateSubject(
       id,
       { name, color },
@@ -134,7 +135,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     await getSubjectService().deleteSubject(id, academyId);
     return NextResponse.json({
       success: true,

@@ -12,6 +12,17 @@ vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
 }));
 
+const mockRequireRole = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ academyId: "test-academy-id", role: "owner" })
+);
+
+vi.mock("@/lib/auth/permissions", () => ({
+  requireRole: mockRequireRole,
+  requireOwnTeacher: vi.fn().mockResolvedValue("test-teacher-id"),
+  pickAllowedFields: (body: Record<string, unknown>, fields: string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
+}));
+
 // Use hoisted fn refs so individual tests can override behaviour
 const mockGetAllStudents = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const mockAddStudent = vi.hoisted(() =>
@@ -57,6 +68,7 @@ describe("/api/students API Routes", () => {
       createdAt: new Date().toISOString(),
     });
     mockDeleteStudent.mockResolvedValue(true);
+    mockRequireRole.mockResolvedValue({ academyId: "test-academy-id", role: "owner" });
   });
 
   describe("GET /api/students", () => {
@@ -110,6 +122,24 @@ describe("/api/students API Routes", () => {
       expect(data.error).toBe("Name is required");
     });
 
+    it("member role은 POST에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/students?userId=member-user",
+        {
+          method: "POST",
+          body: JSON.stringify({ name: "김철수" }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(403);
+    });
+
     it("중복 학생 시 AppError가 구조화된 에러 포맷(409)으로 반환되어야 한다", async () => {
       mockAddStudent.mockRejectedValueOnce(
         new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 })
@@ -151,6 +181,23 @@ describe("/api/students API Routes", () => {
       expect(response.status).toBe(200);
       expect(data).toHaveProperty("success");
       expect(data).toHaveProperty("message");
+    });
+
+    it("member role은 DELETE에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const studentId = "550e8400-e29b-41d4-a716-446655440001";
+      const request = new NextRequest(
+        `http://localhost:3000/api/students/${studentId}?userId=member-user`,
+        { method: "DELETE" }
+      );
+
+      const response = await DELETE(request, {
+        params: Promise.resolve({ id: studentId }),
+      });
+      expect(response.status).toBe(403);
     });
 
     it("userId가 없으면 400 에러를 반환해야 한다", async () => {

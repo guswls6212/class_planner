@@ -1,5 +1,5 @@
 /**
- * Sessions Position API Routes 기본 테스트
+ * Sessions Position API Routes 테스트
  */
 
 import { AppError } from "@/lib/errors/AppError";
@@ -7,6 +7,20 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceFactory } from "../../../../../../application/services/ServiceFactory";
 import { PUT } from "../route";
+
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+
+const mockRequireRole = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ academyId: "test-academy-id", role: "owner" })
+);
+
+vi.mock("../../../../../../lib/auth/permissions", () => ({
+  requireRole: mockRequireRole,
+  requireOwnTeacher: vi.fn().mockResolvedValue("test-teacher-id"),
+  pickAllowedFields: (body: Record<string, unknown>, fields: string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
+}));
 
 // Mock all dependencies
 vi.mock("../../../../../../application/services/ServiceFactory", () => ({
@@ -28,9 +42,32 @@ vi.mock("../../../../../../lib/logger", () => ({
 describe("Sessions Position API Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireRole.mockResolvedValue({ academyId: "test-academy-id", role: "owner" });
   });
 
-  it("PUT 요청이 에러 없이 처리되어야 한다", async () => {
+  it("PUT 요청이 에러 없이 처리되어야 한다 (owner)", async () => {
+    const request = new NextRequest(
+      "http://localhost:3000/api/sessions/test-id/position?userId=owner-user",
+      {
+        method: "PUT",
+        headers: {
+          origin: "http://localhost:3000",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          weekday: 1,
+          time: "09:00",
+          endTime: "10:00",
+          yPosition: 1,
+        }),
+      }
+    );
+
+    const response = await PUT(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(200);
+  });
+
+  it("PUT: userId 없으면 400을 반환해야 한다", async () => {
     const request = new NextRequest(
       "http://localhost:3000/api/sessions/test-id/position",
       {
@@ -40,19 +77,47 @@ describe("Sessions Position API Routes", () => {
           "content-type": "application/json",
         },
         body: JSON.stringify({
+          weekday: 1,
+          time: "09:00",
+          endTime: "10:00",
           yPosition: 1,
         }),
       }
     );
 
-    expect(async () => {
-      await PUT(request, { params: Promise.resolve({ id: "test-id" }) });
-    }).not.toThrow();
+    const response = await PUT(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(400);
+  });
+
+  it("PUT: member role은 403을 반환해야 한다", async () => {
+    mockRequireRole.mockRejectedValueOnce(
+      new AppError("FORBIDDEN", { statusHint: 403 })
+    );
+
+    const request = new NextRequest(
+      "http://localhost:3000/api/sessions/test-id/position?userId=member-user",
+      {
+        method: "PUT",
+        headers: {
+          origin: "http://localhost:3000",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          weekday: 1,
+          time: "09:00",
+          endTime: "10:00",
+          yPosition: 1,
+        }),
+      }
+    );
+
+    const response = await PUT(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(response.status).toBe(403);
   });
 
   it("잘못된 요청을 안전하게 처리해야 한다", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/sessions/test-id/position",
+      "http://localhost:3000/api/sessions/test-id/position?userId=owner-user",
       {
         method: "PUT",
         headers: {
@@ -82,7 +147,7 @@ describe("Sessions Position API Routes", () => {
     } as any);
 
     const request = new NextRequest(
-      "http://localhost:3000/api/sessions/non-existent/position",
+      "http://localhost:3000/api/sessions/non-existent/position?userId=owner-user",
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -106,14 +171,14 @@ describe("Sessions Position API Routes", () => {
 
     for (const yPosition of positions) {
       const request = new NextRequest(
-        "http://localhost:3000/api/sessions/test-id/position",
+        "http://localhost:3000/api/sessions/test-id/position?userId=owner-user",
         {
           method: "PUT",
           headers: {
             origin: "http://localhost:3000",
             "content-type": "application/json",
           },
-          body: JSON.stringify({ yPosition }),
+          body: JSON.stringify({ weekday: 1, time: "09:00", endTime: "10:00", yPosition }),
         }
       );
 
@@ -123,5 +188,3 @@ describe("Sessions Position API Routes", () => {
     }
   });
 });
-
-

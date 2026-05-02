@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const newSession = await getSessionService().addSession(
       {
         subjectId,
@@ -104,6 +105,8 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId } = body;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
 
     if (
       !id ||
@@ -119,6 +122,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await requireRole(userId, ["owner", "admin"]);
     const updatedSession = await getSessionService().updateSession(id, {
       subjectId,
       startsAt,
@@ -142,6 +153,7 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const userId = searchParams.get("userId");
 
     if (!id) {
       return NextResponse.json(
@@ -150,6 +162,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await requireRole(userId, ["owner", "admin"]);
     await getSessionService().deleteSession(id);
     return NextResponse.json({
       success: true,

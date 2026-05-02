@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const newEnrollment = await getEnrollmentService().addEnrollment(
       { studentId, subjectId },
       academyId
@@ -83,8 +84,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // userId는 권한 확인용 (resolveAcademyId로 academy 검증)
-    await resolveAcademyId(userId);
+    // userId는 권한 확인용 (requireRole로 academy 검증 + role 체크)
+    await requireRole(userId, ["owner", "admin"]);
     await getEnrollmentService().deleteEnrollment(id);
     return NextResponse.json({
       success: true,

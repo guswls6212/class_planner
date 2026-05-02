@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const newStudent = await getStudentService().addStudent({ name, gender, birthDate }, academyId);
     return NextResponse.json(
       { success: true, data: newStudent },
@@ -83,7 +84,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedStudent = await getStudentService().updateStudent(
       id,
       { name, gender, birthDate },
@@ -115,7 +116,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     await getStudentService().deleteStudent(id, academyId);
     return NextResponse.json({
       success: true,

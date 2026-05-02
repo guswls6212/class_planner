@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
@@ -53,6 +54,16 @@ export async function PUT(
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const {
       enrollmentIds,
@@ -81,6 +92,7 @@ export async function PUT(
       );
     }
 
+    await requireRole(userId, ["owner", "admin"]);
     const updatedSession = await getSessionService().updateSession(id, {
       enrollmentIds,
       subjectId,
@@ -115,6 +127,17 @@ export async function DELETE(
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await requireRole(userId, ["owner", "admin"]);
     await getSessionService().deleteSession(id);
     return NextResponse.json({
       success: true,
@@ -124,4 +147,3 @@ export async function DELETE(
     return toErrorResponse(error);
   }
 }
-
