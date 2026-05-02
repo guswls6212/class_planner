@@ -4,9 +4,11 @@ import { useCallback, useState } from "react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
+import { useMyRole } from "../../hooks/useMyRole";
 import type { TeacherRole } from "../../lib/planner";
 
 const TeachersPage = () => {
+  const { canManage } = useMyRole();
   const {
     teachers,
     addTeacher,
@@ -53,6 +55,7 @@ const TeachersPage = () => {
       onRemoveTeacherSubject={removeTeacherSubject}
       errorMessage={errorMessage}
       onClearError={clearError}
+      canManage={canManage}
     />
   );
 };

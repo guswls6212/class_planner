@@ -12,10 +12,13 @@ interface StudentDetailPanelProps {
   onUpdate: (id: string, updates: Partial<Student>) => Promise<boolean>;
   onDelete: (id: string) => void;
   onBack?: () => void;
+  /** When false, edit/delete buttons are hidden (member role). Default: true */
+  canManage?: boolean;
 }
 
 export function StudentDetailPanel({
   student, subjects, enrollments, sessions, onUpdate, onDelete, onBack,
+  canManage = true,
 }: StudentDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editFields, setEditFields] = useState({
@@ -83,22 +86,24 @@ export function StudentDetailPanel({
             {[student.grade, student.school].filter(Boolean).join(" · ") || "프로필 미입력"}
           </p>
         </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setIsEditing((v) => !v)}
-            className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="편집"
-          >
-            <Pencil size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => onDelete(student.id)}
-            className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="삭제"
-          >
-            <Trash2 size={16} strokeWidth={1.5} />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setIsEditing((v) => !v)}
+              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="편집"
+            >
+              <Pencil size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => onDelete(student.id)}
+              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="삭제"
+            >
+              <Trash2 size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}

@@ -23,6 +23,8 @@ interface TeacherDetailPanelProps {
   onRemoveSubject: (teacherId: string, subjectId: string) => void;
   onDelete: (id: string) => void;
   onBack?: () => void;
+  /** When false, name/color/role fields become read-only and add/delete buttons are hidden. Default: true */
+  canManage?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -43,6 +45,7 @@ export function TeacherDetailPanel({
   onRemoveSubject,
   onDelete,
   onBack,
+  canManage = true,
 }: TeacherDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(teacher.name);
@@ -132,22 +135,24 @@ export function TeacherDetailPanel({
             주간 {teacherSessions.length}회 · 담당 {teacherStudentIds.size}명
           </p>
         </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setIsEditing((v) => !v)}
-            className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="편집"
-          >
-            <Pencil size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => onDelete(teacher.id)}
-            className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="삭제"
-          >
-            <Trash2 size={16} strokeWidth={1.5} />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setIsEditing((v) => !v)}
+              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="편집"
+            >
+              <Pencil size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => onDelete(teacher.id)}
+              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="삭제"
+            >
+              <Trash2 size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -183,17 +188,20 @@ export function TeacherDetailPanel({
                 <button
                   key={subject.id}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!canManage) return;
                     isAssigned
                       ? onRemoveSubject(teacher.id, subject.id)
-                      : onAddSubject(teacher.id, subject.id)
-                  }
+                      : onAddSubject(teacher.id, subject.id);
+                  }}
+                  disabled={!canManage}
                   aria-pressed={isAssigned}
                   className={[
                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] transition-all",
+                    !canManage ? "cursor-default" : "",
                     isAssigned
                       ? "border border-[var(--color-accent)] text-[var(--color-text-primary)] font-medium"
-                      : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]",
+                      : "border border-[var(--color-border)] text-[var(--color-text-secondary)]" + (canManage ? " hover:border-[var(--color-accent)]" : ""),
                   ].join(" ")}
                   style={isAssigned ? { background: "rgba(167,139,250,0.12)" } : { background: "var(--color-bg-secondary)" }}
                 >
@@ -206,12 +214,28 @@ export function TeacherDetailPanel({
         )}
       </div>
 
+      {/* Read-only banner for member role */}
+      {!canManage && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5">
+          <span className="mt-0.5 flex-shrink-0 text-[var(--color-text-muted)]">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="7.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M8 5v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="11" r="0.75" fill="currentColor"/>
+            </svg>
+          </span>
+          <p className="text-[12px] text-[var(--color-text-muted)] leading-relaxed">
+            학원장만 이름·색·역할을 변경할 수 있어요
+          </p>
+        </div>
+      )}
+
       {/* 연락처 · 역할 section */}
       <div className="border-t border-[var(--color-border)] pt-4 mt-1 mb-4">
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
           연락처 · 역할
         </h3>
-        {isEditing ? (
+        {isEditing && canManage ? (
           <div className="flex flex-col gap-3">
             {/* Name input */}
             <div className="flex items-center gap-2">
@@ -398,7 +422,7 @@ export function TeacherDetailPanel({
         )}
       </div>
 
-      {/* 색상 section — always visible, immediate save */}
+      {/* 색상 section — always visible; interactive only for owners/admins */}
       <div className="border-t border-[var(--color-border)] pt-4 mt-1">
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
           색상
@@ -407,8 +431,12 @@ export function TeacherDetailPanel({
           {DEFAULT_TEACHER_COLORS.map((c) => (
             <button
               key={c}
-              onClick={() => handleColorClick(c)}
-              className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
+              onClick={() => canManage && handleColorClick(c)}
+              disabled={!canManage}
+              className={[
+                "w-7 h-7 rounded-full border-2",
+                canManage ? "transition-transform hover:scale-110" : "cursor-default opacity-80",
+              ].join(" ")}
               style={{
                 backgroundColor: c,
                 borderColor: editColor === c ? "var(--color-text-primary)" : "transparent",
@@ -417,16 +445,18 @@ export function TeacherDetailPanel({
             />
           ))}
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <input
-            type="color"
-            value={editColor}
-            onChange={(e) => handleColorClick(e.target.value)}
-            className="h-7 w-8 cursor-pointer rounded border border-[var(--color-border)] bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-none"
-            title="직접 선택"
-          />
-          <span className="text-[11px] text-[var(--color-text-muted)]">직접 선택</span>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              type="color"
+              value={editColor}
+              onChange={(e) => handleColorClick(e.target.value)}
+              className="h-7 w-8 cursor-pointer rounded border border-[var(--color-border)] bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:rounded [&::-webkit-color-swatch]:border-none"
+              title="직접 선택"
+            />
+            <span className="text-[11px] text-[var(--color-text-muted)]">직접 선택</span>
+          </div>
+        )}
       </div>
     </div>
   );

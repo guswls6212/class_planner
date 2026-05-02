@@ -5,6 +5,7 @@ import SubjectsPageLayout from "../../components/organisms/SubjectsPageLayout";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useSubjectManagementLocal } from "../../hooks/useSubjectManagementLocal";
 import { useLocal } from "../../hooks/useLocal";
+import { useMyRole } from "../../hooks/useMyRole";
 import { logger } from "../../lib/logger";
 
 const SubjectsPage: React.FC = () => {
@@ -12,6 +13,7 @@ const SubjectsPage: React.FC = () => {
 };
 
 const SubjectsPageContent: React.FC = () => {
+  const { canManage } = useMyRole();
   const [selectedSubjectId, setSelectedSubjectId] = useLocal("ui:selectedSubject", "");
 
   const { subjects, addSubject, deleteSubject, updateSubject, errorMessage } =
@@ -48,6 +50,7 @@ const SubjectsPageContent: React.FC = () => {
       onSelectSubject={handleSelectSubject}
       onUpdateSubject={handleUpdateSubject}
       errorMessage={errorMessage}
+      canManage={canManage}
     />
   );
 };
