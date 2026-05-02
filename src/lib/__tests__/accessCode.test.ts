@@ -14,13 +14,13 @@ describe('generateAccessCode', () => {
     expect(code).toHaveLength(4)
   })
 
-  it('혼동 문자(0, 1, O, I, l) 포함 안 함', () => {
+  it('혼동 문자(0, 1, O, I, L) 포함 안 함', () => {
     for (let i = 0; i < 1000; i++) {
       const code = generateAccessCode('테스트')
       const digit = code[2]
       const letter = code[3]
       expect(['0', '1']).not.toContain(digit)
-      expect(['O', 'I', 'l']).not.toContain(letter)
+      expect(['O', 'I', 'L']).not.toContain(letter)
     }
   })
 
