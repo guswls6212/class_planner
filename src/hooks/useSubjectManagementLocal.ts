@@ -19,6 +19,10 @@ import {
   updateSubjectInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { showToast } from "../lib/toast";
+import { useMyRole } from "./useMyRole";
+
+const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
 
 // ===== 타입 정의 =====
 
@@ -71,6 +75,9 @@ export const useSubjectManagementLocal =
     // 🚀 localStorage 직접 조작 방식
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [error, setError] = useState<string | null>(null);
+
+    // 권한 게이트 — member 역할은 mutating 호출 차단
+    const { canManage, isLoading: roleLoading } = useMyRole();
 
     // localStorage에서 과목 데이터 로드
     const loadSubjectsFromLocal = useCallback(() => {
@@ -139,6 +146,11 @@ export const useSubjectManagementLocal =
 
     const addSubject = useCallback(
       async (name: string, color: string): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setError(null);
 
@@ -181,7 +193,7 @@ export const useSubjectManagementLocal =
           return false;
         }
       },
-      [loadSubjectsFromLocal]
+      [loadSubjectsFromLocal, canManage, roleLoading]
     );
 
     // ===== 과목 수정 =====
@@ -191,6 +203,11 @@ export const useSubjectManagementLocal =
         id: string,
         updates: { name?: string; color?: string }
       ): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setError(null);
 
@@ -232,13 +249,18 @@ export const useSubjectManagementLocal =
           return false;
         }
       },
-      [loadSubjectsFromLocal]
+      [loadSubjectsFromLocal, canManage, roleLoading]
     );
 
     // ===== 과목 삭제 =====
 
     const deleteSubject = useCallback(
       async (id: string): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setError(null);
 
@@ -274,7 +296,7 @@ export const useSubjectManagementLocal =
           return false;
         }
       },
-      [loadSubjectsFromLocal]
+      [loadSubjectsFromLocal, canManage, roleLoading]
     );
 
     // ===== 과목 조회 =====

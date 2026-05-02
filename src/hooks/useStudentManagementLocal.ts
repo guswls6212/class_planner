@@ -19,6 +19,10 @@ import {
   updateStudentInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { showToast } from "../lib/toast";
+import { useMyRole } from "./useMyRole";
+
+const PERMISSION_DENIED_MESSAGE = "학생 추가/수정/삭제는 원장과 관리자만 가능합니다.";
 
 // ===== 타입 정의 =====
 
@@ -66,6 +70,9 @@ export const useStudentManagementLocal =
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // 권한 게이트 — member 역할은 mutating 호출 차단
+    const { canManage, isLoading: roleLoading } = useMyRole();
 
     // localStorage에서 학생 데이터 로드
     const loadStudentsFromLocal = useCallback(() => {
@@ -123,6 +130,11 @@ export const useStudentManagementLocal =
         name: string,
         options?: { gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
       ): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setLoading(true);
           setError(null);
@@ -164,7 +176,7 @@ export const useStudentManagementLocal =
           setLoading(false);
         }
       },
-      [loadStudentsFromLocal]
+      [loadStudentsFromLocal, canManage, roleLoading]
     );
 
     // ===== 학생 수정 =====
@@ -174,6 +186,11 @@ export const useStudentManagementLocal =
         id: string,
         updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
       ): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setLoading(true);
           setError(null);
@@ -218,13 +235,18 @@ export const useStudentManagementLocal =
           setLoading(false);
         }
       },
-      [loadStudentsFromLocal]
+      [loadStudentsFromLocal, canManage, roleLoading]
     );
 
     // ===== 학생 삭제 =====
 
     const deleteStudent = useCallback(
       async (id: string): Promise<boolean> => {
+        if (!roleLoading && !canManage) {
+          setError(PERMISSION_DENIED_MESSAGE);
+          showToast("error", PERMISSION_DENIED_MESSAGE);
+          return false;
+        }
         try {
           setLoading(true);
           setError(null);
@@ -263,7 +285,7 @@ export const useStudentManagementLocal =
           setLoading(false);
         }
       },
-      [loadStudentsFromLocal]
+      [loadStudentsFromLocal, canManage, roleLoading]
     );
 
     // ===== 학생 조회 =====
