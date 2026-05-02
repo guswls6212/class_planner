@@ -189,14 +189,70 @@ export default function SettingsPage() {
           setShowInviteModal(true);
           break;
         }
+        case "change_role": {
+          const teacher = teachers.find((t) => t.id === teacherId);
+          if (!teacher) return;
+
+          // 가입되지 않은 강사(teacher.userId === null)는 변경할 academy_members 행이 없음.
+          if (!teacher.userId) {
+            showToast("info", "가입된 강사에게만 역할을 변경할 수 있습니다");
+            return;
+          }
+
+          const targetMember = members.find((m) => m.userId === teacher.userId);
+          if (!targetMember) {
+            showError("멤버 정보를 찾을 수 없습니다. 페이지를 새로 고침해 주세요.");
+            return;
+          }
+
+          // owner는 PATCH API에서 410으로 거부되지만, UX상 클라이언트에서 먼저 막는다.
+          if (targetMember.role === "owner") {
+            showError("원장의 권한은 변경할 수 없습니다.");
+            return;
+          }
+
+          // admin ↔ member 토글. 다른 role은 정의되어 있지 않다.
+          const nextRole = targetMember.role === "admin" ? "member" : "admin";
+          const nextLabel = nextRole === "admin" ? "관리자" : "강사";
+          const teacherDisplay = teacher.name || teacher.email || "이 멤버";
+
+          if (!confirm(`${teacherDisplay}의 권한을 '${nextLabel}'로 변경하시겠습니까?`)) {
+            return;
+          }
+
+          const res = await fetch(
+            `/api/members/${teacher.userId}?userId=${userId}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ role: nextRole }),
+            }
+          );
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            const errMessage =
+              (errBody as { error?: string | { message?: string } })?.error;
+            const message =
+              typeof errMessage === "string"
+                ? errMessage
+                : errMessage?.message ?? "권한 변경에 실패했습니다.";
+            showError(message);
+            return;
+          }
+
+          showSuccess(`권한이 '${nextLabel}'(으)로 변경되었습니다`);
+          await fetchData();
+          break;
+        }
         default:
-          // share_link / promote_to_invite / kick / change_role / edit_teacher / delete 등은
+          // share_link / promote_to_invite / kick / edit_teacher / delete 등은
           // Plan B에서 구현 예정
           showToast("info", "준비 중입니다");
           logger.debug("Teacher action not yet implemented", { action, teacherId });
       }
     },
-    [userId, invites, teachers, fetchData]
+    [userId, invites, fetchData, teachers, members]
   );
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)

@@ -44,6 +44,8 @@ export class SupabaseSessionRepository implements SessionRepository {
       room: row.room ?? "",
       yPosition: row.y_position ?? undefined,
       teacherId: row.teacher_id ?? undefined,
+      public_description: row.public_description ?? null,
+      internal_note: row.internal_note ?? null,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
@@ -133,6 +135,8 @@ export class SupabaseSessionRepository implements SessionRepository {
           room: sessionData.room ?? "",
           y_position: sessionData.yPosition ?? 1,
           teacher_id: sessionData.teacherId ?? null,
+          public_description: sessionData.public_description ?? null,
+          internal_note: sessionData.internal_note ?? null,
         })
         .select()
         .single();
@@ -184,6 +188,8 @@ export class SupabaseSessionRepository implements SessionRepository {
       if (sessionData.room !== undefined) updates.room = sessionData.room;
       if (sessionData.yPosition !== undefined) updates.y_position = sessionData.yPosition;
       if ("teacherId" in sessionData) updates.teacher_id = (sessionData.teacherId as string | null | undefined) ?? null;
+      if (sessionData.public_description !== undefined) updates.public_description = sessionData.public_description;
+      if (sessionData.internal_note !== undefined) updates.internal_note = sessionData.internal_note;
 
       if (Object.keys(updates).length > 0) {
         let q = client.from("sessions").update(updates).eq("id", id);
