@@ -57,7 +57,7 @@ describe("Settings Page", () => {
     });
   });
 
-  it("초대하기 버튼이 존재한다", async () => {
+  it("강사 추가 버튼이 존재한다", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/api/members")) {
         return Promise.resolve({
@@ -78,7 +78,7 @@ describe("Settings Page", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("초대하기")).toBeInTheDocument();
+      expect(screen.getByText("강사 추가")).toBeInTheDocument();
     });
   });
 });
