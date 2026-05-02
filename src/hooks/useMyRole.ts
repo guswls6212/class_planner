@@ -16,14 +16,18 @@ export interface CurrentMemberData {
  * Returns the current user's role in the academy and linked teacher info.
  * Fetched from /api/members?userId={userId}.
  *
- * Loading default: isLoading=true, canManage=true (optimistic — prevents flash
- * of restricted content for owners while the request is in flight).
+ * Loading default: isLoading=true, canManage=false (pessimistic — prevents
+ * member users from briefly seeing admin-only UI while the request is in flight).
+ * Owners get canManage=true after the API response (no flash of restricted
+ * content because admin UI is rendered conditionally on canManage). Consumers
+ * that need to render optimistically (e.g. the sidebar) should branch on
+ * isLoading themselves.
  */
 export function useMyRole(): CurrentMemberData {
   const [data, setData] = useState<CurrentMemberData>({
     role: null,
     isLoading: true,
-    canManage: true,
+    canManage: false,
     linkedTeacherId: null,
     linkedTeacherName: null,
     linkedTeacherColor: null,
