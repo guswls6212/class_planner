@@ -6,6 +6,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
+// Mock clipboard
+const mockWriteText = vi.fn().mockResolvedValue(undefined);
+Object.defineProperty(window.navigator, "clipboard", {
+  configurable: true,
+  value: { writeText: mockWriteText },
+});
+
 // Mock toast helpers
 const mockShowError = vi.fn();
 vi.mock("@/lib/toast", () => ({
@@ -28,6 +35,7 @@ describe("TeacherAddModal", () => {
     vi.clearAllMocks();
     mockFetch.mockReset();
     mockShowError.mockReset();
+    mockWriteText.mockClear();
   });
 
   it("open=false 일 때 렌더링하지 않는다", () => {
@@ -46,7 +54,7 @@ describe("TeacherAddModal", () => {
     expect(screen.getByRole("button", { name: /추가 \+ 공유 링크 발급/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /일단 추가만$/ })).toBeInTheDocument();
     // 3-button-mode buttons should NOT exist
-    expect(screen.queryByRole("button", { name: /추가 \+ 초대 링크 발송/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /추가 \+ 초대 링크 생성/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /추가 \+ 시간표 공유 링크만/ })).toBeNull();
   });
 
@@ -56,7 +64,7 @@ describe("TeacherAddModal", () => {
     const emailInput = screen.getByPlaceholderText("park@example.com");
     fireEvent.change(emailInput, { target: { value: "park@example.com" } });
 
-    expect(screen.getByRole("button", { name: /추가 \+ 초대 링크 발송/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /추가 \+ 초대 링크 생성/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /추가 \+ 시간표 공유 링크만/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /일단 추가만 \(나중에 결정\)/ })).toBeInTheDocument();
     // No-email-mode primary should not exist
@@ -122,7 +130,7 @@ describe("TeacherAddModal", () => {
     expect(defaultProps.onSuccess).toHaveBeenCalled();
   });
 
-  it("이메일 입력 후 '추가 + 초대 링크 발송' 클릭 시 — POST teachers + POST invites", async () => {
+  it("이메일 입력 후 '추가 + 초대 링크 생성' 클릭 시 — POST teachers + POST invites + 클립보드 복사", async () => {
     mockFetch
       .mockResolvedValueOnce({
         ok: true,
@@ -141,7 +149,7 @@ describe("TeacherAddModal", () => {
     fireEvent.change(screen.getByPlaceholderText("park@example.com"), {
       target: { value: "lee@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /추가 \+ 초대 링크 발송/ }));
+    fireEvent.click(screen.getByRole("button", { name: /추가 \+ 초대 링크 생성/ }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -157,6 +165,13 @@ describe("TeacherAddModal", () => {
     const inviteBody = JSON.parse(calls[1][1].body);
     expect(inviteBody.role).toBe("member");
     expect(inviteBody.teacherId).toBe("new-t2");
+
+    // Verify the invite link was auto-copied to clipboard
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith(
+        expect.stringMatching(/\/invite\/tok-x$/)
+      );
+    });
   });
 
   it("'일단 추가만' 클릭 시 — POST teachers만 호출", async () => {

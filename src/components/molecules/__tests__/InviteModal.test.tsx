@@ -6,6 +6,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
+// Mock clipboard
+const mockWriteText = vi.fn().mockResolvedValue(undefined);
+Object.defineProperty(window.navigator, "clipboard", {
+  configurable: true,
+  value: { writeText: mockWriteText },
+});
+
 import InviteModal from "../InviteModal";
 
 const defaultProps = {
@@ -18,10 +25,6 @@ const defaultProps = {
 const unlinkedTeachers = [
   { id: "teacher-1", name: "김철수", color: "#ff5733", userId: null },
   { id: "teacher-2", name: "이영희", color: "#33c4ff", userId: null },
-];
-
-const linkedTeachers = [
-  { id: "teacher-linked", name: "박민준", color: "#aabbcc", userId: "some-user" },
 ];
 
 describe("InviteModal", () => {
@@ -102,7 +105,7 @@ describe("InviteModal", () => {
     });
   });
 
-  it("강사가 없으면 '링크 생성' 버튼이 disabled 된다", async () => {
+  it("강사가 없으면 '링크 생성 + 복사' 버튼이 disabled 된다", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, data: [] }),
@@ -160,6 +163,69 @@ describe("InviteModal", () => {
     });
   });
 
+  describe("auto-copy + close on link generation", () => {
+    it("'링크 생성' 클릭 시 클립보드에 복사하고 onClose + onInviteCreated를 호출한다", async () => {
+      // With defaultTeacherId, the unlinked-teachers fetch is skipped, so the
+      // first (and only) fetch is the POST /api/invites.
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: { token: "tok-abc" } }),
+      });
+
+      const onClose = vi.fn();
+      const onInviteCreated = vi.fn();
+
+      render(
+        <InviteModal
+          {...defaultProps}
+          onClose={onClose}
+          onInviteCreated={onInviteCreated}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      const submitButton = screen.getByRole("button", { name: /링크 생성/ });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalledWith(
+          expect.stringMatching(/\/invite\/tok-abc$/)
+        );
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onInviteCreated).toHaveBeenCalledTimes(1);
+    });
+
+    it("두 번째 화면(링크 input + 복사 버튼)을 더 이상 렌더링하지 않는다", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: { token: "tok-xyz" } }),
+      });
+
+      const onClose = vi.fn();
+      render(
+        <InviteModal
+          {...defaultProps}
+          onClose={onClose}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /링크 생성/ }));
+
+      // After click: modal should call onClose immediately. The second-screen
+      // artifacts (24시간 후 만료 hint, 단독 복사 버튼, 단독 닫기 버튼) must not exist.
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
+      expect(screen.queryByText(/24시간 후 만료 · 1회만 사용 가능/)).toBeNull();
+      expect(screen.queryByRole("button", { name: /^복사$/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^닫기$/ })).toBeNull();
+    });
+  });
+
   describe("defaultTeacherId pre-selection", () => {
     it("defaultTeacherId가 주어지면 강사 드롭다운을 표시하지 않는다", () => {
       render(
@@ -197,7 +263,7 @@ describe("InviteModal", () => {
       );
 
       expect(
-        screen.getByText(/강사에게 초대 링크를 발송합니다/)
+        screen.getByText(/강사의 초대 링크를 생성합니다/)
       ).toBeInTheDocument();
       expect(screen.getByText("김철수")).toBeInTheDocument();
     });
@@ -216,7 +282,7 @@ describe("InviteModal", () => {
       );
     });
 
-    it("defaultTeacherId가 주어지면 '링크 생성' 버튼이 활성화된다", () => {
+    it("defaultTeacherId가 주어지면 '링크 생성 + 복사' 버튼이 활성화된다", () => {
       render(
         <InviteModal
           {...defaultProps}
