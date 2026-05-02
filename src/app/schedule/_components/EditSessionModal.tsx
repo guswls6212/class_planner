@@ -35,7 +35,7 @@ interface EditSessionModalProps {
   timeError: string;
   onDelete: () => Promise<void> | void;
   onCancel: () => void;
-  onSave: () => Promise<void> | void;
+  onSave: (weekday: number) => Promise<void> | void;
   onSubjectColorChange?: (subjectId: string, newColor: string) => void;
 }
 
@@ -97,6 +97,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const [previewColor, setPreviewColor] = useState(originalColor);
   const [showSwatches, setShowSwatches] = useState(false);
 
+  // 요일 선택 — controlled. defaultWeekday는 모달이 열릴 때만 반영.
+  const [weekday, setWeekday] = useState<number>(defaultWeekday);
+
   // 모달이 열릴 때만 원본/프리뷰 초기화
   useEffect(() => {
     if (isOpen) {
@@ -104,6 +107,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
       setOriginalColor(c);
       setPreviewColor(c);
       setShowSwatches(false);
+      setWeekday(defaultWeekday);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -145,8 +149,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
-    onSave();
-  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave]);
+    onSave(weekday);
+  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave, weekday]);
 
   const studentNames = selectedStudents.map((s) => s.name).join(" · ") || "학생 없음";
 
@@ -275,7 +279,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               className="inline-flex items-center gap-1 mt-2 rounded-full px-2.5 py-1 text-[11px] font-semibold"
               style={{ background: hexToRgba(previewColor, 0.2), color: previewColor, border: `1px solid ${hexToRgba(previewColor, 0.3)}` }}
             >
-              {weekdays[defaultWeekday]} {startTime}–{endTime}
+              {weekdays[weekday]} {startTime}–{endTime}
             </div>
           </div>
 
@@ -403,7 +407,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               요일 <span className="text-[var(--color-danger)]">*</span>
             </label>
-            <select id="edit-modal-weekday" className={fieldClass} defaultValue={defaultWeekday}>
+            <select
+              id="edit-modal-weekday"
+              className={fieldClass}
+              value={weekday}
+              onChange={(e) => setWeekday(Number(e.target.value))}
+            >
               {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
             </select>
           </div>

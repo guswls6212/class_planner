@@ -159,4 +159,74 @@ describe("InviteModal", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("defaultTeacherId pre-selection", () => {
+    it("defaultTeacherId가 주어지면 강사 드롭다운을 표시하지 않는다", () => {
+      render(
+        <InviteModal
+          {...defaultProps}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      expect(screen.queryByRole("combobox")).toBeNull();
+      expect(screen.queryByText(/연동할 강사 선택/)).toBeNull();
+    });
+
+    it("defaultTeacherId가 주어지면 역할 선택 카드를 표시하지 않는다", () => {
+      render(
+        <InviteModal
+          {...defaultProps}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      // 역할 선택 fieldset 안의 라벨이 보이지 않아야 한다
+      expect(screen.queryByText("역할 선택")).toBeNull();
+    });
+
+    it("defaultTeacherName을 포함한 정적 안내 문구를 표시한다", () => {
+      render(
+        <InviteModal
+          {...defaultProps}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      expect(
+        screen.getByText(/강사에게 초대 링크를 발송합니다/)
+      ).toBeInTheDocument();
+      expect(screen.getByText("김철수")).toBeInTheDocument();
+    });
+
+    it("defaultTeacherId가 주어지면 unlinked teachers fetch를 호출하지 않는다", () => {
+      render(
+        <InviteModal
+          {...defaultProps}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        "/api/teachers?userId=user-123&unlinked=true"
+      );
+    });
+
+    it("defaultTeacherId가 주어지면 '링크 생성' 버튼이 활성화된다", () => {
+      render(
+        <InviteModal
+          {...defaultProps}
+          defaultTeacherId="teacher-1"
+          defaultTeacherName="김철수"
+        />
+      );
+
+      const submitButton = screen.getByRole("button", { name: /링크 생성/ });
+      expect(submitButton).not.toHaveAttribute("disabled");
+    });
+  });
 });

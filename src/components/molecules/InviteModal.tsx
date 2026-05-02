@@ -20,6 +20,12 @@ interface InviteModalProps {
   onClose: () => void;
   userId: string;
   onInviteCreated?: () => void;
+  /**
+   * When provided, the modal pre-selects the teacher and skips role/dropdown UI.
+   * Used when the modal is opened from a specific teacher row (e.g. settings page).
+   */
+  defaultTeacherId?: string;
+  defaultTeacherName?: string;
 }
 
 export default function InviteModal({
@@ -27,7 +33,10 @@ export default function InviteModal({
   onClose,
   userId,
   onInviteCreated,
+  defaultTeacherId,
+  defaultTeacherName,
 }: InviteModalProps) {
+  const isPreSelected = Boolean(defaultTeacherId && defaultTeacherName);
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
@@ -38,11 +47,21 @@ export default function InviteModal({
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
   const [isFetchingTeachers, setIsFetchingTeachers] = useState(false);
 
-  // Fetch unlinked teachers when role is 'member'
+  // When opened with a pre-selected teacher, force role=member and selectedTeacherId
   useEffect(() => {
-    if (!isOpen || inviteRole !== "member") {
-      setTeachers([]);
-      setSelectedTeacherId("");
+    if (isOpen && defaultTeacherId) {
+      setInviteRole("member");
+      setSelectedTeacherId(defaultTeacherId);
+    }
+  }, [isOpen, defaultTeacherId]);
+
+  // Fetch unlinked teachers when role is 'member' and no pre-selection
+  useEffect(() => {
+    if (!isOpen || inviteRole !== "member" || isPreSelected) {
+      if (!isPreSelected) {
+        setTeachers([]);
+        setSelectedTeacherId("");
+      }
       return;
     }
     let cancelled = false;
@@ -71,7 +90,7 @@ export default function InviteModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, inviteRole, userId]);
+  }, [isOpen, inviteRole, userId, isPreSelected]);
 
   const handleCreateInvite = async () => {
     setIsCreatingInvite(true);
@@ -139,75 +158,86 @@ export default function InviteModal({
 
         {!generatedLink ? (
           <>
-            <fieldset className="mb-5">
-              <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
-              <div className="flex gap-3">
-                {(["member", "admin"] as const).map((r) => (
-                  <label
-                    key={r}
-                    className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
-                      inviteRole === r
-                        ? "border-accent bg-accent/10"
-                        : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="inviteRole"
-                      value={r}
-                      checked={inviteRole === r}
-                      onChange={() => setInviteRole(r)}
-                      className="sr-only"
-                    />
-                    <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
-                    <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {r === "member" ? "시간표 조회" : "학생·수업 관리 + 초대"}
-                    </div>
-                  </label>
-                ))}
+            {isPreSelected ? (
+              /* Pre-selected teacher: skip role/dropdown UI, show static confirmation */
+              <div className="mb-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-3">
+                <p className="text-[13px] text-[var(--color-text-primary)]">
+                  <span className="font-semibold">{defaultTeacherName ?? "선택된"}</span> 강사에게 초대 링크를 발송합니다
+                </p>
               </div>
-            </fieldset>
+            ) : (
+              <>
+                <fieldset className="mb-5">
+                  <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
+                  <div className="flex gap-3">
+                    {(["member", "admin"] as const).map((r) => (
+                      <label
+                        key={r}
+                        className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
+                          inviteRole === r
+                            ? "border-accent bg-accent/10"
+                            : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="inviteRole"
+                          value={r}
+                          checked={inviteRole === r}
+                          onChange={() => setInviteRole(r)}
+                          className="sr-only"
+                        />
+                        <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
+                        <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                          {r === "member" ? "시간표 조회" : "학생·수업 관리 + 초대"}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
 
-            {/* Teacher dropdown — only visible for 'member' role */}
-            {inviteRole === "member" && (
-              <div className="mb-5">
-                <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">
-                  연동할 강사 선택 <span className="text-red-400">(필수)</span>
-                </label>
-                {isFetchingTeachers ? (
-                  <p className="text-[12px] text-[var(--color-text-muted)]">강사 목록 불러오는 중...</p>
-                ) : noUnlinkedTeachers ? (
-                  <p className="text-[12px] text-[var(--color-text-muted)]">
-                    먼저{" "}
-                    <a href="/teachers" className="text-accent underline">
-                      /teachers
-                    </a>{" "}
-                    페이지에서 강사를 추가해주세요
-                  </p>
-                ) : (
-                  <>
-                    <select
-                      value={selectedTeacherId}
-                      onChange={(e) => setSelectedTeacherId(e.target.value)}
-                      className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-                    >
-                      {teachers.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedTeacherId && !selectedTeacherEmail && (
-                      <div className="mt-2 rounded-lg bg-yellow-900/20 border border-yellow-700/50 px-3 py-2">
-                        <p className="text-xs text-yellow-400">이 강사의 이메일이 등록되지 않았습니다.</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          이메일 없이도 초대할 수 있지만, 다른 사람이 링크를 사용할 수 있습니다.
-                        </p>
-                      </div>
+                {/* Teacher dropdown — only visible for 'member' role */}
+                {inviteRole === "member" && (
+                  <div className="mb-5">
+                    <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">
+                      연동할 강사 선택 <span className="text-red-400">(필수)</span>
+                    </label>
+                    {isFetchingTeachers ? (
+                      <p className="text-[12px] text-[var(--color-text-muted)]">강사 목록 불러오는 중...</p>
+                    ) : noUnlinkedTeachers ? (
+                      <p className="text-[12px] text-[var(--color-text-muted)]">
+                        먼저{" "}
+                        <a href="/teachers" className="text-accent underline">
+                          /teachers
+                        </a>{" "}
+                        페이지에서 강사를 추가해주세요
+                      </p>
+                    ) : (
+                      <>
+                        <select
+                          value={selectedTeacherId}
+                          onChange={(e) => setSelectedTeacherId(e.target.value)}
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+                        >
+                          {teachers.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedTeacherId && !selectedTeacherEmail && (
+                          <div className="mt-2 rounded-lg bg-yellow-900/20 border border-yellow-700/50 px-3 py-2">
+                            <p className="text-xs text-yellow-400">이 강사의 이메일이 등록되지 않았습니다.</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              이메일 없이도 초대할 수 있지만, 다른 사람이 링크를 사용할 수 있습니다.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
-                  </>
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             <div className="flex gap-3">
