@@ -73,6 +73,16 @@ describe("ScheduleActionBar", () => {
     expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
   });
 
+  it("canManage=false이면 공유 링크가 숨겨진다 (member 역할)", () => {
+    render(<ScheduleActionBar {...baseProps} userId="user-1" canManage={false} />);
+    expect(screen.queryByRole("link", { name: /공유/ })).toBeNull();
+  });
+
+  it("canManage=true이면 공유 링크가 렌더된다 (owner/admin 역할)", () => {
+    render(<ScheduleActionBar {...baseProps} userId="user-1" canManage={true} />);
+    expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
+  });
+
   it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
     const onOpenPdfDialog = vi.fn();
     render(<ScheduleActionBar {...baseProps} onOpenPdfDialog={onOpenPdfDialog} />);

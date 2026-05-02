@@ -264,6 +264,15 @@ export const useStudentManagementLocal =
             const userId = localStorage.getItem("supabase_user_id");
             syncStudentDelete(userId, id);
 
+            // 학부모 접속 코드 revoke (fire-and-forget, UI 블로킹 안 함)
+            if (userId) {
+              fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ studentId: id }),
+              }).catch(() => {});
+            }
+
             logger.info("useStudentManagementLocal - 학생 삭제 성공", { id });
 
             return true;

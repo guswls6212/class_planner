@@ -31,6 +31,15 @@ interface ShareToken {
   filter_student_id: string | null;
   expires_at: string;
   created_at: string;
+  access_code?: string | null;
+}
+
+interface AccessCodeEntry {
+  id: string;
+  label: string;
+  filter_student_id: string | null;
+  access_code: string;
+  expires_at: string;
 }
 
 export default function SettingsPage() {
@@ -38,6 +47,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
+  const [academyId, setAcademyId] = useState<string | null>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
@@ -59,6 +69,9 @@ export default function SettingsPage() {
   const [shareStudentId, setShareStudentId] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
+
+  // 학부모 접속 코드
+  const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -82,9 +95,10 @@ export default function SettingsPage() {
       ]);
 
       if (membersRes.ok) {
-        const { data, hasAcademy: ha, academyName: an } = await membersRes.json();
+        const { data, hasAcademy: ha, academyName: an, academyId: aid } = await membersRes.json();
         setHasAcademy(ha ?? true);
         setAcademyName(an ?? "");
+        setAcademyId(aid ?? null);
         setMembers(data ?? []);
         const me = (data ?? []).find((m: Member) => m.userId === userId);
         if (me) setMyRole(me.role);
@@ -106,7 +120,20 @@ export default function SettingsPage() {
 
       if (shareRes.ok) {
         const { data } = await shareRes.json();
-        setShareTokens(data ?? []);
+        const allTokens = (data ?? []) as ShareToken[];
+        // Split: access codes (have access_code) vs regular share tokens
+        setAccessCodes(
+          allTokens
+            .filter((t) => Boolean(t.access_code))
+            .map((t) => ({
+              id: t.id,
+              label: t.label ?? "",
+              filter_student_id: t.filter_student_id,
+              access_code: t.access_code as string,
+              expires_at: t.expires_at,
+            }))
+        );
+        setShareTokens(allTokens.filter((t) => !t.access_code));
       }
     } catch (err) {
       logger.error("설정 데이터 로드 실패", undefined, err as Error);
@@ -310,6 +337,42 @@ export default function SettingsPage() {
     await fetchData();
   };
 
+  const handleCreateAccessCodes = async () => {
+    if (!userId) return;
+    const res = await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "create" }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if ((data.created ?? 0) > 0) {
+        showToast("success", `${data.created}명의 접속 코드가 생성됐습니다.`);
+      } else {
+        showToast("info", "모든 학생에게 이미 코드가 있습니다.");
+      }
+      await fetchData();
+    } else {
+      showToast("error", "코드 생성에 실패했습니다.");
+    }
+  };
+
+  const handleRenewAccessCodes = async () => {
+    if (!userId) return;
+    if (typeof window !== "undefined" && !window.confirm("모든 접속 코드를 새로 발급할까요? 기존 코드는 즉시 만료됩니다.")) return;
+    const res = await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "renew" }),
+    });
+    if (res.ok) {
+      showToast("success", "모든 접속 코드가 갱신됐습니다.");
+      await fetchData();
+    } else {
+      showToast("error", "코드 갱신에 실패했습니다.");
+    }
+  };
+
   const canManage = myRole === "owner" || myRole === "admin";
 
   // 원장(owner) 멤버 — 통합 강사 목록 상단에 별도 행으로 표시
@@ -435,7 +498,11 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-2">
           {/* 원장(현재 사용자) — 항상 상단 */}
           {ownerMember && (
-            <OwnerRow member={ownerMember} isMe={ownerMember.userId === userId} />
+            <OwnerRow
+              member={ownerMember}
+              isMe={ownerMember.userId === userId}
+              canViewEmail={canManage || ownerMember.userId === userId}
+            />
           )}
 
           {/* 강사 목록 — 상태 pill + 액션 */}
@@ -445,6 +512,7 @@ export default function SettingsPage() {
               teacher={teacher}
               invites={invites}
               canManage={canManage}
+              currentUserId={userId}
               onAction={handleTeacherAction}
             />
           ))}
@@ -456,6 +524,92 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* 학부모 접속 코드 섹션 */}
+      {canManage && (
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mt-4">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+            <div>
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학부모 접속 코드</h3>
+              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                학부모가 자녀 시간표를 볼 수 있는 코드입니다
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRenewAccessCodes}
+                className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:border-[var(--color-accent)] transition-colors"
+              >
+                ↻ 전체 갱신
+              </button>
+              <button
+                onClick={handleCreateAccessCodes}
+                className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-semibold text-[var(--color-admin-ink)]"
+              >
+                코드 생성
+              </button>
+            </div>
+          </div>
+
+          {accessCodes.length === 0 ? (
+            <div className="px-6 py-8 text-center text-sm text-[var(--color-text-muted)]">
+              코드가 없습니다.{" "}
+              <button onClick={handleCreateAccessCodes} className="text-[var(--color-accent)] underline">
+                코드 생성하기
+              </button>
+            </div>
+          ) : (
+            <div>
+              {accessCodes.map((code) => {
+                // Extract student name from label: "이현진 학부모 접속 코드" → "이현진"
+                const studentName = code.label?.replace(" 학부모 접속 코드", "") || "알 수 없음";
+                const daysLeft = Math.ceil(
+                  (new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                );
+                return (
+                  <div
+                    key={code.id}
+                    className="flex items-center gap-3 px-6 py-3 border-b border-[var(--color-border)] last:border-0"
+                  >
+                    <span className="w-24 flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
+                      {studentName}
+                    </span>
+                    <span className="font-mono text-base font-bold tracking-wider text-[var(--color-accent)]">
+                      {code.access_code}
+                    </span>
+                    <span className="text-xs text-[var(--color-text-muted)]">D-{daysLeft}</span>
+                    <button
+                      onClick={() => {
+                        if (typeof window === "undefined") return;
+                        const url = `${window.location.origin}/academy/${academyId ?? ""}`;
+                        window.navigator.clipboard?.writeText(`${url}\n코드: ${code.access_code}`);
+                        showToast("success", `${studentName} 코드가 복사됐습니다`);
+                      }}
+                      disabled={!academyId}
+                      className={`ml-auto text-xs border border-[var(--color-border)] rounded px-2 py-1 transition-colors ${
+                        academyId
+                          ? 'text-[var(--color-text-muted)] hover:border-[var(--color-accent)] cursor-pointer'
+                          : 'opacity-40 cursor-not-allowed'
+                      }`}
+                    >
+                      URL+코드 복사
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
+            <p className="text-xs text-[var(--color-text-muted)]">
+              학부모 접속 URL:{" "}
+              <span className="font-mono text-[var(--color-accent)]">
+                {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academyId ?? ""}
+              </span>
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* 공유 링크 섹션 */}
       {canManage && (
@@ -695,9 +849,10 @@ export default function SettingsPage() {
 interface OwnerRowProps {
   member: Member;
   isMe: boolean;
+  canViewEmail: boolean;
 }
 
-function OwnerRow({ member, isMe }: OwnerRowProps) {
+function OwnerRow({ member, isMe, canViewEmail }: OwnerRowProps) {
   const display = member.name || member.email || member.userId.slice(0, 8);
   const initial = display.charAt(0).toUpperCase();
   return (
@@ -717,7 +872,7 @@ function OwnerRow({ member, isMe }: OwnerRowProps) {
             )}
           </div>
           <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
-            {member.email ?? "이메일 미입력"}
+            {canViewEmail ? (member.email ?? "이메일 미입력") : "이메일 비공개"}
           </p>
         </div>
       </div>
@@ -730,6 +885,7 @@ interface TeacherRowProps {
   teacher: TeacherWithStatus;
   invites: PendingInvite[];
   canManage: boolean;
+  currentUserId: string | null;
   onAction: (action: string, teacherId: string) => void;
 }
 
@@ -792,7 +948,7 @@ function getQuickAction(status: TeacherWithStatus["status"]): { action: string; 
   }
 }
 
-function TeacherRow({ teacher, invites, canManage, onAction }: TeacherRowProps) {
+function TeacherRow({ teacher, invites, canManage, currentUserId, onAction }: TeacherRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -841,7 +997,9 @@ function TeacherRow({ teacher, invites, canManage, onAction }: TeacherRowProps) 
             <TeacherStatusPill status={teacher.status} expiresAt={expiresAt} />
           </div>
           <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
-            {teacher.email ?? "이메일 미입력"}
+            {canManage || teacher.userId === currentUserId
+              ? (teacher.email ?? "이메일 미입력")
+              : "이메일 비공개"}
           </p>
         </div>
       </div>

@@ -1368,6 +1368,7 @@ function SchedulePageContent(): JSX.Element {
             onDownloadStart={() => {}}
             onDownloadEnd={() => {}}
             userId={userId}
+            canManage={canManage}
             onSaveTemplate={() => setShowSaveTemplateModal(true)}
             onApplyTemplate={() => {
               _fetchTemplates();

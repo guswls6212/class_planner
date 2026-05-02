@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const client = getServiceRoleClient();
     const { data, error } = await client
       .from("share_tokens")
-      .select("id, token, label, filter_student_id, expires_at, created_at, revoked_at")
+      .select("id, token, label, filter_student_id, expires_at, created_at, revoked_at, access_code")
       .eq("academy_id", academyId)
       .is("revoked_at", null);
 
