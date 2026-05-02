@@ -262,4 +262,80 @@ describe("POST /api/invites", () => {
     const res = await POST(req);
     expect(res.status).toBe(403);
   });
+
+  it("member 초대 생성 시 teacher.email이 invite_tokens에 저장된다", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "teachers") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({
+                  data: { id: "teacher-1", user_id: null, email: "park@example.com" },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        insert: insertMock.mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: "tok-3", token: "qqq111", role: "member", expires_at: "2099-01-01", created_at: "2026-05-02" },
+              error: null,
+            }),
+          }),
+        }),
+      };
+    });
+
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "member", teacherId: "teacher-1" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    expect(insertMock).toHaveBeenCalledTimes(1);
+    const insertPayload = insertMock.mock.calls[0][0];
+    expect(insertPayload.email).toBe("park@example.com");
+  });
+
+  it("초대 만료 시간이 24시간 이내로 설정된다", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-4", token: "rrr222", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-02" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const before = Date.now();
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    expect(insertMock).toHaveBeenCalledTimes(1);
+    const insertPayload = insertMock.mock.calls[0][0];
+    const expiresAtMs = new Date(insertPayload.expires_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    expect(expiresAtMs).toBeGreaterThan(before + 23 * oneHour);
+    expect(expiresAtMs).toBeLessThan(before + 25 * oneHour);
+  });
 });

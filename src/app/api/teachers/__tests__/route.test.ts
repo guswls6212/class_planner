@@ -92,7 +92,9 @@ describe("/api/teachers API Routes", () => {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           is: vi.fn().mockReturnValue({
-            gt: vi.fn().mockResolvedValue({ data: [], error: null }),
+            gt: vi.fn().mockReturnValue({
+              not: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
             lte: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
         }),
@@ -167,7 +169,6 @@ describe("/api/teachers API Routes", () => {
 
     it("각 teacher에 status 필드 포함 — active, invite_pending, invite_expired, none", async () => {
       const futureDate = "2099-12-31T00:00:00.000Z";
-      const pastDate = "2020-01-01T00:00:00.000Z";
 
       // t1: active (user_id not null)
       // t2: invite_pending (user_id null, pending invite)
@@ -216,11 +217,24 @@ describe("/api/teachers API Routes", () => {
           }),
         }),
       };
+      // share_tokens query: empty (no share_only teachers)
+      const shareQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockReturnValue({
+                not: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      };
 
-      // mockSupabaseFrom is called twice: first for pending, then for expired
+      // mockSupabaseFrom is called 3 times: pending, expired, share
       mockSupabaseFrom
         .mockReturnValueOnce(pendingQueryChain)
-        .mockReturnValueOnce(expiredQueryChain);
+        .mockReturnValueOnce(expiredQueryChain)
+        .mockReturnValueOnce(shareQueryChain);
 
       const request = new NextRequest(
         "http://localhost:3000/api/teachers?userId=test-user"
@@ -248,6 +262,82 @@ describe("/api/teachers API Routes", () => {
 
       expect(t4.status).toBe("none");
       expect(t4.inviteExpiresAt).toBeUndefined();
+    });
+
+    it("share_tokens에 teacher_id가 연결된 강사는 status='share_only'를 가진다", async () => {
+      const makeTeacher = (id: string, name: string, color: string, userId: string | null) => ({
+        id,
+        name,
+        color,
+        userId,
+        email: null,
+        phone: null,
+        toJSON: () => ({ id, name, color, userId, email: null, phone: null }),
+      });
+      // t5: share_only (user_id null, no invite, but share_token with teacher_id)
+      // t6: none (no invite, no share)
+      const teachers = [
+        makeTeacher("t5", "공유강사", "#0ff", null),
+        makeTeacher("t6", "강사6", "#fff", null),
+      ];
+      mockGetAllTeachers.mockResolvedValueOnce(teachers);
+
+      // pending invite_tokens: empty
+      const pendingQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        }),
+      };
+      // expired invite_tokens: empty
+      const expiredQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              lte: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        }),
+      };
+      // share_tokens: returns t5
+      const shareQueryChain = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockReturnValue({
+                not: vi.fn().mockResolvedValue({
+                  data: [{ teacher_id: "t5" }],
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+
+      mockSupabaseFrom
+        .mockReturnValueOnce(pendingQueryChain)
+        .mockReturnValueOnce(expiredQueryChain)
+        .mockReturnValueOnce(shareQueryChain);
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/teachers?userId=test-user"
+      );
+      const response = await GET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(2);
+
+      const t5 = data.data.find((t: { id: string }) => t.id === "t5");
+      const t6 = data.data.find((t: { id: string }) => t.id === "t6");
+
+      expect(t5.status).toBe("share_only");
+      expect(t6.status).toBe("none");
     });
   });
 

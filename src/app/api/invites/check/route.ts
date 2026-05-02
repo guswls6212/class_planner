@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await client
       .from("invite_tokens")
-      .select("id, role, expires_at, used_by, teacher_id, academies(name), teachers(name)")
+      .select("id, role, expires_at, used_by, teacher_id, email, academies(name), teachers(name)")
       .eq("token", token)
       .single();
 
@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       academyName,
       expiresAt: data.expires_at,
       teacherName,
+      inviteEmail: data.email ?? null,
     });
   } catch (error) {
     logger.error("GET /api/invites/check error", undefined, error as Error);

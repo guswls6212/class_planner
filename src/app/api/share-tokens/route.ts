@@ -57,10 +57,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { label, filterStudentId, expiresInDays } = body as {
+    const { label, filterStudentId, expiresInDays, teacherId } = body as {
       label?: string;
       filterStudentId?: string;
       expiresInDays?: number;
+      teacherId?: string;
     };
 
     const expiresAt = new Date();
@@ -75,6 +76,10 @@ export async function POST(request: NextRequest) {
         filter_student_id: filterStudentId ?? null,
         expires_at: expiresAt.toISOString(),
         created_by: userId,
+        teacher_id: teacherId ?? null,
+        watermark_meta: teacherId
+          ? { issuedAt: new Date().toISOString(), source: "teacher_add_modal" }
+          : null,
       })
       .select("id, token, label, filter_student_id, expires_at, created_at")
       .single();
