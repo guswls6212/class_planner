@@ -6,7 +6,6 @@ import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
 
-// 'share_only' added in Plan B when share_tokens gets teacher_id FK
 export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
 
 export interface TeacherWithStatus {
@@ -84,6 +83,25 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // share_tokens with teacher_id — enables share_only status (Phase 5)
+    const { data: shareLinks, error: shareError } = await client
+      .from("share_tokens")
+      .select("teacher_id")
+      .eq("academy_id", academyId)
+      .is("revoked_at", null)
+      .gt("expires_at", now)
+      .not("teacher_id", "is", null);
+
+    if (shareError) {
+      logger.error("share_tokens 조회 실패 for status join", {}, shareError as Error);
+    }
+
+    const shareTeacherIds = new Set(
+      (shareLinks ?? [])
+        .map((s) => (s.teacher_id ? String(s.teacher_id) : null))
+        .filter((id): id is string => id !== null)
+    );
+
     const result = teachers.map((t) => {
       let status: TeacherStatus;
       let inviteExpiresAt: string | undefined;
@@ -97,6 +115,8 @@ export async function GET(request: NextRequest) {
         inviteExpiresAt = pendingMap.get(teacherIdStr);
       } else if (expiredSet.has(teacherIdStr)) {
         status = "invite_expired";
+      } else if (shareTeacherIds.has(teacherIdStr)) {
+        status = "share_only";
       } else {
         status = "none";
       }
