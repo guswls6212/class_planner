@@ -149,5 +149,4 @@ describe("LoginButton", () => {
 
 });
 
-// NOTE: 로그아웃 기능은 AccountMenu 컴포넌트로 이전되었습니다.
-// AccountMenu 테스트는 별도 테스트 파일에서 관리합니다.
+// NOTE: 로그아웃 기능은 Sidebar의 UserSection과 TopBar의 TopBarAccountSection으로 통합되었습니다.

@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Users, BookOpen, GraduationCap, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AccountMenu } from "./AccountMenu";
+import { supabase } from "@/utils/supabaseClient";
+import { signOut } from "@/lib/auth/signOut";
 import { useMyRole } from "@/hooks/useMyRole";
 
 interface SidebarItem {
@@ -26,6 +27,45 @@ const topItems: SidebarItem[] = [
 const bottomItems: SidebarItem[] = [
   { href: "/settings", icon: Settings, label: "설정" },
 ];
+
+function UserSection() {
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const isConfigured =
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!isConfigured) return;
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        setEmail(data.user?.email ?? null);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!email) return null;
+
+  return (
+    <div className="border-t border-slate-700 mt-1 pt-1">
+      <div className="px-3 py-2">
+        <p
+          className="text-[10px] text-slate-500 truncate"
+          title={email}
+        >
+          {email}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => signOut()}
+        className="w-full px-3 py-2 text-left text-[11px] text-semantic-danger hover:bg-slate-700 transition-colors rounded-lg"
+      >
+        로그아웃
+      </button>
+    </div>
+  );
+}
 
 function SidebarLink({
   href,
@@ -208,6 +248,7 @@ export function Sidebar() {
                 + 새 학원 만들기
               </button>
             </div>
+            <UserSection />
           </div>
         )}
       </div>
@@ -220,9 +261,6 @@ export function Sidebar() {
         {bottomItems.map((item) => (
           <SidebarLink key={item.href} {...item} isActive={isActive(item.href)} />
         ))}
-        <div className="flex items-center justify-center w-10 h-10">
-          <AccountMenu compact />
-        </div>
       </div>
     </aside>
   );
