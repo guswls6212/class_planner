@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { UserPlus, Link2, Plus, Pencil, MoreHorizontal } from "lucide-react";
+import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
@@ -73,6 +73,7 @@ export default function SettingsPage() {
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
+  const [shareExpanded, setShareExpanded] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLabel, setShareLabel] = useState("");
   const [shareExpiresInDays, setShareExpiresInDays] = useState(30);
@@ -181,6 +182,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (userId) fetchData();
   }, [userId, fetchData]);
+
+  useEffect(() => {
+    if (shareTokens.length > 0) setShareExpanded(true);
+  }, [shareTokens.length]);
 
   const checkSlugDebounced = useCallback((slug: string, currentSlug: string) => {
     if (slugCheckTimerRef.current) clearTimeout(slugCheckTimerRef.current);
@@ -793,121 +798,149 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* 공유 링크 섹션 */}
+      {/* 공유 링크 섹션 — 아코디언 */}
       {canManage && (
-        <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mt-4 border border-[var(--color-border)]">
-          <div className="flex items-start justify-between gap-3 mb-4">
+        <section className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden">
+          {/* 아코디언 헤더 — 항상 표시 */}
+          <button
+            type="button"
+            onClick={() => setShareExpanded((v) => !v)}
+            className="w-full flex items-start justify-between gap-3 p-5 text-left"
+          >
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-400/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
                 <Link2 size={18} strokeWidth={1.5} />
               </div>
               <div>
                 <h2 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
-                  시간표 공유{" "}
-                  <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
-                    {shareTokens.length}개
-                  </span>
+                  고급 공유 옵션{" "}
+                  {shareTokens.length > 0 && (
+                    <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
+                      {shareTokens.length}개
+                    </span>
+                  )}
                 </h2>
                 <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
-                  학부모에게 로그인 없이 시간표를 공유하세요
+                  강사 시간표, 임시 공개, 학원 전체 공유 등 고급 공유 옵션
                 </p>
               </div>
             </div>
-            <Button
-              variant="accent"
-              size="small"
-              onClick={() => setShowShareModal(true)}
-              className="flex-shrink-0 gap-1.5"
-            >
-              <Plus size={14} strokeWidth={2} /> 링크 만들기
-            </Button>
-          </div>
-          {shareTokens.length === 0 ? (
-            <div className="space-y-3">
-              <p className="text-[12px] text-[var(--color-text-muted)] text-center py-1">
-                아직 공유 링크가 없어요
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { n: 1, title: "링크 만들기", desc: "만료일·학생 필터 설정" },
-                    { n: 2, title: "URL 복사", desc: "카톡·문자로 전달" },
-                    { n: 3, title: "읽기 전용", desc: "로그인 없이 열람" },
-                  ] as const
-                ).map(({ n, title, desc }) => (
-                  <div
-                    key={n}
-                    className="bg-[var(--color-bg-primary)] rounded-lg p-2.5 flex items-start gap-2"
-                  >
-                    <span className="w-5 h-5 rounded-full bg-[var(--color-overlay-light)] text-[var(--color-text-muted)] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                      {n}
-                    </span>
-                    <div>
-                      <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
-                        {title}
-                      </p>
-                      <p className="text-[10px] text-[var(--color-text-muted)] leading-relaxed">
-                        {desc}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+              {shareExpanded && (
+                <Button
+                  variant="accent"
+                  size="small"
+                  onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
+                  className="gap-1.5"
+                >
+                  <Plus size={14} strokeWidth={2} /> 링크 만들기
+                </Button>
+              )}
+              {shareExpanded
+                ? <ChevronUp size={16} className="text-[var(--color-text-muted)]" />
+                : <ChevronDown size={16} className="text-[var(--color-text-muted)]" />
+              }
             </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {shareTokens.map((st) => {
-                const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/share/${st.token}`;
-                const studentName = st.filter_student_id
-                  ? localStudents.find((s) => s.id === st.filter_student_id)?.name ?? "학생"
-                  : null;
-                return (
-                  <div
-                    key={st.id}
-                    className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)]"
-                  >
-                    <div className="min-w-0 flex-1 mr-3">
-                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                        {st.label ? (
-                          st.label
-                        ) : (
-                          <span className="italic text-[var(--color-text-muted)]">(제목 없음)</span>
-                        )}
-                        {studentName && (
-                          <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
-                            · {studentName}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                        <span className={getExpiryColorClass(st.expires_at)}>
-                          {formatExpiry(st.expires_at)}
+          </button>
+
+          {/* 힌트 텍스트 — 닫힌 상태 + 토큰 0개 */}
+          {!shareExpanded && shareTokens.length === 0 && (
+            <p className="px-5 pb-4 text-[11px] text-[var(--color-text-muted)]">
+              일반 학부모 공유는 위의 &apos;학부모 접속 코드&apos;를 사용하세요.
+            </p>
+          )}
+
+          {/* 아코디언 컨텐츠 — 열린 상태 */}
+          {shareExpanded && (
+            <div className="px-5 pb-5">
+              {shareTokens.length === 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[12px] text-[var(--color-text-muted)] text-center py-1">
+                    아직 공유 링크가 없어요
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(
+                      [
+                        { n: 1, title: "링크 만들기", desc: "만료일·학생 필터 설정" },
+                        { n: 2, title: "URL 복사", desc: "카톡·문자로 전달" },
+                        { n: 3, title: "읽기 전용", desc: "로그인 없이 열람" },
+                      ] as const
+                    ).map(({ n, title, desc }) => (
+                      <div
+                        key={n}
+                        className="bg-[var(--color-bg-primary)] rounded-lg p-2.5 flex items-start gap-2"
+                      >
+                        <span className="w-5 h-5 rounded-full bg-[var(--color-overlay-light)] text-[var(--color-text-muted)] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                          {n}
                         </span>
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Button
-                        variant="tonal"
-                        size="small"
-                        feedback="inline"
-                        successLabel="복사됨"
-                        toastMessage="공유 링크가 복사되었습니다"
-                        onClick={() => handleCopyShareLink(shareUrl)}
-                      >
-                        복사
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="small"
-                        onClick={() => handleRevokeShareToken(st.id)}
-                        className="hover:text-red-400"
-                      >
-                        취소
-                      </Button>
-                    </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-[var(--color-text-secondary)]">
+                            {title}
+                          </p>
+                          <p className="text-[10px] text-[var(--color-text-muted)] leading-relaxed">
+                            {desc}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {shareTokens.map((st) => {
+                    const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/share/${st.token}`;
+                    const studentName = st.filter_student_id
+                      ? localStudents.find((s) => s.id === st.filter_student_id)?.name ?? "학생"
+                      : null;
+                    return (
+                      <div
+                        key={st.id}
+                        className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)]"
+                      >
+                        <div className="min-w-0 flex-1 mr-3">
+                          <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                            {st.label ? (
+                              st.label
+                            ) : (
+                              <span className="italic text-[var(--color-text-muted)]">(제목 없음)</span>
+                            )}
+                            {studentName && (
+                              <span className="ml-2 text-xs text-[var(--color-text-secondary)]">
+                                · {studentName}
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                            <span className={getExpiryColorClass(st.expires_at)}>
+                              {formatExpiry(st.expires_at)}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Button
+                            variant="tonal"
+                            size="small"
+                            feedback="inline"
+                            successLabel="복사됨"
+                            toastMessage="공유 링크가 복사되었습니다"
+                            onClick={() => handleCopyShareLink(shareUrl)}
+                          >
+                            복사
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="small"
+                            onClick={() => handleRevokeShareToken(st.id)}
+                            className="hover:text-red-400"
+                          >
+                            취소
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </section>
