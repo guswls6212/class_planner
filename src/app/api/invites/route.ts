@@ -87,10 +87,12 @@ export async function POST(request: NextRequest) {
 
     const client = getServiceRoleClient();
 
+    let teacherEmail: string | null = null;
+
     if (teacherId) {
       const { data: teacher, error: teacherError } = await client
         .from("teachers")
-        .select("id, user_id")
+        .select("id, user_id, email")
         .eq("id", teacherId)
         .eq("academy_id", academyId)
         .single();
@@ -108,7 +110,11 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      teacherEmail = teacher.email ?? null;
     }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await client
       .from("invite_tokens")
@@ -117,6 +123,8 @@ export async function POST(request: NextRequest) {
         role: inviteRole,
         created_by: userId,
         teacher_id: teacherId ?? null,
+        expires_at: expiresAt,
+        email: teacherEmail,
       })
       .select("id, token, role, expires_at, created_at")
       .single();
