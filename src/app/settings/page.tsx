@@ -14,12 +14,6 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 
-const ROLE_LABEL: Record<string, string> = {
-  owner: "원장",
-  admin: "관리자",
-  member: "강사",
-};
-
 interface PendingInvite {
   id: string;
   token: string;
@@ -383,7 +377,7 @@ export default function SettingsPage() {
             />
           ))}
 
-          {teachers.length === 0 && !ownerMember && (
+          {teachers.length === 0 && (
             <p className="text-[12px] text-[var(--color-text-muted)] text-center py-3">
               아직 등록된 강사가 없습니다.
             </p>
