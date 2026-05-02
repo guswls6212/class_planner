@@ -341,6 +341,62 @@
 ### 확장 (omni-radar 연동)
 로컬 파일 방식 검증 후 omni-radar HTTP ingest endpoint로 전환 고려. dev-pack CLAUDE.md에 이미 예고된 경로 ("API 레이어에 radar hook 주입, 또는 omni-radar HTTP endpoint로 이벤트 전송"). 전사 관측 인프라 통합이 목적이면 이 경로.
 
+## Phase K — Teacher Invite 리디자인 + 보안 강화 (2026-05)
+
+**PR #152-161 | 완료**
+
+### K-1: Teacher Invite 흐름 재설계 (Plan A)
+- [x] migration 032 (teachers 컬럼 확장), 035 (audit_log), 036 (teachers RLS)
+- [x] PATCH /api/teachers/[id] — M1 field-level guard (name/color는 owner/admin만)
+- [x] GET /api/teachers — invite/share status join (active/invite_pending/invite_expired/share_only/none)
+- [x] Settings 통합 강사 리스트 + TeacherStatusPill (6-state)
+- [x] GET /api/audit-log — 변경 이력
+
+### K-2: Teacher Invite 흐름 + 학부모 접속 코드 (Plan B)
+- [x] migration 037 (invite_tokens.email), 038 (share_tokens.teacher_id + watermark_meta)
+- [x] /invite/[token] 4-state 재구성 (A:비로그인 B:수락 C:이메일불일치 D:이미멤버)
+- [x] POST /api/invites/accept — 이메일 매칭 검증 (403 email_mismatch)
+- [x] POST /api/share-tokens/from-invite — "링크만 받기" 엔드포인트
+- [x] TeacherAddModal Smart CTA (이메일 유무에 따른 버튼 adaptive)
+- [x] InviteModal defaultTeacherId pre-selection
+
+### K-3: 권한 강화 + 세션 노트 (Plan C)
+- [x] migration 039 (sessions.public_description + internal_note)
+- [x] sessions API — public_description owner/admin only, internal_note all staff
+- [x] PATCH /api/members/[userId] — 역할 변경 (owner only, 403 for admin)
+
+### K-4: 학부모 접속 코드 시스템
+- [x] migration 040 (share_tokens.access_code)
+- [x] POST /api/share/code — 코드 검증 → share token 반환
+- [x] /academy/[identifier] — 공개 코드 입력 페이지
+- [x] POST /api/share-tokens/access-codes — 일괄 생성/갱신
+- [x] Settings "학부모 접속 코드" 섹션 (생성/복사/만료 관리)
+
+### K-5: Member RBAC UX 정비
+- [x] useMyRole 초기값 canManage: false (Flash of Unauthorized UI 제거)
+- [x] Sidebar nav 필터링 — member는 시간표+설정만
+- [x] middleware route guard — /students /subjects /teachers → member redirect
+- [x] ScheduleActionBar share 버튼 member 숨김
+- [x] Settings 팀 멤버 이메일 비공개 (member에게)
+
+### K-6: UX 개선 — 링크 자동복사 + 드래그 핸들
+- [x] InviteModal: 강사 행에서 열 때 defaultTeacherId pre-select
+- [x] 링크 생성 후 즉시 클립보드 자동 복사 + 모달 닫힘
+- [x] Dead-end ⋯ 메뉴 항목 disabled 처리
+- [x] EditSessionModal weekday controlled input 버그 수정
+- [x] SessionForm room 필드 제거 (DB 미연결 필드)
+
+### K-7: Academy Slug + Multi-academy
+- [x] migration 041 (academies.slug UNIQUE)
+- [x] /academy/[identifier] — UUID/slug 모두 지원, UUID → slug 301 redirect
+- [x] GET /api/academies/check-slug, PATCH /api/academies/slug
+- [x] Settings slug 편집기 (실시간 중복 확인 + 변경 영향 경고)
+- [x] localStorage per-academy scope: classPlannerData:{userId}:{academyId}
+- [x] Academy Switcher — 사이드바 상단 로고 클릭 → 드롭다운 전환
+- [x] GET /api/academies/mine, POST /api/auth/set-active-academy
+
+---
+
 ## 변경 이력
 | 날짜 | 내용 |
 |------|------|
@@ -371,3 +427,4 @@
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
 | 2026-04-24 | 드래그 UX Phase D/F 완료 · Phase E(#91)/G(#93) revert (hotfix). Phase H(ghost-div 재설계) + Phase I(브라우저 로그 캡처) 백로그 등록 |
 | 2026-04-26 | Phase J: Schedule UX 전면 개선 — PR#96 ScheduleDateNavigator(일별/주간/월별 ‹›오늘), PR#97 주간 헤더 Stacked Circle+날짜+now-line+수평 시간선, PR#98 FAB 전 뷰 공통화+GroupSessionModal 3-step Glass Stepper 재설계 |
+| 2026-05-02 | Phase K: Teacher Invite 리디자인 + 보안 강화 — PR#152-161. migrations 032-041, TeacherStatusPill, TeacherAddModal, InviteModal pre-select, Member RBAC UX, Academy Slug + Multi-academy, 학부모 접속 코드 시스템 |
