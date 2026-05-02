@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Users, BookOpen, GraduationCap, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AccountMenu } from "./AccountMenu";
@@ -61,14 +62,137 @@ export function Sidebar() {
   // /subjects, /teachers are usable via localStorage.
   // Member users may briefly see admin items between the role fetch and the
   // re-render; clicking them lands on the middleware redirect with a toast.
-  const { role, isLoading } = useMyRole();
+  const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
   const visibleTopItems = topItems.filter((item) => !item.adminOnly || !isMember);
 
+  // Multi-academy switcher state. Reads the active academy id from
+  // localStorage on mount; the dropdown lists all the user's academies and
+  // switching reloads the page (cleanest way to reset all derived state).
+  const [showSwitcher, setShowSwitcher] = useState(false);
+  const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const userId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("supabase_user_id")
+        : null;
+    if (!userId) return;
+    import("@/lib/localStorageCrud").then(({ getActiveAcademyId }) => {
+      setActiveAcademyId(getActiveAcademyId(userId));
+    });
+  }, []);
+
+  // Close switcher dropdown on outside click.
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setShowSwitcher(false);
+      }
+    }
+    if (showSwitcher) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }
+  }, [showSwitcher]);
+
+  const activeAcademy =
+    academies.find((a) => a.id === activeAcademyId) ?? academies[0];
+
+  async function handleSwitchAcademy(targetAcademyId: string) {
+    const userId = localStorage.getItem("supabase_user_id");
+    if (!userId || targetAcademyId === activeAcademyId) {
+      setShowSwitcher(false);
+      return;
+    }
+
+    // Set active academy on the server (sets the active_academy_id cookie).
+    await fetch("/api/auth/set-active-academy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, academyId: targetAcademyId }),
+    }).catch(() => {});
+
+    // Set active academy in localStorage (client-side scope key).
+    const { setActiveAcademyId: setActive } = await import("@/lib/localStorageCrud");
+    setActive(userId, targetAcademyId);
+
+    // Reload the page — cleanest way to reset all React state for the new academy.
+    window.location.reload();
+  }
+
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-50 flex w-14 flex-col items-center gap-1 py-4 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]">
-      <div className="mb-4 flex h-10 w-10 items-center justify-center">
-        <span className="text-xs font-bold text-accent leading-none text-center">CP</span>
+      {/* Academy Switcher (replaces the old "CP" logo). */}
+      <div className="relative mb-4" ref={switcherRef}>
+        <button
+          type="button"
+          onClick={() => setShowSwitcher((v) => !v)}
+          aria-label={activeAcademy?.name ?? "학원"}
+          aria-expanded={showSwitcher}
+          title={activeAcademy?.name ?? "학원"}
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-colors hover:opacity-80"
+          style={
+            activeAcademy
+              ? ({
+                  "--tc": "#fbbf24",
+                  backgroundColor: "color-mix(in srgb, var(--tc) 25%, transparent)",
+                  color: "var(--tc)",
+                } as React.CSSProperties)
+              : undefined
+          }
+        >
+          {activeAcademy ? activeAcademy.name.slice(0, 2) : "CP"}
+        </button>
+
+        {showSwitcher && academies.length > 0 && (
+          <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
+            <div className="px-3 py-1 text-[10px] text-slate-500 font-medium tracking-wide uppercase">
+              내 학원
+            </div>
+            {academies.map((academy) => (
+              <button
+                key={academy.id}
+                type="button"
+                onClick={() => handleSwitchAcademy(academy.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-slate-700 ${
+                  academy.id === activeAcademyId ? "bg-amber-500/10" : ""
+                }`}
+              >
+                <div
+                  className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                  style={
+                    {
+                      "--tc":
+                        academy.id === activeAcademyId ? "#fbbf24" : "#94a3b8",
+                      backgroundColor:
+                        "color-mix(in srgb, var(--tc) 20%, transparent)",
+                      color: "var(--tc)",
+                    } as React.CSSProperties
+                  }
+                >
+                  {academy.name.slice(0, 2)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-slate-200 truncate">
+                    {academy.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {academy.role === "owner"
+                      ? "원장"
+                      : academy.role === "admin"
+                        ? "관리자"
+                        : "강사"}
+                  </div>
+                </div>
+                {academy.id === activeAcademyId && (
+                  <span className="text-amber-400 text-xs flex-shrink-0">✓</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-1">
         {visibleTopItems.map((item) => (
