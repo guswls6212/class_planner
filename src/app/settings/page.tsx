@@ -9,6 +9,8 @@ import { showError } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { Button } from "../../components/atoms/Button";
 import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
+import InviteModal from "../../components/molecules/InviteModal";
+import MemberListItem, { type Member } from "../../components/molecules/MemberListItem";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "원장",
@@ -16,13 +18,7 @@ const ROLE_LABEL: Record<string, string> = {
   member: "강사",
 };
 
-interface Member {
-  userId: string;
-  role: string;
-  email: string | null;
-  name: string | null;
-  joinedAt: string;
-}
+// Member type is now imported from MemberListItem.tsx
 
 interface PendingInvite {
   id: string;
@@ -53,10 +49,6 @@ export default function SettingsPage() {
   const [myRole, setMyRole] = useState<string>("member");
   const [isLoading, setIsLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
-  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
@@ -143,31 +135,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCreateInvite = async () => {
-    if (!userId) return;
-    setIsCreatingInvite(true);
-    try {
-      const res = await fetch(`/api/invites?userId=${userId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: inviteRole }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const link = `${window.location.origin}/invite/${data.data.token}`;
-        setGeneratedLink(link);
-        await fetchData();
-      } else {
-        showError(data.error?.message ?? "초대 링크 생성에 실패했습니다.");
-      }
-    } catch (err) {
-      logger.error("초대 링크 생성 실패", undefined, err as Error);
-      showError("초대 링크 생성에 실패했습니다.");
-    } finally {
-      setIsCreatingInvite(false);
-    }
-  };
-
   const handleCancelInvite = async (id: string) => {
     if (!userId || !confirm("이 초대를 취소하시겠습니까?")) return;
     await fetch(`/api/invites/${id}?userId=${userId}`, { method: "DELETE" });
@@ -180,19 +147,10 @@ export default function SettingsPage() {
     await fetchData();
   };
 
-  const handleCopyLink = async (link: string) => {
+  const handleCopyShareLink = async (link: string) => {
     if (typeof window !== "undefined" && window.navigator?.clipboard) {
       await window.navigator.clipboard.writeText(link);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const closeModal = () => {
-    setShowInviteModal(false);
-    setGeneratedLink(null);
-    setInviteRole("member");
-    setCopied(false);
   };
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
@@ -361,40 +319,13 @@ export default function SettingsPage() {
 
         <div className="flex flex-col gap-2">
           {members.map((member) => (
-            <div
+            <MemberListItem
               key={member.userId}
-              className="flex justify-between items-center p-3 rounded-lg bg-[var(--color-bg-primary)]"
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-medium text-[var(--color-text-primary)]">
-                  {member.name || member.email || member.userId.slice(0, 8)}
-                </span>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    member.role === "owner"
-                      ? "bg-accent/15 text-accent"
-                      : member.role === "admin"
-                      ? "bg-indigo-400/15 text-indigo-400"
-                      : "bg-[var(--color-overlay-light)] text-[var(--color-text-secondary)]"
-                  }`}
-                >
-                  {ROLE_LABEL[member.role] ?? member.role}
-                </span>
-                {member.userId === userId && (
-                  <span className="text-xs text-[var(--color-text-secondary)]">본인</span>
-                )}
-              </div>
-              {myRole === "owner" && member.userId !== userId && (
-                <Button
-                  variant="ghost"
-                  size="small"
-                  onClick={() => handleRemoveMember(member.userId)}
-                  className="hover:text-red-400"
-                >
-                  제거
-                </Button>
-              )}
-            </div>
+              member={member}
+              myRole={myRole}
+              userId={userId ?? ""}
+              onRemove={handleRemoveMember}
+            />
           ))}
         </div>
       </section>
@@ -430,7 +361,7 @@ export default function SettingsPage() {
                       feedback="inline"
                       successLabel="복사됨"
                       toastMessage="초대 링크가 복사되었습니다"
-                      onClick={() => handleCopyLink(link)}
+                      onClick={() => handleCopyShareLink(link)}
                     >
                       복사
                     </Button>
@@ -549,7 +480,7 @@ export default function SettingsPage() {
                         feedback="inline"
                         successLabel="복사됨"
                         toastMessage="공유 링크가 복사되었습니다"
-                        onClick={() => handleCopyLink(shareUrl)}
+                        onClick={() => handleCopyShareLink(shareUrl)}
                       >
                         복사
                       </Button>
@@ -644,90 +575,13 @@ export default function SettingsPage() {
       )}
 
       {/* 초대 모달 */}
-      {showInviteModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-[var(--color-bg-secondary)] rounded-2xl p-6 w-full max-w-sm mx-4 border border-[var(--color-border)]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">멤버 초대</h3>
-            <p className="text-[13px] text-[var(--color-text-muted)] mb-5">초대 링크를 생성하여 공유하세요</p>
-
-            {!generatedLink ? (
-              <>
-                <fieldset className="mb-5">
-                  <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
-                  <div className="flex gap-3">
-                    {(["member", "admin"] as const).map((r) => (
-                      <label
-                        key={r}
-                        className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
-                          inviteRole === r
-                            ? "border-accent bg-accent/10"
-                            : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="inviteRole"
-                          value={r}
-                          checked={inviteRole === r}
-                          onChange={() => setInviteRole(r)}
-                          className="sr-only"
-                        />
-                        <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
-                        <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                          {r === "member" ? "시간표 조회" : "학생·수업 관리 + 초대"}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={closeModal}
-                    className="flex-1 py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
-                  >
-                    취소
-                  </button>
-                  <button
-                    onClick={handleCreateInvite}
-                    disabled={isCreatingInvite}
-                    className="flex-1 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-                  >
-                    {isCreatingInvite ? "생성 중..." : "링크 생성"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-2">초대 링크</label>
-                <div className="flex gap-2 mb-2">
-                  <div className="flex-1 px-3 py-2 bg-[var(--color-bg-primary)] rounded-lg text-xs text-[var(--color-text-muted)] truncate border border-[var(--color-border)]">
-                    {generatedLink}
-                  </div>
-                  <button
-                    onClick={() => handleCopyLink(generatedLink)}
-                    className="px-3 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 whitespace-nowrap transition-opacity"
-                  >
-                    {copied ? "복사됨!" : "복사"}
-                  </button>
-                </div>
-                <p className="text-[11px] text-[var(--color-text-muted)] mb-5">7일 후 만료 · 1회만 사용 가능</p>
-                <button
-                  onClick={closeModal}
-                  className="w-full py-2 border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg text-sm hover:bg-[var(--color-overlay-light)] transition-colors"
-                >
-                  닫기
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      {userId && (
+        <InviteModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          userId={userId}
+          onInviteCreated={fetchData}
+        />
       )}
     </div>
   );

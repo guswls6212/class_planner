@@ -20,6 +20,7 @@ interface InviteInfo {
   role?: string;
   academyName?: string;
   expiresAt?: string;
+  teacherName?: string | null;
 }
 
 export default function InvitePage({
@@ -149,13 +150,22 @@ export default function InvitePage({
           <>
             <div className="text-5xl mb-4">🎓</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">학원 초대</h2>
-            <p className="text-sm text-gray-600 mb-1">
-              <strong>{invite.academyName}</strong>에서
-            </p>
-            <span className="inline-block bg-purple-100 text-purple-700 text-sm px-3 py-0.5 rounded-full mb-6">
-              {ROLE_LABEL[invite.role ?? ""] ?? invite.role} 역할
-            </span>
-            <p className="text-sm text-gray-500 mb-6">로 초대했습니다</p>
+            {invite.teacherName ? (
+              <p className="text-sm text-gray-600 mb-6">
+                <strong>{invite.academyName}</strong>의 강사{" "}
+                <strong>{invite.teacherName}</strong>으로 초대되었습니다
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-1">
+                  <strong>{invite.academyName}</strong>에서
+                </p>
+                <span className="inline-block bg-purple-100 text-purple-700 text-sm px-3 py-0.5 rounded-full mb-6">
+                  {ROLE_LABEL[invite.role ?? ""] ?? invite.role} 역할
+                </span>
+                <p className="text-sm text-gray-500 mb-6">로 초대했습니다</p>
+              </>
+            )}
 
             {!userId ? (
               <>
