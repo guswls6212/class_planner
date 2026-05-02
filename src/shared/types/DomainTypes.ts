@@ -38,6 +38,8 @@ export interface Session {
   readonly room?: string;
   readonly yPosition?: number;
   readonly teacherId?: string | null;
+  readonly public_description?: string | null;
+  readonly internal_note?: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
