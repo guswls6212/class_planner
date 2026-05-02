@@ -30,6 +30,8 @@ interface TeachersPageLayoutProps {
   onClearError: () => void;
   /** When false, add/delete controls are hidden and detail panel is read-only. Default: true */
   canManage?: boolean;
+  /** The linkedTeacherId of the currently logged-in member (from useMyRole). Used to derive isOwnTeacher for the detail panel. */
+  linkedTeacherId?: string | null;
 }
 
 export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
@@ -184,6 +186,10 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
             onDelete={props.onDeleteTeacher}
             onBack={() => setShowDetail(false)}
             canManage={canManage}
+            isOwnTeacher={
+              props.linkedTeacherId != null &&
+              selectedTeacher.id === props.linkedTeacherId
+            }
           />
         </div>
       ) : (

@@ -25,6 +25,8 @@ interface TeacherDetailPanelProps {
   onBack?: () => void;
   /** When false, name/color/role fields become read-only and add/delete buttons are hidden. Default: true */
   canManage?: boolean;
+  /** When true and !canManage, shows limited edit form for email/phone/notes (own profile). Default: false */
+  isOwnTeacher?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -46,7 +48,10 @@ export function TeacherDetailPanel({
   onDelete,
   onBack,
   canManage = true,
+  isOwnTeacher = false,
 }: TeacherDetailPanelProps) {
+  // canEditOwn: member viewing their own teacher profile can edit email/phone/notes
+  const canEditOwn = !canManage && isOwnTeacher;
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(teacher.name);
   const [editColor, setEditColor] = useState(teacher.color);
@@ -75,15 +80,24 @@ export function TeacherDetailPanel({
   );
 
   const handleSave = () => {
-    const name = editName.trim();
-    if (!name) return;
-    onUpdate(teacher.id, {
-      name,
-      email: editEmail || null,
-      phone: editPhone || null,
-      role: editRole,
-      notes: editNotes || null,
-    });
+    if (canManage) {
+      const name = editName.trim();
+      if (!name) return;
+      onUpdate(teacher.id, {
+        name,
+        email: editEmail || null,
+        phone: editPhone || null,
+        role: editRole,
+        notes: editNotes || null,
+      });
+    } else {
+      // canEditOwn path: only email/phone/notes
+      onUpdate(teacher.id, {
+        email: editEmail || null,
+        phone: editPhone || null,
+        notes: editNotes || null,
+      });
+    }
     setIsEditing(false);
   };
 
@@ -135,7 +149,7 @@ export function TeacherDetailPanel({
             주간 {teacherSessions.length}회 · 담당 {teacherStudentIds.size}명
           </p>
         </div>
-        {canManage && (
+        {(canManage || canEditOwn) && (
           <div className="flex gap-1">
             <button
               onClick={() => setIsEditing((v) => !v)}
@@ -144,13 +158,15 @@ export function TeacherDetailPanel({
             >
               <Pencil size={16} strokeWidth={1.5} />
             </button>
-            <button
-              onClick={() => onDelete(teacher.id)}
-              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
-              aria-label="삭제"
-            >
-              <Trash2 size={16} strokeWidth={1.5} />
-            </button>
+            {canManage && (
+              <button
+                onClick={() => onDelete(teacher.id)}
+                className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+                aria-label="삭제"
+              >
+                <Trash2 size={16} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -214,8 +230,8 @@ export function TeacherDetailPanel({
         )}
       </div>
 
-      {/* Read-only banner for member role */}
-      {!canManage && (
+      {/* Info banner: only shown when member views their OWN teacher profile */}
+      {canEditOwn && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5">
           <span className="mt-0.5 flex-shrink-0 text-[var(--color-text-muted)]">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -235,21 +251,23 @@ export function TeacherDetailPanel({
         <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
           연락처 · 역할
         </h3>
-        {isEditing && canManage ? (
+        {isEditing && (canManage || canEditOwn) ? (
           <div className="flex flex-col gap-3">
-            {/* Name input */}
-            <div className="flex items-center gap-2">
-              <label className="w-14 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">이름</label>
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSave();
-                }}
-                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
+            {/* Name input — owner/admin only */}
+            {canManage && (
+              <div className="flex items-center gap-2">
+                <label className="w-14 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">이름</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSave();
+                  }}
+                  className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+              </div>
+            )}
             {/* Email + Phone grid */}
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
@@ -279,31 +297,33 @@ export function TeacherDetailPanel({
                 />
               </div>
             </div>
-            {/* Role pills */}
-            <div className="flex flex-col gap-1">
-              <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-                <User size={11} strokeWidth={1.5} />
-                역할
-              </label>
-              <div className="flex gap-2">
-                {(["owner", "admin", "member"] as TeacherRole[]).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setEditRole(editRole === r ? null : r)}
-                    aria-pressed={editRole === r}
-                    className={[
-                      "px-3 py-1 rounded-full text-[12px] transition-all border",
-                      editRole === r
-                        ? "border-[var(--color-accent)] bg-[rgba(167,139,250,0.15)] text-[var(--color-text-primary)] font-medium"
-                        : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]",
-                    ].join(" ")}
-                  >
-                    {ROLE_LABELS[r]}
-                  </button>
-                ))}
+            {/* Role pills — owner/admin only */}
+            {canManage && (
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+                  <User size={11} strokeWidth={1.5} />
+                  역할
+                </label>
+                <div className="flex gap-2">
+                  {(["owner", "admin", "member"] as TeacherRole[]).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setEditRole(editRole === r ? null : r)}
+                      aria-pressed={editRole === r}
+                      className={[
+                        "px-3 py-1 rounded-full text-[12px] transition-all border",
+                        editRole === r
+                          ? "border-[var(--color-accent)] bg-[rgba(167,139,250,0.15)] text-[var(--color-text-primary)] font-medium"
+                          : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]",
+                      ].join(" ")}
+                    >
+                      {ROLE_LABELS[r]}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             {/* Notes */}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">

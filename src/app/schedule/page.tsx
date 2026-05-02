@@ -1335,7 +1335,7 @@ function SchedulePageContent(): JSX.Element {
               onClearWeek={handleClearWeek}
               onSave={() => setShowSaveTemplateModal(true)}
               onPreview={handlePreviewTemplate}
-              canManage={true}
+              canManage={canManage}
               hasTemplate={Boolean(activeTemplate)}
             />
           )}
@@ -1546,6 +1546,7 @@ function SchedulePageContent(): JSX.Element {
           date={selectedDate.toISOString().slice(0, 10)}
           students={attendanceStudents}
           attendance={attendance[attendanceSession.id] ?? {}}
+          canManage={canManage}
           onMarkAttendance={(studentId, status) =>
             markAttendance(
               attendanceSession.id,

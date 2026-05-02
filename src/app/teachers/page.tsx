@@ -8,7 +8,7 @@ import { useMyRole } from "../../hooks/useMyRole";
 import type { TeacherRole } from "../../lib/planner";
 
 const TeachersPage = () => {
-  const { canManage } = useMyRole();
+  const { canManage, linkedTeacherId } = useMyRole();
   const {
     teachers,
     addTeacher,
@@ -56,6 +56,7 @@ const TeachersPage = () => {
       errorMessage={errorMessage}
       onClearError={clearError}
       canManage={canManage}
+      linkedTeacherId={linkedTeacherId}
     />
   );
 };
