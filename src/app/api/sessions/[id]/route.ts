@@ -87,6 +87,8 @@ export async function PUT(
       endsAt: endsAtBody,
       room,
       teacherId,
+      public_description,
+      internal_note,
     } = body;
     const resolvedStart = startTime ?? startsAtBody;
     const resolvedEnd = endTime ?? endsAtBody;
@@ -106,7 +108,16 @@ export async function PUT(
 
     // requireRole verifies academy membership; academyId is threaded to the service
     // so the repository scopes the UPDATE to the correct academy_id row.
-    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
+
+    // public_description은 owner/admin만 편집 가능
+    if (role === "member" && public_description != null) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: only owner/admin may set public_description" },
+        { status: 403 }
+      );
+    }
+
     const updatedSession = await getSessionService().updateSession(id, {
       enrollmentIds,
       subjectId,
@@ -115,6 +126,8 @@ export async function PUT(
       endsAt: resolvedEnd,
       room,
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
+      ...(public_description !== undefined && { public_description }),
+      ...(internal_note !== undefined && { internal_note }),
     }, academyId);
 
     return NextResponse.json({
