@@ -56,7 +56,9 @@ describe("useMyRole", () => {
     vi.clearAllMocks();
   });
 
-  it("세션 없을 때 role=null, canManage=false를 반환한다", async () => {
+  it("세션 없을 때(익명 사용자) role=null, canManage=true를 반환한다 — Anonymous-First", async () => {
+    // Anonymous users own their localStorage data and must be able to create/edit
+    // sessions, students, and subjects. canManage must be true after load.
     mockGetSession.mockResolvedValue({ data: { session: null } });
 
     const { result } = renderHook(() => useMyRole());
@@ -66,7 +68,7 @@ describe("useMyRole", () => {
     });
 
     expect(result.current.role).toBe(null);
-    expect(result.current.canManage).toBe(false);
+    expect(result.current.canManage).toBe(true);
     expect(result.current.isLoading).toBe(false);
   });
 

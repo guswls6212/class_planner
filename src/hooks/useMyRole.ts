@@ -44,10 +44,13 @@ export function useMyRole(): CurrentMemberData {
 
         if (!session) {
           if (!cancelled) {
+            // Anonymous-First: no session means the user is not a member of any
+            // academy. They use localStorage only and must be able to create/edit
+            // sessions, students, and subjects.
             setData({
               role: null,
               isLoading: false,
-              canManage: false,
+              canManage: true,
               linkedTeacherId: null,
               linkedTeacherName: null,
               linkedTeacherColor: null,
@@ -105,8 +108,6 @@ export function useMyRole(): CurrentMemberData {
       } catch {
         if (!cancelled) {
           // On network error, fail closed — deny access rather than grant it.
-          // The loading state stays optimistic (canManage: true) to prevent flash
-          // of restricted UI for owners while the request is in flight.
           setData({
             role: null,
             isLoading: false,
