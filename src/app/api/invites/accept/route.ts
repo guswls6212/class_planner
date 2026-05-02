@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // 1. Look up token + join academy name
     const { data: inviteData, error: tokenError } = await client
       .from("invite_tokens")
-      .select("id, academy_id, role, expires_at, used_by, created_by, teacher_id, academies(name)")
+      .select("id, academy_id, role, expires_at, used_by, created_by, teacher_id, email, academies(name)")
       .eq("token", token)
       .single();
 
@@ -40,6 +40,24 @@ export async function POST(request: NextRequest) {
 
     if (new Date(inviteData.expires_at) < new Date()) {
       return toErrorResponse(new AppError("INVITE_TOKEN_EXPIRED", { statusHint: 410 }));
+    }
+
+    // Email matching validation (M4)
+    const inviteEmail = (inviteData as unknown as { email: string | null }).email;
+    if (inviteEmail) {
+      const { data: authData } = await client.auth.admin.getUserById(userId);
+      const userEmail = authData.user?.email;
+
+      if (!userEmail || userEmail !== inviteEmail) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "이 초대는 다른 이메일 주소 용입니다.",
+            error_code: "email_mismatch",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // 2. Idempotency check — already a member?
