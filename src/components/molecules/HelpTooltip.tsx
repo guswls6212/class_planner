@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { InfoTrigger } from "@/components/atoms/InfoTrigger";
 
 interface HelpTooltipProps {
   content: string;
@@ -20,14 +21,7 @@ export function HelpTooltip({ content, label = "도움말" }: HelpTooltipProps) 
 
   return (
     <div className="relative inline-flex items-center">
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        aria-label={label}
-        className="flex items-center justify-center w-4 h-4 rounded-full border border-[var(--color-text-muted)] text-[var(--color-text-muted)] text-[10px] font-bold hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
-      >
-        i
-      </button>
+      <InfoTrigger size="sm" label={label} onClick={() => setIsOpen((v) => !v)} />
       {isOpen && (
         <>
           <div
