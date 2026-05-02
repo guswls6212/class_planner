@@ -55,15 +55,15 @@ export function Sidebar() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
-  // Role-based nav filtering. While loading we show all items to avoid hiding
-  // admin nav from owners (the common case). Member users see admin items
-  // momentarily until /api/members resolves; clicking them is still safe
-  // because the middleware route guard redirects /students|/subjects|/teachers
-  // to /schedule with a toast for member role.
-  const { canManage, isLoading } = useMyRole();
-  const visibleTopItems = isLoading
-    ? topItems
-    : topItems.filter((item) => !item.adminOnly || canManage);
+  // Role-based nav filtering. We hide admin-only items only when the user is
+  // known to be a member. Loading state and anonymous users (role=null) keep
+  // the full nav so we don't break the Anonymous-First flow where /students,
+  // /subjects, /teachers are usable via localStorage.
+  // Member users may briefly see admin items between the role fetch and the
+  // re-render; clicking them lands on the middleware redirect with a toast.
+  const { role, isLoading } = useMyRole();
+  const isMember = !isLoading && role === "member";
+  const visibleTopItems = topItems.filter((item) => !item.adminOnly || !isMember);
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 z-50 flex w-14 flex-col items-center gap-1 py-4 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]">
