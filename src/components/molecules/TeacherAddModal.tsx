@@ -86,7 +86,16 @@ export function TeacherAddModal({ open, userId, onClose, onSuccess }: TeacherAdd
         if (!inviteRes.ok) {
           showError("강사는 추가되었지만 초대 링크 생성에 실패했습니다.");
         } else {
-          showSuccess("강사 추가 + 초대 링크가 생성되었습니다.");
+          // Auto-copy the invite link so the user can paste it immediately.
+          const inviteData = await inviteRes.json().catch(() => null);
+          const token = inviteData?.data?.token ?? inviteData?.token;
+          if (token && typeof window !== "undefined" && window.navigator?.clipboard) {
+            const url = `${window.location.origin}/invite/${token}`;
+            await window.navigator.clipboard.writeText(url).catch(() => {
+              // Clipboard write may fail (e.g. permissions); proceed regardless.
+            });
+          }
+          showSuccess("강사 추가 + 초대 링크가 복사되었습니다.");
         }
       } else if (action === "share") {
         const shareRes = await fetch(`/api/share-tokens?userId=${userId}`, {
@@ -194,7 +203,7 @@ export function TeacherAddModal({ open, userId, onClose, onSuccess }: TeacherAdd
               disabled={isBusy}
               className="w-full py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {submittingAction === "invite" ? "처리 중..." : "추가 + 초대 링크 발송"}
+              {submittingAction === "invite" ? "처리 중..." : "추가 + 초대 링크 생성"}
             </button>
             <button
               type="button"

@@ -278,6 +278,16 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        const token = data.data?.token;
+        if (token && typeof window !== "undefined" && window.navigator?.clipboard) {
+          const shareUrl = `${window.location.origin}/share/${token}`;
+          try {
+            await window.navigator.clipboard.writeText(shareUrl);
+          } catch {
+            // Clipboard write may fail (e.g. permissions); proceed regardless.
+          }
+        }
+        showToast("success", "시간표 공유 링크가 복사됐습니다");
         setShowShareModal(false);
         setShareLabel("");
         setShareStudentId("");
@@ -650,7 +660,15 @@ export default function SettingsPage() {
             setInviteTargetTeacherName(null);
           }}
           userId={userId}
-          onInviteCreated={fetchData}
+          onInviteCreated={() => {
+            fetchData();
+            showToast(
+              "success",
+              `${inviteTargetTeacherName ?? "강사"} 초대 링크가 복사됐습니다 · 24시간 후 만료`
+            );
+            setInviteTargetTeacherName(null);
+            setInviteTargetTeacherId(null);
+          }}
           defaultTeacherId={inviteTargetTeacherId ?? undefined}
           defaultTeacherName={inviteTargetTeacherName ?? undefined}
         />
@@ -719,6 +737,7 @@ interface MenuItem {
   key: string;
   label: string;
   variant?: "default" | "danger";
+  disabled?: boolean;
 }
 
 function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
@@ -732,28 +751,28 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
     case "invite_expired":
       return [
         { key: "reinvite", label: "재초대" },
-        { key: "share_link", label: "시간표만 공유" },
-        { key: "delete", label: "삭제", variant: "danger" },
+        { key: "share_link", label: "시간표만 공유", disabled: true },
+        { key: "delete", label: "삭제", variant: "danger", disabled: true },
       ];
     case "share_only":
       return [
-        { key: "promote_to_invite", label: "초대로 승격" },
-        { key: "share_link", label: "링크 재발급" },
-        { key: "cancel_share", label: "공유 취소", variant: "danger" },
+        { key: "promote_to_invite", label: "초대로 승격", disabled: true },
+        { key: "share_link", label: "링크 재발급", disabled: true },
+        { key: "cancel_share", label: "공유 취소", variant: "danger", disabled: true },
       ];
     case "active":
       return [
         { key: "change_role", label: "권한 변경" },
-        { key: "edit_teacher", label: "강사 정보" },
-        { key: "kick", label: "팀에서 제외", variant: "danger" },
+        { key: "edit_teacher", label: "강사 정보", disabled: true },
+        { key: "kick", label: "팀에서 제외", variant: "danger", disabled: true },
       ];
     case "none":
     default:
       return [
         { key: "invite", label: "초대 보내기" },
-        { key: "share_link", label: "시간표 공유 링크 발급" },
-        { key: "edit_teacher", label: "강사 정보 수정" },
-        { key: "delete", label: "삭제", variant: "danger" },
+        { key: "share_link", label: "시간표 공유 링크 발급", disabled: true },
+        { key: "edit_teacher", label: "강사 정보 수정", disabled: true },
+        { key: "delete", label: "삭제", variant: "danger", disabled: true },
       ];
   }
 }
@@ -862,14 +881,21 @@ function TeacherRow({ teacher, invites, canManage, onAction }: TeacherRowProps) 
                       key={item.key}
                       type="button"
                       role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onAction(item.key, teacher.id);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-[13px] transition-colors hover:bg-[var(--color-overlay-light)] ${
-                        item.variant === "danger"
-                          ? "text-red-400 hover:text-red-300"
-                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      disabled={item.disabled}
+                      onClick={
+                        item.disabled
+                          ? undefined
+                          : () => {
+                              setMenuOpen(false);
+                              onAction(item.key, teacher.id);
+                            }
+                      }
+                      className={`w-full text-left px-3 py-2 text-[13px] transition-colors ${
+                        item.disabled
+                          ? "cursor-not-allowed opacity-40 text-[var(--color-text-muted)]"
+                          : item.variant === "danger"
+                          ? "text-red-400 hover:text-red-300 hover:bg-[var(--color-overlay-light)]"
+                          : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)]"
                       }`}
                     >
                       {item.label}
