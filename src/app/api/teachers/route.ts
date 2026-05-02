@@ -2,6 +2,7 @@ import { getTeacherService } from "@/lib/server/teacherServiceFactory";
 import { toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -18,9 +19,12 @@ export async function GET(request: NextRequest) {
 
     logger.debug("API GET /api/teachers", { userId });
 
+    const unlinkedOnly = searchParams.get("unlinked") === "true";
+
     const academyId = await resolveAcademyId(userId);
     const teachers = await getTeacherService().getAllTeachers(academyId);
-    return NextResponse.json({ success: true, data: teachers });
+    const result = unlinkedOnly ? teachers.filter((t) => t.userId === null) : teachers;
+    return NextResponse.json({ success: true, data: result });
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const newTeacher = await getTeacherService().addTeacher(
       { name, color, userId: bodyUserId ?? null, email: email ?? null, phone: phone ?? null, role: role ?? null, notes: notes ?? null },
       academyId

@@ -55,6 +55,7 @@ import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { supabase } from "../../utils/supabaseClient";
+import { useMyRole } from "../../hooks/useMyRole";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { preflightCheck } from "@/lib/pdf/preflightCheck";
 import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
@@ -198,6 +199,9 @@ function SchedulePageContent(): JSX.Element {
       if (user) setUserId(user.id);
     });
   }, []);
+
+  // Role-based UI gate — member role gets read-only schedule
+  const { canManage } = useMyRole();
 
   // ================================
   // 🧩 로컬 타입 (가독성 향상용)
@@ -926,7 +930,7 @@ function SchedulePageContent(): JSX.Element {
   } = useUiState();
 
   // 🆕 드래그 앤 드롭 처리 (헬퍼 빌더로 교체)
-  const handleDrop = useMemo(() => {
+  const _handleDropBase = useMemo(() => {
     // setIsStudentDragging 선언 이후에 클로저가 캡처되도록 지연 생성
     return buildHandleDrop({
       students,
@@ -944,28 +948,45 @@ function SchedulePageContent(): JSX.Element {
     setShowGroupModal,
     getNextHour,
   ]);
+  // Gate: member role — drop opens modal which is blocked; skip entirely
+  const handleDrop = useCallback(
+    (...args: Parameters<typeof _handleDropBase>) => {
+      if (!canManage) return;
+      _handleDropBase(...args);
+    },
+    [canManage, _handleDropBase]
+  );
 
   // 🆕 세션 드롭 핸들러 (헬퍼 빌더 적용)
-  const handleSessionDrop = useMemo(() => {
+  const _handleSessionDropBase = useMemo(() => {
     return buildHandleSessionDrop({
       updateSessionPosition,
       // setGridVersion는 함수 식별자이므로 선언 위치와 무관하게 안전하게 참조 가능
       setGridVersion,
     });
   }, [updateSessionPosition]);
+  // Gate: member role — drag-to-reorder is disabled
+  const handleSessionDrop = useCallback(
+    (...args: Parameters<typeof _handleSessionDropBase>) => {
+      if (!canManage) return;
+      _handleSessionDropBase(...args);
+    },
+    [canManage, _handleSessionDropBase]
+  );
 
-  // 🆕 빈 공간 클릭 처리
+  // 🆕 빈 공간 클릭 처리 — member 역할은 no-op
   const handleEmptySpaceClick = (
     weekday: number,
     time: string,
     yPosition?: number
   ) => {
+    if (!canManage) return;
     logger.debug("빈 공간 클릭됨", { weekday, time, yPosition });
     openGroupModal(weekday, time, yPosition);
   };
 
   // 🆕 세션 클릭 처리 (헬퍼 빌더 적용)
-  const handleSessionClick = useMemo(
+  const _handleSessionClickBase = useMemo(
     () =>
       buildHandleSessionClick({
         enrollments,
@@ -983,6 +1004,14 @@ function SchedulePageContent(): JSX.Element {
       setTempEnrollments,
       setShowEditModal,
     ]
+  );
+  // Gate: member role sees read-only schedule — session click is a no-op
+  const handleSessionClick = useCallback(
+    (...args: Parameters<typeof _handleSessionClickBase>) => {
+      if (!canManage) return;
+      _handleSessionClickBase(...args);
+    },
+    [canManage, _handleSessionClickBase]
   );
 
   // 🆕 PDF 다운로드 처리
@@ -1243,15 +1272,14 @@ function SchedulePageContent(): JSX.Element {
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
 
-  // 드래그 시작 처리
-  const handleDragStart = (e: React.DragEvent, student: Student) =>
-    onDragStartStudent(
-      e,
-      student,
-      enrollments,
-      setIsStudentDragging,
-      () => {}
-    );
+  // 드래그 시작 처리 — member 역할은 drag 비활성화
+  const handleDragStart = (e: React.DragEvent, student: Student) => {
+    if (!canManage) {
+      e.preventDefault();
+      return;
+    }
+    onDragStartStudent(e, student, enrollments, setIsStudentDragging, () => {});
+  };
 
   // 🆕 드래그 종료 처리
   const handleDragEnd = (e: React.DragEvent) =>
@@ -1307,7 +1335,7 @@ function SchedulePageContent(): JSX.Element {
               onClearWeek={handleClearWeek}
               onSave={() => setShowSaveTemplateModal(true)}
               onPreview={handlePreviewTemplate}
-              canManage={true}
+              canManage={canManage}
               hasTemplate={Boolean(activeTemplate)}
             />
           )}
@@ -1456,8 +1484,9 @@ function SchedulePageContent(): JSX.Element {
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
               hasTemplate={Boolean(activeTemplate)}
-              onApplyTemplate={() => { if (activeTemplate) handleApplyTemplate(activeTemplate); }}
+              onApplyTemplate={() => { if (activeTemplate && canManage) handleApplyTemplate(activeTemplate); }}
               onAddSession={() => {
+                if (!canManage) return;
                 const now = new Date();
                 const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
                 openGroupModal(selectedWeekday, currentTime, 1);
@@ -1467,18 +1496,20 @@ function SchedulePageContent(): JSX.Element {
         </div>
       )}
 
-      {/* FAB — 모든 뷰(일별/주간/월별)에서 공통 표시 */}
-      <button
-        onClick={() => {
-          const now = new Date();
-          const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
-          openGroupModal(selectedWeekday, currentTime, 1);
-        }}
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
-        aria-label="수업 추가"
-      >
-        <Plus size={24} strokeWidth={2} />
-      </button>
+      {/* FAB — 모든 뷰(일별/주간/월별)에서 공통 표시; member 역할은 숨김 */}
+      {canManage && (
+        <button
+          onClick={() => {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+            openGroupModal(selectedWeekday, currentTime, 1);
+          }}
+          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
+          aria-label="수업 추가"
+        >
+          <Plus size={24} strokeWidth={2} />
+        </button>
+      )}
 
       {/* 그룹 수업 추가 모달 (분리) */}
       <GroupSessionModal
@@ -1515,6 +1546,7 @@ function SchedulePageContent(): JSX.Element {
           date={selectedDate.toISOString().slice(0, 10)}
           students={attendanceStudents}
           attendance={attendance[attendanceSession.id] ?? {}}
+          canManage={canManage}
           onMarkAttendance={(studentId, status) =>
             markAttendance(
               attendanceSession.id,

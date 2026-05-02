@@ -1,5 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,7 +10,7 @@ export function getSubjectService() {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -22,7 +23,18 @@ export async function GET(
       );
     }
 
-    const subject = await getSubjectService().getSubjectById(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const subject = await getSubjectService().getSubjectById(id, academyId);
 
     if (!subject) {
       return NextResponse.json(
@@ -70,7 +82,7 @@ export async function PUT(
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedSubject = await getSubjectService().updateSubject(
       id,
       { name, color },
@@ -110,7 +122,7 @@ export async function DELETE(
       );
     }
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     await getSubjectService().deleteSubject(id, academyId);
     return NextResponse.json({
       success: true,

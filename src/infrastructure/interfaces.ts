@@ -32,16 +32,17 @@ export interface SubjectRepository {
 
 export interface SessionRepository {
   getAll(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]>;
-  getById(id: string): Promise<Session | null>;
+  getById(id: string, academyId?: string): Promise<Session | null>;
   create(
     session: Omit<Session, "id" | "createdAt" | "updatedAt">,
     academyId: string
   ): Promise<Session>;
   update(
     id: string,
-    session: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
+    session: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>,
+    academyId?: string
   ): Promise<Session>;
-  delete(id: string): Promise<void>;
+  delete(id: string, academyId?: string): Promise<void>;
 }
 
 export interface TeacherRepository {
@@ -59,7 +60,7 @@ export interface TeacherRepository {
   delete(id: string, academyId: string): Promise<void>;
   getSubjectIds(teacherId: string): Promise<string[]>;
   addSubject(teacherId: string, subjectId: string, academyId: string): Promise<void>;
-  removeSubject(teacherId: string, subjectId: string): Promise<void>;
+  removeSubject(teacherId: string, subjectId: string, academyId: string): Promise<void>;
 }
 
 export interface EnrollmentRepository {

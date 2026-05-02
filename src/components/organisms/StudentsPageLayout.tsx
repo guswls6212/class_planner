@@ -17,10 +17,13 @@ interface StudentsPageLayoutProps {
   onUpdateStudent: (id: string, updates: Partial<Student>) => Promise<boolean>;
   errorMessage?: string;
   onClearError: () => void;
+  /** When false, add/edit/delete controls are hidden. Default: true */
+  canManage?: boolean;
 }
 
 export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const { students, selectedStudentId, onSelectStudent } = props;
+  const canManage = props.canManage ?? true;
   const [searchQuery, setSearchQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -56,27 +59,29 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">학생 목록</h2>
         </div>
 
-        {/* Add student */}
-        <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAdd();
-            }}
-            placeholder="학생 이름 (검색 가능)"
-            className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-          />
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
-            aria-label="학생 추가"
-          >
-            <Plus size={14} strokeWidth={1.5} />
-            추가
-          </button>
-        </div>
+        {/* Add student — only visible to owners/admins */}
+        {canManage && (
+          <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAdd();
+              }}
+              placeholder="학생 이름 (검색 가능)"
+              className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
+              aria-label="학생 추가"
+            >
+              <Plus size={14} strokeWidth={1.5} />
+              추가
+            </button>
+          </div>
+        )}
 
         {/* Search */}
         <div className="px-3 py-2 border-b border-[var(--color-border)]">
@@ -147,6 +152,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onUpdate={props.onUpdateStudent}
             onDelete={props.onDeleteStudent}
             onBack={() => setShowDetail(false)}
+            canManage={canManage}
           />
         </div>
       ) : (

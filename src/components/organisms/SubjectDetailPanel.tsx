@@ -12,10 +12,13 @@ interface SubjectDetailPanelProps {
   onUpdate: (id: string, name: string, color: string) => Promise<boolean | void>;
   onDelete: (id: string) => void;
   onBack?: () => void;
+  /** When false, edit/delete buttons are hidden (member role). Default: true */
+  canManage?: boolean;
 }
 
 export function SubjectDetailPanel({
   subject, students, enrollments, sessions, onUpdate, onDelete, onBack,
+  canManage = true,
 }: SubjectDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(subject.name);
@@ -71,22 +74,24 @@ export function SubjectDetailPanel({
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)] truncate">{subject.name}</h2>
           <p className="text-[11px] text-[var(--color-text-muted)]">{enrolledStudents.length}명 등록</p>
         </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setIsEditing((v) => !v)}
-            className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="편집"
-          >
-            <Pencil size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => onDelete(subject.id)}
-            className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="삭제"
-          >
-            <Trash2 size={16} strokeWidth={1.5} />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setIsEditing((v) => !v)}
+              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="편집"
+            >
+              <Pencil size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => onDelete(subject.id)}
+              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+              aria-label="삭제"
+            >
+              <Trash2 size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary */}

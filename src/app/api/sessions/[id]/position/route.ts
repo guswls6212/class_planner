@@ -1,4 +1,5 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
@@ -24,6 +25,16 @@ export async function PUT(
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { weekday, time, endTime, yPosition } = body;
 
@@ -33,6 +44,8 @@ export async function PUT(
         { status: 400 }
       );
     }
+
+    await requireRole(userId, ["owner", "admin"]);
 
     // 세션 위치 업데이트 (시간 변경 포함)
     const updatedSession = await getSessionService().updateSessionPosition(id, {
@@ -51,4 +64,3 @@ export async function PUT(
     return toErrorResponse(error);
   }
 }
-

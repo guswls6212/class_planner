@@ -10,8 +10,8 @@ export class StudentApplicationServiceImpl {
     return this.studentRepository.getAll(academyId);
   }
 
-  async getStudentById(id: string): Promise<Student | null> {
-    return this.studentRepository.getById(id);
+  async getStudentById(id: string, academyId?: string): Promise<Student | null> {
+    return this.studentRepository.getById(id, academyId);
   }
 
   async addStudent(

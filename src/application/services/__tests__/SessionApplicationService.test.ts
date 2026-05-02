@@ -149,7 +149,7 @@ describe("SessionApplicationService", () => {
 
       await service.deleteSession("s1");
 
-      expect(mockSessionRepository.delete).toHaveBeenCalledWith("s1");
+      expect(mockSessionRepository.delete).toHaveBeenCalledWith("s1", undefined);
     });
 
     it("repository 에러 시 에러를 전파해야 한다", async () => {

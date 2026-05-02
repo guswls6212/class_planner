@@ -20,6 +20,7 @@ interface InviteInfo {
   role?: string;
   academyName?: string;
   expiresAt?: string;
+  teacherName?: string | null;
 }
 
 export default function InvitePage({
@@ -35,12 +36,12 @@ export default function InvitePage({
   const [isLoading, setIsLoading] = useState(true);
   const [acceptError, setAcceptError] = useState<string | null>(null);
 
-  // token 파라미터 추출
+  // Extract token param
   useEffect(() => {
     params.then(({ token: t }) => setToken(t));
   }, [params]);
 
-  // 초대 정보 + 로그인 상태 로드
+  // Load invite info + auth state
   useEffect(() => {
     if (!token) return;
 
@@ -57,7 +58,7 @@ export default function InvitePage({
           setUserId(sessionData.data.session.user.id);
         }
 
-        // OAuth 리다이렉트 후 자동 수락 체크
+        // Check for pending token after OAuth redirect
         const pendingToken = localStorage.getItem(PENDING_INVITE_KEY);
         if (pendingToken === token && sessionData.data.session?.user.id) {
           localStorage.removeItem(PENDING_INVITE_KEY);
@@ -149,13 +150,22 @@ export default function InvitePage({
           <>
             <div className="text-5xl mb-4">🎓</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">학원 초대</h2>
-            <p className="text-sm text-gray-600 mb-1">
-              <strong>{invite.academyName}</strong>에서
-            </p>
-            <span className="inline-block bg-purple-100 text-purple-700 text-sm px-3 py-0.5 rounded-full mb-6">
-              {ROLE_LABEL[invite.role ?? ""] ?? invite.role} 역할
-            </span>
-            <p className="text-sm text-gray-500 mb-6">로 초대했습니다</p>
+            {invite.teacherName ? (
+              <p className="text-sm text-gray-600 mb-6">
+                <strong>{invite.academyName}</strong>의 강사{" "}
+                <strong>{invite.teacherName}</strong>으로 초대되었습니다
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-1">
+                  <strong>{invite.academyName}</strong>에서
+                </p>
+                <span className="inline-block bg-purple-100 text-purple-700 text-sm px-3 py-0.5 rounded-full mb-6">
+                  {ROLE_LABEL[invite.role ?? ""] ?? invite.role} 역할
+                </span>
+                <p className="text-sm text-gray-500 mb-6">로 초대했습니다</p>
+              </>
+            )}
 
             {!userId ? (
               <>

@@ -96,8 +96,8 @@ export class TeacherApplicationServiceImpl {
     return this.teacherRepository.addSubject(teacherId, subjectId, academyId);
   }
 
-  async removeTeacherSubject(teacherId: string, subjectId: string): Promise<void> {
-    return this.teacherRepository.removeSubject(teacherId, subjectId);
+  async removeTeacherSubject(teacherId: string, subjectId: string, academyId: string): Promise<void> {
+    return this.teacherRepository.removeSubject(teacherId, subjectId, academyId);
   }
 
   async getTeacherSubjects(teacherId: string): Promise<string[]> {

@@ -5,6 +5,7 @@ import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
+import { useMyRole } from "../../hooks/useMyRole";
 import type { Student } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
@@ -14,6 +15,7 @@ export default function StudentsPage() {
 }
 
 function StudentsPageContent() {
+  const { canManage } = useMyRole();
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
@@ -90,6 +92,7 @@ function StudentsPageContent() {
       onDeleteStudent={handleDeleteStudent}
       onUpdateStudent={handleUpdateStudent}
       onClearError={clearError}
+      canManage={canManage}
     />
   );
 }

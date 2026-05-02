@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors/AppError";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST } from "../route";
@@ -9,6 +10,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
 vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
+}));
+
+const mockRequireRole = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ academyId: "test-academy-id", role: "owner" })
+);
+
+vi.mock("@/lib/auth/permissions", () => ({
+  requireRole: mockRequireRole,
+  requireOwnTeacher: vi.fn().mockResolvedValue("test-teacher-id"),
+  pickAllowedFields: (body: Record<string, unknown>, fields: string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
 }));
 
 let mockAddSession: ReturnType<typeof vi.fn>;
@@ -44,6 +56,7 @@ describe("/api/sessions API Routes", () => {
     vi.clearAllMocks();
     mockAddSession = vi.fn().mockResolvedValue(SESSION_STUB);
     mockUpdateSession = vi.fn().mockResolvedValue(SESSION_STUB);
+    mockRequireRole.mockResolvedValue({ academyId: "test-academy-id", role: "owner" });
   });
 
   describe("GET /api/sessions", () => {
@@ -110,6 +123,31 @@ describe("/api/sessions API Routes", () => {
       expect(response.status).toBe(400);
       expect(data.error).toContain("weekStartDate");
     });
+
+    it("member role은 POST에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=member-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: [],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(403);
+    });
   });
 
   describe("POST /api/sessions — teacherId", () => {
@@ -165,8 +203,8 @@ describe("/api/sessions API Routes", () => {
   });
 
   describe("PUT /api/sessions/:id — teacherId (id route)", () => {
-    const makeIdPutRequest = (body: object) =>
-      new NextRequest("http://localhost:3000/api/sessions/sess-1", {
+    const makeIdPutRequest = (body: object, userId = "owner-user") =>
+      new NextRequest(`http://localhost:3000/api/sessions/sess-1?userId=${userId}`, {
         method: "PUT",
         body: JSON.stringify(body),
         headers: { "Content-Type": "application/json" },
@@ -189,7 +227,8 @@ describe("/api/sessions API Routes", () => {
 
       expect(mockUpdateSession).toHaveBeenCalledWith(
         "sess-1",
-        expect.objectContaining({ teacherId })
+        expect.objectContaining({ teacherId }),
+        "test-academy-id"
       );
     });
 
@@ -220,11 +259,25 @@ describe("/api/sessions API Routes", () => {
       const response = await idPUT(request, mockParams);
       expect(response.status).not.toBe(400);
     });
+
+    it("member role은 PUT에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = makeIdPutRequest(
+        { enrollmentIds: ["e-1"], subjectId: "sub-1", weekday: 1, startsAt: "09:00", endsAt: "10:00" },
+        "member-user"
+      );
+
+      const response = await idPUT(request, mockParams);
+      expect(response.status).toBe(403);
+    });
   });
 
   describe("DELETE /api/sessions", () => {
     it("ID 필수 검증을 수행한다", async () => {
-      const request = new NextRequest("http://localhost:3000/api/sessions"); // id 누락
+      const request = new NextRequest("http://localhost:3000/api/sessions?userId=test-user"); // id 누락
 
       const response = await DELETE(request);
       const data = await response.json();
@@ -232,6 +285,19 @@ describe("/api/sessions API Routes", () => {
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
       expect(data.error).toContain("required");
+    });
+
+    it("member role은 DELETE에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?id=sess-1&userId=member-user"
+      );
+
+      const response = await DELETE(request);
+      expect(response.status).toBe(403);
     });
   });
 });

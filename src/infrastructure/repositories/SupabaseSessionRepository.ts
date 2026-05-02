@@ -82,11 +82,11 @@ export class SupabaseSessionRepository implements SessionRepository {
     }
   }
 
-  async getById(id: string): Promise<Session | null> {
+  async getById(id: string, academyId?: string): Promise<Session | null> {
     try {
       const client = this.createServiceRoleClient();
 
-      const { data, error } = await client
+      let query = client
         .from("sessions")
         .select(`
           *,
@@ -95,8 +95,13 @@ export class SupabaseSessionRepository implements SessionRepository {
             enrollments(subject_id)
           )
         `)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
+
+      if (academyId) {
+        query = query.eq("academy_id", academyId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
         return null;
@@ -166,7 +171,8 @@ export class SupabaseSessionRepository implements SessionRepository {
 
   async update(
     id: string,
-    sessionData: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
+    sessionData: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>,
+    academyId?: string
   ): Promise<Session> {
     try {
       const client = this.createServiceRoleClient();
@@ -180,10 +186,9 @@ export class SupabaseSessionRepository implements SessionRepository {
       if ("teacherId" in sessionData) updates.teacher_id = (sessionData.teacherId as string | null | undefined) ?? null;
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await client
-          .from("sessions")
-          .update(updates)
-          .eq("id", id);
+        let q = client.from("sessions").update(updates).eq("id", id);
+        if (academyId) q = q.eq("academy_id", academyId);
+        const { error } = await q;
 
         if (error) {
           logger.error("세션 업데이트 실패:", undefined, error as Error);
@@ -231,15 +236,14 @@ export class SupabaseSessionRepository implements SessionRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, academyId?: string): Promise<void> {
     try {
       const client = this.createServiceRoleClient();
 
       // session_enrollments는 ON DELETE CASCADE로 자동 삭제됨
-      const { error } = await client
-        .from("sessions")
-        .delete()
-        .eq("id", id);
+      let q = client.from("sessions").delete().eq("id", id);
+      if (academyId) q = q.eq("academy_id", academyId);
+      const { error } = await q;
 
       if (error) {
         logger.error("세션 삭제 실패:", undefined, error as Error);

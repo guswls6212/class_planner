@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
@@ -24,7 +26,18 @@ export async function GET(
       );
     }
 
-    const session = await getSessionService().getSessionById(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const session = await getSessionService().getSessionById(id, academyId);
 
     if (!session) {
       return NextResponse.json(
@@ -49,6 +62,16 @@ export async function PUT(
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Session ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -81,6 +104,9 @@ export async function PUT(
       );
     }
 
+    // requireRole verifies academy membership; academyId is threaded to the service
+    // so the repository scopes the UPDATE to the correct academy_id row.
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedSession = await getSessionService().updateSession(id, {
       enrollmentIds,
       subjectId,
@@ -89,7 +115,7 @@ export async function PUT(
       endsAt: resolvedEnd,
       room,
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
-    });
+    }, academyId);
 
     return NextResponse.json({
       success: true,
@@ -115,7 +141,20 @@ export async function DELETE(
       );
     }
 
-    await getSessionService().deleteSession(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // requireRole verifies academy membership; academyId is threaded to the service
+    // so the repository scopes the DELETE to the correct academy_id row.
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    await getSessionService().deleteSession(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Session deleted successfully",
@@ -124,4 +163,3 @@ export async function DELETE(
     return toErrorResponse(error);
   }
 }
-

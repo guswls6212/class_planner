@@ -193,14 +193,15 @@ export class SupabaseTeacherRepository implements TeacherRepository {
     }
   }
 
-  async removeSubject(teacherId: string, subjectId: string): Promise<void> {
+  async removeSubject(teacherId: string, subjectId: string, academyId: string): Promise<void> {
     try {
       const client = this.createServiceRoleClient();
       const { error } = await client
         .from("teacher_subjects")
         .delete()
         .eq("teacher_id", teacherId)
-        .eq("subject_id", subjectId);
+        .eq("subject_id", subjectId)
+        .eq("academy_id", academyId);
       if (error) {
         logger.error("강사-과목 삭제 실패:", undefined, error as Error);
         throw error;

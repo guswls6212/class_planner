@@ -108,7 +108,7 @@ describe("SubjectApplicationService", () => {
 
       // Assert
       expect(result?.name).toBe("수학");
-      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId);
+      expect(mockSubjectRepository.getById).toHaveBeenCalledWith(subjectId, undefined);
     });
 
     it("존재하지 않는 과목 ID로 조회 시 null을 반환해야 한다", async () => {
