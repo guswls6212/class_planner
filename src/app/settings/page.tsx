@@ -12,6 +12,7 @@ import { TeacherStatusPill } from "../../components/atoms/TeacherStatusPill";
 import type { TeacherWithStatus } from "../api/teachers/route";
 import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
+import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 
 interface PendingInvite {
@@ -46,6 +47,7 @@ export default function SettingsPage() {
   const [myRole, setMyRole] = useState<string>("member");
   const [isLoading, setIsLoading] = useState(true);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [addTeacherOpen, setAddTeacherOpen] = useState(false);
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
@@ -352,10 +354,10 @@ export default function SettingsPage() {
             <Button
               variant="accent"
               size="small"
-              onClick={() => setShowInviteModal(true)}
+              onClick={() => setAddTeacherOpen(true)}
               className="flex-shrink-0 gap-1.5"
             >
-              <Plus size={14} strokeWidth={2} /> 초대하기
+              <Plus size={14} strokeWidth={2} /> 강사 추가
             </Button>
           )}
         </div>
@@ -587,6 +589,17 @@ export default function SettingsPage() {
           onInviteCreated={fetchData}
         />
       )}
+
+      {/* 강사 추가 모달 (Smart CTA) */}
+      <TeacherAddModal
+        open={addTeacherOpen}
+        userId={userId ?? ""}
+        onClose={() => setAddTeacherOpen(false)}
+        onSuccess={async () => {
+          setAddTeacherOpen(false);
+          await fetchData();
+        }}
+      />
     </div>
   );
 }
