@@ -41,7 +41,7 @@ export default function AcademyAccessPage({
       const res = await fetch('/api/share/code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: trimmed }),
+        body: JSON.stringify({ code: trimmed, academyId: identifier }),
       })
 
       if (!res.ok) {
@@ -75,7 +75,7 @@ export default function AcademyAccessPage({
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="접속 코드 입력 (예: 이현2A)"
-            maxLength={6}
+            maxLength={4}
             className="mb-3 w-full rounded-xl border-2 border-slate-700 bg-slate-800 px-4 py-4 text-center text-2xl font-bold tracking-widest text-slate-100 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
             autoComplete="off"
           />
