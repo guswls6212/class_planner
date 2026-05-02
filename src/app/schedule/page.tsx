@@ -659,11 +659,14 @@ function SchedulePageContent(): JSX.Element {
   const [studentCreating, setStudentCreating] = useState(false);
   const [studentCreateError, setStudentCreateError] = useState<string>("");
 
-  // 🆕 모달용 학생 검색 결과
+  // 🆕 모달용 학생 검색 결과 — 입력이 비어 있으면 전체 학생 목록을 보여 주는
+  // 리스트 우선(list-first) UX. 빈 문자열일 때 빈 배열을 반환하던 기존 동작은
+  // "모달 열고 입력하기 전엔 학생이 안 보인다"는 부정적 인상을 만들어 수정.
   const filteredStudentsForModal = useMemo(() => {
-    if (!studentInputValue.trim()) return [];
+    const input = studentInputValue.trim();
+    if (!input) return students;
     return students.filter((student) =>
-      student.name.toLowerCase().includes(studentInputValue.toLowerCase())
+      student.name.toLowerCase().includes(input.toLowerCase())
     );
   }, [students, studentInputValue]);
 
@@ -1547,6 +1550,7 @@ function SchedulePageContent(): JSX.Element {
         onCreateStudent={handleCreateStudentFromInput}
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
+        canManage={canManage}
       />
 
       {/* 출석 시트 */}

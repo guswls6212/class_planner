@@ -34,6 +34,8 @@ interface GroupSessionModalProps {
   onCreateStudent: () => void;
   studentCreating: boolean;
   studentCreateError: string;
+  /** 신규 학생 추가 CTA 노출 여부. owner/admin 만 true. 미지정 시 true. */
+  canManage?: boolean;
 }
 
 const STEPS = ["학생", "과목 & 시간", "확인"];
@@ -61,6 +63,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   onCreateStudent,
   studentCreating,
   studentCreateError,
+  canManage = true,
 }) => {
   const [step, setStep] = useState(0);
 
@@ -182,26 +185,44 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           type="button"
           className="flex-shrink-0 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
           onClick={
-            selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
+            canManage && selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
               ? onCreateStudent
               : addStudentFromInput
           }
           disabled={!studentInputValue.trim() || studentCreating}
         >
-          {selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
+          {canManage && selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
             ? "새로 추가"
             : "추가"}
         </button>
       </div>
 
-      {/* Autocomplete dropdown */}
-      {studentInputValue && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
-          {selectableStudents.length === 0 ? (
+      {/* Student list / autocomplete dropdown — list-first UX:
+          입력 전에도 학생 목록을 보여 줌. selectableStudents 가 있으면 항상 렌더,
+          없을 때만 입력값에 따라 안내 메시지 또는 새 학생 CTA. */}
+      {selectableStudents.length > 0 ? (
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg max-h-60 overflow-y-auto">
+          {selectableStudents.map((student) => (
+            <button
+              key={student.id}
+              type="button"
+              className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
+              onClick={() => addStudent(student.id)}
+            >
+              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/15 text-[10px] font-bold text-[var(--color-accent-hover)]">
+                {student.name[0]}
+              </span>
+              {student.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        studentInputValue && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
             <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">
               {studentExistsExact ? (
                 <span>이미 추가된 학생입니다</span>
-              ) : (
+              ) : canManage ? (
                 <div className="flex flex-col gap-2">
                   <button
                     type="button"
@@ -217,24 +238,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                     <p className="text-[11px] text-[var(--color-danger)]">{studentCreateError}</p>
                   )}
                 </div>
+              ) : (
+                <span>일치하는 학생이 없습니다</span>
               )}
             </div>
-          ) : (
-            selectableStudents.map((student) => (
-              <button
-                key={student.id}
-                type="button"
-                className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
-                onClick={() => addStudent(student.id)}
-              >
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/15 text-[10px] font-bold text-[var(--color-accent-hover)]">
-                  {student.name[0]}
-                </span>
-                {student.name}
-              </button>
-            ))
-          )}
-        </div>
+          </div>
+        )
       )}
     </div>
   );
