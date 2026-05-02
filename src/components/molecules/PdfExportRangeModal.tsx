@@ -16,6 +16,7 @@ export interface PdfExportRange {
   endDate: string;
   perTeacher?: boolean;
   showStudentNames?: boolean;
+  selectedTeacherIds?: string[];   // undefined = all (backward compat)
 }
 
 interface Props {
@@ -25,7 +26,7 @@ interface Props {
   viewMode: ScheduleViewMode;
   selectedDate: Date;
   isExporting?: boolean;
-  teachers?: { id: string; name: string }[];
+  teachers?: { id: string; name: string; color?: string }[];
   preflightResult?: PreflightResult;
   hasStudentFilter?: boolean;
 }
@@ -47,12 +48,21 @@ export default function PdfExportRangeModal({
   const isMonthly = viewMode === "monthly";
   const [scope, setScope] = useState<Scope>("current");
   const [showStudentNames, setShowStudentNames] = useState(false);
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
+    () => teachers.map((t) => t.id)
+  );
 
   useEffect(() => {
     if (hasStudentFilter && scope === "per-teacher") {
       setScope("current");
     }
   }, [hasStudentFilter, scope]);
+
+  useEffect(() => {
+    if (scope === "per-teacher") {
+      setSelectedTeacherIds(teachers.map((t) => t.id));
+    }
+  }, [scope, teachers]);
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => {
@@ -68,6 +78,7 @@ export default function PdfExportRangeModal({
 
   const rangeInvalid = scope === "range" && rangeEnd < rangeStart;
   const noTeachers = teachers.length === 0;
+  const noTeachersSelected = scope === "per-teacher" && selectedTeacherIds.length === 0;
 
   const handleExport = () => {
     if (isMonthly) {
@@ -90,6 +101,7 @@ export default function PdfExportRangeModal({
         endDate: weekEndStr,
         perTeacher: true,
         showStudentNames,
+        selectedTeacherIds,
       });
       return;
     }
@@ -229,20 +241,82 @@ export default function PdfExportRangeModal({
                     </span>
                   ) : (
                     <span className="text-xs text-[var(--color-text-muted)]">
-                      (강사 수만큼 파일 다운로드)
+                      {scope === "per-teacher" && selectedTeacherIds.length > 0
+                        ? selectedTeacherIds.length === teachers.length
+                          ? `(전체 ${teachers.length}명)`
+                          : `(${selectedTeacherIds.length}명 선택)`
+                        : "(강사 수만큼 파일 다운로드)"}
                     </span>
                   )}
                 </label>
                 {scope === "per-teacher" && (
-                  <label className="flex items-center gap-2 ml-6 mt-1 text-sm text-[var(--color-text-secondary)] cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showStudentNames}
-                      onChange={(e) => setShowStudentNames(e.target.checked)}
-                      className="w-4 h-4 accent-[var(--color-accent)]"
-                    />
-                    학생 이름 포함
-                  </label>
+                  <div className="ml-6 mt-2 flex flex-col gap-2">
+                    {/* 강사 chip 선택 */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-[var(--color-text-muted)]">출력할 강사</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedTeacherIds(
+                              selectedTeacherIds.length === teachers.length
+                                ? []
+                                : teachers.map((t) => t.id)
+                            )
+                          }
+                          className="text-xs text-[var(--color-accent)] hover:underline underline-offset-2"
+                        >
+                          {selectedTeacherIds.length === teachers.length ? "전체 해제" : "전체 선택"}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {teachers.map((teacher) => {
+                          const isSelected = selectedTeacherIds.includes(teacher.id);
+                          return (
+                            <button
+                              key={teacher.id}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() =>
+                                setSelectedTeacherIds((prev) =>
+                                  isSelected
+                                    ? prev.filter((id) => id !== teacher.id)
+                                    : [...prev, teacher.id]
+                                )
+                              }
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                                isSelected
+                                  ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                                  : "border-[var(--color-border)] text-[var(--color-text-muted)] opacity-50 hover:opacity-75"
+                              }`}
+                            >
+                              {teacher.color && (
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: teacher.color }}
+                                />
+                              )}
+                              {teacher.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {noTeachersSelected && (
+                        <p className="text-xs text-red-500 mt-1">강사를 1명 이상 선택해주세요.</p>
+                      )}
+                    </div>
+
+                    {/* 학생 이름 포함 */}
+                    <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showStudentNames}
+                        onChange={(e) => setShowStudentNames(e.target.checked)}
+                        className="w-4 h-4 accent-[var(--color-accent)]"
+                      />
+                      학생 이름 포함
+                    </label>
+                  </div>
                 )}
               </>
             )}
@@ -260,7 +334,7 @@ export default function PdfExportRangeModal({
           <button
             type="button"
             onClick={handleExport}
-            disabled={rangeInvalid || isExporting}
+            disabled={rangeInvalid || noTeachersSelected || isExporting}
             className="px-4 py-2 rounded-md bg-accent text-sm text-white font-medium disabled:opacity-50 transition-colors"
           >
             {isExporting ? "출력 중..." : "출력"}
