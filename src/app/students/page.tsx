@@ -15,7 +15,7 @@ export default function StudentsPage() {
 }
 
 function StudentsPageContent() {
-  const { canManage } = useMyRole();
+  const { canManage, isLoading: isRoleLoading } = useMyRole();
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
@@ -93,6 +93,7 @@ function StudentsPageContent() {
       onUpdateStudent={handleUpdateStudent}
       onClearError={clearError}
       canManage={canManage}
+      isRoleLoading={isRoleLoading}
     />
   );
 }

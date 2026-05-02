@@ -19,11 +19,14 @@ interface StudentsPageLayoutProps {
   onClearError: () => void;
   /** When false, add/edit/delete controls are hidden. Default: true */
   canManage?: boolean;
+  /** True while role is being fetched — used to add data-role-loading for E2E tests */
+  isRoleLoading?: boolean;
 }
 
 export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const { students, selectedStudentId, onSelectStudent } = props;
   const canManage = props.canManage ?? true;
+  const isRoleLoading = props.isRoleLoading ?? false;
   const [searchQuery, setSearchQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -46,6 +49,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   return (
     <div
       data-testid="students-page"
+      data-role-loading={isRoleLoading ? "true" : "false"}
       className="flex h-[calc(100dvh-48px)] md:h-dvh overflow-hidden"
     >
       {/* List Panel */}
