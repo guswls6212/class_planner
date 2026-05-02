@@ -585,7 +585,12 @@ export default function SettingsPage() {
                         window.navigator.clipboard?.writeText(`${url}\n코드: ${code.access_code}`);
                         showToast("success", `${studentName} 코드가 복사됐습니다`);
                       }}
-                      className="ml-auto text-xs border border-[var(--color-border)] rounded px-2 py-1 text-[var(--color-text-muted)] hover:border-[var(--color-accent)] transition-colors"
+                      disabled={!academyId}
+                      className={`ml-auto text-xs border border-[var(--color-border)] rounded px-2 py-1 transition-colors ${
+                        academyId
+                          ? 'text-[var(--color-text-muted)] hover:border-[var(--color-accent)] cursor-pointer'
+                          : 'opacity-40 cursor-not-allowed'
+                      }`}
                     >
                       URL+코드 복사
                     </button>
