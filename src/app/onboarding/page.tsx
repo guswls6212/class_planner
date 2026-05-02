@@ -9,8 +9,8 @@ type Role = "owner" | "admin" | "member";
 
 const ROLE_OPTIONS: { value: Role; label: string; description: string }[] = [
   { value: "owner", label: "원장", description: "학원 전체를 관리합니다" },
-  { value: "admin", label: "강사", description: "수업과 학생을 관리합니다" },
-  { value: "member", label: "직원", description: "시간표를 조회합니다" },
+  { value: "admin", label: "관리자", description: "수업과 학생을 관리합니다" },
+  { value: "member", label: "강사", description: "시간표를 조회합니다" },
 ];
 
 export default function OnboardingPage() {
