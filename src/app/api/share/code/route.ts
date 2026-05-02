@@ -14,7 +14,7 @@ const RATE_WINDOW_MS = 60_000
 
 // academy+IP 조합 lockout: 5회 실패 시 1시간
 const MAX_FAILURES = 5
-const LOCKOUT_MS = 60 * 60_000
+const LOCKOUT_MS = 60 * 60 * 1_000  // 1시간 (ms)
 
 function extractIp(request: NextRequest): string {
   return (
@@ -37,11 +37,10 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = extractIp(request)
-    const rateLimitKey = ip
     const lockoutKey = `${academyId}:${ip}`
 
     // IP rate limit 확인
-    const { allowed } = checkRateLimit(rateLimitKey, RATE_LIMIT, RATE_WINDOW_MS)
+    const { allowed } = checkRateLimit(ip, RATE_LIMIT, RATE_WINDOW_MS)
     if (!allowed) {
       return NextResponse.json({ error: '요청이 너무 많습니다.' }, { status: 429 })
     }
@@ -64,6 +63,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle()
 
       if (!academy) {
+        recordFailure(lockoutKey, MAX_FAILURES, LOCKOUT_MS)
         return NextResponse.json({ error: '유효하지 않은 코드입니다.' }, { status: 404 })
       }
       academyUuid = academy.id
