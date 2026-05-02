@@ -56,7 +56,9 @@ describe("useMyRole", () => {
     vi.clearAllMocks();
   });
 
-  it("세션 없을 때 role=null, canManage=false를 반환한다", async () => {
+  it("세션 없을 때(익명 사용자) role=null, canManage=true를 반환한다 — Anonymous-First", async () => {
+    // Anonymous users own their localStorage data and must be able to create/edit
+    // sessions, students, and subjects. canManage must be true after load.
     mockGetSession.mockResolvedValue({ data: { session: null } });
 
     const { result } = renderHook(() => useMyRole());
@@ -66,7 +68,7 @@ describe("useMyRole", () => {
     });
 
     expect(result.current.role).toBe(null);
-    expect(result.current.canManage).toBe(false);
+    expect(result.current.canManage).toBe(true);
     expect(result.current.isLoading).toBe(false);
   });
 
@@ -130,7 +132,7 @@ describe("useMyRole", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it("API 응답이 실패하면 canManage=true(fail-open)를 반환한다", async () => {
+  it("API 응답이 실패하면 canManage=false(fail-closed)를 반환한다", async () => {
     mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
     mockFetch.mockResolvedValue({ ok: false });
 
@@ -141,18 +143,18 @@ describe("useMyRole", () => {
       await Promise.resolve();
     });
 
-    // On API error we remain in loading state (fetch returned not-ok but no exception)
-    // canManage stays true initially and stays true since we didn't throw
-    expect(result.current.canManage).toBe(true);
+    // API not-ok keeps the hook in its initial pessimistic state — canManage stays false.
+    // No exception is thrown, but no role state is committed either.
+    expect(result.current.canManage).toBe(false);
   });
 
-  it("초기 isLoading=true이며 canManage=true(낙관적 기본값)이다", () => {
+  it("초기 isLoading=true이며 canManage=false(보수적 기본값)이다", () => {
     mockGetSession.mockReturnValue(new Promise(() => {})); // never resolves
 
     const { result } = renderHook(() => useMyRole());
 
     expect(result.current.isLoading).toBe(true);
-    expect(result.current.canManage).toBe(true);
+    expect(result.current.canManage).toBe(false);
   });
 
   it("멤버 목록에 현재 유저가 없으면 canManage=false를 반환한다", async () => {

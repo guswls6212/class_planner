@@ -20,7 +20,8 @@
 
 import dynamic from "next/dynamic";
 import type { JSX } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
@@ -144,9 +145,16 @@ const ScheduleMonthlyView = dynamic(
 /**
  * 페이지 엔트리 컴포넌트
  * 인증 가드로 감싼 스케줄 페이지 컨테이너를 노출합니다.
+ *
+ * Suspense 경계: SchedulePageContent 내부의 useSearchParams가 Next.js 15
+ * Static Generation 빌드에서 CSR-bailout 경계를 요구하므로 여기서 감싼다.
  */
 export default function SchedulePage(): JSX.Element {
-  return <SchedulePageContent />;
+  return (
+    <Suspense fallback={null}>
+      <SchedulePageContent />
+    </Suspense>
+  );
 }
 
 /**
@@ -202,6 +210,17 @@ function SchedulePageContent(): JSX.Element {
 
   // Role-based UI gate — member role gets read-only schedule
   const { canManage } = useMyRole();
+
+  // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
+  // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get("toast") === "permission_denied") {
+      showToast("error", "해당 페이지는 원장과 관리자만 접근 가능합니다.");
+      router.replace("/schedule", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // ================================
   // 🧩 로컬 타입 (가독성 향상용)
@@ -647,11 +666,14 @@ function SchedulePageContent(): JSX.Element {
   const [studentCreating, setStudentCreating] = useState(false);
   const [studentCreateError, setStudentCreateError] = useState<string>("");
 
-  // 🆕 모달용 학생 검색 결과
+  // 🆕 모달용 학생 검색 결과 — 입력이 비어 있으면 전체 학생 목록을 보여 주는
+  // 리스트 우선(list-first) UX. 빈 문자열일 때 빈 배열을 반환하던 기존 동작은
+  // "모달 열고 입력하기 전엔 학생이 안 보인다"는 부정적 인상을 만들어 수정.
   const filteredStudentsForModal = useMemo(() => {
-    if (!studentInputValue.trim()) return [];
+    const input = studentInputValue.trim();
+    if (!input) return students;
     return students.filter((student) =>
-      student.name.toLowerCase().includes(studentInputValue.toLowerCase())
+      student.name.toLowerCase().includes(input.toLowerCase())
     );
   }, [students, studentInputValue]);
 
@@ -1329,7 +1351,7 @@ function SchedulePageContent(): JSX.Element {
           isSyncingSession={isSyncingSession}
         />
         <div className="flex items-center gap-2">
-          {userId && viewMode === "weekly" && (
+          {canManage && userId && viewMode === "weekly" && (
             <TemplateMenuV2
               onApply={() => { _fetchTemplates(); if (activeTemplate) handleApplyTemplate(activeTemplate); }}
               onClearWeek={handleClearWeek}
@@ -1535,6 +1557,7 @@ function SchedulePageContent(): JSX.Element {
         onCreateStudent={handleCreateStudentFromInput}
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
+        canManage={canManage}
       />
 
       {/* 출석 시트 */}

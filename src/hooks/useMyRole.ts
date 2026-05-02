@@ -16,14 +16,18 @@ export interface CurrentMemberData {
  * Returns the current user's role in the academy and linked teacher info.
  * Fetched from /api/members?userId={userId}.
  *
- * Loading default: isLoading=true, canManage=true (optimistic — prevents flash
- * of restricted content for owners while the request is in flight).
+ * Loading default: isLoading=true, canManage=false (pessimistic — prevents
+ * member users from briefly seeing admin-only UI while the request is in flight).
+ * Owners get canManage=true after the API response (no flash of restricted
+ * content because admin UI is rendered conditionally on canManage). Consumers
+ * that need to render optimistically (e.g. the sidebar) should branch on
+ * isLoading themselves.
  */
 export function useMyRole(): CurrentMemberData {
   const [data, setData] = useState<CurrentMemberData>({
     role: null,
     isLoading: true,
-    canManage: true,
+    canManage: false,
     linkedTeacherId: null,
     linkedTeacherName: null,
     linkedTeacherColor: null,
@@ -40,10 +44,13 @@ export function useMyRole(): CurrentMemberData {
 
         if (!session) {
           if (!cancelled) {
+            // Anonymous-First: no session means the user is not a member of any
+            // academy. They use localStorage only and must be able to create/edit
+            // sessions, students, and subjects.
             setData({
               role: null,
               isLoading: false,
-              canManage: false,
+              canManage: true,
               linkedTeacherId: null,
               linkedTeacherName: null,
               linkedTeacherColor: null,
@@ -88,11 +95,19 @@ export function useMyRole(): CurrentMemberData {
           linkedTeacherName: me.linkedTeacherName,
           linkedTeacherColor: me.linkedTeacherColor,
         });
+
+        // Sync role to a server-readable cookie so the Next.js middleware
+        // can enforce route-level RBAC. Fire-and-forget — failure here is
+        // non-blocking; the middleware's missing-cookie path falls through
+        // to allow access (loading state semantics).
+        fetch("/api/auth/set-role-cookie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: me.role }),
+        }).catch(() => {});
       } catch {
         if (!cancelled) {
           // On network error, fail closed — deny access rather than grant it.
-          // The loading state stays optimistic (canManage: true) to prevent flash
-          // of restricted UI for owners while the request is in flight.
           setData({
             role: null,
             isLoading: false,

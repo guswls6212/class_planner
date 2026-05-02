@@ -5,7 +5,7 @@
  * debounce로 서버와 동기화하는 초고속 통합 데이터 관리 훅입니다.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   syncEnrollmentCreate,
   syncEnrollmentDelete,
@@ -146,6 +146,89 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         handleStorageChange
       );
     };
+  }, [loadDataFromLocal]);
+
+  // ===== 멤버 부트스트랩 동기화 =====
+  // 새 기기/브라우저에서 처음 로그인한 사용자(특히 member 역할)는
+  // localStorage가 비어 있으므로 시간표가 텅 비어 보인다. 본인 학원에 이미
+  // 등록된 학생/과목을 1회 서버에서 가져와 localStorage에 채워 둔다.
+  // owner/admin 사용자에게는 동작이 동일하지만, 평소 로컬 우선 흐름에서
+  // 데이터가 이미 있으므로 비용은 0.
+  const bootstrapAttempted = useRef(false);
+
+  useEffect(() => {
+    if (bootstrapAttempted.current) return;
+    if (typeof window === "undefined") return;
+
+    const userId = localStorage.getItem("supabase_user_id");
+    if (!userId) return;
+
+    const localData = getClassPlannerData();
+    const studentsEmpty = !localData.students || localData.students.length === 0;
+    const subjectsEmpty = !localData.subjects || localData.subjects.length === 0;
+    if (!studentsEmpty && !subjectsEmpty) return;
+
+    bootstrapAttempted.current = true;
+
+    Promise.allSettled([
+      fetch(`/api/students?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
+      fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
+      fetch(`/api/teachers?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
+    ])
+      .then(([studentsRes, subjectsRes, teachersRes]) => {
+        const updates: Partial<IntegratedData> = {};
+
+        if (
+          studentsEmpty &&
+          studentsRes.status === "fulfilled" &&
+          studentsRes.value?.success &&
+          Array.isArray(studentsRes.value.data) &&
+          studentsRes.value.data.length > 0
+        ) {
+          updates.students = studentsRes.value.data as Student[];
+        }
+        if (
+          subjectsEmpty &&
+          subjectsRes.status === "fulfilled" &&
+          subjectsRes.value?.success &&
+          Array.isArray(subjectsRes.value.data) &&
+          subjectsRes.value.data.length > 0
+        ) {
+          updates.subjects = subjectsRes.value.data as Subject[];
+        }
+        // teachers는 보너스 — admin-only 페이지가 막혀도 강사 컬러/이름이
+        // 시간표 색상 모드에 필요하다.
+        if (
+          teachersRes.status === "fulfilled" &&
+          teachersRes.value?.success &&
+          Array.isArray(teachersRes.value.data) &&
+          teachersRes.value.data.length > 0 &&
+          (!localData.teachers || localData.teachers.length === 0)
+        ) {
+          updates.teachers = teachersRes.value.data as Teacher[];
+        }
+
+        if (Object.keys(updates).length === 0) {
+          logger.debug("useIntegratedDataLocal - 부트스트랩: 가져온 데이터 없음");
+          return;
+        }
+
+        const result = updateClassPlannerData(updates);
+        if (result.success) {
+          logger.info("useIntegratedDataLocal - 부트스트랩 동기화 완료", {
+            studentCount: updates.students?.length ?? 0,
+            subjectCount: updates.subjects?.length ?? 0,
+            teacherCount: updates.teachers?.length ?? 0,
+          });
+          loadDataFromLocal();
+        }
+      })
+      .catch((err) => {
+        // fire-and-forget — 부트스트랩 실패는 UI를 막지 않는다.
+        logger.warn("useIntegratedDataLocal - 부트스트랩 실패 (무시)", {
+          message: err instanceof Error ? err.message : String(err),
+        });
+      });
   }, [loadDataFromLocal]);
 
   // ===== 전체 데이터 업데이트 =====

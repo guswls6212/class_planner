@@ -175,4 +175,73 @@ describe("GroupSessionModal - 신규 학생 생성 CTA (B-1)", () => {
     expect(screen.getByText("이미 추가된 학생입니다")).toBeInTheDocument();
     expect(screen.queryByText(/새 학생으로 추가/)).not.toBeInTheDocument();
   });
+
+  it("canManage=false 이면 새 학생 CTA 대신 '일치하는 학생이 없습니다' 메시지가 표시된다", () => {
+    renderModal({
+      filteredStudentsForModal: [],
+      studentInputValue: "이현진",
+      canManage: false,
+    });
+    expect(screen.queryByText(/새 학생으로 추가/)).not.toBeInTheDocument();
+    expect(screen.getByText("일치하는 학생이 없습니다")).toBeInTheDocument();
+  });
+});
+
+describe("GroupSessionModal - list-first UX", () => {
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const subjects = [{ id: "sub-1", name: "수학" }];
+  const students = [
+    { id: "stu-1", name: "홍길동" },
+    { id: "stu-2", name: "김영희" },
+  ];
+  const baseData: GroupSessionData = {
+    studentIds: [],
+    subjectId: "",
+    weekday: 1,
+    startTime: "10:00",
+    endTime: "11:00",
+    yPosition: 1,
+    room: "",
+  };
+
+  function renderModal(overrides: Partial<Parameters<typeof GroupSessionModal>[0]> = {}) {
+    const defaults = {
+      isOpen: true,
+      groupModalData: baseData,
+      setGroupModalData: () => {},
+      setShowGroupModal: () => {},
+      removeStudent: () => {},
+      studentInputValue: "",
+      setStudentInputValue: () => {},
+      handleStudentInputKeyDown: () => {},
+      addStudentFromInput: () => {},
+      filteredStudentsForModal: students,
+      addStudent: () => {},
+      subjects,
+      teachers: [],
+      students,
+      weekdays,
+      handleStartTimeChange: () => {},
+      handleEndTimeChange: () => {},
+      groupTimeError: "",
+      addGroupSession: () => {},
+      onCreateStudent: () => {},
+      studentCreating: false,
+      studentCreateError: "",
+    };
+    return render(<GroupSessionModal {...defaults} {...overrides} />);
+  }
+
+  it("입력값이 비어 있어도 학생 목록이 보인다 (list-first)", () => {
+    renderModal({ studentInputValue: "" });
+    expect(screen.getByText("홍길동")).toBeInTheDocument();
+    expect(screen.getByText("김영희")).toBeInTheDocument();
+  });
+
+  it("학생 항목 클릭 시 addStudent가 호출된다", () => {
+    const addStudent = vi.fn();
+    renderModal({ studentInputValue: "", addStudent });
+    fireEvent.click(screen.getByText("홍길동"));
+    expect(addStudent).toHaveBeenCalledWith("stu-1");
+  });
 });

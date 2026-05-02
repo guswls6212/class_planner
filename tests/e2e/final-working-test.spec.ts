@@ -59,6 +59,11 @@ test.describe("E2E 테스트 - 학생 관리", () => {
       timeout: E2E_CONFIG.TIMEOUTS.AUTH_WAIT,
     });
 
+    // Wait for role check to complete (canManage resolves after /api/members call)
+    await page.waitForSelector('[data-testid="students-page"][data-role-loading="false"]', {
+      timeout: 10000,
+    });
+
     console.log("✅ E2E 인증 및 페이지 로드 완료");
   });
 
