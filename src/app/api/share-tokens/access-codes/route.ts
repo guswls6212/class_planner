@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
 
   const { mode = 'create' } = await request.json().catch(() => ({ mode: 'create' }))
 
+  if (!['create', 'renew'].includes(mode)) {
+    return NextResponse.json({ error: "mode는 'create' 또는 'renew'만 가능합니다." }, { status: 400 })
+  }
+
   let membership: { academyId: string; role: string }
   try {
     membership = await resolveAcademyMembership(userId)
@@ -42,11 +46,16 @@ export async function POST(request: NextRequest) {
 
   if (mode === 'renew') {
     // 기존 코드 전체 revoke
-    await client
+    const { error: revokeError } = await client
       .from('share_tokens')
       .update({ revoked_at: new Date().toISOString() })
       .eq('academy_id', academyId)
       .not('access_code', 'is', null)
+
+    if (revokeError) {
+      logger.error('기존 코드 revoke 실패', { academyId }, revokeError as Error)
+      return NextResponse.json({ error: 'revoke 실패' }, { status: 500 })
+    }
   }
 
   // 2. 코드 없는 학생에게만 생성 (create) 또는 전체 생성 (renew)
