@@ -63,6 +63,7 @@ export function TopBar() {
       </span>
       <div className="flex items-center gap-1">
         <button
+          type="button"
           onClick={open}
           aria-label="도움말"
           className="p-2 rounded-admin-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors text-sm font-bold"
