@@ -7,6 +7,8 @@ src/app/admin/logs/page.tsx
 src/app/api/academies/route.ts
 src/app/api/admin/logs/__tests__/route.test.ts
 src/app/api/admin/logs/route.ts
+src/app/api/auth/set-role-cookie/__tests__/route.test.ts
+src/app/api/auth/set-role-cookie/route.ts
 src/app/api/attendance/__tests__/route.test.ts
 src/app/api/attendance/bulk/__tests__/route.test.ts
 src/app/api/attendance/bulk/route.ts
