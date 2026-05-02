@@ -46,3 +46,104 @@ export async function DELETE(
     return toErrorResponse(error);
   }
 }
+
+const ALLOWED_TARGET_ROLES = ["admin", "member"] as const;
+type AllowedTargetRole = (typeof ALLOWED_TARGET_ROLES)[number];
+
+function isAllowedTargetRole(value: unknown): value is AllowedTargetRole {
+  return typeof value === "string" && (ALLOWED_TARGET_ROLES as readonly string[]).includes(value);
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const requesterId = searchParams.get("userId");
+    const { userId: targetUserId } = await params;
+
+    if (!requesterId) {
+      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
+    }
+
+    if (requesterId === targetUserId) {
+      return NextResponse.json(
+        { success: false, error: "본인의 역할은 변경할 수 없습니다." },
+        { status: 400 }
+      );
+    }
+
+    const body = (await request.json().catch(() => ({}))) as { role?: unknown };
+    const nextRole = body.role;
+
+    if (!isAllowedTargetRole(nextRole)) {
+      return NextResponse.json(
+        { success: false, error: "role은 'admin' 또는 'member'여야 합니다." },
+        { status: 400 }
+      );
+    }
+
+    const { academyId, role: actorRole } = await resolveAcademyMembership(requesterId);
+
+    if (actorRole !== "owner") {
+      return NextResponse.json(
+        { success: false, error: "역할 변경은 원장만 가능합니다." },
+        { status: 403 }
+      );
+    }
+
+    const client = getServiceRoleClient();
+
+    // Look up current role of the target member to enforce owner-demotion ban.
+    const { data: targetRow, error: targetError } = await client
+      .from("academy_members")
+      .select("role")
+      .eq("academy_id", academyId)
+      .eq("user_id", targetUserId)
+      .single();
+
+    if (targetError || !targetRow) {
+      return NextResponse.json(
+        { success: false, error: "해당 학원에 소속된 멤버가 아닙니다." },
+        { status: 404 }
+      );
+    }
+
+    if (targetRow.role === "owner") {
+      return NextResponse.json(
+        { success: false, error: "원장은 강등할 수 없습니다." },
+        { status: 410 }
+      );
+    }
+
+    const { error: updateError } = await client
+      .from("academy_members")
+      .update({ role: nextRole })
+      .eq("academy_id", academyId)
+      .eq("user_id", targetUserId);
+
+    if (updateError) {
+      logger.error(
+        "멤버 역할 변경 실패",
+        { requesterId, targetUserId, nextRole },
+        updateError as Error
+      );
+      return NextResponse.json(
+        { success: false, error: "역할 변경에 실패했습니다." },
+        { status: 500 }
+      );
+    }
+
+    logger.info("멤버 역할 변경 완료", {
+      requesterId,
+      targetUserId,
+      academyId,
+      previousRole: targetRow.role,
+      nextRole,
+    });
+    return NextResponse.json({ success: true, data: { userId: targetUserId, role: nextRole } });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
