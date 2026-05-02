@@ -7,8 +7,9 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 // Mock toast helpers
+const mockShowError = vi.fn();
 vi.mock("@/lib/toast", () => ({
-  showError: vi.fn(),
+  showError: (...args: unknown[]) => mockShowError(...args),
   showSuccess: vi.fn(),
   showToast: vi.fn(),
 }));
@@ -26,6 +27,7 @@ describe("TeacherAddModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
+    mockShowError.mockReset();
   });
 
   it("open=false 일 때 렌더링하지 않는다", () => {
@@ -82,6 +84,9 @@ describe("TeacherAddModal", () => {
     await waitFor(() => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
+    expect(mockShowError).toHaveBeenCalledWith(
+      expect.stringMatching(/강사 이름을 입력/)
+    );
   });
 
   it("이메일 없이 '추가 + 공유 링크 발급' 클릭 시 — POST teachers + POST share-tokens", async () => {

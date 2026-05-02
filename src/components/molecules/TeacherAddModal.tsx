@@ -108,9 +108,11 @@ export function TeacherAddModal({ open, userId, onClose, onSuccess }: TeacherAdd
       }
 
       // 3. Notify parent + reset
-      await onSuccess();
+      // Note: parent's onSuccess is responsible for closing the modal.
+      // resetForm() clears local state; onClose() is NOT called here to avoid
+      // double-close (parent already calls setAddTeacherOpen(false) in onSuccess).
       resetForm();
-      onClose();
+      await onSuccess();
     } catch (err) {
       logger.error("강사 추가 실패", { action }, err as Error);
       showError("강사 추가 중 오류가 발생했습니다.");
@@ -156,7 +158,7 @@ export function TeacherAddModal({ open, userId, onClose, onSuccess }: TeacherAdd
             이메일 (선택)
           </label>
           <input
-            type="text"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="park@example.com"

@@ -134,4 +134,29 @@ describe("InviteModal", () => {
 
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("이메일이 없는 강사 선택 시 노란 경고 메시지가 표시된다", async () => {
+    const teacherWithNoEmail = [
+      { id: "teacher-noemail", name: "홍길동", color: "#ff5733", email: null, userId: null },
+    ];
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: teacherWithNoEmail }),
+    });
+
+    render(<InviteModal {...defaultProps} />);
+
+    // Wait for the teacher dropdown to load and auto-select the first (and only) teacher
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toBeDefined();
+    });
+
+    // The teacher with no email is auto-selected (first option); the warning should appear
+    await waitFor(() => {
+      expect(
+        screen.getByText(/이 강사의 이메일이 등록되지 않았습니다/)
+      ).toBeInTheDocument();
+    });
+  });
 });
