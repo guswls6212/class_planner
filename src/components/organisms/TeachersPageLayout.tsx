@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from "@/lib/planner";
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
+import ListFilterBar from "@/components/molecules/ListFilterBar";
 
 interface TeachersPageLayoutProps {
   teachers: Teacher[];
@@ -37,25 +37,22 @@ interface TeachersPageLayoutProps {
 export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const { teachers, selectedTeacherId, onSelectTeacher } = props;
   const canManage = props.canManage ?? true;
-  const [searchQuery, setSearchQuery] = useState("");
-  const [newName, setNewName] = useState("");
+  const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
 
-  const filtered = teachers.filter((t) => t.name.includes(searchQuery));
+  const filtered = teachers.filter((t) => t.name.includes(query));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
   const getNextColor = () =>
     DEFAULT_TEACHER_COLORS[teachers.length % DEFAULT_TEACHER_COLORS.length];
 
-  const handleAdd = async () => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
+  const handleAdd = async (trimmed: string) => {
     const isDuplicate = teachers.some(
       (t) => t.name.toLowerCase() === trimmed.toLowerCase()
     );
     if (isDuplicate) return;
     const success = await props.onAddTeacher(trimmed, getNextColor());
-    if (success) setNewName("");
+    if (success) setQuery("");
   };
 
   const handleSelect = (id: string) => {
@@ -82,53 +79,21 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">강사 목록</h2>
         </div>
 
-        {/* Add teacher — only visible to owners/admins */}
-        {canManage && (
-          <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAdd();
-              }}
-              placeholder="강사 이름 (검색 가능)"
-              className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
-              aria-label="강사 추가"
-            >
-              <Plus size={14} strokeWidth={1.5} />
-              추가
-            </button>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-[var(--color-border)]">
-          <div className="relative">
-            <Search
-              size={14}
-              strokeWidth={1.5}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="이름으로 검색"
-              className="w-full pl-8 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
+        {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
+        <ListFilterBar
+          value={query}
+          onChange={setQuery}
+          canAdd={canManage}
+          onAdd={handleAdd}
+          placeholder="강사 이름으로 검색"
+          ariaLabelAdd="강사 추가"
+        />
 
         {/* Teacher list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {searchQuery ? "검색 결과 없음" : "강사를 추가해주세요"}
+              {query ? "검색 결과 없음" : "강사를 추가해주세요"}
             </li>
           ) : (
             filtered.map((teacher) => (

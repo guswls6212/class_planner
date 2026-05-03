@@ -63,7 +63,7 @@ describe("SubjectsPageLayout", () => {
 
   it("과목 추가 — 입력 후 버튼 클릭 시 onAddSubject가 호출된다", async () => {
     render(<SubjectsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("과목 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("과목 이름으로 검색");
     const addButton = screen.getByRole("button", { name: /과목 추가/ });
 
     fireEvent.change(input, { target: { value: "과학" } });
@@ -76,7 +76,7 @@ describe("SubjectsPageLayout", () => {
 
   it("과목 추가 — Enter 키 입력 시 onAddSubject가 호출된다", async () => {
     render(<SubjectsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("과목 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("과목 이름으로 검색");
 
     fireEvent.change(input, { target: { value: "영어" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -86,13 +86,7 @@ describe("SubjectsPageLayout", () => {
     });
   });
 
-  it("검색창이 렌더링되어야 한다", () => {
-    render(<SubjectsPageLayout {...mockProps} />);
-
-    expect(screen.getByPlaceholderText("이름으로 검색")).toBeInTheDocument();
-  });
-
-  it("검색어 입력 시 목록이 필터링된다", async () => {
+  it("검색어 입력 시 목록이 필터링된다 (통합 input)", async () => {
     const propsWithSubjects = {
       ...mockProps,
       subjects: [
@@ -102,7 +96,7 @@ describe("SubjectsPageLayout", () => {
     };
 
     render(<SubjectsPageLayout {...propsWithSubjects} />);
-    const searchInput = screen.getByPlaceholderText("이름으로 검색");
+    const searchInput = screen.getByPlaceholderText("과목 이름으로 검색");
 
     fireEvent.change(searchInput, { target: { value: "수" } });
 
@@ -110,6 +104,11 @@ describe("SubjectsPageLayout", () => {
       expect(screen.getByText("수학")).toBeInTheDocument();
       expect(screen.queryByText("영어")).not.toBeInTheDocument();
     });
+  });
+
+  it("권한 없을 때 추가 버튼이 렌더되지 않는다", () => {
+    render(<SubjectsPageLayout {...mockProps} canManage={false} />);
+    expect(screen.queryByRole("button", { name: /과목 추가/ })).toBeNull();
   });
 
   it("과목 클릭 시 onSelectSubject가 호출된다", async () => {

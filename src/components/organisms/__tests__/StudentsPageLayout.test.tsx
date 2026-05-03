@@ -31,7 +31,7 @@ describe("StudentsPageLayout Component", () => {
     render(<StudentsPageLayout {...mockProps} />);
 
     expect(screen.getByTestId("students-page")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("학생 이름 (검색 가능)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("학생 이름으로 검색")).toBeInTheDocument();
     // 선택된 학생(김철수)은 목록+상세 양쪽에 표시될 수 있으므로 getAllByText 사용
     expect(screen.getAllByText("김철수").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("이영희")).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("StudentsPageLayout Component", () => {
 
   it("학생 추가 — 입력 후 버튼 클릭 시 onAddStudent가 호출된다", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
     const addButton = screen.getByRole("button", { name: /학생 추가/ });
 
     fireEvent.change(input, { target: { value: "박민수" } });
@@ -94,7 +94,7 @@ describe("StudentsPageLayout Component", () => {
 
   it("학생 추가 — Enter 키 입력 시 onAddStudent가 호출된다", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
 
     fireEvent.change(input, { target: { value: "최지수" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -104,17 +104,11 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("검색창이 렌더링되어야 한다", () => {
-    render(<StudentsPageLayout {...mockProps} />);
-
-    expect(screen.getByPlaceholderText("이름으로 검색")).toBeInTheDocument();
-  });
-
-  it("검색어 입력 시 목록이 필터링된다", async () => {
+  it("검색어 입력 시 목록이 필터링된다 (통합 input)", async () => {
     // 선택된 학생 없이 렌더링하여 상세 패널 노출 없음
     const noSelectionProps = { ...mockProps, selectedStudentId: "" };
     render(<StudentsPageLayout {...noSelectionProps} />);
-    const searchInput = screen.getByPlaceholderText("이름으로 검색");
+    const searchInput = screen.getByPlaceholderText("학생 이름으로 검색");
 
     fireEvent.change(searchInput, { target: { value: "김" } });
 
@@ -122,6 +116,19 @@ describe("StudentsPageLayout Component", () => {
       expect(screen.getByText("김철수")).toBeInTheDocument();
       expect(screen.queryByText("이영희")).not.toBeInTheDocument();
     });
+  });
+
+  it("권한 없을 때 추가 버튼이 렌더되지 않는다", () => {
+    render(<StudentsPageLayout {...mockProps} canManage={false} />);
+    expect(screen.queryByRole("button", { name: /학생 추가/ })).toBeNull();
+  });
+
+  it("권한 없을 때 엔터 입력이 onAddStudent를 호출하지 않는다", () => {
+    render(<StudentsPageLayout {...mockProps} canManage={false} />);
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
+    fireEvent.change(input, { target: { value: "박민수" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mockProps.onAddStudent).not.toHaveBeenCalled();
   });
 
   it("컴포넌트가 올바르게 렌더링되어야 한다", () => {

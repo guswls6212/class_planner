@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Search, Copy, MoreVertical, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Copy, MoreVertical, AlertTriangle } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import ConfirmModal from "@/components/molecules/ConfirmModal";
+import ListFilterBar from "@/components/molecules/ListFilterBar";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { showToast } from "@/lib/toast";
 
@@ -50,8 +51,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const canManage = props.canManage ?? true;
   const isRoleLoading = props.isRoleLoading ?? false;
   const accessCodesReady = props.accessCodesReady ?? true;
-  const [searchQuery, setSearchQuery] = useState("");
-  const [newName, setNewName] = useState("");
+  const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
 
   // Bulk-action kebab menu (코드 생성 / 전체 갱신 are hidden behind ⋮ to
@@ -73,7 +73,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
     return () => document.removeEventListener("mousedown", handleOutside);
   }, [showBulkMenu]);
 
-  const filtered = students.filter((s) => s.name.includes(searchQuery));
+  const filtered = students.filter((s) => s.name.includes(query));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
   // O(1) lookup: studentId → access code
@@ -91,11 +91,9 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const showCodeManagement = codeUiCapable && accessCodesReady;
   const showCodeSkeleton = codeUiCapable && !accessCodesReady;
 
-  const handleAdd = () => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
+  const handleAdd = (trimmed: string) => {
     props.onAddStudent(trimmed);
-    setNewName("");
+    setQuery("");
   };
 
   const handleSelect = (id: string) => {
@@ -120,43 +118,15 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">학생 목록</h2>
         </div>
 
-        {/* Add student — only visible to owners/admins */}
-        {canManage && (
-          <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAdd();
-              }}
-              placeholder="학생 이름 (검색 가능)"
-              className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
-              aria-label="학생 추가"
-            >
-              <Plus size={14} strokeWidth={1.5} />
-              추가
-            </button>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-[var(--color-border)]">
-          <div className="relative">
-            <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="이름으로 검색"
-              className="w-full pl-8 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
+        {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
+        <ListFilterBar
+          value={query}
+          onChange={setQuery}
+          canAdd={canManage}
+          onAdd={handleAdd}
+          placeholder="학생 이름으로 검색"
+          ariaLabelAdd="학생 추가"
+        />
 
         {/* Code Management Skeleton — shown while initial fetch in flight
             (no cache yet). Same vertical footprint as the real card so the
@@ -284,7 +254,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {searchQuery ? "검색 결과 없음" : "학생을 추가해주세요"}
+              {query ? "검색 결과 없음" : "학생을 추가해주세요"}
             </li>
           ) : (
             filtered.map((student) => {

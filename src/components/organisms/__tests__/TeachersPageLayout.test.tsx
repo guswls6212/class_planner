@@ -32,7 +32,7 @@ describe("TeachersPageLayout", () => {
   it("강사 페이지 레이아웃이 올바르게 렌더링된다", () => {
     render(<TeachersPageLayout {...baseProps} />);
     expect(screen.getByTestId("teachers-page")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("강사 이름 (검색 가능)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("강사 이름으로 검색")).toBeInTheDocument();
     expect(screen.getByText("김선생")).toBeInTheDocument();
     expect(screen.getByText("이선생")).toBeInTheDocument();
   });
@@ -50,17 +50,22 @@ describe("TeachersPageLayout", () => {
     expect(screen.getByText("강사를 추가해주세요")).toBeInTheDocument();
   });
 
-  it("검색어로 필터링된다", () => {
+  it("검색어로 필터링된다 (통합 input)", () => {
     render(<TeachersPageLayout {...baseProps} />);
-    const searchInput = screen.getByPlaceholderText("이름으로 검색");
+    const searchInput = screen.getByPlaceholderText("강사 이름으로 검색");
     fireEvent.change(searchInput, { target: { value: "김" } });
     expect(screen.getByText("김선생")).toBeInTheDocument();
     expect(screen.queryByText("이선생")).not.toBeInTheDocument();
   });
 
+  it("권한 없을 때 추가 버튼이 렌더되지 않는다", () => {
+    render(<TeachersPageLayout {...baseProps} canManage={false} />);
+    expect(screen.queryByRole("button", { name: /강사 추가/ })).toBeNull();
+  });
+
   it("추가 버튼을 클릭하면 onAddTeacher가 호출된다", async () => {
     render(<TeachersPageLayout {...baseProps} />);
-    const input = screen.getByPlaceholderText("강사 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("강사 이름으로 검색");
     fireEvent.change(input, { target: { value: "박선생" } });
     fireEvent.click(screen.getByLabelText("강사 추가"));
     await waitFor(() => {
@@ -82,7 +87,7 @@ describe("TeachersPageLayout", () => {
 
   it("한글 IME 조합 중 Enter는 onAddTeacher를 호출하지 않는다 (회귀)", async () => {
     render(<TeachersPageLayout {...baseProps} />);
-    const input = screen.getByPlaceholderText("강사 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("강사 이름으로 검색");
     fireEvent.change(input, { target: { value: "이강사" } });
     fireEvent.keyDown(input, { key: "Enter", isComposing: true });
     await new Promise((r) => setTimeout(r, 0));
