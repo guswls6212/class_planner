@@ -171,6 +171,7 @@ src/components/atoms/Input.tsx
 src/components/atoms/Label.tsx
 src/components/atoms/SegmentedButton.tsx
 src/components/atoms/StudentListItem.tsx
+src/components/atoms/SyncStatusDot.tsx
 src/components/atoms/SubjectListItem.tsx
 src/components/atoms/TeacherStatusPill.tsx
 src/components/atoms/ThemeToggle.tsx
@@ -363,6 +364,7 @@ src/hooks/useNowMinute.ts
 src/hooks/usePerformanceMonitoring.ts
 src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
+src/hooks/useSyncStatus.ts
 src/hooks/useScheduleView.ts
 src/hooks/useSessionStatus.ts
 src/hooks/useStudentManagementLocal.ts
