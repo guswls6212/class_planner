@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy } from "lucide-react";
+import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy, Plus, RefreshCw, XCircle } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
@@ -19,13 +19,23 @@ interface StudentDetailPanelProps {
   canManage?: boolean;
   /** Parent access code for this student, if any (admins only) */
   accessCode?: AccessCodeEntry;
-  /** Academy access URL — used for "URL+코드 복사" button */
+  /** True after the first accessCodes fetch completes — used to render
+   *  "코드 없음" only AFTER load (not during initial loading flash). */
+  accessCodesLoaded?: boolean;
+  /** Academy access URL — used for "자녀 시간표 링크 복사" button */
   academyUrl?: string;
+  /** Per-student: create a new code for this student */
+  onCreateCode?: (studentId: string, studentName?: string) => void;
+  /** Per-student: revoke + reissue (user-confirmed in handler) */
+  onRenewCode?: (studentId: string, studentName?: string) => void;
+  /** Per-student: revoke (expire) — user-confirmed in handler */
+  onRevokeCode?: (studentId: string, studentName?: string) => void;
 }
 
 export function StudentDetailPanel({
   student, subjects, enrollments, sessions, onUpdate, onDelete, onBack,
-  canManage = true, accessCode, academyUrl,
+  canManage = true, accessCode, accessCodesLoaded = true, academyUrl,
+  onCreateCode, onRenewCode, onRevokeCode,
 }: StudentDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editFields, setEditFields] = useState({
@@ -131,33 +141,77 @@ export function StudentDetailPanel({
         </div>
       </div>
 
-      {/* Parent Access Code (admin-visible only) */}
-      {canManage && accessCode && (
+      {/* Parent Access Code (admin-visible only — gated on accessCodesLoaded
+          to avoid "코드 없음" flash during initial load) */}
+      {canManage && accessCodesLoaded && (
         <section className="bg-[var(--color-bg-secondary)] rounded-md p-4">
           <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2">
             학부모 접속 코드
           </h3>
-          <StudentAccessCodeBadge code={accessCode} variant="large" />
-          {academyUrl && (
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window === "undefined") return;
-                // Single-line URL with code as query param — parent clicks once
-                // and the academy page auto-fills + submits the code.
-                // (Old format used "\n코드:" newline which broke when pasted
-                // into the address bar — slug got concatenated with the code.)
-                const link = `${academyUrl}?code=${encodeURIComponent(accessCode.access_code)}`;
-                window.navigator.clipboard
-                  ?.writeText(link)
-                  .then(() => showToast("success", `${student.name} 자녀 시간표 링크가 복사됐습니다`))
-                  .catch(() => showToast("error", "복사에 실패했습니다"));
-              }}
-              className="mt-3 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)] transition-colors"
-            >
-              <Copy size={12} strokeWidth={1.5} />
-              자녀 시간표 링크 복사
-            </button>
+
+          {accessCode ? (
+            <>
+              <StudentAccessCodeBadge code={accessCode} variant="large" />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {academyUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window === "undefined") return;
+                      // Single-line URL with code as query param — parent
+                      // clicks once and the academy page auto-fills + submits.
+                      const link = `${academyUrl}?code=${encodeURIComponent(accessCode.access_code)}`;
+                      window.navigator.clipboard
+                        ?.writeText(link)
+                        .then(() => showToast("success", `${student.name} 자녀 시간표 링크가 복사됐습니다`))
+                        .catch(() => showToast("error", "복사에 실패했습니다"));
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-accent hover:text-[var(--color-text-primary)] transition-colors"
+                  >
+                    <Copy size={12} strokeWidth={1.5} />
+                    링크 복사
+                  </button>
+                )}
+                {onRenewCode && (
+                  <button
+                    type="button"
+                    onClick={() => onRenewCode(student.id, student.name)}
+                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-accent hover:text-[var(--color-text-primary)] transition-colors"
+                    title="기존 코드를 만료시키고 새 코드를 발급합니다"
+                  >
+                    <RefreshCw size={12} strokeWidth={1.5} />
+                    재발급
+                  </button>
+                )}
+                {onRevokeCode && (
+                  <button
+                    type="button"
+                    onClick={() => onRevokeCode(student.id, student.name)}
+                    className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-red-500 hover:text-red-400 transition-colors"
+                    title="코드를 즉시 만료시킵니다 (학부모 접속 차단)"
+                  >
+                    <XCircle size={12} strokeWidth={1.5} />
+                    만료
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                이 학생은 아직 접속 코드가 없습니다.
+              </p>
+              {onCreateCode && (
+                <button
+                  type="button"
+                  onClick={() => onCreateCode(student.id, student.name)}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-accent text-[var(--color-admin-ink)] font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <Plus size={12} strokeWidth={2} />
+                  이 학생 코드 생성
+                </button>
+              )}
+            </div>
           )}
         </section>
       )}
