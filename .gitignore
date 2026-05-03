@@ -55,5 +55,8 @@ migration/backups/
 .superpowers/
 .claude/
 
+# Local scratch — orphaned worktrees, screenshots, throwaway artifacts
+.scratch/
+
 # Supabase CLI temp files
 supabase/.temp/
