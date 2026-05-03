@@ -43,6 +43,14 @@ Object.defineProperty(window, "location", {
 });
 
 import { Sidebar } from "../Sidebar";
+import { SidebarProvider } from "@/contexts/SidebarContext";
+
+const renderSidebar = () =>
+  render(
+    <SidebarProvider>
+      <Sidebar />
+    </SidebarProvider>
+  );
 
 const ACADEMIES_MULTI = [
   { id: "ac-1", name: "유빈학원", slug: "yubin", role: "owner" },
@@ -73,7 +81,7 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherName: null,
       linkedTeacherColor: null,
     });
-    render(<Sidebar />);
+    renderSidebar();
     const button = screen.getByRole("button", { name: "학원" });
     expect(button.textContent?.trim()).toBe("CP");
   });
@@ -88,7 +96,7 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherName: null,
       linkedTeacherColor: null,
     });
-    render(<Sidebar />);
+    renderSidebar();
     // wait for useEffect dynamic import to resolve and set active academy id
     await waitFor(() => {
       expect(mockGetActiveAcademyId).toHaveBeenCalled();
@@ -109,7 +117,7 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherName: null,
       linkedTeacherColor: null,
     });
-    render(<Sidebar />);
+    renderSidebar();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "유빈학원" })).toBeInTheDocument();
     });
@@ -139,7 +147,7 @@ describe("Sidebar — Academy Switcher", () => {
     });
     mockFetch.mockResolvedValue({ ok: true });
 
-    render(<Sidebar />);
+    renderSidebar();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "유빈학원" })).toBeInTheDocument();
     });
@@ -178,7 +186,7 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherName: null,
       linkedTeacherColor: null,
     });
-    render(<Sidebar />);
+    renderSidebar();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "유빈학원" })).toBeInTheDocument();
     });
@@ -208,7 +216,7 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherName: null,
       linkedTeacherColor: null,
     });
-    render(<Sidebar />);
+    renderSidebar();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "유빈학원" })).toBeInTheDocument();
     });
