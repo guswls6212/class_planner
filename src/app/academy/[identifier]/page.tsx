@@ -10,9 +10,19 @@ export default function AcademyAccessPage({
   params: Promise<{ identifier: string }>
 }) {
   const { identifier: rawIdentifier } = use(params)
-  // NFC 정규화 — macOS 브라우저가 URL 한글을 NFD로 디코딩하는 경우가 있어
-  // 서버 NFC slug와 매칭 실패를 방지 (defense-in-depth, 서버에서도 동일 처리).
-  const identifier = rawIdentifier.normalize('NFC')
+  // Next.js 15 client component의 use(params)는 URL을 percent-decode하지 않은
+  // raw 값을 반환한다(예: "%ED%98%84%EC%A7%84%ED%95%99%EC%9B%90"). 이 상태로
+  // 서버 fetch body에 넣으면 slug lookup이 percent-encoded 문자열을 비교
+  // 대상으로 사용 → academy 못 찾음 → 학부모 코드 입력 페이지 404 사고.
+  // 1) decodeURIComponent로 percent-decode  2) NFC 정규화로 한글 자모 결합
+  // 양쪽 모두 적용해야 안전.
+  const identifier = (() => {
+    try {
+      return decodeURIComponent(rawIdentifier).normalize('NFC')
+    } catch {
+      return rawIdentifier.normalize('NFC')
+    }
+  })()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [academyName, setAcademyName] = useState<string>('')
