@@ -26,11 +26,20 @@ interface StudentsPageLayoutProps {
   isRoleLoading?: boolean;
   /** Parent access codes for students in this academy (admin-visible only) */
   accessCodes?: AccessCodeEntry[];
-  /** Generate codes for any student missing one */
+  /** True after the first accessCodes fetch completes — used to avoid
+   *  flash where badges/header card pop in slightly later than student list */
+  accessCodesLoaded?: boolean;
+  /** Bulk: generate codes for any student missing one */
   onCreateCodes?: () => void;
-  /** Regenerate ALL codes (destructive — user-confirmed in handler) */
+  /** Bulk: regenerate ALL codes (destructive — user-confirmed in handler) */
   onRenewCodes?: () => void;
-  /** Academy access URL (e.g. /academy/<slug>) — used for "URL+코드 복사" */
+  /** Per-student: generate code for one student */
+  onCreateCodeForStudent?: (studentId: string, studentName?: string) => void;
+  /** Per-student: revoke + reissue (user-confirmed) */
+  onRenewCodeForStudent?: (studentId: string, studentName?: string) => void;
+  /** Per-student: revoke (expire) — user-confirmed */
+  onRevokeCodeForStudent?: (studentId: string, studentName?: string) => void;
+  /** Academy access URL (e.g. /academy/<slug>) — used for "자녀 시간표 링크 복사" */
   academyUrl?: string;
 }
 
@@ -38,6 +47,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const { students, selectedStudentId, onSelectStudent, accessCodes = [], academyUrl } = props;
   const canManage = props.canManage ?? true;
   const isRoleLoading = props.isRoleLoading ?? false;
+  const accessCodesLoaded = props.accessCodesLoaded ?? true;
   const [searchQuery, setSearchQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -52,8 +62,14 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
       .map((c) => [c.filter_student_id as string, c]),
   );
 
+  // Code management UI (header card + inline badges) only renders after the
+  // first accessCodes fetch completes, so it doesn't pop in slightly after
+  // the student list (the "flash" the user reported).
   const showCodeManagement =
-    canManage && Boolean(props.onCreateCodes) && Boolean(academyUrl);
+    canManage &&
+    accessCodesLoaded &&
+    Boolean(props.onCreateCodes) &&
+    Boolean(academyUrl);
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -198,7 +214,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
                         <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                           {student.name}
                         </p>
-                        {canManage && studentCode && (
+                        {canManage && accessCodesLoaded && studentCode && (
                           <StudentAccessCodeBadge code={studentCode} variant="inline" />
                         )}
                       </div>
@@ -237,8 +253,12 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onDelete={props.onDeleteStudent}
             onBack={() => setShowDetail(false)}
             canManage={canManage}
-            accessCode={codeByStudentId.get(selectedStudent.id)}
+            accessCode={accessCodesLoaded ? codeByStudentId.get(selectedStudent.id) : undefined}
+            accessCodesLoaded={accessCodesLoaded}
             academyUrl={academyUrl}
+            onCreateCode={props.onCreateCodeForStudent}
+            onRenewCode={props.onRenewCodeForStudent}
+            onRevokeCode={props.onRevokeCodeForStudent}
           />
         </div>
       ) : (

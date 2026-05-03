@@ -11,11 +11,22 @@ export async function POST(request: NextRequest) {
   const userId = searchParams.get('userId')
   if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
 
-  const { mode = 'create' } = await request.json().catch(() => ({ mode: 'create' }))
+  const body = await request.json().catch(() => ({}))
+  const { mode = 'create', studentIds } = body as {
+    mode?: 'create' | 'renew'
+    studentIds?: string[]
+  }
 
   if (!['create', 'renew'].includes(mode)) {
     return NextResponse.json({ error: "mode는 'create' 또는 'renew'만 가능합니다." }, { status: 400 })
   }
+
+  // Optional per-student filter — when present, operate only on those students.
+  // Used by per-row "재발급" / "코드 생성" actions in StudentDetailPanel.
+  const filterIds: string[] | null =
+    Array.isArray(studentIds) && studentIds.length > 0
+      ? studentIds.filter((id): id is string => typeof id === 'string' && id.length > 0)
+      : null
 
   let membership: { academyId: string; role: string }
   try {
@@ -31,11 +42,17 @@ export async function POST(request: NextRequest) {
   const client = getServiceRoleClient()
   const { academyId } = membership
 
-  // 1. 학원의 모든 학생 조회
-  const { data: students, error: studentsError } = await client
+  // 1. 학원의 학생 조회 (filterIds 있으면 해당 학생만)
+  let studentQuery = client
     .from('students')
     .select('id, name')
     .eq('academy_id', academyId)
+
+  if (filterIds) {
+    studentQuery = studentQuery.in('id', filterIds)
+  }
+
+  const { data: students, error: studentsError } = await studentQuery
 
   if (studentsError || !students) {
     logger.error('학생 목록 조회 실패', { academyId }, studentsError as Error)
@@ -45,12 +62,18 @@ export async function POST(request: NextRequest) {
   const expiresAt = new Date(Date.now() + EXPIRES_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
   if (mode === 'renew') {
-    // 기존 코드 전체 revoke
-    const { error: revokeError } = await client
+    // 기존 코드 revoke (filterIds 있으면 해당 학생만)
+    let revokeQuery = client
       .from('share_tokens')
       .update({ revoked_at: new Date().toISOString() })
       .eq('academy_id', academyId)
       .not('access_code', 'is', null)
+
+    if (filterIds) {
+      revokeQuery = revokeQuery.in('filter_student_id', filterIds)
+    }
+
+    const { error: revokeError } = await revokeQuery
 
     if (revokeError) {
       logger.error('기존 코드 revoke 실패', { academyId }, revokeError as Error)

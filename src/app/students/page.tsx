@@ -49,8 +49,12 @@ function StudentsPageContent() {
   // for null userId, and StudentsPageLayout gates UI on canManage anyway).
   const {
     accessCodes,
+    hasLoadedOnce: accessCodesLoaded,
     handleCreate: handleCreateCodes,
     handleRenew: handleRenewCodes,
+    handleCreateForStudent,
+    handleRenewForStudent,
+    handleRevokeForStudent,
   } = useAccessCodes(canManage ? userId : null);
 
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
@@ -132,8 +136,12 @@ function StudentsPageContent() {
       canManage={canManage}
       isRoleLoading={isRoleLoading}
       accessCodes={accessCodes}
+      accessCodesLoaded={canManage ? accessCodesLoaded : true}
       onCreateCodes={handleCreateCodes}
       onRenewCodes={handleRenewCodes}
+      onCreateCodeForStudent={handleCreateForStudent}
+      onRenewCodeForStudent={handleRenewForStudent}
+      onRevokeCodeForStudent={handleRevokeForStudent}
       academyUrl={academyUrl}
     />
   );
