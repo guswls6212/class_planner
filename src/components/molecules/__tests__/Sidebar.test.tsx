@@ -48,6 +48,7 @@ Object.defineProperty(window, "location", {
 
 import { Sidebar } from "../Sidebar";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { supabase } from "@/utils/supabaseClient";
 
 const renderSidebar = () =>
   render(
@@ -236,5 +237,180 @@ describe("Sidebar — Academy Switcher", () => {
     await waitFor(() => {
       expect(screen.queryByText("내 학원")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("Sidebar — Toggle Button (Supabase style)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseMyRole.mockReturnValue({
+      role: null,
+      isLoading: false,
+      canManage: true,
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+    mockGetActiveAcademyId.mockReturnValue(null);
+    window.localStorage.getItem = vi.fn(() => null);
+    window.localStorage.setItem = vi.fn();
+  });
+
+  it("토글 버튼은 작은 정사각형(w-7 h-7)으로 렌더링된다", () => {
+    renderSidebar();
+    const toggleBtn = screen.getByRole("button", { name: "사이드바 펼치기" });
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn.className).toMatch(/\bw-7\b/);
+    expect(toggleBtn.className).toMatch(/\bh-7\b/);
+  });
+
+  it("토글 버튼 클릭으로 사이드바가 펼쳐진다", async () => {
+    renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: "사이드바 펼치기" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "사이드바 접기" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("⌘+B 단축키로 사이드바를 토글한다", async () => {
+    renderSidebar();
+    expect(
+      screen.getByRole("button", { name: "사이드바 펼치기" }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "사이드바 접기" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("Ctrl+B 단축키로도 사이드바를 토글한다 (대소문자 무관)", async () => {
+    renderSidebar();
+    expect(
+      screen.getByRole("button", { name: "사이드바 펼치기" }),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "B", ctrlKey: true });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "사이드바 접기" }),
+      ).toBeInTheDocument();
+    });
+  });
+});
+
+describe("Sidebar — User Bottom Section", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key");
+    mockGetActiveAcademyId.mockReturnValue(null);
+    // Start sidebar EXPANDED so UserBottomSection is rendered
+    window.localStorage.getItem = vi.fn((key: string) => {
+      if (key === "sidebar_expanded") return "true";
+      return null;
+    });
+    window.localStorage.setItem = vi.fn();
+    // Default: not logged in (each test overrides as needed)
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: null },
+    } as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function mockLoggedInAs(email: string, role: "owner" | "admin" | "member") {
+    vi.mocked(supabase.auth.getUser).mockResolvedValue({
+      data: { user: { email } },
+    } as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+    mockUseMyRole.mockReturnValue({
+      role,
+      isLoading: false,
+      canManage: role === "owner" || role === "admin",
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+  }
+
+  it("로그인 + 펼친 상태에서 이메일이 사이드바 하단에 표시된다", async () => {
+    mockLoggedInAs("owner@test.com", "owner");
+    renderSidebar();
+    await waitFor(() => {
+      expect(screen.getByText("owner@test.com")).toBeInTheDocument();
+    });
+  });
+
+  it("owner 역할이면 '원장' 라벨이 표시된다", async () => {
+    mockLoggedInAs("owner@test.com", "owner");
+    renderSidebar();
+    await waitFor(() => {
+      expect(screen.getByText("원장")).toBeInTheDocument();
+    });
+  });
+
+  it("admin 역할이면 '관리자' 라벨이 표시된다", async () => {
+    mockLoggedInAs("admin@test.com", "admin");
+    renderSidebar();
+    await waitFor(() => {
+      expect(screen.getByText("관리자")).toBeInTheDocument();
+    });
+  });
+
+  it("member 역할이면 '강사' 라벨이 표시된다 (nav 아이템 '강사'는 필터됨)", async () => {
+    mockLoggedInAs("teacher@test.com", "member");
+    renderSidebar();
+    await waitFor(() => {
+      // member는 adminOnly nav (학생/과목/강사) 필터됨 → "강사" 텍스트는 UserBottomSection에만 존재
+      expect(screen.getByText("강사")).toBeInTheDocument();
+    });
+  });
+
+  it("로그아웃 버튼이 사이드바 하단에 표시된다", async () => {
+    mockLoggedInAs("owner@test.com", "owner");
+    renderSidebar();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "로그아웃" }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("로그인하지 않은 상태에서는 UserBottomSection이 렌더되지 않는다", async () => {
+    mockUseMyRole.mockReturnValue({
+      role: null,
+      isLoading: false,
+      canManage: true,
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+    renderSidebar();
+    // wait briefly to let getUser resolve and component re-render
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(
+      screen.queryByRole("button", { name: "로그아웃" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("사이드바가 접힌 상태에서는 UserBottomSection이 숨겨진다", async () => {
+    // Override: collapsed sidebar
+    window.localStorage.getItem = vi.fn(() => null);
+    mockLoggedInAs("owner@test.com", "owner");
+    renderSidebar();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText("owner@test.com")).not.toBeInTheDocument();
+    expect(screen.queryByText("원장")).not.toBeInTheDocument();
   });
 });

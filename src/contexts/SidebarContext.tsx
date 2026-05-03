@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 interface SidebarContextValue {
   expanded: boolean;
@@ -15,13 +15,13 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem("sidebar_expanded") === "true";
   });
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     setExpanded((v) => {
       const next = !v;
       localStorage.setItem("sidebar_expanded", String(next));
       return next;
     });
-  };
+  }, []);
 
   return (
     <SidebarContext.Provider value={{ expanded, toggle }}>
