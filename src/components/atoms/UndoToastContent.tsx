@@ -9,6 +9,9 @@ interface UndoToastContentProps {
   toastId: string | number;
 }
 
+// Destructive variant of ToastContent — shares layout but has Trash icon and
+// a "되돌리기" action button. Kept separate from ToastContent because the
+// action button + dismiss callback is specific to undoable mutations.
 export function UndoToastContent({
   message,
   onUndo,
