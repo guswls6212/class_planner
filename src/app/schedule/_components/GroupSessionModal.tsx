@@ -201,7 +201,10 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           입력 전에도 학생 목록을 보여 줌. selectableStudents 가 있으면 항상 렌더,
           없을 때만 입력값에 따라 안내 메시지 또는 새 학생 CTA. */}
       {selectableStudents.length > 0 ? (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg max-h-60 overflow-y-auto">
+        // 단일 스크롤 컨테이너 (모달 step content)에 위임 — 이전엔 여기에도
+        // max-h-60 overflow-y-auto 가 있어 중첩 스크롤로 사용자가 학생
+        // 리스트를 스크롤 못 하던 버그. 모달 외곽이 max-h-[55vh] 로 cap.
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
           {selectableStudents.map((student) => (
             <button
               key={student.id}
