@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
@@ -14,8 +14,6 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
-
-const CODES_INITIAL_SHOW = 5;
 
 interface PendingInvite {
   id: string;
@@ -34,14 +32,6 @@ interface ShareToken {
   expires_at: string;
   created_at: string;
   access_code?: string | null;
-}
-
-interface AccessCodeEntry {
-  id: string;
-  label: string;
-  filter_student_id: string | null;
-  access_code: string;
-  expires_at: string;
 }
 
 export default function SettingsPage() {
@@ -82,21 +72,6 @@ export default function SettingsPage() {
   const [shareStudentId, setShareStudentId] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
-
-  // 학부모 접속 코드
-  const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
-  const [showAllCodes, setShowAllCodes] = useState(false);
-
-  // 중복 이름 사전 계산 — map() 내 매 항목마다 filter() 반복 방지
-  const duplicateNameSet = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const s of localStudents) {
-      counts.set(s.name, (counts.get(s.name) ?? 0) + 1);
-    }
-    return new Set(
-      [...counts.entries()].filter(([, c]) => c > 1).map(([n]) => n)
-    );
-  }, [localStudents]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -171,18 +146,7 @@ export default function SettingsPage() {
       if (shareRes.ok) {
         const { data } = await shareRes.json();
         const allTokens = (data ?? []) as ShareToken[];
-        // Split: access codes (have access_code) vs regular share tokens
-        setAccessCodes(
-          allTokens
-            .filter((t) => Boolean(t.access_code))
-            .map((t) => ({
-              id: t.id,
-              label: t.label ?? "",
-              filter_student_id: t.filter_student_id,
-              access_code: t.access_code as string,
-              expires_at: t.expires_at,
-            }))
-        );
+        // 학부모 접속 코드는 /students 페이지에서 관리. 여기는 일반 공유 링크만.
         setShareTokens(allTokens.filter((t) => !t.access_code));
       }
     } catch (err) {
@@ -438,44 +402,6 @@ export default function SettingsPage() {
     await fetchData();
   };
 
-  const handleCreateAccessCodes = async () => {
-    if (!userId) return;
-    const res = await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "create" }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if ((data.created ?? 0) > 0) {
-        showToast("success", `${data.created}명의 접속 코드가 생성됐습니다.`);
-      } else {
-        showToast("info", "모든 학생에게 이미 코드가 있습니다.");
-      }
-      setShowAllCodes(false);
-      await fetchData();
-    } else {
-      showToast("error", "코드 생성에 실패했습니다.");
-    }
-  };
-
-  const handleRenewAccessCodes = async () => {
-    if (!userId) return;
-    if (typeof window !== "undefined" && !window.confirm("모든 접속 코드를 새로 발급할까요? 기존 코드는 즉시 만료됩니다.")) return;
-    const res = await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "renew" }),
-    });
-    if (res.ok) {
-      showToast("success", "모든 접속 코드가 갱신됐습니다.");
-      setShowAllCodes(false);
-      await fetchData();
-    } else {
-      showToast("error", "코드 갱신에 실패했습니다.");
-    }
-  };
-
   const canManage = myRole === "owner" || myRole === "admin";
 
   // 원장(owner) 멤버 — 통합 강사 목록 상단에 별도 행으로 표시
@@ -727,112 +653,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 학생 접속 코드 섹션 */}
-      {canManage && (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mt-4">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
-            <div>
-              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학생 접속 코드</h3>
-              <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                자녀 시간표 공유용 코드입니다 (6자 영문·숫자)
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleRenewAccessCodes}
-                className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-muted)] hover:border-[var(--color-accent)] transition-colors"
-              >
-                ↻ 전체 갱신
-              </button>
-              <button
-                onClick={handleCreateAccessCodes}
-                className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-semibold text-[var(--color-admin-ink)]"
-              >
-                코드 생성
-              </button>
-            </div>
-          </div>
-
-          {accessCodes.length === 0 ? (
-            <div className="px-6 py-8 text-center text-sm text-[var(--color-text-muted)]">
-              코드가 없습니다.{" "}
-              <button onClick={handleCreateAccessCodes} className="text-[var(--color-accent)] underline">
-                코드 생성하기
-              </button>
-            </div>
-          ) : (
-            <div>
-              {(showAllCodes ? accessCodes : accessCodes.slice(0, CODES_INITIAL_SHOW)).map((code) => {
-                const student = localStudents.find((s) => s.id === code.filter_student_id);
-                const studentName =
-                  student?.name ??
-                  code.label?.replace(" 학부모 접속 코드", "").replace(" 접속 코드", "") ??
-                  "알 수 없음";
-                const hasDuplicate = duplicateNameSet.has(studentName);
-                const daysLeft = Math.ceil(
-                  (new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                );
-                return (
-                  <div
-                    key={code.id}
-                    className="flex items-center gap-3 px-6 py-3 border-b border-[var(--color-border)] last:border-0"
-                  >
-                    <span className="w-24 flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
-                      {studentName}
-                      {hasDuplicate && student && (
-                        <span className="ml-1 text-[10px] font-normal text-[var(--color-text-muted)]">
-                          ({student.id.slice(-4)})
-                        </span>
-                      )}
-                    </span>
-                    <span className="font-mono text-base font-bold tracking-wider text-[var(--color-accent)]">
-                      {code.access_code}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-muted)]">D-{daysLeft}</span>
-                    <button
-                      onClick={() => {
-                        if (typeof window === "undefined") return;
-                        const identifier = academySlug ?? academyId ?? "";
-                        const url = `${window.location.origin}/academy/${identifier}`;
-                        window.navigator.clipboard?.writeText(`${url}\n코드: ${code.access_code}`);
-                        showToast("success", `${studentName} 코드가 복사됐습니다`);
-                      }}
-                      disabled={!academyId && !academySlug}
-                      className={`ml-auto text-xs border border-[var(--color-border)] rounded px-2 py-1 transition-colors ${
-                        academyId || academySlug
-                          ? 'text-[var(--color-text-muted)] hover:border-[var(--color-accent)] cursor-pointer'
-                          : 'opacity-40 cursor-not-allowed'
-                      }`}
-                    >
-                      URL+코드 복사
-                    </button>
-                  </div>
-                );
-              })}
-              {accessCodes.length > CODES_INITIAL_SHOW && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllCodes((v) => !v)}
-                  className="w-full py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors border-t border-[var(--color-border)]"
-                >
-                  {showAllCodes
-                    ? "접기 ▲"
-                    : `${accessCodes.length - CODES_INITIAL_SHOW}명 더보기 ▼`}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
-            <p className="text-xs text-[var(--color-text-muted)]">
-              접속 URL:{" "}
-              <span className="font-mono text-[var(--color-accent)]">
-                {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academySlug ?? academyId ?? ""}
-              </span>
-            </p>
-          </div>
-        </section>
-      )}
+      {/* 학부모 접속 코드는 /students 페이지로 이동 (동명이인 식별 위해 학생 목록과 함께 표시) */}
 
       {/* 공유 링크 섹션 — 아코디언 */}
       {canManage && (
@@ -885,7 +706,7 @@ export default function SettingsPage() {
           {/* 힌트 텍스트 — 닫힌 상태 + 토큰 0개 */}
           {!shareExpanded && shareTokens.length === 0 && (
             <p className="px-5 pb-4 text-[11px] text-[var(--color-text-muted)]">
-              일반 학부모 공유는 위의 &apos;학부모 접속 코드&apos;를 사용하세요.
+              일반 학부모 공유는 학생 페이지의 &apos;학부모 접속 코드&apos;를 사용하세요.
             </p>
           )}
 
