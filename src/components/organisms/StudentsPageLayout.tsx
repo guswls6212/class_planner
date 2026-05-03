@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Search, Copy, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Search, Copy, MoreVertical, AlertTriangle, RefreshCw } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import ConfirmModal from "@/components/molecules/ConfirmModal";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { showToast } from "@/lib/toast";
 
@@ -52,6 +53,25 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [showDetail, setShowDetail] = useState(false);
+
+  // Bulk-action kebab menu (코드 생성 / 전체 갱신 are hidden behind ⋮ to
+  // prevent accidental clicks — both have re-share consequences)
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
+  const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+  const [showRenewConfirm, setShowRenewConfirm] = useState(false);
+  const bulkMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close kebab on outside click
+  useEffect(() => {
+    if (!showBulkMenu) return;
+    function handleOutside(e: MouseEvent) {
+      if (bulkMenuRef.current && !bulkMenuRef.current.contains(e.target as Node)) {
+        setShowBulkMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [showBulkMenu]);
 
   const filtered = students.filter((s) => s.name.includes(searchQuery));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
@@ -154,30 +174,60 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           </div>
         )}
 
-        {/* Code Management Card (admin + has academy + data ready) */}
+        {/* Code Management Card (admin + has academy + data ready)
+            Bulk actions hidden behind ⋮ kebab — prevents accidental
+            destructive clicks (both 코드 생성 + 전체 갱신 trigger re-share). */}
         {showCodeManagement && (
           <div className="px-3 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-semibold text-[var(--color-text-secondary)] tracking-wide">
                 학부모 접속 코드
               </span>
-              <div className="flex gap-1.5">
+              <div className="relative" ref={bulkMenuRef}>
                 <button
                   type="button"
-                  onClick={props.onCreateCodes}
-                  className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-[var(--color-admin-ink)] hover:opacity-90 transition-opacity"
+                  onClick={() => setShowBulkMenu((v) => !v)}
+                  aria-label="일괄 작업 메뉴"
+                  aria-expanded={showBulkMenu}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors"
                 >
-                  코드 생성
+                  <MoreVertical size={14} strokeWidth={1.5} />
                 </button>
-                <button
-                  type="button"
-                  onClick={props.onRenewCodes}
-                  className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-accent hover:text-[var(--color-text-primary)] transition-colors"
-                  title="모든 코드 재발급 (기존 코드 만료)"
-                >
-                  <RefreshCw size={11} strokeWidth={2} />
-                  전체 갱신
-                </button>
+                {showBulkMenu && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => { setShowBulkMenu(false); setShowCreateConfirm(true); }}
+                      className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-[var(--color-overlay-light)] transition-colors"
+                    >
+                      <Plus size={14} strokeWidth={1.5} className="mt-0.5 text-[var(--color-text-muted)]" />
+                      <div className="flex-1">
+                        <div className="text-[12px] font-medium text-[var(--color-text-primary)]">
+                          누락 학생 일괄 생성
+                        </div>
+                        <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                          코드 없는 학생에게만 추가 (기존 코드는 그대로)
+                        </div>
+                      </div>
+                    </button>
+                    <div className="border-t border-[var(--color-border)]" />
+                    <button
+                      type="button"
+                      onClick={() => { setShowBulkMenu(false); setShowRenewConfirm(true); }}
+                      className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-red-500/10 transition-colors"
+                    >
+                      <AlertTriangle size={14} strokeWidth={1.5} className="mt-0.5 text-red-400" />
+                      <div className="flex-1">
+                        <div className="text-[12px] font-medium text-red-400">
+                          전체 갱신 (위험)
+                        </div>
+                        <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+                          모든 코드 만료 → 학부모 전원에게 재공유 필요
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -202,6 +252,33 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             </div>
           </div>
         )}
+
+        {/* Bulk action confirm modals */}
+        <ConfirmModal
+          isOpen={showCreateConfirm}
+          variant="info"
+          title="누락 학생 일괄 코드 생성"
+          message={`코드가 없는 학생에게만 새 접속 코드를 생성합니다. 이미 코드가 있는 학생은 영향받지 않습니다.`}
+          confirmText="생성"
+          cancelText="취소"
+          onConfirm={() => { setShowCreateConfirm(false); props.onCreateCodes?.(); }}
+          onCancel={() => setShowCreateConfirm(false)}
+        />
+        <ConfirmModal
+          isOpen={showRenewConfirm}
+          variant="danger"
+          title="모든 접속 코드 전체 갱신"
+          message={
+            `현재 학원의 ${accessCodes.length}개 접속 코드가 즉시 만료되고 새 코드가 발급됩니다.\n\n` +
+            `학부모 ${accessCodes.length}명 전원에게 새 링크를 다시 공유해야 합니다. ` +
+            `이전 링크/코드는 더 이상 작동하지 않습니다.\n\n` +
+            `정말 진행할까요?`
+          }
+          confirmText="이해했습니다, 갱신"
+          cancelText="취소"
+          onConfirm={() => { setShowRenewConfirm(false); props.onRenewCodes?.(); }}
+          onCancel={() => setShowRenewConfirm(false)}
+        />
 
         {/* Student list */}
         <ul className="flex-1 overflow-y-auto">

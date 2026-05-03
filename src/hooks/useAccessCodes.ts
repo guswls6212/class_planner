@@ -148,9 +148,12 @@ export function useAccessCodes(userId: string | null): UseAccessCodesResult {
     }
   }, [userId, refresh]);
 
+  // NOTE: 'renew' is destructive (revokes all existing codes). Caller is
+  // responsible for confirmation (e.g. via ConfirmModal in StudentsPageLayout).
+  // Internal window.confirm was removed in PR β so the UI can present a
+  // richer warning with impact preview ("N명에게 재공유 필요").
   const handleRenew = useCallback(async () => {
     if (!userId) return;
-    if (typeof window !== "undefined" && !window.confirm("모든 접속 코드를 새로 발급할까요? 기존 코드는 즉시 만료됩니다.")) return;
     const res = await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
