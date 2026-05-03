@@ -19,7 +19,13 @@ import {
   syncSessionDelete,
   syncTeacherCreate,
   syncTeacherUpdate,
+  __resetSyncStateForTests,
 } from "../apiSync";
+import { showToast } from "../toast";
+
+vi.mock("../toast", () => ({
+  showToast: vi.fn(),
+}));
 
 describe("apiSync", () => {
   const mockFetch = vi.fn();
@@ -27,6 +33,8 @@ describe("apiSync", () => {
   beforeEach(() => {
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     global.fetch = mockFetch;
+    __resetSyncStateForTests();
+    vi.mocked(showToast).mockClear();
   });
 
   afterEach(() => {
@@ -254,6 +262,89 @@ describe("apiSync", () => {
         json: () => Promise.resolve({ error: "server error" }),
       });
       expect(() => syncStudentCreate("user-1", { name: "test" })).not.toThrow();
+    });
+  });
+
+  describe("silent failure 가시성 (Phase D)", () => {
+    it("첫 실패 즉시 warning 토스트 1회 노출 (silent failure 방지)", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "server error" }),
+      });
+      syncStudentCreate("user-1", { name: "test" });
+      // fire-and-forget이므로 microtask 한 번 양보
+      await new Promise((r) => setTimeout(r, 0));
+      const calls = vi.mocked(showToast).mock.calls;
+      expect(calls.length).toBeGreaterThanOrEqual(1);
+      expect(calls[0]?.[0]).toBe("warning");
+      expect(calls[0]?.[1]).toMatch(/지연|로컬은 안전/);
+    });
+
+    it("같은 세션에서 첫 실패 토스트는 1회만 (재실패해도 중복 표시 안 함)", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "server error" }),
+      });
+      syncStudentCreate("user-1", { name: "test1" });
+      await new Promise((r) => setTimeout(r, 0));
+      syncStudentCreate("user-1", { name: "test2" });
+      await new Promise((r) => setTimeout(r, 0));
+      // warning 토스트는 1회만
+      const warningCalls = vi
+        .mocked(showToast)
+        .mock.calls.filter((c) => c[0] === "warning");
+      expect(warningCalls.length).toBe(1);
+    });
+
+    it("3회 누적 실패 시 error 토스트로 격상", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "server error" }),
+      });
+      // 3회 실패 시뮬레이션 — 각각 별도 호출
+      syncStudentCreate("user-1", { name: "t1" });
+      await new Promise((r) => setTimeout(r, 0));
+      syncStudentCreate("user-1", { name: "t2" });
+      await new Promise((r) => setTimeout(r, 0));
+      syncStudentCreate("user-1", { name: "t3" });
+      await new Promise((r) => setTimeout(r, 0));
+      const errorCalls = vi
+        .mocked(showToast)
+        .mock.calls.filter((c) => c[0] === "error");
+      expect(errorCalls.length).toBe(1);
+      expect(errorCalls[0]?.[1]).toMatch(/3회 실패|인터넷 연결/);
+    });
+
+    it("실패 후 성공 시 success 복구 토스트 1회 + 카운터 리셋", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "server error" }),
+      });
+      syncStudentCreate("user-1", { name: "fail" });
+      await new Promise((r) => setTimeout(r, 0));
+      // 다음 호출은 성공
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+      syncStudentCreate("user-1", { name: "ok" });
+      await new Promise((r) => setTimeout(r, 0));
+      const successCalls = vi
+        .mocked(showToast)
+        .mock.calls.filter((c) => c[0] === "success");
+      expect(successCalls.length).toBe(1);
+      expect(successCalls[0]?.[1]).toMatch(/복구/);
+    });
+
+    it("실패 토스트가 아직 안 떴을 때 성공해도 복구 토스트는 안 띄움", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+      syncStudentCreate("user-1", { name: "ok" });
+      await new Promise((r) => setTimeout(r, 0));
+      const successCalls = vi
+        .mocked(showToast)
+        .mock.calls.filter((c) => c[0] === "success");
+      expect(successCalls.length).toBe(0);
     });
   });
 });
