@@ -7,6 +7,19 @@ vi.mock("../../lib/localStorageCrud", () => ({
   updateTeacherInLocal: vi.fn(() => ({ success: false })),
   deleteTeacherFromLocal: vi.fn(() => ({ success: false })),
   getTeacherFromLocal: vi.fn(() => null),
+  // Required by deleteTeacher's snapshot+undo pattern (PR γ extension)
+  getClassPlannerData: vi.fn(() => ({
+    students: [],
+    subjects: [],
+    sessions: [],
+    enrollments: [],
+    teachers: [],
+    version: "1.0",
+    lastModified: new Date().toISOString(),
+  })),
+  setClassPlannerData: vi.fn(() => true),
+  addTeacherSubjectToLocal: vi.fn(() => ({ success: false })),
+  removeTeacherSubjectFromLocal: vi.fn(() => ({ success: false })),
 }));
 
 vi.mock("../../lib/apiSync", () => ({
@@ -20,6 +33,7 @@ import {
   getAllTeachersFromLocal,
   addTeacherToLocal,
   deleteTeacherFromLocal,
+  getClassPlannerData,
 } from "../../lib/localStorageCrud";
 
 const mockTeacher = { id: "t-1", name: "이현진", color: "#f59e0b" };
@@ -72,20 +86,32 @@ describe("useTeacherManagementLocal", () => {
     expect(ret).toBe(false);
   });
 
-  it("deleteTeacher 성공 시 teachers 목록에서 제거된다", async () => {
+  it("deleteTeacher 성공 시 teachers 목록에서 제거된다 (deferred undo 패턴)", async () => {
     (getAllTeachersFromLocal as ReturnType<typeof vi.fn>)
       .mockReturnValueOnce([mockTeacher])  // initial load
       .mockReturnValueOnce([]);            // after delete
     (deleteTeacherFromLocal as ReturnType<typeof vi.fn>).mockReturnValue({
       success: true,
     });
+    // deleteTeacher의 snapshot을 위해 getClassPlannerData가 teacher 반환해야 함
+    (getClassPlannerData as ReturnType<typeof vi.fn>).mockReturnValue({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [mockTeacher],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
 
     const { result } = renderHook(() => useTeacherManagementLocal());
     await waitFor(() => expect(result.current.teachers).toHaveLength(1));
 
     await act(async () => { await result.current.deleteTeacher("t-1"); });
+    // localStorage 즉시 삭제 검증
     expect(deleteTeacherFromLocal).toHaveBeenCalledWith("t-1");
     await waitFor(() => expect(result.current.teachers).toHaveLength(0));
+    // server sync는 5초 deferred — 즉시 검증 안 함 (undo toast 대상)
   });
 
   it("teacherCount는 teachers 배열의 길이를 반환한다", async () => {

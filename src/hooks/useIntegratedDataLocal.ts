@@ -24,12 +24,13 @@ import {
   deleteSessionFromLocal,
   deleteTeacherFromLocal,
   getClassPlannerData,
+  setClassPlannerData,
   updateClassPlannerData,
   updateSessionInLocal,
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import { showToast } from "../lib/toast";
+import { showToast, showUndoToast } from "../lib/toast";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
 
 // ===== 타입 정의 =====
@@ -385,20 +386,49 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
 
         logger.debug("useIntegratedDataLocal - 세션 삭제 시작", { id });
 
-        // localStorage에서 즉시 삭제
+        // 1) Snapshot before delete (학생/과목 패턴 동일, no cascade)
+        const dataBefore = getClassPlannerData();
+        const sessionBefore = dataBefore.sessions.find((s) => s.id === id);
+        if (!sessionBefore) {
+          setError("세션을 찾을 수 없습니다.");
+          return false;
+        }
+
+        // 2) Remove from localStorage immediately
         const result = deleteSessionFromLocal(id);
 
         if (result.success) {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 (fire-and-forget)
+          // 3) Defer server commit by 5s (cancellable via undo)
           const userId = localStorage.getItem("supabase_user_id");
-          syncSessionDelete(userId, id);
+          let cancelled = false;
+          const commitTimer = setTimeout(() => {
+            if (cancelled) return;
+            syncSessionDelete(userId, id);
+            logger.info("useIntegratedDataLocal - 세션 삭제 commit", { id });
+          }, 5000);
 
-          // 명시 삭제만 토스트 (드래그-기반 삭제는 없음 — 명시 액션이라 안전).
-          // PR γ 후속에서 undo 패턴 (학생 삭제처럼) 적용 예정.
-          showToast("success", "수업이 삭제됐습니다");
+          // 4) Undo toast (드래그-삭제는 없음 — 명시 클릭만 도착하므로 안전)
+          showUndoToast({
+            message: "수업 삭제됨",
+            onUndo: () => {
+              cancelled = true;
+              clearTimeout(commitTimer);
+
+              const dataNow = getClassPlannerData();
+              if (!dataNow.sessions.find((s) => s.id === sessionBefore.id)) {
+                dataNow.sessions.push(sessionBefore);
+              }
+              dataNow.lastModified = new Date().toISOString();
+              setClassPlannerData(dataNow);
+              loadDataFromLocal();
+
+              showToast("success", "수업 복원됨");
+              logger.info("useIntegratedDataLocal - 세션 삭제 undo", { id });
+            },
+          });
 
           logger.info("useIntegratedDataLocal - 세션 삭제 성공", { id });
 

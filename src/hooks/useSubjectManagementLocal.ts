@@ -15,11 +15,13 @@ import {
   addSubjectToLocal,
   deleteSubjectFromLocal,
   getAllSubjectsFromLocal,
+  getClassPlannerData,
   getSubjectFromLocal,
+  setClassPlannerData,
   updateSubjectInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import { showToast } from "../lib/toast";
+import { showToast, showUndoToast } from "../lib/toast";
 import { useMyRole } from "./useMyRole";
 
 const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
@@ -256,7 +258,9 @@ export const useSubjectManagementLocal =
       [loadSubjectsFromLocal, canManage, roleLoading]
     );
 
-    // ===== 과목 삭제 =====
+    // ===== 과목 삭제 (deferred + undo, PR γ 패턴) =====
+    // Cascade: subject + 해당 enrollments + 그 enrollment 가진 sessions
+    // Pattern: snapshot → 즉시 localStorage 삭제 → 5s 후 server commit → undo 시 복원
 
     const deleteSubject = useCallback(
       async (id: string): Promise<boolean> => {
@@ -270,18 +274,67 @@ export const useSubjectManagementLocal =
 
           logger.debug("useSubjectManagementLocal - 과목 삭제 시작", { id });
 
-          // localStorage에서 즉시 삭제
+          // 1) Snapshot before delete (학생 패턴 동일)
+          const dataBefore = getClassPlannerData();
+          const subjectBefore = dataBefore.subjects.find((s) => s.id === id);
+          if (!subjectBefore) {
+            setError("과목을 찾을 수 없습니다.");
+            return false;
+          }
+          const enrollmentsBefore = dataBefore.enrollments.filter(
+            (e) => e.subjectId === id,
+          );
+          const targetEnrollmentIds = new Set(enrollmentsBefore.map((e) => e.id));
+          const sessionsBefore = dataBefore.sessions
+            .filter((s) =>
+              s.enrollmentIds?.some((eid) => targetEnrollmentIds.has(eid)),
+            )
+            .map((s) => ({ ...s, enrollmentIds: [...(s.enrollmentIds ?? [])] }));
+
+          // 2) Remove from localStorage immediately
           const result = deleteSubjectFromLocal(id);
 
           if (result.success) {
-            // UI 즉시 업데이트
             loadSubjectsFromLocal();
 
-            // 서버 동기화 (fire-and-forget)
+            // 3) Defer server commit by 5s
             const userId = localStorage.getItem("supabase_user_id");
-            syncSubjectDelete(userId, id);
+            let cancelled = false;
+            const commitTimer = setTimeout(() => {
+              if (cancelled) return;
+              syncSubjectDelete(userId, id);
+              logger.info("useSubjectManagementLocal - 과목 삭제 commit", { id });
+            }, 5000);
 
-            logger.info("useSubjectManagementLocal - 과목 삭제 성공", { id });
+            // 4) Undo toast
+            showUndoToast({
+              message: `${subjectBefore.name} 과목 삭제됨`,
+              onUndo: () => {
+                cancelled = true;
+                clearTimeout(commitTimer);
+
+                const dataNow = getClassPlannerData();
+                if (!dataNow.subjects.find((s) => s.id === subjectBefore.id)) {
+                  dataNow.subjects.push(subjectBefore);
+                }
+                for (const e of enrollmentsBefore) {
+                  if (!dataNow.enrollments.find((ee) => ee.id === e.id)) {
+                    dataNow.enrollments.push(e);
+                  }
+                }
+                for (const sBefore of sessionsBefore) {
+                  if (!dataNow.sessions.find((s) => s.id === sBefore.id)) {
+                    dataNow.sessions.push(sBefore);
+                  }
+                }
+                dataNow.lastModified = new Date().toISOString();
+                setClassPlannerData(dataNow);
+                loadSubjectsFromLocal();
+
+                showToast("success", `${subjectBefore.name} 과목 복원됨`);
+                logger.info("useSubjectManagementLocal - 과목 삭제 undo", { id });
+              },
+            });
 
             return true;
           } else {
