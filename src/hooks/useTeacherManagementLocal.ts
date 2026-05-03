@@ -23,6 +23,7 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { showToast } from "../lib/toast";
 import type { Teacher, TeacherRole } from "../lib/planner";
 
 // ===== 타입 정의 =====
@@ -148,6 +149,8 @@ export const useTeacherManagementLocal =
             const currentUserId = localStorage.getItem("supabase_user_id");
             syncTeacherCreate(currentUserId, { name, color, userId, ...profile });
 
+            showToast("success", `${name.trim()} 강사가 추가됐습니다`);
+
             logger.info("useTeacherManagementLocal - 강사 추가 성공", {
               name,
               teacherId: result.data.id,
@@ -203,6 +206,8 @@ export const useTeacherManagementLocal =
 
             const userId = localStorage.getItem("supabase_user_id");
             syncTeacherUpdate(userId, id, updates);
+
+            showToast("success", "강사 정보가 수정됐습니다");
 
             logger.info("useTeacherManagementLocal - 강사 수정 성공", {
               id,
