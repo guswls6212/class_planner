@@ -15,11 +15,13 @@ import {
   addStudentToLocal,
   deleteStudentFromLocal,
   getAllStudentsFromLocal,
+  getClassPlannerData,
   getStudentFromLocal,
+  setClassPlannerData,
   updateStudentInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import { showToast } from "../lib/toast";
+import { showToast, showUndoToast } from "../lib/toast";
 import { useMyRole } from "./useMyRole";
 
 const PERMISSION_DENIED_MESSAGE = "학생 추가/수정/삭제는 원장과 관리자만 가능합니다.";
@@ -243,6 +245,17 @@ export const useStudentManagementLocal =
     );
 
     // ===== 학생 삭제 =====
+    // Deferred-commit + undo toast pattern (PR γ):
+    // 1) Snapshot the student + cascading enrollments + affected sessions
+    // 2) Remove from localStorage immediately (UI update)
+    // 3) DEFER server sync + access-code revoke by 5s
+    // 4) Show undo toast (sonner action)
+    // 5) On undo: cancel timer, restore snapshot to localStorage
+    // 6) On timeout: server commit proceeds (delete + revoke)
+    //
+    // Caveat: closing the tab within the 5s window leaves localStorage
+    // empty but server intact → on next load, server fetch repopulates
+    // (effectively "undo by leaving"). Acceptable given Local-first arch.
 
     const deleteStudent = useCallback(
       async (id: string): Promise<boolean> => {
@@ -257,27 +270,95 @@ export const useStudentManagementLocal =
 
           logger.debug("useStudentManagementLocal - 학생 삭제 시작", { id });
 
-          // localStorage에서 즉시 삭제
+          // 1) Snapshot before delete (for undo)
+          const dataBefore = getClassPlannerData();
+          const studentBefore = dataBefore.students.find((s) => s.id === id);
+          if (!studentBefore) {
+            setError("학생을 찾을 수 없습니다.");
+            return false;
+          }
+          const enrollmentsBefore = dataBefore.enrollments.filter(
+            (e) => e.studentId === id,
+          );
+          const targetEnrollmentIds = new Set(
+            enrollmentsBefore.map((e) => e.id),
+          );
+          const sessionsAffectedBefore = dataBefore.sessions
+            .filter((s) =>
+              s.enrollmentIds?.some((eid) => targetEnrollmentIds.has(eid)),
+            )
+            .map((s) => ({ ...s, enrollmentIds: [...(s.enrollmentIds ?? [])] }));
+
+          // 2) Remove from localStorage immediately
           const result = deleteStudentFromLocal(id);
 
           if (result.success) {
-            // UI 즉시 업데이트
             loadStudentsFromLocal();
 
-            // 서버 동기화 (fire-and-forget)
+            // 3) Defer server commit by 5s (cancellable via undo)
             const userId = localStorage.getItem("supabase_user_id");
-            syncStudentDelete(userId, id);
+            let cancelled = false;
+            const commitTimer = setTimeout(() => {
+              if (cancelled) return;
+              syncStudentDelete(userId, id);
+              if (userId) {
+                fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ studentId: id }),
+                }).catch(() => {});
+              }
+              logger.info("useStudentManagementLocal - 학생 삭제 commit", {
+                id,
+              });
+            }, 5000);
 
-            // 학부모 접속 코드 revoke (fire-and-forget, UI 블로킹 안 함)
-            if (userId) {
-              fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ studentId: id }),
-              }).catch(() => {});
-            }
+            // 4) Undo toast — restore snapshot if clicked within 5s
+            showUndoToast({
+              message: `${studentBefore.name} 삭제됨`,
+              onUndo: () => {
+                cancelled = true;
+                clearTimeout(commitTimer);
 
-            logger.info("useStudentManagementLocal - 학생 삭제 성공", { id });
+                // Restore student + enrollments + affected sessions
+                const dataNow = getClassPlannerData();
+                if (!dataNow.students.find((s) => s.id === studentBefore.id)) {
+                  dataNow.students.push(studentBefore);
+                }
+                for (const e of enrollmentsBefore) {
+                  if (!dataNow.enrollments.find((ee) => ee.id === e.id)) {
+                    dataNow.enrollments.push(e);
+                  }
+                }
+                for (const sBefore of sessionsAffectedBefore) {
+                  const idx = dataNow.sessions.findIndex(
+                    (s) => s.id === sBefore.id,
+                  );
+                  if (idx === -1) {
+                    dataNow.sessions.push(sBefore);
+                  } else {
+                    const merged = Array.from(
+                      new Set([
+                        ...(dataNow.sessions[idx].enrollmentIds ?? []),
+                        ...(sBefore.enrollmentIds ?? []),
+                      ]),
+                    );
+                    dataNow.sessions[idx] = {
+                      ...dataNow.sessions[idx],
+                      enrollmentIds: merged,
+                    };
+                  }
+                }
+                dataNow.lastModified = new Date().toISOString();
+                setClassPlannerData(dataNow);
+                loadStudentsFromLocal();
+
+                showToast("success", `${studentBefore.name} 복원됨`);
+                logger.info("useStudentManagementLocal - 학생 삭제 undo", {
+                  id,
+                });
+              },
+            });
 
             return true;
           } else {

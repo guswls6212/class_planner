@@ -27,3 +27,31 @@ export function showToast(
 
 export const showError = (message: string) => toast.error(message);
 export const showSuccess = (message: string) => toast.success(message);
+
+/**
+ * Toast with an "undo" action button. Used for destructive mutations
+ * (delete student/subject/teacher/session) so users can recover from
+ * accidental clicks within the duration window (default 5s).
+ *
+ * Pattern: caller defers the actual server-side commit, shows this
+ * toast, and either:
+ *   - cancels the deferred commit + restores local state when onUndo fires
+ *   - proceeds with the commit when the duration elapses (no undo click)
+ *
+ * Per ARCHITECTURE.md § 1.4 PWA & Mobile-First: action label is
+ * tappable on mobile (sonner provides 44px+ hit area).
+ */
+export function showUndoToast(opts: {
+  message: string;
+  onUndo: () => void;
+  durationMs?: number;
+}) {
+  const duration = opts.durationMs ?? 5000;
+  toast(opts.message, {
+    duration,
+    action: {
+      label: "되돌리기",
+      onClick: () => opts.onUndo(),
+    },
+  });
+}
