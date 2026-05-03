@@ -9,7 +9,20 @@ export default function AcademyAccessPage({
 }: {
   params: Promise<{ identifier: string }>
 }) {
-  const { identifier } = use(params)
+  const { identifier: rawIdentifier } = use(params)
+  // Next.js 15 client component의 use(params)는 URL을 percent-decode하지 않은
+  // raw 값을 반환한다(예: "%ED%98%84%EC%A7%84%ED%95%99%EC%9B%90"). 이 상태로
+  // 서버 fetch body에 넣으면 slug lookup이 percent-encoded 문자열을 비교
+  // 대상으로 사용 → academy 못 찾음 → 학부모 코드 입력 페이지 404 사고.
+  // 1) decodeURIComponent로 percent-decode  2) NFC 정규화로 한글 자모 결합
+  // 양쪽 모두 적용해야 안전.
+  const identifier = (() => {
+    try {
+      return decodeURIComponent(rawIdentifier).normalize('NFC')
+    } catch {
+      return rawIdentifier.normalize('NFC')
+    }
+  })()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [academyName, setAcademyName] = useState<string>('')

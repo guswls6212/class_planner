@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceRoleClient } from '@/lib/supabaseServiceRole'
-import { isValidSlug } from '@/lib/slug'
+import { isValidSlug, normalizeSlugForLookup } from '@/lib/slug'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const slug = searchParams.get('slug')
+  const rawSlug = searchParams.get('slug')
 
-  if (!slug) {
+  if (!rawSlug) {
     return NextResponse.json({ error: 'slug required' }, { status: 400 })
   }
+
+  // NFC 정규화 — 사용자가 NFD로 입력해도 DB(NFC)와 일관 비교
+  const slug = normalizeSlugForLookup(rawSlug)
 
   if (!isValidSlug(slug)) {
     return NextResponse.json({ available: false, reason: 'invalid_format' })
