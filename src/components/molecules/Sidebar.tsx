@@ -10,8 +10,8 @@ import {
   GraduationCap,
   Settings,
   LogIn,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
@@ -34,7 +34,7 @@ const topItems: SidebarItem[] = [
   { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
 ];
 
-function UserSection() {
+function UserBottomSection({ role }: { role: "owner" | "admin" | "member" | null }) {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,20 +52,29 @@ function UserSection() {
 
   if (!email) return null;
 
+  const roleLabel =
+    role === "owner" ? "원장"
+    : role === "admin" ? "관리자"
+    : role === "member" ? "강사"
+    : null;
+
   return (
-    <div className="border-t border-slate-700 mt-1 pt-1">
-      <div className="px-3 py-2">
+    <div className="border-t border-[var(--color-border)] mt-1 pt-2">
+      <div className="px-3 py-1">
         <p
-          className="text-[10px] text-slate-500 truncate"
+          className="text-[10px] text-[var(--color-text-muted)] truncate"
           title={email}
         >
           {email}
         </p>
+        {roleLabel && (
+          <p className="text-[10px] text-amber-400 mt-0.5">{roleLabel}</p>
+        )}
       </div>
       <button
         type="button"
         onClick={() => signOut()}
-        className="w-full px-3 py-2 text-left text-[11px] text-semantic-danger hover:bg-slate-700 transition-colors rounded-lg"
+        className="w-full px-3 py-1.5 text-left text-[11px] text-semantic-danger hover:bg-[var(--color-overlay-light)] transition-colors rounded-lg"
       >
         로그아웃
       </button>
@@ -107,6 +116,19 @@ function SidebarLink({
 export function Sidebar() {
   const pathname = usePathname();
   const { expanded, toggle } = useSidebar();
+
+  // Keyboard shortcut: ⌘+B (Mac) / Ctrl+B (Win/Linux) toggles the sidebar.
+  useEffect(() => {
+    function handleKeydown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggle();
+      }
+    }
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [toggle]);
+
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
@@ -291,7 +313,6 @@ export function Sidebar() {
                 + 새 학원 만들기
               </button>
             </div>
-            <UserSection />
           </div>
         )}
       </div>
@@ -317,18 +338,20 @@ export function Sidebar() {
           expanded={expanded}
         />
 
-        {/* Sidebar toggle button */}
+        {/* User info: email + role + logout (expanded + logged-in only) */}
+        {expanded && <UserBottomSection role={role} />}
+
+        {/* Sidebar toggle — Supabase style: small bottom-left icon */}
         <button
           type="button"
           onClick={toggle}
           aria-label={expanded ? "사이드바 접기" : "사이드바 펼치기"}
-          className={`flex items-center justify-center h-8 rounded-admin-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors ${
-            expanded ? "w-full" : "w-8"
-          }`}
+          title={expanded ? "사이드바 접기 (⌘B)" : "사이드바 펼치기 (⌘B)"}
+          className="flex items-center justify-center w-7 h-7 rounded-admin-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors"
         >
           {expanded
-            ? <ChevronLeft size={16} strokeWidth={2} />
-            : <ChevronRight size={16} strokeWidth={2} />}
+            ? <PanelLeftClose size={16} strokeWidth={2} />
+            : <PanelLeftOpen size={16} strokeWidth={2} />}
         </button>
       </div>
     </aside>
