@@ -63,9 +63,10 @@
   - `PdfExportRangeModal` — PDF 출력 범위 선택 다이얼로그. viewMode별 옵션 분기.
   - `SaveTemplateModal`, `ApplyTemplateModal` — 시간표 템플릿 저장/불러오기 모달.
   - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
-  - `AccountMenu`, `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼.
+  - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
   - `TeacherStatusPill` — 강사 초대/공유 상태 6-state 표시 pill (active/invite_pending/invite_expired/share_only/none, K-1)
+  - `InfoTrigger` — 통일된 정보 아이콘 버튼. `size="sm"` (16px 원형) / `size="md"` (24px 원형), lucide Info SVG. HelpTooltip·ScheduleActionBar에서 사용.
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃
   - `TimeTableGrid` — 주간 시간표 CSS Grid. `baseDate?: Date` prop으로 주 날짜 배열 계산. 헤더 Stacked Circle(요일명+날짜, 오늘 amber 배지). `nowLinePx` 계산 후 오늘 `TimeTableRow`에 전달. (J-2, PR#97)
   - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.
@@ -415,3 +416,4 @@ academies          (... slug TEXT UNIQUE NULL)  -- 기존 컬럼 + 추가분
 - 2026-04-18: Phase 6 Schedule Body Unification — `tintFromHex` util(`src/lib/colors/`), `SessionCard` 4-variant primitive + `SessionOverflowPopover` 신설. Weekly grid CSS Grid transpose(rows=time cols=weekday) + D-hybrid overlap(≤3 균등/≥4 cap-2+pill). Daily/Monthly/Landing/PDF → SessionCard로 통일. HelpTooltip viewport flip + AccountMenu compact anchor 수정.
 - 2026-04-26: Phase J Schedule UX — `ScheduleDateNavigator` molecule 신설(PR#96). `TimeTableGrid` Stacked Circle 헤더+수평 시간선+now-line+`baseDate` prop, `TimeTableRow` 시간선 overlay 추가(PR#97). FAB `page.tsx`로 이동(전 뷰 공통화), `GroupSessionModal` 3-step Glass Stepper 재설계(PR#98). Organisms 목록 현행화(ScheduleDailyView, ScheduleMonthlyView 추가).
 - 2026-05-02: Phase K Teacher Invite 리디자인 + 보안 강화 (PR#152-161). migrations 032-041. Pages: `academy/[identifier]` 추가. API: `academies/check-slug`, `academies/mine`, `academies/slug`, `academy/[identifier]/public`, `audit-log`, `auth/set-active-academy`, `share/code`, `share-tokens/access-codes`, `share-tokens/from-invite`, `members/[userId] PATCH`, `teachers/[id] PATCH` 추가. Atoms: `TeacherStatusPill` 추가. Molecules: `TeacherAddModal`, `InviteModal`, `MemberListItem`, `DragOverlayCard`, `HiddenSessionsPopover`, teacher 서브컴포넌트 5개 추가. Hooks: `useMyRole`, `useMyTeacher` 추가. Lib: `accessCode.ts`, `slug.ts`, `server/teacherServiceFactory.ts`, `auth/permissions.ts` 추가. Data model: `invite_tokens.email/teacher_id`, `share_tokens.access_code/teacher_id/watermark_meta`, `academies.slug`, `sessions.public_description/internal_note`, `audit_log` 테이블, `teacher_subjects` M:N 추가. RBAC: middleware route guard + useMyRole FOUU fix + Sidebar/ScheduleActionBar member 필터링. Multi-academy: localStorage per-academy scope + Academy Switcher + active_academy_id 쿠키.
+- 2026-05-03: 보안·UX 통합 (PR#163-166). Security: `accessCode.ts` 코드 6자 확장(7.6→20 bits), academyId 격리 복원, IP rate limit + lockout, CSPRNG(`crypto.randomInt`), `L` 혼동 문자 제거. migration 042(Phase B 4자 코드 강제 만료, 미실행). UX: 강사 역할 라벨 통일(member=강사/admin=관리자 전사 통일), `AccountMenu` molecule 삭제 → `Sidebar` Academy Switcher 하단에 이메일·로그아웃 통합, `TopBar` 로그인/로그아웃 섹션으로 단순화. Lib: `auth/signOut.ts` 신설(supabase signOut + 3쿠키 + localStorage 전체 정리). Atoms: `InfoTrigger` 신설(i 아이콘 통일). Settings: 시간표 공유 섹션 → 아코디언(기본 닫힘). Login: OAuth 도메인 안내 문구 추가.

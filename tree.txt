@@ -165,6 +165,7 @@ src/components/atoms/AuthGuard.tsx
 src/components/atoms/Button.tsx
 src/components/atoms/ErrorBoundary.tsx
 src/components/atoms/GlobalErrorHandlers.tsx
+src/components/atoms/InfoTrigger.tsx
 src/components/atoms/Input.tsx
 src/components/atoms/Label.tsx
 src/components/atoms/SegmentedButton.tsx
@@ -187,7 +188,6 @@ src/components/common/SubjectChip.tsx
 src/components/common/SubjectChip.types.ts
 src/components/common/__tests__/SchedulePreview.test.tsx
 src/components/common/__tests__/SubjectChip.test.tsx
-src/components/molecules/AccountMenu.tsx
 src/components/molecules/ApplyTemplateConfirm.tsx
 src/components/molecules/ApplyTemplateModal.tsx
 src/components/molecules/AttendanceSheet.tsx
@@ -234,7 +234,6 @@ src/components/molecules/TemplatePreviewModal.tsx
 src/components/molecules/TimeTableCell.tsx
 src/components/molecules/TimeTableRow.tsx
 src/components/molecules/TopBar.tsx
-src/components/molecules/__tests__/AccountMenu.test.tsx
 src/components/molecules/__tests__/ApplyTemplateConfirm.test.tsx
 src/components/molecules/__tests__/ApplyTemplateModal.test.tsx
 src/components/molecules/__tests__/AttendanceSheet.test.tsx
@@ -422,10 +421,12 @@ src/lib/apiSync.ts
 src/lib/auth/__tests__/deduplication.test.ts
 src/lib/auth/__tests__/fullDataMigration.test.ts
 src/lib/auth/__tests__/handleLoginDataMigration.test.ts
+src/lib/auth/__tests__/signOut.test.ts
 src/lib/auth/deduplication.ts
 src/lib/auth/fullDataMigration.ts
 src/lib/auth/handleLoginDataMigration.ts
 src/lib/auth/permissions.ts
+src/lib/auth/signOut.ts
 src/lib/authUtils.ts
 src/lib/colors/__tests__/tintFromHex.test.ts
 src/lib/colors/hexToRgba.ts
@@ -531,3 +532,4 @@ migration/migrations/038_share_tokens_teacher.sql
 migration/migrations/039_sessions_notes.sql
 migration/migrations/040_access_code.sql
 migration/migrations/041_academy_slug.sql
+migration/migrations/042_force_expire_4char_codes.sql
