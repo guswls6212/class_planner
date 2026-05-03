@@ -76,6 +76,23 @@
   - `TeachersPageLayout`, `TeacherDetailPanel` — 강사 관리 두 패널 레이아웃. Stacked Sections: Header → Summary Cards → 담당 과목 M:N chip → 연락처·역할(email/phone/role/notes) → 수업 일정 → 색상 팔레트.
 - **Common Primitives:** 계층 공유 디자인 토큰 컴포넌트 (`src/components/common/`) — SubjectChip, SchedulePreview
 
+### 1.4 PWA & Mobile-First (전제)
+class-planner는 **모바일 PWA(Progressive Web App) 확장을 전제**로 설계한다. 신규 UI/UX 결정은 데스크톱 웹뿐 아니라 모바일 PWA 환경을 함께 고려한다.
+
+- **Touch targets**: 모든 인터랙티브 요소는 최소 44×44px (Apple HIG 권장) — kebab 메뉴, 토글, 액션 버튼 등에 적용
+- **Responsive breakpoints**: Tailwind 기본 (`md:` 768px 이상 = 데스크톱). 모바일 전용 컴포넌트(TopBar, BottomTabBar)는 이미 존재 (`src/components/molecules/`)
+- **Offline-first capable**: localStorage가 SSOT 역할 → 네트워크 끊겨도 핵심 기능(시간표 조회·편집·학생/과목/강사 CRUD) 동작. PWA service worker는 정적 자산 캐싱 + 오프라인 페이지를 추가할 예정 (현재 미구현)
+- **Installable**: 향후 `manifest.json` + `apple-touch-icon` + `service-worker` 추가 시 홈 화면 추가 / 풀스크린 모드 지원
+- **Toast UX**: 모바일에서도 위에서 슬라이드, 충분한 hit area, 자동 dismiss + 명시적 dismiss 양쪽 지원
+
+**현재 미구현 항목** (도입 시점은 미정):
+- `public/manifest.json` (앱 메타데이터, theme color, icons)
+- Service worker (`next-pwa` 또는 Next.js native API)
+- iOS Safari `apple-touch-icon` + meta tags
+- 푸시 알림 (수업 시작 알림, 코드 만료 임박 등 — 학부모 PWA에서 가치 大)
+
+**설계 원칙**: 신규 컴포넌트/기능 PR은 모바일 화면(360–414px)에서 합리적으로 동작하는지 검토. PWA 인프라가 추가되기 전이라도 디자인은 미리 PWA 친화적으로.
+
 ## 2. 컴포넌트 구조
 
 ### 2.1 Pages (Next.js App Router)
