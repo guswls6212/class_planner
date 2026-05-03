@@ -7,10 +7,7 @@ interface SidebarContextValue {
   toggle: () => void;
 }
 
-const SidebarContext = createContext<SidebarContextValue>({
-  expanded: false,
-  toggle: () => {},
-});
+const SidebarContext = createContext<SidebarContextValue | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [expanded, setExpanded] = useState<boolean>(() => {
@@ -34,5 +31,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useSidebar() {
-  return useContext(SidebarContext);
+  const ctx = useContext(SidebarContext);
+  if (ctx === undefined) {
+    throw new Error("useSidebar must be used within SidebarProvider");
+  }
+  return ctx;
 }
