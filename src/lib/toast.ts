@@ -5,18 +5,19 @@
  */
 import { createElement } from "react";
 import { toast } from "sonner";
+import { SuccessToastContent } from "../components/atoms/SuccessToastContent";
 import { UndoToastContent } from "../components/atoms/UndoToastContent";
 
 export function showToast(
   type: "error" | "success" | "warning" | "info",
-  message: string
+  message: string,
 ) {
   switch (type) {
     case "error":
       toast.error(message);
       break;
     case "success":
-      toast.success(message);
+      showSuccess(message);
       break;
     case "warning":
       toast.warning(message);
@@ -28,7 +29,13 @@ export function showToast(
 }
 
 export const showError = (message: string) => toast.error(message);
-export const showSuccess = (message: string) => toast.success(message);
+
+// Custom render so success toast shares layout with undo toast (same width,
+// icon position, font, spacing) — only color differs (green vs red).
+export const showSuccess = (message: string) =>
+  toast.custom(() => createElement(SuccessToastContent, { message }), {
+    duration: 4000,
+  });
 
 /**
  * Toast with an "undo" action button. Used for destructive mutations
