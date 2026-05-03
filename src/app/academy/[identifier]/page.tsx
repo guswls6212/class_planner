@@ -74,8 +74,8 @@ export default function AcademyAccessPage({
           <input
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="접속 코드 입력 (예: 이현2A)"
-            maxLength={4}
+            placeholder="접속 코드 입력 (예: 이현3K7P)"
+            maxLength={6}
             className="mb-3 w-full rounded-xl border-2 border-slate-700 bg-slate-800 px-4 py-4 text-center text-2xl font-bold tracking-widest text-slate-100 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
             autoComplete="off"
           />
@@ -86,7 +86,7 @@ export default function AcademyAccessPage({
 
           <button
             type="submit"
-            disabled={loading || code.trim().length < 4}
+            disabled={loading || code.trim().length < 6}
             className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-gray-900 hover:bg-amber-400 disabled:opacity-40 transition-colors"
           >
             {loading ? '확인 중...' : '시간표 보기 →'}

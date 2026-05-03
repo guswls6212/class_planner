@@ -78,23 +78,57 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, created: 0 })
   }
 
-  // 3. 각 학생 코드 생성 (충돌 방지: 생성 목록 내 중복 체크)
-  const inserts = []
+  // 3. 각 학생 코드 생성
+
+  // 3-1. batch 내 중복 없이 후보 코드 생성
   const usedCodes = new Set<string>()
+  const candidates: string[] = []
 
   for (const student of studentsToCreate) {
     let code = generateAccessCode(student.name)
     let attempts = 0
-    while (usedCodes.has(code) && attempts < 10) {
+    while (usedCodes.has(code) && attempts < 50) {
       code = generateAccessCode(student.name)
       attempts++
     }
     usedCodes.add(code)
+    candidates.push(code)
+  }
+
+  // 3-2. DB에서 academy 내 활성 코드와 충돌 확인
+  const { data: existingDbCodes } = await client
+    .from('share_tokens')
+    .select('access_code')
+    .eq('academy_id', academyId)
+    .in('access_code', candidates)
+    .is('revoked_at', null)
+
+  const existingDbSet = new Set(
+    (existingDbCodes ?? []).map((r: { access_code: string }) => r.access_code)
+  )
+
+  // 3-3. DB 충돌 코드 재생성
+  for (let i = 0; i < candidates.length; i++) {
+    if (existingDbSet.has(candidates[i])) {
+      let code = generateAccessCode(studentsToCreate[i].name)
+      let attempts = 0
+      while ((existingDbSet.has(code) || usedCodes.has(code)) && attempts < 50) {
+        code = generateAccessCode(studentsToCreate[i].name)
+        attempts++
+      }
+      candidates[i] = code
+    }
+  }
+
+  // 3-4. insert 준비
+  const inserts = []
+  for (let i = 0; i < studentsToCreate.length; i++) {
+    const student = studentsToCreate[i]
     inserts.push({
       academy_id: academyId,
       label: `${student.name} 학부모 접속 코드`,
       filter_student_id: student.id,
-      access_code: code,
+      access_code: candidates[i],
       expires_at: expiresAt,
       created_by: userId,
     })
