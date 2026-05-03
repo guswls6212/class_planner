@@ -18,12 +18,14 @@ import {
   addTeacherToLocal,
   deleteTeacherFromLocal,
   getAllTeachersFromLocal,
+  getClassPlannerData,
   getTeacherFromLocal,
   removeTeacherSubjectFromLocal,
+  setClassPlannerData,
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import { showToast } from "../lib/toast";
+import { showToast, showUndoToast } from "../lib/toast";
 import type { Teacher, TeacherRole } from "../lib/planner";
 
 // ===== 타입 정의 =====
@@ -234,7 +236,9 @@ export const useTeacherManagementLocal =
       [loadTeachersFromLocal]
     );
 
-    // ===== 강사 삭제 =====
+    // ===== 강사 삭제 (deferred + undo, PR γ 패턴) =====
+    // Cascade: teacher + 그 강사가 배정된 sessions의 teacherId를 undefined로 (세션 자체는 보존)
+    // Snapshot: teacher 객체 + sessionId → 원본 teacherId Map
 
     const deleteTeacher = useCallback(
       async (id: string): Promise<boolean> => {
@@ -243,15 +247,58 @@ export const useTeacherManagementLocal =
 
           logger.debug("useTeacherManagementLocal - 강사 삭제 시작", { id });
 
+          // 1) Snapshot
+          const dataBefore = getClassPlannerData();
+          const teacherBefore = dataBefore.teachers.find((t) => t.id === id);
+          if (!teacherBefore) {
+            setError("강사를 찾을 수 없습니다.");
+            return false;
+          }
+          // 강사가 배정된 session id 목록 (teacherId == id) — undo 시 다시 배정
+          const affectedSessionIds = dataBefore.sessions
+            .filter((s) => s.teacherId === id)
+            .map((s) => s.id);
+
+          // 2) Remove
           const result = deleteTeacherFromLocal(id);
 
           if (result.success) {
             loadTeachersFromLocal();
 
+            // 3) Defer server commit
             const userId = localStorage.getItem("supabase_user_id");
-            syncTeacherDelete(userId, id);
+            let cancelled = false;
+            const commitTimer = setTimeout(() => {
+              if (cancelled) return;
+              syncTeacherDelete(userId, id);
+              logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
+            }, 5000);
 
-            logger.info("useTeacherManagementLocal - 강사 삭제 성공", { id });
+            // 4) Undo toast
+            showUndoToast({
+              message: `${teacherBefore.name} 강사 삭제됨`,
+              onUndo: () => {
+                cancelled = true;
+                clearTimeout(commitTimer);
+
+                const dataNow = getClassPlannerData();
+                if (!dataNow.teachers.find((t) => t.id === teacherBefore.id)) {
+                  dataNow.teachers.push(teacherBefore);
+                }
+                // sessions의 teacherId 복원
+                dataNow.sessions = dataNow.sessions.map((s) =>
+                  affectedSessionIds.includes(s.id)
+                    ? { ...s, teacherId: teacherBefore.id }
+                    : s,
+                );
+                dataNow.lastModified = new Date().toISOString();
+                setClassPlannerData(dataNow);
+                loadTeachersFromLocal();
+
+                showToast("success", `${teacherBefore.name} 강사 복원됨`);
+                logger.info("useTeacherManagementLocal - 강사 삭제 undo", { id });
+              },
+            });
 
             return true;
           } else {
