@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
 import { SubjectDetailPanel } from "./SubjectDetailPanel";
+import ListFilterBar from "@/components/molecules/ListFilterBar";
 
 interface SubjectsPageLayoutProps {
   subjects: Subject[];
@@ -23,19 +23,16 @@ interface SubjectsPageLayoutProps {
 export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
   const { subjects, selectedSubjectId, onSelectSubject } = props;
   const canManage = props.canManage ?? true;
-  const [searchQuery, setSearchQuery] = useState("");
-  const [newName, setNewName] = useState("");
+  const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
 
   const DEFAULT_COLOR = "#3b82f6";
-  const filtered = subjects.filter((s) => s.name.includes(searchQuery));
+  const filtered = subjects.filter((s) => s.name.includes(query));
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
-  const handleAdd = async () => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
+  const handleAdd = async (trimmed: string) => {
     await props.onAddSubject(trimmed, DEFAULT_COLOR);
-    setNewName("");
+    setQuery("");
   };
 
   const handleSelect = (id: string) => {
@@ -59,49 +56,21 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">과목 목록</h2>
         </div>
 
-        {/* Add subject — only visible to owners/admins */}
-        {canManage && (
-          <div className="flex gap-2 p-3 border-b border-[var(--color-border)]">
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAdd();
-              }}
-              placeholder="과목 이름 (검색 가능)"
-              className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1.5 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-1 px-3 py-1.5 bg-accent text-[var(--color-admin-ink)] rounded-md hover:opacity-90 transition-opacity text-sm font-medium"
-              aria-label="과목 추가"
-            >
-              <Plus size={14} strokeWidth={1.5} />
-              추가
-            </button>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="px-3 py-2 border-b border-[var(--color-border)]">
-          <div className="relative">
-            <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="이름으로 검색"
-              className="w-full pl-8 pr-2 py-1.5 text-sm border border-[var(--color-border)] rounded-md bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
+        {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
+        <ListFilterBar
+          value={query}
+          onChange={setQuery}
+          canAdd={canManage}
+          onAdd={handleAdd}
+          placeholder="과목 이름으로 검색"
+          ariaLabelAdd="과목 추가"
+        />
 
         {/* Subject list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {searchQuery ? "검색 결과 없음" : "과목을 추가해주세요"}
+              {query ? "검색 결과 없음" : "과목을 추가해주세요"}
             </li>
           ) : (
             filtered.map((subject) => (

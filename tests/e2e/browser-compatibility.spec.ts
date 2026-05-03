@@ -13,14 +13,14 @@ test.describe("브라우저별 호환성 테스트", () => {
 
     // 학생 추가 테스트 (실제 placeholder 텍스트 사용)
     await page.fill(
-      'input[placeholder*="학생 이름 (검색 가능)"]',
+      'input[placeholder*="학생 이름으로 검색"]',
       "Chrome테스트학생"
     );
     await page.click('button:has-text("추가")');
 
     // 학생 추가 후 입력 필드가 비워졌는지 확인 (추가 성공)
     await expect(
-      page.locator('input[placeholder*="학생 이름 (검색 가능)"]')
+      page.locator('input[placeholder*="학생 이름으로 검색"]')
     ).toHaveValue("");
 
     // 시간표 페이지 접근 테스트
@@ -36,14 +36,14 @@ test.describe("브라우저별 호환성 테스트", () => {
 
     // 학생 추가 테스트 (실제 placeholder 텍스트 사용)
     await page.fill(
-      'input[placeholder*="학생 이름 (검색 가능)"]',
+      'input[placeholder*="학생 이름으로 검색"]',
       "Firefox테스트학생"
     );
     await page.click('button:has-text("추가")');
 
     // 학생 추가 후 입력 필드가 비워졌는지 확인 (추가 성공)
     await expect(
-      page.locator('input[placeholder*="학생 이름 (검색 가능)"]')
+      page.locator('input[placeholder*="학생 이름으로 검색"]')
     ).toHaveValue("");
 
     // 시간표 페이지 접근 테스트
@@ -65,14 +65,14 @@ test("모바일 뷰포트에서 기본 기능이 작동해야 한다", async ({ 
 
   // 모바일에서 학생 추가 (실제 placeholder 텍스트 사용)
   await page.fill(
-    'input[placeholder*="학생 이름 (검색 가능)"]',
+    'input[placeholder*="학생 이름으로 검색"]',
     "모바일테스트학생"
   );
   await page.click('button:has-text("추가")');
 
   // 학생 추가 후 입력 필드가 비워졌는지 확인 (추가 성공)
   await expect(
-    page.locator('input[placeholder*="학생 이름 (검색 가능)"]')
+    page.locator('input[placeholder*="학생 이름으로 검색"]')
   ).toHaveValue("");
 
   // 모바일에서 시간표 확인
@@ -93,7 +93,7 @@ test("터치 이벤트가 정상 작동해야 한다", async ({ page }) => {
 
   // 학생 추가 (실제 placeholder 텍스트 사용)
   await page.fill(
-    'input[placeholder*="학생 이름 (검색 가능)"]',
+    'input[placeholder*="학생 이름으로 검색"]',
     "터치테스트학생"
   );
   await page.click('button:has-text("추가")');

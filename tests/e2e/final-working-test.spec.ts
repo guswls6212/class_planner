@@ -72,7 +72,7 @@ test.describe("E2E 테스트 - 학생 관리", () => {
 
     // 학생 이름 입력
     const nameInput = page.locator(
-      'input[placeholder="학생 이름 (검색 가능)"]'
+      'input[placeholder="학생 이름으로 검색"]'
     );
     await nameInput.fill(studentName);
 
@@ -117,7 +117,7 @@ test.describe("E2E 테스트 - 학생 관리", () => {
     // 먼저 학생 추가
     const studentName = `삭제테스트${Date.now()}`;
     const nameInput = page.locator(
-      'input[placeholder="학생 이름 (검색 가능)"]'
+      'input[placeholder="학생 이름으로 검색"]'
     );
     await nameInput.fill(studentName);
     await page.locator('button:has-text("추가")').click();
@@ -172,7 +172,7 @@ test.describe("E2E 테스트 - 학생 관리", () => {
 
     // 과목 이름 입력
     const nameInput = page.locator(
-      'input[placeholder="과목 이름 (검색 가능)"]'
+      'input[placeholder="과목 이름으로 검색"]'
     );
     await nameInput.fill(subjectName);
 
