@@ -74,6 +74,26 @@ function getWeekStart(date: Date): Date {
   return d;
 }
 
+/**
+ * Monthly 캘린더 grid에 보이는 모든 주의 weekStartDate(YYYY-MM-DD) 목록.
+ * ScheduleMonthlyView의 buildCalendarDays와 동일 grid 범위(5~6주)를 재현.
+ * 학부모 monthly view에서 모든 주의 sessions를 한번에 fetch하기 위함.
+ */
+function getMonthCalendarWeekStarts(currentDate: Date): string[] {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Mon=0
+  const lastOfMonth = new Date(year, month + 1, 0);
+  const totalCells = Math.ceil((firstWeekday + lastOfMonth.getDate()) / 7) * 7;
+  const weekStarts = new Set<string>();
+  for (let i = 0; i < totalCells; i += 7) {
+    const d = new Date(year, month, 1 - firstWeekday + i);
+    weekStarts.add(getWeekStartDate(d));
+  }
+  return Array.from(weekStarts);
+}
+
 export default function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [data, setData] = useState<ShareData | null>(null);
@@ -85,13 +105,25 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const pollerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const weekStart = useMemo(() => getWeekStartDate(selectedDate), [selectedDate]);
+  // 뷰 모드별 fetch 범위:
+  // - daily/weekly: 현재 주 1개
+  // - monthly: 캘린더 grid에 보이는 5~6주 전부 (다른 주의 sessions가 다른 셀에 표시)
+  const weeks = useMemo(
+    () =>
+      viewMode === "monthly"
+        ? getMonthCalendarWeekStarts(selectedDate)
+        : [getWeekStartDate(selectedDate)],
+    [viewMode, selectedDate],
+  );
+  const weeksKey = weeks.join(",");
 
-  const fetchData = async (silent = false, week = weekStart) => {
+  const fetchData = async (silent = false, weeksList = weeks) => {
     if (!silent) setLoading(true);
     else setIsRefreshing(true);
     try {
-      const res = await fetch(`/api/share/${token}?week=${week}`);
+      const res = await fetch(
+        `/api/share/${token}?weeks=${encodeURIComponent(weeksList.join(","))}`,
+      );
       const json = await res.json();
       if (json.success) {
         setData(json.data);
@@ -108,11 +140,11 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   };
 
   useEffect(() => {
-    fetchData(false, weekStart);
+    fetchData(false, weeks);
     if (pollerRef.current) clearInterval(pollerRef.current);
-    pollerRef.current = setInterval(() => fetchData(true, weekStart), POLL_INTERVAL_MS);
+    pollerRef.current = setInterval(() => fetchData(true, weeks), POLL_INTERVAL_MS);
     return () => { if (pollerRef.current) clearInterval(pollerRef.current); };
-  }, [token, weekStart]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [token, weeksKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 날짜 네비게이션
   const navigate = (dir: -1 | 1) => {

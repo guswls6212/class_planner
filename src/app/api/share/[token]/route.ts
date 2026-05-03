@@ -44,7 +44,18 @@ export async function GET(
 
     const academyId: string = tokenRow.academy_id;
     const { searchParams } = new URL(request.url);
-    const weekStart = searchParams.get("week") ?? getWeekStartDate(new Date());
+    // weeks=YYYY-MM-DD,YYYY-MM-DD,... (multi-week, monthly view용)
+    // week=YYYY-MM-DD (단일 주, 하위 호환용)
+    // 둘 다 없으면 현재 주(KST)로 폴백.
+    const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+    const weeksParam = searchParams.get("weeks");
+    const weekParam = searchParams.get("week");
+    const weeks: string[] = weeksParam
+      ? Array.from(new Set(weeksParam.split(",").map((w) => w.trim()).filter((w) => ISO_DATE.test(w))))
+      : (weekParam && ISO_DATE.test(weekParam))
+        ? [weekParam]
+        : [getWeekStartDate(new Date())];
+    const primaryWeek = weeks[0] ?? getWeekStartDate(new Date());
 
     // 2. Fetch academy name + change tracking timestamp
     const { data: academyRow } = await client
@@ -53,9 +64,9 @@ export async function GET(
       .eq("id", academyId)
       .single();
 
-    // 3. Fetch schedule data
+    // 3. Fetch schedule data — sessions는 weeks 범위, 나머지는 academy 단위
     const [sessionsRes, studentsRes, subjectsRes, teachersRes] = await Promise.all([
-      client.from("sessions").select("*").eq("academy_id", academyId).eq("week_start_date", weekStart),
+      client.from("sessions").select("*").eq("academy_id", academyId).in("week_start_date", weeks),
       client.from("students").select("*").eq("academy_id", academyId),
       client.from("subjects").select("*").eq("academy_id", academyId),
       client.from("teachers").select("*").eq("academy_id", academyId),
@@ -129,7 +140,8 @@ export async function GET(
         scheduleUpdatedAt,
         lastViewedAt: previousLastViewedAt,
         hasChanges,
-        currentWeek: weekStart,
+        currentWeek: primaryWeek,
+        weeks,
       },
     });
   } catch (error) {
