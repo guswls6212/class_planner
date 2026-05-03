@@ -18,6 +18,52 @@ import type { Session } from "../lib/planner";
 let consecutiveFailures = 0;
 let firstFailToastShown = false;
 let escalatedToastShown = false;
+/** retry 10회 모두 소진 후 silent 포기 상태. onSyncSuccess 시 false로 reset. */
+let gaveUp = false;
+
+// ===== 사용자 노출용 sync 상태 (헤더 indicator 등 영구 visible UI) =====
+
+export type SyncStatus = "idle" | "failed_retrying" | "failed_giving_up";
+
+const syncStatusEvents = new EventTarget();
+
+function deriveStatus(): SyncStatus {
+  if (consecutiveFailures === 0) return "idle";
+  if (gaveUp) return "failed_giving_up";
+  return "failed_retrying";
+}
+
+let lastDispatchedStatus: SyncStatus = "idle";
+
+function notifySyncStatusChange(): void {
+  const next = deriveStatus();
+  if (next === lastDispatchedStatus) return;
+  lastDispatchedStatus = next;
+  syncStatusEvents.dispatchEvent(
+    new CustomEvent("change", { detail: next }),
+  );
+}
+
+/**
+ * 현재 sync 상태 — React 외부에서 한 번만 읽을 때.
+ * React 컴포넌트는 useSyncStatus() hook 사용.
+ */
+export function getSyncStatus(): SyncStatus {
+  return deriveStatus();
+}
+
+/**
+ * sync 상태 변경 listener 등록. unsubscribe 함수 반환.
+ */
+export function subscribeSyncStatus(
+  callback: (status: SyncStatus) => void,
+): () => void {
+  const handler = (e: Event) => {
+    callback((e as CustomEvent<SyncStatus>).detail);
+  };
+  syncStatusEvents.addEventListener("change", handler);
+  return () => syncStatusEvents.removeEventListener("change", handler);
+}
 
 function onSyncSuccess(): void {
   if (consecutiveFailures > 0) {
@@ -28,6 +74,8 @@ function onSyncSuccess(): void {
     }
     firstFailToastShown = false;
     escalatedToastShown = false;
+    gaveUp = false;
+    notifySyncStatusChange();
   }
 }
 
@@ -48,6 +96,13 @@ function onSyncFailure(context: string): void {
     );
   }
   logger.error(`apiSync ${context} 실패 (연속 ${consecutiveFailures}회)`);
+  notifySyncStatusChange();
+}
+
+function onSyncGiveUp(context: string): void {
+  gaveUp = true;
+  logger.error(`apiSync ${context} 10회 retry 후 포기`);
+  notifySyncStatusChange();
 }
 
 /**
@@ -57,6 +112,8 @@ export function __resetSyncStateForTests(): void {
   consecutiveFailures = 0;
   firstFailToastShown = false;
   escalatedToastShown = false;
+  gaveUp = false;
+  lastDispatchedStatus = "idle";
 }
 
 /**
@@ -87,6 +144,8 @@ function fireAndForget(
         if (attempt < 9) {
           const delay = calcDelay(attempt);
           setTimeout(() => fireAndForget(makeRequest, context, attempt + 1), delay);
+        } else {
+          onSyncGiveUp(context);
         }
       } else {
         onSyncSuccess();
@@ -98,6 +157,8 @@ function fireAndForget(
       if (attempt < 9) {
         const delay = calcDelay(attempt);
         setTimeout(() => fireAndForget(makeRequest, context, attempt + 1), delay);
+      } else {
+        onSyncGiveUp(context);
       }
     });
 }
