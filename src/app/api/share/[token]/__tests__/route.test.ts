@@ -167,4 +167,170 @@ describe("GET /api/share/[token]", () => {
 
     expect(res.status).toBe(410);
   });
+
+  it("weeks 파라미터 — sessions 쿼리에 .in('week_start_date', [...]) 호출", async () => {
+    const inSpy = vi.fn().mockResolvedValue({ data: [], error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "share_tokens") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: makeTokenRow(), error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+      if (table === "academies") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { name: "테스트학원", schedule_updated_at: SCHEDULE_UPDATED_AT },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ in: inSpy }),
+          }),
+        };
+      }
+      const resolved = { data: [], error: null };
+      const makeEq = (): Record<string, unknown> => ({
+        eq: vi.fn().mockImplementation(() => makeEq()),
+        in: vi.fn().mockResolvedValue(resolved),
+        then: (resolve: (v: typeof resolved) => unknown) => Promise.resolve(resolved).then(resolve),
+        catch: (reject: (e: unknown) => unknown) => Promise.resolve(resolved).catch(reject),
+      });
+      return { select: vi.fn().mockReturnValue(makeEq()) };
+    });
+
+    const req = new NextRequest(
+      "http://localhost/api/share/abc123?weeks=2026-04-27,2026-05-04,2026-05-11",
+    );
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(inSpy).toHaveBeenCalledWith("week_start_date", [
+      "2026-04-27",
+      "2026-05-04",
+      "2026-05-11",
+    ]);
+    expect(body.data.weeks).toEqual(["2026-04-27", "2026-05-04", "2026-05-11"]);
+    expect(body.data.currentWeek).toBe("2026-04-27");
+  });
+
+  it("week 단일 파라미터 — backward compat (1주 fetch)", async () => {
+    const inSpy = vi.fn().mockResolvedValue({ data: [], error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "share_tokens") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: makeTokenRow(), error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+      if (table === "academies") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { name: "테스트학원", schedule_updated_at: SCHEDULE_UPDATED_AT },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ in: inSpy }),
+          }),
+        };
+      }
+      const resolved = { data: [], error: null };
+      const makeEq = (): Record<string, unknown> => ({
+        eq: vi.fn().mockImplementation(() => makeEq()),
+        in: vi.fn().mockResolvedValue(resolved),
+        then: (resolve: (v: typeof resolved) => unknown) => Promise.resolve(resolved).then(resolve),
+        catch: (reject: (e: unknown) => unknown) => Promise.resolve(resolved).catch(reject),
+      });
+      return { select: vi.fn().mockReturnValue(makeEq()) };
+    });
+
+    const req = new NextRequest("http://localhost/api/share/abc123?week=2026-05-04");
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(inSpy).toHaveBeenCalledWith("week_start_date", ["2026-05-04"]);
+    expect(body.data.weeks).toEqual(["2026-05-04"]);
+  });
+
+  it("invalid weeks 항목 무시 (YYYY-MM-DD 형식만)", async () => {
+    const inSpy = vi.fn().mockResolvedValue({ data: [], error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "share_tokens") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: makeTokenRow(), error: null }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        };
+      }
+      if (table === "academies") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { name: "테스트학원", schedule_updated_at: SCHEDULE_UPDATED_AT },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "sessions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ in: inSpy }),
+          }),
+        };
+      }
+      const resolved = { data: [], error: null };
+      const makeEq = (): Record<string, unknown> => ({
+        eq: vi.fn().mockImplementation(() => makeEq()),
+        in: vi.fn().mockResolvedValue(resolved),
+        then: (resolve: (v: typeof resolved) => unknown) => Promise.resolve(resolved).then(resolve),
+        catch: (reject: (e: unknown) => unknown) => Promise.resolve(resolved).catch(reject),
+      });
+      return { select: vi.fn().mockReturnValue(makeEq()) };
+    });
+
+    const req = new NextRequest(
+      "http://localhost/api/share/abc123?weeks=2026-05-04,invalid,DROP%20TABLE,2026-05-11",
+    );
+    const res = await GET(req, { params: Promise.resolve({ token: "abc123" }) });
+
+    expect(res.status).toBe(200);
+    expect(inSpy).toHaveBeenCalledWith("week_start_date", ["2026-05-04", "2026-05-11"]);
+  });
 });
