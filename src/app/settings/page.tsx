@@ -718,7 +718,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학부모 접속 코드</h3>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                학부모가 자녀 시간표를 볼 수 있는 코드입니다
+                학부모가 자녀 시간표를 볼 수 있는 코드입니다 (코드는 6자 영문·숫자)
               </p>
             </div>
             <div className="flex gap-2">

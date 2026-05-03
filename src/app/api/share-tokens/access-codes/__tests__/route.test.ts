@@ -18,7 +18,7 @@ vi.mock('@/lib/supabaseServiceRole', () => ({
 }))
 
 vi.mock('@/lib/accessCode', () => ({
-  generateAccessCode: vi.fn((name: string) => `${name.slice(0, 2).padEnd(2, '_')}3A`),
+  generateAccessCode: vi.fn((name: string) => `${name.slice(0, 2).padEnd(2, '_')}3A7B`),
 }))
 
 vi.mock('@/lib/logger', () => ({
@@ -58,6 +58,30 @@ describe('POST /api/share-tokens/access-codes', () => {
   it('owner — mode=create → 코드 없는 학생에게 접속 코드를 생성하고 created 수를 반환한다', async () => {
     mockMembership.mockResolvedValue({ academyId: 'acad-1', role: 'owner' })
 
+    // share_tokens.select is called twice across two from() invocations.
+    // Hoist selectMock so it persists across from() calls.
+    const shareTokensSelectMock = vi.fn()
+    shareTokensSelectMock
+      .mockReturnValueOnce({
+        // call 1 (from first from()): existing student codes check
+        eq: vi.fn().mockReturnValue({
+          not: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        // call 2 (from second from()): DB collision check
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      })
+    const shareTokensInsertMock = vi.fn().mockResolvedValue({ error: null })
+
     mockFrom.mockImplementation((table: string) => {
       if (table === 'students') {
         return {
@@ -74,17 +98,8 @@ describe('POST /api/share-tokens/access-codes', () => {
       }
       if (table === 'share_tokens') {
         return {
-          // existingCodes query chain: select → eq → not → is → gt
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              not: vi.fn().mockReturnValue({
-                is: vi.fn().mockReturnValue({
-                  gt: vi.fn().mockResolvedValue({ data: [], error: null }),
-                }),
-              }),
-            }),
-          }),
-          insert: vi.fn().mockResolvedValue({ error: null }),
+          select: shareTokensSelectMock,
+          insert: shareTokensInsertMock,
         }
       }
       return {}
@@ -108,6 +123,31 @@ describe('POST /api/share-tokens/access-codes', () => {
 
     const insertMock = vi.fn().mockResolvedValue({ error: null })
 
+    // Hoist selectMock so it persists across from() calls
+    const shareTokensSelectMock = vi.fn()
+    shareTokensSelectMock
+      .mockReturnValueOnce({
+        // call 1: existing student codes check — student-1 already has a code
+        eq: vi.fn().mockReturnValue({
+          not: vi.fn().mockReturnValue({
+            is: vi.fn().mockReturnValue({
+              gt: vi.fn().mockResolvedValue({
+                data: [{ filter_student_id: 'student-1' }],
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        // call 2: DB collision check — no conflicts
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      })
+
     mockFrom.mockImplementation((table: string) => {
       if (table === 'students') {
         return {
@@ -124,19 +164,7 @@ describe('POST /api/share-tokens/access-codes', () => {
       }
       if (table === 'share_tokens') {
         return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              not: vi.fn().mockReturnValue({
-                is: vi.fn().mockReturnValue({
-                  // student-1 already has a code
-                  gt: vi.fn().mockResolvedValue({
-                    data: [{ filter_student_id: 'student-1' }],
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-          }),
+          select: shareTokensSelectMock,
           insert: insertMock,
         }
       }
@@ -213,6 +241,14 @@ describe('POST /api/share-tokens/access-codes', () => {
       if (table === 'share_tokens') {
         return {
           update: updateMock,
+          // DB collision check: select → eq → in → is
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              in: vi.fn().mockReturnValue({
+                is: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
           insert: insertMock,
         }
       }
