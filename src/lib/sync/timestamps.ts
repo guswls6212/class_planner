@@ -10,7 +10,7 @@
  *   - 서버 timestamp 알 수 없음 (모든 fetch 실패 등) → 보수적 SKIP
  *
  * See: ARCHITECTURE.md § 1.2 Local-First Architecture
- *      docs/plan: Hybrid Local-First Phase 1
+ *      docs/superpowers/specs/2026-05-04-hybrid-sync-phases-design.md (Phase 2/3 design)
  */
 
 export interface EntityWithUpdatedAt {

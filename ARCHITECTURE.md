@@ -32,6 +32,9 @@
 - 익명 사용자: localStorage만 사용 (서버 호출 없음)
 - 로그인 사용자: localStorage → 서버 양방향 동기화
 - 네트워크 불안정 시에도 UX 유지
+- **Phase 1 (현재)**: passive timestamp sync — 페이지 로드 시 1회 server fetch + `decideOverwrite` (`src/lib/sync/timestamps.ts`)
+- **Phase 2 (미구현)**: 활성 탭 30s 백그라운드 폴링 — `docs/superpowers/specs/2026-05-04-hybrid-sync-phases-design.md`
+- **Phase 3 (미구현)**: Supabase Realtime + BroadcastChannel multi-tab dedup — 동상 spec 참조
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)
