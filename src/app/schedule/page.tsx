@@ -38,7 +38,6 @@ import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
 import SegmentedButton from "../../components/atoms/SegmentedButton";
 import ColorByToggle from "../../components/molecules/ColorByToggle";
-import { HelpTooltip } from "../../components/molecules/HelpTooltip";
 import type { ScheduleViewMode } from "../../hooks/useScheduleView";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -1452,10 +1451,6 @@ function SchedulePageContent(): JSX.Element {
                 강사 {teachers.length}명
               </span>
             )}
-            <HelpTooltip
-              label="색상 기준 도움말"
-              content="과목별로 색을 구분하거나, 학생·강사 기준으로 전환할 수 있습니다."
-            />
           </div>
         </div>
       </div>

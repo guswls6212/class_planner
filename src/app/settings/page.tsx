@@ -802,10 +802,12 @@ export default function SettingsPage() {
       {canManage && (
         <section className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden">
           {/* 아코디언 헤더 — 항상 표시 */}
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setShareExpanded((v) => !v)}
-            className="w-full flex items-start justify-between gap-3 p-5 text-left"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShareExpanded((v) => !v); } }}
+            className="w-full flex items-start justify-between gap-3 p-5 cursor-pointer select-none"
           >
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-400/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
@@ -841,7 +843,7 @@ export default function SettingsPage() {
                 : <ChevronDown size={16} className="text-[var(--color-text-muted)]" />
               }
             </div>
-          </button>
+          </div>
 
           {/* 힌트 텍스트 — 닫힌 상태 + 토큰 0개 */}
           {!shareExpanded && shareTokens.length === 0 && (
