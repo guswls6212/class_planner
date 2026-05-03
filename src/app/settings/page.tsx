@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
@@ -14,6 +14,8 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
+
+const CODES_INITIAL_SHOW = 5;
 
 interface PendingInvite {
   id: string;
@@ -83,6 +85,18 @@ export default function SettingsPage() {
 
   // 학부모 접속 코드
   const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
+  const [showAllCodes, setShowAllCodes] = useState(false);
+
+  // 중복 이름 사전 계산 — map() 내 매 항목마다 filter() 반복 방지
+  const duplicateNameSet = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of localStudents) {
+      counts.set(s.name, (counts.get(s.name) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, c]) => c > 1).map(([n]) => n)
+    );
+  }, [localStudents]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -438,6 +452,7 @@ export default function SettingsPage() {
       } else {
         showToast("info", "모든 학생에게 이미 코드가 있습니다.");
       }
+      setShowAllCodes(false);
       await fetchData();
     } else {
       showToast("error", "코드 생성에 실패했습니다.");
@@ -454,6 +469,7 @@ export default function SettingsPage() {
     });
     if (res.ok) {
       showToast("success", "모든 접속 코드가 갱신됐습니다.");
+      setShowAllCodes(false);
       await fetchData();
     } else {
       showToast("error", "코드 갱신에 실패했습니다.");
@@ -711,14 +727,14 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 학부모 접속 코드 섹션 */}
+      {/* 학생 접속 코드 섹션 */}
       {canManage && (
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mt-4">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
             <div>
-              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학부모 접속 코드</h3>
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학생 접속 코드</h3>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                학부모가 자녀 시간표를 볼 수 있는 코드입니다 (코드는 6자 영문·숫자)
+                자녀 시간표 공유용 코드입니다 (6자 영문·숫자)
               </p>
             </div>
             <div className="flex gap-2">
@@ -746,9 +762,13 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div>
-              {accessCodes.map((code) => {
-                // Extract student name from label: "이현진 학부모 접속 코드" → "이현진"
-                const studentName = code.label?.replace(" 학부모 접속 코드", "") || "알 수 없음";
+              {(showAllCodes ? accessCodes : accessCodes.slice(0, CODES_INITIAL_SHOW)).map((code) => {
+                const student = localStudents.find((s) => s.id === code.filter_student_id);
+                const studentName =
+                  student?.name ??
+                  code.label?.replace(" 학부모 접속 코드", "").replace(" 접속 코드", "") ??
+                  "알 수 없음";
+                const hasDuplicate = duplicateNameSet.has(studentName);
                 const daysLeft = Math.ceil(
                   (new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 );
@@ -759,6 +779,11 @@ export default function SettingsPage() {
                   >
                     <span className="w-24 flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
                       {studentName}
+                      {hasDuplicate && student && (
+                        <span className="ml-1 text-[10px] font-normal text-[var(--color-text-muted)]">
+                          ({student.id.slice(-4)})
+                        </span>
+                      )}
                     </span>
                     <span className="font-mono text-base font-bold tracking-wider text-[var(--color-accent)]">
                       {code.access_code}
@@ -784,12 +809,23 @@ export default function SettingsPage() {
                   </div>
                 );
               })}
+              {accessCodes.length > CODES_INITIAL_SHOW && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCodes((v) => !v)}
+                  className="w-full py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors border-t border-[var(--color-border)]"
+                >
+                  {showAllCodes
+                    ? "접기 ▲"
+                    : `${accessCodes.length - CODES_INITIAL_SHOW}명 더보기 ▼`}
+                </button>
+              )}
             </div>
           )}
 
           <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
             <p className="text-xs text-[var(--color-text-muted)]">
-              학부모 접속 URL:{" "}
+              접속 URL:{" "}
               <span className="font-mono text-[var(--color-accent)]">
                 {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academySlug ?? academyId ?? ""}
               </span>
@@ -802,10 +838,13 @@ export default function SettingsPage() {
       {canManage && (
         <section className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden">
           {/* 아코디언 헤더 — 항상 표시 */}
-          <button
-            type="button"
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={shareExpanded}
             onClick={() => setShareExpanded((v) => !v)}
-            className="w-full flex items-start justify-between gap-3 p-5 text-left"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShareExpanded((v) => !v); } }}
+            className="w-full flex items-start justify-between gap-3 p-5 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded-t-xl"
           >
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-400/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
@@ -841,7 +880,7 @@ export default function SettingsPage() {
                 : <ChevronDown size={16} className="text-[var(--color-text-muted)]" />
               }
             </div>
-          </button>
+          </div>
 
           {/* 힌트 텍스트 — 닫힌 상태 + 토큰 0개 */}
           {!shareExpanded && shareTokens.length === 0 && (
