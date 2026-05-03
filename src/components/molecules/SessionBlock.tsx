@@ -43,6 +43,16 @@ interface SessionBlockProps {
   selected?: boolean;
   /** Shift/Ctrl/Meta + click 시 호출. undefined이면 modifier click도 onClick으로 fall through. */
   onSelectToggle?: () => void;
+  /**
+   * 모바일 long-press 메뉴 확장 — "이 세션 복사" 항목.
+   * 데스크톱은 Ctrl/Meta+drag로 충분. 모바일은 modifier 키 없으므로 menu에서.
+   */
+  onContextMenuCopy?: () => void;
+  /**
+   * 모바일 long-press 메뉴 확장 — "선택 시작" 항목.
+   * 모드 진입 + 이 세션이 즉시 selected 상태로.
+   */
+  onContextMenuStartSelect?: () => void;
 }
 
 export const validateSessionBlockProps = (
@@ -80,6 +90,8 @@ function SessionBlock({
   isReadOnly = false,
   selected = false,
   onSelectToggle,
+  onContextMenuCopy,
+  onContextMenuStartSelect,
 }: SessionBlockProps) {
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -468,6 +480,36 @@ function SessionBlock({
             >
               편집
             </button>
+            {onContextMenuCopy && (
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenuOpen(false);
+                  onContextMenuCopy();
+                }}
+                data-testid="session-context-copy"
+              >
+                복사
+              </button>
+            )}
+            {onContextMenuStartSelect && (
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenuOpen(false);
+                  onContextMenuStartSelect();
+                }}
+                data-testid="session-context-select"
+              >
+                선택 시작
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"

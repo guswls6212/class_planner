@@ -55,6 +55,16 @@ interface TimeTableGridProps {
     time: string,
     yPosition: number
   ) => void;
+  /**
+   * Ctrl/Meta + drag로 복사 시 호출. 호출자가 새 ID로 session 생성.
+   * 미전달 시 isCopyMode 무시하고 기존 onSessionDrop(이동) 동작.
+   */
+  onSessionCopy?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -86,6 +96,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onSessionDelete,
       onDrop,
       onSessionDrop,
+      onSessionCopy,
       onEmptySpaceClick,
       className = "",
       style = {},
@@ -489,12 +500,17 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const handleDndDragEnd = useCallback(
       ({ active, over }: DragEndEvent) => {
-        if (over && onSessionDrop) {
+        if (over) {
           const sessionId = active.id as string;
           const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
             const [wd, time, yPos] = parts;
-            onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+            // Ctrl/Meta + drag → 복사 (onSessionCopy가 있을 때만, 없으면 이동 fallback)
+            if (dragController.isCopyMode && onSessionCopy) {
+              onSessionCopy(sessionId, Number(wd), time, Number(yPos));
+            } else if (onSessionDrop) {
+              onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+            }
           }
           dragController.completeDrop();
         } else {
@@ -512,7 +528,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
         });
       },
-      [dragController, onSessionDrop, getSavedScrollPosition],
+      [dragController, onSessionDrop, onSessionCopy, getSavedScrollPosition],
     );
 
     return (
@@ -676,6 +692,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             <DragOverlayCard
               session={dragController.draggedSession}
               subjects={subjects}
+              isCopy={dragController.isCopyMode && Boolean(onSessionCopy)}
+              selectionCount={
+                selectedSessionIds && selectedSessionIds.size > 1
+                  ? selectedSessionIds.size
+                  : 1
+              }
             />
           ) : null}
         </DragOverlay>

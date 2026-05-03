@@ -30,6 +30,12 @@ type Props = {
     time: string,
     yPosition: number
   ) => void;
+  onSessionCopy?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => void;
   onEmptySpaceClick: (
     weekday: number,
     time: string,
@@ -57,6 +63,7 @@ export default function ScheduleGridSection({
   onSessionDelete,
   onDrop,
   onSessionDrop,
+  onSessionCopy,
   onEmptySpaceClick,
   selectedStudentIds,
   isStudentDragging,
@@ -78,6 +85,7 @@ export default function ScheduleGridSection({
         onSessionDelete={onSessionDelete}
         onDrop={onDrop}
         onSessionDrop={onSessionDrop}
+        onSessionCopy={onSessionCopy}
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
         isStudentDragging={isStudentDragging}

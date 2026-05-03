@@ -78,6 +78,7 @@ import { useEditModalState } from "./_hooks/useEditModalState";
 import { useTeacherFilter } from "./_hooks/useTeacherFilter";
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
+import { isTimeOverlapping } from "./_utils/collisionHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1024,13 +1025,202 @@ function SchedulePageContent(): JSX.Element {
       setGridVersion,
     });
   }, [updateSessionPosition]);
+
+  /**
+   * 다중 선택 묶음 일괄 이동/복사용 헬퍼.
+   * anchor session(드래그된 sesssion)의 새 위치를 기준으로 delta(weekday/시간)를
+   * 계산해 모든 selected sessions에 동일 적용.
+   *
+   * 충돌 정책 — B (recommended): 충돌 없는 항목만 적용, 충돌 항목은 toast로 안내.
+   * 같은 selected 묶음 안의 sessions끼리는 충돌 검사에서 제외 (자기들끼리 위치 교체 허용).
+   */
+  const computeBulkMoveTargets = useCallback(
+    (
+      anchorSessionId: string,
+      newWeekday: number,
+      newTime: string,
+      newYPosition: number,
+      selectedIds: string[],
+    ): {
+      moves: Array<{
+        session: Session;
+        weekday: number;
+        startsAt: string;
+        endsAt: string;
+        yPosition: number;
+      }>;
+      conflicts: number;
+    } => {
+      const anchor = sessions.find((s) => s.id === anchorSessionId);
+      if (!anchor) return { moves: [], conflicts: 0 };
+      const dWeekday = newWeekday - anchor.weekday;
+      const dMinutes =
+        timeToMinutes(newTime) - timeToMinutes(anchor.startsAt);
+      const selectedSet = new Set(selectedIds);
+      const candidates = sessions.filter((s) => selectedSet.has(s.id));
+      const moves: ReturnType<typeof computeBulkMoveTargets>["moves"] = [];
+      let conflicts = 0;
+      // 같은 selected 묶음끼리는 충돌 검사에서 제외 — 자기들끼리 swap 허용
+      const otherSessions = sessions.filter((s) => !selectedSet.has(s.id));
+      for (const s of candidates) {
+        const targetWeekday = Math.max(0, Math.min(6, s.weekday + dWeekday));
+        const targetStartMin = timeToMinutes(s.startsAt) + dMinutes;
+        const targetEndMin = timeToMinutes(s.endsAt) + dMinutes;
+        // 음수 시간 가드 — 자정 이전으로 끌면 skip
+        if (targetStartMin < 0) {
+          conflicts++;
+          continue;
+        }
+        const targetStarts = minutesToTime(targetStartMin);
+        const targetEnds = minutesToTime(targetEndMin);
+        const colliding = otherSessions.filter(
+          (o) =>
+            o.weekday === targetWeekday &&
+            isTimeOverlapping(o.startsAt, o.endsAt, targetStarts, targetEnds),
+        );
+        if (colliding.length > 0) {
+          conflicts++;
+          continue;
+        }
+        moves.push({
+          session: s,
+          weekday: targetWeekday,
+          startsAt: targetStarts,
+          endsAt: targetEnds,
+          yPosition: s.id === anchorSessionId ? newYPosition : s.yPosition ?? 1,
+        });
+      }
+      return { moves, conflicts };
+    },
+    [sessions],
+  );
+
   // Gate: member role — drag-to-reorder is disabled
   const handleSessionDrop = useCallback(
-    (...args: Parameters<typeof _handleSessionDropBase>) => {
+    (sessionId: string, weekday: number, time: string, yPosition: number) => {
       if (!canManage) return;
-      _handleSessionDropBase(...args);
+      // 다중 선택된 sessions 중 dragged session이 포함되어 있으면 일괄 이동
+      if (
+        sessionSelection.count > 1 &&
+        sessionSelection.isSelected(sessionId)
+      ) {
+        const { moves, conflicts } = computeBulkMoveTargets(
+          sessionId,
+          weekday,
+          time,
+          yPosition,
+          sessionSelection.selectedSessionIds,
+        );
+        for (const m of moves) {
+          _handleSessionDropBase(
+            m.session.id,
+            m.weekday,
+            m.startsAt,
+            m.yPosition,
+          );
+        }
+        const total = sessionSelection.count;
+        if (conflicts > 0) {
+          showToast(
+            "warning",
+            `${total}개 중 ${moves.length}개 이동 — ${conflicts}개는 시간 충돌로 건너뜀`,
+          );
+        } else {
+          showToast("success", `${moves.length}개 이동`);
+        }
+        sessionSelection.clear();
+        return;
+      }
+      _handleSessionDropBase(sessionId, weekday, time, yPosition);
     },
-    [canManage, _handleSessionDropBase]
+    [
+      canManage,
+      _handleSessionDropBase,
+      sessionSelection,
+      computeBulkMoveTargets,
+    ]
+  );
+
+  // 🆕 Ctrl/Meta + drag로 복사 — 원본 유지 + 새 ID로 sessions 추가
+  // (page-local addSession은 enrollmentIds 대신 studentIds를 받으므로 변환 필요)
+  const handleSessionCopy = useCallback(
+    async (
+      sessionId: string,
+      weekday: number,
+      time: string,
+      yPosition: number,
+    ) => {
+      if (!canManage) return;
+      // 다중 선택 묶음 일괄 복사
+      if (
+        sessionSelection.count > 1 &&
+        sessionSelection.isSelected(sessionId)
+      ) {
+        const { moves, conflicts } = computeBulkMoveTargets(
+          sessionId,
+          weekday,
+          time,
+          yPosition,
+          sessionSelection.selectedSessionIds,
+        );
+        let copied = 0;
+        for (const m of moves) {
+          const studentIds = (m.session.enrollmentIds ?? [])
+            .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)
+            .filter((sid): sid is string => Boolean(sid));
+          if (!m.session.subjectId) continue;
+          await addSession({
+            subjectId: m.session.subjectId,
+            studentIds,
+            teacherId: m.session.teacherId ?? undefined,
+            weekday: m.weekday,
+            startTime: m.startsAt,
+            endTime: m.endsAt,
+            yPosition: m.yPosition,
+            room: m.session.room,
+          });
+          copied++;
+        }
+        if (conflicts > 0) {
+          showToast(
+            "warning",
+            `${sessionSelection.count}개 중 ${copied}개 복사 — ${conflicts}개는 시간 충돌로 건너뜀`,
+          );
+        } else {
+          showToast("success", `${copied}개 복사`);
+        }
+        sessionSelection.clear();
+        return;
+      }
+      const original = sessions.find((s) => s.id === sessionId);
+      if (!original) {
+        logger.warn("복사 대상 세션을 찾을 수 없음", { sessionId });
+        return;
+      }
+      // 원본 enrollmentIds → studentIds 변환 (addSession이 enrollment 생성 책임)
+      const studentIds = (original.enrollmentIds ?? [])
+        .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)
+        .filter((sid): sid is string => Boolean(sid));
+      if (!original.subjectId) {
+        logger.warn("복사 대상 subjectId 없음", { sessionId });
+        return;
+      }
+      // 시간 길이 보존
+      const durationMin =
+        timeToMinutes(original.endsAt) - timeToMinutes(original.startsAt);
+      const newEnd = minutesToTime(timeToMinutes(time) + durationMin);
+      await addSession({
+        subjectId: original.subjectId,
+        studentIds,
+        teacherId: original.teacherId ?? undefined,
+        weekday,
+        startTime: time,
+        endTime: newEnd,
+        yPosition,
+        room: original.room,
+      });
+    },
+    [canManage, sessions, enrollments, addSession, sessionSelection, computeBulkMoveTargets],
   );
 
   // 🆕 빈 공간 클릭 처리 — member 역할은 no-op
@@ -1558,6 +1748,7 @@ function SchedulePageContent(): JSX.Element {
             onSessionDelete={handleSessionDelete}
             onDrop={handleDrop}
             onSessionDrop={handleSessionDrop}
+            onSessionCopy={canManage ? handleSessionCopy : undefined}
             onEmptySpaceClick={handleEmptySpaceClick}
             selectedStudentIds={selectedStudentIds}
             isStudentDragging={isStudentDragging}
