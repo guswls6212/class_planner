@@ -59,7 +59,7 @@ import { useMyRole } from "../../hooks/useMyRole";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { preflightCheck } from "@/lib/pdf/preflightCheck";
 import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
-import ConfirmModal from "../../components/molecules/ConfirmModal";
+// ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
@@ -168,6 +168,7 @@ function SchedulePageContent(): JSX.Element {
     error,
     updateData,
     addEnrollment,
+    deleteSession: deleteSessionFromHook,
   } = useIntegratedDataLocal();
 
   // Color-by 토글
@@ -580,16 +581,22 @@ function SchedulePageContent(): JSX.Element {
   );
 
   const deleteSession = useCallback(
+    // useIntegratedDataLocal.deleteSession에 위임 — 5초 undo 토스트 자동 적용
+    // (이전엔 자체 updateData로 wipe만 해서 undo 미동작 — 학생/과목/강사와 불일치)
     async (sessionId: string) => {
-      const newSessions = sessions.filter((s) => s.id !== sessionId);
-      await updateData({ sessions: newSessions });
+      await deleteSessionFromHook(sessionId);
     },
-    [sessions, updateData]
+    [deleteSessionFromHook]
   );
 
-  const handleSessionDelete = useCallback((session: Session) => {
-    setDeleteConfirmSessionId(session.id);
-  }, []);
+  const handleSessionDelete = useCallback(
+    (session: Session) => {
+      // 학생/과목/강사 삭제와 일관성: 즉시 삭제 + 5초 undo 토스트가 안전망.
+      // (이전엔 ConfirmModal "정말 삭제?" alert. 이제 모든 entity 동일 흐름.)
+      void deleteSession(session.id);
+    },
+    [deleteSession],
+  );
 
   // 🆕 로그인 상태 감지 및 로그아웃 시 정리
   useEffect(() => {
@@ -653,7 +660,7 @@ function SchedulePageContent(): JSX.Element {
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
 
   // 세션 삭제 확인 모달 상태
-  const [deleteConfirmSessionId, setDeleteConfirmSessionId] = useState<string | null>(null);
+  // (deleteConfirmSessionId state 제거됨 — 세션 삭제는 즉시 + undo 토스트로 처리)
   // 세션 서버 동기화 중 여부 (드래그 완료 후 PUT 완료 전)
   const [isSyncingSession, setIsSyncingSession] = useState(false);
 
@@ -1704,22 +1711,7 @@ function SchedulePageContent(): JSX.Element {
         })}
       />
 
-      {/* 세션 삭제 확인 모달 */}
-      <ConfirmModal
-        isOpen={deleteConfirmSessionId !== null}
-        title="수업 삭제"
-        message="이 수업을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다."
-        confirmText="삭제"
-        cancelText="취소"
-        variant="danger"
-        onConfirm={async () => {
-          if (deleteConfirmSessionId) {
-            await deleteSession(deleteConfirmSessionId);
-          }
-          setDeleteConfirmSessionId(null);
-        }}
-        onCancel={() => setDeleteConfirmSessionId(null)}
-      />
+      {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}
 
       {/* 템플릿 저장 모달 */}
       <SaveTemplateModal
