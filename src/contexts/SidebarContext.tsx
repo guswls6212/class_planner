@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 interface SidebarContextValue {
   expanded: boolean;
@@ -10,10 +10,17 @@ interface SidebarContextValue {
 const SidebarContext = createContext<SidebarContextValue | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("sidebar_expanded") === "true";
-  });
+  // Always start collapsed on both server and first client render to keep
+  // hydration consistent. Read localStorage AFTER mount and update state
+  // (mirrors ThemeContext.tsx pattern).
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("sidebar_expanded");
+      if (saved === "true") setExpanded(true);
+    }
+  }, []);
 
   const toggle = useCallback(() => {
     setExpanded((v) => {

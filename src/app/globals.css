@@ -841,8 +841,8 @@ body {
   /* 강제로 가로 스크롤바가 항상 보이도록 설정 */
   -webkit-overflow-scrolling: touch !important;
 
-  /* 가로 스크롤바는 항상 표시, 세로는 필요할 때만 */
-  overflow-x: scroll !important;
+  /* overflow-x는 TimeTableGrid.tsx의 Tailwind `overflow-x-auto`에 위임
+     (이전엔 `overflow-x: scroll !important`로 강제 → Tailwind와 충돌해 가로 스크롤바 2개 발생) */
   overflow-y: auto !important;
 
   /* 추가 강제 설정 - macOS 시스템 설정 무시 */

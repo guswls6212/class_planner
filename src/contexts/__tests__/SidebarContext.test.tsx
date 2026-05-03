@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { SidebarProvider, useSidebar } from '../SidebarContext'
 
 // localStorage mock
@@ -31,10 +31,11 @@ describe('SidebarContext', () => {
     expect(result.current.expanded).toBe(false)
   })
 
-  it('localStorage에 "true" 저장돼 있으면 expanded=true로 초기화', () => {
+  it('localStorage에 "true" 저장돼 있으면 mount 직후 effect로 expanded=true', async () => {
+    // Hydration-safe: 초기 렌더는 항상 false (SSR과 일치) → useEffect에서 localStorage 읽고 true로 업데이트
     localStorageMock.getItem.mockReturnValue('true')
     const { result } = renderHook(() => useSidebar(), { wrapper })
-    expect(result.current.expanded).toBe(true)
+    await waitFor(() => expect(result.current.expanded).toBe(true))
   })
 
   it('toggle()이 expanded를 false→true로 전환', () => {
@@ -44,9 +45,11 @@ describe('SidebarContext', () => {
     expect(result.current.expanded).toBe(true)
   })
 
-  it('toggle()이 expanded를 true→false로 전환', () => {
+  it('toggle()이 expanded를 true→false로 전환', async () => {
     localStorageMock.getItem.mockReturnValue('true')
     const { result } = renderHook(() => useSidebar(), { wrapper })
+    // wait for mount-effect to apply localStorage value
+    await waitFor(() => expect(result.current.expanded).toBe(true))
     act(() => { result.current.toggle() })
     expect(result.current.expanded).toBe(false)
   })
