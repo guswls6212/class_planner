@@ -3,8 +3,7 @@
 import { Mail, Phone, User, FileText } from "lucide-react";
 import type { TeacherRole } from "@/lib/planner";
 
-const ROLE_LABELS: Record<TeacherRole, string> = {
-  owner: "원장",
+const ROLE_LABELS: Record<Exclude<TeacherRole, "owner">, string> = {
   admin: "관리자",
   member: "강사",
 };
@@ -95,7 +94,7 @@ export function TeacherEditForm({
             역할
           </label>
           <div className="flex gap-2">
-            {(["owner", "admin", "member"] as TeacherRole[]).map((r) => (
+            {(["admin", "member"] as Exclude<TeacherRole, "owner">[]).map((r) => (
               <button
                 key={r}
                 type="button"
@@ -112,6 +111,11 @@ export function TeacherEditForm({
               </button>
             ))}
           </div>
+          {editRole === "owner" && (
+            <p className="text-[11px] text-[var(--color-text-muted)]">
+              원장 역할은 시스템이 부여합니다.
+            </p>
+          )}
         </div>
       )}
       {/* Notes */}

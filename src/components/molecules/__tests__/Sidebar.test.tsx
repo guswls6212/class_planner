@@ -8,11 +8,15 @@ vi.mock("@/hooks/useMyRole", () => ({
   useMyRole: () => mockUseMyRole(),
 }));
 
-// Mock supabase (UserSection inside Sidebar calls getUser)
+// Mock supabase (UserSection calls getUser; Sidebar isLoggedIn calls getSession + onAuthStateChange)
 vi.mock("../../../utils/supabaseClient", () => ({
   supabase: {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
     },
   },
 }));
