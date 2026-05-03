@@ -925,6 +925,7 @@ function SchedulePageContent(): JSX.Element {
 
       logger.debug("모달 닫기 중");
       setShowGroupModal(false);
+      showToast("success", "수업이 추가됐습니다");
       logger.debug("세션 추가 완료");
     } catch (error) {
       logger.error("세션 추가 실패", undefined, error as Error);
