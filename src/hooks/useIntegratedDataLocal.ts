@@ -29,6 +29,7 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { showToast } from "../lib/toast";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
 
 // ===== 타입 정의 =====
@@ -298,6 +299,8 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           const userId = localStorage.getItem("supabase_user_id");
           syncSessionCreate(userId, sessionData);
 
+          showToast("success", "수업이 추가됐습니다");
+
           logger.info("useIntegratedDataLocal - 세션 추가 성공", {
             sessionId: result.data.id,
           });
@@ -346,6 +349,10 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           const userId = localStorage.getItem("supabase_user_id");
           syncSessionUpdate(userId, id, updates);
 
+          // NOTE: 세션 update는 토스트 안 띄움. 드래그 이동이 너무 잦아서
+          // 사용자가 원치 않음 ("수업세션 드래그로 옮기는건 자주... 그건 빼고").
+          // 명시적 modal edit만 토스트하려면 caller가 origin을 hint해야 함 (TODO).
+
           logger.info("useIntegratedDataLocal - 세션 수정 성공", {
             id,
             updates,
@@ -388,6 +395,10 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // 서버 동기화 (fire-and-forget)
           const userId = localStorage.getItem("supabase_user_id");
           syncSessionDelete(userId, id);
+
+          // 명시 삭제만 토스트 (드래그-기반 삭제는 없음 — 명시 액션이라 안전).
+          // PR γ 후속에서 undo 패턴 (학생 삭제처럼) 적용 예정.
+          showToast("success", "수업이 삭제됐습니다");
 
           logger.info("useIntegratedDataLocal - 세션 삭제 성공", { id });
 
