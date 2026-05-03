@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
@@ -14,6 +14,8 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
+
+const CODES_INITIAL_SHOW = 5;
 
 interface PendingInvite {
   id: string;
@@ -84,7 +86,17 @@ export default function SettingsPage() {
   // 학부모 접속 코드
   const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
   const [showAllCodes, setShowAllCodes] = useState(false);
-  const CODES_INITIAL_SHOW = 5;
+
+  // 중복 이름 사전 계산 — map() 내 매 항목마다 filter() 반복 방지
+  const duplicateNameSet = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of localStudents) {
+      counts.set(s.name, (counts.get(s.name) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, c]) => c > 1).map(([n]) => n)
+    );
+  }, [localStudents]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -440,6 +452,7 @@ export default function SettingsPage() {
       } else {
         showToast("info", "모든 학생에게 이미 코드가 있습니다.");
       }
+      setShowAllCodes(false);
       await fetchData();
     } else {
       showToast("error", "코드 생성에 실패했습니다.");
@@ -456,6 +469,7 @@ export default function SettingsPage() {
     });
     if (res.ok) {
       showToast("success", "모든 접속 코드가 갱신됐습니다.");
+      setShowAllCodes(false);
       await fetchData();
     } else {
       showToast("error", "코드 갱신에 실패했습니다.");
@@ -754,8 +768,7 @@ export default function SettingsPage() {
                   student?.name ??
                   code.label?.replace(" 학부모 접속 코드", "").replace(" 접속 코드", "") ??
                   "알 수 없음";
-                const hasDuplicate =
-                  localStudents.filter((s) => s.name === studentName).length > 1;
+                const hasDuplicate = duplicateNameSet.has(studentName);
                 const daysLeft = Math.ceil(
                   (new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 );
