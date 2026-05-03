@@ -5,39 +5,35 @@
  */
 import { createElement } from "react";
 import { toast } from "sonner";
+import {
+  ToastContent,
+  type ToastVariant,
+} from "../components/atoms/ToastContent";
 import { UndoToastContent } from "../components/atoms/UndoToastContent";
+
+const DEFAULT_DURATION_MS = 4000;
+
+function showVariant(variant: ToastVariant, message: string) {
+  toast.custom(
+    () => createElement(ToastContent, { message, variant }),
+    { duration: DEFAULT_DURATION_MS },
+  );
+}
 
 export function showToast(
   type: "error" | "success" | "warning" | "info",
-  message: string
+  message: string,
 ) {
-  switch (type) {
-    case "error":
-      toast.error(message);
-      break;
-    case "success":
-      toast.success(message);
-      break;
-    case "warning":
-      toast.warning(message);
-      break;
-    case "info":
-      toast.info(message);
-      break;
-  }
+  showVariant(type, message);
 }
 
-export const showError = (message: string) => toast.error(message);
-export const showSuccess = (message: string) => toast.success(message);
+export const showError = (message: string) => showVariant("error", message);
+export const showSuccess = (message: string) => showVariant("success", message);
 
 /**
  * Toast with an "undo" action button. Used for destructive mutations
  * (delete student/subject/teacher/session) so users can recover from
  * accidental clicks within the duration window (default 5s).
- *
- * Custom JSX render (UndoToastContent) so the styling matches class-planner
- * Admin Amber design tokens (instead of sonner's generic action-button
- * style which felt out of place per user feedback).
  *
  * Pattern: caller defers the actual server-side commit, shows this
  * toast, and either:
@@ -50,9 +46,6 @@ export function showUndoToast(opts: {
   durationMs?: number;
 }) {
   const duration = opts.durationMs ?? 5000;
-  // createElement (not JSX) so this file stays .ts (no compilation step
-  // needed for tsx). UndoToastContent renders class-planner Admin Amber
-  // styling + dismiss via toast.dismiss(toastId).
   toast.custom(
     (toastId) =>
       createElement(UndoToastContent, {
