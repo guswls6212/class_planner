@@ -5,6 +5,7 @@ import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy, Plus, RefreshCw, X
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import { showToast } from "@/lib/toast";
 
 interface StudentDetailPanelProps {
@@ -19,9 +20,9 @@ interface StudentDetailPanelProps {
   canManage?: boolean;
   /** Parent access code for this student, if any (admins only) */
   accessCode?: AccessCodeEntry;
-  /** True after the first accessCodes fetch completes — used to render
-   *  "코드 없음" only AFTER load (not during initial loading flash). */
-  accessCodesLoaded?: boolean;
+  /** True when access-code data is available (cache OR completed fetch).
+   *  When false, render a Skeleton instead of "no code" or actual content. */
+  accessCodesReady?: boolean;
   /** Academy access URL — used for "자녀 시간표 링크 복사" button */
   academyUrl?: string;
   /** Per-student: create a new code for this student */
@@ -34,7 +35,7 @@ interface StudentDetailPanelProps {
 
 export function StudentDetailPanel({
   student, subjects, enrollments, sessions, onUpdate, onDelete, onBack,
-  canManage = true, accessCode, accessCodesLoaded = true, academyUrl,
+  canManage = true, accessCode, accessCodesReady = true, academyUrl,
   onCreateCode, onRenewCode, onRevokeCode,
 }: StudentDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -141,9 +142,15 @@ export function StudentDetailPanel({
         </div>
       </div>
 
-      {/* Parent Access Code (admin-visible only — gated on accessCodesLoaded
-          to avoid "코드 없음" flash during initial load) */}
-      {canManage && accessCodesLoaded && (
+      {/* Parent Access Code (admin-visible only) — Skeleton while initial
+          load in flight (no cache); real content once data is ready. */}
+      {canManage && !accessCodesReady && (
+        <section className="bg-[var(--color-bg-secondary)] rounded-md p-4">
+          <Skeleton className="h-3 w-24 mb-3" />
+          <Skeleton className="h-7 w-40" />
+        </section>
+      )}
+      {canManage && accessCodesReady && (
         <section className="bg-[var(--color-bg-secondary)] rounded-md p-4">
           <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2">
             학부모 접속 코드

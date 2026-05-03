@@ -5,6 +5,7 @@ import { Plus, Search, Copy, RefreshCw } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import { Skeleton } from "@/components/atoms/Skeleton";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { showToast } from "@/lib/toast";
 
@@ -26,9 +27,9 @@ interface StudentsPageLayoutProps {
   isRoleLoading?: boolean;
   /** Parent access codes for students in this academy (admin-visible only) */
   accessCodes?: AccessCodeEntry[];
-  /** True after the first accessCodes fetch completes — used to avoid
-   *  flash where badges/header card pop in slightly later than student list */
-  accessCodesLoaded?: boolean;
+  /** True when we have any data (cache OR completed fetch) — gates UI between
+   *  Skeleton (no data yet) and actual content (cache or fresh fetch). */
+  accessCodesReady?: boolean;
   /** Bulk: generate codes for any student missing one */
   onCreateCodes?: () => void;
   /** Bulk: regenerate ALL codes (destructive — user-confirmed in handler) */
@@ -47,7 +48,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const { students, selectedStudentId, onSelectStudent, accessCodes = [], academyUrl } = props;
   const canManage = props.canManage ?? true;
   const isRoleLoading = props.isRoleLoading ?? false;
-  const accessCodesLoaded = props.accessCodesLoaded ?? true;
+  const accessCodesReady = props.accessCodesReady ?? true;
   const [searchQuery, setSearchQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -62,14 +63,13 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
       .map((c) => [c.filter_student_id as string, c]),
   );
 
-  // Code management UI (header card + inline badges) only renders after the
-  // first accessCodes fetch completes, so it doesn't pop in slightly after
-  // the student list (the "flash" the user reported).
-  const showCodeManagement =
-    canManage &&
-    accessCodesLoaded &&
-    Boolean(props.onCreateCodes) &&
-    Boolean(academyUrl);
+  // Code management UI (header card + inline badges) needs SOME data
+  // (cached OR fresh) to render meaningfully. While loading, we show a
+  // shimmer Skeleton in the same shape so the layout doesn't shift.
+  const codeUiCapable =
+    canManage && Boolean(props.onCreateCodes) && Boolean(academyUrl);
+  const showCodeManagement = codeUiCapable && accessCodesReady;
+  const showCodeSkeleton = codeUiCapable && !accessCodesReady;
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -138,7 +138,23 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           </div>
         </div>
 
-        {/* Code Management Card (admin + has academy) */}
+        {/* Code Management Skeleton — shown while initial fetch in flight
+            (no cache yet). Same vertical footprint as the real card so the
+            student list doesn't jump when codes arrive. */}
+        {showCodeSkeleton && (
+          <div className="px-3 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+            <div className="flex items-center justify-between mb-2">
+              <Skeleton className="h-3 w-24" />
+              <div className="flex gap-1.5">
+                <Skeleton className="h-6 w-14" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+            </div>
+            <Skeleton className="h-3 w-full" />
+          </div>
+        )}
+
+        {/* Code Management Card (admin + has academy + data ready) */}
         {showCodeManagement && (
           <div className="px-3 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
             <div className="flex items-center justify-between mb-2">
@@ -214,8 +230,13 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
                         <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                           {student.name}
                         </p>
-                        {canManage && accessCodesLoaded && studentCode && (
+                        {canManage && accessCodesReady && studentCode && (
                           <StudentAccessCodeBadge code={studentCode} variant="inline" />
+                        )}
+                        {/* Tiny shimmer in badge slot during initial load (no
+                            cache) — preserves row height + signals "loading". */}
+                        {canManage && !accessCodesReady && (
+                          <Skeleton className="h-3 w-16 opacity-60" />
                         )}
                       </div>
                       <p className="text-[11px] text-[var(--color-text-muted)] truncate">
@@ -253,8 +274,8 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onDelete={props.onDeleteStudent}
             onBack={() => setShowDetail(false)}
             canManage={canManage}
-            accessCode={accessCodesLoaded ? codeByStudentId.get(selectedStudent.id) : undefined}
-            accessCodesLoaded={accessCodesLoaded}
+            accessCode={accessCodesReady ? codeByStudentId.get(selectedStudent.id) : undefined}
+            accessCodesReady={accessCodesReady}
             academyUrl={academyUrl}
             onCreateCode={props.onCreateCodeForStudent}
             onRenewCode={props.onRenewCodeForStudent}

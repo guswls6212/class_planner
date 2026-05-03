@@ -15,8 +15,9 @@ export interface AccessCodeEntry {
 interface UseAccessCodesResult {
   accessCodes: AccessCodeEntry[];
   isLoading: boolean;
-  /** True until the first fetch completes (used to gate UI on initial load). */
-  hasLoadedOnce: boolean;
+  /** True if we have any data to render — either from localStorage cache OR
+   *  from a completed fetch. Use this to gate UI (skeleton vs. content). */
+  hasInitialData: boolean;
   refresh: () => Promise<void>;
   /** Bulk: create codes for any student missing one (academy-wide). */
   handleCreate: () => Promise<void>;
@@ -31,19 +32,64 @@ interface UseAccessCodesResult {
 }
 
 /**
+ * localStorage key for access-code cache (scoped per user).
+ * Stale-while-revalidate pattern: cached value is shown instantly on
+ * re-entry; a fresh fetch runs in the background and silently updates the
+ * UI when complete. Class-planner is Local-first (per ARCHITECTURE.md
+ * § 1.2) so this matches the rest of the data model.
+ */
+const cacheKey = (userId: string) => `class_planner_access_codes_${userId}`;
+
+function readCache(userId: string | null): AccessCodeEntry[] | null {
+  if (!userId || typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as AccessCodeEntry[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(userId: string | null, codes: AccessCodeEntry[]) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    localStorage.setItem(cacheKey(userId), JSON.stringify(codes));
+  } catch {
+    // localStorage quota / disabled — silent (cache is a best-effort optimization)
+  }
+}
+
+/**
  * Fetches and manages student access codes for a given user.
- * Filters /api/share-tokens response to entries with access_code set.
- * Pass userId=null to disable fetching (e.g. anonymous users).
+ * Stale-while-revalidate via localStorage cache: cached codes are shown
+ * instantly on re-entry, then refreshed in background. Pass userId=null
+ * to disable both cache and fetching (e.g. anonymous users).
  */
 export function useAccessCodes(userId: string | null): UseAccessCodesResult {
+  // Lazy-initialize from cache so re-entry is instant (no skeleton flash).
+  // Server render returns [] (typeof window === undefined), client first
+  // render hydrates from cache — same as ThemeContext pattern but here the
+  // SSR/client mismatch is fine because this only renders inside admin
+  // routes which are CSR-after-hydration.
   const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasInitialData, setHasInitialData] = useState(false);
+
+  // Hydrate cache after mount (avoid SSR/client mismatch)
+  useEffect(() => {
+    const cached = readCache(userId);
+    if (cached && cached.length > 0) {
+      setAccessCodes(cached);
+      setHasInitialData(true);
+    }
+  }, [userId]);
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setAccessCodes([]);
-      setHasLoadedOnce(true);
+      setHasInitialData(true);
       return;
     }
     setIsLoading(true);
@@ -58,23 +104,23 @@ export function useAccessCodes(userId: string | null): UseAccessCodesResult {
           access_code?: string | null;
           expires_at: string;
         }>;
-        setAccessCodes(
-          tokens
-            .filter((t) => Boolean(t.access_code))
-            .map((t) => ({
-              id: t.id,
-              label: t.label ?? "",
-              filter_student_id: t.filter_student_id,
-              access_code: t.access_code as string,
-              expires_at: t.expires_at,
-            }))
-        );
+        const next = tokens
+          .filter((t) => Boolean(t.access_code))
+          .map((t) => ({
+            id: t.id,
+            label: t.label ?? "",
+            filter_student_id: t.filter_student_id,
+            access_code: t.access_code as string,
+            expires_at: t.expires_at,
+          }));
+        setAccessCodes(next);
+        writeCache(userId, next);
       }
     } catch (err) {
       logger.error("접속 코드 로드 실패", undefined, err as Error);
     } finally {
       setIsLoading(false);
-      setHasLoadedOnce(true);
+      setHasInitialData(true);
     }
   }, [userId]);
 
@@ -182,7 +228,7 @@ export function useAccessCodes(userId: string | null): UseAccessCodesResult {
   return {
     accessCodes,
     isLoading,
-    hasLoadedOnce,
+    hasInitialData,
     refresh,
     handleCreate,
     handleRenew,

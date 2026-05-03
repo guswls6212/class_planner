@@ -152,6 +152,8 @@ export const useStudentManagementLocal =
             const userId = localStorage.getItem("supabase_user_id");
             syncStudentCreate(userId, { name: name.trim(), ...options });
 
+            showToast("success", `${name.trim()} 학생이 추가됐습니다`);
+
             logger.info("useStudentManagementLocal - 학생 추가 성공", {
               name,
               studentId: result.data.id,
@@ -210,6 +212,8 @@ export const useStudentManagementLocal =
             // 서버 동기화 (fire-and-forget)
             const userId = localStorage.getItem("supabase_user_id");
             syncStudentUpdate(userId, id, updates);
+
+            showToast("success", "학생 정보가 수정됐습니다");
 
             logger.info("useStudentManagementLocal - 학생 수정 성공", {
               id,

@@ -49,7 +49,7 @@ function StudentsPageContent() {
   // for null userId, and StudentsPageLayout gates UI on canManage anyway).
   const {
     accessCodes,
-    hasLoadedOnce: accessCodesLoaded,
+    hasInitialData: accessCodesReady,
     handleCreate: handleCreateCodes,
     handleRenew: handleRenewCodes,
     handleCreateForStudent,
@@ -136,7 +136,7 @@ function StudentsPageContent() {
       canManage={canManage}
       isRoleLoading={isRoleLoading}
       accessCodes={accessCodes}
-      accessCodesLoaded={canManage ? accessCodesLoaded : true}
+      accessCodesReady={canManage ? accessCodesReady : true}
       onCreateCodes={handleCreateCodes}
       onRenewCodes={handleRenewCodes}
       onCreateCodeForStudent={handleCreateForStudent}
