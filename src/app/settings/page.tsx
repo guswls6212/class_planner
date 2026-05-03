@@ -805,9 +805,10 @@ export default function SettingsPage() {
           <div
             role="button"
             tabIndex={0}
+            aria-expanded={shareExpanded}
             onClick={() => setShareExpanded((v) => !v)}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShareExpanded((v) => !v); } }}
-            className="w-full flex items-start justify-between gap-3 p-5 cursor-pointer select-none"
+            className="w-full flex items-start justify-between gap-3 p-5 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded-t-xl"
           >
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-lg bg-indigo-400/15 text-indigo-400 flex items-center justify-center flex-shrink-0">
