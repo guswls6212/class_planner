@@ -62,6 +62,8 @@ import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules
 // ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
+import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
+import { useScheduleMeta } from "../../hooks/useScheduleMeta";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import {
@@ -210,6 +212,13 @@ function SchedulePageContent(): JSX.Element {
 
   // Role-based UI gate — member role gets read-only schedule
   const { canManage } = useMyRole();
+
+  // 다른 admin의 변경 인지 — academies.schedule_updated_at 30초 polling
+  const {
+    scheduleUpdatedAt,
+    hasChanges: hasScheduleChanges,
+    acknowledgeChanges: ackScheduleChanges,
+  } = useScheduleMeta(userId);
 
   // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
   // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
@@ -1357,6 +1366,20 @@ function SchedulePageContent(): JSX.Element {
 
   return (
     <div className="timetable-container p-4">
+      {hasScheduleChanges && scheduleUpdatedAt && (
+        <button
+          type="button"
+          onClick={() => {
+            ackScheduleChanges();
+            if (typeof window !== "undefined") window.location.reload();
+          }}
+          className="block w-full text-left"
+          data-testid="schedule-change-banner"
+          aria-label="시간표 변경 사항 — 클릭하여 새로고침"
+        >
+          <ScheduleChangeBanner scheduleUpdatedAt={scheduleUpdatedAt} />
+        </button>
+      )}
       {/* Row 1: 제목(좌) + 액션(우) */}
       <div className="flex items-start justify-between mb-4 border-b border-[--color-border] pb-3">
         <ScheduleHeader
@@ -1364,6 +1387,7 @@ function SchedulePageContent(): JSX.Element {
           error={error ?? undefined}
           title={scheduleTitle}
           isSyncingSession={isSyncingSession}
+          scheduleUpdatedAt={scheduleUpdatedAt}
         />
         <div className="flex items-center gap-2">
           {canManage && userId && viewMode === "weekly" && (

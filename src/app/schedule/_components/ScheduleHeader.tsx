@@ -3,13 +3,28 @@ type Props = {
   error?: string;
   title: string;
   isSyncingSession?: boolean;
+  /**
+   * academies.schedule_updated_at — 마지막으로 sessions 테이블이 변경된 시각.
+   * 멀티 어드민 환경에서 다른 사용자의 변경 시각을 표시하기 위함. null이면 숨김.
+   */
+  scheduleUpdatedAt?: string | null;
 };
+
+function formatScheduleUpdatedAt(iso: string): string {
+  return new Date(iso).toLocaleString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function ScheduleHeader({
   dataLoading,
   error,
   title,
   isSyncingSession = false,
+  scheduleUpdatedAt = null,
 }: Props) {
   return (
     <div>
@@ -20,6 +35,15 @@ export default function ScheduleHeader({
         )}
         {dataLoading && !error && !isSyncingSession && (
           <span className="text-sm text-blue-500">로드 중...</span>
+        )}
+        {scheduleUpdatedAt && (
+          <span
+            className="ml-auto text-[10px] text-[var(--color-text-muted)] hidden sm:block"
+            data-testid="schedule-updated-at"
+            title="시간표가 마지막으로 변경된 시각 (sessions CRUD 시 자동 갱신)"
+          >
+            {formatScheduleUpdatedAt(scheduleUpdatedAt)} 수정
+          </span>
         )}
       </div>
       {error && (
