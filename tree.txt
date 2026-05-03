@@ -361,6 +361,7 @@ src/hooks/useModalA11y.ts
 src/hooks/useMyRole.ts
 src/hooks/useMyTeacher.ts
 src/hooks/useNowMinute.ts
+src/hooks/useOutboxFlush.ts
 src/hooks/usePerformanceMonitoring.ts
 src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
@@ -474,6 +475,7 @@ src/lib/server/teacherServiceFactory.ts
 src/lib/sessionCollisionUtils.ts
 src/lib/slug.ts
 src/lib/supabaseServiceRole.ts
+src/lib/syncOutbox.ts
 src/lib/teacherColors.ts
 src/lib/timeUtils.ts
 src/lib/toast.ts

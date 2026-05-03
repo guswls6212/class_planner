@@ -11,6 +11,7 @@
 
 import { logger } from "./logger";
 import { showToast } from "./toast";
+import { enqueueOutbox } from "./syncOutbox";
 import type { Session } from "../lib/planner";
 
 // ===== 재시도 큐 상태 =====
@@ -123,10 +124,26 @@ function calcDelay(attempt: number): number {
   return Math.min(1000 * Math.pow(2, attempt), 30_000);
 }
 
+/**
+ * 10회 retry 후 포기 시점에 sync 항목을 outbox에 저장하기 위한 메타데이터.
+ * 호출자가 전달하면 fireAndForget이 retry exhaust 시점에 enqueueOutbox 호출.
+ *
+ * 5xx/network 오류만 보관 (4xx는 retry/큐잉 무의미 — 드롭).
+ */
+export interface OutboxRequestMeta {
+  /** dedup용 unique id (entity id 기반 권장) */
+  id: string;
+  userId: string;
+  method: "POST" | "PUT" | "DELETE" | "PATCH";
+  url: string;
+  body?: unknown;
+}
+
 function fireAndForget(
   makeRequest: () => Promise<Response>,
   context: string,
-  attempt = 0
+  attempt = 0,
+  outboxMeta?: OutboxRequestMeta,
 ): void {
   makeRequest()
     .then((res) => {
@@ -143,9 +160,22 @@ function fireAndForget(
         onSyncFailure(context);
         if (attempt < 9) {
           const delay = calcDelay(attempt);
-          setTimeout(() => fireAndForget(makeRequest, context, attempt + 1), delay);
+          setTimeout(
+            () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta),
+            delay,
+          );
         } else {
           onSyncGiveUp(context);
+          // 5xx만 outbox 보관 (4xx는 데이터 자체가 잘못된 것 → 큐잉 무의미)
+          if (outboxMeta && res.status >= 500) {
+            enqueueOutbox(outboxMeta.userId, {
+              id: outboxMeta.id,
+              context,
+              method: outboxMeta.method,
+              url: outboxMeta.url,
+              body: outboxMeta.body,
+            });
+          }
         }
       } else {
         onSyncSuccess();
@@ -156,9 +186,22 @@ function fireAndForget(
       onSyncFailure(context);
       if (attempt < 9) {
         const delay = calcDelay(attempt);
-        setTimeout(() => fireAndForget(makeRequest, context, attempt + 1), delay);
+        setTimeout(
+          () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta),
+          delay,
+        );
       } else {
         onSyncGiveUp(context);
+        // 네트워크 오류 — 보관 (다음 페이지 진입 시 재시도)
+        if (outboxMeta) {
+          enqueueOutbox(outboxMeta.userId, {
+            id: outboxMeta.id,
+            context,
+            method: outboxMeta.method,
+            url: outboxMeta.url,
+            body: outboxMeta.body,
+          });
+        }
       }
     });
 }
@@ -283,19 +326,34 @@ export function syncEnrollmentDelete(userId: string | null, id: string): void {
 }
 
 // ===== Sessions =====
+// sessions는 사고 직접 영향 받은 도메인 — outbox 통합으로 데이터 손실 방지.
+
+function makeOutboxId(prefix: string): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") {
+    return `${prefix}:${globalThis.crypto.randomUUID()}`;
+  }
+  return `${prefix}:${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function syncSessionCreate(
   userId: string | null,
   data: Omit<Session, "id">
 ): void {
   if (!userId) return;
+  const url = `/api/sessions?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/sessions?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "session:create");
+  fireAndForget(makeRequest, "session:create", 0, {
+    id: makeOutboxId("session:create"),
+    userId,
+    method: "POST",
+    url,
+    body: data,
+  });
 }
 
 export function syncSessionUpdate(
@@ -304,13 +362,22 @@ export function syncSessionUpdate(
   data: Partial<Omit<Session, "id">>
 ): void {
   if (!userId) return;
+  const url = `/api/sessions/${id}`;
+  const body = { id, ...data };
   const makeRequest = () =>
-    fetch(`/api/sessions/${id}`, {
+    fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, ...data }),
+      body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "session:update");
+  fireAndForget(makeRequest, "session:update", 0, {
+    // 같은 세션의 update는 마지막 것만 남도록 entity id를 outbox key로 사용
+    id: `session:update:${id}`,
+    userId,
+    method: "PUT",
+    url,
+    body,
+  });
 }
 
 /** awaitable 버전 — drag-drop 완료 후 서버 sync 결과를 확인할 때 사용.
@@ -348,9 +415,14 @@ export async function syncSessionUpdateAsync(
 
 export function syncSessionDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const makeRequest = () =>
-    fetch(`/api/sessions?id=${id}`, { method: "DELETE" });
-  fireAndForget(makeRequest, "session:delete");
+  const url = `/api/sessions?id=${id}`;
+  const makeRequest = () => fetch(url, { method: "DELETE" });
+  fireAndForget(makeRequest, "session:delete", 0, {
+    id: `session:delete:${id}`,
+    userId,
+    method: "DELETE",
+    url,
+  });
 }
 
 // ===== Teachers =====

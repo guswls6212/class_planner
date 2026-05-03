@@ -64,6 +64,7 @@ import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
 import { useScheduleMeta } from "../../hooks/useScheduleMeta";
+import { useOutboxFlush } from "../../hooks/useOutboxFlush";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import {
@@ -219,6 +220,9 @@ function SchedulePageContent(): JSX.Element {
     hasChanges: hasScheduleChanges,
     acknowledgeChanges: ackScheduleChanges,
   } = useScheduleMeta(userId);
+
+  // 이전 세션에서 retry 10회 후 포기된 sync 작업 자동 재시도
+  useOutboxFlush(userId);
 
   // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
   // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
