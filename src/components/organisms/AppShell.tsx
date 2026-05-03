@@ -10,7 +10,7 @@ import { HelpDrawer } from "./HelpDrawer";
 import { SidebarProvider, useSidebar } from "../../contexts/SidebarContext";
 
 const SHELL_EXCLUDED: string[] = ["/", "/login", "/about"];
-const SHELL_EXCLUDED_PREFIXES: string[] = ["/share/", "/invite/", "/onboarding"];
+const SHELL_EXCLUDED_PREFIXES: string[] = ["/share/", "/invite/", "/onboarding", "/academy/"];
 
 interface AppShellProps {
   children: React.ReactNode;
