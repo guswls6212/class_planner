@@ -3,8 +3,9 @@
  *
  * - userId가 null이면 (익명 사용자) 서버 호출 스킵
  * - API 실패 시 exponential backoff 재시도 (max 10회, delay 최대 30s)
- * - 3회 연속 실패 시 사용자에게 toast 알림 1회 표시
- * - 재성공 시 상태 리셋
+ * - 첫 실패 시점에 즉시 dismissible warning toast 1회 노출 (silent failure 방지).
+ *   3회 누적 시 더 강한 "동기화 중단 위험" 토스트로 격상.
+ * - 재성공 시 상태 리셋 + 복구 success toast 1회 (이전에 실패 toast가 떴던 경우만)
  * - localStorage가 SSOT이며 서버 동기화는 백그라운드
  */
 
@@ -15,22 +16,47 @@ import type { Session } from "../lib/planner";
 // ===== 재시도 큐 상태 =====
 
 let consecutiveFailures = 0;
-let toastShown = false;
+let firstFailToastShown = false;
+let escalatedToastShown = false;
 
 function onSyncSuccess(): void {
   if (consecutiveFailures > 0) {
     consecutiveFailures = 0;
-    toastShown = false;
+    if (firstFailToastShown || escalatedToastShown) {
+      // 사용자가 이전 실패 토스트를 봤을 가능성이 있을 때만 복구 알림.
+      showToast("success", "서버 동기화가 정상 복구됐습니다.");
+    }
+    firstFailToastShown = false;
+    escalatedToastShown = false;
   }
 }
 
 function onSyncFailure(context: string): void {
   consecutiveFailures++;
-  if (consecutiveFailures >= 3 && !toastShown) {
-    toastShown = true;
-    showToast("warning", "서버 동기화 지연 중 — 로컬 데이터는 안전합니다.");
+  if (consecutiveFailures === 1 && !firstFailToastShown) {
+    firstFailToastShown = true;
+    // 첫 실패 즉시 — silent failure 방지. 로컬은 안전하다고 안심시킴.
+    showToast(
+      "warning",
+      "서버 저장이 지연되고 있어요. 로컬은 안전 — 자동 재시도 중입니다.",
+    );
+  } else if (consecutiveFailures >= 3 && !escalatedToastShown) {
+    escalatedToastShown = true;
+    showToast(
+      "error",
+      "서버 동기화 3회 실패 — 인터넷 연결 또는 새로고침을 확인해주세요.",
+    );
   }
   logger.error(`apiSync ${context} 실패 (연속 ${consecutiveFailures}회)`);
+}
+
+/**
+ * 테스트 전용 — 모듈 상태 리셋. production에서 호출 금지.
+ */
+export function __resetSyncStateForTests(): void {
+  consecutiveFailures = 0;
+  firstFailToastShown = false;
+  escalatedToastShown = false;
 }
 
 /**
