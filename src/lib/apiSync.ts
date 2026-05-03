@@ -228,6 +228,10 @@ export function syncSessionUpdate(
 
 /** awaitable 버전 — drag-drop 완료 후 서버 sync 결과를 확인할 때 사용.
  *  위치 전용 엔드포인트(/position)를 사용하며 필드명도 API 스펙에 맞춤.
+ *
+ *  ⚠️ Bug fix (2026-05-04): URL에 ?userId= 쿼리 누락으로 모든 호출이 400 반환되어
+ *  drag-drop으로 위치/시간 변경한 sessions이 서버에 반영되지 않던 회귀.
+ *  omni-radar 로그(5/3 4건 PUT 400)로 확정.
  */
 export async function syncSessionUpdateAsync(
   userId: string | null,
@@ -236,16 +240,19 @@ export async function syncSessionUpdateAsync(
 ): Promise<boolean> {
   if (!userId) return false;
   try {
-    const res = await fetch(`/api/sessions/${id}/position`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        weekday: data.weekday,
-        time: data.startsAt,      // API 필드명: time (= startsAt)
-        endTime: data.endsAt,     // API 필드명: endTime (= endsAt)
-        yPosition: data.yPosition,
-      }),
-    });
+    const res = await fetch(
+      `/api/sessions/${id}/position?userId=${encodeURIComponent(userId)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekday: data.weekday,
+          time: data.startsAt,      // API 필드명: time (= startsAt)
+          endTime: data.endsAt,     // API 필드명: endTime (= endsAt)
+          yPosition: data.yPosition,
+        }),
+      },
+    );
     return res.ok;
   } catch {
     return false;

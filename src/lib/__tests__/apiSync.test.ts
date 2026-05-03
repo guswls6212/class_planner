@@ -15,6 +15,7 @@ import {
   syncEnrollmentDelete,
   syncSessionCreate,
   syncSessionUpdate,
+  syncSessionUpdateAsync,
   syncSessionDelete,
   syncTeacherCreate,
   syncTeacherUpdate,
@@ -171,6 +172,44 @@ describe("apiSync", () => {
         expect.stringContaining("/api/sessions?id=sess-1"),
         expect.objectContaining({ method: "DELETE" })
       );
+    });
+
+    it("syncSessionUpdateAsync 가 PUT /api/sessions/:id/position?userId=... 으로 호출된다 (회귀: userId 누락→400)", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+      await syncSessionUpdateAsync("user-1", "sess-1", {
+        weekday: 2,
+        startsAt: "10:00",
+        endsAt: "11:00",
+        yPosition: 1,
+      } as any);
+      const callArgs = mockFetch.mock.calls[0];
+      expect(callArgs[0]).toContain("/api/sessions/sess-1/position");
+      expect(callArgs[0]).toContain("userId=user-1");
+      expect(callArgs[1]).toMatchObject({ method: "PUT" });
+      const body = JSON.parse(callArgs[1].body as string);
+      expect(body).toEqual({
+        weekday: 2,
+        time: "10:00",
+        endTime: "11:00",
+        yPosition: 1,
+      });
+    });
+
+    it("syncSessionUpdateAsync — userId null이면 fetch 미호출 + false 반환", async () => {
+      const ok = await syncSessionUpdateAsync(null, "sess-1", { weekday: 2 } as any);
+      expect(ok).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("syncSessionUpdateAsync — userId에 특수문자 있으면 인코딩된다", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+      await syncSessionUpdateAsync("user with space", "sess-1", {
+        weekday: 1,
+        startsAt: "09:00",
+        endsAt: "10:00",
+      } as any);
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain("userId=user%20with%20space");
     });
   });
 
