@@ -29,4 +29,28 @@ describe("ScheduleHeader", () => {
     expect(screen.queryByRole("group", { name: "뷰 모드" })).toBeNull();
     expect(screen.queryByRole("group", { name: "색상 기준" })).toBeNull();
   });
+
+  it("scheduleUpdatedAt이 있으면 한국어 포맷의 '수정' 시각을 표시한다", () => {
+    render(
+      <ScheduleHeader
+        dataLoading={false}
+        title="주간 시간표"
+        scheduleUpdatedAt="2026-05-04T10:00:00.000Z"
+      />,
+    );
+    const slot = screen.getByTestId("schedule-updated-at");
+    expect(slot.textContent).toMatch(/수정/);
+    expect(slot.textContent).toMatch(/5\.\s?4\.|5월/);
+  });
+
+  it("scheduleUpdatedAt=null이면 '수정' 시각 슬롯을 렌더하지 않는다", () => {
+    render(
+      <ScheduleHeader
+        dataLoading={false}
+        title="주간 시간표"
+        scheduleUpdatedAt={null}
+      />,
+    );
+    expect(screen.queryByTestId("schedule-updated-at")).toBeNull();
+  });
 });

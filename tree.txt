@@ -5,6 +5,7 @@ src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
 src/app/admin/layout.tsx
 src/app/admin/logs/page.tsx
+src/app/api/academies/active/schedule-meta/route.ts
 src/app/api/academies/check-slug/route.ts
 src/app/api/academies/mine/route.ts
 src/app/api/academies/route.ts
@@ -360,6 +361,7 @@ src/hooks/useMyRole.ts
 src/hooks/useMyTeacher.ts
 src/hooks/useNowMinute.ts
 src/hooks/usePerformanceMonitoring.ts
+src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
 src/hooks/useScheduleView.ts
 src/hooks/useSessionStatus.ts
