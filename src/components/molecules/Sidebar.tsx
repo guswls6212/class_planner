@@ -3,11 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Users, BookOpen, GraduationCap, Settings, LogIn } from "lucide-react";
+import {
+  CalendarDays,
+  Users,
+  BookOpen,
+  GraduationCap,
+  Settings,
+  LogIn,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { signOut } from "@/lib/auth/signOut";
 import { useMyRole } from "@/hooks/useMyRole";
+import { useSidebar } from "@/contexts/SidebarContext";
 
 interface SidebarItem {
   href: string;
@@ -68,27 +78,35 @@ function SidebarLink({
   icon: Icon,
   label,
   isActive,
-}: SidebarItem & { isActive: boolean }) {
+  expanded,
+}: SidebarItem & { isActive: boolean; expanded: boolean }) {
   return (
     <Link
       href={href}
       aria-label={label}
-      className={`group relative flex items-center justify-center w-10 h-10 rounded-admin-md transition-colors ${
+      className={`group relative flex items-center h-10 rounded-admin-md transition-colors ${
+        expanded ? "w-full px-3 gap-3" : "justify-center w-10"
+      } ${
         isActive
           ? "bg-accent text-[var(--color-admin-ink)]"
           : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)]"
       }`}
     >
-      <Icon size={22} strokeWidth={1.5} />
-      <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-admin-sm bg-[var(--color-bg-secondary)] px-2 py-1 text-caption text-[var(--color-text-primary)] opacity-0 group-hover:opacity-100 transition-opacity shadow-admin-sm">
-        {label}
-      </span>
+      <Icon size={22} strokeWidth={1.5} className="flex-shrink-0" />
+      {expanded ? (
+        <span className="text-sm font-medium whitespace-nowrap">{label}</span>
+      ) : (
+        <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-admin-sm bg-[var(--color-bg-secondary)] px-2 py-1 text-caption text-[var(--color-text-primary)] opacity-0 group-hover:opacity-100 transition-opacity shadow-admin-sm z-50">
+          {label}
+        </span>
+      )}
     </Link>
   );
 }
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { expanded, toggle } = useSidebar();
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
 
@@ -175,16 +193,27 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-50 flex w-14 flex-col items-center gap-1 py-4 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)]">
+    <aside
+      className={`fixed left-0 top-0 bottom-0 z-50 flex flex-col gap-1 py-4 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)] transition-[width] duration-200 ${
+        expanded ? "w-52 items-start" : "w-14 items-center"
+      }`}
+    >
       {/* Academy Switcher (replaces the old "CP" logo). */}
-      <div className="relative mb-4" ref={switcherRef}>
+      <div
+        className={`relative mb-4 ${expanded ? "w-full px-2" : ""}`}
+        ref={switcherRef}
+      >
         <button
           type="button"
           onClick={() => setShowSwitcher((v) => !v)}
           aria-label={activeAcademy?.name ?? "학원"}
           aria-expanded={showSwitcher}
           title={activeAcademy?.name ?? "학원"}
-          className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-colors hover:opacity-80"
+          className={`flex items-center rounded-lg transition-colors hover:opacity-80 ${
+            expanded
+              ? "w-full px-3 py-2 gap-2 text-sm font-semibold"
+              : "w-9 h-9 justify-center text-xs font-bold"
+          }`}
           style={
             activeAcademy
               ? ({
@@ -195,7 +224,9 @@ export function Sidebar() {
               : undefined
           }
         >
-          {activeAcademy ? activeAcademy.name.slice(0, 2) : "CP"}
+          {expanded
+            ? (activeAcademy?.name ?? "학원")
+            : (activeAcademy ? activeAcademy.name.slice(0, 2) : "CP")}
         </button>
 
         {showSwitcher && (
@@ -264,19 +295,41 @@ export function Sidebar() {
           </div>
         )}
       </div>
-      <div className="flex flex-col gap-1">
+
+      <div className={`flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
         {visibleTopItems.map((item) => (
-          <SidebarLink key={item.href} {...item} isActive={isActive(item.href)} />
+          <SidebarLink
+            key={item.href}
+            {...item}
+            isActive={isActive(item.href)}
+            expanded={expanded}
+          />
         ))}
       </div>
-      <div className="mt-auto flex flex-col gap-1">
+
+      <div className={`mt-auto flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
         {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 */}
         <SidebarLink
           href={isLoggedIn ? "/settings" : "/login"}
           icon={isLoggedIn ? Settings : LogIn}
           label={isLoggedIn ? "설정" : "로그인"}
           isActive={isActive(isLoggedIn ? "/settings" : "/login")}
+          expanded={expanded}
         />
+
+        {/* Sidebar toggle button */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={expanded ? "사이드바 접기" : "사이드바 펼치기"}
+          className={`flex items-center justify-center h-8 rounded-admin-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors ${
+            expanded ? "w-full" : "w-8"
+          }`}
+        >
+          {expanded
+            ? <ChevronLeft size={16} strokeWidth={2} />
+            : <ChevronRight size={16} strokeWidth={2} />}
+        </button>
       </div>
     </aside>
   );
