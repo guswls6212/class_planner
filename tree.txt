@@ -208,6 +208,7 @@ src/components/molecules/MonthDayCell.tsx
 src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/PdfGuideModal.tsx
+src/components/molecules/ParentCodeStickyBar.tsx
 src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/ScheduleDateNavigator.tsx
