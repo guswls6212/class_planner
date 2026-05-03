@@ -83,6 +83,8 @@ export default function SettingsPage() {
 
   // 학부모 접속 코드
   const [accessCodes, setAccessCodes] = useState<AccessCodeEntry[]>([]);
+  const [showAllCodes, setShowAllCodes] = useState(false);
+  const CODES_INITIAL_SHOW = 5;
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -711,14 +713,14 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 학부모 접속 코드 섹션 */}
+      {/* 학생 접속 코드 섹션 */}
       {canManage && (
         <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden mt-4">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
             <div>
-              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학부모 접속 코드</h3>
+              <h3 className="text-base font-semibold text-[var(--color-text-primary)]">학생 접속 코드</h3>
               <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                학부모가 자녀 시간표를 볼 수 있는 코드입니다 (코드는 6자 영문·숫자)
+                자녀 시간표 공유용 코드입니다 (6자 영문·숫자)
               </p>
             </div>
             <div className="flex gap-2">
@@ -746,9 +748,14 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div>
-              {accessCodes.map((code) => {
-                // Extract student name from label: "이현진 학부모 접속 코드" → "이현진"
-                const studentName = code.label?.replace(" 학부모 접속 코드", "") || "알 수 없음";
+              {(showAllCodes ? accessCodes : accessCodes.slice(0, CODES_INITIAL_SHOW)).map((code) => {
+                const student = localStudents.find((s) => s.id === code.filter_student_id);
+                const studentName =
+                  student?.name ??
+                  code.label?.replace(" 학부모 접속 코드", "").replace(" 접속 코드", "") ??
+                  "알 수 없음";
+                const hasDuplicate =
+                  localStudents.filter((s) => s.name === studentName).length > 1;
                 const daysLeft = Math.ceil(
                   (new Date(code.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 );
@@ -759,6 +766,11 @@ export default function SettingsPage() {
                   >
                     <span className="w-24 flex-shrink-0 text-sm font-semibold text-[var(--color-text-primary)]">
                       {studentName}
+                      {hasDuplicate && student && (
+                        <span className="ml-1 text-[10px] font-normal text-[var(--color-text-muted)]">
+                          ({student.id.slice(-4)})
+                        </span>
+                      )}
                     </span>
                     <span className="font-mono text-base font-bold tracking-wider text-[var(--color-accent)]">
                       {code.access_code}
@@ -784,12 +796,23 @@ export default function SettingsPage() {
                   </div>
                 );
               })}
+              {accessCodes.length > CODES_INITIAL_SHOW && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCodes((v) => !v)}
+                  className="w-full py-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors border-t border-[var(--color-border)]"
+                >
+                  {showAllCodes
+                    ? "접기 ▲"
+                    : `${accessCodes.length - CODES_INITIAL_SHOW}명 더보기 ▼`}
+                </button>
+              )}
             </div>
           )}
 
           <div className="px-6 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-tertiary)]">
             <p className="text-xs text-[var(--color-text-muted)]">
-              학부모 접속 URL:{" "}
+              접속 URL:{" "}
               <span className="font-mono text-[var(--color-accent)]">
                 {typeof window !== "undefined" ? window.location.origin : ""}/academy/{academySlug ?? academyId ?? ""}
               </span>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, Users, BookOpen, GraduationCap, Settings } from "lucide-react";
+import { CalendarDays, Users, BookOpen, GraduationCap, Settings, LogIn } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { signOut } from "@/lib/auth/signOut";
@@ -22,10 +22,6 @@ const topItems: SidebarItem[] = [
   { href: "/students", icon: Users, label: "학생", adminOnly: true },
   { href: "/subjects", icon: BookOpen, label: "과목", adminOnly: true },
   { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
-];
-
-const bottomItems: SidebarItem[] = [
-  { href: "/settings", icon: Settings, label: "설정" },
 ];
 
 function UserSection() {
@@ -105,6 +101,12 @@ export function Sidebar() {
   const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
   const visibleTopItems = topItems.filter((item) => !item.adminOnly || !isMember);
+
+  // Login state — drives bottom nav icon (LogIn vs Settings).
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("supabase_user_id"));
+  }, []);
 
   // Multi-academy switcher state. Reads the active academy id from
   // localStorage on mount; the dropdown lists all the user's academies and
@@ -258,9 +260,13 @@ export function Sidebar() {
         ))}
       </div>
       <div className="mt-auto flex flex-col gap-1">
-        {bottomItems.map((item) => (
-          <SidebarLink key={item.href} {...item} isActive={isActive(item.href)} />
-        ))}
+        {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 */}
+        <SidebarLink
+          href={isLoggedIn ? "/settings" : "/login"}
+          icon={isLoggedIn ? Settings : LogIn}
+          label={isLoggedIn ? "설정" : "로그인"}
+          isActive={isActive(isLoggedIn ? "/settings" : "/login")}
+        />
       </div>
     </aside>
   );
