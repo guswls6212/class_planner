@@ -183,11 +183,12 @@ export function buildEditOnDelete(params: {
 }) {
   const { editModalData, deleteSession, setShowEditModal } = params;
   return async () => {
-    if (editModalData && confirm("정말로 이 수업을 삭제하시겠습니까?")) {
+    // 학생/과목/강사 삭제와 일관성: confirm 알림 제거. 5초 undo 토스트가 안전망.
+    if (editModalData) {
       try {
         await deleteSession(editModalData.id);
         setShowEditModal(false);
-        logger.debug("세션 삭제 완료");
+        logger.debug("세션 삭제 완료 (undo toast 활성)");
       } catch (error) {
         logger.error("세션 삭제 실패", undefined, error as Error);
         showError("세션 삭제에 실패했습니다.");

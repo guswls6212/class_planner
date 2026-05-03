@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface UndoToastContentProps {
@@ -9,12 +10,13 @@ interface UndoToastContentProps {
 }
 
 /**
- * Custom render for the undo toast — styled to match class-planner
- * Admin Amber design tokens. Used by showUndoToast in lib/toast.ts.
+ * Custom render for the undo toast.
  *
- * Why custom (not sonner default action button):
- *   사용자 피드백 — 기본 sonner action 버튼이 class-planner와 어울리지 않음.
- *   여기선 amber accent + dark surface 토큰 사용해 우아함 통일.
+ * v2 디자인 (사용자 피드백 — "amber 위에 amber" 어울리지 않음):
+ *   - Trash 아이콘으로 semantic indicator (삭제됨)
+ *   - 본문 텍스트는 white, 토스트 배경은 dark (대비 명확)
+ *   - 되돌리기 버튼은 outline 기본 + 호버 시만 amber accent (single point)
+ *   - 페이지의 amber accent 영역과 색이 겹치지 않음
  */
 export function UndoToastContent({
   message,
@@ -22,9 +24,13 @@ export function UndoToastContent({
   toastId,
 }: UndoToastContentProps) {
   return (
-    <div className="flex items-center gap-3 min-w-[320px] max-w-[420px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-xl px-4 py-3 backdrop-blur">
-      {/* small amber dot to signal an action-recoverable state */}
-      <div className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" aria-hidden="true" />
+    <div className="flex items-center gap-3 min-w-[320px] max-w-[440px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-xl px-4 py-3 backdrop-blur">
+      <Trash2
+        size={14}
+        strokeWidth={1.75}
+        className="text-[var(--color-text-muted)] flex-shrink-0"
+        aria-hidden="true"
+      />
       <span className="flex-1 text-[13px] text-[var(--color-text-primary)] truncate">
         {message}
       </span>
@@ -34,7 +40,7 @@ export function UndoToastContent({
           onUndo();
           toast.dismiss(toastId);
         }}
-        className="px-3 py-1.5 text-[12px] font-semibold text-[var(--color-admin-ink)] bg-amber-400 rounded-md hover:bg-amber-300 transition-colors min-h-[28px]"
+        className="px-3 py-1.5 text-[12px] font-medium text-[var(--color-text-primary)] border border-[var(--color-border)] rounded-md hover:border-amber-400 hover:text-amber-400 hover:bg-amber-400/5 transition-colors min-h-[28px]"
       >
         되돌리기
       </button>
