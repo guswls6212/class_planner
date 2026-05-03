@@ -1,106 +1,69 @@
-import { vi } from "vitest";
-import { SidebarProvider, useSidebar } from "../SidebarContext";
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+import { SidebarProvider, useSidebar } from '../SidebarContext'
 
-// Mock localStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
-};
+// localStorage mock
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
+    removeItem: vi.fn((key: string) => { delete store[key] }),
+    clear: vi.fn(() => { store = {} }),
+  }
+})()
 
-Object.defineProperty(window, "localStorage", {
-  value: mockLocalStorage,
-  writable: true,
-});
+Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 
-// Mock React Testing Library to avoid DOM issues
-const mockRenderHook = vi.fn();
-const mockAct = vi.fn((fn) => fn());
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <SidebarProvider>{children}</SidebarProvider>
+}
 
-vi.mock("@testing-library/react", () => ({
-  renderHook: mockRenderHook,
-  act: mockAct,
-}));
-
-describe("SidebarContext", () => {
+describe('SidebarContext', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    mockLocalStorage.getItem.mockReturnValue(null);
-  });
+    localStorageMock.clear()
+    vi.clearAllMocks()
+  })
 
-  it("SidebarProvider가 올바르게 정의되어 있다", () => {
-    expect(SidebarProvider).toBeDefined();
-    expect(typeof SidebarProvider).toBe("function");
-  });
+  it('기본값은 false (collapsed)', () => {
+    localStorageMock.getItem.mockReturnValue(null)
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    expect(result.current.expanded).toBe(false)
+  })
 
-  it("useSidebar 훅이 올바르게 정의되어 있다", () => {
-    expect(useSidebar).toBeDefined();
-    expect(typeof useSidebar).toBe("function");
-  });
+  it('localStorage에 "true" 저장돼 있으면 expanded=true로 초기화', () => {
+    localStorageMock.getItem.mockReturnValue('true')
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    expect(result.current.expanded).toBe(true)
+  })
 
-  it("localStorage 모킹이 올바르게 설정되어 있다", () => {
-    expect(mockLocalStorage.getItem).toBeDefined();
-    expect(mockLocalStorage.setItem).toBeDefined();
-    expect(typeof mockLocalStorage.getItem).toBe("function");
-    expect(typeof mockLocalStorage.setItem).toBe("function");
-  });
+  it('toggle()이 expanded를 false→true로 전환', () => {
+    localStorageMock.getItem.mockReturnValue(null)
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    act(() => { result.current.toggle() })
+    expect(result.current.expanded).toBe(true)
+  })
 
-  it("기본 expanded 값은 false이다", () => {
-    const defaultExpanded = false;
-    expect(defaultExpanded).toBe(false);
-  });
+  it('toggle()이 expanded를 true→false로 전환', () => {
+    localStorageMock.getItem.mockReturnValue('true')
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    act(() => { result.current.toggle() })
+    expect(result.current.expanded).toBe(false)
+  })
 
-  it("토글 로직이 올바르게 작동한다", () => {
-    const toggleExpanded = (current: boolean) => !current;
-    expect(toggleExpanded(false)).toBe(true);
-    expect(toggleExpanded(true)).toBe(false);
-  });
+  it('toggle() 호출 시 localStorage.setItem("sidebar_expanded", "true") 호출', () => {
+    localStorageMock.getItem.mockReturnValue(null)
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    act(() => { result.current.toggle() })
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('sidebar_expanded', 'true')
+  })
 
-  it("localStorage 키가 올바르게 설정되어 있다", () => {
-    const key = "sidebar_expanded";
-    expect(key).toBe("sidebar_expanded");
-  });
-
-  it("localStorage에서 'true' 문자열을 읽으면 expanded가 true가 된다", () => {
-    mockLocalStorage.getItem.mockReturnValue("true");
-    const saved = mockLocalStorage.getItem("sidebar_expanded");
-    const expanded = saved === "true";
-    expect(expanded).toBe(true);
-  });
-
-  it("localStorage에서 null을 읽으면 expanded는 false이다", () => {
-    mockLocalStorage.getItem.mockReturnValue(null);
-    const saved = mockLocalStorage.getItem("sidebar_expanded");
-    const expanded = saved === "true";
-    expect(expanded).toBe(false);
-  });
-
-  it("toggle 후 localStorage에 새 값이 저장된다", () => {
-    let expanded = false;
-    const toggle = () => {
-      const next = !expanded;
-      mockLocalStorage.setItem("sidebar_expanded", String(next));
-      expanded = next;
-    };
-
-    toggle();
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith("sidebar_expanded", "true");
-    expect(expanded).toBe(true);
-
-    toggle();
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith("sidebar_expanded", "false");
-    expect(expanded).toBe(false);
-  });
-
-  it("SidebarContext 타입이 올바르게 정의되어 있다", () => {
-    const contextType = {
-      expanded: false,
-      toggle: () => {},
-    };
-    expect(contextType).toHaveProperty("expanded");
-    expect(contextType).toHaveProperty("toggle");
-    expect(typeof contextType.toggle).toBe("function");
-    expect(typeof contextType.expanded).toBe("boolean");
-  });
-});
+  it('toggle() 두 번 호출 시 false로 복귀, localStorage.setItem("sidebar_expanded", "false") 호출', () => {
+    localStorageMock.getItem.mockReturnValue(null)
+    const { result } = renderHook(() => useSidebar(), { wrapper })
+    act(() => { result.current.toggle() })
+    act(() => { result.current.toggle() })
+    expect(result.current.expanded).toBe(false)
+    expect(localStorageMock.setItem).toHaveBeenLastCalledWith('sidebar_expanded', 'false')
+  })
+})

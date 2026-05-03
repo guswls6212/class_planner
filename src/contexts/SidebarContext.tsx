@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 
 interface SidebarContextValue {
   expanded: boolean;
@@ -13,12 +13,10 @@ const SidebarContext = createContext<SidebarContextValue>({
 });
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("sidebar_expanded");
-    if (saved === "true") setExpanded(true);
-  }, []);
+  const [expanded, setExpanded] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("sidebar_expanded") === "true";
+  });
 
   const toggle = () => {
     setExpanded((v) => {
