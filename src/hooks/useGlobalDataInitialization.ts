@@ -12,9 +12,14 @@ import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
   clearUserClassPlannerData,
+  getClassPlannerData,
   setClassPlannerData,
 } from "../lib/localStorageCrud";
 import type { ClassPlannerData } from "../lib/localStorageCrud";
+import {
+  computeServerLastModified,
+  decideOverwrite,
+} from "../lib/sync/timestamps";
 import {
   checkLoginDataConflict,
   applyServerChoice,
@@ -204,9 +209,9 @@ export const useGlobalDataInitialization = () => {
         }
 
         // use-server: 정상 경로
-        // 서버가 source of truth. 새로고침 시 서버 데이터를 localStorage에 적용.
         // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
         if (subjectsFetched && serverData.subjects.length === 0) {
+          // 신규 계정 / 학원 — DEFAULT_SUBJECTS bootstrap. 비교 없이 항상 seed.
           logger.info("과목이 없어서 기본 과목을 추가합니다", {
             count: DEFAULT_SUBJECTS.length,
           });
@@ -222,7 +227,51 @@ export const useGlobalDataInitialization = () => {
             subjects: defaultSubjectsWithId,
           });
         } else {
-          setClassPlannerData(serverData);
+          // Phase 1 (Local-first hybrid): timestamp 비교로 unsynced local writes 보호.
+          // 이전엔 무조건 overwrite → fire-and-forget sync 실패 시 데이터 손실.
+          // 이제 local lastModified > server max(updatedAt) 면 skip.
+          const localBag = getClassPlannerData();
+          const localIsEmpty =
+            localBag.students.length === 0 &&
+            localBag.subjects.length === 0 &&
+            localBag.sessions.length === 0 &&
+            localBag.enrollments.length === 0 &&
+            localBag.teachers.length === 0;
+
+          const serverLastModified = computeServerLastModified(serverData);
+          const decision = decideOverwrite({
+            localLastModified: localBag.lastModified,
+            serverLastModified,
+            localIsEmpty,
+          });
+
+          logger.info("로컬-서버 동기화 결정", {
+            decision: decision.decision,
+            reason: decision.reason,
+            localLastModified: localBag.lastModified ?? null,
+            serverLastModified,
+            localMs: decision.localMs,
+            serverMs: decision.serverMs,
+            serverEntityCounts: {
+              students: serverData.students.length,
+              subjects: serverData.subjects.length,
+              sessions: serverData.sessions.length,
+              enrollments: serverData.enrollments.length,
+              teachers: serverData.teachers.length,
+            },
+            localEntityCounts: {
+              students: localBag.students.length,
+              subjects: localBag.subjects.length,
+              sessions: localBag.sessions.length,
+              enrollments: localBag.enrollments.length,
+              teachers: localBag.teachers.length,
+            },
+          });
+
+          if (decision.decision === "overwrite") {
+            setClassPlannerData(serverData);
+          }
+          // skip 시 local 그대로. Eventual consistency via apiSync.ts fire-and-forget.
         }
 
         if (mounted) setIsInitialized(true);
