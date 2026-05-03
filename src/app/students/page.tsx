@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import StudentsPageLayout from "../../components/organisms/StudentsPageLayout";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
 import { useMyRole } from "../../hooks/useMyRole";
+import { useAccessCodes } from "../../hooks/useAccessCodes";
+import { supabase } from "../../utils/supabaseClient";
 import type { Student } from "../../lib/planner";
 import { logger } from "../../lib/logger";
 import { showError } from "../../lib/toast";
@@ -15,7 +17,42 @@ export default function StudentsPage() {
 }
 
 function StudentsPageContent() {
-  const { canManage, isLoading: isRoleLoading } = useMyRole();
+  const { canManage, isLoading: isRoleLoading, academies } = useMyRole();
+
+  // Auth + active academy resolution (for academy URL + access code fetching)
+  const [userId, setUserId] = useState<string | null>(null);
+  const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => setUserId(session?.user?.id ?? null))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    import("../../lib/localStorageCrud").then(({ getActiveAcademyId }) => {
+      setActiveAcademyId(getActiveAcademyId(userId));
+    });
+  }, [userId]);
+
+  const activeAcademy =
+    academies.find((a) => a.id === activeAcademyId) ?? academies[0];
+  const academyIdentifier = activeAcademy?.slug ?? activeAcademy?.id ?? null;
+  const academyUrl =
+    academyIdentifier && typeof window !== "undefined"
+      ? `${window.location.origin}/academy/${academyIdentifier}`
+      : undefined;
+
+  // Parent access codes (only fetched for logged-in admins; hook returns []
+  // for null userId, and StudentsPageLayout gates UI on canManage anyway).
+  const {
+    accessCodes,
+    handleCreate: handleCreateCodes,
+    handleRenew: handleRenewCodes,
+  } = useAccessCodes(canManage ? userId : null);
+
   const [selectedStudentId, setSelectedStudentId] = useLocal<string>(
     "ui:selectedStudent",
     ""
@@ -94,6 +131,10 @@ function StudentsPageContent() {
       onClearError={clearError}
       canManage={canManage}
       isRoleLoading={isRoleLoading}
+      accessCodes={accessCodes}
+      onCreateCodes={handleCreateCodes}
+      onRenewCodes={handleRenewCodes}
+      academyUrl={academyUrl}
     />
   );
 }

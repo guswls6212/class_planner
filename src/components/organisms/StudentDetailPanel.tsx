@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar } from "lucide-react";
+import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
+import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
+import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import { showToast } from "@/lib/toast";
 
 interface StudentDetailPanelProps {
   student: Student;
@@ -14,11 +17,15 @@ interface StudentDetailPanelProps {
   onBack?: () => void;
   /** When false, edit/delete buttons are hidden (member role). Default: true */
   canManage?: boolean;
+  /** Parent access code for this student, if any (admins only) */
+  accessCode?: AccessCodeEntry;
+  /** Academy access URL — used for "URL+코드 복사" button */
+  academyUrl?: string;
 }
 
 export function StudentDetailPanel({
   student, subjects, enrollments, sessions, onUpdate, onDelete, onBack,
-  canManage = true,
+  canManage = true, accessCode, academyUrl,
 }: StudentDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editFields, setEditFields] = useState({
@@ -123,6 +130,32 @@ export function StudentDetailPanel({
           <p className="text-xl font-bold text-accent">{studentSessions.length}회</p>
         </div>
       </div>
+
+      {/* Parent Access Code (admin-visible only) */}
+      {canManage && accessCode && (
+        <section className="bg-[var(--color-bg-secondary)] rounded-md p-4">
+          <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2">
+            학부모 접속 코드
+          </h3>
+          <StudentAccessCodeBadge code={accessCode} variant="large" />
+          {academyUrl && (
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === "undefined") return;
+                window.navigator.clipboard
+                  ?.writeText(`${academyUrl}\n코드: ${accessCode.access_code}`)
+                  .then(() => showToast("success", `${student.name} 코드가 복사됐습니다`))
+                  .catch(() => showToast("error", "복사에 실패했습니다"));
+              }}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <Copy size={12} strokeWidth={1.5} />
+              URL+코드 복사
+            </button>
+          )}
+        </section>
+      )}
 
       {/* Schedule List */}
       <section>

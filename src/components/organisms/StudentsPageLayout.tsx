@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Copy, RefreshCw } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
+import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
+import { showToast } from "@/lib/toast";
 
 interface StudentsPageLayoutProps {
   students: Student[];
@@ -21,10 +24,18 @@ interface StudentsPageLayoutProps {
   canManage?: boolean;
   /** True while role is being fetched — used to add data-role-loading for E2E tests */
   isRoleLoading?: boolean;
+  /** Parent access codes for students in this academy (admin-visible only) */
+  accessCodes?: AccessCodeEntry[];
+  /** Generate codes for any student missing one */
+  onCreateCodes?: () => void;
+  /** Regenerate ALL codes (destructive — user-confirmed in handler) */
+  onRenewCodes?: () => void;
+  /** Academy access URL (e.g. /academy/<slug>) — used for "URL+코드 복사" */
+  academyUrl?: string;
 }
 
 export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
-  const { students, selectedStudentId, onSelectStudent } = props;
+  const { students, selectedStudentId, onSelectStudent, accessCodes = [], academyUrl } = props;
   const canManage = props.canManage ?? true;
   const isRoleLoading = props.isRoleLoading ?? false;
   const [searchQuery, setSearchQuery] = useState("");
@@ -33,6 +44,16 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
 
   const filtered = students.filter((s) => s.name.includes(searchQuery));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  // O(1) lookup: studentId → access code
+  const codeByStudentId = new Map(
+    accessCodes
+      .filter((c) => c.filter_student_id)
+      .map((c) => [c.filter_student_id as string, c]),
+  );
+
+  const showCodeManagement =
+    canManage && Boolean(props.onCreateCodes) && Boolean(academyUrl);
 
   const handleAdd = () => {
     const trimmed = newName.trim();
@@ -101,6 +122,55 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           </div>
         </div>
 
+        {/* Code Management Card (admin + has academy) */}
+        {showCodeManagement && (
+          <div className="px-3 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold text-[var(--color-text-secondary)] tracking-wide">
+                학부모 접속 코드
+              </span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={props.onCreateCodes}
+                  className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-accent text-[var(--color-admin-ink)] hover:opacity-90 transition-opacity"
+                >
+                  코드 생성
+                </button>
+                <button
+                  type="button"
+                  onClick={props.onRenewCodes}
+                  className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-accent hover:text-[var(--color-text-primary)] transition-colors"
+                  title="모든 코드 재발급 (기존 코드 만료)"
+                >
+                  <RefreshCw size={11} strokeWidth={2} />
+                  전체 갱신
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-[var(--color-text-muted)] flex-shrink-0">접속 URL</span>
+              <span className="font-mono text-[10px] text-[var(--color-text-primary)] truncate flex-1">
+                {academyUrl}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window === "undefined" || !academyUrl) return;
+                  window.navigator.clipboard
+                    ?.writeText(academyUrl)
+                    .then(() => showToast("success", "URL이 복사됐습니다"))
+                    .catch(() => showToast("error", "복사에 실패했습니다"));
+                }}
+                className="p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] transition-colors"
+                aria-label="URL 복사"
+              >
+                <Copy size={11} strokeWidth={1.5} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Student list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
@@ -108,28 +178,38 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
               {searchQuery ? "검색 결과 없음" : "학생을 추가해주세요"}
             </li>
           ) : (
-            filtered.map((student) => (
-              <li key={student.id}>
-                <button
-                  onClick={() => handleSelect(student.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-overlay-light)] transition-colors ${
-                    student.id === selectedStudentId
-                      ? "bg-[var(--color-overlay-light)] border-l-2 border-l-accent"
-                      : ""
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-[var(--color-admin-ink)] font-bold text-sm flex-shrink-0">
-                    {student.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{student.name}</p>
-                    <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                      {[student.grade, student.school].filter(Boolean).join(" · ") || "프로필 미입력"}
-                    </p>
-                  </div>
-                </button>
-              </li>
-            ))
+            filtered.map((student) => {
+              const studentCode = codeByStudentId.get(student.id);
+              return (
+                <li key={student.id}>
+                  <button
+                    onClick={() => handleSelect(student.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-overlay-light)] transition-colors ${
+                      student.id === selectedStudentId
+                        ? "bg-[var(--color-overlay-light)] border-l-2 border-l-accent"
+                        : ""
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-[var(--color-admin-ink)] font-bold text-sm flex-shrink-0">
+                      {student.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                          {student.name}
+                        </p>
+                        {canManage && studentCode && (
+                          <StudentAccessCodeBadge code={studentCode} variant="inline" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[var(--color-text-muted)] truncate">
+                        {[student.grade, student.school].filter(Boolean).join(" · ") || "프로필 미입력"}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })
           )}
         </ul>
 
@@ -157,6 +237,8 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onDelete={props.onDeleteStudent}
             onBack={() => setShowDetail(false)}
             canManage={canManage}
+            accessCode={codeByStudentId.get(selectedStudent.id)}
+            academyUrl={academyUrl}
           />
         </div>
       ) : (
