@@ -89,7 +89,23 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AppContent>{children}</AppContent>
-          <Toaster richColors position="top-right" />
+          {/* Toast position: bottom-center
+              - 모바일 PWA 친화 (엄지 reach + 화면 위쪽 차단 안 함)
+              - PC도 사용자 피드백("우상단은 너무 멀다")
+              theme=dark + richColors → class-planner amber theme과 자연스러움 */}
+          <Toaster
+            theme="dark"
+            richColors
+            position="bottom-center"
+            toastOptions={{
+              style: {
+                fontFamily: "var(--font-geist-sans, inherit)",
+                fontSize: "13px",
+                borderRadius: "8px",
+              },
+              className: "class-planner-toast",
+            }}
+          />
           {/*
            * SR live region — placeholder for future programmatic announcements.
            * Currently unwired: Sonner (<Toaster>) handles toast SR output.

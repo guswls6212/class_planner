@@ -170,6 +170,8 @@ export const useSubjectManagementLocal =
             const userId = localStorage.getItem("supabase_user_id");
             syncSubjectCreate(userId, { name, color });
 
+            showToast("success", `${name.trim()} 과목이 추가됐습니다`);
+
             logger.info("useSubjectManagementLocal - 과목 추가 성공", {
               name,
               color,
@@ -226,6 +228,8 @@ export const useSubjectManagementLocal =
             // 서버 동기화 (fire-and-forget)
             const userId = localStorage.getItem("supabase_user_id");
             syncSubjectUpdate(userId, id, updates);
+
+            showToast("success", "과목이 수정됐습니다");
 
             logger.info("useSubjectManagementLocal - 과목 수정 성공", {
               id,

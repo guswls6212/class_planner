@@ -69,11 +69,15 @@ export async function POST(request: NextRequest) {
       academyUuid = academy.id
     }
 
+    // NFC normalize: client가 NFD로 보내도 DB(NFC)와 매칭되도록 서버측에서도 정규화.
+    // (방어적 — client는 이미 NFC로 보내지만 다른 entry point도 안전.)
+    const normalizedCode = code.normalize('NFC')
+
     // academy 범위 내에서만 코드 조회 (cross-academy 격리)
     const { data, error } = await client
       .from('share_tokens')
       .select('token, expires_at, academy_id')
-      .eq('access_code', code)
+      .eq('access_code', normalizedCode)
       .eq('academy_id', academyUuid)
       .is('revoked_at', null)
       .gt('expires_at', now)

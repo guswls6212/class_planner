@@ -34,7 +34,10 @@ export default function AcademyAccessPage({
 
   const submitCode = useCallback(
     async (raw: string) => {
-      const trimmed = raw.trim().toUpperCase()
+      // .normalize('NFC'): macOS clipboard가 Korean을 NFD로 변환하는 경우 대응.
+      // DB는 NFC로 저장하므로 NFD 문자열은 .eq() 매칭 실패 → 항상 404.
+      // (이전엔 학원장이 코드 복사 → 부모가 paste 시 NFD로 바뀌면서 invalidate.)
+      const trimmed = raw.trim().toUpperCase().normalize("NFC")
       if (!trimmed) return
 
       setLoading(true)
