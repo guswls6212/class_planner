@@ -331,3 +331,214 @@ describe("로그인 사용자 — 충돌 처리", () => {
     expect(result.current.conflictState).toBeNull();
   });
 });
+
+describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)", () => {
+  // Phase 1 (Hybrid Local-First): server fetch이 무조건 localStorage를 덮어쓰는
+  // 기존 동작을 timestamp 비교로 보호. local이 더 신선하면 skip.
+  // 학생 add 후 fire-and-forget sync 실패 + 새로고침 = 학생 사라짐 버그 방지.
+
+  const USER_ID = "user-123";
+  // 로컬 bag을 controlled JSON으로 반환하기 위한 helper
+  const STORAGE_KEY = `classPlannerData:${USER_ID}`;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: USER_ID, email: "test@test.com" } } },
+      error: null,
+    } as any);
+
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+  });
+
+  function mockLocalBag(bag: {
+    students?: any[];
+    subjects?: any[];
+    sessions?: any[];
+    enrollments?: any[];
+    teachers?: any[];
+    lastModified: string;
+  }) {
+    localStorageMock.getItem.mockImplementation((key: string) => {
+      if (key === "supabase_user_id") return USER_ID;
+      if (key === STORAGE_KEY)
+        return JSON.stringify({
+          students: bag.students ?? [],
+          subjects: bag.subjects ?? [],
+          sessions: bag.sessions ?? [],
+          enrollments: bag.enrollments ?? [],
+          teachers: bag.teachers ?? [],
+          version: "1.0",
+          lastModified: bag.lastModified,
+        });
+      return null;
+    });
+  }
+
+  function mockServerFetches(payload: {
+    students?: any[];
+    subjects?: any[];
+    sessions?: any[];
+    enrollments?: any[];
+    teachers?: any[];
+    fail?: boolean;
+  }) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (payload.fail) return Promise.reject(new Error("network"));
+      let data: any[] = [];
+      if (url.includes("/api/students")) data = payload.students ?? [];
+      else if (url.includes("/api/subjects")) data = payload.subjects ?? [];
+      else if (url.includes("/api/sessions")) data = payload.sessions ?? [];
+      else if (url.includes("/api/enrollments")) data = payload.enrollments ?? [];
+      else if (url.includes("/api/teachers")) data = payload.teachers ?? [];
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data }),
+      });
+    });
+  }
+
+  function setItemDataPayload(): any | null {
+    const calls = localStorageMock.setItem.mock.calls as string[][];
+    const dataCall = calls.find((args) => args[0] === STORAGE_KEY);
+    return dataCall ? JSON.parse(dataCall[1]) : null;
+  }
+
+  it("로컬이 서버보다 2초 늦음 → 덮어쓴다 (server-newer)", async () => {
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "old", name: "기존학생" }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff" }],
+      lastModified: new Date(T - 2000).toISOString(),
+    });
+    mockServerFetches({
+      students: [{ id: "srv1", name: "서버학생", updatedAt: new Date(T).toISOString() }],
+      subjects: [{ id: "sub-srv", name: "과학", color: "#abc", updatedAt: new Date(T).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).not.toBeNull();
+    // server 데이터로 덮어써짐
+    expect(saved.students.map((s: any) => s.id)).toEqual(["srv1"]);
+  });
+
+  it("로컬이 서버보다 2초 빠름 → 덮어쓰지 않는다 (local-newer, ★ 버그 fix)", async () => {
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "local-new", name: "방금추가한학생" }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff" }],
+      lastModified: new Date(T + 2000).toISOString(),
+    });
+    mockServerFetches({
+      // server subjects를 1개 둬서 DEFAULT_SUBJECTS bootstrap 분기 회피 → Phase 1 로직 진입
+      subjects: [{ id: "sub-srv", name: "수학", color: "#fff", updatedAt: new Date(T).toISOString() }],
+      students: [{ id: "srv1", name: "서버학생", updatedAt: new Date(T).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    // skip 됐으므로 STORAGE_KEY 에 setItem 호출 자체가 없어야 함
+    expect(saved).toBeNull();
+  });
+
+  it("로컬 비어 있음 → 덮어쓴다 (local-empty, academy switch 보호)", async () => {
+    const T = Date.now();
+    // 빈 entity + fresh lastModified (academy switch 시뮬레이션)
+    mockLocalBag({
+      lastModified: new Date(T + 60_000).toISOString(),
+    });
+    mockServerFetches({
+      students: [{ id: "srv1", name: "S", updatedAt: new Date(T).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).not.toBeNull();
+    expect(saved.students.map((s: any) => s.id)).toEqual(["srv1"]);
+  });
+
+  it("모든 fetch 실패 → 덮어쓰지 않는다 (server-unreachable)", async () => {
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "local-1", name: "기존" }],
+      lastModified: new Date(T).toISOString(),
+    });
+    mockServerFetches({ fail: true });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).toBeNull(); // 로컬 보존
+  });
+
+  it("로컬-서버 1초 이내 차이 → 덮어쓴다 (tiebreak)", async () => {
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "local", name: "S" }],
+      lastModified: new Date(T + 500).toISOString(),
+    });
+    mockServerFetches({
+      students: [{ id: "srv", name: "Server", updatedAt: new Date(T).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).not.toBeNull();
+    expect(saved.students.map((s: any) => s.id)).toEqual(["srv"]);
+  });
+
+  it("레거시 데이터 (모든 updatedAt 없음) → 덮어쓰지 않는다 (server-unreachable-or-no-timestamps)", async () => {
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "local", name: "S" }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff" }],
+      lastModified: new Date(T).toISOString(),
+    });
+    // 서버 응답에 updatedAt 없음 (legacy entries) → computeServerLastModified=null
+    // bootstrap 분기 회피 위해 subjects도 비-empty (no updatedAt)
+    mockServerFetches({
+      students: [{ id: "srv", name: "Server" }],
+      subjects: [{ id: "sub-srv", name: "Subj", color: "#fff" }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).toBeNull(); // 로컬 보존 (보수적)
+  });
+
+  it("DEFAULT_SUBJECTS bootstrap 분기 — 서버 subjects 비어 있고 fetch 성공 → 그대로 동작 (회귀 방지)", async () => {
+    // 이 분기는 timestamp 비교를 거치지 않음. seed 동작 그대로.
+    mockLocalBag({
+      lastModified: new Date(Date.now()).toISOString(),
+    });
+    mockServerFetches({
+      students: [],
+      subjects: [], // 서버에 과목 없음 → DEFAULT_SUBJECTS 추가
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    expect(saved).not.toBeNull();
+    // DEFAULT_SUBJECTS 9개 추가됨
+    expect(saved.subjects.length).toBe(9);
+    expect(saved.subjects[0].id).toBe("default-1");
+  });
+});
