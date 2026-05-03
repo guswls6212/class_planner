@@ -29,6 +29,7 @@ interface SessionBlockProps {
   yOffset: number;
   yPosition?: number;
   height?: number;
+  /** 평클릭 핸들러. modifier(Shift/Ctrl/Meta) 클릭은 onSelectToggle로 분기됨. */
   onClick: () => void;
   selectedStudentIds?: string[];
   isMobile?: boolean;
@@ -38,6 +39,10 @@ interface SessionBlockProps {
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
+  /** 다중 선택 상태 — true이면 amber outline + ✓ 체크마크 */
+  selected?: boolean;
+  /** Shift/Ctrl/Meta + click 시 호출. undefined이면 modifier click도 onClick으로 fall through. */
+  onSelectToggle?: () => void;
 }
 
 export const validateSessionBlockProps = (
@@ -73,6 +78,8 @@ function SessionBlock({
   hasConflict = false,
   onDelete,
   isReadOnly = false,
+  selected = false,
+  onSelectToggle,
 }: SessionBlockProps) {
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -194,6 +201,13 @@ function SessionBlock({
   );
 
   const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isReadOnly) return;
+    // Shift/Ctrl/Cmd + click → 다중 선택 toggle (Edit modal 안 열림)
+    if ((e.shiftKey || e.ctrlKey || e.metaKey) && onSelectToggle) {
+      onSelectToggle();
+      return;
+    }
     logger.info("SessionBlock clicked", {
       sessionId: session.id,
       subjectName: subject?.name,
@@ -204,8 +218,7 @@ function SessionBlock({
       width,
       yOffset,
     });
-    e.stopPropagation();
-    if (!isReadOnly && onClick) {
+    if (onClick) {
       onClick();
     }
   };
@@ -346,7 +359,9 @@ function SessionBlock({
       data-starts-at={session.startsAt}
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
+      data-selected={selected ? "true" : undefined}
       aria-label={ariaLabel}
+      aria-pressed={selected ? true : undefined}
     >
       {/* Bug2 fix: setNodeRef(setDragRef)는 outer wrapper에 — dnd-kit이 전체 블록 rect를 충돌 감지에 사용.
           grip div는 listeners만 보유(activation handle). attributes는 grip에 유지(aria 접근성). */}
@@ -360,10 +375,20 @@ function SessionBlock({
         className={[
           "session-block group",
           "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-white/30 transition-all duration-150",
+          selected ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
+        {selected && (
+          <span
+            aria-hidden="true"
+            data-testid="session-selected-check"
+            className="absolute -top-1 -right-1 z-[3] flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950 shadow-sm"
+          >
+            ✓
+          </span>
+        )}
         {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에. */}
         {!isReadOnly && (
           <div

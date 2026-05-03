@@ -108,6 +108,7 @@ src/app/schedule/_hooks/__tests__/useUiState.test.ts
 src/app/schedule/_hooks/useEditModalState.ts
 src/app/schedule/_hooks/useStudentFilter.ts
 src/app/schedule/_hooks/useUiState.ts
+src/app/schedule/_utils/__tests__/bulkSessionOps.test.ts
 src/app/schedule/_utils/__tests__/collisionHelpers.test.ts
 src/app/schedule/_utils/__tests__/collisionQueries.test.ts
 src/app/schedule/_utils/__tests__/dndHelpers.test.ts
@@ -123,6 +124,7 @@ src/app/schedule/_utils/dndHelpers.ts
 src/app/schedule/_utils/editSaveHandlers.ts
 src/app/schedule/_utils/editStudentHandlers.ts
 src/app/schedule/_utils/modalHandlers.ts
+src/app/schedule/_utils/bulkSessionOps.ts
 src/app/schedule/_utils/scheduleSelectors.ts
 src/app/schedule/_utils/sessionSaveUtils.ts
 src/app/schedule/page.tsx
@@ -170,6 +172,7 @@ src/components/atoms/InfoTrigger.tsx
 src/components/atoms/Input.tsx
 src/components/atoms/Label.tsx
 src/components/atoms/SegmentedButton.tsx
+src/components/atoms/SelectionBar.tsx
 src/components/atoms/StudentListItem.tsx
 src/components/atoms/SyncStatusDot.tsx
 src/components/atoms/SubjectListItem.tsx
@@ -365,6 +368,7 @@ src/hooks/useOutboxFlush.ts
 src/hooks/usePerformanceMonitoring.ts
 src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
+src/hooks/useSessionSelection.ts
 src/hooks/useSyncStatus.ts
 src/hooks/useScheduleView.ts
 src/hooks/useSessionStatus.ts

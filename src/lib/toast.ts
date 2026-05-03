@@ -56,3 +56,21 @@ export function showUndoToast(opts: {
     { duration },
   );
 }
+
+/**
+ * 다중 항목 작업(예: 5개 일괄 삭제)용 undo 토스트.
+ * 단일 showUndoToast의 thin wrapper — duration default 7s (5개 검토 + 클릭에 5s 빠듯)
+ * 메시지: `${count}개 ${op} — 되돌리기`
+ */
+export function showBulkUndoToast(opts: {
+  count: number;
+  op: string;
+  onUndo: () => void;
+  durationMs?: number;
+}) {
+  showUndoToast({
+    message: `${opts.count}개 ${opts.op}`,
+    onUndo: opts.onUndo,
+    durationMs: opts.durationMs ?? 7000,
+  });
+}

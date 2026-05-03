@@ -64,6 +64,7 @@ export interface UseIntegratedDataLocalReturn {
     updates: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
   ) => Promise<boolean>;
   deleteSession: (id: string) => Promise<boolean>;
+  bulkDeleteSessions: (ids: string[]) => Promise<void>;
 
   // 등록 관련 액션
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>;
@@ -452,6 +453,62 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     [loadDataFromLocal]
   );
 
+  /**
+   * 다중 sessions 일괄 삭제 — 단일 undo 토스트로 묶음 처리.
+   *
+   * 흐름:
+   *   1. localStorage에서 모두 즉시 제거 + UI reload
+   *   2. 단일 bulk undo 토스트 (default 7s)
+   *   3. 토스트 timeout 후 N개 syncSessionDelete (fire-and-forget)
+   *   4. undo 클릭 시 모두 복원 + sync 취소
+   */
+  const bulkDeleteSessions = useCallback(
+    async (ids: string[]): Promise<void> => {
+      if (ids.length === 0) return;
+      // 동적 import로 schedule 페이지 utility를 hook에서 사용 (의존성 순환 방지)
+      const { bulkDeleteSessionsFromLocal, restoreBulkDeletedSessions } =
+        await import("../app/schedule/_utils/bulkSessionOps");
+      const { showBulkUndoToast } = await import("../lib/toast");
+
+      const { deleted, notFound } = bulkDeleteSessionsFromLocal(ids);
+      if (deleted.length === 0) return;
+      loadDataFromLocal();
+
+      const userId = localStorage.getItem("supabase_user_id");
+      let cancelled = false;
+      const commitTimer = setTimeout(() => {
+        if (cancelled) return;
+        for (const s of deleted) {
+          syncSessionDelete(userId, s.id);
+        }
+        logger.info("useIntegratedDataLocal - 일괄 삭제 commit", {
+          count: deleted.length,
+        });
+      }, 7000);
+
+      showBulkUndoToast({
+        count: deleted.length,
+        op: "수업 삭제됨",
+        onUndo: () => {
+          cancelled = true;
+          clearTimeout(commitTimer);
+          restoreBulkDeletedSessions(deleted);
+          loadDataFromLocal();
+          showToast("success", `${deleted.length}개 수업 복원됨`);
+          logger.info("useIntegratedDataLocal - 일괄 삭제 undo", {
+            count: deleted.length,
+          });
+        },
+        durationMs: 7000,
+      });
+
+      if (notFound.length > 0) {
+        logger.warn("일괄 삭제 — 일부 id 미발견", { notFound });
+      }
+    },
+    [loadDataFromLocal]
+  );
+
   // ===== 등록 관련 액션 =====
 
   const addEnrollment = useCallback(
@@ -655,6 +712,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     addSession,
     updateSession,
     deleteSession,
+    bulkDeleteSessions,
 
     // 등록 관련 액션
     addEnrollment,

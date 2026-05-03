@@ -65,6 +65,8 @@ import ScheduleHeader from "./_components/ScheduleHeader";
 import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
 import { useScheduleMeta } from "../../hooks/useScheduleMeta";
 import { useOutboxFlush } from "../../hooks/useOutboxFlush";
+import { useSessionSelection } from "../../hooks/useSessionSelection";
+import SelectionBar from "@/components/atoms/SelectionBar";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import {
@@ -172,6 +174,7 @@ function SchedulePageContent(): JSX.Element {
     updateData,
     addEnrollment,
     deleteSession: deleteSessionFromHook,
+    bulkDeleteSessions,
   } = useIntegratedDataLocal();
 
   // Color-by 토글
@@ -223,6 +226,20 @@ function SchedulePageContent(): JSX.Element {
 
   // 이전 세션에서 retry 10회 후 포기된 sync 작업 자동 재시도
   useOutboxFlush(userId);
+
+  // 다중 선택 (Shift/Ctrl/Meta+click) — Esc로 해제, 50개 상한
+  const sessionSelection = useSessionSelection({
+    max: 50,
+    onLimitExceeded: (max) =>
+      showToast("warning", `최대 ${max}개까지 선택 가능합니다.`),
+  });
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = sessionSelection.selectedSessionIds;
+    if (ids.length === 0) return;
+    sessionSelection.clear();
+    await bulkDeleteSessions(ids);
+  }, [sessionSelection, bulkDeleteSessions]);
 
   // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
   // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
@@ -1525,6 +1542,11 @@ function SchedulePageContent(): JSX.Element {
       ) : (
         /* 주간 시간표 그리드 */
         <div className="relative">
+          <SelectionBar
+            count={sessionSelection.count}
+            onDelete={handleBulkDelete}
+            onClear={sessionSelection.clear}
+          />
           <ScheduleGridSection
             containerRef={timeTableRef}
             gridVersion={gridVersion}
@@ -1542,6 +1564,8 @@ function SchedulePageContent(): JSX.Element {
             teachers={teachers}
             colorBy={colorBy}
             baseDate={selectedDate}
+            selectedSessionIds={sessionSelection.selectedSet}
+            onSessionSelectToggle={canManage ? sessionSelection.toggle : undefined}
           />
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState

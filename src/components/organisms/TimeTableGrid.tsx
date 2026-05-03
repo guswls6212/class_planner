@@ -67,6 +67,10 @@ interface TimeTableGridProps {
   isReadOnly?: boolean;
   // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.
   baseDate?: Date;
+  /** 다중 선택된 세션 id Set. 비어있거나 undefined이면 일반 모드. */
+  selectedSessionIds?: Set<string>;
+  /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
+  onSessionSelectToggle?: (sessionId: string) => void;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -92,6 +96,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       colorBy = "subject",
       isReadOnly = false,
       baseDate,
+      selectedSessionIds,
+      onSessionSelectToggle,
     },
     ref
   ) => {
@@ -636,6 +642,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}
+                selectedSessionIds={selectedSessionIds}
+                onSessionSelectToggle={
+                  isReadOnly ? undefined : onSessionSelectToggle
+                }
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,

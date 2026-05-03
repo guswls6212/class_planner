@@ -40,6 +40,10 @@ type Props = {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   baseDate: Date;
+  /** 다중 선택된 세션 id Set */
+  selectedSessionIds?: Set<string>;
+  /** modifier(Shift/Ctrl/Meta) + click */
+  onSessionSelectToggle?: (sessionId: string) => void;
 };
 
 export default function ScheduleGridSection({
@@ -59,6 +63,8 @@ export default function ScheduleGridSection({
   teachers = [],
   colorBy = "subject",
   baseDate,
+  selectedSessionIds,
+  onSessionSelectToggle,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -78,6 +84,8 @@ export default function ScheduleGridSection({
         teachers={teachers}
         colorBy={colorBy}
         baseDate={baseDate}
+        selectedSessionIds={selectedSessionIds}
+        onSessionSelectToggle={onSessionSelectToggle}
       />
     </div>
   );
