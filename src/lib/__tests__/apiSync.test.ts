@@ -347,4 +347,66 @@ describe("apiSync", () => {
       expect(successCalls.length).toBe(0);
     });
   });
+
+  describe("Outbox 통합 — 모든 entity (회귀: 손실 방지)", () => {
+    it("syncStudentCreate가 POST URL/method/body를 fetch에 정상 전달", () => {
+      syncStudentCreate("user-1", { name: "Kim" });
+      const call = mockFetch.mock.calls[0];
+      expect(call[0]).toContain("/api/students?userId=user-1");
+      expect(call[1]).toMatchObject({ method: "POST" });
+      const body = JSON.parse(call[1].body as string);
+      expect(body.name).toBe("Kim");
+    });
+
+    it("syncSubjectUpdate / syncSubjectDelete URL+method 검증", () => {
+      syncSubjectUpdate("user-1", "sub-1", { name: "수학", color: "#fff" });
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        expect.stringContaining("/api/subjects/sub-1?userId=user-1"),
+        expect.objectContaining({ method: "PUT" }),
+      );
+      mockFetch.mockClear();
+      syncSubjectDelete("user-1", "sub-1");
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        expect.stringContaining("/api/subjects/sub-1?userId=user-1"),
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+
+    it("syncEnrollmentCreate / syncEnrollmentDelete URL+method 검증", () => {
+      syncEnrollmentCreate("user-1", { studentId: "s1", subjectId: "sub1" });
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        expect.stringContaining("/api/enrollments?userId=user-1"),
+        expect.objectContaining({ method: "POST" }),
+      );
+      mockFetch.mockClear();
+      syncEnrollmentDelete("user-1", "e-1");
+      expect(mockFetch).toHaveBeenLastCalledWith(
+        expect.stringContaining("/api/enrollments?id=e-1&userId=user-1"),
+        expect.objectContaining({ method: "DELETE" }),
+      );
+    });
+
+    it("syncTeacherSubjectAdd / Remove (M:N) URL+body 검증", async () => {
+      const { syncTeacherSubjectAdd, syncTeacherSubjectRemove } = await import(
+        "../apiSync"
+      );
+      syncTeacherSubjectAdd("user-1", "t-1", "sub-1");
+      const addCall = mockFetch.mock.calls[0];
+      expect(addCall[0]).toContain("/api/teacher-subjects?userId=user-1");
+      expect(addCall[1].method).toBe("POST");
+      expect(JSON.parse(addCall[1].body as string)).toEqual({
+        teacherId: "t-1",
+        subjectId: "sub-1",
+      });
+
+      mockFetch.mockClear();
+      syncTeacherSubjectRemove("user-1", "t-1", "sub-1");
+      const removeCall = mockFetch.mock.calls[0];
+      expect(removeCall[1].method).toBe("DELETE");
+      expect(JSON.parse(removeCall[1].body as string)).toEqual({
+        teacherId: "t-1",
+        subjectId: "sub-1",
+      });
+    });
+  });
 });

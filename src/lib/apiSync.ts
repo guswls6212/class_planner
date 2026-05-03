@@ -213,20 +213,28 @@ export function syncStudentCreate(
   data: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
+  const url = `/api/students?userId=${encodeURIComponent(userId)}`;
+  const body = {
+    name: data.name,
+    gender: data.gender,
+    birthDate: data.birthDate,
+    grade: data.grade,
+    school: data.school,
+    phone: data.phone,
+  };
   const makeRequest = () =>
-    fetch(`/api/students?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: data.name,
-        gender: data.gender,
-        birthDate: data.birthDate,
-        grade: data.grade,
-        school: data.school,
-        phone: data.phone,
-      }),
+      body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "student:create");
+  fireAndForget(makeRequest, "student:create", 0, {
+    id: makeOutboxId("student:create"),
+    userId,
+    method: "POST",
+    url,
+    body,
+  });
 }
 
 export function syncStudentUpdate(
@@ -235,29 +243,40 @@ export function syncStudentUpdate(
   data: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
+  const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
+  const body = {
+    name: data.name,
+    gender: data.gender,
+    birthDate: data.birthDate,
+    grade: data.grade,
+    school: data.school,
+    phone: data.phone,
+  };
   const makeRequest = () =>
-    fetch(`/api/students/${id}?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: data.name,
-        gender: data.gender,
-        birthDate: data.birthDate,
-        grade: data.grade,
-        school: data.school,
-        phone: data.phone,
-      }),
+      body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "student:update");
+  fireAndForget(makeRequest, "student:update", 0, {
+    id: `student:update:${id}`,
+    userId,
+    method: "PUT",
+    url,
+    body,
+  });
 }
 
 export function syncStudentDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const makeRequest = () =>
-    fetch(`/api/students/${id}?userId=${encodeURIComponent(userId)}`, {
-      method: "DELETE",
-    });
-  fireAndForget(makeRequest, "student:delete");
+  const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
+  const makeRequest = () => fetch(url, { method: "DELETE" });
+  fireAndForget(makeRequest, "student:delete", 0, {
+    id: `student:delete:${id}`,
+    userId,
+    method: "DELETE",
+    url,
+  });
 }
 
 // ===== Subjects =====
@@ -267,13 +286,20 @@ export function syncSubjectCreate(
   data: { name: string; color: string }
 ): void {
   if (!userId) return;
+  const url = `/api/subjects?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "subject:create");
+  fireAndForget(makeRequest, "subject:create", 0, {
+    id: makeOutboxId("subject:create"),
+    userId,
+    method: "POST",
+    url,
+    body: data,
+  });
 }
 
 export function syncSubjectUpdate(
@@ -282,22 +308,32 @@ export function syncSubjectUpdate(
   data: { name?: string; color?: string }
 ): void {
   if (!userId) return;
+  const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/subjects/${id}?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "subject:update");
+  fireAndForget(makeRequest, "subject:update", 0, {
+    id: `subject:update:${id}`,
+    userId,
+    method: "PUT",
+    url,
+    body: data,
+  });
 }
 
 export function syncSubjectDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const makeRequest = () =>
-    fetch(`/api/subjects/${id}?userId=${encodeURIComponent(userId)}`, {
-      method: "DELETE",
-    });
-  fireAndForget(makeRequest, "subject:delete");
+  const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
+  const makeRequest = () => fetch(url, { method: "DELETE" });
+  fireAndForget(makeRequest, "subject:delete", 0, {
+    id: `subject:delete:${id}`,
+    userId,
+    method: "DELETE",
+    url,
+  });
 }
 
 // ===== Enrollments =====
@@ -307,22 +343,32 @@ export function syncEnrollmentCreate(
   data: { studentId: string; subjectId: string }
 ): void {
   if (!userId) return;
+  const url = `/api/enrollments?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/enrollments?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "enrollment:create");
+  fireAndForget(makeRequest, "enrollment:create", 0, {
+    id: makeOutboxId("enrollment:create"),
+    userId,
+    method: "POST",
+    url,
+    body: data,
+  });
 }
 
 export function syncEnrollmentDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const makeRequest = () =>
-    fetch(`/api/enrollments?id=${id}&userId=${encodeURIComponent(userId)}`, {
-      method: "DELETE",
-    });
-  fireAndForget(makeRequest, "enrollment:delete");
+  const url = `/api/enrollments?id=${id}&userId=${encodeURIComponent(userId)}`;
+  const makeRequest = () => fetch(url, { method: "DELETE" });
+  fireAndForget(makeRequest, "enrollment:delete", 0, {
+    id: `enrollment:delete:${id}`,
+    userId,
+    method: "DELETE",
+    url,
+  });
 }
 
 // ===== Sessions =====
@@ -440,13 +486,20 @@ export function syncTeacherCreate(
   }
 ): void {
   if (!userId) return;
+  const url = `/api/teachers?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/teachers?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "teacher:create");
+  fireAndForget(makeRequest, "teacher:create", 0, {
+    id: makeOutboxId("teacher:create"),
+    userId,
+    method: "POST",
+    url,
+    body: data,
+  });
 }
 
 export function syncTeacherUpdate(
@@ -463,22 +516,32 @@ export function syncTeacherUpdate(
   }
 ): void {
   if (!userId) return;
+  const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
-    fetch(`/api/teachers/${id}?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-  fireAndForget(makeRequest, "teacher:update");
+  fireAndForget(makeRequest, "teacher:update", 0, {
+    id: `teacher:update:${id}`,
+    userId,
+    method: "PUT",
+    url,
+    body: data,
+  });
 }
 
 export function syncTeacherDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const makeRequest = () =>
-    fetch(`/api/teachers/${id}?userId=${encodeURIComponent(userId)}`, {
-      method: "DELETE",
-    });
-  fireAndForget(makeRequest, "teacher:delete");
+  const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
+  const makeRequest = () => fetch(url, { method: "DELETE" });
+  fireAndForget(makeRequest, "teacher:delete", 0, {
+    id: `teacher:delete:${id}`,
+    userId,
+    method: "DELETE",
+    url,
+  });
 }
 
 export function syncTeacherSubjectAdd(
@@ -487,13 +550,22 @@ export function syncTeacherSubjectAdd(
   subjectId: string
 ): void {
   if (!userId) return;
+  const url = `/api/teacher-subjects?userId=${encodeURIComponent(userId)}`;
+  const body = { teacherId, subjectId };
   const makeRequest = () =>
-    fetch(`/api/teacher-subjects?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId, subjectId }),
+      body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "teacher:subject:add");
+  fireAndForget(makeRequest, "teacher:subject:add", 0, {
+    // (teacherId, subjectId) M:N pair는 idempotent — 같은 pair add 중복 시 마지막만 keep
+    id: `teacher:subject:add:${teacherId}:${subjectId}`,
+    userId,
+    method: "POST",
+    url,
+    body,
+  });
 }
 
 export function syncTeacherSubjectRemove(
@@ -502,11 +574,19 @@ export function syncTeacherSubjectRemove(
   subjectId: string
 ): void {
   if (!userId) return;
+  const url = `/api/teacher-subjects?userId=${encodeURIComponent(userId)}`;
+  const body = { teacherId, subjectId };
   const makeRequest = () =>
-    fetch(`/api/teacher-subjects?userId=${encodeURIComponent(userId)}`, {
+    fetch(url, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teacherId, subjectId }),
+      body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "teacher:subject:remove");
+  fireAndForget(makeRequest, "teacher:subject:remove", 0, {
+    id: `teacher:subject:remove:${teacherId}:${subjectId}`,
+    userId,
+    method: "DELETE",
+    url,
+    body,
+  });
 }
