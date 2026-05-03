@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceRoleClient } from '@/lib/supabaseServiceRole'
-import { isUUID } from '@/lib/slug'
+import { isUUID, normalizeSlugForLookup } from '@/lib/slug'
 import {
   checkRateLimit,
   checkLockout,
@@ -53,13 +53,16 @@ export async function POST(request: NextRequest) {
     const client = getServiceRoleClient()
     const now = new Date().toISOString()
 
-    // academyId가 slug이면 UUID로 변환
+    // academyId가 slug이면 UUID로 변환.
+    // NFC 정규화 — URL/클립보드를 거쳐 NFD로 도착한 한글 slug가 NFC로 저장된
+    // DB와 매칭 실패하는 회귀 (학부모 코드 입력 페이지 404 사고) 방지.
     let academyUuid = academyId
     if (!isUUID(academyId)) {
+      const slugLookup = normalizeSlugForLookup(academyId)
       const { data: academy } = await client
         .from('academies')
         .select('id')
-        .eq('slug', academyId)
+        .eq('slug', slugLookup)
         .maybeSingle()
 
       if (!academy) {

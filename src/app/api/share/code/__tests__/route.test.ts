@@ -152,4 +152,28 @@ describe('POST /api/share/code', () => {
 
     expect(mockRecordFailure).toHaveBeenCalledOnce()
   })
+
+  it('NFD 한글 slug → NFC로 정규화하여 academies 조회 (학부모 코드 페이지 404 회귀 방지)', async () => {
+    // 1번째 maybeSingle: academies slug lookup → academy 발견
+    // 2번째 maybeSingle: share_tokens 조회 → token 반환
+    mockSupabaseChain.maybeSingle
+      .mockResolvedValueOnce({ data: { id: ACADEMY_UUID_A }, error: null })
+      .mockResolvedValueOnce({
+        data: {
+          token: 'tok-nfc-fixed',
+          expires_at: new Date(Date.now() + 86400000).toISOString(),
+          academy_id: ACADEMY_UUID_A,
+        },
+        error: null,
+      })
+
+    const nfdSlug = '현진학원'.normalize('NFD')
+    const nfcSlug = '현진학원'.normalize('NFC')
+    const { POST } = await import('../route')
+    const res = await POST(makeRequest({ code: '김요RTUE', academyId: nfdSlug }))
+
+    expect(res.status).toBe(200)
+    // academies 조회 시 NFC 정규화된 slug 사용했는지 검증
+    expect(mockSupabaseChain.eq).toHaveBeenCalledWith('slug', nfcSlug)
+  })
 })

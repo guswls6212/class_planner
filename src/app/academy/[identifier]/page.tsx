@@ -9,7 +9,10 @@ export default function AcademyAccessPage({
 }: {
   params: Promise<{ identifier: string }>
 }) {
-  const { identifier } = use(params)
+  const { identifier: rawIdentifier } = use(params)
+  // NFC 정규화 — macOS 브라우저가 URL 한글을 NFD로 디코딩하는 경우가 있어
+  // 서버 NFC slug와 매칭 실패를 방지 (defense-in-depth, 서버에서도 동일 처리).
+  const identifier = rawIdentifier.normalize('NFC')
   const router = useRouter()
   const searchParams = useSearchParams()
   const [academyName, setAcademyName] = useState<string>('')
