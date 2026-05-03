@@ -326,10 +326,8 @@ export function Sidebar() {
             expanded={expanded}
           />
         ))}
-      </div>
 
-      <div className={`mt-auto flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
-        {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 */}
+        {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 (강사 nav 바로 아래) */}
         <SidebarLink
           href={isLoggedIn ? "/settings" : "/login"}
           icon={isLoggedIn ? Settings : LogIn}
@@ -337,7 +335,9 @@ export function Sidebar() {
           isActive={isActive(isLoggedIn ? "/settings" : "/login")}
           expanded={expanded}
         />
+      </div>
 
+      <div className={`mt-auto flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
         {/* User info: email + role + logout (expanded + logged-in only) */}
         {expanded && <UserBottomSection role={role} />}
 
