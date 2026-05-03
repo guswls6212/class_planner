@@ -1,7 +1,7 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { use, useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { isUUID } from '@/lib/slug'
 
 export default function AcademyAccessPage({
@@ -11,10 +11,13 @@ export default function AcademyAccessPage({
 }) {
   const { identifier } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [academyName, setAcademyName] = useState<string>('')
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  // Auto-submit guard — prevents re-firing on re-render or after error
+  const autoSubmittedRef = useRef(false)
 
   useEffect(() => {
     fetch(`/api/academy/${identifier}/public`)
@@ -29,33 +32,53 @@ export default function AcademyAccessPage({
       .catch(() => setAcademyName('학원'))
   }, [identifier, router])
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = code.trim().toUpperCase()
-    if (!trimmed) return
+  const submitCode = useCallback(
+    async (raw: string) => {
+      const trimmed = raw.trim().toUpperCase()
+      if (!trimmed) return
 
-    setLoading(true)
-    setError(null)
+      setLoading(true)
+      setError(null)
 
-    try {
-      const res = await fetch('/api/share/code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: trimmed, academyId: identifier }),
-      })
+      try {
+        const res = await fetch('/api/share/code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: trimmed, academyId: identifier }),
+        })
 
-      if (!res.ok) {
-        setError('코드가 올바르지 않습니다. 다시 확인해주세요.')
+        if (!res.ok) {
+          setError('코드가 올바르지 않습니다. 다시 확인해주세요.')
+          setLoading(false)
+          return
+        }
+
+        const { token } = await res.json()
+        router.push(`/share/${token}`)
+      } catch {
+        setError('일시적인 오류가 발생했습니다. 다시 시도해주세요.')
         setLoading(false)
-        return
       }
+    },
+    [identifier, router],
+  )
 
-      const { token } = await res.json()
-      router.push(`/share/${token}`)
-    } catch {
-      setError('일시적인 오류가 발생했습니다. 다시 시도해주세요.')
-      setLoading(false)
-    }
+  // Auto-fill + auto-submit when arriving via /academy/{slug}?code=XYZ link
+  // (학원장이 보내준 단일 링크 클릭 한 번으로 시간표까지 도달)
+  useEffect(() => {
+    if (autoSubmittedRef.current) return
+    const codeParam = searchParams.get('code')
+    if (!codeParam) return
+    const cleaned = codeParam.trim().toUpperCase()
+    if (cleaned.length < 6) return
+    autoSubmittedRef.current = true
+    setCode(cleaned)
+    void submitCode(cleaned)
+  }, [searchParams, submitCode])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void submitCode(code)
   }
 
   return (

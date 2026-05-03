@@ -143,15 +143,20 @@ export function StudentDetailPanel({
               type="button"
               onClick={() => {
                 if (typeof window === "undefined") return;
+                // Single-line URL with code as query param — parent clicks once
+                // and the academy page auto-fills + submits the code.
+                // (Old format used "\n코드:" newline which broke when pasted
+                // into the address bar — slug got concatenated with the code.)
+                const link = `${academyUrl}?code=${encodeURIComponent(accessCode.access_code)}`;
                 window.navigator.clipboard
-                  ?.writeText(`${academyUrl}\n코드: ${accessCode.access_code}`)
-                  .then(() => showToast("success", `${student.name} 코드가 복사됐습니다`))
+                  ?.writeText(link)
+                  .then(() => showToast("success", `${student.name} 자녀 시간표 링크가 복사됐습니다`))
                   .catch(() => showToast("error", "복사에 실패했습니다"));
               }}
               className="mt-3 inline-flex items-center gap-1.5 text-xs px-3 py-1.5 border border-[var(--color-border)] rounded-md text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <Copy size={12} strokeWidth={1.5} />
-              URL+코드 복사
+              자녀 시간표 링크 복사
             </button>
           )}
         </section>
