@@ -26,6 +26,10 @@ export function DayChipBar({ selectedWeekday, onSelectWeekday, baseDate }: DayCh
           <button
             key={idx}
             onClick={() => onSelectWeekday(idx)}
+            data-testid={`day-chip-${idx}`}
+            data-active={isActive ? "true" : undefined}
+            aria-label={`${label}요일 ${date.getDate()}일`}
+            aria-pressed={isActive}
             className={`flex flex-col items-center min-w-[44px] py-1.5 px-2 rounded-md transition-colors ${
               isActive
                 ? "bg-accent text-white"
