@@ -14,6 +14,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { currentWeekMondayKST } from "./helpers/seed-anonymous";
 import { injectRealSession } from "./helpers/auth-mock";
+import { seedRealTemplate, clearRealTemplates } from "./helpers/seed-academy-data";
 
 // PR C — 진짜 user id는 global-setup에서 결정. seedScheduleData는 그 id 기준으로 localStorage 작성.
 let TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391"; // fallback
@@ -154,12 +155,18 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
   });
 
   test.skip("템플릿 fetch 후 hasTemplate=true → '템플릿 적용하기' 활성화", async ({ page }) => {
-    // FIXME: PR D academy 부여 후에도 fail. mockTemplatesApi가 GET을 fulfill해도
-    // page.waitForResponse가 fulfilled response 못 잡거나, 진짜 useTemplates fetch는
-    // mock과 다른 endpoint/path 사용 가능성. 후속 PR에서 (a) mockTemplatesApi 제거하고
-    // 진짜 API + cleanup 사용 또는 (b) page.route fulfill response 패턴 검증 후 unskip.
+    // FIXME: 진짜 templates seed 후에도 page.waitForResponse(/api/templates) 16s timeout.
+    // useTemplates fetch 동작 정확히 trace 필요 — schedule/page.tsx에서 user_id 기준
+    // fetch trigger 조건 또는 RLS 결과 확인. 후속 PR에서 unskip.
+    await clearRealTemplates(); // 깨끗한 시작
+    await seedRealTemplate({
+      name: FIXTURE_TEMPLATE.name,
+      description: FIXTURE_TEMPLATE.description,
+      templateData: FIXTURE_TEMPLATE.template_data,
+    });
+
     await seedScheduleData(page);
-    await mockTemplatesApi(page, [FIXTURE_TEMPLATE]);
+    // mock 제거 — 진짜 GET /api/templates 응답
 
     await page.goto("/schedule");
     await page.waitForResponse((res) => res.url().includes("/api/templates") && res.ok());
@@ -168,12 +175,20 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     await expect(page.getByRole("button", { name: /템플릿 적용하기/ })).toBeEnabled({
       timeout: 5000,
     });
+
+    await clearRealTemplates();
   });
 
   test.skip("기존 sessions 있을 때 적용 → ApplyTemplateConfirm 확인 모달이 표시된다", async ({
     page,
   }) => {
-    // FIXME: 위와 동일.
+    // FIXME: 위와 동일 — useTemplates fetch trace 후속 PR.
+    await clearRealTemplates();
+    await seedRealTemplate({
+      name: FIXTURE_TEMPLATE.name,
+      description: FIXTURE_TEMPLATE.description,
+      templateData: FIXTURE_TEMPLATE.template_data,
+    });
     await seedScheduleData(page, [
       {
         id: "sess-existing",
@@ -186,7 +201,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
         yPosition: 1,
       },
     ]);
-    await mockTemplatesApi(page, [FIXTURE_TEMPLATE]);
+    // mock 제거 — 진짜 GET /api/templates
 
     await page.goto("/schedule");
     await page.waitForResponse((res) => res.url().includes("/api/templates") && res.ok());
@@ -201,6 +216,8 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     // 취소 → 모달 닫힘 + sessions 그대로
     await page.getByRole("button", { name: /^취소$/ }).click();
     await expect(page.getByRole("heading", { name: /템플릿을 적용할까요/ })).not.toBeVisible();
+
+    await clearRealTemplates();
   });
 
   test.skip("'시간표 비우기' → window.confirm 후 sessions 모두 삭제 + 토스트", async ({ page }) => {
