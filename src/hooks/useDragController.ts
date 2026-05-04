@@ -73,6 +73,13 @@ export interface DragControllerResult {
   leaveTarget: () => void;
   completeDrop: () => void;
   cancelDrag: () => void;
+  /**
+   * drag 시작 시점의 modifier key 상태로 isCopyMode를 강제 설정.
+   * window keydown listener가 놓치는 케이스(이미 누른 상태로 페이지 진입,
+   * focus 변화 race) 방어. handleDndDragStart에서 activatorEvent의
+   * ctrlKey/metaKey를 그대로 전달.
+   */
+  setCopyModeOverride: (value: boolean) => void;
 }
 
 export function useDragController(): DragControllerResult {
@@ -116,6 +123,10 @@ export function useDragController(): DragControllerResult {
   const leaveTarget = useCallback(() => dispatch({ type: "LEAVE" }), []);
   const completeDrop = useCallback(() => dispatch({ type: "COMPLETE" }), []);
   const cancelDrag = useCallback(() => dispatch({ type: "CANCEL" }), []);
+  const setCopyModeOverride = useCallback(
+    (value: boolean) => setIsCopyMode(value),
+    [],
+  );
 
   const draggedSession =
     state.phase !== "idle" && state.source.kind === "session"
@@ -145,5 +156,6 @@ export function useDragController(): DragControllerResult {
     leaveTarget,
     completeDrop,
     cancelDrag,
+    setCopyModeOverride,
   };
 }

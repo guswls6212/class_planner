@@ -78,7 +78,7 @@ import { useEditModalState } from "./_hooks/useEditModalState";
 import { useTeacherFilter } from "./_hooks/useTeacherFilter";
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
-import { isTimeOverlapping } from "./_utils/collisionHelpers";
+import { computeBulkMoveTargets } from "./_utils/computeBulkMoveTargets";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1038,75 +1038,6 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [updateSessionPosition]);
 
-  /**
-   * 다중 선택 묶음 일괄 이동/복사용 헬퍼.
-   * anchor session(드래그된 sesssion)의 새 위치를 기준으로 delta(weekday/시간)를
-   * 계산해 모든 selected sessions에 동일 적용.
-   *
-   * 충돌 정책 — B (recommended): 충돌 없는 항목만 적용, 충돌 항목은 toast로 안내.
-   * 같은 selected 묶음 안의 sessions끼리는 충돌 검사에서 제외 (자기들끼리 위치 교체 허용).
-   */
-  const computeBulkMoveTargets = useCallback(
-    (
-      anchorSessionId: string,
-      newWeekday: number,
-      newTime: string,
-      newYPosition: number,
-      selectedIds: string[],
-    ): {
-      moves: Array<{
-        session: Session;
-        weekday: number;
-        startsAt: string;
-        endsAt: string;
-        yPosition: number;
-      }>;
-      conflicts: number;
-    } => {
-      const anchor = sessions.find((s) => s.id === anchorSessionId);
-      if (!anchor) return { moves: [], conflicts: 0 };
-      const dWeekday = newWeekday - anchor.weekday;
-      const dMinutes =
-        timeToMinutes(newTime) - timeToMinutes(anchor.startsAt);
-      const selectedSet = new Set(selectedIds);
-      const candidates = sessions.filter((s) => selectedSet.has(s.id));
-      const moves: ReturnType<typeof computeBulkMoveTargets>["moves"] = [];
-      let conflicts = 0;
-      // 같은 selected 묶음끼리는 충돌 검사에서 제외 — 자기들끼리 swap 허용
-      const otherSessions = sessions.filter((s) => !selectedSet.has(s.id));
-      for (const s of candidates) {
-        const targetWeekday = Math.max(0, Math.min(6, s.weekday + dWeekday));
-        const targetStartMin = timeToMinutes(s.startsAt) + dMinutes;
-        const targetEndMin = timeToMinutes(s.endsAt) + dMinutes;
-        // 음수 시간 가드 — 자정 이전으로 끌면 skip
-        if (targetStartMin < 0) {
-          conflicts++;
-          continue;
-        }
-        const targetStarts = minutesToTime(targetStartMin);
-        const targetEnds = minutesToTime(targetEndMin);
-        const colliding = otherSessions.filter(
-          (o) =>
-            o.weekday === targetWeekday &&
-            isTimeOverlapping(o.startsAt, o.endsAt, targetStarts, targetEnds),
-        );
-        if (colliding.length > 0) {
-          conflicts++;
-          continue;
-        }
-        moves.push({
-          session: s,
-          weekday: targetWeekday,
-          startsAt: targetStarts,
-          endsAt: targetEnds,
-          yPosition: s.id === anchorSessionId ? newYPosition : s.yPosition ?? 1,
-        });
-      }
-      return { moves, conflicts };
-    },
-    [sessions],
-  );
-
   // Gate: member role — drag-to-reorder is disabled
   const handleSessionDrop = useCallback(
     (sessionId: string, weekday: number, time: string, yPosition: number) => {
@@ -1116,13 +1047,14 @@ function SchedulePageContent(): JSX.Element {
         sessionSelection.count > 1 &&
         sessionSelection.isSelected(sessionId)
       ) {
-        const { moves, conflicts } = computeBulkMoveTargets(
-          sessionId,
-          weekday,
-          time,
-          yPosition,
-          sessionSelection.selectedSessionIds,
-        );
+        const { moves, outOfRange } = computeBulkMoveTargets({
+          sessions,
+          anchorSessionId: sessionId,
+          newWeekday: weekday,
+          newTime: time,
+          newYPosition: yPosition,
+          selectedIds: sessionSelection.selectedSessionIds,
+        });
         for (const m of moves) {
           _handleSessionDropBase(
             m.session.id,
@@ -1132,10 +1064,10 @@ function SchedulePageContent(): JSX.Element {
           );
         }
         const total = sessionSelection.count;
-        if (conflicts > 0) {
+        if (outOfRange > 0) {
           showToast(
             "warning",
-            `${total}개 중 ${moves.length}개 이동 — ${conflicts}개는 시간 충돌로 건너뜀`,
+            `${total}개 중 ${moves.length}개 이동 — ${outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
           );
         } else {
           showToast("success", `${moves.length}개 이동`);
@@ -1149,7 +1081,7 @@ function SchedulePageContent(): JSX.Element {
       canManage,
       _handleSessionDropBase,
       sessionSelection,
-      computeBulkMoveTargets,
+      sessions,
     ]
   );
 
@@ -1168,13 +1100,14 @@ function SchedulePageContent(): JSX.Element {
         sessionSelection.count > 1 &&
         sessionSelection.isSelected(sessionId)
       ) {
-        const { moves, conflicts } = computeBulkMoveTargets(
-          sessionId,
-          weekday,
-          time,
-          yPosition,
-          sessionSelection.selectedSessionIds,
-        );
+        const { moves, outOfRange } = computeBulkMoveTargets({
+          sessions,
+          anchorSessionId: sessionId,
+          newWeekday: weekday,
+          newTime: time,
+          newYPosition: yPosition,
+          selectedIds: sessionSelection.selectedSessionIds,
+        });
         let copied = 0;
         for (const m of moves) {
           const studentIds = (m.session.enrollmentIds ?? [])
@@ -1193,10 +1126,10 @@ function SchedulePageContent(): JSX.Element {
           });
           copied++;
         }
-        if (conflicts > 0) {
+        if (outOfRange > 0) {
           showToast(
             "warning",
-            `${sessionSelection.count}개 중 ${copied}개 복사 — ${conflicts}개는 시간 충돌로 건너뜀`,
+            `${sessionSelection.count}개 중 ${copied}개 복사 — ${outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
           );
         } else {
           showToast("success", `${copied}개 복사`);
@@ -1232,7 +1165,7 @@ function SchedulePageContent(): JSX.Element {
         room: original.room,
       });
     },
-    [canManage, sessions, enrollments, addSession, sessionSelection, computeBulkMoveTargets],
+    [canManage, sessions, enrollments, addSession, sessionSelection],
   );
 
   // 모바일 long-press 메뉴 — "복사" 항목.

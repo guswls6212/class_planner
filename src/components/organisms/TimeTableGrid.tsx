@@ -485,9 +485,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // document-level dragend 리셋은 useDragController 내부 useEffect가 처리.
 
     const handleDndDragStart = useCallback(
-      ({ active }: DragStartEvent) => {
+      ({ active, activatorEvent }: DragStartEvent) => {
         const session = sessionById.get(active.id as string);
         if (session) dragController.startSessionDrag(session);
+        // ⚠️ Bug fix (2026-05-04): window keydown listener는 modifier 키가 이미
+        // 눌린 상태로 페이지 진입한 케이스(focus race 등)를 놓침. dnd-kit의
+        // activatorEvent(원래 PointerEvent)에서 직접 ctrlKey/metaKey 캡처해
+        // drag 시작 시점에 명시적으로 setCopyModeOverride 호출.
+        const ev = activatorEvent as PointerEvent | KeyboardEvent | MouseEvent;
+        const isCopyAtStart =
+          (ev as PointerEvent).ctrlKey === true ||
+          (ev as PointerEvent).metaKey === true;
+        dragController.setCopyModeOverride(isCopyAtStart);
       },
       [sessionById, dragController],
     );

@@ -111,6 +111,7 @@ src/app/schedule/_hooks/useUiState.ts
 src/app/schedule/_utils/__tests__/bulkSessionOps.test.ts
 src/app/schedule/_utils/__tests__/collisionHelpers.test.ts
 src/app/schedule/_utils/__tests__/collisionQueries.test.ts
+src/app/schedule/_utils/__tests__/computeBulkMoveTargets.test.ts
 src/app/schedule/_utils/__tests__/dndHelpers.test.ts
 src/app/schedule/_utils/__tests__/editSaveHandlers.test.ts
 src/app/schedule/_utils/__tests__/editStudentHandlers.test.ts
@@ -125,6 +126,7 @@ src/app/schedule/_utils/editSaveHandlers.ts
 src/app/schedule/_utils/editStudentHandlers.ts
 src/app/schedule/_utils/modalHandlers.ts
 src/app/schedule/_utils/bulkSessionOps.ts
+src/app/schedule/_utils/computeBulkMoveTargets.ts
 src/app/schedule/_utils/scheduleSelectors.ts
 src/app/schedule/_utils/sessionSaveUtils.ts
 src/app/schedule/page.tsx
