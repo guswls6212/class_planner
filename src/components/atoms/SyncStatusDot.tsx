@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { getLastFailureContext, getContextLabel } from "@/lib/apiSync";
+import type { SyncStatus } from "@/lib/apiSync";
 
 const SyncQueueModal = dynamic(
   () => import("../molecules/SyncQueueModal"),
@@ -14,6 +15,16 @@ const SyncQueueModal = dynamic(
 interface SyncStatusDotProps {
   /** 모달 [재시도] 액션을 위해 필요. anonymous면 null. */
   userId?: string | null;
+  /**
+   * Storybook/test only — 설정 시 useSyncStatus hook 우회하고 명시 status 사용.
+   * Production 미설정 (default undefined → hook 사용).
+   */
+  statusOverride?: SyncStatus;
+  /**
+   * Storybook/test only — context label override (예: "수업 추가").
+   * 미설정 시 getLastFailureContext()로부터 자동 추출 (statusOverride 모드에선 null).
+   */
+  contextLabelOverride?: string | null;
 }
 
 /**
@@ -28,14 +39,21 @@ interface SyncStatusDotProps {
  * 어떻게 대처해야 하는지" 알 수 없었음. 클릭 → SyncQueueModal로 동기화 큐 항목 리스트
  * + 항목별 재시도/버리기 + 일괄 재시도 액션 제공.
  */
-export default function SyncStatusDot({ userId }: SyncStatusDotProps = {}) {
-  const status = useSyncStatus();
+export default function SyncStatusDot({
+  userId,
+  statusOverride,
+  contextLabelOverride,
+}: SyncStatusDotProps = {}) {
+  const liveStatus = useSyncStatus();
+  const status = statusOverride ?? liveStatus;
   const [modalOpen, setModalOpen] = useState(false);
 
   if (status === "idle") return null;
 
-  const lastContext = getLastFailureContext();
-  const contextLabel = lastContext ? getContextLabel(lastContext) : null;
+  // override 모드에선 module state 안 읽고 prop만 사용
+  const lastContext = statusOverride ? null : getLastFailureContext();
+  const contextLabel =
+    contextLabelOverride ?? (lastContext ? getContextLabel(lastContext) : null);
 
   if (status === "failed_retrying") {
     return (
