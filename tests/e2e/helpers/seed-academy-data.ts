@@ -99,6 +99,67 @@ export async function seedRealTemplate(opts: {
 }
 
 /**
+ * 두 번째 academy + admin 멤버 seed (멱등). multi-academy switch e2e용.
+ */
+export async function seedSecondAcademy(opts?: {
+  name?: string;
+}): Promise<{ id: string; name: string }> {
+  const sb = getAdminClient();
+  const userId = getUserId();
+  const primaryAcademyId = getAcademyId();
+  const name = opts?.name ?? "E2E Test Academy 2";
+
+  const { data: existing } = await sb
+    .from("academies")
+    .select("id, name")
+    .eq("name", name)
+    .eq("created_by", userId)
+    .maybeSingle();
+  if (existing && existing.id !== primaryAcademyId) {
+    return { id: existing.id, name: existing.name };
+  }
+
+  const { data: newAcademy, error: academyErr } = await sb
+    .from("academies")
+    .insert({ name, created_by: userId })
+    .select("id, name")
+    .single();
+  if (academyErr || !newAcademy) {
+    throw new Error(`[seedSecondAcademy] academies INSERT 실패: ${academyErr?.message}`);
+  }
+  const { error: memberErr } = await sb.from("academy_members").insert({
+    academy_id: newAcademy.id,
+    user_id: userId,
+    role: "admin",
+  });
+  if (memberErr) {
+    throw new Error(`[seedSecondAcademy] academy_members INSERT 실패: ${memberErr.message}`);
+  }
+  return { id: newAcademy.id, name: newAcademy.name };
+}
+
+/**
+ * 두 번째 이상 academy 모두 삭제 (primary 보존). spec 후 격리.
+ */
+export async function clearSecondAcademies(): Promise<void> {
+  const sb = getAdminClient();
+  const userId = getUserId();
+  const primaryAcademyId = getAcademyId();
+
+  const { data: extras } = await sb
+    .from("academy_members")
+    .select("academy_id")
+    .eq("user_id", userId)
+    .neq("academy_id", primaryAcademyId);
+
+  for (const row of extras ?? []) {
+    const aid = row.academy_id as string;
+    await sb.from("academy_members").delete().eq("academy_id", aid);
+    await sb.from("academies").delete().eq("id", aid);
+  }
+}
+
+/**
  * 모든 templates 삭제 (spec 후 격리). academy 스코프.
  */
 export async function clearRealTemplates(): Promise<void> {
