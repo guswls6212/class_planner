@@ -282,6 +282,82 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     expect(wd1.find((s) => s.startsAt === "12:00")).toBeTruthy();
   });
 
+  test("T11c ⭐ Option D 정책 — 추종 sessions은 lane 1(가장 왼쪽)로 강제 배치", async ({
+    page,
+  }) => {
+    // 사용자 제안 정책 (2026-05-04): 다중 선택 drag/copy 시 anchor만 정확한 위치
+    // 보존, 추종 sessions은 yPosition=1 강제 → "같이 따라왔다"는 시각 단서.
+    //
+    // 시나리오: anchor sess-a를 화요일 lane 3에 drop. 추종 sess-b는 lane 1에 가야.
+    //
+    // 정확한 yPosition target을 잡기 위해 yPosition=3 이상의 droppable cell을
+    // 명시적으로 hover. dnd-kit는 over.id="weekday|time|yPosition" — 그러나
+    // dropCell helper는 yPosition=1을 잡음 (첫 번째 매칭). yPosition=3을 잡으려면
+    // 더 명시적 selector.
+    await shiftClickBoth(
+      sessionBlock(page, "sess-a"),
+      sessionBlock(page, "sess-b"),
+    );
+
+    // dropCell은 첫 번째 매칭 (yPosition=1) 잡음 → anchor도 lane 1로 감.
+    // 그래도 추종은 lane 1로 가는 것 검증 가능 (anchor는 1, 추종도 1 시도 →
+    // 충돌이라 sequential reposition으로 anchor가 1을 차지하면 추종은 다음 lane).
+    // 핵심: 추종이 원래 yPosition을 그대로 들고 가지 않음을 검증.
+    //
+    // sess-b의 원래 yPosition=1, anchor delta로 화 12:00에 떨어지면:
+    //   - 이전 정책 (원래 yPosition 보존): 추종도 lane 1 (충돌 없으면 그대로)
+    //   - 이번 D 정책: 추종은 yPosition=1 강제 (충돌 시 sequential push)
+    // 두 정책 모두 lane 1로 가게 됨 — 차이를 보려면 sess-b의 원래 yPosition을 변경.
+    //
+    // 시드의 sess-b를 수정해 yPosition=3으로 (이전 정책이면 그대로 3으로 와야 하지만
+    // D 정책이면 1로 와야).
+    await page.evaluate((week) => {
+      const raw = localStorage.getItem("classPlannerData:anonymous");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const sessB = (data.sessions ?? []).find(
+        (s: { id: string }) => s.id === "sess-b",
+      );
+      if (sessB) {
+        sessB.yPosition = 3;
+        sessB.weekStartDate = week;
+      }
+      data.lastModified = new Date().toISOString();
+      localStorage.setItem("classPlannerData:anonymous", JSON.stringify(data));
+    }, WEEK);
+    await page.reload();
+    await page.waitForSelector('[data-testid="time-table-grid"]', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="session-block-sess-b"]', { timeout: 5000 });
+
+    await shiftClickBoth(
+      sessionBlock(page, "sess-a"),
+      sessionBlock(page, "sess-b"),
+    );
+
+    // anchor sess-a (월 09:00) → 화 10:00
+    const target = dropCell(page, 1, "10:00");
+    await sessionBlock(page, "sess-a").hover();
+    await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
+    await page.waitForTimeout(1200);
+
+    const sessions = await readSessions(page);
+    // 새 copy 중 sess-b copy 식별 — 화 12:00에 위치 (delta +60min from 11:00)
+    const newCopies = sessions.filter(
+      (s) => !["sess-a", "sess-b", "sess-c"].includes(s.id),
+    );
+    expect(newCopies).toHaveLength(2);
+    const sessBCopy = newCopies.find(
+      (s) => s.weekday === 1 && s.startsAt === "12:00",
+    )!;
+    expect(sessBCopy).toBeTruthy();
+
+    // 핵심 회귀 가드: D 정책 — 추종은 lane 1 강제. 기존 정책이었으면 sess-b의
+    // 원래 yPosition=3을 그대로 들고 갔겠지만 D 정책에선 1.
+    // 충돌 sequential reposition으로 1, 2, 3 등 작은 lane이 사용될 수 있음.
+    // 적어도 원래 yPosition 3을 그대로 보존하면 안 됨.
+    expect(sessBCopy.yPosition).toBeLessThanOrEqual(2);
+  });
+
   test("T12 — Cmd-drag 도중 DragOverlayCard에 data-copy='true'", async ({
     page,
   }) => {
