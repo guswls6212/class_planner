@@ -56,8 +56,10 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     page,
     context,
   }) => {
-    // FIXME: 모달의 '생성' 버튼 selector 정확히 매칭 안 됨 (15s timeout). 모달 form
-    // 정확한 selector 또는 button 텍스트 차이. 후속 PR에서 모달 DOM 정찰 후 unskip.
+    // FIXME: PR J 시도(heading 대기 추가) 후에도 5s timeout — 모달이 mount 안 됨.
+    // 가능 원인: '링크 만들기' .first()가 헤더 button이 아닌 본문 button을 잡거나,
+    // setShowShareModal(true) 호출 후 React state 변경이 반영 안 됨. 후속 PR에서
+    // settings/page.tsx 컴포넌트에 data-testid 추가 또는 button event 정확히 trace.
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     let postBody: ShareTokenPostBody | null = null;
@@ -102,7 +104,12 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
 
     await page.getByRole("button", { name: /링크 만들기/ }).first().click();
 
-    // 모달 — 생성 버튼 클릭
+    // 모달 mount 대기 — heading "공유 링크 만들기" 표시
+    await expect(page.getByRole("heading", { name: "공유 링크 만들기" })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // "생성" 버튼 클릭 (모달 안의 단일 button)
     await page.getByRole("button", { name: /^생성$/ }).click();
 
     // POST /api/share-tokens 호출됨
