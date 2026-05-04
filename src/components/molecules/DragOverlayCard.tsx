@@ -22,7 +22,12 @@ export default function DragOverlayCard({
   const isMulti = selectionCount > 1;
 
   return (
-    <div className="relative pointer-events-none w-[120px]" data-testid="drag-overlay-card" data-copy={isCopy ? "true" : undefined}>
+    <div
+      className="relative pointer-events-none w-[120px]"
+      data-testid="drag-overlay-card"
+      data-copy={isCopy ? "true" : undefined}
+      data-multi-count={isMulti ? String(selectionCount) : undefined}
+    >
       {/* Stack 효과 — 다중 선택 시 뒤쪽에 카드 그림자 (offset 4/8px로 명확히 시각화) */}
       {isMulti && (
         <>

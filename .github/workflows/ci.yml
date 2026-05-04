@@ -51,7 +51,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run E2E tests
-        run: npx playwright test tests/e2e/final-working-test.spec.ts --project=chromium --reporter=list
+        run: |
+          npx playwright test \
+            tests/e2e/final-working-test.spec.ts \
+            tests/e2e/schedule-multi-select-drag.spec.ts \
+            tests/e2e/schedule-sync-network.spec.ts \
+            --project=chromium --reporter=list
         env:
           CI: "true"
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
