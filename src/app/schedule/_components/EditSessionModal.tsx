@@ -484,6 +484,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-session-modal-title"
+        data-testid="edit-session-modal"
         ref={containerRef}
       >
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-[0_25px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)] backdrop-blur-xl overflow-hidden">
