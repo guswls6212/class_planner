@@ -154,10 +154,10 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
   });
 
   test.skip("템플릿 fetch 후 hasTemplate=true → '템플릿 적용하기' 활성화", async ({ page }) => {
-    // FIXME: page.waitForResponse가 mockTemplatesApi의 fulfilled response를 잡지 못하거나,
-    // 진짜 user(academy 권한 없음) 환경에서 useTemplates fetch path가 mock과 불일치.
-    // 후속 PR에서 (a) academy 권한 부여 후 진짜 API 사용 또는 (b) page.route mock pattern
-    // 정확히 검증 후 unskip.
+    // FIXME: PR D academy 부여 후에도 fail. mockTemplatesApi가 GET을 fulfill해도
+    // page.waitForResponse가 fulfilled response 못 잡거나, 진짜 useTemplates fetch는
+    // mock과 다른 endpoint/path 사용 가능성. 후속 PR에서 (a) mockTemplatesApi 제거하고
+    // 진짜 API + cleanup 사용 또는 (b) page.route fulfill response 패턴 검증 후 unskip.
     await seedScheduleData(page);
     await mockTemplatesApi(page, [FIXTURE_TEMPLATE]);
 
@@ -173,7 +173,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
   test.skip("기존 sessions 있을 때 적용 → ApplyTemplateConfirm 확인 모달이 표시된다", async ({
     page,
   }) => {
-    // FIXME: 위와 동일 — waitForResponse / mockTemplatesApi 정합성 검증 후 unskip.
+    // FIXME: 위와 동일.
     await seedScheduleData(page, [
       {
         id: "sess-existing",

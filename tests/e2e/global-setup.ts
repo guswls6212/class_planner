@@ -62,6 +62,24 @@ async function globalSetup(): Promise<void> {
     user: data.user,
   };
 
+  // PR D — academy_members 조회 (owner role) → injectRealSession이 active_academy 설정에 사용.
+  // 환경 변수 E2E_TEST_ACADEMY_ID로 override 가능 (.env.local의 setup script 출력값).
+  let academyId: string | null = process.env.E2E_TEST_ACADEMY_ID ?? null;
+  if (!academyId) {
+    // 인증된 sb client (RLS는 academy_members SELECT 본인만 허용)
+    const sbAuthed = createClient(url, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: `Bearer ${data.session.access_token}` } },
+    });
+    const { data: membership } = await sbAuthed
+      .from("academy_members")
+      .select("academy_id")
+      .eq("user_id", data.user.id)
+      .eq("role", "owner")
+      .maybeSingle();
+    academyId = membership?.academy_id ?? null;
+  }
+
   const authDir = path.join(process.cwd(), "playwright/.auth");
   await fs.mkdir(authDir, { recursive: true });
   await fs.writeFile(
@@ -71,6 +89,7 @@ async function globalSetup(): Promise<void> {
         projectRef,
         userId: data.user.id,
         userEmail: data.user.email,
+        academyId,
         sessionPayload,
         loggedInAt: new Date().toISOString(),
       },
@@ -79,12 +98,15 @@ async function globalSetup(): Promise<void> {
     ),
   );
 
-  // process.env에 노출 — cleanup-test-data.ts가 user_id 참조
+  // process.env에 노출 — cleanup-test-data.ts가 참조
   process.env.E2E_TEST_USER_ID = data.user.id;
+  if (academyId) process.env.E2E_TEST_ACADEMY_ID = academyId;
 
   // eslint-disable-next-line no-console
   console.log(
-    `[e2e global-setup] 로그인 성공: ${data.user.email} (id=${data.user.id.slice(0, 8)}...) → playwright/.auth/session.json 저장`,
+    `[e2e global-setup] 로그인 성공: ${data.user.email} (id=${data.user.id.slice(0, 8)}...) ` +
+      `${academyId ? `+ academy ${academyId.slice(0, 8)}...` : "(academy 없음 — setup script 실행 필요)"} ` +
+      `→ playwright/.auth/session.json 저장`,
   );
 }
 

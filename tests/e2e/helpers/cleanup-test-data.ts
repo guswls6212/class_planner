@@ -39,9 +39,18 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // 의존성 순서 — sessions/enrollments → students/subjects/teachers (FK 고려)
-  // 실제 schema에 따라 조정. 실패 시 다음 테이블 진행 (best-effort).
-  const tables = [
+  // PR D — schema는 academy_id로 scope. user의 academies 조회 후 그 academy_id로 모든 데이터 삭제.
+  // 마지막에 academy_members + academies 정리.
+  const { data: userAcademies } = await sbAdmin
+    .from("academy_members")
+    .select("academy_id")
+    .eq("user_id", userId);
+
+  const academyIds = (userAcademies ?? []).map((m) => m.academy_id as string);
+
+  // FK 의존성 순서대로 — child first (sessions/enrollments) → parent (students/subjects/teachers)
+  const academyScopedTables = [
+    "session_enrollments",
     "sessions",
     "enrollments",
     "templates",
@@ -53,11 +62,23 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
     "subjects",
   ];
 
-  for (const table of tables) {
-    const { error } = await sbAdmin.from(table).delete().eq("user_id", userId);
-    if (error && !error.message.includes("does not exist")) {
+  for (const aid of academyIds) {
+    for (const table of academyScopedTables) {
+      const { error } = await sbAdmin.from(table).delete().eq("academy_id", aid);
+      if (error && !error.message.includes("does not exist") && !error.message.includes("column")) {
+        // eslint-disable-next-line no-console
+        console.warn(`[cleanupTestUserData] ${table} (academy_id=${aid.slice(0, 8)}...) 삭제 실패: ${error.message}`);
+      }
+    }
+  }
+
+  // academy_members + academies 마지막
+  await sbAdmin.from("academy_members").delete().eq("user_id", userId);
+  for (const aid of academyIds) {
+    const { error } = await sbAdmin.from("academies").delete().eq("id", aid);
+    if (error) {
       // eslint-disable-next-line no-console
-      console.warn(`[cleanupTestUserData] ${table} 삭제 실패: ${error.message}`);
+      console.warn(`[cleanupTestUserData] academies (${aid.slice(0, 8)}...) 삭제 실패: ${error.message}`);
     }
   }
 }

@@ -130,18 +130,24 @@ export const E2E_TEST_USER = {
  * AuthGuard.getSession()이 진짜 토큰 검증 → server에 /auth/v1/user 호출 → 200 응답.
  * POST /api/teachers 등은 진짜 RLS 통과 — test user 데이터로 격리됨.
  *
+ * PR D — academyId가 session.json에 있으면:
+ *   - localStorage `active_academy:{userId}` 설정 (client 측)
+ *   - cookie `active_academy_id` + `onboarded=1` 설정 (server 측 resolveAcademyId 동작)
+ *
  * 매 테스트 후 cleanupTestUserData()로 데이터 격리 유지 권장.
  */
 export interface RealSessionInfo {
   userId: string;
   userEmail: string;
   projectRef: string;
+  academyId: string | null;
 }
 
 let cachedRealSession: {
   projectRef: string;
   userId: string;
   userEmail: string;
+  academyId: string | null;
   sessionPayload: unknown;
 } | null = null;
 
@@ -151,7 +157,7 @@ function loadRealAuthState() {
   if (!fs.existsSync(file)) {
     throw new Error(
       `[injectRealSession] ${file} 없음. globalSetup이 실행됐는지 확인 — ` +
-        "playwright.config.ts에 globalSetup: require.resolve('./tests/e2e/global-setup') 등록 필요.",
+        "playwright.config.ts에 globalSetup: './tests/e2e/global-setup.ts' 등록 필요.",
     );
   }
   cachedRealSession = JSON.parse(fs.readFileSync(file, "utf-8"));
@@ -159,7 +165,12 @@ function loadRealAuthState() {
 }
 
 export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
-  const { projectRef, userId, userEmail, sessionPayload } = loadRealAuthState();
+  const { projectRef, userId, userEmail, academyId, sessionPayload } = loadRealAuthState();
+
+  // 진짜 session token만 inject. server는 academy_members 조회로 academyId 자체 resolve.
+  // 이전 시도에서 active_academy:{uid} localStorage + active_academy_id cookie 추가했더니
+  // settings/teachers 페이지 진입이 깨짐 (이전 cycle 통과한 시나리오까지 fail).
+  // 단순화: setup script가 academy + owner role만 부여하면 server가 알아서 처리.
   await page.addInitScript(
     ({ ref, uid, session }) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
@@ -167,7 +178,8 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
     },
     { ref: projectRef, uid: userId, session: sessionPayload },
   );
-  return { userId, userEmail, projectRef };
+
+  return { userId, userEmail, projectRef, academyId };
 }
 
 /**
