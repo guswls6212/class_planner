@@ -277,6 +277,15 @@ function fireAndForget(
           onSyncSuccess();
           return;
         }
+        // ⚠️ 4xx fast-fail (2026-05-04): 4xx는 client/data 자체 문제라 retry 무의미.
+        // 이전엔 10회 retry 폭주 + 그 동안 indicator "재시도 중" 유지 → 사용자가
+        // indicator 클릭하면 outbox 비어있어 (4xx는 outbox 부적격) "큐 비어있는데
+        // 왜 indicator 보임?" 혼란 발생. 즉시 give-up으로 한 사이클 단축.
+        if (res.status >= 400 && res.status < 500) {
+          onSyncFailure(context);
+          onSyncGiveUp(context);
+          return;
+        }
         onSyncFailure(context);
         if (attempt < 9) {
           const delay = calcDelay(attempt);
@@ -286,7 +295,7 @@ function fireAndForget(
           );
         } else {
           onSyncGiveUp(context);
-          // 5xx만 outbox 보관 (4xx는 데이터 자체가 잘못된 것 → 큐잉 무의미)
+          // 5xx만 outbox 보관 (4xx는 위에서 fast-fail 처리됨)
           if (outboxMeta && res.status >= 500) {
             enqueueOutbox(outboxMeta.userId, {
               id: outboxMeta.id,
@@ -629,7 +638,11 @@ export async function syncSessionUpdateAsync(
 
 export function syncSessionDelete(userId: string | null, id: string): void {
   if (!userId) return;
-  const url = `/api/sessions?id=${id}`;
+  // ⚠️ Bug fix (2026-05-04): URL에 ?userId= 누락 → server DELETE handler가
+  // userId required 체크 → 400 반복. omni-radar 05:23~05:25 다수 DELETE 400 확인.
+  // PR #205의 syncSessionUpdate fix와 동일 패턴이지만 syncSessionDelete는
+  // 누락됐었음.
+  const url = `/api/sessions?id=${id}&userId=${encodeURIComponent(userId)}`;
   const makeRequest = () => fetch(url, { method: "DELETE" });
   fireAndForget(
     makeRequest,
