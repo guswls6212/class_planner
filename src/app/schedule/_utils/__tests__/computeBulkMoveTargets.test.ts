@@ -177,7 +177,9 @@ describe("computeBulkMoveTargets", () => {
     expect(byId.get("b")?.weekday).toBe(6); // clamp
   });
 
-  it("anchor의 yPosition은 newYPosition, 다른 sessions은 원래 yPosition 유지", () => {
+  it("anchor의 yPosition은 newYPosition, 추종 sessions은 yPosition=1 강제 (Option D)", () => {
+    // 정책 (2026-05-04 사용자 제안): 추종 sessions은 lane 제일 왼쪽(1)에 배치 →
+    // 사용자가 한 눈에 \"같이 따라왔다\"고 인지 가능. 원래 yPosition은 무시.
     const sessions = [
       make("a", 0, "09:00", "10:00", 1),
       make("b", 1, "09:00", "10:00", 3),
@@ -191,8 +193,8 @@ describe("computeBulkMoveTargets", () => {
       selectedIds: ["a", "b"],
     });
     const byId = new Map(result.moves.map((m) => [m.session.id, m]));
-    expect(byId.get("a")?.yPosition).toBe(5);
-    expect(byId.get("b")?.yPosition).toBe(3);
+    expect(byId.get("a")?.yPosition).toBe(5); // anchor: 정확한 drop yPosition
+    expect(byId.get("b")?.yPosition).toBe(1); // 추종: lane 1 강제 (이전 3 → 1)
   });
 
   it("빈 selectedIds — empty moves", () => {

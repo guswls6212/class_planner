@@ -70,13 +70,19 @@ export function computeBulkMoveTargets(args: {
       outOfRange++;
       continue;
     }
+    // ⚠️ 정책 (2026-05-04, Option D 변형):
+    // - anchor (사용자가 직접 잡은 세션): drop 위치 newYPosition 정확히 보존
+    // - 추종 sessions (Shift+선택으로 같이 따라옴): yPosition=1 강제 (제일 왼쪽 lane)
+    //   → 사용자가 한 눈에 "같이 따라왔다"는 시각 단서로 인지 가능.
+    //   충돌 시엔 호출자(handleSessionDrop/Copy)의 sequential repositionSessionsUtil이
+    //   anchor 우선, 추종은 lane 1 시도 후 충돌이면 자동으로 다음 lane(2, 3, ...)으로
+    //   push 처리. 기존 sessions도 충돌 시 다른 lane으로 밀려남 (priority-based).
     moves.push({
       session: s,
       weekday: targetWeekday,
       startsAt: minutesToTime(targetStartMin),
       endsAt: minutesToTime(targetEndMin),
-      yPosition:
-        s.id === anchorSessionId ? newYPosition : s.yPosition ?? 1,
+      yPosition: s.id === anchorSessionId ? newYPosition : 1,
     });
   }
 
