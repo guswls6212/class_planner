@@ -15,6 +15,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   modifierDrag,
+  modifierDragReleasedMidway,
   plainDrag,
   startDragAndHover,
   finishDrag,
@@ -297,6 +298,39 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     await expect(overlay).toBeVisible({ timeout: 2000 });
     await expect(overlay).toHaveAttribute("data-copy", "true");
     await finishDrag(page, "Meta");
+  });
+
+  test("T10b ⭐ Cmd+drag 회귀 가드 — 시작 시 Cmd, drag 도중 Cmd 풀어도 복사로 drop", async ({
+    page,
+  }) => {
+    // 사용자 보고 사고 (2026-05-04): macOS Cmd+drag가 native drag 시작 시 잠깐
+    // window blur를 발생시켜 useDragController의 isCopyMode가 false로 reset되고,
+    // drop 시점엔 라우팅이 move로 빠짐. 해결: drag start 시점의 modifier를 ref에
+    // latch해 routing은 시작 시점 의도를 따름.
+    const before = await readSessions(page);
+    expect(before).toHaveLength(3);
+
+    const target = dropCell(page, 1, "11:00");
+    await sessionBlock(page, "sess-a").hover();
+    await modifierDragReleasedMidway(
+      page,
+      sessionDragHandle(page, "sess-a"),
+      target,
+      "Meta",
+    );
+    await page.waitForTimeout(1000);
+
+    const after = await readSessions(page);
+    // 복사이므로 sessions 수 +1, 원본 sess-a 그대로
+    expect(after).toHaveLength(4);
+    const orig = after.find((s) => s.id === "sess-a")!;
+    expect(orig.weekday).toBe(0); // 원본 안 움직임 (= 복사 발화 증거)
+    expect(orig.startsAt).toBe("09:00");
+    // 새 copy가 화 11:00에 존재
+    const copy = after.find(
+      (s) => s.id !== "sess-a" && s.weekday === 1 && s.startsAt === "11:00",
+    );
+    expect(copy).toBeTruthy();
   });
 
   test("T13 — 2개 선택 drag 시 DragOverlayCard에 stack + count badge", async ({

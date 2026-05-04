@@ -65,6 +65,38 @@ function cleanupGhostSession(sessionId: string): void {
   }, 200);
 }
 
+// ===== sync context 라벨 (사용자 친화 표시용) =====
+
+/**
+ * fireAndForget의 context 문자열 → 한국어 사용자 표시 라벨.
+ * 토스트 / 모달에서 "어떤 작업이 동기화 실패했는지" 보여주기 위한 lookup.
+ *
+ * Convention: "{entity}:{verb}" — entity별 verb (create/update/delete 등) 매핑.
+ * 매핑 없는 경우 fallback "변경" 사용 (예외 안전).
+ */
+const CONTEXT_LABELS: Record<string, string> = {
+  "session:create": "수업 추가",
+  "session:update": "수업 위치 변경",
+  "session:delete": "수업 삭제",
+  "student:create": "학생 추가",
+  "student:update": "학생 정보 수정",
+  "student:delete": "학생 삭제",
+  "subject:create": "과목 추가",
+  "subject:update": "과목 정보 수정",
+  "subject:delete": "과목 삭제",
+  "enrollment:create": "수강 등록",
+  "enrollment:delete": "수강 취소",
+  "teacher:create": "강사 추가",
+  "teacher:update": "강사 정보 수정",
+  "teacher:delete": "강사 삭제",
+  "teacher-subject:add": "강사 담당 과목 추가",
+  "teacher-subject:remove": "강사 담당 과목 제거",
+};
+
+export function getContextLabel(context: string): string {
+  return CONTEXT_LABELS[context] ?? "변경";
+}
+
 // ===== 재시도 큐 상태 =====
 
 let consecutiveFailures = 0;
@@ -72,6 +104,12 @@ let firstFailToastShown = false;
 let escalatedToastShown = false;
 /** retry 10회 모두 소진 후 silent 포기 상태. onSyncSuccess 시 false로 reset. */
 let gaveUp = false;
+/**
+ * 가장 최근 실패한 sync의 context — 토스트/indicator에 어떤 작업이 실패했는지
+ * 표시하기 위함. 여러 entity 연속 실패 시 마지막 것만 보임 (단순화) — outbox
+ * 모달이 전체 리스트를 보여주므로 토스트는 representative 한 개로 충분.
+ */
+let lastFailureContext: string | null = null;
 
 // ===== 사용자 노출용 sync 상태 (헤더 indicator 등 영구 visible UI) =====
 
@@ -127,28 +165,39 @@ function onSyncSuccess(): void {
     firstFailToastShown = false;
     escalatedToastShown = false;
     gaveUp = false;
+    lastFailureContext = null;
     notifySyncStatusChange();
   }
 }
 
 function onSyncFailure(context: string): void {
   consecutiveFailures++;
+  lastFailureContext = context;
+  const label = getContextLabel(context);
   if (consecutiveFailures === 1 && !firstFailToastShown) {
     firstFailToastShown = true;
-    // 첫 실패 즉시 — silent failure 방지. 로컬은 안전하다고 안심시킴.
+    // 첫 실패 즉시 — silent failure 방지. 어떤 작업인지 사용자에게 알림.
     showToast(
       "warning",
-      "서버 저장이 지연되고 있어요. 로컬은 안전 — 자동 재시도 중입니다.",
+      `${label} 동기화가 지연되고 있어요. 로컬은 안전하며 자동 재시도 중입니다.`,
     );
   } else if (consecutiveFailures >= 3 && !escalatedToastShown) {
     escalatedToastShown = true;
     showToast(
       "error",
-      "서버 동기화 3회 실패 — 인터넷 연결 또는 새로고침을 확인해주세요.",
+      `${label} 동기화 3회 실패 — 헤더의 "재시도 중" 표시를 클릭해 큐를 확인하세요.`,
     );
   }
   logger.error(`apiSync ${context} 실패 (연속 ${consecutiveFailures}회)`);
   notifySyncStatusChange();
+}
+
+/**
+ * 현재 가장 최근 실패한 sync의 라벨. 헤더 indicator/모달에서 표시용.
+ * 실패 없을 때 null.
+ */
+export function getLastFailureContext(): string | null {
+  return lastFailureContext;
 }
 
 function onSyncGiveUp(context: string): void {
@@ -165,6 +214,7 @@ export function __resetSyncStateForTests(): void {
   firstFailToastShown = false;
   escalatedToastShown = false;
   gaveUp = false;
+  lastFailureContext = null;
   lastDispatchedStatus = "idle";
   pendingGhostCount = 0;
   if (pendingGhostTimer) {
@@ -530,24 +580,49 @@ export async function syncSessionUpdateAsync(
   data: Partial<Omit<Session, "id">>
 ): Promise<boolean> {
   if (!userId) return false;
+  const url = `/api/sessions/${id}/position?userId=${encodeURIComponent(userId)}`;
+  const body = {
+    weekday: data.weekday,
+    time: data.startsAt, // API 필드명: time (= startsAt)
+    endTime: data.endsAt, // API 필드명: endTime (= endsAt)
+    yPosition: data.yPosition,
+  };
   try {
-    const res = await fetch(
-      `/api/sessions/${id}/position?userId=${encodeURIComponent(userId)}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          weekday: data.weekday,
-          time: data.startsAt,      // API 필드명: time (= startsAt)
-          endTime: data.endsAt,     // API 필드명: endTime (= endsAt)
-          yPosition: data.yPosition,
-        }),
-      },
-    );
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     // 404 → ghost session — localStorage 정리
     if (res.status === 404) cleanupGhostSession(id);
-    return res.ok;
-  } catch {
+    if (res.ok) {
+      onSyncSuccess();
+      return true;
+    }
+    // 4xx (404 제외) — bad request, 데이터 자체 문제. retry 무의미 → outbox X
+    // 5xx — server 일시 장애. outbox에 보관해 다음 페이지 진입 시 재시도.
+    onSyncFailure("session:update");
+    if (res.status >= 500) {
+      enqueueOutbox(userId, {
+        id: `session:update:${id}`,
+        context: "session:update",
+        method: "PUT",
+        url,
+        body,
+      });
+    }
+    return false;
+  } catch (err) {
+    // 네트워크 오류 — outbox 보관
+    onSyncFailure("session:update");
+    enqueueOutbox(userId, {
+      id: `session:update:${id}`,
+      context: "session:update",
+      method: "PUT",
+      url,
+      body,
+    });
+    logger.error("syncSessionUpdateAsync 네트워크 오류", { id }, err as Error);
     return false;
   }
 }

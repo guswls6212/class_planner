@@ -1657,6 +1657,7 @@ function SchedulePageContent(): JSX.Element {
           title={scheduleTitle}
           isSyncingSession={isSyncingSession}
           scheduleUpdatedAt={scheduleUpdatedAt}
+          userId={userId}
         />
         <div className="flex items-center gap-2">
           {canManage && userId && viewMode === "weekly" && (

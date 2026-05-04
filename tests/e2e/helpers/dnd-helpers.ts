@@ -95,3 +95,31 @@ export async function finishDrag(
   await page.mouse.up();
   if (modifier) await page.keyboard.up(modifier);
 }
+
+/**
+ * 회귀 가드용 — Cmd를 시작 시에만 잡고 drag 도중 풀어버린 뒤 drop 하는 시나리오.
+ *
+ * 사용자 보고 사고 (2026-05-04): macOS Cmd+drag 시 native drag 시작 시점에 짧은
+ * window blur가 발생해 useDragController의 onBlur가 isCopyMode=false 처리 →
+ * drop 시 라우팅이 move로 갔음. 시작 시점 latch(ref) 도입 후엔 시작 의도가 보존돼야 함.
+ */
+export async function modifierDragReleasedMidway(
+  page: Page,
+  from: Locator,
+  to: Locator,
+  modifier: "Meta" | "Control" = "Meta",
+): Promise<void> {
+  const start = await elementCenter(from);
+  const end = await elementCenter(to);
+  await page.keyboard.down(modifier);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  // dnd-kit activation 거리 트리거 (이 시점에 dragstart 발화 + activatorEvent에 metaKey:true)
+  await page.mouse.move(start.x + 10, start.y + 10, { steps: 3 });
+  // 의도적으로 drag 도중에 modifier 해제 (live isCopyMode false로 흐름)
+  await page.keyboard.up(modifier);
+  // 계속 drag 이동
+  await page.mouse.move(end.x, end.y, { steps: 8 });
+  // drop
+  await page.mouse.up();
+}

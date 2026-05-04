@@ -484,19 +484,28 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // document-level dragend 리셋은 useDragController 내부 useEffect가 처리.
 
+    // ⚠️ Bug fix (2026-05-04 #2): drag 도중 window blur나 keyup 이벤트가 발생하면
+    // useDragController의 isCopyMode가 false로 바뀜. 사용자는 Cmd를 계속 누르고
+    // 있는데도 drop 시점엔 false → onSessionDrop(이동)으로 routing 됐음.
+    // 사용자 보고 사고: macOS에서 Cmd+drag가 native drag 시작 시 짧은 blur 발생 →
+    // onBlur 핸들러가 isCopyMode reset → drop 시 move.
+    //
+    // 해결: drag start 시점의 modifier 상태를 ref에 latch. 시각 상태(isCopyMode)는
+    // 라이브 갱신(DragOverlayCard "복사" 라벨 즉시 반응)을 위해 유지하되, 라우팅
+    // 결정은 ref로 한다 — drag 도중 blur가 발생해도 시작 시점 의도가 보존됨.
+    const dragStartCopyModeRef = useRef(false);
+
     const handleDndDragStart = useCallback(
       ({ active, activatorEvent }: DragStartEvent) => {
         const session = sessionById.get(active.id as string);
         if (session) dragController.startSessionDrag(session);
-        // ⚠️ Bug fix (2026-05-04): window keydown listener는 modifier 키가 이미
-        // 눌린 상태로 페이지 진입한 케이스(focus race 등)를 놓침. dnd-kit의
-        // activatorEvent(원래 PointerEvent)에서 직접 ctrlKey/metaKey 캡처해
-        // drag 시작 시점에 명시적으로 setCopyModeOverride 호출.
+        // dnd-kit의 activatorEvent에서 modifier 직접 캡처 (window listener 의존성 ↓).
         const ev = activatorEvent as PointerEvent | KeyboardEvent | MouseEvent;
         const isCopyAtStart =
           (ev as PointerEvent).ctrlKey === true ||
           (ev as PointerEvent).metaKey === true;
-        dragController.setCopyModeOverride(isCopyAtStart);
+        dragStartCopyModeRef.current = isCopyAtStart; // ← 라우팅용 latch
+        dragController.setCopyModeOverride(isCopyAtStart); // ← 시각 동기화
       },
       [sessionById, dragController],
     );
@@ -515,13 +524,16 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const handleDndDragEnd = useCallback(
       ({ active, over }: DragEndEvent) => {
+        // 라우팅용 isCopy: drag start 시점 latch 사용 (window blur/keyup 영향 방지).
+        // 시각용 dragController.isCopyMode와 분리 — drop 결정은 시작 의도를 따른다.
+        const isCopy = dragStartCopyModeRef.current;
         if (over) {
           const sessionId = active.id as string;
           const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
             const [wd, time, yPos] = parts;
             // Ctrl/Meta + drag → 복사 (onSessionCopy가 있을 때만, 없으면 이동 fallback)
-            if (dragController.isCopyMode && onSessionCopy) {
+            if (isCopy && onSessionCopy) {
               onSessionCopy(sessionId, Number(wd), time, Number(yPos));
             } else if (onSessionDrop) {
               onSessionDrop(sessionId, Number(wd), time, Number(yPos));
@@ -531,6 +543,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         } else {
           dragController.cancelDrag();
         }
+        dragStartCopyModeRef.current = false; // 다음 drag를 위해 reset
         // 드래그 후 스크롤 위치 복원
         requestAnimationFrame(() => {
           const element = gridRef.current;
