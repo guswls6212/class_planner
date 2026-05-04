@@ -199,6 +199,7 @@ src/components/common/SubjectChip.types.ts
 src/components/common/__tests__/SchedulePreview.test.tsx
 src/components/common/__tests__/SubjectChip.test.tsx
 src/components/molecules/ApplyTemplateConfirm.tsx
+src/components/molecules/ApplyTemplateModal.stories.tsx
 src/components/molecules/ApplyTemplateModal.tsx
 src/components/molecules/AttendanceSheet.tsx
 src/components/molecules/BottomSheet.tsx
@@ -219,6 +220,7 @@ src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/PdfGuideModal.tsx
 src/components/molecules/ParentCodeStickyBar.tsx
+src/components/molecules/SaveTemplateModal.stories.tsx
 src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/ScheduleDateNavigator.tsx
