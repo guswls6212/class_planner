@@ -556,7 +556,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               setIsPopoverOpen((p) => !p);
             }
           }}
-          aria-label={isExpanded ? "세션 접기" : `${hiddenSessions.length}개 세션 더 보기`}
+          aria-label={isExpanded ? "수업 접기" : `${hiddenSessions.length}개 수업 더 보기`}
           aria-expanded={isExpanded}
           data-testid={`overflow-expand-btn-${weekday}`}
           style={{

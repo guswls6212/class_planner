@@ -28,6 +28,7 @@ import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
+import { buildTemplateDataPure } from "./_utils/buildTemplateData";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
@@ -1474,40 +1475,14 @@ function SchedulePageContent(): JSX.Element {
   const buildTemplateData = useCallback((): TemplateData => {
     if (!displaySessions) return { version: "1.0", sessions: [] };
     const sessionsData = Array.from(displaySessions.values()).flat();
-    return {
-      version: "1.0",
-      sessions: sessionsData.map((session) => {
-        const firstEnrollment = enrollments.find(
-          (e) => (session.enrollmentIds ?? []).includes(e.id)
-        );
-        const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
-        const sessionStudentNames = (session.enrollmentIds ?? [])
-          .map((eid) => {
-            const enrollment = enrollments.find((e) => e.id === eid);
-            if (!enrollment) return null;
-            return students.find((st) => st.id === enrollment.studentId)?.name ?? null;
-          })
-          .filter((n): n is string => n !== null);
-        const sessionStudentIds = (session.enrollmentIds ?? [])
-          .map((eid) => {
-            const enrollment = enrollments.find((e) => e.id === eid);
-            if (!enrollment) return null;
-            return students.find((st) => st.id === enrollment.studentId)?.id ?? null;
-          })
-          .filter((id): id is string => id !== null);
-        return {
-          weekday: session.weekday,
-          startsAt: session.startsAt,
-          endsAt: session.endsAt,
-          subjectId: subject?.id ?? "",
-          subjectName: subject?.name ?? "미지정",
-          subjectColor: subject?.color ?? "#6366f1",
-          studentIds: sessionStudentIds,
-          studentNames: sessionStudentNames,
-        };
-      }),
-    };
-  }, [displaySessions, subjects, enrollments, students]);
+    return buildTemplateDataPure({
+      sessions: sessionsData,
+      teachers,
+      subjects,
+      enrollments,
+      students,
+    });
+  }, [displaySessions, subjects, enrollments, students, teachers]);
 
   // 실제 적용 로직 (id 기반 매칭)
   const doApplyTemplate = useCallback(
@@ -1543,9 +1518,20 @@ function SchedulePageContent(): JSX.Element {
           }
           if (matchedStudentIds.length === 0) continue;
 
+          let matchedTeacherId: string | undefined;
+          if (tplSession.teacherId) {
+            const t = teachers.find((tc) => tc.id === tplSession.teacherId);
+            if (t) {
+              matchedTeacherId = t.id;
+            } else {
+              missingEntities.push(`강사 "${tplSession.teacherName ?? tplSession.teacherId}"`);
+            }
+          }
+
           await addSession({
             subjectId: subject.id,
             studentIds: matchedStudentIds,
+            ...(matchedTeacherId && { teacherId: matchedTeacherId }),
             weekday: tplSession.weekday,
             startTime: tplSession.startsAt,
             endTime: tplSession.endsAt,
@@ -1567,7 +1553,7 @@ function SchedulePageContent(): JSX.Element {
         setApplyConfirmTemplate(null);
       }
     },
-    [weekFilteredSessions, sessions, subjects, students, updateData, addSession]
+    [weekFilteredSessions, sessions, subjects, students, teachers, updateData, addSession]
   );
 
   const handleApplyTemplate = useCallback(
@@ -1603,10 +1589,26 @@ function SchedulePageContent(): JSX.Element {
         return;
       }
       if (activeTemplate) {
-        await updateTemplate(activeTemplate.id, { name, description, template_data: data });
+        const result = await updateTemplate(activeTemplate.id, {
+          name,
+          description,
+          template_data: data,
+        });
+        if (!result) {
+          showToast("error", "템플릿 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          return;
+        }
         showToast("success", "템플릿이 갱신되었습니다.");
       } else {
-        await saveTemplate({ name, description: description ?? "", templateData: data });
+        const ok = await saveTemplate({
+          name,
+          description: description ?? "",
+          templateData: data,
+        });
+        if (!ok) {
+          showToast("error", "템플릿 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          return;
+        }
         showToast("success", "템플릿이 저장되었습니다.");
       }
       setShowSaveTemplateModal(false);

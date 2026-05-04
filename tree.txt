@@ -1,3 +1,4 @@
+src/__tests__/fixtures/template.fixture.ts
 src/__tests__/middleware.test.ts
 src/app/__tests__/page.test.tsx
 src/app/about/__tests__/page.test.tsx
@@ -108,6 +109,7 @@ src/app/schedule/_hooks/__tests__/useUiState.test.ts
 src/app/schedule/_hooks/useEditModalState.ts
 src/app/schedule/_hooks/useStudentFilter.ts
 src/app/schedule/_hooks/useUiState.ts
+src/app/schedule/_utils/__tests__/buildTemplateData.test.ts
 src/app/schedule/_utils/__tests__/bulkSessionOps.test.ts
 src/app/schedule/_utils/__tests__/collisionHelpers.test.ts
 src/app/schedule/_utils/__tests__/collisionQueries.test.ts
@@ -119,6 +121,7 @@ src/app/schedule/_utils/__tests__/modalHandlers.test.ts
 src/app/schedule/_utils/__tests__/scheduleSelectors.test.ts
 src/app/schedule/_utils/__tests__/sessionSaveUtils.ensureEnrollments.test.ts
 src/app/schedule/_utils/__tests__/sessionSaveUtils.test.ts
+src/app/schedule/_utils/buildTemplateData.ts
 src/app/schedule/_utils/collisionHelpers.ts
 src/app/schedule/_utils/collisionQueries.ts
 src/app/schedule/_utils/dndHelpers.ts

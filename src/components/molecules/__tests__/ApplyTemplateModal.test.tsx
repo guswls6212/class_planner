@@ -2,30 +2,14 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import ApplyTemplateModal from "../ApplyTemplateModal";
-import type { ScheduleTemplate } from "@/shared/types/templateTypes";
+import {
+  FIXTURE_TEMPLATE,
+} from "@/__tests__/fixtures/template.fixture";
 
-const TEMPLATE: ScheduleTemplate = {
-  id: "tpl-1",
+const TEMPLATE = {
+  ...FIXTURE_TEMPLATE,
   name: "기본 시간표",
   description: "주 5일 기본",
-  templateData: {
-    version: "1.0",
-    sessions: [
-      {
-        weekday: 0,
-        startsAt: "09:00",
-        endsAt: "10:00",
-        subjectId: "sub-1",
-        subjectName: "수학",
-        subjectColor: "#FF0000",
-        studentIds: ["st-1"],
-        studentNames: ["홍길동"],
-      },
-    ],
-  },
-  createdBy: "user-1",
-  createdAt: "2026-04-17T00:00:00Z",
-  updatedAt: "2026-04-17T00:00:00Z",
 };
 
 describe("ApplyTemplateModal", () => {
@@ -78,10 +62,15 @@ describe("ApplyTemplateModal", () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("템플릿 선택 시 세션 수와 덮어쓰기 경고가 표시된다", () => {
+  it("템플릿 선택 시 수업 수와 덮어쓰기 경고가 표시된다", () => {
     render(<ApplyTemplateModal {...defaultProps} />);
     fireEvent.click(screen.getByText("기본 시간표"));
-    expect(screen.getByText(/1개 세션/)).toBeInTheDocument();
-    expect(screen.getByText(/현재 주의 기존 세션이 모두 삭제/)).toBeInTheDocument();
+    expect(screen.getByText(/1개 수업을 적용합니다/)).toBeInTheDocument();
+    expect(screen.getByText(/현재 주의 기존 수업이 모두 삭제/)).toBeInTheDocument();
+  });
+
+  it("목록의 각 템플릿에 '수업 N개'가 표시된다", () => {
+    render(<ApplyTemplateModal {...defaultProps} />);
+    expect(screen.getByText(/수업 1개/)).toBeInTheDocument();
   });
 });

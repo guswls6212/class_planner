@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { ScheduleTemplate, RawTemplate, TemplateData } from "@/shared/types/templateTypes";
+import { logger } from "@/lib/logger";
 
 function mapTemplate(raw: RawTemplate): ScheduleTemplate {
   return {
@@ -50,6 +51,17 @@ export function useTemplates(userId: string | null) {
           await fetchTemplates();
           return true;
         }
+        logger.error("템플릿 저장 실패 (서버 응답)", {
+          status: res.status,
+          statusText: res.statusText,
+        });
+        return false;
+      } catch (error) {
+        logger.error(
+          "템플릿 저장 네트워크 오류",
+          undefined,
+          error as Error
+        );
         return false;
       } finally {
         setIsSaving(false);
@@ -77,10 +89,24 @@ export function useTemplates(userId: string | null) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(fields),
         });
-        if (!res.ok) return null;
+        if (!res.ok) {
+          logger.error("템플릿 갱신 실패 (서버 응답)", {
+            id,
+            status: res.status,
+            statusText: res.statusText,
+          });
+          return null;
+        }
         const json = await res.json();
         setTemplates((prev) => prev.map((t) => (t.id === id ? mapTemplate(json.data) : t)));
         return json.data;
+      } catch (error) {
+        logger.error(
+          "템플릿 갱신 네트워크 오류",
+          { id },
+          error as Error
+        );
+        return null;
       } finally {
         setIsSaving(false);
       }
