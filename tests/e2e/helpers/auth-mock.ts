@@ -167,39 +167,17 @@ function loadRealAuthState() {
 export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
   const { projectRef, userId, userEmail, academyId, sessionPayload } = loadRealAuthState();
 
+  // 진짜 session token만 inject. server는 academy_members 조회로 academyId 자체 resolve.
+  // 이전 시도에서 active_academy:{uid} localStorage + active_academy_id cookie 추가했더니
+  // settings/teachers 페이지 진입이 깨짐 (이전 cycle 통과한 시나리오까지 fail).
+  // 단순화: setup script가 academy + owner role만 부여하면 server가 알아서 처리.
   await page.addInitScript(
-    ({ ref, uid, session, aId }) => {
+    ({ ref, uid, session }) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("supabase_user_id", uid);
-      if (aId) {
-        localStorage.setItem(`active_academy:${uid}`, aId);
-      }
     },
-    { ref: projectRef, uid: userId, session: sessionPayload, aId: academyId },
+    { ref: projectRef, uid: userId, session: sessionPayload },
   );
-
-  if (academyId) {
-    await page.context().addCookies([
-      {
-        name: "active_academy_id",
-        value: academyId,
-        domain: "localhost",
-        path: "/",
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-      },
-      {
-        name: "onboarded",
-        value: "1",
-        domain: "localhost",
-        path: "/",
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-      },
-    ]);
-  }
 
   return { userId, userEmail, projectRef, academyId };
 }
