@@ -106,10 +106,12 @@ describe("TimeTableGrid", () => {
     render(<TimeTableGrid {...defaultProps} />);
 
     // 9:00부터 24:00까지 30분 단위로 시간 슬롯이 있는지 확인
-    expect(screen.getByText("09:00")).toBeInTheDocument();
-    expect(screen.getByText("09:30")).toBeInTheDocument();
-    expect(screen.getByText("10:00")).toBeInTheDocument();
-    expect(screen.getByText("23:30")).toBeInTheDocument();
+    // 현재 시각 indicator가 시간 슬롯에 동일 텍스트로 추가 렌더 가능 (KST 23:30대 등) →
+    // getAllByText로 1개 이상이면 통과 (시간 의존 fragile 회피)
+    expect(screen.getAllByText("09:00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("09:30").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("10:00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("23:30").length).toBeGreaterThan(0);
   });
 
   it("요일 라벨이 올바르게 표시된다", () => {
