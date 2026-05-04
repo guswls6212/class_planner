@@ -1060,7 +1060,7 @@ function SchedulePageContent(): JSX.Element {
 
   // Gate: member role — drag-to-reorder is disabled
   const handleSessionDrop = useCallback(
-    (sessionId: string, weekday: number, time: string, yPosition: number) => {
+    async (sessionId: string, weekday: number, time: string, yPosition: number) => {
       if (!canManage) return;
       // 다중 선택된 sessions 중 dragged session이 포함되어 있으면 일괄 이동
       if (
@@ -1075,14 +1075,38 @@ function SchedulePageContent(): JSX.Element {
           newYPosition: yPosition,
           selectedIds: sessionSelection.selectedSessionIds,
         });
+        // ⚠️ Bug fix (2026-05-04): 이전엔 _handleSessionDropBase를 N번 await 없이
+        // 호출하여 모든 호출이 같은 stale `sessions` snapshot을 closure로 잡고
+        // 각자 updateData(자신의 newSessions)를 호출 → React state race로 마지막
+        // 호출만 반영, N-1개 sessions은 미이동. 토스트는 "N개 이동"이지만 실제론 1개.
+        // 해결: moves를 단일 batch로 sessions에 적용한 뒤 updateData 1회 호출.
+        const moveById = new Map(
+          moves.map((m) => [m.session.id, m] as const),
+        );
+        const updatedSessions = sessions.map((s) => {
+          const m = moveById.get(s.id);
+          if (!m) return s;
+          return {
+            ...s,
+            weekday: m.weekday,
+            startsAt: m.startsAt,
+            endsAt: m.endsAt,
+            yPosition: m.yPosition,
+          };
+        });
+        await updateData({ sessions: updatedSessions });
+        // server 동기화 — 각 이동 session에 대해 PUT /position fire-and-forget
+        const uid = localStorage.getItem("supabase_user_id");
         for (const m of moves) {
-          _handleSessionDropBase(
-            m.session.id,
-            m.weekday,
-            m.startsAt,
-            m.yPosition,
-          );
+          syncSessionUpdate(uid, m.session.id, {
+            weekday: m.weekday,
+            startsAt: m.startsAt,
+            endsAt: m.endsAt,
+            yPosition: m.yPosition,
+          });
         }
+        // 강제 리렌더 (lane layout 재계산)
+        setGridVersion((v) => v + 1);
         const total = sessionSelection.count;
         if (outOfRange > 0) {
           showToast(
@@ -1102,6 +1126,7 @@ function SchedulePageContent(): JSX.Element {
       _handleSessionDropBase,
       sessionSelection,
       sessions,
+      updateData,
     ]
   );
 
@@ -1128,24 +1153,70 @@ function SchedulePageContent(): JSX.Element {
           newYPosition: yPosition,
           selectedIds: sessionSelection.selectedSessionIds,
         });
-        let copied = 0;
+        // ⚠️ Bug fix (2026-05-04): 이전엔 await addSession을 N번 순차 호출했지만
+        // addSession 내부의 `sessions` closure가 매 호출마다 같은 stale snapshot을
+        // 잡아 updateData([...sessions, new])가 매번 같은 배열에 1개만 더해 N-1개가
+        // 덮어써짐. 이제 모든 새 sessions/enrollments를 한 번에 만들고 updateData 1회.
+        const newSessions: Session[] = [];
+        const newEnrollmentsLocal: Array<{
+          id: string;
+          studentId: string;
+          subjectId: string;
+        }> = [];
+        const wkStart = getWeekStartDate(selectedDate);
         for (const m of moves) {
+          if (!m.session.subjectId) continue;
           const studentIds = (m.session.enrollmentIds ?? [])
             .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)
             .filter((sid): sid is string => Boolean(sid));
-          if (!m.session.subjectId) continue;
-          await addSession({
+          // 각 student마다 enrollment 보장 — 기존 enrollment 우선, 없으면 신규
+          const enrollmentIds: string[] = [];
+          for (const studentId of studentIds) {
+            const existing = enrollments.find(
+              (e) => e.studentId === studentId && e.subjectId === m.session.subjectId,
+            );
+            if (existing) {
+              enrollmentIds.push(existing.id);
+            } else {
+              const ne = {
+                id: crypto.randomUUID(),
+                studentId,
+                subjectId: m.session.subjectId,
+              };
+              newEnrollmentsLocal.push(ne);
+              enrollmentIds.push(ne.id);
+            }
+          }
+          newSessions.push({
+            id: crypto.randomUUID(),
             subjectId: m.session.subjectId,
-            studentIds,
-            teacherId: m.session.teacherId ?? undefined,
+            ...(m.session.teacherId && { teacherId: m.session.teacherId }),
             weekday: m.weekday,
-            startTime: m.startsAt,
-            endTime: m.endsAt,
+            startsAt: m.startsAt,
+            endsAt: m.endsAt,
+            weekStartDate: wkStart,
+            room: m.session.room ?? "",
+            enrollmentIds,
             yPosition: m.yPosition,
-            room: m.session.room,
-          });
-          copied++;
+          } as Session);
         }
+        const updatePayload: any = {
+          sessions: [...sessions, ...newSessions],
+        };
+        if (newEnrollmentsLocal.length > 0) {
+          updatePayload.enrollments = [...enrollments, ...newEnrollmentsLocal];
+        }
+        await updateData(updatePayload);
+        // server 동기화 (fire-and-forget) — client UUID 포함
+        const uid = localStorage.getItem("supabase_user_id");
+        for (const ne of newEnrollmentsLocal) {
+          syncEnrollmentCreate(uid, ne);
+        }
+        for (const ns of newSessions) {
+          syncSessionCreate(uid, ns);
+        }
+        setGridVersion((v) => v + 1);
+        const copied = newSessions.length;
         if (outOfRange > 0) {
           showToast(
             "warning",
@@ -1185,7 +1256,15 @@ function SchedulePageContent(): JSX.Element {
         room: original.room,
       });
     },
-    [canManage, sessions, enrollments, addSession, sessionSelection],
+    [
+      canManage,
+      sessions,
+      enrollments,
+      addSession,
+      sessionSelection,
+      updateData,
+      selectedDate,
+    ],
   );
 
   // 모바일 long-press 메뉴 — "복사" 항목.
