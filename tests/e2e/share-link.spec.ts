@@ -52,12 +52,11 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     });
   });
 
-  test.skip("'링크 만들기' → 모달 열기 → '생성' 클릭 시 POST /api/share-tokens 호출", async ({
+  test("'링크 만들기' → 모달 열기 → '생성' 클릭 시 POST /api/share-tokens 호출", async ({
     page,
     context,
   }) => {
-    // FIXME: 모달의 '생성' 버튼 selector 정확히 매칭 안 됨 (15s timeout). 모달 form
-    // 정확한 selector 또는 button 텍스트 차이. 후속 PR에서 모달 DOM 정찰 후 unskip.
+    // PR J — 모달 mount 대기 추가 (heading "공유 링크 만들기" visible 후 button 클릭)
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     let postBody: ShareTokenPostBody | null = null;
@@ -102,7 +101,12 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
 
     await page.getByRole("button", { name: /링크 만들기/ }).first().click();
 
-    // 모달 — 생성 버튼 클릭
+    // 모달 mount 대기 — heading "공유 링크 만들기" 표시
+    await expect(page.getByRole("heading", { name: "공유 링크 만들기" })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // "생성" 버튼 클릭 (모달 안의 단일 button)
     await page.getByRole("button", { name: /^생성$/ }).click();
 
     // POST /api/share-tokens 호출됨
