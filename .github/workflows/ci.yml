@@ -60,6 +60,12 @@ jobs:
             tests/e2e/teachers-crud.spec.ts \
             tests/e2e/templates-apply-delete.spec.ts \
             tests/e2e/schedule-conflict-auto-lane.spec.ts \
+            tests/e2e/pdf-export.spec.ts \
+            tests/e2e/mobile-flows.spec.ts \
+            tests/e2e/offline-network.spec.ts \
+            tests/e2e/schedule-viewmode.spec.ts \
+            tests/e2e/share-link.spec.ts \
+            tests/e2e/multi-academy.spec.ts \
             --project=chromium --reporter=list
         env:
           CI: "true"
