@@ -1085,15 +1085,21 @@ function SchedulePageContent(): JSX.Element {
         // 해결: moves를 단일 batch로 sessions에 적용한 뒤 updateData 1회 호출.
         const updatedSessions = applyBulkMoves(sessions, moves);
         await updateData({ sessions: updatedSessions });
-        // server 동기화 — 각 이동 session에 대해 PUT /position fire-and-forget
+        // 서버 동기화 — 단일 drag와 동일한 /position 엔드포인트 사용 (PR #194에서
+        // userId 쿼리 fix 완료된 syncSessionUpdateAsync 재사용). 이전엔 syncSessionUpdate
+        // (full-update endpoint, 잘못된 URL)을 호출해 모든 PUT이 400 반환됐음.
         const uid = localStorage.getItem("supabase_user_id");
-        for (const m of moves) {
-          syncSessionUpdate(uid, m.session.id, {
-            weekday: m.weekday,
-            startsAt: m.startsAt,
-            endsAt: m.endsAt,
-            yPosition: m.yPosition,
-          });
+        if (uid) {
+          await Promise.all(
+            moves.map((m) =>
+              syncSessionUpdateAsync(uid, m.session.id, {
+                weekday: m.weekday,
+                startsAt: m.startsAt,
+                endsAt: m.endsAt,
+                yPosition: m.yPosition,
+              }),
+            ),
+          );
         }
         // 강제 리렌더 (lane layout 재계산)
         setGridVersion((v) => v + 1);
