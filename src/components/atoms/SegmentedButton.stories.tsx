@@ -2,13 +2,13 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import SegmentedButton from "./SegmentedButton";
 
-type ColorBy = "subject" | "teacher";
-type ViewMode = "weekly" | "daily" | "monthly";
+type ColorByValue = "subject" | "teacher";
+type ViewModeValue = "weekly" | "daily" | "monthly";
 
 const ColorByExample = () => {
-  const [value, setValue] = useState<ColorBy>("subject");
+  const [value, setValue] = useState<ColorByValue>("subject");
   return (
-    <SegmentedButton<ColorBy>
+    <SegmentedButton<ColorByValue>
       options={[
         { label: "과목별", value: "subject" },
         { label: "강사별", value: "teacher" },
@@ -21,9 +21,9 @@ const ColorByExample = () => {
 };
 
 const ViewModeExample = () => {
-  const [value, setValue] = useState<ViewMode>("weekly");
+  const [value, setValue] = useState<ViewModeValue>("weekly");
   return (
-    <SegmentedButton<ViewMode>
+    <SegmentedButton<ViewModeValue>
       options={[
         { label: "주", value: "weekly" },
         { label: "일", value: "daily" },
