@@ -10,6 +10,7 @@ import {
   type ToastVariant,
 } from "../components/atoms/ToastContent";
 import { UndoToastContent } from "../components/atoms/UndoToastContent";
+import { ActionToastContent } from "../components/atoms/ActionToastContent";
 
 const DEFAULT_DURATION_MS = 4000;
 
@@ -73,4 +74,37 @@ export function showBulkUndoToast(opts: {
     onUndo: opts.onUndo,
     durationMs: opts.durationMs ?? 7000,
   });
+}
+
+/**
+ * 액션 버튼이 달린 토스트. 사용자에게 알림 + 명시적 행동 유도.
+ *
+ * 사용 예: "다른 관리자가 시간표를 변경했어요" + [새로고침]
+ *
+ * UndoToastContent와 분리: undo는 destructive(빨간), action은 info/warning(파란/주황).
+ *
+ * Default duration 10s — 사용자 인지 + 클릭에 충분한 시간 (banner의 "영구 visible"
+ * 보다 짧지만 토스트 dismiss로 충분히 인지 가능).
+ *
+ * @returns toast id (외부에서 dismiss 가능)
+ */
+export function showActionToast(opts: {
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+  variant?: "info" | "warning";
+  durationMs?: number;
+}): string | number {
+  const duration = opts.durationMs ?? 10000;
+  return toast.custom(
+    (toastId) =>
+      createElement(ActionToastContent, {
+        message: opts.message,
+        actionLabel: opts.actionLabel,
+        onAction: opts.onAction,
+        toastId,
+        variant: opts.variant ?? "info",
+      }),
+    { duration },
+  );
 }

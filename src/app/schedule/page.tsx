@@ -49,7 +49,7 @@ import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { syncSubjectUpdate } from "../../lib/apiSync";
 import { logger } from "../../lib/logger";
-import { showError, showToast } from "../../lib/toast";
+import { showActionToast, showError, showToast } from "../../lib/toast";
 import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
@@ -62,7 +62,8 @@ import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules
 // ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
-import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
+// ScheduleChangeBanner 컴포넌트는 deprecated — toast로 대체 (2026-05-04).
+// 컴포넌트 자체는 legacy로 유지하지만 schedule 페이지에선 mount 안 함.
 import { useScheduleMeta } from "../../hooks/useScheduleMeta";
 import { useOutboxFlush } from "../../hooks/useOutboxFlush";
 import { useSessionSelection } from "../../hooks/useSessionSelection";
@@ -232,6 +233,28 @@ function SchedulePageContent(): JSX.Element {
     hasChanges: hasScheduleChanges,
     acknowledgeChanges: ackScheduleChanges,
   } = useScheduleMeta(userId);
+
+  // hasScheduleChanges false → true 전이 시 토스트 발화 (이전 banner 대체).
+  // useScheduleMeta가 본인 변경은 윈도우(10s)로 자동 suppress하므로 여긴 다른
+  // admin 변경만 도달함. 토스트 [새로고침] 클릭 → reload + ack로 server에서 최신
+  // sessions 재fetch.
+  const lastAlertedAtRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hasScheduleChanges || !scheduleUpdatedAt) return;
+    // 같은 timestamp 재알림 방지
+    if (lastAlertedAtRef.current === scheduleUpdatedAt) return;
+    lastAlertedAtRef.current = scheduleUpdatedAt;
+    showActionToast({
+      message: "다른 관리자가 시간표를 변경했어요. 새로고침할까요?",
+      actionLabel: "새로고침",
+      variant: "warning",
+      onAction: () => {
+        ackScheduleChanges();
+        if (typeof window !== "undefined") window.location.reload();
+      },
+      durationMs: 10000,
+    });
+  }, [hasScheduleChanges, scheduleUpdatedAt, ackScheduleChanges]);
 
   // 이전 세션에서 retry 10회 후 포기된 sync 작업 자동 재시도
   useOutboxFlush(userId);
@@ -1675,20 +1698,12 @@ function SchedulePageContent(): JSX.Element {
 
   return (
     <div className="timetable-container p-4">
-      {hasScheduleChanges && scheduleUpdatedAt && (
-        <button
-          type="button"
-          onClick={() => {
-            ackScheduleChanges();
-            if (typeof window !== "undefined") window.location.reload();
-          }}
-          className="block w-full text-left"
-          data-testid="schedule-change-banner"
-          aria-label="시간표 변경 사항 — 클릭하여 새로고침"
-        >
-          <ScheduleChangeBanner scheduleUpdatedAt={scheduleUpdatedAt} />
-        </button>
-      )}
+      {/*
+        ⚠️ 변경 알림 UX (2026-05-04): 이전엔 화면 상단을 가로로 가득 채우는 banner였으나
+        (a) 사용자 본인 변경에도 잘못 발화 (b) 시각 영역 잠식 — 두 가지 문제로 토스트로 변경.
+        본인 변경은 useScheduleMeta + apiSync.subscribeSelfSync 윈도우(10s)로 자동 suppress.
+        다른 admin 변경만 토스트로 안내 + [새로고침] 액션 버튼 (sync 옵션 useEffect 아래).
+      */}
       {/* Row 1: 제목(좌) + 액션(우) */}
       <div className="flex items-start justify-between mb-4 border-b border-[--color-border] pb-3">
         <ScheduleHeader

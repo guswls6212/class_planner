@@ -155,7 +155,39 @@ export function subscribeSyncStatus(
   return () => syncStatusEvents.removeEventListener("change", handler);
 }
 
+// ===== self-sync 이벤트 (사용자 본인 변경 감지) =====
+//
+// 사용자가 sessions/students/etc. 변경을 발사할 때마다 server-side trigger가
+// `academies.schedule_updated_at`을 bump 함. useScheduleMeta가 30초마다 polling
+// 으로 그 timestamp를 fetch하는데, 본인 변경도 같이 잡혀서 banner가 잘못 뜸.
+//
+// 해결: sync 성공 시 selfSyncEvents에 dispatch → useScheduleMeta가 구독 →
+// "마지막 본인 sync" 시각 기록. polling 결과의 server timestamp가 그 시각의
+// 윈도우 안이면 본인 변경으로 판단 → 자동 ack (banner 발화 안 함).
+
+const selfSyncEvents = new EventTarget();
+
+/**
+ * 본인 sync 발사 이벤트 listener 등록. unsubscribe 함수 반환.
+ *
+ * useScheduleMeta가 구독해서 lastSelfSyncAt timestamp 갱신.
+ */
+export function subscribeSelfSync(callback: () => void): () => void {
+  const handler = () => callback();
+  selfSyncEvents.addEventListener("self-sync", handler);
+  return () => selfSyncEvents.removeEventListener("self-sync", handler);
+}
+
+function notifySelfSync(): void {
+  selfSyncEvents.dispatchEvent(new CustomEvent("self-sync"));
+}
+
 function onSyncSuccess(): void {
+  // 본인 변경 신호 — useScheduleMeta가 구독해서 lastSelfSyncAt 갱신.
+  // 성공한 모든 sync(POST/PUT/DELETE)에서 발사하면 server timestamp bump 시점과
+  // 본인 sync 시점이 거의 일치 → 다음 polling tick에서 윈도우 안으로 잡힘.
+  notifySelfSync();
+
   if (consecutiveFailures > 0) {
     consecutiveFailures = 0;
     if (firstFailToastShown || escalatedToastShown) {

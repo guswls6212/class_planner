@@ -143,4 +143,56 @@ describe("useScheduleMeta", () => {
     });
     expect(result.current.hasChanges).toBe(false);
   });
+
+  describe("self-sync 윈도우 — 본인 변경 자동 감지 (2026-05-04 회귀 가드)", () => {
+    it("server timestamp가 본인 sync 직후(<10s)이면 hasChanges=false 유지 + lastViewedAt 자동 갱신", async () => {
+      // 사용자 본인이 sync 발사 → apiSync.onSyncSuccess가 selfSync 이벤트 dispatch.
+      // Polling fetch가 그 직후 server timestamp를 받으면 본인 변경으로 판단.
+      window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
+      // 본인 sync 시점을 현재로 시뮬레이션 — server timestamp도 거의 같은 시각
+      const nowIso = new Date().toISOString();
+      fetchMock.mockResolvedValueOnce(jsonResponse({ scheduleUpdatedAt: nowIso }));
+
+      // selfSync 이벤트 발사 시뮬레이션
+      const apiSync = await import("../../lib/apiSync");
+      // private 함수라 직접 호출 — onSyncSuccess가 호출하는 notifySelfSync를 흉내내려면
+      // 직접 EventTarget dispatch가 필요. 대신 subscribeSelfSync로 구독하는 hook이
+      // mount 후, 같은 EventTarget에 dispatch하기 위해 onSyncSuccess 경유 또는
+      // 다른 sync* 함수 호출. 가장 간단: 실제 sync 함수를 mock 200으로 호출.
+      const { syncStudentCreate } = apiSync;
+      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+      // hook mount 직후 selfSync 이벤트 발사
+      // 수동으로 fetch가 200 응답하게 mock + sync 호출
+      const mockFetchOk = vi.fn().mockResolvedValue(jsonResponse({}));
+      const prevFetch = global.fetch;
+      global.fetch = mockFetchOk as unknown as typeof fetch;
+      syncStudentCreate(USER_ID, { id: "stu-1", name: "A" } as any);
+      // microtask flush
+      await new Promise((r) => setTimeout(r, 50));
+      global.fetch = fetchMock as unknown as typeof fetch;
+      // 첫 polling fetch 결과 대기 (mount 직후 자동 fetch)
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe(nowIso);
+      });
+      // 본인 변경 자동 감지 — hasChanges는 false 유지
+      expect(result.current.hasChanges).toBe(false);
+      // lastViewedAt이 server timestamp로 자동 갱신
+      expect(window.localStorage.getItem(KEY)).toBe(nowIso);
+    });
+
+    it("self-sync 이벤트가 없는 상태(다른 사람 변경)에서는 정상 hasChanges=true", async () => {
+      window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe("2026-05-04T10:00:00Z");
+      });
+      // self-sync 이벤트 발사 안 했으니 정상 알림
+      expect(result.current.hasChanges).toBe(true);
+    });
+  });
 });
