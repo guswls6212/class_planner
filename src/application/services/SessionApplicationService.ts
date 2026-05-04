@@ -15,6 +15,8 @@ export class SessionApplicationServiceImpl {
 
   async addSession(
     sessionData: {
+      /** Local-first: client가 생성한 UUID. 미제공 시 DB가 생성. */
+      id?: string;
       subjectId: string;
       startsAt: string;
       endsAt: string;

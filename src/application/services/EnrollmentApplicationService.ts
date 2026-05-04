@@ -13,7 +13,7 @@ export class EnrollmentApplicationServiceImpl {
   }
 
   async addEnrollment(
-    enrollmentData: { studentId: string; subjectId: string },
+    enrollmentData: { id?: string; studentId: string; subjectId: string },
     academyId: string
   ): Promise<Enrollment> {
     return this.enrollmentRepository.create(enrollmentData, academyId);

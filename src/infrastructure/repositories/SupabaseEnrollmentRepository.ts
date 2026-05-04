@@ -77,18 +77,24 @@ export class SupabaseEnrollmentRepository implements EnrollmentRepository {
   }
 
   async create(
-    enrollmentData: Omit<Enrollment, "id" | "createdAt" | "updatedAt">,
+    enrollmentData: Omit<Enrollment, "id" | "createdAt" | "updatedAt"> & {
+      id?: string;
+    },
     _academyId: string
   ): Promise<Enrollment> {
     try {
       const client = this.createServiceRoleClient();
 
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전)
+      const insertPayload: Record<string, unknown> = {
+        student_id: enrollmentData.studentId,
+        subject_id: enrollmentData.subjectId,
+      };
+      if (enrollmentData.id) insertPayload.id = enrollmentData.id;
+
       const { data, error } = await client
         .from("enrollments")
-        .insert({
-          student_id: enrollmentData.studentId,
-          subject_id: enrollmentData.subjectId,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

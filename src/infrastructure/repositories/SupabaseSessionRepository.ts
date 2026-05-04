@@ -117,27 +117,35 @@ export class SupabaseSessionRepository implements SessionRepository {
   }
 
   async create(
-    sessionData: Omit<Session, "id" | "createdAt" | "updatedAt">,
+    sessionData: Omit<Session, "id" | "createdAt" | "updatedAt"> & {
+      id?: string;
+    },
     academyId: string
   ): Promise<Session> {
     try {
       const client = this.createServiceRoleClient();
 
-      // 1. sessions 테이블에 INSERT
+      // 1. sessions 테이블에 UPSERT (local-first: client UUID 그대로 사용 + 중복 시 idempotent)
+      // - client가 id를 제공하면 그대로 사용 → PUT /position의 id 매칭 보장
+      // - client id 미제공 시 DB의 default uuid_generate_v4()가 생성
+      // - 같은 id로 재시도(outbox replay 등) 발생 시 onConflict("id")로 idempotent
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        weekday: sessionData.weekday,
+        starts_at: sessionData.startsAt,
+        ends_at: sessionData.endsAt,
+        week_start_date: sessionData.weekStartDate || "",
+        room: sessionData.room ?? "",
+        y_position: sessionData.yPosition ?? 1,
+        teacher_id: sessionData.teacherId ?? null,
+        public_description: sessionData.public_description ?? null,
+        internal_note: sessionData.internal_note ?? null,
+      };
+      if (sessionData.id) insertPayload.id = sessionData.id;
+
       const { data, error } = await client
         .from("sessions")
-        .insert({
-          academy_id: academyId,
-          weekday: sessionData.weekday,
-          starts_at: sessionData.startsAt,
-          ends_at: sessionData.endsAt,
-          week_start_date: sessionData.weekStartDate || "",
-          room: sessionData.room ?? "",
-          y_position: sessionData.yPosition ?? 1,
-          teacher_id: sessionData.teacherId ?? null,
-          public_description: sessionData.public_description ?? null,
-          internal_note: sessionData.internal_note ?? null,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

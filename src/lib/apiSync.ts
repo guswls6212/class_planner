@@ -21,10 +21,31 @@ import type { Session } from "../lib/planner";
  *
  * 토스트는 같은 cleanup이 빠르게 여러 번 발생할 때 노이즈 방지를 위해
  * 200ms 디바운스로 묶어 한 번에 표시 ("N개 수업이 서버에 없어 정리됨").
+ *
+ * ⚠️ Race guard (2026-05-04): syncSessionCreate 직후 PUT /position이 POST보다
+ * 먼저 도달해 404를 받는 race로 방금 만든 session이 즉시 삭제되는 사고가 있었음.
+ * 30초 이내 syncSessionCreate된 sessionId는 cleanup 보류 — POST가 도착할 시간을
+ * 충분히 주고, 진짜 ghost(오래된 잔재)만 제거.
  */
+const GHOST_CLEANUP_GRACE_MS = 30_000;
+const recentCreatesById = new Map<string, number>();
+function markRecentCreate(sessionId: string): void {
+  recentCreatesById.set(sessionId, Date.now());
+}
+function isWithinCreateGrace(sessionId: string): boolean {
+  const ts = recentCreatesById.get(sessionId);
+  if (ts == null) return false;
+  return Date.now() - ts < GHOST_CLEANUP_GRACE_MS;
+}
+
 let pendingGhostCount = 0;
 let pendingGhostTimer: ReturnType<typeof setTimeout> | null = null;
 function cleanupGhostSession(sessionId: string): void {
+  // 최근 POST 진행 중이면 보류 (race 보호)
+  if (isWithinCreateGrace(sessionId)) {
+    logger.debug("ghost cleanup 보류 (최근 생성 — POST race)", { sessionId });
+    return;
+  }
   try {
     const result = deleteSessionFromLocal(sessionId);
     if (!result.success) return;
@@ -150,6 +171,7 @@ export function __resetSyncStateForTests(): void {
     clearTimeout(pendingGhostTimer);
     pendingGhostTimer = null;
   }
+  recentCreatesById.clear();
 }
 
 /**
@@ -388,7 +410,7 @@ export function syncSubjectDelete(userId: string | null, id: string): void {
 
 export function syncEnrollmentCreate(
   userId: string | null,
-  data: { studentId: string; subjectId: string }
+  data: { id?: string; studentId: string; subjectId: string }
 ): void {
   if (!userId) return;
   const url = `/api/enrollments?userId=${encodeURIComponent(userId)}`;
@@ -398,8 +420,9 @@ export function syncEnrollmentCreate(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  // outbox dedup: client id 있으면 그대로 사용 (재시도 시 idempotent)
   fireAndForget(makeRequest, "enrollment:create", 0, {
-    id: makeOutboxId("enrollment:create"),
+    id: data.id ? `enrollment:create:${data.id}` : makeOutboxId("enrollment:create"),
     userId,
     method: "POST",
     url,
@@ -431,7 +454,13 @@ function makeOutboxId(prefix: string): string {
 
 export function syncSessionCreate(
   userId: string | null,
-  data: Omit<Session, "id">
+  /**
+   * Local-first: client UUID(`Session.id`) 포함 그대로 전송. 서버는 받은 id를
+   * INSERT에 사용 → 후속 PUT /position 등의 id 매칭 보장 (이전엔 server가
+   * 자체 id 발급하여 client localStorage와 불일치 → ghost 누적).
+   * 추적: client가 새로 만든 session이 ghost cleanup으로 즉시 삭제되던 사고.
+   */
+  data: Session | Omit<Session, "id">
 ): void {
   if (!userId) return;
   const url = `/api/sessions?userId=${encodeURIComponent(userId)}`;
@@ -441,8 +470,12 @@ export function syncSessionCreate(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  const dataId = (data as Session).id;
+  // race guard: 후속 PUT /position 등이 POST보다 먼저 도달해 404 받을 때
+  // ghost cleanup이 즉시 삭제하던 사고 방지. 30s 동안 cleanup 보류.
+  if (dataId) markRecentCreate(dataId);
   fireAndForget(makeRequest, "session:create", 0, {
-    id: makeOutboxId("session:create"),
+    id: dataId ? `session:create:${dataId}` : makeOutboxId("session:create"),
     userId,
     method: "POST",
     url,

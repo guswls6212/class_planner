@@ -87,7 +87,12 @@ import {
   onDragEndStudent,
   onDragStartStudent,
 } from "./_utils/dndHelpers";
-import { syncSessionUpdateAsync, syncSessionUpdate } from "../../lib/apiSync";
+import {
+  syncSessionUpdateAsync,
+  syncSessionUpdate,
+  syncSessionCreate,
+  syncEnrollmentCreate,
+} from "../../lib/apiSync";
 import {
   buildEditOnCancel,
   buildEditOnDelete,
@@ -374,6 +379,21 @@ function SchedulePageContent(): JSX.Element {
       startApiCall("update_data");
       await updateData(updateDataPayload);
       endApiCall("update_data", true);
+
+      // ⚠️ Bug fix (2026-05-04): updateData는 localStorage만 갱신함.
+      // 이전엔 새 session/enrollment가 server에 POST되지 않아 UI에 ghost로
+      // 누적되었고, 이후 PUT /position 시도 시 404 → ghost cleanup이 삭제 →
+      // 사용자 눈에 "수업이 사라짐"으로 보임.
+      // 이제 명시적으로 syncSessionCreate + syncEnrollmentCreate 호출 (client UUID 포함).
+      const uidForSync = localStorage.getItem("supabase_user_id");
+      for (const enr of newEnrollments) {
+        syncEnrollmentCreate(uidForSync, {
+          id: enr.id,
+          studentId: enr.studentId,
+          subjectId: enr.subjectId,
+        });
+      }
+      syncSessionCreate(uidForSync, newSession as Session);
 
       logger.info("세션 추가 완료");
       endInteraction("add_session");

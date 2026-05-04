@@ -36,6 +36,11 @@ interface SessionBlockProps {
   isDragging?: boolean;
   draggedSessionId?: string;
   isAnyDragging?: boolean;
+  /**
+   * Ctrl/Meta+drag 복사 모드 — true이면 dragged session 원본을 흐리게 하지 않음
+   * (사용자 멘탈 모델: "원본은 그대로, preview만 위치 표시"). 일반 이동은 false.
+   */
+  isCopyMode?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
@@ -85,6 +90,7 @@ function SessionBlock({
   isDragging = false,
   draggedSessionId,
   isAnyDragging = false,
+  isCopyMode = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
@@ -157,7 +163,8 @@ function SessionBlock({
     isDragging,
     session.id === draggedSessionId,
     isAnyDragging,
-    height
+    height,
+    isCopyMode,
   );
 
   // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)
