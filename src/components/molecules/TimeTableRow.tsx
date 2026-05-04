@@ -70,6 +70,10 @@ interface TimeTableRowProps {
   colorBy?: ColorByMode;
   isMobile?: boolean;
   dragPreview?: DragPreviewState;
+  /** 선택된 세션 id Set — SessionBlock의 selected 시각 표시 결정 */
+  selectedSessionIds?: Set<string>;
+  /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
+  onSessionSelectToggle?: (sessionId: string) => void;
   // 오늘 열 강조 (주간 헤더 날짜 표시용)
   isToday?: boolean;
   nowLinePx?: number | null;
@@ -110,6 +114,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   nowTimeStr,
   isExpanded: isExpandedProp,
   onToggleExpand,
+  selectedSessionIds,
+  onSessionSelectToggle,
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
@@ -405,6 +411,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isDragging={Boolean(dragPreview?.draggedSession)}
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
+          selected={selectedSessionIds?.has(session.id) ?? false}
+          onSelectToggle={
+            onSessionSelectToggle
+              ? () => onSessionSelectToggle(session.id)
+              : undefined
+          }
         />
       ))}
 

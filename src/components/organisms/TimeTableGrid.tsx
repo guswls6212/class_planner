@@ -55,6 +55,16 @@ interface TimeTableGridProps {
     time: string,
     yPosition: number
   ) => void;
+  /**
+   * Ctrl/Meta + drag로 복사 시 호출. 호출자가 새 ID로 session 생성.
+   * 미전달 시 isCopyMode 무시하고 기존 onSessionDrop(이동) 동작.
+   */
+  onSessionCopy?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -67,6 +77,10 @@ interface TimeTableGridProps {
   isReadOnly?: boolean;
   // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.
   baseDate?: Date;
+  /** 다중 선택된 세션 id Set. 비어있거나 undefined이면 일반 모드. */
+  selectedSessionIds?: Set<string>;
+  /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
+  onSessionSelectToggle?: (sessionId: string) => void;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -82,6 +96,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onSessionDelete,
       onDrop,
       onSessionDrop,
+      onSessionCopy,
       onEmptySpaceClick,
       className = "",
       style = {},
@@ -92,6 +107,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       colorBy = "subject",
       isReadOnly = false,
       baseDate,
+      selectedSessionIds,
+      onSessionSelectToggle,
     },
     ref
   ) => {
@@ -483,12 +500,17 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const handleDndDragEnd = useCallback(
       ({ active, over }: DragEndEvent) => {
-        if (over && onSessionDrop) {
+        if (over) {
           const sessionId = active.id as string;
           const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
             const [wd, time, yPos] = parts;
-            onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+            // Ctrl/Meta + drag → 복사 (onSessionCopy가 있을 때만, 없으면 이동 fallback)
+            if (dragController.isCopyMode && onSessionCopy) {
+              onSessionCopy(sessionId, Number(wd), time, Number(yPos));
+            } else if (onSessionDrop) {
+              onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+            }
           }
           dragController.completeDrop();
         } else {
@@ -506,7 +528,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
         });
       },
-      [dragController, onSessionDrop, getSavedScrollPosition],
+      [dragController, onSessionDrop, onSessionCopy, getSavedScrollPosition],
     );
 
     return (
@@ -636,6 +658,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}
+                selectedSessionIds={selectedSessionIds}
+                onSessionSelectToggle={
+                  isReadOnly ? undefined : onSessionSelectToggle
+                }
                 style={{
                   gridColumn: weekday + 2,
                   gridRow: 2,
@@ -666,6 +692,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             <DragOverlayCard
               session={dragController.draggedSession}
               subjects={subjects}
+              isCopy={dragController.isCopyMode && Boolean(onSessionCopy)}
+              selectionCount={
+                selectedSessionIds && selectedSessionIds.size > 1
+                  ? selectedSessionIds.size
+                  : 1
+              }
             />
           ) : null}
         </DragOverlay>

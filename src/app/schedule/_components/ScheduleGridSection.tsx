@@ -30,6 +30,12 @@ type Props = {
     time: string,
     yPosition: number
   ) => void;
+  onSessionCopy?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    yPosition: number
+  ) => void;
   onEmptySpaceClick: (
     weekday: number,
     time: string,
@@ -40,6 +46,10 @@ type Props = {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   baseDate: Date;
+  /** 다중 선택된 세션 id Set */
+  selectedSessionIds?: Set<string>;
+  /** modifier(Shift/Ctrl/Meta) + click */
+  onSessionSelectToggle?: (sessionId: string) => void;
 };
 
 export default function ScheduleGridSection({
@@ -53,12 +63,15 @@ export default function ScheduleGridSection({
   onSessionDelete,
   onDrop,
   onSessionDrop,
+  onSessionCopy,
   onEmptySpaceClick,
   selectedStudentIds,
   isStudentDragging,
   teachers = [],
   colorBy = "subject",
   baseDate,
+  selectedSessionIds,
+  onSessionSelectToggle,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -72,12 +85,15 @@ export default function ScheduleGridSection({
         onSessionDelete={onSessionDelete}
         onDrop={onDrop}
         onSessionDrop={onSessionDrop}
+        onSessionCopy={onSessionCopy}
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
         isStudentDragging={isStudentDragging}
         teachers={teachers}
         colorBy={colorBy}
         baseDate={baseDate}
+        selectedSessionIds={selectedSessionIds}
+        onSessionSelectToggle={onSessionSelectToggle}
       />
     </div>
   );
