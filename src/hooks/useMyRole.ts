@@ -18,6 +18,12 @@ export interface CurrentMemberData {
   linkedTeacherId: string | null;
   linkedTeacherName: string | null;
   linkedTeacherColor: string | null;
+  /**
+   * 활성 academy의 owner+admin 수.
+   * 1이면 \"다른 관리자가 있을 수 없음\" → 시간표 변경 알림 토스트 suppress 등에 활용.
+   * 익명 사용자/비회원은 0.
+   */
+  adminCount: number;
 }
 
 /**
@@ -45,6 +51,7 @@ export function useMyRole(): CurrentMemberData {
     linkedTeacherId: null,
     linkedTeacherName: null,
     linkedTeacherColor: null,
+    adminCount: 0,
   });
 
   useEffect(() => {
@@ -69,6 +76,7 @@ export function useMyRole(): CurrentMemberData {
               linkedTeacherId: null,
               linkedTeacherName: null,
               linkedTeacherColor: null,
+              adminCount: 0,
             });
           }
           return;
@@ -90,6 +98,12 @@ export function useMyRole(): CurrentMemberData {
         const me = members.find((m) => m.userId === userId);
         if (cancelled) return;
 
+        // owner+admin 멤버 수 — 단일 admin 학원에서 schedule 변경 토스트 suppress
+        // 등의 UX 가드에 사용.
+        const adminCount = members.filter(
+          (m) => m.role === "owner" || m.role === "admin",
+        ).length;
+
         if (!me) {
           setData({
             role: null,
@@ -99,6 +113,7 @@ export function useMyRole(): CurrentMemberData {
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,
+            adminCount,
           });
           return;
         }
@@ -111,6 +126,7 @@ export function useMyRole(): CurrentMemberData {
           linkedTeacherId: me.linkedTeacherId,
           linkedTeacherName: me.linkedTeacherName,
           linkedTeacherColor: me.linkedTeacherColor,
+          adminCount,
         });
 
         // Sync role to a server-readable cookie so the Next.js middleware
@@ -161,6 +177,7 @@ export function useMyRole(): CurrentMemberData {
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,
+            adminCount: 0,
           });
         }
       }

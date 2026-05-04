@@ -85,7 +85,8 @@ describe("useScheduleMeta", () => {
   it("lastViewedAt보다 새로운 timestamp가 오면 hasChanges=true", async () => {
     // 초기 useEffect에서 lastViewedKey가 비어있으면 now로 채우는 코드를 우회
     // 하기 위해 미리 과거 시각으로 채워둠.
-    window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
+    // 24h stale auto-ack을 피하기 위해 24h 안의 시각 사용 (1시간 차)
+    window.localStorage.setItem(KEY, "2026-05-04T09:00:00Z");
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
     );
@@ -100,7 +101,8 @@ describe("useScheduleMeta", () => {
   });
 
   it("acknowledgeChanges — hasChanges=false + lastViewedAt 갱신", async () => {
-    window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
+    // 24h stale auto-ack을 피하기 위해 24h 안의 시각 사용
+    window.localStorage.setItem(KEY, "2026-05-04T09:00:00Z");
     fetchMock.mockResolvedValue(
       jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
     );
@@ -118,7 +120,7 @@ describe("useScheduleMeta", () => {
 
     expect(result.current.hasChanges).toBe(false);
     const stored = window.localStorage.getItem(KEY);
-    expect(stored).not.toBe("2026-05-03T00:00:00Z");
+    expect(stored).not.toBe("2026-05-04T09:00:00Z");
   });
 
   it("fetch 실패 — 에러 무시 + scheduleUpdatedAt 유지", async () => {
@@ -181,7 +183,8 @@ describe("useScheduleMeta", () => {
     });
 
     it("self-sync 이벤트가 없는 상태(다른 사람 변경)에서는 정상 hasChanges=true", async () => {
-      window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
+      // 24h stale auto-ack 회피 — 24h 안의 시각 사용 (1시간 차)
+      window.localStorage.setItem(KEY, "2026-05-04T09:00:00Z");
       fetchMock.mockResolvedValueOnce(
         jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
       );
@@ -193,6 +196,55 @@ describe("useScheduleMeta", () => {
       });
       // self-sync 이벤트 발사 안 했으니 정상 알림
       expect(result.current.hasChanges).toBe(true);
+    });
+  });
+
+  describe("Stale auto-ack (24h+) 및 cross-tab self-sync 공유 — 사용자 보고 회귀 가드", () => {
+    it("lastViewedAt이 25시간 전 + server timestamp 새 → 24h stale로 자동 ack (hasChanges=false)", async () => {
+      // 사용자 보고 시나리오: 어제 본인이 변경했고 오늘 페이지 새로 진입.
+      // self-sync ref는 0(reload로 초기화)이지만 server는 어제 시각을 그대로 갖고 있음.
+      // 24h 이상 차이라 stale로 판단 → 자동 ack → 토스트 안 뜸.
+      const lastViewed = new Date(
+        Date.now() - 25 * 60 * 60 * 1000,
+      ).toISOString();
+      const serverNew = new Date().toISOString();
+      window.localStorage.setItem(KEY, lastViewed);
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ scheduleUpdatedAt: serverNew }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe(serverNew);
+      });
+      // 24h auto-ack 발화 → hasChanges 그대로 false
+      expect(result.current.hasChanges).toBe(false);
+      // lastViewedAt이 server timestamp로 자동 갱신
+      expect(window.localStorage.getItem(KEY)).toBe(serverNew);
+    });
+
+    it("localStorage SELF_SYNC_STORAGE_KEY가 mount 시 fallback으로 ref 복구", async () => {
+      // 사용자 보고 시나리오 변형: 페이지 reload 직후, 이전 세션의 self-sync 시각이
+      // localStorage에 남아있음. mount fallback으로 ref가 복구되어 윈도우 안 잡힘.
+      const recentSelfSync = Date.now() - 2_000; // 2초 전
+      const serverTs = new Date(recentSelfSync).toISOString();
+      window.localStorage.setItem(
+        "class_planner_last_self_sync",
+        String(recentSelfSync),
+      );
+      window.localStorage.setItem(KEY, "2026-05-04T09:00:00Z");
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ scheduleUpdatedAt: serverTs }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe(serverTs);
+      });
+      // self-sync window 안 → 자동 ack → hasChanges false
+      expect(result.current.hasChanges).toBe(false);
     });
   });
 });

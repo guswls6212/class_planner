@@ -270,4 +270,53 @@ describe("useMyRole", () => {
     expect(result.current.canManage).toBe(true);
     expect(result.current.academies).toEqual([]);
   });
+
+  describe("adminCount — 단일 admin 학원 토스트 suppress용", () => {
+    it("owner 1명 + member만 있으면 adminCount=1", async () => {
+      mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+      mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_MEMBER]);
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.adminCount).toBe(1);
+    });
+
+    it("owner 1명 + admin 1명 + member 1명이면 adminCount=2", async () => {
+      mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+      mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_ADMIN, MEMBER_MEMBER]);
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.adminCount).toBe(2);
+    });
+
+    it("익명 사용자(세션 없음)이면 adminCount=0", async () => {
+      mockGetSession.mockResolvedValue({ data: { session: null } });
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.adminCount).toBe(0);
+    });
+  });
 });
