@@ -19,6 +19,8 @@ import {
   syncSessionDelete,
   syncTeacherCreate,
   syncTeacherUpdate,
+  getContextLabel,
+  getLastFailureContext,
   __resetSyncStateForTests,
 } from "../apiSync";
 import { showToast } from "../toast";
@@ -407,6 +409,58 @@ describe("apiSync", () => {
         teacherId: "t-1",
         subjectId: "sub-1",
       });
+    });
+  });
+
+  describe("getContextLabel — 사용자 친화 라벨", () => {
+    it("session:create → '수업 추가'", () => {
+      expect(getContextLabel("session:create")).toBe("수업 추가");
+    });
+
+    it("session:update → '수업 위치 변경'", () => {
+      expect(getContextLabel("session:update")).toBe("수업 위치 변경");
+    });
+
+    it("student:delete → '학생 삭제'", () => {
+      expect(getContextLabel("student:delete")).toBe("학생 삭제");
+    });
+
+    it("매핑 없는 context → fallback '변경'", () => {
+      expect(getContextLabel("unknown:thing")).toBe("변경");
+    });
+  });
+
+  describe("getLastFailureContext — 토스트/indicator에 실패 종류 노출", () => {
+    it("idle 상태 → null", () => {
+      expect(getLastFailureContext()).toBeNull();
+    });
+
+    it("실패 시 latest context 기록", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "boom" }),
+      });
+      syncSessionCreate("user-1", { id: "s1" } as any);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(getLastFailureContext()).toBe("session:create");
+    });
+
+    it("성공 후 null로 reset", async () => {
+      // 첫 실패
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      });
+      syncSessionCreate("user-1", { id: "s1" } as any);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(getLastFailureContext()).toBe("session:create");
+      // 다음 호출 성공
+      mockFetch.mockResolvedValueOnce({ ok: true });
+      syncStudentCreate("user-1", { id: "stu-1", name: "A" } as any);
+      await new Promise((r) => setTimeout(r, 10));
+      expect(getLastFailureContext()).toBeNull();
     });
   });
 });

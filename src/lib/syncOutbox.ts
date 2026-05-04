@@ -80,6 +80,84 @@ export function getOutboxSize(userId: string | null): number {
   return readOutbox(userId).length;
 }
 
+/**
+ * outbox 전체 항목 읽기 (UI 표시용 — SyncQueueModal에서 사용).
+ * read-only 사본 반환.
+ */
+export function getOutboxEntries(userId: string | null): OutboxEntry[] {
+  if (!userId) return [];
+  return readOutbox(userId);
+}
+
+/** 특정 entry 제거 (사용자가 [버리기] 클릭 시). */
+export function removeOutboxEntry(userId: string, entryId: string): void {
+  if (typeof window === "undefined") return;
+  const list = readOutbox(userId);
+  const filtered = list.filter((e) => e.id !== entryId);
+  if (filtered.length !== list.length) {
+    writeOutbox(userId, filtered);
+  }
+}
+
+/**
+ * 특정 entry 1건만 즉시 재시도. 성공 시 outbox에서 제거 + 반환 true.
+ * 실패 시 lastError 갱신해 보관 + 반환 false.
+ */
+export async function flushOutboxEntry(
+  userId: string,
+  entryId: string,
+): Promise<boolean> {
+  if (!userId || typeof window === "undefined") return false;
+  const list = readOutbox(userId);
+  const target = list.find((e) => e.id === entryId);
+  if (!target) return false;
+
+  try {
+    const res = await fetch(target.url, {
+      method: target.method,
+      headers: target.body
+        ? { "Content-Type": "application/json" }
+        : undefined,
+      body:
+        target.body !== undefined ? JSON.stringify(target.body) : undefined,
+    });
+    if (res.ok) {
+      writeOutbox(userId, list.filter((e) => e.id !== entryId));
+      return true;
+    }
+    // 4xx → drop (retry 무의미)
+    if (res.status >= 400 && res.status < 500) {
+      writeOutbox(userId, list.filter((e) => e.id !== entryId));
+      logger.error("flushOutboxEntry 4xx (drop)", {
+        context: target.context,
+        status: res.status,
+      });
+      return false;
+    }
+    // 5xx → 보관, lastError 갱신
+    writeOutbox(
+      userId,
+      list.map((e) =>
+        e.id === entryId ? { ...e, lastError: `HTTP ${res.status}` } : e,
+      ),
+    );
+    return false;
+  } catch (err) {
+    writeOutbox(
+      userId,
+      list.map((e) =>
+        e.id === entryId
+          ? {
+              ...e,
+              lastError: err instanceof Error ? err.message : "network",
+            }
+          : e,
+      ),
+    );
+    return false;
+  }
+}
+
 export function clearOutbox(userId: string): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(storageKey(userId));
