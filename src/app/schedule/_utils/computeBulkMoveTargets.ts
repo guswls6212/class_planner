@@ -82,3 +82,33 @@ export function computeBulkMoveTargets(args: {
 
   return { moves, outOfRange };
 }
+
+/**
+ * moves를 sessions 배열에 batch로 적용한 결과를 반환.
+ *
+ * ⚠️ Bug fix (2026-05-04): 이전엔 schedule/page.tsx에서 N번 sequential하게
+ * _handleSessionDropBase / addSession을 호출했지만 각 호출이 같은 stale
+ * `sessions` snapshot을 closure로 잡아 React state race로 마지막 update만
+ * 살아남았음 (사용자가 "2개 옮긴다고 토스트 떠도 1개만 이동" 보고).
+ *
+ * 이 함수는 pure — closure 상관없이 단일 패스로 모든 moves를 적용한 새 sessions
+ * 배열을 반환. 호출자는 한 번만 updateData(result) 호출.
+ */
+export function applyBulkMoves(
+  sessions: Session[],
+  moves: BulkMoveTarget[],
+): Session[] {
+  if (moves.length === 0) return sessions;
+  const moveById = new Map(moves.map((m) => [m.session.id, m] as const));
+  return sessions.map((s) => {
+    const m = moveById.get(s.id);
+    if (!m) return s;
+    return {
+      ...s,
+      weekday: m.weekday,
+      startsAt: m.startsAt,
+      endsAt: m.endsAt,
+      yPosition: m.yPosition,
+    };
+  });
+}

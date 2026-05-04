@@ -78,7 +78,10 @@ import { useEditModalState } from "./_hooks/useEditModalState";
 import { useTeacherFilter } from "./_hooks/useTeacherFilter";
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
-import { computeBulkMoveTargets } from "./_utils/computeBulkMoveTargets";
+import {
+  applyBulkMoves,
+  computeBulkMoveTargets,
+} from "./_utils/computeBulkMoveTargets";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1080,20 +1083,7 @@ function SchedulePageContent(): JSX.Element {
         // 각자 updateData(자신의 newSessions)를 호출 → React state race로 마지막
         // 호출만 반영, N-1개 sessions은 미이동. 토스트는 "N개 이동"이지만 실제론 1개.
         // 해결: moves를 단일 batch로 sessions에 적용한 뒤 updateData 1회 호출.
-        const moveById = new Map(
-          moves.map((m) => [m.session.id, m] as const),
-        );
-        const updatedSessions = sessions.map((s) => {
-          const m = moveById.get(s.id);
-          if (!m) return s;
-          return {
-            ...s,
-            weekday: m.weekday,
-            startsAt: m.startsAt,
-            endsAt: m.endsAt,
-            yPosition: m.yPosition,
-          };
-        });
+        const updatedSessions = applyBulkMoves(sessions, moves);
         await updateData({ sessions: updatedSessions });
         // server 동기화 — 각 이동 session에 대해 PUT /position fire-and-forget
         const uid = localStorage.getItem("supabase_user_id");
