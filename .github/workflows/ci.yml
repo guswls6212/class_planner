@@ -56,6 +56,10 @@ jobs:
             tests/e2e/final-working-test.spec.ts \
             tests/e2e/schedule-multi-select-drag.spec.ts \
             tests/e2e/schedule-sync-network.spec.ts \
+            tests/e2e/auth-flow.spec.ts \
+            tests/e2e/teachers-crud.spec.ts \
+            tests/e2e/templates-apply-delete.spec.ts \
+            tests/e2e/schedule-conflict-auto-lane.spec.ts \
             --project=chromium --reporter=list
         env:
           CI: "true"
