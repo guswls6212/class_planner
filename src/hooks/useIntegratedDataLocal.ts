@@ -297,9 +297,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 (fire-and-forget)
+          // 서버 동기화 (fire-and-forget) — client UUID 포함 전송 (ghost 방지)
           const userId = localStorage.getItem("supabase_user_id");
-          syncSessionCreate(userId, sessionData);
+          syncSessionCreate(userId, { ...sessionData, id: result.data.id });
 
           showToast("success", "수업이 추가됐습니다");
 
@@ -528,9 +528,13 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 (fire-and-forget)
+          // 서버 동기화 (fire-and-forget) — client UUID 포함 (FK 매칭)
           const userId = localStorage.getItem("supabase_user_id");
-          syncEnrollmentCreate(userId, { studentId, subjectId });
+          syncEnrollmentCreate(userId, {
+            id: result.data.id,
+            studentId,
+            subjectId,
+          });
 
           logger.info("useIntegratedDataLocal - 등록 추가 성공", {
             enrollmentId: result.data.id,

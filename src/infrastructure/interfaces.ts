@@ -34,7 +34,10 @@ export interface SessionRepository {
   getAll(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]>;
   getById(id: string, academyId?: string): Promise<Session | null>;
   create(
-    session: Omit<Session, "id" | "createdAt" | "updatedAt">,
+    session: Omit<Session, "id" | "createdAt" | "updatedAt"> & {
+      /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
+      id?: string;
+    },
     academyId: string
   ): Promise<Session>;
   update(
@@ -67,7 +70,10 @@ export interface EnrollmentRepository {
   getAll(academyId: string): Promise<Enrollment[]>;
   getById(id: string): Promise<Enrollment | null>;
   create(
-    enrollment: Omit<Enrollment, "id" | "createdAt" | "updatedAt">,
+    enrollment: Omit<Enrollment, "id" | "createdAt" | "updatedAt"> & {
+      /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
+      id?: string;
+    },
     academyId: string
   ): Promise<Enrollment>;
   update(

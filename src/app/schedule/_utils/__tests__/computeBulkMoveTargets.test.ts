@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { computeBulkMoveTargets } from "../computeBulkMoveTargets";
+import {
+  applyBulkMoves,
+  computeBulkMoveTargets,
+  type BulkMoveTarget,
+} from "../computeBulkMoveTargets";
 import type { Session } from "@/lib/planner";
 
 const make = (
@@ -202,5 +206,84 @@ describe("computeBulkMoveTargets", () => {
       selectedIds: [],
     });
     expect(result.moves).toEqual([]);
+  });
+});
+
+describe("applyBulkMoves — bulk drag race regression", () => {
+  it("3개 moves 모두 단일 패스로 적용 (이전엔 closure race로 1개만 반영)", () => {
+    const sessions = [
+      make("a", 0, "09:00", "10:00"),
+      make("b", 1, "11:00", "12:00"),
+      make("c", 2, "14:00", "15:00"),
+      make("d", 3, "16:00", "17:00"), // 선택 안 됨 — 그대로 유지
+    ];
+    const moves: BulkMoveTarget[] = [
+      {
+        session: sessions[0],
+        weekday: 1,
+        startsAt: "10:00",
+        endsAt: "11:00",
+        yPosition: 1,
+      },
+      {
+        session: sessions[1],
+        weekday: 2,
+        startsAt: "12:00",
+        endsAt: "13:00",
+        yPosition: 1,
+      },
+      {
+        session: sessions[2],
+        weekday: 3,
+        startsAt: "15:00",
+        endsAt: "16:00",
+        yPosition: 1,
+      },
+    ];
+    const result = applyBulkMoves(sessions, moves);
+    // 3개 sessions 모두 새 위치로 이동
+    expect(result.find((s) => s.id === "a")).toMatchObject({
+      weekday: 1,
+      startsAt: "10:00",
+      endsAt: "11:00",
+    });
+    expect(result.find((s) => s.id === "b")).toMatchObject({
+      weekday: 2,
+      startsAt: "12:00",
+      endsAt: "13:00",
+    });
+    expect(result.find((s) => s.id === "c")).toMatchObject({
+      weekday: 3,
+      startsAt: "15:00",
+      endsAt: "16:00",
+    });
+    // 선택되지 않은 d는 그대로
+    expect(result.find((s) => s.id === "d")).toMatchObject({
+      weekday: 3,
+      startsAt: "16:00",
+      endsAt: "17:00",
+    });
+    // 길이는 변하지 않음
+    expect(result).toHaveLength(4);
+  });
+
+  it("빈 moves — sessions 그대로 반환", () => {
+    const sessions = [make("a", 0, "09:00", "10:00")];
+    expect(applyBulkMoves(sessions, [])).toBe(sessions);
+  });
+
+  it("anchor의 yPosition은 newYPosition, 다른 sessions은 move의 yPosition 유지", () => {
+    const sessions = [make("a", 0, "09:00", "10:00", 1)];
+    const moves: BulkMoveTarget[] = [
+      {
+        session: sessions[0],
+        weekday: 0,
+        startsAt: "10:00",
+        endsAt: "11:00",
+        yPosition: 5, // anchor의 newYPosition
+      },
+    ];
+    const result = applyBulkMoves(sessions, moves);
+    expect(result[0].yPosition).toBe(5);
   });
 });

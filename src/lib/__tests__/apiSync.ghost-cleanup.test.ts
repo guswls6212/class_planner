@@ -20,6 +20,7 @@ import {
   syncSessionUpdate,
   syncSessionUpdateAsync,
   syncSessionDelete,
+  syncSessionCreate,
   __resetSyncStateForTests,
 } from "../apiSync";
 import { showToast } from "../toast";
@@ -119,5 +120,76 @@ describe("apiSync ghost cleanup (PUT/DELETE 404 → localStorage 정리)", () =>
     const infoCalls = vi.mocked(showToast).mock.calls.filter((c) => c[0] === "info");
     expect(infoCalls.length).toBe(1);
     expect(infoCalls[0][1]).toMatch(/3개/);
+  });
+
+  it("race guard — syncSessionCreate 직후 30s 내 PUT 404는 cleanup 스킵 (POST race 보호)", async () => {
+    // POST는 pending (응답 안 줌) — 동시에 PUT /position이 먼저 도달해 404 받는 상황
+    // mock: 두 fetch 모두 호출되지만 PUT만 즉시 404, POST는 미해결
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return new Promise(() => {}); // forever pending
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: "not found" }),
+      });
+    });
+
+    // 새 session POST 발사 (race guard 시작)
+    syncSessionCreate("user-1", {
+      id: "fresh-session",
+      subjectId: "s",
+      studentIds: [],
+      weekday: 1,
+      startsAt: "09:00",
+      endsAt: "10:00",
+      weekStartDate: "2026-05-04",
+      enrollmentIds: [],
+    } as any);
+
+    // 직후 PUT /position이 404 받음
+    syncSessionUpdate("user-1", "fresh-session", { weekday: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+
+    // race guard로 cleanup 스킵 — deleteSessionFromLocal 호출 안 됨
+    expect(deleteSessionFromLocalMock).not.toHaveBeenCalled();
+    // 토스트도 안 뜸
+    await vi.advanceTimersByTimeAsync(250);
+    const infoCalls = vi.mocked(showToast).mock.calls.filter((c) => c[0] === "info");
+    expect(infoCalls.length).toBe(0);
+  });
+
+  it("race guard 만료 후 (30s 경과) 동일 ID PUT 404 → 정상 cleanup", async () => {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return new Promise(() => {}); // forever pending
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: "not found" }),
+      });
+    });
+
+    syncSessionCreate("user-1", {
+      id: "stale-fresh",
+      subjectId: "s",
+      studentIds: [],
+      weekday: 1,
+      startsAt: "09:00",
+      endsAt: "10:00",
+      weekStartDate: "2026-05-04",
+      enrollmentIds: [],
+    } as any);
+
+    // 30초 + 1ms 경과
+    await vi.advanceTimersByTimeAsync(30_001);
+
+    syncSessionUpdate("user-1", "stale-fresh", { weekday: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+
+    // grace 만료 → cleanup 정상 실행
+    expect(deleteSessionFromLocalMock).toHaveBeenCalledWith("stale-fresh");
   });
 });

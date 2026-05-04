@@ -659,6 +659,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
                 selectedStudentIds={selectedStudentIds}
                 isAnyDragging={dragController.isAnyDragging() || isStudentDragging}
+                isCopyMode={dragController.isCopyMode && Boolean(onSessionCopy)}
                 teachers={teachers}
                 colorBy={colorBy}
                 isMobile={isMobile}

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { studentId, subjectId } = body;
+    const { id, studentId, subjectId } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -51,8 +51,13 @@ export async function POST(request: NextRequest) {
     }
 
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    // Local-first: client UUID 수용. session_enrollments FK 매칭 위해 필수.
     const newEnrollment = await getEnrollmentService().addEnrollment(
-      { studentId, subjectId },
+      {
+        ...(id && typeof id === "string" && { id }),
+        studentId,
+        subjectId,
+      },
       academyId
     );
     return NextResponse.json(

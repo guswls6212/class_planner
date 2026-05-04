@@ -43,7 +43,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { subjectId, startsAt, endsAt, enrollmentIds, weekday, weekStartDate, teacherId, public_description, internal_note } = body;
+    const {
+      id, // ← Local-first: client가 생성한 UUID를 서버에서 그대로 사용 (없으면 server-generated)
+      subjectId,
+      startsAt,
+      endsAt,
+      enrollmentIds,
+      weekday,
+      weekStartDate,
+      teacherId,
+      public_description,
+      internal_note,
+    } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -86,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     const newSession = await getSessionService().addSession(
       {
+        ...(id && typeof id === "string" && { id }),
         subjectId,
         startsAt,
         endsAt,

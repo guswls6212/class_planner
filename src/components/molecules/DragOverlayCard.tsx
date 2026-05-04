@@ -23,17 +23,17 @@ export default function DragOverlayCard({
 
   return (
     <div className="relative pointer-events-none w-[120px]" data-testid="drag-overlay-card" data-copy={isCopy ? "true" : undefined}>
-      {/* Stack 효과 — 다중 선택 시 뒤쪽에 카드 그림자 2장 */}
+      {/* Stack 효과 — 다중 선택 시 뒤쪽에 카드 그림자 (offset 4/8px로 명확히 시각화) */}
       {isMulti && (
         <>
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded shadow-xl opacity-50 translate-x-1.5 translate-y-1.5 bg-[var(--overlay-card-color)]"
+            className="absolute inset-0 rounded shadow-xl opacity-60 translate-x-2 translate-y-2 bg-[var(--overlay-card-color)] ring-1 ring-white/40"
             style={{ "--overlay-card-color": color } as React.CSSProperties}
           />
           <div
             aria-hidden="true"
-            className="absolute inset-0 rounded shadow-xl opacity-70 translate-x-0.5 translate-y-0.5 bg-[var(--overlay-card-color)]"
+            className="absolute inset-0 rounded shadow-xl opacity-80 translate-x-1 translate-y-1 bg-[var(--overlay-card-color)] ring-1 ring-white/40"
             style={{ "--overlay-card-color": color } as React.CSSProperties}
           />
         </>
@@ -55,8 +55,8 @@ export default function DragOverlayCard({
         )}
         {isMulti && (
           <span
-            aria-label={`${selectionCount}개 함께 이동`}
-            className="absolute -top-1 -left-1 z-[2] inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-bold text-gray-900 shadow"
+            aria-label={`${selectionCount}개 함께 ${isCopy ? "복사" : "이동"}`}
+            className="absolute -top-2 -left-2 z-[2] inline-flex h-6 min-w-[24px] items-center justify-center rounded-full bg-white px-2 text-[11px] font-bold text-gray-900 shadow-lg ring-2 ring-amber-400"
           >
             {selectionCount}
           </span>

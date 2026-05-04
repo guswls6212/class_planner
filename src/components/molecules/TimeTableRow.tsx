@@ -66,6 +66,8 @@ interface TimeTableRowProps {
   style?: React.CSSProperties;
   selectedStudentIds?: string[];
   isAnyDragging?: boolean;
+  /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
+  isCopyMode?: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isMobile?: boolean;
@@ -109,6 +111,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   style = {},
   selectedStudentIds,
   isAnyDragging = false,
+  isCopyMode = false,
   teachers = [],
   colorBy = "subject",
   isMobile = false,
@@ -417,6 +420,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isDragging={Boolean(dragPreview?.draggedSession)}
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
+          isCopyMode={isCopyMode}
           selected={selectedSessionIds?.has(session.id) ?? false}
           onSelectToggle={
             onSessionSelectToggle
