@@ -46,7 +46,8 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     await expect(accordionHeader).toBeVisible({ timeout: 10000 });
     await accordionHeader.click();
 
-    await expect(page.getByRole("button", { name: /링크 만들기/ })).toBeVisible({
+    // 빈 상태에서는 본문에도 안내용 "링크 만들기" 버튼 추가 노출 — 헤더 button을 .first()로 특정
+    await expect(page.getByRole("button", { name: /링크 만들기/ }).first()).toBeVisible({
       timeout: 5000,
     });
   });
@@ -97,7 +98,7 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     await expect(accordionHeader).toBeVisible({ timeout: 10000 });
     await accordionHeader.click();
 
-    await page.getByRole("button", { name: /링크 만들기/ }).click();
+    await page.getByRole("button", { name: /링크 만들기/ }).first().click();
 
     // 모달 — 생성 버튼 클릭
     await page.getByRole("button", { name: /^생성$/ }).click();
