@@ -2,23 +2,9 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import SaveTemplateModal from "../SaveTemplateModal";
-import type { TemplateData } from "@/shared/types/templateTypes";
+import { FIXTURE_TEMPLATE_DATA } from "@/__tests__/fixtures/template.fixture";
 
-const TEMPLATE_DATA: TemplateData = {
-  version: "1.0",
-  sessions: [
-    {
-      weekday: 0,
-      startsAt: "09:00",
-      endsAt: "10:00",
-      subjectId: "sub-1",
-      subjectName: "수학",
-      subjectColor: "#FF0000",
-      studentIds: ["st-1"],
-      studentNames: ["홍길동"],
-    },
-  ],
-};
+const TEMPLATE_DATA = FIXTURE_TEMPLATE_DATA;
 
 describe("SaveTemplateModal", () => {
   const defaultProps = {
@@ -69,5 +55,10 @@ describe("SaveTemplateModal", () => {
   it("isSaving=true이면 버튼이 비활성화된다", () => {
     render(<SaveTemplateModal {...defaultProps} isSaving={true} />);
     expect(screen.getByRole("button", { name: /저장 중/ })).toBeDisabled();
+  });
+
+  it("'X개 수업이 저장됩니다' 안내가 표시된다", () => {
+    render(<SaveTemplateModal {...defaultProps} />);
+    expect(screen.getByText(/1개 수업이 저장됩니다/)).toBeInTheDocument();
   });
 });

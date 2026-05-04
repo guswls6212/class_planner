@@ -87,7 +87,7 @@ export default function ApplyTemplateModal({
                     </p>
                   )}
                   <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                    세션 {tpl.templateData.sessions.length}개
+                    수업 {tpl.templateData.sessions.length}개
                   </p>
                 </button>
               ))}
@@ -98,10 +98,10 @@ export default function ApplyTemplateModal({
         {selected && (
           <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs">
             <p className="font-medium text-amber-800 mb-1">
-              {selected.templateData.sessions.length}개 세션을 적용합니다
+              {selected.templateData.sessions.length}개 수업을 적용합니다
             </p>
             <p className="text-amber-700">
-              현재 주의 기존 세션이 모두 삭제되고 이 템플릿으로 교체됩니다.
+              현재 주의 기존 수업이 모두 삭제되고 이 템플릿으로 교체됩니다.
             </p>
           </div>
         )}

@@ -1,16 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useTemplates } from "../useTemplates";
 
-const mockTemplate = {
-  id: "tmpl-1",
-  name: "주간 기본",
-  description: "기본 주간 시간표",
-  template_data: { version: "1.0" as const, sessions: [] },
-  created_by: "user-1",
-  created_at: "2026-04-01T00:00:00Z",
-  updated_at: "2026-04-01T00:00:00Z",
-};
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
+import { useTemplates } from "../useTemplates";
+import {
+  FIXTURE_RAW_TEMPLATE,
+  FIXTURE_TEMPLATE_DATA,
+} from "@/__tests__/fixtures/template.fixture";
+
+const mockTemplate = FIXTURE_RAW_TEMPLATE;
 
 describe("useTemplates", () => {
   beforeEach(() => {
@@ -36,8 +42,10 @@ describe("useTemplates", () => {
 
     expect(global.fetch).toHaveBeenCalledWith("/api/templates?userId=user-1");
     expect(result.current.templates).toHaveLength(1);
-    expect(result.current.templates[0].id).toBe("tmpl-1");
-    expect(result.current.templates[0].name).toBe("주간 기본");
+    expect(result.current.templates[0].id).toBe(FIXTURE_RAW_TEMPLATE.id);
+    expect(result.current.templates[0].name).toBe(FIXTURE_RAW_TEMPLATE.name);
+    expect(result.current.templates[0].templateData.sessions[0].teacherId).toBe("tc-1");
+    expect(result.current.templates[0].templateData.sessions[0].teacherName).toBe("김선생");
   });
 
   it("fetchTemplates 중 isLoading이 true가 된다", async () => {
@@ -64,7 +72,7 @@ describe("useTemplates", () => {
       ret = await result.current.saveTemplate({
         name: "새 템플릿",
         description: "",
-        templateData: { version: "1.0" as const, sessions: [] },
+        templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
 
@@ -73,7 +81,11 @@ describe("useTemplates", () => {
   });
 
   it("saveTemplate 실패 시 false를 반환한다", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: false });
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+    });
 
     const { result } = renderHook(() => useTemplates("user-1"));
     let ret: boolean | undefined;
@@ -81,10 +93,44 @@ describe("useTemplates", () => {
       ret = await result.current.saveTemplate({
         name: "실패 템플릿",
         description: "",
-        templateData: { version: "1.0" as const, sessions: [] },
+        templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
     expect(ret).toBe(false);
+  });
+
+  it("saveTemplate 네트워크 오류 시 false를 반환한다 (throw 안 함)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("network failure")
+    );
+
+    const { result } = renderHook(() => useTemplates("user-1"));
+    let ret: boolean | undefined;
+    await act(async () => {
+      ret = await result.current.saveTemplate({
+        name: "네트워크 실패",
+        description: "",
+        templateData: FIXTURE_TEMPLATE_DATA,
+      });
+    });
+    expect(ret).toBe(false);
+    expect(result.current.isSaving).toBe(false);
+  });
+
+  it("updateTemplate 네트워크 오류 시 null을 반환한다 (throw 안 함)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("network failure")
+    );
+
+    const { result } = renderHook(() => useTemplates("user-1"));
+    let ret: unknown;
+    await act(async () => {
+      ret = await result.current.updateTemplate("tpl-1", {
+        name: "네트워크 실패",
+      });
+    });
+    expect(ret).toBeNull();
+    expect(result.current.isSaving).toBe(false);
   });
 
   it("userId=null 이면 saveTemplate이 false를 반환한다", async () => {
@@ -94,7 +140,7 @@ describe("useTemplates", () => {
       ret = await result.current.saveTemplate({
         name: "X",
         description: "",
-        templateData: { version: "1.0" as const, sessions: [] },
+        templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
     expect(ret).toBe(false);

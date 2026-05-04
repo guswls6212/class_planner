@@ -19,24 +19,14 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
 
 import { GET, POST } from "../route";
 
+import { FIXTURE_TEMPLATE_DATA } from "@/__tests__/fixtures/template.fixture";
+
 const SAMPLE_TEMPLATE = {
   id: "tpl-1",
   academy_id: "acad-1",
   name: "기본 시간표",
   description: "주 5일 기본 커리큘럼",
-  template_data: {
-    version: "1.0",
-    sessions: [
-      {
-        weekday: 0,
-        startsAt: "09:00",
-        endsAt: "10:00",
-        subjectName: "수학",
-        subjectColor: "#FF0000",
-        studentNames: ["홍길동"],
-      },
-    ],
-  },
+  template_data: FIXTURE_TEMPLATE_DATA,
   created_by: "user-1",
   created_at: "2026-04-17T00:00:00Z",
   updated_at: "2026-04-17T00:00:00Z",
@@ -113,6 +103,8 @@ describe("POST /api/templates", () => {
     expect(res.status).toBe(201);
     expect(body.success).toBe(true);
     expect(body.data.name).toBe("기본 시간표");
+    expect(body.data.template_data.sessions[0].teacherId).toBe("tc-1");
+    expect(body.data.template_data.sessions[0].teacherName).toBe("김선생");
   });
 
   it("name 없으면 400", async () => {

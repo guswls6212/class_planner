@@ -90,7 +90,7 @@ export default function SaveTemplateModal({
         </div>
 
         <p className="text-xs text-[var(--color-text-secondary)] mb-5">
-          {templateData.sessions.length}개 세션이 저장됩니다.
+          {templateData.sessions.length}개 수업이 저장됩니다.
         </p>
 
         <div className="flex gap-3">
