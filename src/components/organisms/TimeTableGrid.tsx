@@ -81,6 +81,10 @@ interface TimeTableGridProps {
   selectedSessionIds?: Set<string>;
   /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
   onSessionSelectToggle?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "복사" */
+  onSessionContextMenuCopy?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "선택 시작" */
+  onSessionContextMenuStartSelect?: (sessionId: string) => void;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -109,6 +113,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       baseDate,
       selectedSessionIds,
       onSessionSelectToggle,
+      onSessionContextMenuCopy,
+      onSessionContextMenuStartSelect,
     },
     ref
   ) => {
@@ -661,6 +667,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 selectedSessionIds={selectedSessionIds}
                 onSessionSelectToggle={
                   isReadOnly ? undefined : onSessionSelectToggle
+                }
+                onSessionContextMenuCopy={
+                  isReadOnly ? undefined : onSessionContextMenuCopy
+                }
+                onSessionContextMenuStartSelect={
+                  isReadOnly ? undefined : onSessionContextMenuStartSelect
                 }
                 style={{
                   gridColumn: weekday + 2,

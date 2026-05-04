@@ -242,6 +242,18 @@ function SchedulePageContent(): JSX.Element {
     await bulkDeleteSessions(ids);
   }, [sessionSelection, bulkDeleteSessions]);
 
+  // 모바일 long-press 메뉴 — Ctrl/Cmd 키 없는 환경에서 대안 진입점
+  const handleContextMenuStartSelect = useCallback(
+    (sessionId: string) => {
+      sessionSelection.toggle(sessionId);
+      showToast(
+        "info",
+        "선택 모드 — 다른 세션을 탭하여 더 추가하거나 Esc로 종료",
+      );
+    },
+    [sessionSelection],
+  );
+
   // 미들웨어가 admin-only 라우트 접근을 차단하면서 보낸 toast 파라미터를 표시하고
   // URL을 정리한다. 새로고침 시 토스트가 반복 표시되지 않도록 한 번만 처리.
   const router = useRouter();
@@ -1223,6 +1235,24 @@ function SchedulePageContent(): JSX.Element {
     [canManage, sessions, enrollments, addSession, sessionSelection, computeBulkMoveTargets],
   );
 
+  // 모바일 long-press 메뉴 — "복사" 항목.
+  // 같은 시간/요일의 next yPosition lane으로 복제. 사용자가 후속 drag로 위치 조정.
+  const handleContextMenuCopy = useCallback(
+    (sessionId: string) => {
+      if (!canManage) return;
+      const original = sessions.find((s) => s.id === sessionId);
+      if (!original) return;
+      void handleSessionCopy(
+        sessionId,
+        original.weekday,
+        original.startsAt,
+        (original.yPosition ?? 1) + 1,
+      );
+      showToast("success", "수업 복사 — drag로 위치를 조정하세요");
+    },
+    [canManage, sessions, handleSessionCopy],
+  );
+
   // 🆕 빈 공간 클릭 처리 — member 역할은 no-op
   const handleEmptySpaceClick = (
     weekday: number,
@@ -1757,6 +1787,8 @@ function SchedulePageContent(): JSX.Element {
             baseDate={selectedDate}
             selectedSessionIds={sessionSelection.selectedSet}
             onSessionSelectToggle={canManage ? sessionSelection.toggle : undefined}
+            onSessionContextMenuCopy={canManage ? handleContextMenuCopy : undefined}
+            onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
           />
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState

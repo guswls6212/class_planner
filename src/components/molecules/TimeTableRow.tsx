@@ -74,6 +74,10 @@ interface TimeTableRowProps {
   selectedSessionIds?: Set<string>;
   /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
   onSessionSelectToggle?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "복사" 항목 (Ctrl/Cmd 키 없는 환경 대응) */
+  onSessionContextMenuCopy?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "선택 시작" 항목 */
+  onSessionContextMenuStartSelect?: (sessionId: string) => void;
   // 오늘 열 강조 (주간 헤더 날짜 표시용)
   isToday?: boolean;
   nowLinePx?: number | null;
@@ -116,6 +120,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onToggleExpand,
   selectedSessionIds,
   onSessionSelectToggle,
+  onSessionContextMenuCopy,
+  onSessionContextMenuStartSelect,
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
@@ -415,6 +421,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           onSelectToggle={
             onSessionSelectToggle
               ? () => onSessionSelectToggle(session.id)
+              : undefined
+          }
+          onContextMenuCopy={
+            onSessionContextMenuCopy
+              ? () => onSessionContextMenuCopy(session.id)
+              : undefined
+          }
+          onContextMenuStartSelect={
+            onSessionContextMenuStartSelect
+              ? () => onSessionContextMenuStartSelect(session.id)
               : undefined
           }
         />
