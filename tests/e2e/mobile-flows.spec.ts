@@ -9,10 +9,23 @@
  * Anonymous mode OK — 모든 시나리오 auth 없이 동작.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { currentWeekMondayKST } from "./helpers/seed-anonymous";
 
 const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
-const WEEK = currentWeekMondayKST();
+
+/**
+ * 페이지가 보는 currentWeek와 정합 — schedule/page.tsx의 selectedDate는
+ * `new Date()` (브라우저 timezone). KST 기준 weekStart로 seed하면 UTC 환경에서
+ * 다른 주로 분류되어 ScheduleDailyView에 sess-mon 표시 안 됨.
+ * 본 헬퍼는 브라우저 timezone의 monday를 반환 — CI/local 모두 페이지 currentWeek와 일치.
+ */
+function todayWeekStartLocal(): string {
+  const now = new Date();
+  const dow = (now.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow);
+  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+}
+const WEEK = todayWeekStartLocal();
 
 test.use({ viewport: { width: 375, height: 667 } });
 
@@ -122,12 +135,10 @@ test.describe("mobile schedule flows (375×667)", () => {
   });
 
   test.skip("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
-    // FIXME: monChip(day-chip-0) 클릭은 정상 동작 — DayChipBar selector는 안정.
-    // 그러나 SessionBlock(sess-mon)이 일별 그리드에 안 보임. 가능한 원인:
-    // (1) ScheduleDailyView 내부 sessions filter가 selectedDate.weekday 기준
-    // (2) seedScheduleMobile의 weekStartDate(KST 기준)와 ScheduleDailyView의 selectedDate 정합성
-    // (3) sess-mon이 weekday=0(월) 인데, selectedDate가 다른 weekday로 계산됨
-    // 후속 PR에서 ScheduleDailyView selector + selectedDate 계산 조사 후 unskip.
+    // FIXME: timezone fix(weekStartDate를 브라우저 monday로) 적용 후에도 11s timeout fail.
+    // ScheduleDailyView 내부 sessions filter 또는 useDisplaySessions의 enrollmentIds 검증,
+    // 또는 schedule/page.tsx의 weekFilteredSessions 정확한 동작 추가 디버그 필요.
+    // 후속 PR에서 Playwright trace로 SessionBlock DOM 미존재 vs 다른 selector 가려짐 등 확인.
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
@@ -135,6 +146,6 @@ test.describe("mobile schedule flows (375×667)", () => {
     await expect(monChip).toBeVisible({ timeout: 5000 });
     await monChip.click();
 
-    await expect(page.getByTestId("session-block-sess-mon")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("session-block-sess-mon")).toBeVisible({ timeout: 10000 });
   });
 });
