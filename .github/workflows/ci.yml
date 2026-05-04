@@ -50,6 +50,18 @@ jobs:
       - run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+      # PR C — Supabase test user 멱등 셋업. 매 CI마다 실행해도 안전:
+      # 이미 존재하면 password 갱신, 없으면 신규 생성.
+      # 사용자 측 setup script 로컬 실행 부담 제거 + GitHub secret 변경 시 자동 반영.
+      # secrets 없으면 setup script가 graceful skip (exit 0 + 경고).
+      - name: Setup E2E test user (idempotent)
+        run: npx tsx scripts/setup-e2e-test-user.ts
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
       - name: Run E2E tests
         run: |
           npx playwright test \
