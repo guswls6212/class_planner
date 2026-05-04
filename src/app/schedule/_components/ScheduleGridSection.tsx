@@ -50,6 +50,10 @@ type Props = {
   selectedSessionIds?: Set<string>;
   /** modifier(Shift/Ctrl/Meta) + click */
   onSessionSelectToggle?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "복사" */
+  onSessionContextMenuCopy?: (sessionId: string) => void;
+  /** 모바일 long-press 메뉴 — "선택 시작" */
+  onSessionContextMenuStartSelect?: (sessionId: string) => void;
 };
 
 export default function ScheduleGridSection({
@@ -72,6 +76,8 @@ export default function ScheduleGridSection({
   baseDate,
   selectedSessionIds,
   onSessionSelectToggle,
+  onSessionContextMenuCopy,
+  onSessionContextMenuStartSelect,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -94,6 +100,8 @@ export default function ScheduleGridSection({
         baseDate={baseDate}
         selectedSessionIds={selectedSessionIds}
         onSessionSelectToggle={onSessionSelectToggle}
+        onSessionContextMenuCopy={onSessionContextMenuCopy}
+        onSessionContextMenuStartSelect={onSessionContextMenuStartSelect}
       />
     </div>
   );
