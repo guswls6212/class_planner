@@ -74,15 +74,15 @@ test.describe("schedule view mode toggle", () => {
     expect(stored).toContain("monthly");
   });
 
-  test.skip("'일별' 클릭 → DayChipBar(요일 칩 바) 표시", async ({ page }) => {
-    // FIXME: DayChipBar는 button에 "월" + 날짜 숫자를 별도 span으로 렌더 — 정규식 `/^월\d+$/`이
-    // accessible name과 매칭 안 됨. data-testid 또는 정확한 selector 정립 후 재활성.
+  test("'일별' 클릭 → DayChipBar(요일 칩 바) 표시", async ({ page }) => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
     await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "일별" }).click();
 
-    await expect(page.getByRole("button", { name: /^월\d+$/ }).first()).toBeVisible({ timeout: 5000 });
+    // DayChipBar — 0=월, 6=일 모두 보임
+    await expect(page.getByTestId("day-chip-0")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("day-chip-6")).toBeVisible({ timeout: 5000 });
   });
 
   test("뷰 모드 변경 후 페이지 reload → 마지막 모드가 복원된다", async ({ page }) => {

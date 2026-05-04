@@ -79,24 +79,22 @@ test.describe("mobile schedule flows (375×667)", () => {
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    // DayChipBar는 7개 weekday button 표시
-    const monButton = page.locator("button").filter({ hasText: /^월\d+$/ }).first();
-    const sunButton = page.locator("button").filter({ hasText: /^일\d+$/ }).first();
-    await expect(monButton).toBeVisible({ timeout: 5000 });
-    await expect(sunButton).toBeVisible({ timeout: 5000 });
+    // DayChipBar — 0=월, 6=일 (data-testid는 PR A에서 추가)
+    await expect(page.getByTestId("day-chip-0")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("day-chip-6")).toBeVisible({ timeout: 5000 });
   });
 
   test("DayChipBar에서 다른 요일 클릭 → 활성 chip 변경", async ({ page }) => {
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    // 수요일 chip 클릭 (지속적인 로드 가능)
-    const wedChip = page.locator("button").filter({ hasText: /^수\d+$/ }).first();
+    // 수요일 (idx=2) chip 클릭
+    const wedChip = page.getByTestId("day-chip-2");
     await expect(wedChip).toBeVisible({ timeout: 5000 });
     await wedChip.click();
 
-    // 활성 chip 시각 검증 — bg-accent class를 가진 button이 수요일이어야
-    await expect(wedChip).toHaveClass(/bg-accent/, { timeout: 3000 });
+    // data-active=true 속성으로 활성 검증 (CSS class 결합도 ↓)
+    await expect(wedChip).toHaveAttribute("data-active", "true", { timeout: 3000 });
   });
 
   test("모바일에서 '주간' 모드로 변경 → SegmentedButton 변경 가능", async ({ page }) => {
@@ -124,12 +122,16 @@ test.describe("mobile schedule flows (375×667)", () => {
   });
 
   test.skip("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
-    // FIXME: DayChipBar 텍스트 패턴(`/^월\d+$/`)이 실제 렌더와 다름 — chip 클릭 못 함.
-    // 후속 PR에서 DayChipBar selector 정확히 조사 (data-testid 추가 또는 aria-label) 후 재활성.
+    // FIXME: monChip(day-chip-0) 클릭은 정상 동작 — DayChipBar selector는 안정.
+    // 그러나 SessionBlock(sess-mon)이 일별 그리드에 안 보임. 가능한 원인:
+    // (1) ScheduleDailyView 내부 sessions filter가 selectedDate.weekday 기준
+    // (2) seedScheduleMobile의 weekStartDate(KST 기준)와 ScheduleDailyView의 selectedDate 정합성
+    // (3) sess-mon이 weekday=0(월) 인데, selectedDate가 다른 weekday로 계산됨
+    // 후속 PR에서 ScheduleDailyView selector + selectedDate 계산 조사 후 unskip.
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    const monChip = page.locator("button").filter({ hasText: /^월\d+$/ }).first();
+    const monChip = page.getByTestId("day-chip-0");
     await expect(monChip).toBeVisible({ timeout: 5000 });
     await monChip.click();
 
