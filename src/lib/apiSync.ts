@@ -12,7 +12,37 @@
 import { logger } from "./logger";
 import { showToast } from "./toast";
 import { enqueueOutbox } from "./syncOutbox";
+import { deleteSessionFromLocal } from "./localStorageCrud";
 import type { Session } from "../lib/planner";
+
+/**
+ * "ghost session" cleanup — server에 없는 sessionId를 localStorage에서 제거.
+ * PUT/DELETE 응답이 404일 때 발화.
+ *
+ * 토스트는 같은 cleanup이 빠르게 여러 번 발생할 때 노이즈 방지를 위해
+ * 200ms 디바운스로 묶어 한 번에 표시 ("N개 수업이 서버에 없어 정리됨").
+ */
+let pendingGhostCount = 0;
+let pendingGhostTimer: ReturnType<typeof setTimeout> | null = null;
+function cleanupGhostSession(sessionId: string): void {
+  try {
+    const result = deleteSessionFromLocal(sessionId);
+    if (!result.success) return;
+  } catch (err) {
+    logger.error("ghost cleanup 실패", { sessionId }, err as Error);
+    return;
+  }
+  pendingGhostCount++;
+  if (pendingGhostTimer) clearTimeout(pendingGhostTimer);
+  pendingGhostTimer = setTimeout(() => {
+    showToast(
+      "info",
+      `${pendingGhostCount}개 수업이 서버에 없어 정리됐습니다`,
+    );
+    pendingGhostCount = 0;
+    pendingGhostTimer = null;
+  }, 200);
+}
 
 // ===== 재시도 큐 상태 =====
 
@@ -115,6 +145,11 @@ export function __resetSyncStateForTests(): void {
   escalatedToastShown = false;
   gaveUp = false;
   lastDispatchedStatus = "idle";
+  pendingGhostCount = 0;
+  if (pendingGhostTimer) {
+    clearTimeout(pendingGhostTimer);
+    pendingGhostTimer = null;
+  }
 }
 
 /**
@@ -144,6 +179,12 @@ function fireAndForget(
   context: string,
   attempt = 0,
   outboxMeta?: OutboxRequestMeta,
+  /**
+   * 서버가 404 응답한 경우 호출. PUT/DELETE에서 sessionId가 server에 없는
+   * "ghost" 상태를 의미. 호출자가 localStorage에서 해당 항목 정리하여 다음
+   * 시도부터 발생하지 않도록.
+   */
+  onGhost?: () => void,
 ): void {
   makeRequest()
     .then((res) => {
@@ -157,11 +198,18 @@ function fireAndForget(
               body,
             });
           });
+        // 404 → ghost (server에 항목 없음). retry 무의미 + outbox 부적격.
+        if (res.status === 404 && onGhost) {
+          onGhost();
+          // 카운터 리셋 — 다음 정상 호출에 영향 없게
+          onSyncSuccess();
+          return;
+        }
         onSyncFailure(context);
         if (attempt < 9) {
           const delay = calcDelay(attempt);
           setTimeout(
-            () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta),
+            () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost),
             delay,
           );
         } else {
@@ -187,7 +235,7 @@ function fireAndForget(
       if (attempt < 9) {
         const delay = calcDelay(attempt);
         setTimeout(
-          () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta),
+          () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost),
           delay,
         );
       } else {
@@ -416,14 +464,20 @@ export function syncSessionUpdate(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  fireAndForget(makeRequest, "session:update", 0, {
-    // 같은 세션의 update는 마지막 것만 남도록 entity id를 outbox key로 사용
-    id: `session:update:${id}`,
-    userId,
-    method: "PUT",
-    url,
-    body,
-  });
+  fireAndForget(
+    makeRequest,
+    "session:update",
+    0,
+    {
+      // 같은 세션의 update는 마지막 것만 남도록 entity id를 outbox key로 사용
+      id: `session:update:${id}`,
+      userId,
+      method: "PUT",
+      url,
+      body,
+    },
+    () => cleanupGhostSession(id),
+  );
 }
 
 /** awaitable 버전 — drag-drop 완료 후 서버 sync 결과를 확인할 때 사용.
@@ -453,6 +507,8 @@ export async function syncSessionUpdateAsync(
         }),
       },
     );
+    // 404 → ghost session — localStorage 정리
+    if (res.status === 404) cleanupGhostSession(id);
     return res.ok;
   } catch {
     return false;
@@ -463,12 +519,20 @@ export function syncSessionDelete(userId: string | null, id: string): void {
   if (!userId) return;
   const url = `/api/sessions?id=${id}`;
   const makeRequest = () => fetch(url, { method: "DELETE" });
-  fireAndForget(makeRequest, "session:delete", 0, {
-    id: `session:delete:${id}`,
-    userId,
-    method: "DELETE",
-    url,
-  });
+  fireAndForget(
+    makeRequest,
+    "session:delete",
+    0,
+    {
+      id: `session:delete:${id}`,
+      userId,
+      method: "DELETE",
+      url,
+    },
+    // DELETE 404 — 이미 server에 없으니 localStorage 정리는 무의미하지만
+    // 일관성을 위해 ghost cleanup 호출 (이미 제거된 상태라 noop)
+    () => cleanupGhostSession(id),
+  );
 }
 
 // ===== Teachers =====
