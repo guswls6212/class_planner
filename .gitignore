@@ -60,3 +60,6 @@ migration/backups/
 
 # Supabase CLI temp files
 supabase/.temp/
+
+*storybook.log
+storybook-static
