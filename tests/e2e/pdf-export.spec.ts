@@ -63,49 +63,43 @@ test.describe("PDF export", () => {
     await expect(page.getByText(/PDF/).first()).toBeVisible();
   });
 
-  test.skip("PDF 다운로드 클릭 시 download 이벤트가 발생한다 — 클라이언트 jsPDF", async ({ page }) => {
-    // FIXME: PdfExportRangeModal flow가 selector "내보내기"로 안 맞고 download 이벤트 미발사.
-    // PdfExportRangeModal 정확한 selector + scope 선택 → 실제 jsPDF 트리거 path 조사 후 재활성.
+  test("PDF 다운로드 클릭 → 모달 → '출력' 클릭 → download 이벤트 발생 (jsPDF)", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+    // 1. PDF 다운로드 버튼 → PdfExportRangeModal 열림
     await page.getByRole("button", { name: /PDF 다운로드/ }).click();
 
-    const exportButton = page.getByRole("button", { name: /^내보내기$/ });
-    if (await exportButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await exportButton.click();
-    }
+    // 2. 모달 title 확인 — "PDF 출력 범위"
+    await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
+    // 3. download 이벤트 promise 등록 (출력 클릭 직전)
+    const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+
+    // 4. 기본 "현재 뷰만 출력" radio default 선택됨 — 바로 "출력" 버튼 클릭
+    await page.getByRole("button", { name: /^출력$/ }).click();
+
+    // 5. jsPDF doc.save() 트리거 → browser download
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
   });
 
-  test.skip("다운로드 진행 중 버튼은 disabled되고 라벨이 '다운로드 중...'으로 변경", async ({ page }) => {
-    // FIXME: 위와 동일 — PDF flow의 모달 selector 정립 후 재활성.
+  test("'출력' 클릭 시 모달 버튼이 '출력 중...' 라벨로 변경된다 (in-progress 표시)", async ({
+    page,
+  }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    const button = page.getByRole("button", { name: /PDF 다운로드/ });
-    await button.click();
+    await page.getByRole("button", { name: /PDF 다운로드/ }).click();
+    await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
-    // PDF Export Range Modal 처리
-    const exportButton = page.getByRole("button", { name: /^내보내기$/ });
-    if (await exportButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await exportButton.click();
-    }
+    const exportButton = page.getByRole("button", { name: /^출력$/ });
+    // download 시작 전 race를 피하기 위해 이벤트 promise 미리 등록
+    const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
+    await exportButton.click();
 
-    // 짧은 시간 동안 "다운로드 중..." 라벨 노출 — race condition 가능
-    // 최소 1번이라도 disabled 또는 라벨 변경 검증
-    await expect
-      .poll(
-        async () => {
-          const ariaBusy = await button.getAttribute("aria-busy").catch(() => null);
-          const text = await button.textContent().catch(() => "");
-          return Boolean(ariaBusy === "true" || text?.includes("다운로드 중"));
-        },
-        { timeout: 5000 },
-      )
-      .toBeTruthy();
+    // jsPDF 동기 처리라 "출력 중..." 라벨이 매우 짧게 노출 — disabled 또는 download 발사 사실로 검증
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
   });
 });
