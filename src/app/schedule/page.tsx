@@ -225,7 +225,7 @@ function SchedulePageContent(): JSX.Element {
   }, []);
 
   // Role-based UI gate — member role gets read-only schedule
-  const { canManage } = useMyRole();
+  const { canManage, adminCount } = useMyRole();
 
   // 다른 admin의 변경 인지 — academies.schedule_updated_at 30초 polling
   const {
@@ -235,26 +235,30 @@ function SchedulePageContent(): JSX.Element {
   } = useScheduleMeta(userId);
 
   // hasScheduleChanges false → true 전이 시 토스트 발화 (이전 banner 대체).
-  // useScheduleMeta가 본인 변경은 윈도우(10s)로 자동 suppress하므로 여긴 다른
-  // admin 변경만 도달함. 토스트 [새로고침] 클릭 → reload + ack로 server에서 최신
-  // sessions 재fetch.
+  // useScheduleMeta가 본인 변경(같은 탭 윈도우 + 다른 탭 localStorage 공유 + 24h
+  // stale auto-ack)은 자동 suppress하므로 여긴 진짜 다른 admin 변경만 도달.
+  //
+  // 추가 가드 (사용자 보고 회귀): adminCount=1인 학원에선 토스트 자체 발화 안 함.
+  // wording도 \"다른 관리자\"가 아닌 중립적 \"새로 갱신\" — 단일 admin 환경에서
+  // 잘못 발화될 때도 \"해킹당한 줄 알았다\"는 공포 회피.
   const lastAlertedAtRef = useRef<string | null>(null);
   useEffect(() => {
     if (!hasScheduleChanges || !scheduleUpdatedAt) return;
-    // 같은 timestamp 재알림 방지
     if (lastAlertedAtRef.current === scheduleUpdatedAt) return;
+    // 단일 admin 학원 → 토스트 자체 발화 안 함 (논리적으로 다른 사람 변경 불가능)
+    if (adminCount > 0 && adminCount <= 1) return;
     lastAlertedAtRef.current = scheduleUpdatedAt;
     showActionToast({
-      message: "다른 관리자가 시간표를 변경했어요. 새로고침할까요?",
+      message: "시간표가 새로 갱신되었어요. 새로고침할까요?",
       actionLabel: "새로고침",
-      variant: "warning",
+      variant: "info",
       onAction: () => {
         ackScheduleChanges();
         if (typeof window !== "undefined") window.location.reload();
       },
       durationMs: 10000,
     });
-  }, [hasScheduleChanges, scheduleUpdatedAt, ackScheduleChanges]);
+  }, [hasScheduleChanges, scheduleUpdatedAt, ackScheduleChanges, adminCount]);
 
   // 이전 세션에서 retry 10회 후 포기된 sync 작업 자동 재시도
   useOutboxFlush(userId);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { subscribeSelfSync } from "@/lib/apiSync";
+import { SELF_SYNC_STORAGE_KEY, subscribeSelfSync } from "@/lib/apiSync";
 
 const POLL_INTERVAL_MS = 30_000;
 /**
@@ -13,6 +13,15 @@ const POLL_INTERVAL_MS = 30_000;
  * 다음 변경 시 잡힘 — 빈도 매우 낮은 edge case라 수용.
  */
 const SELF_SYNC_WINDOW_MS = 10_000;
+
+/**
+ * 24시간 이상 묵힌 변경은 stale로 자동 ack — page reload 후에도 토스트 발화 방지.
+ *
+ * 시나리오: 어제 사용자가 변경 → server schedule_updated_at = 어제. 오늘 페이지를
+ * 새로 열면 lastViewedAt이 어제보다 더 옛날일 수 있음(또는 reload 직후 ref가 0).
+ * 24h 이상 차이면 사용자에게 알릴 가치 없음(이미 봤거나 더 최신 변경 곧 옴).
+ */
+const STALE_CHANGE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 export interface ScheduleMeta {
   /** 마지막으로 sessions 테이블이 변경된 시각 (academies.schedule_updated_at). null이면 미로드. */
@@ -44,18 +53,53 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
   // 같은 timestamp에서 hasChanges 토글 반복 방지용
   const ackedTimestampRef = useRef<string | null>(null);
   /**
-   * 본인이 마지막으로 sync 발사한 시각 (epoch ms). apiSync.onSyncSuccess에서
-   * dispatch되는 selfSync 이벤트로 갱신. polling 결과의 server timestamp가
-   * 이 시점 +SELF_SYNC_WINDOW_MS 이내면 본인 변경으로 판단 → banner 발화 안 함.
+   * 본인이 마지막으로 sync 발사한 시각 (epoch ms).
+   *
+   * 갱신 경로:
+   *   1) apiSync.onSyncSuccess가 같은 탭 EventTarget으로 self-sync 이벤트 dispatch
+   *   2) apiSync가 SELF_SYNC_STORAGE_KEY localStorage write → 다른 탭은 storage event로 받음
+   *   3) mount 시 SELF_SYNC_STORAGE_KEY localStorage 값 fallback (page reload 직후 ref가
+   *      0이라도 이전 세션 self-sync 시각 복구)
+   *
+   * Polling 결과 server timestamp가 이 시점 +SELF_SYNC_WINDOW_MS 이내면 본인 변경으로
+   * 판단 → 토스트 발화 안 함.
    */
   const lastSelfSyncAtRef = useRef<number>(0);
 
-  // apiSync.onSyncSuccess가 발사하는 selfSync 이벤트 구독
+  // (1) 같은 탭 self-sync 이벤트 구독
   useEffect(() => {
     const unsubscribe = subscribeSelfSync(() => {
       lastSelfSyncAtRef.current = Date.now();
     });
     return unsubscribe;
+  }, []);
+
+  // (2) 다른 탭의 self-sync localStorage write를 storage event로 받음 + (3) mount 시 fallback
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // mount fallback — 페이지 reload 직후라도 이전 세션의 마지막 self-sync 시각 복구.
+    // localStorage 접근이 실패할 수 있는 환경(SecurityError, QuotaExceededError 등)도
+    // silent fallback — 본인 변경 감지는 best-effort.
+    try {
+      const stored = Number(
+        window.localStorage.getItem(SELF_SYNC_STORAGE_KEY) ?? 0,
+      );
+      if (stored > 0) {
+        lastSelfSyncAtRef.current = Math.max(lastSelfSyncAtRef.current, stored);
+      }
+    } catch {
+      // 안전하게 무시
+    }
+    // storage event는 같은 탭에서는 안 발생, 같은 origin의 다른 탭에서만 발생
+    const handler = (e: StorageEvent) => {
+      if (e.key !== SELF_SYNC_STORAGE_KEY || !e.newValue) return;
+      const ts = Number(e.newValue);
+      if (Number.isFinite(ts) && ts > lastSelfSyncAtRef.current) {
+        lastSelfSyncAtRef.current = ts;
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
   }, []);
 
   const fetchMeta = useCallback(async () => {
@@ -70,14 +114,23 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
       setScheduleUpdatedAt(next);
       if (typeof window === "undefined" || !next) return;
 
-      // ⚠️ 본인 변경 자동 감지 (2026-05-04): server timestamp가 본인 마지막 sync
-      // 발사 시점의 윈도우 안이면 본인 변경으로 판단 → 자동 ack (lastViewedAt 갱신 +
-      // hasChanges 발화 안 함). 멀티 admin 환경에서 본인 변경에도 banner가 뜨던
-      // 사용자 보고 회귀 fix.
       const serverTs = new Date(next).getTime();
+      // (a) 본인 변경 자동 감지 — ref + localStorage 둘 다 검사 (탭 race / page reload race 보호)
+      let fallbackSync = 0;
+      try {
+        fallbackSync = Number(
+          window.localStorage.getItem(SELF_SYNC_STORAGE_KEY) ?? 0,
+        );
+      } catch {
+        // localStorage 접근 실패 시 silent fallback (ref만 사용)
+      }
+      const effectiveSelfSync = Math.max(
+        lastSelfSyncAtRef.current,
+        Number.isFinite(fallbackSync) ? fallbackSync : 0,
+      );
       if (
-        lastSelfSyncAtRef.current > 0 &&
-        Math.abs(serverTs - lastSelfSyncAtRef.current) <= SELF_SYNC_WINDOW_MS
+        effectiveSelfSync > 0 &&
+        Math.abs(serverTs - effectiveSelfSync) <= SELF_SYNC_WINDOW_MS
       ) {
         // 본인 변경 → 자동 ack
         window.localStorage.setItem(lastViewedKey(userId), next);
@@ -86,6 +139,17 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
       }
 
       const lastViewed = window.localStorage.getItem(lastViewedKey(userId));
+      const lastViewedTs = lastViewed ? new Date(lastViewed).getTime() : 0;
+
+      // (b) Stale 변경 자동 ack — 24시간 이상 묵힌 변경은 알릴 가치 없음.
+      // page reload 후 lastSelfSyncAt이 0이고 server timestamp는 어제 시각인 경우 등
+      // (사용자 보고: \"어제 변경했는데 오늘 페이지 열자마자 다른 관리자가 변경했다고 뜸\")
+      if (lastViewedTs > 0 && serverTs - lastViewedTs > STALE_CHANGE_THRESHOLD_MS) {
+        window.localStorage.setItem(lastViewedKey(userId), next);
+        ackedTimestampRef.current = next;
+        return;
+      }
+
       if (
         lastViewed &&
         new Date(next) > new Date(lastViewed) &&

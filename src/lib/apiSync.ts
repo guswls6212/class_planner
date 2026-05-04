@@ -178,8 +178,24 @@ export function subscribeSelfSync(callback: () => void): () => void {
   return () => selfSyncEvents.removeEventListener("self-sync", handler);
 }
 
+/**
+ * 본인 sync 신호 — 같은 탭의 EventTarget + 다른 탭/페이지 reload 후를 위한 localStorage.
+ *
+ * - EventTarget: 같은 탭의 useScheduleMeta가 즉시 구독 (실시간 ref 갱신)
+ * - localStorage: 다른 탭의 useScheduleMeta가 storage event로 받음 + page reload
+ *   직후 mount fallback에 사용 (이전 세션의 self-sync 시각 복구)
+ */
+export const SELF_SYNC_STORAGE_KEY = "class_planner_last_self_sync";
+
 function notifySelfSync(): void {
   selfSyncEvents.dispatchEvent(new CustomEvent("self-sync"));
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(SELF_SYNC_STORAGE_KEY, String(Date.now()));
+    } catch {
+      // QuotaExceededError 등은 silent — 본인 변경 감지는 best-effort
+    }
+  }
 }
 
 function onSyncSuccess(): void {
