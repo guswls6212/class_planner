@@ -1,22 +1,123 @@
 /**
- * Share link e2e — auth-required (settings 페이지 + share-tokens API).
+ * Share link e2e — settings 페이지의 "고급 공유 옵션" 아코디언 + share-tokens API.
  *
- * Phase 2a 학습: settings 페이지가 AuthGuard로 보호되며 supabase-js getSession()
- * mock이 어렵다. 본 spec은 처음부터 test.skip + FIXME 주석으로 후속 분리.
+ * PR F — PR D 머지 후 academy owner 권한 가능. injectRealSession 사용.
  *
- * 후속 PR에서 다음 패턴 도입 후 재활성:
- * (a) supabase-js test client 도입 또는 (b) AuthGuard mock decorator
- * (c) /share/[token] 공개 라우트만 단독 검증 (auth 우회 가능 — 별도 spec)
+ * UI 구조 (settings/page.tsx:658-880):
+ * - 아코디언 헤더 role="button" "고급 공유 옵션"
+ * - 열기 → "링크 만들기" 버튼 (Plus icon)
+ * - 모달 form: shareLabel(text), shareStudentId(select), shareExpiresInDays(select)
+ * - "생성" 버튼 → POST /api/share-tokens?userId=... → 토큰 자동 클립보드 복사
+ *
+ * 회귀 가드:
+ * - canManage=owner 권한으로 settings 진입
+ * - 공유 링크 섹션 visible
+ * - 모달 → 생성 → POST 호출 검증
  */
-import { test } from "@playwright/test";
+import { expect, test, type Route } from "@playwright/test";
+import { injectRealSession } from "./helpers/auth-mock";
 
-test.describe.skip("share link — settings 페이지 share token 발급", () => {
-  test("FIXME: 후속 PR에서 auth mock 정립 후 재활성 — POST /api/share-tokens", async () => {
-    // auth-mock + settings 진입 후 "공유 링크 발급" 버튼 → 모달 → label/expiresInDays 입력 → POST
+interface ShareTokenPostBody {
+  label?: string;
+  filterStudentId?: string | null;
+  expiresInDays?: number;
+}
+
+test.describe("share link — 고급 공유 옵션 아코디언 + token 발급", () => {
+  test.beforeEach(async ({ page }) => {
+    await injectRealSession(page);
   });
 
-  test("FIXME: 발급된 share token의 /share/[token] 페이지 접근 — anonymous OK", async () => {
-    // /share/[token] 라우트는 public — 별도 spec으로 분리 가능
-    // GET /api/share/[token] 응답으로 read-only schedule 검증
+  test("settings 페이지에 '고급 공유 옵션' 섹션이 표시된다 (academy owner)", async ({
+    page,
+  }) => {
+    await page.goto("/settings");
+
+    // 아코디언 헤더 — role=button + text "고급 공유 옵션"
+    await expect(page.getByRole("button", { name: /고급 공유 옵션/ })).toBeVisible({
+      timeout: 10000,
+    });
+  });
+
+  test("아코디언 열기 → '링크 만들기' 버튼 표시", async ({ page }) => {
+    await page.goto("/settings");
+
+    const accordionHeader = page.getByRole("button", { name: /고급 공유 옵션/ });
+    await expect(accordionHeader).toBeVisible({ timeout: 10000 });
+    await accordionHeader.click();
+
+    await expect(page.getByRole("button", { name: /링크 만들기/ })).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  test("'링크 만들기' → 모달 열기 → '생성' 클릭 시 POST /api/share-tokens 호출", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+
+    let postBody: ShareTokenPostBody | null = null;
+    let postCalled = false;
+    await page.route("**/api/share-tokens**", async (route: Route) => {
+      const method = route.request().method();
+      if (method === "POST") {
+        postCalled = true;
+        postBody = JSON.parse(route.request().postData() || "{}");
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            success: true,
+            data: {
+              id: "share-tok-fixture",
+              token: "fixture-token-32bytes-hex-string",
+              label: postBody?.label ?? null,
+              filter_student_id: postBody?.filterStudentId ?? null,
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              created_at: new Date().toISOString(),
+            },
+          }),
+        });
+      } else if (method === "GET") {
+        // 기존 tokens 빈 배열 — 깨끗한 상태
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ success: true, data: [] }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto("/settings");
+
+    const accordionHeader = page.getByRole("button", { name: /고급 공유 옵션/ });
+    await expect(accordionHeader).toBeVisible({ timeout: 10000 });
+    await accordionHeader.click();
+
+    await page.getByRole("button", { name: /링크 만들기/ }).click();
+
+    // 모달 — 생성 버튼 클릭
+    await page.getByRole("button", { name: /^생성$/ }).click();
+
+    // POST /api/share-tokens 호출됨
+    await expect.poll(() => postCalled, { timeout: 5000 }).toBeTruthy();
+    expect(postBody).not.toBeNull();
+    // expiresInDays default는 30
+    expect(postBody!.expiresInDays).toBeDefined();
+  });
+
+  test.skip("발급된 share token의 /share/[token] public route 접근", async ({
+    browser,
+  }) => {
+    // FIXME: 진짜 token으로 newPage에서 /share/[token] 접근 — 진짜 GET /api/share/[token]
+    // 응답 검증 필요. cleanup도 포함. 별도 후속 PR로 분리.
+    const context = await browser.newContext();
+    const newPage = await context.newPage();
+    await newPage.goto("/share/fixture-token-32bytes-hex-string");
+    await expect(newPage.getByText(/시간표/)).toBeVisible({ timeout: 10000 });
+    await context.close();
   });
 });
