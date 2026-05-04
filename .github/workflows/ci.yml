@@ -71,3 +71,9 @@ jobs:
           CI: "true"
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # PR C — Supabase password auth로 진짜 토큰 발급. 누락 시 globalSetup이 throw,
+          # auth 의존 spec(teachers/templates/auth-flow Supabase 시나리오)만 영향.
+          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          # cleanup-test-data.ts 가 RLS 우회 위해 사용. 누락 시 cleanup 건너뜀(경고만).
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -1,16 +1,15 @@
 /**
  * Supabase auth e2e helpers — 인증된 사용자 시뮬레이션 + auth API mock.
  *
- * 실제 Google OAuth flow는 e2e에서 재현 불가. 대신 Supabase가 사용하는
- * `sb-<project>-auth-token` localStorage 키 + supabase_user_id를 inject해
- * AuthGuard/getSession() 검사 통과시킨다.
- *
- * AuthGuard.tsx 동작 (line 27-29):
- *   - localStorage에 `sb-` 또는 `supabase` 키 있으면 hasAuthToken=true
- *   - 이후 supabase.auth.getSession() 호출 — fail/timeout 시 isAuthenticated=false
- *   → page.route로 supabase auth REST endpoint를 mock해야 진정한 통과
+ * 두 가지 패턴:
+ * 1. injectSupabaseSession + mockSupabaseAuthApi (fake token + page.route mock)
+ *    — 단순 localStorage 표시 시나리오용. AuthGuard.getSession() 통과 못 함.
+ * 2. injectRealSession (PR C 신규) — global-setup이 저장한 진짜 Supabase 토큰 inject.
+ *    AuthGuard 통과 + 진짜 RLS/sync 검증 가능. settings/teachers 페이지 진입용.
  */
 import type { Page, Route } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
 
 const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
 const TEST_USER_EMAIL = "e2e-user@example.com";
@@ -120,3 +119,61 @@ export const E2E_TEST_USER = {
   id: TEST_USER_ID,
   email: TEST_USER_EMAIL,
 };
+
+/**
+ * 진짜 Supabase 세션 inject — global-setup.ts가 저장한 session.json 사용.
+ *
+ * 사용법:
+ *   await injectRealSession(page);
+ *   await page.goto("/settings"); // AuthGuard 통과
+ *
+ * AuthGuard.getSession()이 진짜 토큰 검증 → server에 /auth/v1/user 호출 → 200 응답.
+ * POST /api/teachers 등은 진짜 RLS 통과 — test user 데이터로 격리됨.
+ *
+ * 매 테스트 후 cleanupTestUserData()로 데이터 격리 유지 권장.
+ */
+export interface RealSessionInfo {
+  userId: string;
+  userEmail: string;
+  projectRef: string;
+}
+
+let cachedRealSession: {
+  projectRef: string;
+  userId: string;
+  userEmail: string;
+  sessionPayload: unknown;
+} | null = null;
+
+function loadRealAuthState() {
+  if (cachedRealSession) return cachedRealSession;
+  const file = path.join(process.cwd(), "playwright/.auth/session.json");
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `[injectRealSession] ${file} 없음. globalSetup이 실행됐는지 확인 — ` +
+        "playwright.config.ts에 globalSetup: require.resolve('./tests/e2e/global-setup') 등록 필요.",
+    );
+  }
+  cachedRealSession = JSON.parse(fs.readFileSync(file, "utf-8"));
+  return cachedRealSession!;
+}
+
+export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
+  const { projectRef, userId, userEmail, sessionPayload } = loadRealAuthState();
+  await page.addInitScript(
+    ({ ref, uid, session }) => {
+      localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
+      localStorage.setItem("supabase_user_id", uid);
+    },
+    { ref: projectRef, uid: userId, session: sessionPayload },
+  );
+  return { userId, userEmail, projectRef };
+}
+
+/**
+ * Reset cached session — 테스트 간 session refresh가 필요한 경우만 호출.
+ * 일반적으로 globalSetup 한 번이면 모든 spec에서 동일 session 재사용.
+ */
+export function resetRealSessionCache(): void {
+  cachedRealSession = null;
+}

@@ -13,7 +13,7 @@
  *   - POST /api/share-tokens?userId=...  (action=share)
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { injectSupabaseSession, mockSupabaseAuthApi, E2E_TEST_USER } from "./helpers/auth-mock";
+import { injectRealSession } from "./helpers/auth-mock";
 
 interface TeacherPostBody {
   name?: string;
@@ -34,10 +34,11 @@ interface SharePostBody {
 }
 
 async function setupAuthedSettings(page: Page): Promise<void> {
-  await injectSupabaseSession(page);
-  await mockSupabaseAuthApi(page);
+  // PR C — 진짜 Supabase 토큰으로 AuthGuard 통과. global-setup.ts 사전 실행 필요.
+  await injectRealSession(page);
 
-  // settings 페이지가 호출하는 GET endpoints는 빈 응답으로 — UI가 깨지지 않도록
+  // settings 페이지의 GET endpoints는 mock으로 — 빠른 응답 + test 격리.
+  // POST 시나리오만 mock 또는 진짜 API (test별 결정).
   const emptyOk = (route: Route) =>
     route.fulfill({
       status: 200,
@@ -72,12 +73,10 @@ async function openTeacherAddModal(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { name: "강사 추가" })).toBeVisible();
 }
 
-// FIXME: settings 페이지가 AuthGuard로 보호되며, supabase JS SDK의 getSession()
-// flow를 page.route + sb-* 토큰 inject만으로 통과시키지 못함. /login 으로 redirect되어
-// "강사 추가" 버튼에 도달하지 못해 모든 시나리오가 timeout. 후속 PR에서:
-// (a) supabase-js 대체 가능한 test client 도입, (b) AuthGuard mock decorator,
-// (c) 또는 TeacherAddModal을 Storybook Test로 격리 검증.
-test.describe.skip("teachers CRUD — TeacherAddModal", () => {
+// PR C — Supabase password auth로 진짜 토큰 발급, AuthGuard 통과.
+// global-setup.ts가 e2e 시작 시 한 번 로그인하고 session.json 저장.
+// 본 spec은 injectRealSession으로 모든 page에 진짜 session 주입.
+test.describe("teachers CRUD — TeacherAddModal", () => {
   test("강사 추가 버튼 클릭 시 모달이 열린다", async ({ page }) => {
     await setupAuthedSettings(page);
     await openTeacherAddModal(page);
@@ -232,6 +231,3 @@ test.describe.skip("teachers CRUD — TeacherAddModal", () => {
     await expect(page.getByPlaceholder("예: 김강사")).toBeVisible();
   });
 });
-
-// 사용 안 하지만 test 파일이 헬퍼만 import 안 하도록 살림
-void E2E_TEST_USER;

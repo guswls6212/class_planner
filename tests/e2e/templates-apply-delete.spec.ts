@@ -13,8 +13,10 @@
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { currentWeekMondayKST } from "./helpers/seed-anonymous";
+import { injectRealSession } from "./helpers/auth-mock";
 
-const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
+// PR C — 진짜 user id는 global-setup에서 결정. seedScheduleData는 그 id 기준으로 localStorage 작성.
+let TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391"; // fallback
 const WEEK = currentWeekMondayKST();
 
 interface SeedSession {
@@ -116,12 +118,16 @@ async function mockTemplatesApi(page: Page, templates: TemplateApiPayload[]): Pr
   });
 }
 
-// FIXME: TemplateMenuV2는 schedule/page.tsx의 `canManage && userId && viewMode==="weekly"`
-// 조건에서만 렌더되는데, supabase_user_id seed + anonymous-first useMyRole 분기에서
-// canManage=true 가 보장되지 않아 "템플릿" 버튼 자체가 안 보임 → 모든 시나리오 timeout.
-// 후속 PR에서: (a) useMyRole anonymous 분기 보장 또는 (b) 직접 `useTemplates`/`handleApplyTemplate`
-// 단위 테스트로 분리, (c) 또는 ApplyTemplateConfirm을 Storybook Test로 격리 검증.
-test.describe.skip("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
+// PR C — Supabase password auth로 진짜 토큰 발급. AuthGuard 통과 + 진짜 userId 사용.
+// useMyRole이 진짜 user_id로 owner/admin 권한 조회 → canManage=true 시 TemplateMenuV2 렌더.
+// 사전 조건: test user가 academy의 owner/admin 역할이어야 함 — setup-e2e-test-user.ts 또는
+// 첫 로그인 시 자동 onboarding으로 설정.
+test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
+  test.beforeEach(async ({ page }) => {
+    const { userId } = await injectRealSession(page);
+    TEST_USER_ID = userId; // seedScheduleData가 진짜 userId 사용
+  });
+
   test("'템플릿' 버튼 클릭 시 메뉴가 열린다", async ({ page }) => {
     await seedScheduleData(page);
     await mockTemplatesApi(page, []);

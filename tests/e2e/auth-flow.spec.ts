@@ -14,6 +14,7 @@ import { expect, test } from "@playwright/test";
 import {
   injectSupabaseSession,
   mockSupabaseAuthApi,
+  injectRealSession,
   E2E_TEST_USER,
 } from "./helpers/auth-mock";
 
@@ -39,12 +40,9 @@ test.describe("auth flow", () => {
     await expect(page).toHaveURL(/\/schedule(\?|$)/);
   });
 
-  test.skip("Supabase 토큰이 있는 상태에서 /login 진입 시 / 로 자동 리다이렉트된다", async ({ page }) => {
-    // FIXME: Supabase JS SDK 클라이언트의 getSession() flow가 page.route mock만으로
-    // 통과하지 못함 — sb-* 토큰 inject + /auth/v1/* 응답에도 SDK가 redirect 안 함.
-    // 후속 PR에서 supabase-js test client 또는 module mock 패턴으로 재작성.
-    await injectSupabaseSession(page);
-    await mockSupabaseAuthApi(page);
+  test("Supabase 토큰이 있는 상태에서 /login 진입 시 / 로 자동 리다이렉트된다", async ({ page }) => {
+    // PR C — 진짜 Supabase password auth로 발급된 토큰 사용. getSession()이 진짜 검증 통과.
+    await injectRealSession(page);
 
     await page.goto("/login");
 
@@ -52,13 +50,11 @@ test.describe("auth flow", () => {
     await expect(page).toHaveURL(/\/(\?|$)/, { timeout: 5000 });
   });
 
-  test.skip("redirectAfterLogin 쿠키 + 토큰 inject 시 원래 페이지로 복귀한다", async ({ page }) => {
-    // FIXME: 위와 동일 — Supabase auth mock 강화 후 재활성.
+  test("redirectAfterLogin + 토큰 inject 시 원래 페이지로 복귀한다", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("redirectAfterLogin", "/about");
     });
-    await injectSupabaseSession(page);
-    await mockSupabaseAuthApi(page);
+    await injectRealSession(page);
 
     await page.goto("/login");
 
