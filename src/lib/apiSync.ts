@@ -489,7 +489,11 @@ export function syncSessionUpdate(
   data: Partial<Omit<Session, "id">>
 ): void {
   if (!userId) return;
-  const url = `/api/sessions/${id}`;
+  // ⚠️ Bug fix (2026-05-04): 이전엔 URL에 ?userId= 쿼리 누락 → server PUT handler가
+  // userId required 체크에서 400 반환. 모든 modal-edit + 일부 bulk drag sync가
+  // silent failure (omni-radar 04:37 14건 PUT 400 확인). 동일 사고가 PR #194에서
+  // syncSessionUpdateAsync에서 fix됐지만 fire-and-forget version은 누락됐음.
+  const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
   const body = { id, ...data };
   const makeRequest = () =>
     fetch(url, {
