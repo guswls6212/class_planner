@@ -300,6 +300,73 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     await finishDrag(page, "Meta");
   });
 
+  test("T11b ⭐ bulk copy 충돌 회귀 가드 — 기존 세션과 같은 (요일/시간) 위치에 복사 시 자동 lane 재배치", async ({
+    page,
+  }) => {
+    // 사용자 보고 사고 (2026-05-04): 다중 선택 + Cmd-drag로 기존 세션 위치에
+    // 복사하면 시각적 stack overlap 발생. 단일 add는 repositionSessionsUtil 호출하지만
+    // multi-copy는 호출 안 함이 회귀.
+    //
+    // 시나리오: sess-d가 화 10:00 lane 1에 미리 존재. sess-a + sess-b 선택 후
+    // Cmd-drag(anchor sess-a, 월 09:00 → 화 10:00) → sess-a copy가 화 10:00에
+    // 떨어지면서 sess-d와 충돌. 자동으로 lane 2(또는 다른 lane)로 push되어야 함.
+    //
+    // 주의: beforeEach의 seed는 page.addInitScript라 reload 시 덮어쓰기됨. 본 테스트는
+    // grid가 이미 렌더된 상태에서 React state로 추가 (직접 localStorage write +
+    // page navigate 안 함).
+
+    // 새 sess-d를 localStorage에 추가하고 reload 대신 페이지 navigate 안 하고
+    // useIntegratedDataLocal의 reload 트리거 — 사실 가장 robust한 건 storage event
+    // 발생시켜 react가 재로드하게 하는 것. 그러나 storage event는 같은 탭 내에서
+    // 발생 안 함. 대신: 다중 select 동작을 sess-d 없이 진행하고, 충돌 검증은
+    // 새 copy끼리의 yPosition 분리로 검증한다.
+    //
+    // 변경된 시나리오: sess-a + sess-b + sess-c 모두 선택. anchor sess-a (월 09:00)을
+    // 월 11:00으로 Cmd-drag. delta +0 weekday, +120min.
+    //   - sess-a copy → 월 11:00 (이미 sess-b가 lane 1에 있음 → 충돌)
+    //   - sess-b copy → 월 13:00 (이미 sess-c가 lane 1에 있음 → 충돌)
+    //   - sess-c copy → 월 15:00 (충돌 없음)
+    // 회귀 가드: 새 copy들의 yPosition이 기존 sess-b/sess-c와 다르거나 (또는
+    // 기존이 다른 lane으로 push됨)이어야 visual stack overlap이 안 생김.
+
+    await shiftClickAll([
+      sessionBlock(page, "sess-a"),
+      sessionBlock(page, "sess-b"),
+      sessionBlock(page, "sess-c"),
+    ]);
+
+    // anchor sess-a (월 09:00) → 월 11:00 (delta +0 weekday, +120min)
+    // sess-a copy → 월 11:00 → sess-b(월 11:00)와 충돌 → 다른 lane
+    // sess-b copy → 월 13:00 → sess-c(월 13:00)와 충돌 → 다른 lane
+    // sess-c copy → 월 15:00 → 충돌 없음
+    const target = dropCell(page, 0, "11:00");
+    await sessionBlock(page, "sess-a").hover();
+    await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
+    await page.waitForTimeout(1500);
+
+    const sessions = await readSessions(page);
+    // 원본 3개 + 새 copy 3개 = 6개 (모든 시간이 음수 아님)
+    expect(sessions).toHaveLength(6);
+
+    // 회귀 가드 핵심: 같은 (weekday, startsAt)에 있는 sessions은 yPosition이 모두 달라야 함
+    // (충돌 자동 재배치되었음을 의미). 이전 버그는 새 copy가 기존과 같은 yPosition으로
+    // 떨어져 visual stack overlap 발생.
+    const groupByTimeWeekday = new Map<string, number[]>();
+    for (const s of sessions) {
+      const key = `${s.weekday}|${s.startsAt}`;
+      const list = groupByTimeWeekday.get(key) ?? [];
+      list.push(s.yPosition ?? 1);
+      groupByTimeWeekday.set(key, list);
+    }
+    for (const [key, yPositions] of groupByTimeWeekday) {
+      const unique = new Set(yPositions);
+      expect(
+        unique.size,
+        `(weekday|startsAt)=${key} 위치에 ${yPositions.length}개 sessions이 같은 yPosition 사용 — 시각 overlap 회귀`,
+      ).toBe(yPositions.length);
+    }
+  });
+
   test("T10b ⭐ Cmd+drag 회귀 가드 — 시작 시 Cmd, drag 도중 Cmd 풀어도 복사로 drop", async ({
     page,
   }) => {

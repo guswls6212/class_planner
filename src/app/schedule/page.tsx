@@ -1083,7 +1083,23 @@ function SchedulePageContent(): JSX.Element {
         // 각자 updateData(자신의 newSessions)를 호출 → React state race로 마지막
         // 호출만 반영, N-1개 sessions은 미이동. 토스트는 "N개 이동"이지만 실제론 1개.
         // 해결: moves를 단일 batch로 sessions에 적용한 뒤 updateData 1회 호출.
-        const updatedSessions = applyBulkMoves(sessions, moves);
+        let updatedSessions = applyBulkMoves(sessions, moves);
+        // ⚠️ Bug fix (2026-05-04): 이전엔 batch 적용만 하고 충돌 재배치(repositionSessionsUtil)
+        // 안 호출해서 같은 (weekday, time) 위치에 떨어지면 시각적 stack overlap 발생.
+        // 단일 drop은 _handleSessionDropBase → updateSessionPosition 안에서 reposition
+        // 하지만 bulk batch는 별도 처리 필요. 각 move 적용 후 sequential reposition.
+        for (const m of moves) {
+          updatedSessions = repositionSessionsUtil(
+            updatedSessions,
+            enrollments,
+            subjects,
+            m.weekday,
+            m.startsAt,
+            m.endsAt,
+            m.yPosition,
+            m.session.id,
+          );
+        }
         await updateData({ sessions: updatedSessions });
         // 서버 동기화 — 단일 drag와 동일한 /position 엔드포인트 사용 (PR #194에서
         // userId 쿼리 fix 완료된 syncSessionUpdateAsync 재사용). 이전엔 syncSessionUpdate
@@ -1122,6 +1138,8 @@ function SchedulePageContent(): JSX.Element {
       _handleSessionDropBase,
       sessionSelection,
       sessions,
+      enrollments,
+      subjects,
       updateData,
     ]
   );
@@ -1196,11 +1214,32 @@ function SchedulePageContent(): JSX.Element {
             yPosition: m.yPosition,
           } as Session);
         }
-        const updatePayload: any = {
-          sessions: [...sessions, ...newSessions],
-        };
+        // ⚠️ Bug fix (2026-05-04): 이전엔 새 sessions를 그대로 append만 했음.
+        // 같은 (weekday, time) 위치에 떨어지면 기존 sessions와 yPosition 충돌해
+        // 시각적 stack overlap 발생. 단일 add(addSession)는 setTimeout 0 안에서
+        // repositionSessionsUtil 호출하지만 multi-copy는 자체 처리 필요.
+        // 각 새 session에 대해 sequential reposition — 같은 시간 충돌 시 다음 빈
+        // lane으로 자동 배치.
+        const mergedEnrollments =
+          newEnrollmentsLocal.length > 0
+            ? [...enrollments, ...newEnrollmentsLocal]
+            : enrollments;
+        let mergedSessions = [...sessions, ...newSessions];
+        for (const ns of newSessions) {
+          mergedSessions = repositionSessionsUtil(
+            mergedSessions,
+            mergedEnrollments,
+            subjects,
+            ns.weekday,
+            ns.startsAt,
+            ns.endsAt,
+            ns.yPosition ?? 1,
+            ns.id,
+          );
+        }
+        const updatePayload: any = { sessions: mergedSessions };
         if (newEnrollmentsLocal.length > 0) {
-          updatePayload.enrollments = [...enrollments, ...newEnrollmentsLocal];
+          updatePayload.enrollments = mergedEnrollments;
         }
         await updateData(updatePayload);
         // server 동기화 (fire-and-forget) — client UUID 포함
@@ -1256,6 +1295,7 @@ function SchedulePageContent(): JSX.Element {
       canManage,
       sessions,
       enrollments,
+      subjects,
       addSession,
       sessionSelection,
       updateData,

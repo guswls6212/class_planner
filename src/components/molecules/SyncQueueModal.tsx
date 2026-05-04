@@ -9,6 +9,7 @@ import {
   Info,
 } from "lucide-react";
 import { getContextLabel } from "@/lib/apiSync";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 import {
   flushOutbox,
   flushOutboxEntry,
@@ -42,6 +43,7 @@ export default function SyncQueueModal({
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const syncStatus = useSyncStatus();
 
   // 모달 열릴 때 entries 갱신 + storage event listener로 외부 변경 sync
   useEffect(() => {
@@ -204,9 +206,27 @@ export default function SyncQueueModal({
             data-testid="sync-queue-list"
           >
             {sortedEntries.length === 0 ? (
-              <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
-                대기 중인 항목이 없습니다
-              </div>
+              syncStatus !== "idle" ? (
+                // outbox는 비어있지만 fireAndForget retry chain이 진행 중인 상태.
+                // 사용자가 indicator 보고 클릭했을 때 "왜 비어있지?" 혼란 방지 안내.
+                <div
+                  className="py-6 px-4 text-center text-sm text-[var(--color-text-muted)]"
+                  data-testid="sync-queue-inflight"
+                >
+                  현재 백그라운드에서 자동 재시도 중인 작업이 있습니다.
+                  <br />
+                  잠시 후에 다시 확인해주세요.
+                  <div className="mt-2 text-[11px] opacity-70">
+                    ({syncStatus === "failed_giving_up"
+                      ? "재시도 모두 실패 — 큐에 보관 중"
+                      : "재시도 중 — 1~10회 시도, 약 30초~3분 소요"})
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                  대기 중인 항목이 없습니다
+                </div>
+              )
             ) : (
               sortedEntries.map((entry) => {
                 const label = getContextLabel(entry.context);

@@ -12,6 +12,11 @@ vi.mock("@/lib/apiSync", () => ({
   },
 }));
 
+// useSyncStatus mock — default idle (entries 없을 때 "대기 중인 항목이 없습니다")
+vi.mock("@/hooks/useSyncStatus", () => ({
+  useSyncStatus: vi.fn(() => "idle" as const),
+}));
+
 vi.mock("@/lib/toast", () => ({
   showToast: vi.fn(),
 }));
@@ -35,6 +40,7 @@ vi.mock("@/lib/syncOutbox", () => ({
 
 import SyncQueueModal from "../SyncQueueModal";
 import * as syncOutbox from "@/lib/syncOutbox";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 describe("SyncQueueModal", () => {
   beforeEach(() => {
@@ -49,12 +55,33 @@ describe("SyncQueueModal", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("isOpen=true + 빈 큐 → '대기 중인 항목이 없습니다'", () => {
+  it("isOpen=true + 빈 큐 + idle → '대기 중인 항목이 없습니다'", () => {
+    vi.mocked(useSyncStatus).mockReturnValue("idle");
     render(<SyncQueueModal isOpen={true} onClose={vi.fn()} userId="u1" />);
     expect(screen.getByTestId("sync-queue-modal")).toBeInTheDocument();
     expect(screen.getByText(/대기 중인 항목이 없습니다/)).toBeInTheDocument();
     // footer (재시도/버리기 버튼)는 entries 있을 때만 표시
     expect(screen.queryByTestId("sync-queue-retry-all")).toBeNull();
+  });
+
+  it("isOpen=true + 빈 큐 + retrying → '백그라운드에서 재시도 중' (사용자 보고된 혼란 회귀 가드)", () => {
+    vi.mocked(useSyncStatus).mockReturnValue("failed_retrying");
+    render(<SyncQueueModal isOpen={true} onClose={vi.fn()} userId="u1" />);
+    // 사용자가 indicator 클릭 → 큐는 비어있지만 retry 진행 중 → "왜 비어있지?"
+    // 혼란 방지 안내가 표시되어야 함.
+    expect(screen.getByTestId("sync-queue-inflight")).toBeInTheDocument();
+    expect(
+      screen.getByText(/백그라운드에서 자동 재시도 중인 작업/),
+    ).toBeInTheDocument();
+    // "대기 중인 항목이 없습니다"는 idle일 때만
+    expect(screen.queryByText(/대기 중인 항목이 없습니다/)).toBeNull();
+  });
+
+  it("isOpen=true + 빈 큐 + giving_up → '재시도 모두 실패' 안내", () => {
+    vi.mocked(useSyncStatus).mockReturnValue("failed_giving_up");
+    render(<SyncQueueModal isOpen={true} onClose={vi.fn()} userId="u1" />);
+    expect(screen.getByTestId("sync-queue-inflight")).toBeInTheDocument();
+    expect(screen.getByText(/재시도 모두 실패/)).toBeInTheDocument();
   });
 
   it("Recovery 안내 텍스트 노출 (Option C 통합)", () => {
