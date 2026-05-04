@@ -116,12 +116,52 @@ async function main(): Promise<void> {
     console.log(`✅ 신규 user 생성 (id=${userId})`);
   }
 
+  // PR D — academy + owner role 자동 부여 (멱등)
+  console.log("");
+  console.log(`🏫 Academy 셋업: user ${userId.slice(0, 8)}...`);
+  const { data: existingMembership, error: memberSelectError } = await sbAdmin
+    .from("academy_members")
+    .select("academy_id")
+    .eq("user_id", userId)
+    .eq("role", "owner")
+    .maybeSingle();
+  if (memberSelectError) {
+    console.error(`❌ academy_members 조회 실패: ${memberSelectError.message}`);
+    process.exit(1);
+  }
+
+  let academyId: string;
+  if (existingMembership) {
+    academyId = existingMembership.academy_id;
+    console.log(`ℹ️  이미 owner인 academy 존재 (id=${academyId.slice(0, 8)}...)`);
+  } else {
+    const { data: newAcademy, error: academyInsertError } = await sbAdmin
+      .from("academies")
+      .insert({ name: "E2E Test Academy", created_by: userId })
+      .select("id")
+      .single();
+    if (academyInsertError || !newAcademy) {
+      console.error(`❌ academies INSERT 실패: ${academyInsertError?.message}`);
+      process.exit(1);
+    }
+    academyId = newAcademy.id;
+    const { error: memberInsertError } = await sbAdmin
+      .from("academy_members")
+      .insert({ academy_id: academyId, user_id: userId, role: "owner" });
+    if (memberInsertError) {
+      console.error(`❌ academy_members INSERT 실패: ${memberInsertError.message}`);
+      process.exit(1);
+    }
+    console.log(`✅ Academy 신규 생성 (id=${academyId})`);
+  }
+
   console.log("");
   console.log("✅ Setup 완료.");
   console.log("");
   console.log("📝 다음 단계:");
   console.log("  1. .env.local에 추가 (선택 — globalSetup이 더 빨라짐):");
   console.log(`     E2E_TEST_USER_ID=${userId}`);
+  console.log(`     E2E_TEST_ACADEMY_ID=${academyId}`);
   console.log("");
   console.log("  2. GitHub Actions secrets 등록:");
   console.log("     - NEXT_PUBLIC_SUPABASE_URL (있으면 skip)");

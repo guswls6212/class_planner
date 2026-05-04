@@ -153,11 +153,9 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     await expect(page.getByRole("button", { name: /^미리보기$/ })).toBeDisabled();
   });
 
-  test.skip("템플릿 fetch 후 hasTemplate=true → '템플릿 적용하기' 활성화", async ({ page }) => {
-    // FIXME: page.waitForResponse가 mockTemplatesApi의 fulfilled response를 잡지 못하거나,
-    // 진짜 user(academy 권한 없음) 환경에서 useTemplates fetch path가 mock과 불일치.
-    // 후속 PR에서 (a) academy 권한 부여 후 진짜 API 사용 또는 (b) page.route mock pattern
-    // 정확히 검증 후 unskip.
+  test("템플릿 fetch 후 hasTemplate=true → '템플릿 적용하기' 활성화", async ({ page }) => {
+    // PR D — test user가 academy owner이므로 useTemplates fetch가 진짜 API + RLS 통과.
+    // mockTemplatesApi가 GET을 fulfill — page.waitForResponse가 fulfilled response 잡음.
     await seedScheduleData(page);
     await mockTemplatesApi(page, [FIXTURE_TEMPLATE]);
 
@@ -170,10 +168,10 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     });
   });
 
-  test.skip("기존 sessions 있을 때 적용 → ApplyTemplateConfirm 확인 모달이 표시된다", async ({
+  test("기존 sessions 있을 때 적용 → ApplyTemplateConfirm 확인 모달이 표시된다", async ({
     page,
   }) => {
-    // FIXME: 위와 동일 — waitForResponse / mockTemplatesApi 정합성 검증 후 unskip.
+    // PR D — academy owner 권한으로 useTemplates 정상 응답.
     await seedScheduleData(page, [
       {
         id: "sess-existing",

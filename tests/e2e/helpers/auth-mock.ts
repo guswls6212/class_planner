@@ -130,18 +130,24 @@ export const E2E_TEST_USER = {
  * AuthGuard.getSession()이 진짜 토큰 검증 → server에 /auth/v1/user 호출 → 200 응답.
  * POST /api/teachers 등은 진짜 RLS 통과 — test user 데이터로 격리됨.
  *
+ * PR D — academyId가 session.json에 있으면:
+ *   - localStorage `active_academy:{userId}` 설정 (client 측)
+ *   - cookie `active_academy_id` + `onboarded=1` 설정 (server 측 resolveAcademyId 동작)
+ *
  * 매 테스트 후 cleanupTestUserData()로 데이터 격리 유지 권장.
  */
 export interface RealSessionInfo {
   userId: string;
   userEmail: string;
   projectRef: string;
+  academyId: string | null;
 }
 
 let cachedRealSession: {
   projectRef: string;
   userId: string;
   userEmail: string;
+  academyId: string | null;
   sessionPayload: unknown;
 } | null = null;
 
@@ -151,7 +157,7 @@ function loadRealAuthState() {
   if (!fs.existsSync(file)) {
     throw new Error(
       `[injectRealSession] ${file} 없음. globalSetup이 실행됐는지 확인 — ` +
-        "playwright.config.ts에 globalSetup: require.resolve('./tests/e2e/global-setup') 등록 필요.",
+        "playwright.config.ts에 globalSetup: './tests/e2e/global-setup.ts' 등록 필요.",
     );
   }
   cachedRealSession = JSON.parse(fs.readFileSync(file, "utf-8"));
@@ -159,15 +165,43 @@ function loadRealAuthState() {
 }
 
 export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
-  const { projectRef, userId, userEmail, sessionPayload } = loadRealAuthState();
+  const { projectRef, userId, userEmail, academyId, sessionPayload } = loadRealAuthState();
+
   await page.addInitScript(
-    ({ ref, uid, session }) => {
+    ({ ref, uid, session, aId }) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("supabase_user_id", uid);
+      if (aId) {
+        localStorage.setItem(`active_academy:${uid}`, aId);
+      }
     },
-    { ref: projectRef, uid: userId, session: sessionPayload },
+    { ref: projectRef, uid: userId, session: sessionPayload, aId: academyId },
   );
-  return { userId, userEmail, projectRef };
+
+  if (academyId) {
+    await page.context().addCookies([
+      {
+        name: "active_academy_id",
+        value: academyId,
+        domain: "localhost",
+        path: "/",
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      },
+      {
+        name: "onboarded",
+        value: "1",
+        domain: "localhost",
+        path: "/",
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      },
+    ]);
+  }
+
+  return { userId, userEmail, projectRef, academyId };
 }
 
 /**
