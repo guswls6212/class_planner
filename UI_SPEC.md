@@ -82,8 +82,9 @@ RootLayout
 SchedulePage
   ├── [Row 1: flex justify-between, border-b]
   │     ├── ScheduleHeader (_components/) — 타이틀("일별/주간/월별 시간표") + 로딩 상태
-  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenu▼ + 공유 아이콘
-  │           └── TemplateMenu (molecules) — 드롭다운: "템플릿 저장" / "템플릿 적용"
+  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenuV2▼ + 공유 아이콘
+  │           └── TemplateMenuV2 (molecules) — 드롭다운: "템플릿 적용하기" / "시간표 비우기" / "현재 주를 템플릿으로 저장" / "미리보기"
+  │                 → SlotPickerModal (save/apply mode, ADR-008 multi-slot)
   ├── StudentFilterChipBar (_components/) — colorBy=student 시만 표시
   ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
   ├── [Row 2: flex justify-between, 그리드 직전]
@@ -396,7 +397,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 |----------|------|
 | `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
 | `ScheduleHeader` | 시간표 페이지 헤더(Row 1 좌). title prop + 로딩 상태만 렌더 (뷰/색상 토글 제거됨) |
-| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenu + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
+| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenuV2 + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
 | `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
 | `GroupSessionModal` | 수업 추가 3-step Glass Stepper wizard (학생→과목/시간→확인) |
 | `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |

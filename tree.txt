@@ -241,8 +241,6 @@ src/components/common/SubjectChip.types.ts
 src/components/common/__tests__/SchedulePreview.test.tsx
 src/components/common/__tests__/SubjectChip.test.tsx
 src/components/molecules/ApplyTemplateConfirm.tsx
-src/components/molecules/ApplyTemplateModal.stories.tsx
-src/components/molecules/ApplyTemplateModal.tsx
 src/components/molecules/AttendanceSheet.tsx
 src/components/molecules/BottomSheet.tsx
 src/components/molecules/BottomTabBar.tsx
@@ -268,8 +266,6 @@ src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/ParentCodeStickyBar.tsx
 src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/PdfGuideModal.tsx
-src/components/molecules/SaveTemplateModal.stories.tsx
-src/components/molecules/SaveTemplateModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/ScheduleDateNavigator.tsx
 src/components/molecules/SessionBlock.stories.tsx
@@ -295,14 +291,12 @@ src/components/molecules/TeacherEditForm.tsx
 src/components/molecules/TeacherPillPicker.tsx
 src/components/molecules/TeacherScheduleList.tsx
 src/components/molecules/TeacherSubjectPills.tsx
-src/components/molecules/TemplateMenu.tsx
 src/components/molecules/TemplateMenuV2.tsx
 src/components/molecules/TemplatePreviewModal.tsx
 src/components/molecules/TimeTableCell.tsx
 src/components/molecules/TimeTableRow.tsx
 src/components/molecules/TopBar.tsx
 src/components/molecules/__tests__/ApplyTemplateConfirm.test.tsx
-src/components/molecules/__tests__/ApplyTemplateModal.test.tsx
 src/components/molecules/__tests__/AttendanceSheet.test.tsx
 src/components/molecules/__tests__/BottomSheet.test.tsx
 src/components/molecules/__tests__/ConfirmModal.test.tsx
@@ -318,7 +312,6 @@ src/components/molecules/__tests__/PDFDownloadButton.test.tsx
 src/components/molecules/__tests__/ParentCodeStickyBar.test.tsx
 src/components/molecules/__tests__/PdfExportRangeModal.test.tsx
 src/components/molecules/__tests__/PdfGuideModal.test.tsx
-src/components/molecules/__tests__/SaveTemplateModal.test.tsx
 src/components/molecules/__tests__/ScheduleChangeBanner.test.tsx
 src/components/molecules/__tests__/ScheduleDateNavigator.test.tsx
 src/components/molecules/__tests__/SessionBlock.test.tsx
@@ -335,7 +328,6 @@ src/components/molecules/__tests__/SubjectList.test.tsx
 src/components/molecules/__tests__/SyncQueueModal.test.tsx
 src/components/molecules/__tests__/TeacherAddModal.test.tsx
 src/components/molecules/__tests__/TeacherPillPicker.test.tsx
-src/components/molecules/__tests__/TemplateMenu.test.tsx
 src/components/molecules/__tests__/TemplateMenuV2.test.tsx
 src/components/molecules/__tests__/TemplatePreviewModal.test.tsx
 src/components/molecules/__tests__/TimeTableCell.test.tsx
