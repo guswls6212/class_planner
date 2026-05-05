@@ -47,3 +47,30 @@ Allowed prefixes: `feature/`, `fix/`, `hotfix/`, `docs/`, `chore/`, `test/`, `ph
 - localStorage is SSOT for all data. Mutations update localStorage first, then fire-and-forget server sync via `apiSync.ts`.
 - Never call API directly from components. Use `useXxxLocal` hooks.
 - Anonymous users: no API calls. Server sync activates only after login.
+
+## PWA / Service Worker
+
+PR Q~S(#235~239) 도입, PR #244에서 timing fix. 변경 시 다음 규칙 의무.
+
+### 변경 시 ADR 필수
+다음 옵션을 추가/변경할 때 `docs/adr/` 에 ADR 작성:
+- `runtimeCaching` 정책 (matcher / handler 전략)
+- `clientsClaim`, `skipWaiting`, `navigationPreload` (lifecycle)
+- `cacheOnNavigation`, `reloadOnOnline` (next.config 옵션)
+- `defaultCache` 의존성 변경 (Serwist 메이저 업그레이드 시)
+
+이유: SW timing은 production-only 동작 + e2e 환경 차이 가능. ADR 없으면 향후 reviewer가 결정 history 못 추적. 실례: ADR-007 SW timing fix.
+
+### 캐시 전략 가이드 (현재 정책)
+- `/api/*` → `NetworkOnly` (defaultCache의 NetworkFirst 우회 — AuthGuard race 방지)
+- `_next/static/*` → `CacheFirst` (Next.js hash bust로 안전)
+- HTML/RSC → `NetworkFirst` (defaultCache 기본)
+- offline fallback → `/~offline` (document request만)
+
+### 빌드 호환성
+- `next build --turbopack` ❌ Serwist webpack plugin 비호환 → `next build` (default webpack) 사용
+- `next dev --turbopack` ✅ dev에서 SW 자동 disable이라 호환 OK
+- `public/sw.js`, `swe-worker-*.js`, `workbox-*.js` 는 빌드 산출물 — `.gitignore`로 제외
+
+### E2E
+- 모든 spec은 SW 활성 환경에서 통과해야 함 (PR #244 통합 후). `E2E_DISABLE_SW=1` 우회는 로컬 escape hatch만 — CI 사용 금지.
