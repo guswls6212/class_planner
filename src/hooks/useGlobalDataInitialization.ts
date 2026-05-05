@@ -184,6 +184,38 @@ export const useGlobalDataInitialization = () => {
           teachers: teachersWithSubjects,
         });
 
+        // 운영 디버깅 — 어느 entity 카테고리/id가 server timestamp의 출처인지
+        // 추적. "왜 server max(updatedAt)이 사용자 기대보다 최신인가?" 같은
+        // 의문이 들었을 때 로그에서 즉시 원인 파악 가능 (omni-radar console_log
+        // 이벤트로 자동 캡처됨).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const findMostRecent = (arr: any[], label: string) => {
+          let maxEntity: { id?: string; name?: string; updatedAt?: string } | null = null;
+          let maxMs = -Infinity;
+          for (const e of arr) {
+            const ts = e?.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+            if (Number.isFinite(ts) && ts > maxMs) {
+              maxEntity = e;
+              maxMs = ts;
+            }
+          }
+          return {
+            label,
+            count: arr.length,
+            mostRecentId: maxEntity?.id ?? null,
+            mostRecentName: maxEntity?.name ?? null,
+            mostRecentUpdatedAt: maxEntity?.updatedAt ?? null,
+          };
+        };
+        logger.info("서버 데이터 max(updatedAt) 분포", {
+          serverEntityLastModified,
+          students: findMostRecent(students, "students"),
+          subjects: findMostRecent(subjects ?? [], "subjects"),
+          sessions: findMostRecent(sessions, "sessions"),
+          enrollments: findMostRecent(enrollments, "enrollments"),
+          teachers: findMostRecent(teachersWithSubjects, "teachers"),
+        });
+
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
