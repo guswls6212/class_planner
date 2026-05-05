@@ -592,11 +592,13 @@ SchedulePage
 1. 로그인 완료
    → useGlobalDataInitialization: 서버 데이터 fetch
    → checkLoginDataConflict: 로컬 vs 서버 비교
-2. 충돌 있으면 → DataConflictModal 표시
+2. 충돌 있으면 → DataConflictModal 표시 (백드롭 `bg-black/85` + `backdrop-blur-sm` — 시간표 그리드와 명확히 분리)
    - 좌측 카드: "이 기기의 데이터" (로컬 localStorage)
    - 우측 카드: "내 계정의 데이터" (서버)
    - 각 카드: 학생/과목/수업 섹션 접기/펼치기 가능
+   - **각 카드 하단에 "선택 시 손실" 인라인 표기** (잃을 학생/과목/수업 카운트, `computeLossDiff`로 계산)
 3. 라디오 선택 → "선택한 데이터로 시작" 클릭
+   - **Layered Defense 임계치**: 수업 ≥5개 또는 학생/과목 ≥3개 손실 시 → 모달 하단 빨간 banner + 버튼 빨간색 + 라벨 "(위험)" + 클릭 시 별도 ConfirmModal("정말 이 데이터로 덮어쓸까요?") 발동. 작은 손실은 즉시 진행.
    - 서버 선택: localStorage에 서버 데이터 덮어쓰기
    - 로컬 선택: 로컬 데이터를 서버에 업로드 (fullDataMigration)
      → isMigrating=true → 로딩 오버레이
