@@ -29,6 +29,7 @@ import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
 import { buildTemplateDataPure } from "./_utils/buildTemplateData";
+import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
@@ -1485,67 +1486,74 @@ function SchedulePageContent(): JSX.Element {
   }, [displaySessions, subjects, enrollments, students, teachers]);
 
   // 실제 적용 로직 (id 기반 매칭)
+  // ⚠️ 이전 구현은 weekFilteredSessions 일괄 삭제 + addSession 을 9회 sequential await
+  // 호출했음. addSession 내부의 [...sessions, newSession] 이 stale React closure 라
+  // localStorage 가 매 호출마다 1개로 덮어써져 client state 가 마지막 1개만 살아남았음.
+  // (server INSERT 는 syncSessionCreate fire-and-forget 으로 9개 모두 정상 — 새로고침
+  // 시에만 복원). 또한 모든 새 sessions 가 같은 yPosition 일 때 setTimeout reposition
+  // 9회 race 로 lane 깨짐 발생. → bulk copy/move (line 1198-1280) 와 동일 패턴 적용:
+  // 새 sessions/enrollments 를 미리 build → repositionSessionsUtil sequential → updateData 1회.
   const doApplyTemplate = useCallback(
     async (template: ScheduleTemplate) => {
       setIsApplyingTemplate(true);
       try {
-        // 1. 현재 주 세션 일괄 삭제
-        for (const s of weekFilteredSessions) {
-          await updateData({ sessions: sessions.filter((x) => x.id !== s.id) });
+        const {
+          newSessions,
+          newEnrollments: newEnrollmentsLocal,
+          missingEntities,
+        } = buildApplyTemplatePayload(template, {
+          subjects,
+          students,
+          teachers,
+          enrollments,
+          weekStartDate: currentWeekStart,
+        });
+
+        // 현재 주 세션 일괄 제거 + 새 sessions append (stale closure 회피, 1회 batch)
+        const survivingSessions = sessions.filter(
+          (s) => !weekFilteredSessions.some((w) => w.id === s.id),
+        );
+        const mergedEnrollments =
+          newEnrollmentsLocal.length > 0
+            ? [...enrollments, ...newEnrollmentsLocal]
+            : enrollments;
+
+        // lane 자동 reposition — 같은 (weekday, time) 충돌 시 다음 빈 lane 으로 배치
+        let mergedSessions: Session[] = [...survivingSessions, ...newSessions];
+        for (const ns of newSessions) {
+          mergedSessions = repositionSessionsUtil(
+            mergedSessions,
+            mergedEnrollments,
+            subjects,
+            ns.weekday,
+            ns.startsAt,
+            ns.endsAt,
+            ns.yPosition ?? 1,
+            ns.id,
+          );
         }
 
-        // 2. 템플릿 세션 생성 (id 기반 매칭)
-        let applied = 0;
-        const missingEntities: string[] = [];
+        // localStorage 1회 update
+        const updatePayload: any = { sessions: mergedSessions };
+        if (newEnrollmentsLocal.length > 0) {
+          updatePayload.enrollments = mergedEnrollments;
+        }
+        await updateData(updatePayload);
 
-        for (const tplSession of template.templateData.sessions) {
-          const subject = subjects.find((s) => s.id === tplSession.subjectId);
-          if (!subject) {
-            missingEntities.push(`과목 "${tplSession.subjectName ?? tplSession.subjectId}"`);
-            continue;
-          }
-
-          const matchedStudentIds: string[] = [];
-          for (const stId of tplSession.studentIds ?? []) {
-            const st = students.find((s) => s.id === stId);
-            if (st) {
-              matchedStudentIds.push(st.id);
-            } else {
-              const nameIdx = (tplSession.studentIds ?? []).indexOf(stId);
-              const name = tplSession.studentNames?.[nameIdx];
-              missingEntities.push(`학생 "${name ?? stId}"`);
-            }
-          }
-          if (matchedStudentIds.length === 0) continue;
-
-          let matchedTeacherId: string | undefined;
-          if (tplSession.teacherId) {
-            const t = teachers.find((tc) => tc.id === tplSession.teacherId);
-            if (t) {
-              matchedTeacherId = t.id;
-            } else {
-              missingEntities.push(`강사 "${tplSession.teacherName ?? tplSession.teacherId}"`);
-            }
-          }
-
-          await addSession({
-            subjectId: subject.id,
-            studentIds: matchedStudentIds,
-            ...(matchedTeacherId && { teacherId: matchedTeacherId }),
-            weekday: tplSession.weekday,
-            startTime: tplSession.startsAt,
-            endTime: tplSession.endsAt,
-            yPosition: tplSession.yPosition ?? 1,
-            room: tplSession.room,
-          });
-          applied++;
+        // server 동기화 (fire-and-forget) — client UUID 포함 (ghost 방지)
+        const uid = localStorage.getItem("supabase_user_id");
+        for (const ne of newEnrollmentsLocal) {
+          syncEnrollmentCreate(uid, ne);
+        }
+        for (const ns of newSessions) {
+          syncSessionCreate(uid, ns);
         }
 
         const uniqueMissing = [...new Set(missingEntities)];
         const warningText = uniqueMissing.length > 0
           ? ` (매칭 실패: ${uniqueMissing.slice(0, 3).join(", ")}${uniqueMissing.length > 3 ? " 외" : ""})`
           : "";
-        showToast("success", `${applied}개 수업이 템플릿으로 교체되었습니다${warningText}`);
+        showToast("success", `${newSessions.length}개 수업이 템플릿으로 교체되었습니다${warningText}`);
       } catch (e) {
         showToast("error", "템플릿 적용 실패: " + (e as Error).message);
       } finally {
@@ -1553,7 +1561,16 @@ function SchedulePageContent(): JSX.Element {
         setApplyConfirmTemplate(null);
       }
     },
-    [weekFilteredSessions, sessions, subjects, students, teachers, updateData, addSession]
+    [
+      weekFilteredSessions,
+      sessions,
+      subjects,
+      students,
+      teachers,
+      enrollments,
+      updateData,
+      currentWeekStart,
+    ]
   );
 
   const handleApplyTemplate = useCallback(
