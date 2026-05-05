@@ -1,3 +1,5 @@
+/* eslint-env browser */
+/* eslint-disable no-console */
 // UAT 기본 시드 데이터 (익명 모드)
 //
 // 사용:
@@ -80,5 +82,5 @@
     강사: teachers.length,
     세션: sessions.length,
   });
-  location.reload();
+  window.location.reload();
 })();

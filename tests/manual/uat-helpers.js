@@ -1,3 +1,5 @@
+/* eslint-env browser */
+/* eslint-disable no-console */
 // UAT 콘솔 헬퍼 — 시나리오에서 재사용하는 짧은 함수 모음
 //
 // 사용:
@@ -15,7 +17,7 @@ window.uat = {
       const name = c.split("=")[0].trim();
       document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
     });
-    location.reload();
+    window.location.reload();
   },
 
   // 익명 모드 여부
@@ -62,7 +64,7 @@ window.uat = {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
       }
     });
-    location.reload();
+    window.location.reload();
   },
 
   // 데이터 통계 짧게 출력
