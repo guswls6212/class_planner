@@ -96,7 +96,9 @@ jobs:
 
   e2e_pwa:
     name: E2E PWA tests (Chromium, SW active)
-    needs: build
+    # PR R fix와 같은 race condition 방지: e2e_pwa는 e2e 끝난 후 순차 실행.
+    # 두 job이 같은 Supabase test user 셋업/cleanup 동시 시도 시 academy_members 충돌.
+    needs: e2e
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
