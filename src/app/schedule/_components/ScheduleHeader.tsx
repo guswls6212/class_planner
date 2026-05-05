@@ -43,7 +43,7 @@ export default function ScheduleHeader({
         )}
         {scheduleUpdatedAt && (
           <span
-            className="ml-auto text-[10px] text-[var(--color-text-muted)] hidden sm:block"
+            className="ml-auto text-[10px] text-[var(--color-text-muted)] block"
             data-testid="schedule-updated-at"
             title="시간표가 마지막으로 변경된 시각 (sessions CRUD 시 자동 갱신)"
           >

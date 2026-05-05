@@ -197,7 +197,7 @@ export default function OnboardingPage() {
           <button
             type="submit"
             disabled={!isValid || isSubmitting}
-            className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isValid && !isSubmitting ? "bg-brand-gradient" : "bg-[var(--color-border)]"}`}
+            className={`w-full min-h-[44px] py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isValid && !isSubmitting ? "bg-brand-gradient" : "bg-[var(--color-border)]"}`}
           >
             {isSubmitting ? "생성 중..." : "시작하기"}
           </button>

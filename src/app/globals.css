@@ -768,6 +768,13 @@ body {
   box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
+@media (max-width: 767px) {
+  .form-input,
+  .form-select {
+    font-size: 16px;
+  }
+}
+
 .modal-actions {
   display: flex;
   justify-content: space-between;
