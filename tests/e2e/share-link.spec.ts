@@ -52,14 +52,13 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     });
   });
 
-  test.skip("'링크 만들기' → 모달 열기 → '생성' 클릭 시 POST /api/share-tokens 호출", async ({
+  test("'링크 만들기' → 모달 열기 → '생성' 클릭 시 POST /api/share-tokens 호출", async ({
     page,
     context,
   }) => {
-    // FIXME: PR J 시도(heading 대기 추가) 후에도 5s timeout — 모달이 mount 안 됨.
-    // 가능 원인: '링크 만들기' .first()가 헤더 button이 아닌 본문 button을 잡거나,
-    // setShowShareModal(true) 호출 후 React state 변경이 반영 안 됨. 후속 PR에서
-    // settings/page.tsx 컴포넌트에 data-testid 추가 또는 button event 정확히 trace.
+    // PR O — settings/page.tsx에 data-testid 3개 추가:
+    // share-create-trigger (헤더 button), share-create-modal (모달 컨테이너),
+    // share-create-modal-submit ("생성" 버튼). 정확한 selector로 stale fragility 제거.
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     let postBody: ShareTokenPostBody | null = null;
@@ -102,15 +101,14 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
     await expect(accordionHeader).toBeVisible({ timeout: 10000 });
     await accordionHeader.click();
 
-    await page.getByRole("button", { name: /링크 만들기/ }).first().click();
+    // 헤더 trigger button (data-testid로 본문 button과 정확히 구분)
+    await page.getByTestId("share-create-trigger").click();
 
-    // 모달 mount 대기 — heading "공유 링크 만들기" 표시
-    await expect(page.getByRole("heading", { name: "공유 링크 만들기" })).toBeVisible({
-      timeout: 5000,
-    });
+    // 모달 mount 대기 — data-testid="share-create-modal"
+    await expect(page.getByTestId("share-create-modal")).toBeVisible({ timeout: 5000 });
 
-    // "생성" 버튼 클릭 (모달 안의 단일 button)
-    await page.getByRole("button", { name: /^생성$/ }).click();
+    // "생성" 버튼 — data-testid="share-create-modal-submit"
+    await page.getByTestId("share-create-modal-submit").click();
 
     // POST /api/share-tokens 호출됨
     await expect.poll(() => postCalled, { timeout: 5000 }).toBeTruthy();
