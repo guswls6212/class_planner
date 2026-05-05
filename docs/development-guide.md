@@ -52,6 +52,27 @@ npm run check         # tsc + vitest run + next build
 <div className="max-h-[400px] overflow-auto" />
 ```
 
+### 1.4 Concurrent Dev (Worktree 동시 실행)
+
+PR #246 (2026-05-05) 이후 `npm run dev` 가 `lsof -ti:$PORT` 로 자기 PORT만 죽이도록 변경됨 → 본체와 worktree 동시 실행 안전.
+
+```bash
+# 본체 (default port 3000)
+npm run dev
+
+# worktree A
+cd <dev-pack-worktrees>/class-planner-feat-foo
+PORT=3001 npm run dev
+
+# worktree B
+cd <dev-pack-worktrees>/class-planner-fix-bar
+PORT=3002 npm run dev
+```
+
+`PORT` 환경변수 미지정 시 기본 3000. turbopack 유지 (HMR 빠름).
+
+worktree 자동 생성: `bash dev-pack/scripts/worktree-new.sh class-planner <branch>` 사용 시 PORT 안내 메시지가 자동 출력됨. 자세히는 `dev-pack/CLAUDE.md` "Worktree Automation" + "Concurrent Session Detection" 참조.
+
 ---
 
 ## 2. 테스트 전략
@@ -259,44 +280,72 @@ DevTools Network 탭 → Offline 토글 → reload:
 
 ---
 
-## 4. E2E 테스트 설정
+## 4. E2E 테스트 설정 (Supabase password auth 기반)
 
-### 4.1 Google OAuth 테스트 계정 준비
+PR C 이후 Google OAuth 자동화를 우회하고 **Supabase password auth로 e2e 전용 user**를 사용. CI에서는 매 job마다 멱등 셋업 + globalTeardown 자동 cleanup.
 
-- 실제 개인 계정 사용 금지, 테스트 전용 Google 계정 생성
-- 2단계 인증 비활성화 (테스트 편의)
+### 4.1 환경 변수 (`.env.local`)
 
-### 4.2 환경 변수 설정 (`.env.e2e`)
+다음을 `.env.local`에 추가 (CI는 GitHub Secrets로 주입):
 
 ```bash
-E2E_GOOGLE_EMAIL=classplanner.e2e.test@gmail.com
-E2E_GOOGLE_PASSWORD=TestPassword123!
-E2E_TEST_MODE=true
-E2E_HEADLESS=false
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...               # admin API용 (RLS 우회 cleanup)
+E2E_TEST_USER_EMAIL=info365001.e2e.test@gmail.com  # 또는 자체 도메인
+E2E_TEST_USER_PASSWORD=<강한 password>
 ```
 
-`.gitignore`에 `.env.e2e` 추가 필수.
+`E2E_TEST_USER_ID` / `E2E_TEST_ACADEMY_ID` 는 **선택** — `setup-e2e-test-user.ts` 가 email lookup으로 처리. 명시 시 globalSetup ~100ms 단축.
 
-### 4.3 Playwright 설정에 dotenv 로드
+### 4.2 Test user + Academy 멱등 셋업
 
-```typescript
-// playwright.config.ts
-import { config } from "dotenv";
-config({ path: ".env.e2e" });
+```bash
+npx tsx scripts/setup-e2e-test-user.ts
+# → admin API로 user 생성 (이미 존재하면 password 갱신)
+# → user 소유 academy 생성 (이미 있으면 skip)
+# → 출력에 user_id, academy_id 표시
 ```
+
+CI에서는 매 e2e job 시작 시 자동 실행 (`continue-on-error: true`).
+
+### 4.3 globalSetup / globalTeardown (자동)
+
+`playwright.config.ts` 가:
+- **globalSetup** (`tests/e2e/global-setup.ts`): Supabase password auth로 로그인 → `playwright/.auth/session.json` 저장
+- **globalTeardown** (`tests/e2e/global-teardown.ts`): `cleanupTestUserData()` 호출 → academy_members 단위 모든 데이터 삭제 (PR M, 환경 누적 영구 차단)
+
+조건: `E2E_TEST_USER_EMAIL && E2E_TEST_USER_PASSWORD` 환경변수 존재 시만 globalSetup 활성. `SUPABASE_SERVICE_ROLE_KEY` 존재 시만 globalTeardown 활성.
 
 ### 4.4 E2E 실행
 
 ```bash
-npm run test:e2e:auth    # 인증 포함 빠른 테스트
-npm run test:e2e:full    # PR 전 전체 테스트
+# .env.local 로드 후 실행 (사용자가 source)
+( set -a; source .env.local; set +a; npx playwright test --project=chromium --reporter=list )
+
+# 또는 단일 spec
+( set -a; source .env.local; set +a; npx playwright test tests/e2e/multi-academy.spec.ts --project=chromium )
+
+# 헤드 모드 (디버그)
+( set -a; source .env.local; set +a; npx playwright test --project=chromium --headed )
 ```
 
-### 4.5 보안 주의사항
+### 4.5 spec 안에서 진짜 session 사용
 
-1. `.env.e2e` 파일 Git 커밋 금지
-2. CI/CD에서는 환경 변수로 설정
-3. 각 테스트 후 데이터 정리
+```typescript
+// tests/e2e/multi-academy.spec.ts
+import { injectRealSession } from "./helpers/auth-mock";
+
+test.beforeEach(async ({ page }) => {
+  await injectRealSession(page);  // session.json의 진짜 token inject → AuthGuard 통과
+});
+```
+
+### 4.6 service_role 보안 주의
+
+- `SUPABASE_SERVICE_ROLE_KEY` 는 **admin API 전용** — RLS 완전 우회.
+- **client/browser bundle 노출 절대 금지**. `.env.local` (gitignore) + GitHub Secrets에만.
+- `auth.admin.createUser`, table direct INSERT/DELETE 가능 — production DB 영향 가능. 강한 password + 주기적 rotation 권장.
 
 ---
 
@@ -326,8 +375,15 @@ feature/xxx, fix/xxx, chore/xxx, docs/xxx, phaseN/xxx (작업 브랜치)
 
 **ci.yml (검증):**
 ```
-feature → PR to dev → type-check → lint → unit test → build → E2E → 머지
+feature → PR to dev → check (type-check + lint + unit) → build → e2e (Chromium, SW 활성) → 머지
 ```
+
+PR #244 (2026-05-05) 이후 변경:
+- 이전: `e2e` job(`E2E_DISABLE_SW=1`) + `e2e_pwa` job(SW 활성, offline-network spec만, `needs: e2e`) 분리.
+- 현재: **단일 `e2e` job** (SW 활성 환경, 13-spec + offline-network 통합). `e2e_pwa` job 제거됨. 환경 충실도 = production. CI 시간 5-10분 절약.
+- root cause fix: `src/app/sw.ts`에 `/api/*` `NetworkOnly` prepend (defaultCache `/api/*` NetworkFirst 가로채기 우회) + `AuthGuard.tsx` timeout 3s → 7s. 자세히는 `docs/adr/007-sw-timing-fix.md`.
+
+`E2E_DISABLE_SW=1` 환경변수는 **개발자 로컬 escape hatch**로 유지 (`next.config.ts`). CI에서는 사용 안 함.
 
 **deploy.yml (배포):**
 ```
@@ -352,6 +408,72 @@ main push → Docker image build → ghcr.io push → Lightsail SSH deploy → h
 ### 5.6 세션 중단 감지
 
 로컬에 남아있는 작업 브랜치 = 이전 세션에서 중단된 작업.
+
+`bash scripts/check-stale-branches.sh` 로 확인 가능.
+
+---
+
+## 6. UAT 절차 (수동 acceptance test)
+
+PR #240 (2026-05-05) 도입. e2e와 별도 유지 — UAT는 **사용자(개발자) 수동 시나리오 검증**, e2e는 **CI 자동 회귀 가드**.
+
+### 6.1 UAT vs e2e vs Smoke
+
+| 계층 | 도구 | 시간 | 모드 |
+|---|---|---|---|
+| **e2e** | Playwright Chromium | 5-10분 | 자동 (CI 매 PR) |
+| **수동 smoke (Core)** | UAT P0 19개 | 40분 | 수동 (dev→main 전) |
+| **UAT (Extended)** | UAT P0+P1 | 80분 | 수동 (주요 release 전) |
+| **UAT (Full)** | UAT 전체 73 시나리오 | 120분 | 수동 (분기 release) |
+
+UAT 시나리오 SSOT: `tests/manual/uat-checklist.md` (Core/Extended/Full 모드 분기).
+
+### 6.2 UAT 환경 셋업 (멱등)
+
+```bash
+# .env.local에 추가 (e2e와 별도 user — 격리)
+UAT_TEST_USER_EMAIL=info365001.uat.test@gmail.com
+UAT_TEST_USER_PASSWORD=<강한 password>
+
+# 1회 셋업 (이미 있으면 skip)
+npm run uat:setup
+```
+
+`E2E_TEST_USER_*` 와 별도 user. 같은 Supabase 프로젝트지만 **user_id 단위 격리** — UAT 데이터 cleanup이 e2e에 영향 없음.
+
+### 6.3 시나리오별 데이터 시드 + cleanup
+
+```bash
+npm run uat:seed       # academy + sample students/subjects/sessions seed
+npm run uat:teardown   # academy_members 단위 모든 데이터 삭제
+```
+
+`scripts/setup-uat-test-user.ts` 가 email lookup으로 user_id 자동 발견 → 환경변수 minimum (EMAIL/PASSWORD 두 줄만 필수).
+
+### 6.4 console.uat 자동 inject
+
+PR #240 이후 `process.env.NODE_ENV === "development"` 일 때만 `<script src="/uat/console-tools.js">` 자동 inject (production tree-shaking 검증 완료).
+
+콘솔에서:
+```js
+console.uat.seedSchedule({ weeks: 4 });   // 시간표 seed
+console.uat.toggleNetworkError();          // 500 강제
+console.uat.exportLogs();                  // 디버그 로그 저장
+```
+
+`public/uat/console-tools.js` 가 정적 서빙 — production bundle에 포함 X (`grep` 검증 통과).
+
+### 6.5 결과 누적 (시계열)
+
+```bash
+bash scripts/uat-new.sh             # template 복사 + 메타 자동 채움
+# → tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 생성
+# 시나리오 진행 + Pass/Fail/Skip/Pending 기록
+
+bash scripts/uat-summary.sh         # 자주 fail하는 시나리오 ranking
+```
+
+git commit으로 시계열 보존. 시각화 도구 없이 markdown + grep만으로 추세 분석.
 
 ```bash
 bash scripts/check-stale-branches.sh
