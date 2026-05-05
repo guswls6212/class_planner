@@ -692,6 +692,7 @@ export default function SettingsPage() {
                   size="small"
                   onClick={(e) => { e.stopPropagation(); setShowShareModal(true); }}
                   className="gap-1.5"
+                  data-testid="share-create-trigger"
                 >
                   <Plus size={14} strokeWidth={2} /> 링크 만들기
                 </Button>
@@ -811,10 +812,12 @@ export default function SettingsPage() {
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => setShowShareModal(false)}
+          data-testid="share-create-modal-backdrop"
         >
           <div
             className="bg-[var(--color-bg-secondary)] rounded-2xl p-6 w-full max-w-sm mx-4 border border-[var(--color-border)]"
             onClick={(e) => e.stopPropagation()}
+            data-testid="share-create-modal"
           >
             <h3 className="text-base font-bold text-[var(--color-text-primary)] mb-1">공유 링크 만들기</h3>
             <p className="text-[13px] text-[var(--color-text-muted)] mb-5">인증 없이 시간표를 볼 수 있는 링크를 만듭니다</p>
@@ -871,6 +874,7 @@ export default function SettingsPage() {
                 onClick={handleCreateShareToken}
                 disabled={isCreatingShare}
                 className="flex-1 py-2 bg-accent text-[var(--color-admin-ink)] rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                data-testid="share-create-modal-submit"
               >
                 {isCreatingShare ? "생성 중..." : "생성"}
               </button>
