@@ -138,12 +138,10 @@ test.describe("mobile schedule flows (375×667)", () => {
     await expect(group.getByRole("button", { name: "일별" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  test.skip("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
-    // FIXME: page.clock.install 도입(PR N) 후에도 11s timeout. monChip click handler가
-    // selectedDate를 변환하나 SessionBlock(lazy-loaded ScheduleDailyView 내부 SessionCard)
-    // mount 안 됨. 후속 PR에서 (a) Playwright trace 직접 분석 또는 (b) ScheduleDailyView가
-    // 사용하는 정확한 testid (`session-block-${id}` 외 다른 wrapper) 확인 후 unskip.
-    // page.clock.install beforeEach는 보존 — 다른 시나리오의 timezone 안정성에 기여.
+  test("모바일 일별 모드에서 SessionCard visible — sess-mon (월요일 09:00)", async ({ page }) => {
+    // PR P — 진짜 원인: ScheduleDailyView는 SessionBlock이 아닌 SessionCard variant="row"
+    // 사용 (organisms/ScheduleDailyView.tsx:113-127). data-testid는 `daily-session-${id}`.
+    // 3 cycle(E/L/N) 모두 wrong selector(`session-block-...`) — 코드 read 1번이면 진단 가능했음.
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
@@ -151,6 +149,6 @@ test.describe("mobile schedule flows (375×667)", () => {
     await expect(monChip).toBeVisible({ timeout: 5000 });
     await monChip.click();
 
-    await expect(page.getByTestId("session-block-sess-mon")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("daily-session-sess-mon")).toBeVisible({ timeout: 10000 });
   });
 });
