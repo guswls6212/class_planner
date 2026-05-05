@@ -81,20 +81,38 @@ async function globalSetup(): Promise<void> {
   }
 
   // T0' instrumentation (PR-α): academyId null 이면 spec 시작 전 fail 로 즉시 표면화.
-  // 가설 3 (setup script 의 academy/academy_members INSERT 실패 → continue-on-error
-  // 로 무시 → academy 없이 spec 진행 → useMyRole me=undefined → canManage=false →
-  // auth-dependent button visible timeout) 가 root cause 인 경우 spec timeout 보다
-  // 본 throw 가 먼저 발생해 CI logs 에 명확 노출.
-  // fork PR (secrets 누락) 은 위 line 28-38 의 secrets check 가 먼저 throw 하므로
-  // 본 분기까지 도달 안 함 — fork 보호 유지.
   if (!academyId) {
     throw new Error(
-      "[e2e global-setup] Owner academy 부재. 가능 원인: " +
+      "[e2e global-setup] Owner academy_members entry 부재. 가능 원인: " +
         "(1) scripts/setup-e2e-test-user.ts 의 academy/academy_members INSERT 실패 " +
         "(ci.yml 의 'Setup E2E test user' step logs 확인), " +
-        "(2) globalTeardown 의 cleanupTestUserData partial failure 로 academy_members 만 삭제. " +
-        "회복: setup-e2e-test-user.ts 재실행 또는 academy_members SELECT 으로 직접 확인.",
+        "(2) globalTeardown 의 cleanupTestUserData 로 academy_members 삭제 후 setup 재실행 누락. " +
+        "회복: setup-e2e-test-user.ts 재실행.",
     );
+  }
+
+  // T0' instrumentation (PR-α): academy_members 의 academy_id 가 academies 에
+  // 실제로 존재하는지 검증 (orphan FK 감지). cleanupTestUserData 의 academies DELETE
+  // 가 audit_log RESTRICT 등으로 silent fail 했을 때 academies 가 누락된 채 academy_members
+  // 만 잔존 → 다음 cycle setup 의 새 INSERT 와 stale academies 가 공존 → 혼란.
+  {
+    const sbAuthed = createClient(url, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: `Bearer ${data.session.access_token}` } },
+    });
+    const { data: academyRow } = await sbAuthed
+      .from("academies")
+      .select("id")
+      .eq("id", academyId)
+      .maybeSingle();
+    if (!academyRow) {
+      throw new Error(
+        `[e2e global-setup] academies row 부재 (academyId=${academyId}). ` +
+          "academy_members 가 가리키는 academy 가 academies 테이블에 없음 (orphan FK). " +
+          "cleanupTestUserData 의 academies DELETE fail 가능성 — Supabase 의 academies + " +
+          "academy_members 직접 조회 + audit_log 등 academy_id RESTRICT FK 의 row 정리 필요.",
+      );
+    }
   }
 
   const authDir = path.join(process.cwd(), "playwright/.auth");

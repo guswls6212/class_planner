@@ -49,6 +49,10 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
   const academyIds = (userAcademies ?? []).map((m) => m.academy_id as string);
 
   // FK 의존성 순서대로 — child first (sessions/enrollments) → parent (students/subjects/teachers)
+  // T0' fix: audit_log 추가. audit_log.academy_id 의 FK delete_rule 이 NO ACTION 이라
+  // academies DELETE 시 RESTRICT 됨 (다른 academy_id table 은 모두 CASCADE).
+  // 결과: cleanup 의 academies DELETE silent fail → orphan academies 잔존 → 다음 cycle
+  // setup 시 새 academies INSERT + academy_members INSERT → DB 혼란 → e2e flaky.
   const academyScopedTables = [
     "session_enrollments",
     "sessions",
@@ -60,6 +64,9 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
     "teachers",
     "students",
     "subjects",
+    "audit_log",
+    "attendance",
+    "invite_tokens",
   ];
 
   for (const aid of academyIds) {
@@ -77,8 +84,15 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
   for (const aid of academyIds) {
     const { error } = await sbAdmin.from("academies").delete().eq("id", aid);
     if (error) {
-      // eslint-disable-next-line no-console
-      console.warn(`[cleanupTestUserData] academies (${aid.slice(0, 8)}...) 삭제 실패: ${error.message}`);
+      // T0' fix: silent warn → throw. academies DELETE fail 시 orphan academy_members
+      // 가 잔존 → 다음 cycle DB 혼란 → e2e flaky. fail-fast 가 진단 + 회복 측면에서 정공.
+      // FK RESTRICT 는 academyScopedTables 누락 신호이므로 먼저 list 보강 시도 후에도
+      // fail 하면 schema 변경 필요.
+      throw new Error(
+        `[cleanupTestUserData] academies (${aid}) 삭제 실패: ${error.message}. ` +
+          `academyScopedTables 에 누락된 academy_id FK 보유 table 존재 가능. ` +
+          `Supabase schema 의 information_schema.referential_constraints 에서 delete_rule 확인 필요.`,
+      );
     }
   }
 }
