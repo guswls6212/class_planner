@@ -17,6 +17,11 @@ export default defineConfig({
     process.env.E2E_TEST_USER_EMAIL && process.env.E2E_TEST_USER_PASSWORD
       ? "./tests/e2e/global-setup.ts"
       : undefined,
+  // PR M — 모든 e2e 끝난 후 cleanupTestUserData 자동 호출 → 환경 누적 영구 차단.
+  // SUPABASE_SERVICE_ROLE_KEY 없으면 cleanup 건너뜀(graceful).
+  globalTeardown: process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? "./tests/e2e/global-teardown.ts"
+    : undefined,
   use: {
     baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
     trace: "on-first-retry",
