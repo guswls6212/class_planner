@@ -172,6 +172,18 @@ export const useGlobalDataInitialization = () => {
           })
         );
 
+        // serverData.lastModified는 모달 표시(timestamp) + 다음 진입 시 동기화
+        // 결정 둘 다에 쓰임. fetch 시각이 아니라 entity 중 가장 최근 updatedAt을
+        // 사용해야 정확함 (이전 버그: fetch 끝난 "지금" 시각이 박혀 server가
+        // 항상 local보다 최신으로 보였음).
+        const serverEntityLastModified = computeServerLastModified({
+          students,
+          subjects: subjects ?? [],
+          sessions,
+          enrollments,
+          teachers: teachersWithSubjects,
+        });
+
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
@@ -179,7 +191,8 @@ export const useGlobalDataInitialization = () => {
           enrollments,
           teachers: teachersWithSubjects,
           version: "1.0",
-          lastModified: new Date().toISOString(),
+          // 모든 entity가 updatedAt 없으면 빈 문자열 → DataCard에서 timestamp 미표시
+          lastModified: serverEntityLastModified ?? "",
         };
 
         logger.info("서버 데이터 조회 완료", {
