@@ -14,6 +14,7 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
+import DataHistorySection from "../../components/organisms/DataHistorySection";
 
 interface PendingInvite {
   id: string;
@@ -917,6 +918,9 @@ export default function SettingsPage() {
           await fetchData();
         }}
       />
+
+      {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
+      {userId && <DataHistorySection userId={userId} />}
     </div>
   );
 }
