@@ -221,6 +221,44 @@ rm -rf .next && npm run build
 
 ---
 
+## 3.X PWA 검증 (Service Worker)
+
+class-planner는 `@serwist/next` 기반 PWA. SW는 **production build에서만 활성** (dev에서 disable — 개발자 경험 보호).
+
+### 로컬에서 PWA 동작 확인
+
+```bash
+npm run build       # public/sw.js + swe-worker-*.js 생성 (Webpack — turbopack 비호환)
+npm run start       # localhost:3000
+```
+
+Chrome DevTools → Application 탭:
+- **Manifest**: 인식 + icons 200 + start_url=/schedule
+- **Service Workers**: scriptURL=/sw.js, status=activated, scope=/
+
+Console에서 직접:
+```js
+const reg = await navigator.serviceWorker.getRegistration();
+console.log(reg?.active?.scriptURL, reg?.active?.state, reg?.scope);
+// → http://localhost:3000/sw.js  activated  http://localhost:3000/
+```
+
+### Offline 시뮬레이션
+
+DevTools Network 탭 → Offline 토글 → reload:
+- 캐시된 라우트 (예: `/schedule`) → 정상 mount (localStorage 데이터로 SessionBlock 그림)
+- 캐시 미존재 라우트 → `/~offline` fallback page
+
+### 함정
+
+- `next build --turbopack` ❌ Serwist 비호환 → `npm run build` 스크립트는 **webpack 사용**.
+- `public/sw.js`, `swe-worker-*.js`, `workbox-*.js`는 빌드 산출물 — `.gitignore`로 제외.
+- 캐시 invalidation: `skipWaiting: true` + `clientsClaim: true` 설정. 배포 후 reload 1회로 신버전 활성.
+
+상세 결정 근거: `docs/adr/006-pwa-adoption.md`
+
+---
+
 ## 4. E2E 테스트 설정
 
 ### 4.1 Google OAuth 테스트 계정 준비
