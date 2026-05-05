@@ -12,10 +12,12 @@ import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
   clearUserClassPlannerData,
+  getActiveAcademyId,
   getClassPlannerData,
   setClassPlannerData,
 } from "../lib/localStorageCrud";
 import type { ClassPlannerData } from "../lib/localStorageCrud";
+import { createSnapshot } from "../lib/snapshots/createSnapshot";
 import {
   computeServerLastModified,
   decideOverwrite,
@@ -59,6 +61,25 @@ export const useGlobalDataInitialization = () => {
       setMigrationError(null);
 
       try {
+        // 충돌 직전 자동 백업 — 양쪽 데이터 모두 before_conflict로 보존.
+        // 사용자가 잘못 선택해도 설정 페이지 데이터 이력에서 복원 가능
+        // (before_conflict는 freemium 정책에 안 걸림 — 핵심 안전망).
+        // academyId 미존재 시(신규 계정 등) skip.
+        const academyId = getActiveAcademyId(pendingUserId);
+        if (academyId) {
+          const localData = getClassPlannerData();
+          const backupResult = await createSnapshot(pendingUserId, academyId, {
+            type: "before_conflict",
+            payload: { local: localData, server: pendingServerData },
+            description: `충돌 해결 직전 (선택: ${choice === "server" ? "내 계정" : "이 기기"})`,
+          });
+          if (!backupResult.success) {
+            logger.warn("충돌 직전 자동 백업 실패 — 진행은 계속", {
+              error: backupResult.error,
+            });
+          }
+        }
+
         if (choice === "server") {
           applyServerChoice();
           setClassPlannerData(pendingServerData);
