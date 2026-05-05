@@ -4,13 +4,16 @@
 **소요:** Core 40분 / Extended 80분 / Full 120분.
 **소유:** 1인 학원 운영자 (개발자 = 테스터).
 
+> **이 파일은 template.** 실제 결과는 `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` 사본에 기록 (§3 참조).
+> 시나리오 본문 위 **Quick Setup** 박스의 콘솔 명령은 GUI 단계를 단축하기 위한 것 — `tests/manual/uat-helpers.js` 와 `tests/manual/seed-uat.js` 를 먼저 paste해두면 더 짧게 호출 가능.
+
 ---
 
 ## 사용법
 
 ### 1. 메타 기록
 
-매 실행 시 상단에 기록:
+`scripts/uat-new.sh` 가 메타 두 줄(Build, 실행 일시)을 자동 채움. 나머지는 수동.
 
 | 필드 | 값 |
 |---|---|
@@ -30,6 +33,22 @@
 
 ### 3. 결과 기록 규칙
 
+매 실행은 **본 파일 사본**(`tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md`)에 기록. 본 파일은 template — 직접 수정 금지.
+
+```bash
+# 새 실행 인스턴스 생성 (메타 자동 채움)
+bash scripts/uat-new.sh core   # 또는 extended / full
+
+# 끝나면 commit
+git add tests/manual/runs/<file>.md
+git commit -m "chore(uat): 2026-05-05-1430 core run — 19/19 P0 pass"
+
+# 추세 확인
+bash scripts/uat-summary.sh
+```
+
+기록 표기:
+
 - `[ ]` → 실행 전
 - `[x]` → Pass
 - `[!]` → Fail (note 필수: 어떤 단계에서 어떤 결과가 났는지)
@@ -37,28 +56,49 @@
 
 P0 19개 모두 Pass = main 머지 그린라이트.
 
+자동 e2e 후보 시나리오는 `[auto-friendly]` 라벨 — 향후 별도 PR로 Playwright 마이그레이션 후 본 checklist에서 제외 예정.
+
 ### 4. 사전 준비 (Core Path 시작 전)
 
 ```
 1. dev 서버 시작
    cd class-planner && npm run dev → http://localhost:3000
 
-2. 깨끗한 상태 확보 (선택)
-   브라우저 콘솔 → Application → Local Storage → 전체 삭제 + 새로고침
+2. uat-helpers.js 콘솔 paste (1회)
+   → window.uat 에 clearAll/forceFetch500/expireToken/inspect 등 노출
 
-3. 기본 데이터 시드 (수동, ~5분)
-   - 학생 3명 (홍길동, 김영수, 박지수)
-   - 과목 2개 (수학 #FF0000, 영어 #00FF00)
-   - 강사 2명 (김선생, 이선생 — 자동 색상)
-   - 수업 3개 (월/수/금 09:00-10:00 수학+홍길동+김선생)
+3. 깨끗한 상태 확보 (선택)
+4. 기본 데이터 시드 (~30초)
+```
+
+**Quick Setup** (사전 준비 §3-§4):
+
+```js
+// 깨끗한 상태 (⚠️ localStorage/세션/쿠키 모두 삭제됨)
+uat.clearAll();
+
+// 시드 데이터 (학생 3명/과목 2개/강사 2명/세션 3개)
+//   → tests/manual/seed-uat.js 전체 paste. 익명 모드 전용.
+//   학생: 홍길동 / 김영수 / 박지수
+//   과목: 수학 #FF0000 / 영어 #00FF00
+//   강사: 김선생 #6366f1 / 이선생 #0891b2
+//   세션: 월/수/금 09:00-10:00 — 수학 + 홍길동 + 김선생
 ```
 
 ---
 
 ## 1. Auth & 학원 셋업 (P0: 2 / 7) [40분 Core 포함]
 
-### S-1.1 비로그인 → 로그인 리디렉트 [P0]
+### S-1.1 비로그인 → 로그인 리디렉트 [P0] [auto-friendly]
 **Pre:** 비로그인 상태 (localStorage `supabase_user_id` 없음)
+
+**Quick Setup**:
+```js
+uat.clearAll();              // 깨끗한 상태 보장
+// 새로고침 후 콘솔에서 확인:
+uat.isAnonymous();           // → true
+```
+
 **Steps:**
 1. 직접 URL `http://localhost:3000/schedule` 접속
 **Expected:**
@@ -89,8 +129,17 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - localStorage `supabase_user_id` 저장
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-1.4 익명 사용자 모드 [P1]
+### S-1.4 익명 사용자 모드 [P1] [auto-friendly]
 **Pre:** 비로그인 상태
+
+**Quick Setup**:
+```js
+uat.clearAll();              // 깨끗한 상태
+// 시나리오 실행 후 검증:
+uat.inspect();               // 학생/과목/세션 카운트 확인
+uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
+```
+
 **Steps:**
 1. `/schedule`에서 학생/과목/수업 추가
 2. 새로고침
@@ -121,6 +170,12 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ### S-1.7 로그아웃 → 재로그인 [P2]
 **Pre:** 로그인 상태
+
+**Quick Setup** (대안 — 로그아웃 버튼 GUI 대신 토큰 강제 만료로 같은 효과 검증):
+```js
+uat.expireToken();           // sb-*-auth-token 키 + 쿠키 모두 삭제 + 새로고침
+```
+
 **Steps:**
 1. 사이드바 하단 이메일 → "로그아웃"
 2. 새로고침
@@ -134,8 +189,17 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ## 2. 학생 관리 (P0: 1 / 6) [Core 포함]
 
-### S-2.1 학생 추가 [P0]
+### S-2.1 학생 추가 [P0] [auto-friendly]
 **Pre:** `/students` 진입
+
+**Quick Setup** (인증 모드 API 호출 검증):
+```js
+const before = uat.countAPIcalls('/api/students');
+// 학생 추가 후
+const after  = uat.countAPIcalls('/api/students');
+console.log('새 호출 수:', after - before);  // ≥1
+```
+
 **Steps:**
 1. 입력란에 "테스트학생" 입력
 2. Enter 또는 "추가" 클릭
@@ -145,7 +209,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 인증 사용자: Network에 `/api/students` POST 발사
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-2.2 학생 검색 [P1]
+### S-2.2 학생 검색 [P1] [auto-friendly]
 **Pre:** 학생 3명 이상 등록
 **Steps:**
 1. 검색 입력란에 "홍" 입력
@@ -154,7 +218,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 검색 클리어 시 전체 복원
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-2.3 학생 상세 보기 [P1]
+### S-2.3 학생 상세 보기 [P1] [auto-friendly]
 **Pre:** 학생 1명 이상
 **Steps:**
 1. 학생 항목 클릭
@@ -163,7 +227,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 데스크탑: 분할 뷰 / 모바일: 우측 패널 단독 표시
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-2.4 학생 정보 편집 [P1]
+### S-2.4 학생 정보 편집 [P1] [auto-friendly]
 **Pre:** 학생 상세 패널 열림
 **Steps:**
 1. "편집" 버튼
@@ -174,7 +238,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 새로고침 후에도 유지
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-2.5 학생 삭제 [P1]
+### S-2.5 학생 삭제 [P1] [auto-friendly]
 **Pre:** 학생 상세 패널 열림
 **Steps:**
 1. "삭제" 버튼
@@ -197,7 +261,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ## 3. 과목 관리 (P0: 1 / 5) [Core 포함]
 
-### S-3.1 과목 추가 [P0]
+### S-3.1 과목 추가 [P0] [auto-friendly]
 **Pre:** `/subjects` 진입
 **Steps:**
 1. 이름 "수학" + 색상 #FF0000 선택
@@ -215,7 +279,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 미리보기 색상 변경
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-3.3 과목 편집 [P1]
+### S-3.3 과목 편집 [P1] [auto-friendly]
 **Pre:** 과목 1개 선택
 **Steps:**
 1. "편집" → 이름/색상 수정 → 저장
@@ -223,7 +287,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 시간표 모든 해당 세션의 색상도 즉시 변경 (colorBy=과목 모드)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-3.4 과목 삭제 [P1]
+### S-3.4 과목 삭제 [P1] [auto-friendly]
 **Pre:** 과목에 연결된 세션 있음
 **Steps:**
 1. 과목 삭제
@@ -320,7 +384,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ## 5. 시간표 — 수업 추가/편집/삭제 (P0: 4 / 12) [Core 포함]
 
-### S-5.1 FAB 클릭 → 모달 열림 [P0]
+### S-5.1 FAB 클릭 → 모달 열림 [P0] [auto-friendly]
 **Pre:** `/schedule`
 **Steps:**
 1. 우측 하단 FAB ("+") 클릭
@@ -328,7 +392,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - GroupSessionModal 3-step Stepper 열림 (Step 1: 학생)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-5.2 학생 선택 (Step 1) [P0]
+### S-5.2 학생 선택 (Step 1) [P0] [auto-friendly]
 **Pre:** 모달 Step 1
 **Steps:**
 1. 학생 이름 검색 입력
@@ -352,7 +416,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 학생 목록에도 영구 등록
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-5.4 과목/강사/시간 선택 (Step 2) [P0]
+### S-5.4 과목/강사/시간 선택 (Step 2) [P0] [auto-friendly]
 **Pre:** Step 2
 **Steps:**
 1. 과목 select → "수학"
@@ -372,7 +436,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 에러 메시지 또는 자동 보정
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-5.6 확인 + 추가 (Step 3) [P0]
+### S-5.6 확인 + 추가 (Step 3) [P0] [auto-friendly]
 **Pre:** Step 3 요약 카드
 **Steps:**
 1. 요약 확인 (학생/과목/강사/시간)
@@ -411,7 +475,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 새로고침 후 유지
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-5.10 세션 삭제 [P1]
+### S-5.10 세션 삭제 [P1] [auto-friendly]
 **Pre:** SessionCard 우측 메뉴
 **Steps:**
 1. "..." → "삭제"
@@ -546,6 +610,14 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ### S-7.1 템플릿 저장 [P0] ⚠️
 **Pre:** 시간표에 강사 포함 수업 13개
+
+**Quick Setup** (POST 호출 횟수 검증):
+```js
+const before = uat.countAPIcalls('/api/templates');
+// 시나리오 후
+console.log('새 호출:', uat.countAPIcalls('/api/templates') - before);  // 1
+```
+
 **Steps:**
 1. ScheduleActionBar "템플릿" 드롭다운
 2. "현재 주를 템플릿으로 저장" 클릭
@@ -558,7 +630,16 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-7.2 저장 실패 시 에러 토스트 [P0] ⚠️
-**Pre:** DevTools Network 탭에서 POST /api/templates를 500으로 강제 실패
+**Pre:** POST /api/templates를 500으로 강제 실패
+
+**Quick Setup** (DevTools Network override 대안 — 콘솔 1줄):
+```js
+// 시나리오 시작 직전 호출 — 매칭되는 fetch에 500 응답
+const restore = uat.forceFetch500('/api/templates');
+// S-7.1 단계 수행 후 검증 끝나면 복구:
+restore();
+```
+
 **Steps:**
 1. S-7.1 시도
 **Expected:**
@@ -710,6 +791,13 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ### S-9.2 공개 링크 접근 (비로그인) [P0]
 **Pre:** 다른 브라우저 또는 시크릿 창
+
+**Quick Setup** (터미널 — Chrome 시크릿 새 창 자동 열기):
+```bash
+# {token} 자리에 S-9.1에서 받은 토큰 붙여넣기
+open -na "Google Chrome" --args --incognito --new-window "http://localhost:3000/share/{token}"
+```
+
 **Steps:**
 1. `/share/{token}` 직접 접근
 **Expected:**
@@ -831,6 +919,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 ## 11. 모바일 뷰포트 (375×667) (P0: 0 / 7)
 
 > **테스트 방법:** Chrome DevTools → Toggle device toolbar → iPhone SE (375×667) 또는 Playwright `--viewport=375,667`.
+> 단축키: DevTools 열린 상태에서 `Cmd+Shift+M` (macOS) / `Ctrl+Shift+M` (Win/Linux) → device toolbar 토글.
 
 ### S-11.1 BottomTabBar 표시 [P1]
 **Pre:** 모바일 뷰포트
@@ -899,7 +988,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ## 12. 새로고침 / 네트워크 (P0: 2 / 5) [Core 포함]
 
-### S-12.1 새로고침 후 데이터 유지 [P0]
+### S-12.1 새로고침 후 데이터 유지 [P0] [auto-friendly]
 **Pre:** 시간표 + 학생/과목/세션 입력 완료
 **Steps:**
 1. F5 새로고침
@@ -908,7 +997,7 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 - 인증: 서버에서 fetch한 데이터와 일치
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-12.2 새로고침 후 강사 정보 유지 [P0] ⚠️
+### S-12.2 새로고침 후 강사 정보 유지 [P0] ⚠️ [auto-friendly]
 **Pre:** 강사 배정된 세션
 **Steps:**
 1. 새로고침 후 SessionCard 강사명 확인
@@ -937,6 +1026,13 @@ P0 19개 모두 Pass = main 머지 그린라이트.
 
 ### S-12.5 API 401 처리 [P2]
 **Pre:** 토큰 만료 (Supabase session expire)
+
+**Quick Setup** (토큰 강제 만료):
+```js
+uat.expireToken();           // sb-*-auth-token 키 + 쿠키 모두 삭제 + 새로고침
+// 새로고침 후 어떤 API 호출이라도 401 또는 라우트 가드 트리거 expected
+```
+
 **Steps:**
 1. 어떤 API 호출이라도 401
 **Expected:**
@@ -1087,3 +1183,4 @@ Issue 등록 형식:
 ## 변경 이력
 
 - 2026-05-04: 초기 작성 (73 시나리오 + 10 edge case). PR #211 회귀 가드 cross-reference 포함.
+- 2026-05-05: Quick Setup 콘솔 명령 박스 + `tests/manual/seed-uat.js` / `uat-helpers.js` 신설. `runs/` 디렉터리로 결과 기록 분리 (template은 본 파일 유지). `[auto-friendly]` 라벨로 향후 e2e 마이그레이션 후보 표시.
