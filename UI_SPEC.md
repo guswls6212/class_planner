@@ -310,6 +310,33 @@ OnboardingPage (src/app/onboarding/page.tsx)
 
 ---
 
+### 2.9 학부모 공유 (`/share/{token}`) — 모바일 우선 PWA 페이지
+
+**Public route** (인증 불필요). 학부모/학생이 token URL로 진입해 자녀 시간표 확인.
+
+#### 레이아웃
+- `flex h-dvh` 기반 (PWA standalone 모드 + iPhone notch 고려 — `viewport-fit=cover` + `env(safe-area-inset-*)`)
+- 상단: 학원/강사 정보 + `SegmentedButton` (일/주/월 — mobileLabel "일/주/월")
+- 본문: `ScheduleDailyView` / `TimeTableGrid` / `ScheduleMonthlyView` (viewMode 분기)
+- 변경 배지: `ScheduleChangeBanner` — `hasChanges=true && lastViewedAt !== null` 일 때만 (최초 방문 미표시)
+- SyncStatusDot 미표시 (anonymous 사용자, sync 없음)
+
+#### 핵심 컴포넌트
+- `SegmentedButton` (atoms, mobileLabel 사용 — PR #238)
+- `ScheduleDailyView` / `TimeTableGrid` / `ScheduleMonthlyView`
+- `DayChipBar` (일별 모드 — 7개 weekday 탭, 44px touch target)
+- `ScheduleChangeBanner`
+
+#### PWA 설치 안내 (선택, 미구현)
+- `display-mode: standalone` 미감지 + 첫 N번째 방문 시 "홈 화면에 추가" 권유 prompt 후보 (ADR-006 기각된 alternative)
+
+#### 검증
+- `tests/e2e/share-mobile.spec.ts` — Mobile Chrome 375×667 viewport
+- 시나리오: 페이지 로드 + SegmentedButton 라벨 축약 + viewMode 토글 + DayChipBar 표시
+- iPhone Safari "홈 화면에 추가" 후 standalone 모드 진입 — manual smoke
+
+---
+
 ## 3. 컴포넌트 인벤토리
 
 ### 3.1 Atoms (`src/components/atoms/`)
@@ -321,8 +348,10 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `ErrorBoundary` | `ErrorBoundary.tsx` | `children`, `fallback?` | React 에러 경계. 전체 앱 감쌈 |
 | `Input` | `Input.tsx` | `type`, `value`, `onChange`, `placeholder` | 공통 텍스트 입력 |
 | `Label` | `Label.tsx` | `htmlFor`, `children` | 폼 레이블 |
+| `SegmentedButton` | `SegmentedButton.tsx` | `options: Option<T>[]` (`label`, `value`, optional `mobileLabel`), `value: T`, `onChange` | 3-N개 탭/모드 선택 atom. `mobileLabel` 옵션 — `<640px`에서 짧은 라벨로 자동 swap (`<span hidden sm:inline>{label}</span>` + `<span sm:hidden>{mobileLabel}</span>` 패턴, useMediaQuery 회피로 hydration mismatch 방지). PR #238 atoms로 이동. 사용처: `/share/{token}` 일/주/월, `/schedule` 뷰 전환 |
 | `StudentListItem` | `StudentListItem.tsx` | `student`, `isSelected`, `onClick`, `onDelete` | 학생 목록 단일 아이템. 선택/삭제 기능 |
 | `SubjectListItem` | `SubjectListItem.tsx` | `subject`, `isSelected`, `onSelect`, `onDelete`, `onEdit` | 과목 목록 단일 아이템. 색상 도트 + 편집/삭제 |
+| `SyncStatusDot` | `SyncStatusDot.tsx` | `userId?: string \| null` | Sync 상태 시각화 점. ScheduleHeader 옆에 렌더. userId 있으면 활성 (sync 진행/성공/실패), null이면 회색 유휴. PR #237 이후 모바일에서 라벨도 함께 표시 (이전 `hidden sm:block` 제거) |
 | `ThemeToggle` | `ThemeToggle.tsx` | `size: small\|medium`, `variant: icon\|both` | 다크/라이트 테마 전환 토글 |
 
 ### 3.2 Molecules (`src/components/molecules/`)
@@ -653,25 +682,88 @@ SchedulePage
 
 ## 8. 반응형 & 접근성
 
-### 7.1 뷰포트 기준
+### 8.1 뷰포트 기준
+
+640px (Tailwind `sm` breakpoint) 기준. CSS 분기는 항상 `sm:` modifier 사용.
 
 | 범위 | 설명 |
 |------|------|
 | 640px 이상 (desktop) | 기본 레이아웃. TimeTableGrid 풀 사이즈, StudentPanel 플로팅 |
 | 640px 미만 (mobile) | DataConflictModal 탭 뷰 전환. TimeTableGrid 가로 스크롤. StudentPanel 접힘 |
 
-### 7.2 주요 반응형 동작
+분기 패턴:
+- Hidden on mobile: `hidden sm:inline` (또는 `hidden sm:block`)
+- Visible on mobile only: `sm:hidden`
+
+### 8.2 주요 반응형 동작
 
 - **DataConflictModal**: 640px 미만에서 `.cardsGrid` 숨김 → `.tabsContainer` 표시 (탭 전환 + 선택 버튼)
 - **TimeTableGrid**: 가로 스크롤, 가상 스크롤바
+- **SegmentedButton**: `mobileLabel` prop 시 모바일에서 짧은 라벨 (예: "일별/주간/월별" → "일/주/월")
 
-### 7.3 접근성
+### 8.3 접근성
 
 - ConfirmModal, DataConflictModal: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
 - DataConflictModal 섹션: `role="button"`, `aria-expanded` (접기/펼치기)
 - 에러 배너: `role="alert"`, 안내 배너: `role="note"`
 - Navigation: `<nav>` 사용
 - 폼 입력: `<label>` + `htmlFor` 연결
+
+### 8.4 모바일 UI 가이드라인 (PWA baseline 이후)
+
+PR Q~S(#235~239) PWA 도입 + PR #237 모바일 갭 fix + PR #238 share 모바일 후 정착된 모바일 UI 규약.
+
+#### 반응형 라벨 축약 (mobileLabel pattern)
+
+```tsx
+// SegmentedButton 사용
+<SegmentedButton
+  options={[
+    { label: "일별", mobileLabel: "일", value: "daily" },
+    { label: "주간", mobileLabel: "주", value: "weekly" },
+    { label: "월별", mobileLabel: "월", value: "monthly" },
+  ]}
+  value={viewMode}
+  onChange={setViewMode}
+/>
+
+// 내부 렌더 (atoms/SegmentedButton.tsx:41-48)
+{opt.mobileLabel ? (
+  <>
+    <span className="hidden sm:inline">{opt.label}</span>
+    <span className="sm:hidden">{opt.mobileLabel}</span>
+  </>
+) : (
+  opt.label
+)}
+```
+
+- **CSS-only 분기** (Tailwind `hidden sm:inline` + `sm:hidden`) — `useMediaQuery` 회피로 SSR/hydration mismatch 방지
+- 사용처: `/share/{token}` 페이지 뷰 전환. `/schedule` 페이지는 데스크톱 우선이라 기존 label 그대로 (mobileLabel 미사용)
+
+#### Touch target 최소값 (Apple HIG 44×44px)
+
+- 모든 버튼/탭/링크 최소 `min-h-[44px]` (≥44×44px)
+- OAuth 버튼 (`/login`, `/onboarding`): `min-h-[44px]` 추가 (이전 `py-3 + text-sm` ≈ 38px 미달 → 46px)
+- 회귀 가드: `tests/e2e/login-mobile.spec.ts` 가 `boundingBox().height >= 44` 검증
+
+#### iOS input 자동 zoom 방지
+
+```css
+/* src/app/globals.css */
+@media (max-width: 767px) {
+  .form-input,
+  .form-select { font-size: 16px; }
+}
+```
+
+iOS Safari는 `font-size < 16px` 인 input focus 시 자동 zoom 발생 → 16px 이상 유지로 방지. Desktop은 14px 유지 (가독성 + 폼 밀도).
+
+#### SyncStatusDot 모바일 가시성
+
+- ScheduleHeader 의 `scheduleUpdatedAt` 라벨: 모바일에서도 `text-[10px]` 로 표시 (이전 `hidden sm:block` 제거 — PR #237)
+- 라벨 + SyncStatusDot 조합으로 sync 상태 컨텍스트 제공
+- 모바일 사용자 (학생/학부모)가 "MM월 DD일 HH:mm 수정" 텍스트 보임 — sync 신뢰도 ↑
 
 ---
 
@@ -699,10 +791,14 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/components/organisms/StudentPanel*` | `/schedule` |
 | `src/components/organisms/LoginButton*` | 모든 페이지 (nav bar) |
 | `src/components/atoms/**` | 관련된 모든 페이지 |
+| `src/app/share/[token]/**` | `/share/{token}` (Mobile Chrome 375×667 viewport 권장) |
+| `src/components/atoms/SegmentedButton*` | `/share/{token}` (mobileLabel) + `/schedule` (뷰 전환) |
+| `src/components/atoms/SyncStatusDot*` | `/schedule` (ScheduleHeader 우측, 모바일 가시) |
+| `src/app/globals.css` (form-input 16px) | `/login`, `/onboarding`, `/students`, `/subjects` (iOS Safari 검증) |
 
 ---
 
-## 9. 알려진 제약 & 주의 사항
+## 10. 알려진 제약 & 주의 사항
 
 | 항목 | 내용 |
 |------|------|
