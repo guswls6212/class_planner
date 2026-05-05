@@ -80,6 +80,23 @@ async function globalSetup(): Promise<void> {
     academyId = membership?.academy_id ?? null;
   }
 
+  // T0' instrumentation (PR-α): academyId null 이면 spec 시작 전 fail 로 즉시 표면화.
+  // 가설 3 (setup script 의 academy/academy_members INSERT 실패 → continue-on-error
+  // 로 무시 → academy 없이 spec 진행 → useMyRole me=undefined → canManage=false →
+  // auth-dependent button visible timeout) 가 root cause 인 경우 spec timeout 보다
+  // 본 throw 가 먼저 발생해 CI logs 에 명확 노출.
+  // fork PR (secrets 누락) 은 위 line 28-38 의 secrets check 가 먼저 throw 하므로
+  // 본 분기까지 도달 안 함 — fork 보호 유지.
+  if (!academyId) {
+    throw new Error(
+      "[e2e global-setup] Owner academy 부재. 가능 원인: " +
+        "(1) scripts/setup-e2e-test-user.ts 의 academy/academy_members INSERT 실패 " +
+        "(ci.yml 의 'Setup E2E test user' step logs 확인), " +
+        "(2) globalTeardown 의 cleanupTestUserData partial failure 로 academy_members 만 삭제. " +
+        "회복: setup-e2e-test-user.ts 재실행 또는 academy_members SELECT 으로 직접 확인.",
+    );
+  }
+
   const authDir = path.join(process.cwd(), "playwright/.auth");
   await fs.mkdir(authDir, { recursive: true });
   await fs.writeFile(
