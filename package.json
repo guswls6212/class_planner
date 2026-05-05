@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pkill -f 'next-server' 2>/dev/null; pkill -f 'next dev' 2>/dev/null; next dev --turbopack",
+    "dev": "sh -c 'PORT=${PORT:-3000}; lsof -ti:$PORT | xargs kill 2>/dev/null; next dev --turbopack -p $PORT'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
