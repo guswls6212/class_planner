@@ -64,20 +64,32 @@ test.describe("offline network behavior", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  test.skip("offline 전환 후 reload → schedule 페이지 정상 렌더 (localStorage 기반)", async ({
+  test("offline 전환 후 reload → schedule 페이지 정상 렌더 (SW 캐시 기반)", async ({
     page,
     context,
   }) => {
-    // FIXME: dev server는 offline에서 HTML 응답 못 받음 (Service Worker 없음).
-    // PWA service-worker 도입 후 또는 production build 환경에서 재활성.
+    // PR R + PR S — Serwist SW가 production build에서 page + JS 캐시.
+    // dev/일반 e2e job(E2E_DISABLE_SW=1)에선 SW 없음 → skip. 별도 e2e_pwa job(SW 활성)에서만 실행.
+    test.skip(
+      process.env.E2E_DISABLE_SW === "1",
+      "Service Worker 활성 환경 전용 — ci.yml의 e2e_pwa job에서만 실행",
+    );
+
     await seedSchedule(page);
     await page.goto("/schedule");
     await expect(page.getByTestId("session-block-sess-offline")).toBeVisible({ timeout: 10000 });
 
+    // SW 활성 + page 캐시 완료 대기 (Serwist clientsClaim → 즉시 controlled).
+    await page.evaluate(async () => {
+      if ("serviceWorker" in navigator) {
+        await navigator.serviceWorker.ready;
+      }
+    });
+
     await context.setOffline(true);
     await page.reload();
 
-    await expect(page.getByTestId("session-block-sess-offline")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId("session-block-sess-offline")).toBeVisible({ timeout: 15000 });
   });
 
   test("offline 시 익명 사용자에게는 SyncStatusDot이 표시되지 않는다 — sync 없음", async ({
