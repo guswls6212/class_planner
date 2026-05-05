@@ -45,6 +45,7 @@ const template = (
   name: "기본템플릿",
   description: null,
   templateData: { version: "1.0", sessions },
+  slotIndex: 0,
   createdBy: "user-1",
   createdAt: "2026-05-04T00:00:00Z",
   updatedAt: "2026-05-04T00:00:00Z",

@@ -1617,13 +1617,21 @@ function SchedulePageContent(): JSX.Element {
         }
         showToast("success", "템플릿이 갱신되었습니다.");
       } else {
-        const ok = await saveTemplate({
+        const result = await saveTemplate({
           name,
           description: description ?? "",
           templateData: data,
         });
-        if (!ok) {
-          showToast("error", "템플릿 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        if (!result.ok) {
+          // T2 (ADR-008): quota 초과 시 별도 toast — "추후 업데이트 예정"
+          if (result.reason === "quota_exceeded") {
+            showToast(
+              "error",
+              "프리 티어는 academy 당 최대 2개 템플릿까지 사용할 수 있습니다. (추후 업데이트 예정)",
+            );
+          } else {
+            showToast("error", "템플릿 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          }
           return;
         }
         showToast("success", "템플릿이 저장되었습니다.");

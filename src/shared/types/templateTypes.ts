@@ -23,6 +23,8 @@ export interface ScheduleTemplate {
   name: string;
   description: string | null;
   templateData: TemplateData;
+  /** ADR-008: free tier 의 academy 당 슬롯 index (0 또는 1). 향후 paywall 도입 시 확장. */
+  slotIndex: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -33,6 +35,7 @@ export interface RawTemplate {
   name: string;
   description: string | null;
   template_data: TemplateData;
+  slot_index: number;
   created_by: string;
   created_at: string;
   updated_at: string;
