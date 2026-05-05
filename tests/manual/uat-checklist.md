@@ -90,7 +90,7 @@ uat.seed();
 
 #### 첫 1회 셋업
 
-`.env.local` 에 다음 추가:
+`.env.local` 에 **두 줄만** 추가:
 ```bash
 UAT_TEST_USER_EMAIL=uat-test@class-planner.test
 UAT_TEST_USER_PASSWORD=<강한 password>
@@ -99,14 +99,15 @@ UAT_TEST_USER_PASSWORD=<강한 password>
 그리고:
 ```bash
 npm run uat:setup
-# → 출력 예: "UAT_TEST_USER_ID=abc..., UAT_TEST_ACADEMY_ID=def..."
-# → 두 줄을 .env.local에 추가
+# → user + UAT 전용 academy 멱등 생성. 한 번만 실행하면 끝.
+# → 출력의 user_id/academy_id는 자동 lookup 되니 .env.local에 적을 필요 없음
+#   (lookup 100ms 줄이려면 선택적으로 적어도 OK)
 ```
 
 #### 매 UAT 사이클 (인증 시나리오 진행 시)
 
 ```bash
-# 1. 시드 데이터 INSERT (cleanup 후 재시드 — 멱등)
+# 1. 시드 데이터 INSERT (cleanup 후 재시드 — 멱등. email 기반 auto lookup)
 npm run uat:seed
 
 # 2. 브라우저 — UAT_TEST_USER_EMAIL로 password 로그인

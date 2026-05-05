@@ -8,19 +8,23 @@
  *
  * Prerequisites (.env.local):
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   UAT_TEST_USER_ID  (setup-uat-test-user.ts 출력)
+ *   UAT_TEST_USER_EMAIL  (필수 — email 기반 자동 lookup)
+ *   UAT_TEST_USER_ID     (선택 — 적어두면 lookup 생략)
  *
  * 동작:
- *   uat-cleanup-helper.cleanupAcademyScopedDataForUser() 호출.
- *   sessions/students/subjects/teachers/enrollments/session_enrollments/templates 등 삭제.
- *   academy_members + academies 보존 (다음 uat:seed에서 같은 academy 재사용).
+ *   1. UAT_TEST_USER_ID 없으면 email로 자동 lookup
+ *   2. cleanupAcademyScopedDataForUser() 호출 — sessions/students/subjects/teachers/...
+ *      academy_members + academies 보존 (다음 uat:seed에서 같은 academy 재사용).
  *
  * 멱등 — 데이터 없어도 안전.
  */
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
-import { cleanupAcademyScopedDataForUser } from "./uat-cleanup-helper";
+import {
+  cleanupAcademyScopedDataForUser,
+  findUserIdByEmail,
+} from "./uat-cleanup-helper";
 
 interface EnvFile {
   [key: string]: string;
@@ -54,15 +58,17 @@ async function main(): Promise<void> {
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? envLocal.SUPABASE_SERVICE_ROLE_KEY;
-  const userId = process.env.UAT_TEST_USER_ID ?? envLocal.UAT_TEST_USER_ID;
+  const email = process.env.UAT_TEST_USER_EMAIL ?? envLocal.UAT_TEST_USER_EMAIL;
+  let userId: string | undefined =
+    process.env.UAT_TEST_USER_ID ?? envLocal.UAT_TEST_USER_ID;
 
   if (!url || !serviceKey) {
     console.error("❌ NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY 누락");
     process.exit(1);
   }
-  if (!userId) {
+  if (!email && !userId) {
     console.error(
-      "❌ UAT_TEST_USER_ID 누락. setup-uat-test-user.ts 먼저 실행 + .env.local 작성.",
+      "❌ UAT_TEST_USER_EMAIL 또는 UAT_TEST_USER_ID 둘 중 하나 필요. .env.local 작성.",
     );
     process.exit(1);
   }
@@ -70,6 +76,16 @@ async function main(): Promise<void> {
   const sbAdmin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // ID 미지정 시 email로 자동 lookup
+  if (!userId) {
+    console.log(`🔍 email로 user 조회: ${email}`);
+    userId = (await findUserIdByEmail(sbAdmin, email!)) ?? undefined;
+    if (!userId) {
+      console.log(`ℹ️  user 없음 (email=${email}) — cleanup 불필요`);
+      return;
+    }
+  }
 
   console.log(`🧹 UAT cleanup: userId=${userId.slice(0, 8)}...`);
   await cleanupAcademyScopedDataForUser(sbAdmin, userId);

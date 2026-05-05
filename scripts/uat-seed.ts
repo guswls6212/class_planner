@@ -8,11 +8,13 @@
  *
  * Prerequisites (.env.local):
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   UAT_TEST_USER_ID, UAT_TEST_ACADEMY_ID  (setup-uat-test-user.ts 출력)
+ *   UAT_TEST_USER_EMAIL  (필수 — email 기반 자동 lookup)
+ *   UAT_TEST_USER_ID, UAT_TEST_ACADEMY_ID  (선택 — 적어두면 lookup 생략)
  *
  * 동작:
- * 1. 같은 academy의 기존 시드 데이터 cleanup (uat-teardown.ts 와 동일 로직)
- * 2. 신규 INSERT:
+ * 1. UAT_TEST_USER_ID/ACADEMY_ID 없으면 email로 자동 lookup
+ * 2. 같은 academy의 기존 시드 데이터 cleanup (uat-teardown.ts 와 동일 로직)
+ * 3. 신규 INSERT:
  *    - subjects: 수학(#FF0000), 영어(#00FF00)
  *    - teachers: 김선생(#6366f1), 이선생(#0891b2)
  *    - students: 홍길동, 김영수, 박지수
@@ -28,7 +30,11 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
-import { cleanupAcademyScopedDataForUser } from "./uat-cleanup-helper";
+import {
+  cleanupAcademyScopedDataForUser,
+  findAcademyIdForOwner,
+  findUserIdByEmail,
+} from "./uat-cleanup-helper";
 
 interface EnvFile {
   [key: string]: string;
@@ -62,17 +68,20 @@ async function main(): Promise<void> {
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? envLocal.SUPABASE_SERVICE_ROLE_KEY;
-  const userId = process.env.UAT_TEST_USER_ID ?? envLocal.UAT_TEST_USER_ID;
-  const academyId =
+  const email = process.env.UAT_TEST_USER_EMAIL ?? envLocal.UAT_TEST_USER_EMAIL;
+  let userId: string | undefined =
+    process.env.UAT_TEST_USER_ID ?? envLocal.UAT_TEST_USER_ID;
+  let academyId: string | undefined =
     process.env.UAT_TEST_ACADEMY_ID ?? envLocal.UAT_TEST_ACADEMY_ID;
 
   if (!url || !serviceKey) {
     console.error("❌ NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY 누락");
     process.exit(1);
   }
-  if (!userId || !academyId) {
+  if (!email && (!userId || !academyId)) {
     console.error(
-      "❌ UAT_TEST_USER_ID/UAT_TEST_ACADEMY_ID 누락. setup-uat-test-user.ts 먼저 실행하고 출력값을 .env.local에 추가하세요.",
+      "❌ UAT_TEST_USER_EMAIL 누락. .env.local에 추가 필요. " +
+        "(또는 UAT_TEST_USER_ID + UAT_TEST_ACADEMY_ID 둘 다 직접 지정)",
     );
     process.exit(1);
   }
@@ -80,6 +89,27 @@ async function main(): Promise<void> {
   const sbAdmin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // ID 미지정 시 email로 자동 lookup
+  if (!userId) {
+    console.log(`🔍 email로 user 조회: ${email}`);
+    userId = (await findUserIdByEmail(sbAdmin, email!)) ?? undefined;
+    if (!userId) {
+      console.error(
+        `❌ user 없음 (email=${email}). npm run uat:setup 먼저 실행하세요.`,
+      );
+      process.exit(1);
+    }
+  }
+  if (!academyId) {
+    academyId = (await findAcademyIdForOwner(sbAdmin, userId)) ?? undefined;
+    if (!academyId) {
+      console.error(
+        `❌ user의 owner academy 없음 (userId=${userId.slice(0, 8)}...). npm run uat:setup 먼저 실행.`,
+      );
+      process.exit(1);
+    }
+  }
 
   // 1. 멱등성: 같은 academy의 기존 시드 cleanup (academy/members는 보존)
   console.log(`🧹 기존 시드 cleanup (academy=${academyId.slice(0, 8)}...)`);

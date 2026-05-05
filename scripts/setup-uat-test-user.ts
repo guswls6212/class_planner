@@ -166,15 +166,22 @@ async function main(): Promise<void> {
   console.log("");
   console.log("✅ UAT Setup 완료.");
   console.log("");
-  console.log("📝 다음 단계 — .env.local에 다음 두 줄 추가:");
-  console.log(`     UAT_TEST_USER_ID=${userId}`);
-  console.log(`     UAT_TEST_ACADEMY_ID=${academyId}`);
+  console.log(`   user_id    = ${userId}`);
+  console.log(`   academy_id = ${academyId}`);
   console.log("");
-  console.log("이후 매 UAT 사이클:");
-  console.log("  1. npm run uat:seed       # 시드 데이터 INSERT");
+  console.log(
+    "이후 매 UAT 사이클 (.env.local에 EMAIL/PASSWORD만 있으면 됨):",
+  );
+  console.log("  1. npm run uat:seed       # 시드 데이터 INSERT (email로 auto lookup)");
   console.log("  2. 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인");
   console.log("  3. /schedule 진입 → 시나리오 진행");
   console.log("  4. npm run uat:teardown   # 데이터 cleanup");
+  console.log("");
+  console.log(
+    "💡 lookup 1회 줄이려면 (선택) .env.local 에 위 두 줄 추가 가능:",
+  );
+  console.log(`     UAT_TEST_USER_ID=${userId}`);
+  console.log(`     UAT_TEST_ACADEMY_ID=${academyId}`);
 }
 
 main().catch((err) => {
