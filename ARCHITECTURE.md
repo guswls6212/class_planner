@@ -88,11 +88,14 @@ class-planner는 **모바일 PWA(Progressive Web App) 확장을 전제**로 설�
 - **Installable**: 향후 `manifest.json` + `apple-touch-icon` + `service-worker` 추가 시 홈 화면 추가 / 풀스크린 모드 지원
 - **Toast UX**: 모바일에서도 위에서 슬라이드, 충분한 hit area, 자동 dismiss + 명시적 dismiss 양쪽 지원
 
-**현재 미구현 항목** (도입 시점은 미정):
-- `public/manifest.json` (앱 메타데이터, theme color, icons)
-- Service worker (`next-pwa` 또는 Next.js native API)
-- iOS Safari `apple-touch-icon` + meta tags
-- 푸시 알림 (수업 시작 알림, 코드 만료 임박 등 — 학부모 PWA에서 가치 大)
+**도입 현황** (2026-05 PR Q~S):
+- ✅ Web App Manifest — `src/app/manifest.ts` (Next.js 15 metadata API, `/manifest.webmanifest`로 expose)
+- ✅ Icon 세트 — `src/app/icon1.tsx` (192×192), `icon2.tsx` (512×512), `apple-icon.tsx` (180×180) (ImageResponse 동적 생성, amber theme)
+- ✅ theme-color, viewport-fit=cover, apple-mobile-web-app-* 메타 — `src/app/layout.tsx` (metadata + viewport export)
+- ✅ Service Worker (offline cache + fallback) — `@serwist/next` 기반, `src/app/sw.ts` (PR R)
+- ❌ 푸시 알림 (수업 시작 알림, 코드 만료 임박 등 — 학부모 PWA에서 가치 大). iOS PWA push는 2026 시점에도 미지원 영역 다수, 별도 plan에서 도입 검토.
+
+도입 결정 근거: `docs/adr/006-pwa-adoption.md`
 
 **설계 원칙**: 신규 컴포넌트/기능 PR은 모바일 화면(360–414px)에서 합리적으로 동작하는지 검토. PWA 인프라가 추가되기 전이라도 디자인은 미리 PWA 친화적으로.
 
