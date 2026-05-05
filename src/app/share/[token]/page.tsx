@@ -231,9 +231,9 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
           <div className="flex-shrink-0">
             <SegmentedButton
               options={[
-                { label: "일별", value: "daily" },
-                { label: "주간", value: "weekly" },
-                { label: "월별", value: "monthly" },
+                { label: "일별", mobileLabel: "일", value: "daily" },
+                { label: "주간", mobileLabel: "주", value: "weekly" },
+                { label: "월별", mobileLabel: "월", value: "monthly" },
               ]}
               value={viewMode}
               onChange={(v) => setViewMode(v as ViewMode)}
@@ -244,7 +244,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
           <div className="flex-shrink-0 flex items-center gap-1.5">
             {isRefreshing && <RefreshCw size={13} className="text-[var(--color-text-muted)] animate-spin" />}
             {data && !isRefreshing && (
-              <span className="text-[10px] text-[var(--color-text-muted)] hidden sm:block">
+              <span className="text-[10px] text-[var(--color-text-muted)] block">
                 {new Date(data.scheduleUpdatedAt).toLocaleString("ko-KR", {
                   month: "numeric", day: "numeric",
                   hour: "2-digit", minute: "2-digit",

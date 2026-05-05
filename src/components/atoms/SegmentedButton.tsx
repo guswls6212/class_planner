@@ -1,5 +1,7 @@
 interface Option<T extends string> {
   label: string;
+  /** 모바일(<640px)에서 사용할 짧은 라벨. 미지정 시 label 그대로. */
+  mobileLabel?: string;
   value: T;
 }
 
@@ -36,7 +38,14 @@ export default function SegmentedButton<T extends string>({
               : "text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)]"
           }`}
         >
-          {opt.label}
+          {opt.mobileLabel ? (
+            <>
+              <span className="hidden sm:inline">{opt.label}</span>
+              <span className="sm:hidden">{opt.mobileLabel}</span>
+            </>
+          ) : (
+            opt.label
+          )}
         </button>
       ))}
     </div>
