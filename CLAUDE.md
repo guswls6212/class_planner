@@ -97,13 +97,19 @@ npm run check:quick
 
 # 커밋/푸시 전 1회 (tsc + unit + build, 1분 내외)
 npm run check
+
+# dev 서버 (worktree 동시 실행 가능 — PR #246)
+npm run dev               # localhost:3000 (default)
+PORT=3001 npm run dev     # localhost:3001 (다른 worktree에서)
 ```
+
+상세: `docs/development-guide.md` § 1.4 Concurrent Dev.
 
 ### CI/CD (GitHub Actions)
 - **ci.yml**: PR 생성 또는 main/dev push 시 자동 실행
   - check job: type-check + lint + unit test
   - build job: production build
-  - e2e job: Playwright Chromium golden path
+  - e2e job: Playwright Chromium **(SW 활성 환경)** — 13-spec + offline-network 통합. PR #244 이후 `e2e_pwa` job 제거됨 (root cause fix: `sw.ts` `/api/*` NetworkOnly + AuthGuard 7s). 자세히 `docs/adr/007-sw-timing-fix.md`.
 - **deploy.yml**: main CI 성공 시 자동 배포 (ghcr.io → Lightsail)
 
 ### 세션 완료 체크리스트
@@ -116,6 +122,38 @@ npm run check
 ### 세션 중단 감지
 로컬에 남아있는 작업 브랜치 = 이전 세션에서 중단된 작업.
 `bash scripts/check-stale-branches.sh`로 확인 가능.
+
+## UAT (수동 acceptance test)
+
+PR #240 (2026-05-05) 도입. e2e와 별도 — UAT는 사용자(개발자) **수동 시나리오 검증**, e2e는 **CI 자동 회귀 가드**.
+
+### 빠른 명령
+```bash
+# 1회 셋업 (멱등 — 이미 있으면 skip)
+npm run uat:setup
+
+# 시나리오별 데이터 시드
+npm run uat:seed
+
+# academy 단위 cleanup
+npm run uat:teardown
+
+# 새 run 기록 시작 (template 복사 + 메타 자동 채움)
+bash scripts/uat-new.sh
+
+# 결과 요약 (자주 fail하는 시나리오 ranking)
+bash scripts/uat-summary.sh
+```
+
+### 환경 (`.env.local`)
+- `UAT_TEST_USER_EMAIL`, `UAT_TEST_USER_PASSWORD` 필요 (E2E user와 별도 — 격리)
+- ID 환경변수는 선택 (email lookup으로 자동 발견)
+
+### 시나리오 SSOT
+- `tests/manual/uat-checklist.md` — Core(P0 19개, 40분) / Extended(80분) / Full(120분) 모드 분기
+- 결과 누적: `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` (git commit으로 시계열 보존)
+
+상세: `docs/development-guide.md` § 6 UAT 절차.
 
 ## Claude Code 훅 시스템
 
