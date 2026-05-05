@@ -172,6 +172,50 @@ export const useGlobalDataInitialization = () => {
           })
         );
 
+        // serverData.lastModified는 모달 표시(timestamp) + 다음 진입 시 동기화
+        // 결정 둘 다에 쓰임. fetch 시각이 아니라 entity 중 가장 최근 updatedAt을
+        // 사용해야 정확함 (이전 버그: fetch 끝난 "지금" 시각이 박혀 server가
+        // 항상 local보다 최신으로 보였음).
+        const serverEntityLastModified = computeServerLastModified({
+          students,
+          subjects: subjects ?? [],
+          sessions,
+          enrollments,
+          teachers: teachersWithSubjects,
+        });
+
+        // 운영 디버깅 — 어느 entity 카테고리/id가 server timestamp의 출처인지
+        // 추적. "왜 server max(updatedAt)이 사용자 기대보다 최신인가?" 같은
+        // 의문이 들었을 때 로그에서 즉시 원인 파악 가능 (omni-radar console_log
+        // 이벤트로 자동 캡처됨).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const findMostRecent = (arr: any[], label: string) => {
+          let maxEntity: { id?: string; name?: string; updatedAt?: string } | null = null;
+          let maxMs = -Infinity;
+          for (const e of arr) {
+            const ts = e?.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+            if (Number.isFinite(ts) && ts > maxMs) {
+              maxEntity = e;
+              maxMs = ts;
+            }
+          }
+          return {
+            label,
+            count: arr.length,
+            mostRecentId: maxEntity?.id ?? null,
+            mostRecentName: maxEntity?.name ?? null,
+            mostRecentUpdatedAt: maxEntity?.updatedAt ?? null,
+          };
+        };
+        logger.info("서버 데이터 max(updatedAt) 분포", {
+          serverEntityLastModified,
+          students: findMostRecent(students, "students"),
+          subjects: findMostRecent(subjects ?? [], "subjects"),
+          sessions: findMostRecent(sessions, "sessions"),
+          enrollments: findMostRecent(enrollments, "enrollments"),
+          teachers: findMostRecent(teachersWithSubjects, "teachers"),
+        });
+
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
@@ -179,7 +223,8 @@ export const useGlobalDataInitialization = () => {
           enrollments,
           teachers: teachersWithSubjects,
           version: "1.0",
-          lastModified: new Date().toISOString(),
+          // 모든 entity가 updatedAt 없으면 빈 문자열 → DataCard에서 timestamp 미표시
+          lastModified: serverEntityLastModified ?? "",
         };
 
         logger.info("서버 데이터 조회 완료", {
