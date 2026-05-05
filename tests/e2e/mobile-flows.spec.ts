@@ -9,23 +9,18 @@
  * Anonymous mode OK — 모든 시나리오 auth 없이 동작.
  */
 import { expect, test, type Page } from "@playwright/test";
+import { getWeekStartDate } from "@/lib/weekStart";
 
 const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
 
 /**
- * 페이지가 보는 currentWeek와 정합 — schedule/page.tsx의 selectedDate는
- * `new Date()` (브라우저 timezone). KST 기준 weekStart로 seed하면 UTC 환경에서
- * 다른 주로 분류되어 ScheduleDailyView에 sess-mon 표시 안 됨.
- * 본 헬퍼는 브라우저 timezone의 monday를 반환 — CI/local 모두 페이지 currentWeek와 일치.
+ * PR L 진단: schedule/page.tsx:211 `currentWeekStart = getWeekStartDate(selectedDate)`로
+ * **KST 기준** monday 계산. seed의 weekStartDate가 UTC monday면 weekFilteredSessions
+ * (line 720)에서 정확 일치 안 됨 → ScheduleDailyView가 sess-mon 못 봄.
+ *
+ * 해결: production과 동일한 getWeekStartDate(KST) 사용.
  */
-function todayWeekStartLocal(): string {
-  const now = new Date();
-  const dow = (now.getDay() + 6) % 7; // 0=Mon
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - dow);
-  return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
-}
-const WEEK = todayWeekStartLocal();
+const WEEK = getWeekStartDate(new Date());
 
 test.use({ viewport: { width: 375, height: 667 } });
 
@@ -134,11 +129,10 @@ test.describe("mobile schedule flows (375×667)", () => {
     await expect(group.getByRole("button", { name: "일별" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  test.skip("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
-    // FIXME: timezone fix(weekStartDate를 브라우저 monday로) 적용 후에도 11s timeout fail.
-    // ScheduleDailyView 내부 sessions filter 또는 useDisplaySessions의 enrollmentIds 검증,
-    // 또는 schedule/page.tsx의 weekFilteredSessions 정확한 동작 추가 디버그 필요.
-    // 후속 PR에서 Playwright trace로 SessionBlock DOM 미존재 vs 다른 selector 가려짐 등 확인.
+  test("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
+    // PR L — 진짜 원인은 schedule/page.tsx의 currentWeekStart가 KST 기반(getWeekStartDate)
+    // 인데 seed의 weekStartDate가 UTC 기반이라 weekFilteredSessions에 누락됐던 것.
+    // production과 동일한 getWeekStartDate(KST) 사용으로 일치.
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
