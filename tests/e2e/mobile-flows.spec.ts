@@ -9,18 +9,21 @@
  * Anonymous mode OK — 모든 시나리오 auth 없이 동작.
  */
 import { expect, test, type Page } from "@playwright/test";
-import { getWeekStartDate } from "@/lib/weekStart";
 
 const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
 
 /**
- * PR L 진단: schedule/page.tsx:211 `currentWeekStart = getWeekStartDate(selectedDate)`로
- * **KST 기준** monday 계산. seed의 weekStartDate가 UTC monday면 weekFilteredSessions
- * (line 720)에서 정확 일치 안 됨 → ScheduleDailyView가 sess-mon 못 봄.
+ * PR N — page.clock.install로 브라우저 시간 고정 (KST 12:00 정오).
+ * - schedule/page.tsx:211 `currentWeekStart = getWeekStartDate(selectedDate)` (KST 기반)
+ * - useScheduleView selectedDate = useState(() => new Date()) — page.clock 영향
+ * - DayChipBar onSelectWeekday handler가 (selectedDate.getDay() + 6) % 7로 weekday 계산
+ * - 시간 고정 → UTC/KST timezone 변수 제거 → seed weekStartDate와 정확 일치
  *
- * 해결: production과 동일한 getWeekStartDate(KST) 사용.
+ * FIXED_DATE = 2026-05-04 03:00 UTC = 2026-05-04 12:00 KST (월요일 정오)
+ * → currentWeekStart = '2026-05-04', sess-mon weekStartDate = '2026-05-04' 일치
  */
-const WEEK = getWeekStartDate(new Date());
+const FIXED_DATE_UTC = new Date("2026-05-04T03:00:00Z");
+const WEEK = "2026-05-04"; // KST 기준 월요일
 
 test.use({ viewport: { width: 375, height: 667 } });
 
@@ -71,6 +74,12 @@ async function seedScheduleMobile(page: Page): Promise<void> {
 }
 
 test.describe("mobile schedule flows (375×667)", () => {
+  test.beforeEach(async ({ page }) => {
+    // PR N — 시간 고정으로 KST/UTC timezone 변수 제거. monChip click 시 selectedDate
+    // 변환이 안정적으로 KST monday로 정렬 → seed weekStartDate와 일치.
+    await page.clock.install({ time: FIXED_DATE_UTC });
+  });
+
   test("모바일 viewport에서 schedule 페이지가 정상 로드된다 — viewMode default=daily", async ({
     page,
   }) => {
@@ -130,11 +139,11 @@ test.describe("mobile schedule flows (375×667)", () => {
   });
 
   test.skip("모바일 일별 모드에서 SessionBlock visible — sess-mon (월요일 09:00)", async ({ page }) => {
-    // FIXME: PR L에서 KST 기반 weekStart로 fix 시도 → 여전히 11s timeout.
-    // 다른 원인 추정: monChip 클릭이 selectedWeekday만 변경, selectedDate(weekday=0 navigate)
-    // 변경 안 함. ScheduleDailyView가 weekday=0의 sessions 잡지만 다른 문제.
-    // 후속 PR에서 (a) Playwright trace 직접 분석 또는 (b) selectedDate 명시적 navigate
-    // 방법 정립 후 unskip.
+    // FIXME: page.clock.install 도입(PR N) 후에도 11s timeout. monChip click handler가
+    // selectedDate를 변환하나 SessionBlock(lazy-loaded ScheduleDailyView 내부 SessionCard)
+    // mount 안 됨. 후속 PR에서 (a) Playwright trace 직접 분석 또는 (b) ScheduleDailyView가
+    // 사용하는 정확한 testid (`session-block-${id}` 외 다른 wrapper) 확인 후 unskip.
+    // page.clock.install beforeEach는 보존 — 다른 시나리오의 timezone 안정성에 기여.
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
