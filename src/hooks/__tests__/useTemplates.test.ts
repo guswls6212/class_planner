@@ -152,7 +152,7 @@ describe("useTemplates", () => {
     const { result } = renderHook(() => useTemplates("user-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    let ret: boolean | undefined;
+    let ret: import("../useTemplates").SaveTemplateResult | undefined;
     await act(async () => {
       ret = await result.current.saveTemplate({
         name: "새 템플릿",
@@ -161,12 +161,12 @@ describe("useTemplates", () => {
       });
     });
 
-    expect(ret).toBe(true);
+    expect(ret).toEqual({ ok: true });
     // mount + POST + re-fetch = 3
     expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
-  it("saveTemplate 실패 시 false를 반환한다", async () => {
+  it("saveTemplate 실패 시 ok:false reason:unknown 을 반환한다", async () => {
     const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
     mountEmpty(fetchMock);
     fetchMock.mockResolvedValueOnce({
@@ -178,7 +178,7 @@ describe("useTemplates", () => {
     const { result } = renderHook(() => useTemplates("user-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    let ret: boolean | undefined;
+    let ret: import("../useTemplates").SaveTemplateResult | undefined;
     await act(async () => {
       ret = await result.current.saveTemplate({
         name: "실패 템플릿",
@@ -186,10 +186,38 @@ describe("useTemplates", () => {
         templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
-    expect(ret).toBe(false);
+    expect(ret).toEqual({ ok: false, reason: "unknown" });
   });
 
-  it("saveTemplate 네트워크 오류 시 false를 반환한다 (throw 안 함)", async () => {
+  it("saveTemplate 이 403 + TEMPLATES_QUOTA_EXCEEDED 응답 시 reason:quota_exceeded 를 반환한다", async () => {
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    mountEmpty(fetchMock);
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        success: false,
+        error: "TEMPLATES_QUOTA_EXCEEDED",
+        message: "프리 티어는 academy 당 최대 2개 템플릿까지 사용할 수 있습니다.",
+      }),
+    });
+
+    const { result } = renderHook(() => useTemplates("user-1"));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let ret: import("../useTemplates").SaveTemplateResult | undefined;
+    await act(async () => {
+      ret = await result.current.saveTemplate({
+        name: "쿼터 초과",
+        description: "",
+        templateData: FIXTURE_TEMPLATE_DATA,
+      });
+    });
+    expect(ret).toEqual({ ok: false, reason: "quota_exceeded" });
+    expect(result.current.isSaving).toBe(false);
+  });
+
+  it("saveTemplate 네트워크 오류 시 reason:unknown 을 반환한다 (throw 안 함)", async () => {
     const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
     mountEmpty(fetchMock);
     fetchMock.mockRejectedValueOnce(new Error("network failure"));
@@ -197,7 +225,7 @@ describe("useTemplates", () => {
     const { result } = renderHook(() => useTemplates("user-1"));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    let ret: boolean | undefined;
+    let ret: import("../useTemplates").SaveTemplateResult | undefined;
     await act(async () => {
       ret = await result.current.saveTemplate({
         name: "네트워크 실패",
@@ -205,7 +233,7 @@ describe("useTemplates", () => {
         templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
-    expect(ret).toBe(false);
+    expect(ret).toEqual({ ok: false, reason: "unknown" });
     expect(result.current.isSaving).toBe(false);
   });
 
@@ -227,9 +255,9 @@ describe("useTemplates", () => {
     expect(result.current.isSaving).toBe(false);
   });
 
-  it("userId=null 이면 saveTemplate이 false를 반환한다", async () => {
+  it("userId=null 이면 saveTemplate이 ok:false reason:unknown 을 반환한다", async () => {
     const { result } = renderHook(() => useTemplates(null));
-    let ret: boolean | undefined;
+    let ret: import("../useTemplates").SaveTemplateResult | undefined;
     await act(async () => {
       ret = await result.current.saveTemplate({
         name: "X",
@@ -237,7 +265,7 @@ describe("useTemplates", () => {
         templateData: FIXTURE_TEMPLATE_DATA,
       });
     });
-    expect(ret).toBe(false);
+    expect(ret).toEqual({ ok: false, reason: "unknown" });
     expect(global.fetch).not.toHaveBeenCalled();
   });
 });
