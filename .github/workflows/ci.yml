@@ -92,3 +92,17 @@ jobs:
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
           # cleanup-test-data.ts 가 RLS 우회 위해 사용. 누락 시 cleanup 건너뜀(경고만).
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # T0' instrumentation (PR-α): fail 시 trace/screenshot/video/report artifact upload.
+      # playwright.config.ts:trace='on-first-retry' + screenshot='only-on-failure' +
+      # video='retain-on-failure' 로 이미 생성되지만 CI artifact 로 보존되지 않아
+      # fail 후 분석 불가했음. 본 step 으로 GitHub Actions UI 에서 다운로드 가능.
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ github.job }}-${{ github.run_id }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
