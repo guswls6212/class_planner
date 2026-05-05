@@ -1,5 +1,9 @@
 /* eslint-env browser */
 /* eslint-disable no-console */
+// ⚠️ DEPRECATED — public/uat/console-tools.js 로 통합 (uat.seed() 함수).
+//    localhost:3000 진입 후 콘솔에서 uat.seed() 호출만으로 동일 동작.
+//    이 파일은 legacy 사용자 위해 보존.
+//
 // UAT 기본 시드 데이터 (익명 모드)
 //
 // 사용:

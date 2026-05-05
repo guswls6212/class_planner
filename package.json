@@ -33,7 +33,10 @@
     "migration:status": "echo 'Migration 상태를 확인하려면 Supabase SQL Editor에서 다음 쿼리를 실행하세요: SELECT * FROM public.get_migration_status();'",
     "generate:pdf-fonts": "node scripts/generate-pdf-fonts.mjs",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "uat:setup": "npx tsx scripts/setup-uat-test-user.ts",
+    "uat:seed": "npx tsx scripts/uat-seed.ts",
+    "uat:teardown": "npx tsx scripts/uat-teardown.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

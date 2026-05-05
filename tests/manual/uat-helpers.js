@@ -1,5 +1,9 @@
 /* eslint-env browser */
 /* eslint-disable no-console */
+// ⚠️ DEPRECATED — public/uat/console-tools.js 로 통합됨.
+//    localhost:3000 진입 시 layout.tsx가 NODE_ENV=development 분기로 자동 inject → window.uat 즉시 노출.
+//    이 파일은 legacy 사용자(콘솔 paste 흐름 선호) 위해 보존. 신규 helper는 console-tools.js에 추가.
+//
 // UAT 콘솔 헬퍼 — 시나리오에서 재사용하는 짧은 함수 모음
 //
 // 사용:
