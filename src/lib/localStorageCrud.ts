@@ -1241,6 +1241,68 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
   }
 };
 
+/**
+ * Enrollment id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`enrollments[].id` + 모든 `sessions[].enrollmentIds`) 를 한 번에 갱신.
+ *
+ * Why: 클라이언트 localStorage의 enrollment id 가 server enrollment id 와 다른 케이스
+ * (anonymous → 로그인, 머신 간 sync 등에서 발생). reconcile 안 하면 후속 session POST
+ * 가 잘못된 enrollmentIds 로 가서 session_enrollments FK 위반 → 500 → outbox 무한 retry.
+ *
+ * 멱등: oldId === newId 또는 oldId가 enrollments에 없으면 no-op + true.
+ */
+export const replaceEnrollmentId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.enrollments.find((e) => e.id === oldId);
+    if (!target) return true; // 이미 정리됨 — 멱등
+
+    // 새 id가 이미 enrollments에 있으면 (예: 같은 (student, subject) 로 별도 row 존재)
+    // oldId entry 제거 + sessions[].enrollmentIds 만 newId로 교체 (중복 제거).
+    const newAlreadyPresent = data.enrollments.some((e) => e.id === newId);
+
+    if (newAlreadyPresent) {
+      data.enrollments = data.enrollments.filter((e) => e.id !== oldId);
+    } else {
+      data.enrollments = data.enrollments.map((e) =>
+        e.id === oldId ? { ...e, id: newId } : e
+      );
+    }
+
+    data.sessions = data.sessions.map((session) => {
+      if (!session.enrollmentIds || !session.enrollmentIds.includes(oldId)) {
+        return session;
+      }
+      const replaced = session.enrollmentIds.map((eId) =>
+        eId === oldId ? newId : eId
+      );
+      // 중복 제거 (newId가 이미 배열에 있으면 oldId→newId 변환 후 dedupe)
+      const deduped = Array.from(new Set(replaced));
+      return { ...session, enrollmentIds: deduped };
+    });
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - enrollment id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error(
+      "localStorageCrud - enrollment id 교체 실패:",
+      undefined,
+      error as Error
+    );
+    return false;
+  }
+};
+
 // ===== 사용자별 데이터 삭제 =====
 
 export const clearUserClassPlannerData = (userId: string): boolean => {
