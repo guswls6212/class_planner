@@ -51,9 +51,12 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
           return;
         }
 
-        // 타임아웃 설정으로 무한 로딩 방지
+        // 타임아웃 설정으로 무한 로딩 방지.
+        // 3000 → 7000: SW activate(install + precache 1~3s) + supabase auth init(<500ms)
+        // + cross-origin fetch(SW intercept latency 50~200ms) 누적이 3s 넘기는 케이스 방어.
+        // 정상 케이스(SW idle)는 100ms 이내라 영향 미미. 무한 hang 가드는 유지.
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("인증 확인 타임아웃")), 3000)
+          setTimeout(() => reject(new Error("인증 확인 타임아웃")), 7000)
         );
 
         const sessionPromise = supabase.auth.getSession();

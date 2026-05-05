@@ -81,10 +81,9 @@ jobs:
             --project=chromium --reporter=list
         env:
           CI: "true"
-          # PR R — SW를 e2e production build에서 disable. SW activation timing이
-          # auth-dependent specs (multi-academy/share-link/teachers/templates 등)에서
-          # button visible timeout 유발. SW 자체 검증은 PR S의 별도 job (E2E_DISABLE_SW unset)로 분리.
-          E2E_DISABLE_SW: "1"
+          # E2E_DISABLE_SW=1 제거 (이전 PR R 우회). SW timing root cause fix
+          # (sw.ts /api/* NetworkOnly + AuthGuard 7s) 후 e2e_pwa job 통합 — 모든
+          # spec이 SW 활성 환경에서 실행. 환경 충실도 = production.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           # PR C — Supabase password auth로 진짜 토큰 발급. 누락 시 globalSetup이 throw,
@@ -92,43 +91,4 @@ jobs:
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
           # cleanup-test-data.ts 가 RLS 우회 위해 사용. 누락 시 cleanup 건너뜀(경고만).
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
-  e2e_pwa:
-    name: E2E PWA tests (Chromium, SW active)
-    # PR R fix와 같은 race condition 방지: e2e_pwa는 e2e 끝난 후 순차 실행.
-    # 두 job이 같은 Supabase test user 셋업/cleanup 동시 시도 시 academy_members 충돌.
-    needs: e2e
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      # 같은 setup-e2e-test-user — 멱등이라 중복 실행 안전.
-      - name: Setup E2E test user (idempotent)
-        run: npx tsx scripts/setup-e2e-test-user.ts
-        continue-on-error: true
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
-      # SW 활성 환경(E2E_DISABLE_SW unset)에서 offline-network.spec.ts 만 실행.
-      # 다른 auth-dependent specs는 e2e job(SW disabled)에서 검증.
-      - name: Run PWA E2E tests (SW active)
-        run: |
-          npx playwright test \
-            tests/e2e/offline-network.spec.ts \
-            --project=chromium --reporter=list
-        env:
-          CI: "true"
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
