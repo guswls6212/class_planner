@@ -153,7 +153,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
         </div>
 
         {/* 데스크탑: 카드 Side-by-Side */}
-        <div className="mb-4 grid grid-cols-2 grid-rows-[repeat(4,auto)] gap-x-3 gap-y-0 max-sm:hidden">
+        <div className="mb-4 grid grid-cols-2 grid-rows-[repeat(5,auto)] gap-x-3 gap-y-0 max-sm:hidden">
           <DataCard
             testId="card-local"
             sourceLabel="이 기기의 데이터"
@@ -379,7 +379,7 @@ const DataCard: React.FC<DataCardProps> = ({
 
   return (
     <div
-      className={`grid row-span-4 [grid-template-rows:subgrid] rounded-xl p-5 outline-none content-start transition-[border-color,background,box-shadow] duration-[180ms] ease-out ${
+      className={`grid row-span-5 [grid-template-rows:subgrid] rounded-xl p-5 outline-none content-start transition-[border-color,background,box-shadow] duration-[180ms] ease-out ${
         selected
           ? lossOnSelect.isLargeLoss
             ? "border-[1.5px] border-red-500 bg-red-500/[0.08] shadow-[0_0_0_1px_#ef4444,0_8px_24px_rgba(239,68,68,0.2)]"
