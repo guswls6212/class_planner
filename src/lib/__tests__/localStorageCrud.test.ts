@@ -19,6 +19,7 @@ import {
   getClassPlannerData,
   getStudentFromLocal,
   getSubjectFromLocal,
+  replaceEnrollmentId,
   setActiveAcademyId,
   setClassPlannerData,
   updateStudentInLocal,
@@ -948,5 +949,109 @@ describe("getClassPlannerData per-academy migration", () => {
     expect(
       localStorageMock.getItem("classPlannerData:academy-orphan")
     ).toBeNull();
+  });
+});
+
+describe("replaceEnrollmentId — server idempotent reconciliation", () => {
+  beforeEach(() => {
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    vi.clearAllMocks();
+  });
+
+  it("enrollments[].id 와 sessions[].enrollmentIds 를 함께 교체한다", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [
+        {
+          id: "ses-1",
+          enrollmentIds: ["old-id", "other-id"],
+          weekday: 0,
+          startsAt: "10:00",
+          endsAt: "11:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+      ],
+      enrollments: [
+        { id: "old-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+        { id: "other-id", studentId: "stu-2", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    const ok = replaceEnrollmentId("old-id", "new-server-id");
+    expect(ok).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.enrollments.find((e) => e.id === "old-id")).toBeUndefined();
+    expect(after.enrollments.find((e) => e.id === "new-server-id")).toBeDefined();
+    expect(after.sessions[0].enrollmentIds).toEqual(["new-server-id", "other-id"]);
+  });
+
+  it("oldId === newId 면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [
+        { id: "same-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("same-id", "same-id");
+    expect(ok).toBe(true);
+    expect(getClassPlannerData().enrollments).toHaveLength(1);
+  });
+
+  it("oldId가 enrollments에 없으면 no-op + true (멱등)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("missing", "any");
+    expect(ok).toBe(true);
+  });
+
+  it("newId가 이미 enrollments에 있으면 oldId entry 제거 + sessions의 oldId만 newId로 교체 (중복 제거)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [
+        {
+          id: "ses-1",
+          enrollmentIds: ["old-id", "new-id"], // 둘 다 이미 참조 — 교체 후 dedupe
+          weekday: 0,
+          startsAt: "10:00",
+          endsAt: "11:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+      ],
+      enrollments: [
+        { id: "old-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+        { id: "new-id", studentId: "stu-1", subjectId: "sub-2" } as any, // 다른 subject
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("old-id", "new-id");
+    expect(ok).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.enrollments).toHaveLength(1);
+    expect(after.enrollments[0].id).toBe("new-id");
+    expect(after.sessions[0].enrollmentIds).toEqual(["new-id"]); // dedupe
   });
 });
