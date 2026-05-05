@@ -70,3 +70,109 @@ describe("TeacherPillPicker", () => {
     expect(onSelect).toHaveBeenCalledWith(null);
   });
 });
+
+describe("TeacherPillPicker — 인라인 강사 추가", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("canManage=false 면 '＋ 새 강사' pill 미렌더", () => {
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={false}
+        inputValue=""
+        setInputValue={vi.fn()}
+        onCreate={vi.fn().mockResolvedValue(true)}
+      />
+    );
+    expect(screen.queryByRole("button", { name: /＋ 새 강사/ })).not.toBeInTheDocument();
+  });
+
+  it("canManage=true + onCreate/setInputValue 제공 시 '＋ 새 강사' pill 렌더", () => {
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={true}
+        inputValue=""
+        setInputValue={vi.fn()}
+        onCreate={vi.fn().mockResolvedValue(true)}
+      />
+    );
+    expect(screen.getByRole("button", { name: /＋ 새 강사/ })).toBeInTheDocument();
+  });
+
+  it("'＋ 새 강사' 클릭 시 인라인 row(input + 생성 + 닫기) 렌더", () => {
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={true}
+        inputValue=""
+        setInputValue={vi.fn()}
+        onCreate={vi.fn().mockResolvedValue(true)}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /＋ 새 강사/ }));
+    expect(screen.getByPlaceholderText("새 강사 이름")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "생성" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "닫기" })).toBeInTheDocument();
+  });
+
+  it("'생성' 클릭 시 onCreate가 호출된다", async () => {
+    const onCreate = vi.fn().mockResolvedValue(true);
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={true}
+        inputValue="박선생"
+        setInputValue={vi.fn()}
+        onCreate={onCreate}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /＋ 새 강사/ }));
+    fireEvent.click(screen.getByRole("button", { name: "생성" }));
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("닫기 버튼 클릭 시 row 닫힘 + setInputValue('') 호출", () => {
+    const setInputValue = vi.fn();
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={true}
+        inputValue="박"
+        setInputValue={setInputValue}
+        onCreate={vi.fn().mockResolvedValue(true)}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /＋ 새 강사/ }));
+    fireEvent.click(screen.getByRole("button", { name: "닫기" }));
+    expect(setInputValue).toHaveBeenCalledWith("");
+    expect(screen.queryByPlaceholderText("새 강사 이름")).not.toBeInTheDocument();
+  });
+
+  it("createError가 있으면 에러 메시지가 표시된다", () => {
+    render(
+      <TeacherPillPicker
+        teachers={mockTeachers}
+        selectedTeacherId={null}
+        onSelect={vi.fn()}
+        canManage={true}
+        inputValue="박"
+        setInputValue={vi.fn()}
+        onCreate={vi.fn().mockResolvedValue(false)}
+        createError="이미 같은 이름의 강사가 존재합니다."
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /＋ 새 강사/ }));
+    expect(screen.getByText("이미 같은 이름의 강사가 존재합니다.")).toBeInTheDocument();
+  });
+});

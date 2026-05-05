@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Check, X, ChevronRight, ChevronLeft } from "lucide-react";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
@@ -34,8 +34,21 @@ interface GroupSessionModalProps {
   onCreateStudent: () => void;
   studentCreating: boolean;
   studentCreateError: string;
-  /** 신규 학생 추가 CTA 노출 여부. owner/admin 만 true. 미지정 시 true. */
+  /** 신규 학생/강사/과목 인라인 추가 CTA 노출 여부. owner/admin 만 true. 미지정 시 true. */
   canManage?: boolean;
+  // 강사·과목 인라인 추가 (학생 패턴 미러링) — 기존 호출처/테스트 호환 위해 optional
+  subjectInputValue?: string;
+  setSubjectInputValue?: (val: string) => void;
+  /** 성공 시 true 반환 — true 받으면 과목 인라인 row 자동 닫힘 + 새 과목 자동 select. */
+  onCreateSubject?: () => Promise<boolean>;
+  subjectCreating?: boolean;
+  subjectCreateError?: string;
+  teacherInputValue?: string;
+  setTeacherInputValue?: (val: string) => void;
+  /** 성공 시 true 반환 — TeacherPillPicker 인라인 row 자동 닫힘 + 새 강사 자동 선택. */
+  onCreateTeacher?: () => Promise<boolean>;
+  teacherCreating?: boolean;
+  teacherCreateError?: string;
 }
 
 const STEPS = ["학생", "과목 & 시간", "확인"];
@@ -64,13 +77,49 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   studentCreating,
   studentCreateError,
   canManage = true,
+  subjectInputValue = "",
+  setSubjectInputValue = () => {},
+  onCreateSubject = async () => false,
+  subjectCreating = false,
+  subjectCreateError = "",
+  teacherInputValue = "",
+  setTeacherInputValue = () => {},
+  onCreateTeacher = async () => false,
+  teacherCreating = false,
+  teacherCreateError = "",
 }) => {
   const [step, setStep] = useState(0);
+  const [subjectExpanding, setSubjectExpanding] = useState(false);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
 
   // Reset step when modal opens
   useEffect(() => {
     if (isOpen) setStep(0);
   }, [isOpen]);
+
+  // Subject inline row — auto focus + ESC close
+  useEffect(() => {
+    if (subjectExpanding) subjectInputRef.current?.focus();
+  }, [subjectExpanding]);
+
+  useEffect(() => {
+    if (!subjectExpanding) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSubjectExpanding(false);
+        setSubjectInputValue("");
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [subjectExpanding, setSubjectInputValue]);
+
+  const handleCreateSubjectInline = async () => {
+    const trimmed = subjectInputValue.trim();
+    if (!trimmed || subjectCreating) return;
+    const success = await onCreateSubject();
+    if (success) setSubjectExpanding(false);
+  };
 
   const { containerRef } = useModalA11y({
     isOpen,
@@ -263,18 +312,75 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         <label htmlFor="modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           과목 <span className="text-[var(--color-danger)]">*</span>
         </label>
-        <select
-          id="modal-subject"
-          className="w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 disabled:opacity-40 transition-colors"
-          value={groupModalData.subjectId}
-          onChange={(e) => setGroupModalData((prev) => ({ ...prev, subjectId: e.target.value }))}
-          disabled={groupModalData.studentIds.length === 0}
-        >
-          <option value="">과목을 선택하세요</option>
-          {subjects.map((subject) => (
-            <option key={subject.id} value={subject.id}>{subject.name}</option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select
+            id="modal-subject"
+            className="flex-1 appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 disabled:opacity-40 transition-colors"
+            value={groupModalData.subjectId}
+            onChange={(e) => setGroupModalData((prev) => ({ ...prev, subjectId: e.target.value }))}
+            disabled={groupModalData.studentIds.length === 0}
+          >
+            <option value="">과목을 선택하세요</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.name}</option>
+            ))}
+          </select>
+          {canManage && !subjectExpanding && (
+            <button
+              type="button"
+              onClick={() => setSubjectExpanding(true)}
+              aria-label="새 과목 추가"
+              className="flex-shrink-0 rounded-xl border border-dashed border-[var(--color-accent)] px-3 py-2.5 text-[14px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-overlay-light)] transition-colors"
+            >
+              ＋
+            </button>
+          )}
+        </div>
+        {canManage && subjectExpanding && (
+          <div className="flex flex-col gap-1.5 mt-1">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-2 py-1.5">
+              <input
+                ref={subjectInputRef}
+                type="text"
+                value={subjectInputValue}
+                onChange={(e) => setSubjectInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateSubjectInline();
+                  }
+                }}
+                placeholder="새 과목 이름"
+                disabled={subjectCreating}
+                className="flex-1 bg-transparent text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none px-2 py-1"
+              />
+              <button
+                type="button"
+                onClick={handleCreateSubjectInline}
+                disabled={!subjectInputValue.trim() || subjectCreating}
+                className="flex-shrink-0 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
+              >
+                {subjectCreating ? "생성 중..." : "생성"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubjectExpanding(false);
+                  setSubjectInputValue("");
+                }}
+                aria-label="닫기"
+                className="flex-shrink-0 rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+            {subjectCreateError && (
+              <p className="text-[11px] text-[var(--color-danger)] px-2" role="alert">
+                {subjectCreateError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Weekday */}
@@ -303,6 +409,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           teachers={teachers}
           selectedTeacherId={groupModalData.teacherId ?? null}
           onSelect={(id) => setGroupModalData((prev) => ({ ...prev, teacherId: id ?? undefined }))}
+          canManage={canManage}
+          inputValue={teacherInputValue}
+          setInputValue={setTeacherInputValue}
+          onCreate={onCreateTeacher}
+          creating={teacherCreating}
+          createError={teacherCreateError}
         />
       </div>
 
