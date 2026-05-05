@@ -56,20 +56,6 @@ export interface UseSubjectManagementLocalReturn {
   subjectCount: number;
 }
 
-// ===== 기본 과목 목록 =====
-
-const DEFAULT_SUBJECTS: Subject[] = [
-  { id: "default-1", name: "초등수학", color: "#fbbf24" }, // 밝은 노란색
-  { id: "default-2", name: "중등수학", color: "#f59e0b" }, // 주황색
-  { id: "default-3", name: "중등영어", color: "#3b82f6" }, // 파란색
-  { id: "default-4", name: "중등국어", color: "#10b981" }, // 초록색
-  { id: "default-5", name: "중등과학", color: "#ec4899" }, // 분홍색
-  { id: "default-6", name: "중등사회", color: "#06b6d4" }, // 청록색
-  { id: "default-7", name: "고등수학", color: "#ef4444" }, // 빨간색
-  { id: "default-8", name: "고등영어", color: "#8b5cf6" }, // 보라색
-  { id: "default-9", name: "고등국어", color: "#059669" }, // 진한 초록색
-];
-
 // ===== 훅 구현 =====
 
 export const useSubjectManagementLocal =
@@ -81,29 +67,17 @@ export const useSubjectManagementLocal =
     // 권한 게이트 — member 역할은 mutating 호출 차단
     const { canManage, isLoading: roleLoading } = useMyRole();
 
-    // localStorage에서 과목 데이터 로드
+    // localStorage에서 과목 데이터 로드. 빈 배열일 수 있음 — GroupSessionModal
+    // 인라인 "+" 버튼(PR #257)으로 사용자가 직접 추가하면 됨.
     const loadSubjectsFromLocal = useCallback(() => {
       try {
         const localSubjects = getAllSubjectsFromLocal();
-
-        // 과목이 없으면 기본 과목 사용 (localStorage에 저장하지 않음)
-        if (localSubjects.length === 0) {
-          setSubjects(DEFAULT_SUBJECTS);
-          logger.debug("useSubjectManagementLocal - 기본 과목 사용", {
-            count: DEFAULT_SUBJECTS.length,
-          });
-        } else {
-          setSubjects(
-            localSubjects.map((s) => ({ ...s, color: s.color || "#3b82f6" }))
-          );
-          logger.debug(
-            "useSubjectManagementLocal - localStorage에서 과목 데이터 로드",
-            {
-              count: localSubjects.length,
-            }
-          );
-        }
-
+        setSubjects(
+          localSubjects.map((s) => ({ ...s, color: s.color || "#3b82f6" }))
+        );
+        logger.debug("useSubjectManagementLocal - localStorage 로드", {
+          count: localSubjects.length,
+        });
         setError(null);
       } catch (err) {
         const errorMessage =
@@ -114,9 +88,7 @@ export const useSubjectManagementLocal =
           undefined,
           err as Error
         );
-
-        // 에러 시 기본 과목 사용
-        setSubjects(DEFAULT_SUBJECTS);
+        setSubjects([]);
       }
     }, []);
 

@@ -71,7 +71,7 @@ describe("DataConflictModal", () => {
     expect(screen.getByText("서버학생")).toBeInTheDocument();
   });
 
-  it("과목 섹션 펼치면 사용자 추가 과목이 보이고 기본 과목은 힌트로 표시", () => {
+  it("과목 섹션 펼치면 모든 과목이 표시된다", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -84,8 +84,7 @@ describe("DataConflictModal", () => {
     const subjectLabels = screen.getAllByText("2개");
     fireEvent.click(subjectLabels[0]);
     expect(screen.getAllByText("피아노").length).toBeGreaterThan(0);
-    // 기본 과목은 힌트 텍스트로 표시
-    expect(screen.getByText(/기본 과목 1개/)).toBeInTheDocument();
+    expect(screen.getAllByText("초등수학").length).toBeGreaterThan(0);
   });
 
   it("로컬 라디오 선택 후 확인 버튼 클릭 시 onSelectLocal 호출", () => {

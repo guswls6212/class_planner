@@ -115,11 +115,10 @@ const FeatureDetail: React.FC<FeatureDetailProps> = ({
               </div>
               <div>
                 <p className="text-gray-700 text-sm font-semibold mb-1">
-                  기본 과목 자동 생성
+                  빠른 과목 추가
                 </p>
                 <p className="text-gray-600 text-xs">
-                  초등수학, 중등수학, 중등영어, 중등국어, 중등과학,
-                  중등사회, 고등수학, 고등영어, 고등국어
+                  수업 추가 모달에서 ＋ 버튼으로 새 과목을 즉시 등록 (자동 색상 할당)
                 </p>
               </div>
             </div>

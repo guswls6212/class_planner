@@ -5,7 +5,6 @@ import type { ClassPlannerData } from "../../lib/localStorageCrud";
 import type { Student, Subject, Enrollment, Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
 import { useModalA11y } from "../../hooks/useModalA11y";
-import { filterNonDefaultSubjects } from "../../lib/conflict/defaultSubjects";
 import {
   computeLossDiff,
   type LossDiff,
@@ -93,9 +92,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
   // DataConflictModal must be explicitly resolved — Escape is intentionally a no-op
   const { containerRef } = useModalA11y({ isOpen: true, onClose: () => {} });
 
-  const localSubjects = filterNonDefaultSubjects(localData.subjects);
-  const serverSubjects = filterNonDefaultSubjects(serverData.subjects);
-
   // 각 카드 선택 시 잃을 entity 수 (rejected = 반대편 데이터)
   const lossLocal = useMemo(
     () => computeLossDiff(localData, serverData),
@@ -158,7 +154,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             testId="card-local"
             sourceLabel="이 기기의 데이터"
             data={localData}
-            filteredSubjects={localSubjects}
             selected={selectedSide === "local"}
             onSelect={() => setSelectedSide("local")}
             disabled={isMigrating}
@@ -168,7 +163,6 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             testId="card-server"
             sourceLabel="내 계정의 데이터"
             data={serverData}
-            filteredSubjects={serverSubjects}
             selected={selectedSide === "server"}
             onSelect={() => setSelectedSide("server")}
             disabled={isMigrating}
@@ -220,7 +214,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             {activeTab === "local" ? (
               <>
                 <StudentSection students={localData.students} />
-                <SubjectSection subjects={localData.subjects} filteredSubjects={localSubjects} />
+                <SubjectSection subjects={localData.subjects} />
                 <SessionSection
                   sessions={localData.sessions}
                   enrollments={localData.enrollments}
@@ -255,7 +249,7 @@ const DataConflictModal: React.FC<DataConflictModalProps> = ({
             ) : (
               <>
                 <StudentSection students={serverData.students} />
-                <SubjectSection subjects={serverData.subjects} filteredSubjects={serverSubjects} />
+                <SubjectSection subjects={serverData.subjects} />
                 <SessionSection
                   sessions={serverData.sessions}
                   enrollments={serverData.enrollments}
@@ -356,7 +350,6 @@ interface DataCardProps {
   testId: string;
   sourceLabel: string;
   data: ClassPlannerData;
-  filteredSubjects: Subject[];
   selected: boolean;
   onSelect: () => void;
   disabled?: boolean;
@@ -367,7 +360,6 @@ const DataCard: React.FC<DataCardProps> = ({
   testId,
   sourceLabel,
   data,
-  filteredSubjects,
   selected,
   onSelect,
   disabled,
@@ -412,7 +404,7 @@ const DataCard: React.FC<DataCardProps> = ({
         )}
       </label>
       <StudentSection students={data.students} />
-      <SubjectSection subjects={data.subjects} filteredSubjects={filteredSubjects} />
+      <SubjectSection subjects={data.subjects} />
       <SessionSection
         sessions={data.sessions}
         enrollments={data.enrollments}
@@ -504,13 +496,10 @@ const StudentSection: React.FC<StudentSectionProps> = ({ students }) => {
 
 interface SubjectSectionProps {
   subjects: Subject[];
-  filteredSubjects: Subject[];
 }
 
-const SubjectSection: React.FC<SubjectSectionProps> = ({ subjects, filteredSubjects }) => {
+const SubjectSection: React.FC<SubjectSectionProps> = ({ subjects }) => {
   const [expanded, setExpanded] = useState(false);
-  const defaultCount = subjects.length - filteredSubjects.length;
-  const customCount = filteredSubjects.length;
 
   return (
     <div className="mt-3 first:mt-0">
@@ -533,31 +522,14 @@ const SubjectSection: React.FC<SubjectSectionProps> = ({ subjects, filteredSubje
       )}
       {expanded && subjects.length > 0 && (
         <div className="mt-1 flex flex-col gap-0.5 border-l-2 border-l-indigo-500/15 pl-2.5">
-          <div className="flex gap-2">
-            {defaultCount > 0 && (
-              <span className="text-[0.6875rem] text-[--color-text-secondary] opacity-80">
-                기본 {defaultCount}개
-              </span>
-            )}
-            {customCount > 0 && (
-              <span className="text-[0.6875rem] text-[--color-text-secondary] opacity-80">
-                추가 {customCount}개
-              </span>
-            )}
-          </div>
           <ul className="m-0 mt-0.5 flex list-none flex-col gap-0.5 overflow-y-auto p-0 [scrollbar-color:rgba(148,163,184,0.2)_transparent] [scrollbar-width:thin]">
-            {filteredSubjects.map((s) => (
+            {subjects.map((s) => (
               <li key={s.id} className="flex items-center gap-2 rounded px-1.5 py-[3px] text-xs text-[--color-text-secondary] transition-[background] duration-100 hover:bg-white/[0.03]">
                 <span className="h-[3px] w-[3px] shrink-0 rounded-full bg-[--color-text-secondary]" />
                 {s.color && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.color }} />}
                 {s.name}
               </li>
             ))}
-            {defaultCount > 0 && (
-              <li className="list-none py-0.5 text-[0.6875rem] text-[--color-text-secondary] opacity-60">
-                + 기본 과목 {defaultCount}개 (초등수학, 중등수학 등)
-              </li>
-            )}
           </ul>
         </div>
       )}
