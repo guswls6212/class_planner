@@ -5,11 +5,47 @@
 **소유:** 1인 학원 운영자 (개발자 = 테스터).
 
 > **이 파일은 template.** 실제 결과는 `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` 사본에 기록 (§3 참조).
-> 시나리오 본문 위 **Quick Setup** 박스의 콘솔 명령은 GUI 단계를 단축하기 위한 것 — `tests/manual/uat-helpers.js` 와 `tests/manual/seed-uat.js` 를 먼저 paste해두면 더 짧게 호출 가능.
+> 시나리오 본문의 **Quick Setup** 박스에 적힌 `uat.xxx()` 함수는 `localhost:3000` 진입 시 자동 노출 (콘솔 paste 0번).
 
 ---
 
 ## 사용법
+
+### 0. 전체 흐름 (Quick Reference) — 빠뜨리지 말 것
+
+#### 처음 1회만 (셋업)
+
+1. `.env.local` 에 두 줄 추가:
+   ```bash
+   UAT_TEST_USER_EMAIL=uat-test@class-planner.test
+   UAT_TEST_USER_PASSWORD=<강한-password>
+   ```
+2. `npm run uat:setup` — UAT 전용 user + academy 멱등 생성 (이미 있으면 skip).
+3. `npm run dev` — `localhost:3000` 서버 띄움 (브라우저 열어둠).
+
+#### 매 UAT 사이클 (반복)
+
+```bash
+# 1. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
+bash scripts/uat-new.sh core    # 또는 extended / full
+# → tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 생성됨
+```
+
+이후 그 **사본**을 에디터에서 열고 위에서부터 따라간다:
+
+| 단계 | 어디서 | 무엇을 |
+|---|---|---|
+| §4 사전 준비 (익명 모드) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
+| §5 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
+| §1~§13 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
+| 시나리오 끝나면 (인증) | 터미널 | `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제) |
+| 결과 commit | 터미널 | `git add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
+| (선택) 추세 확인 | 터미널 | `bash scripts/uat-summary.sh` |
+
+> **본 `uat-checklist.md` 는 직접 수정 X** — 사본(`runs/<...>.md`)에 결과 기록.
+> 사본 내용은 본 파일과 같지만 메타가 자동 채워진 버전.
+
+---
 
 ### 1. 메타 기록
 
@@ -1229,3 +1265,4 @@ Issue 등록 형식:
 - 2026-05-04: 초기 작성 (73 시나리오 + 10 edge case). PR #211 회귀 가드 cross-reference 포함.
 - 2026-05-05: Quick Setup 콘솔 명령 박스 + `tests/manual/seed-uat.js` / `uat-helpers.js` 신설. `runs/` 디렉터리로 결과 기록 분리 (template은 본 파일 유지). `[auto-friendly]` 라벨로 향후 e2e 마이그레이션 후보 표시.
 - 2026-05-05 (2): 자동 inject 도입 — `public/uat/console-tools.js` 신설, layout.tsx가 NODE_ENV=development 분기로 자동 로드. 콘솔 paste 0번. `tests/manual/{uat-helpers,seed-uat}.js` 는 deprecated (legacy 보존). UAT 전용 인증 셋업 추가: `npm run uat:setup` / `uat:seed` / `uat:teardown` (e2e와 격리된 UAT_TEST_USER_*).
+- 2026-05-05 (3): §0 "전체 흐름 (Quick Reference)" 추가 — 처음 1회 셋업 + 매 사이클 표. 사본을 위에서부터 따라가면 빠뜨림 없이 완료 가능.
