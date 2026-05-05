@@ -20,6 +20,13 @@ playwright/.auth/
 /.next/
 /out/
 
+# Serwist (PWA — service worker build artifacts in public/)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/workbox-*.js
+public/workbox-*.js.map
+
 # production
 /build
 
