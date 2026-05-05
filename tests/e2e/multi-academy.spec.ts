@@ -17,6 +17,10 @@
  */
 import { expect, test } from "@playwright/test";
 import { injectRealSession } from "./helpers/auth-mock";
+import {
+  seedSecondAcademy,
+  clearSecondAcademies,
+} from "./helpers/seed-academy-data";
 
 test.describe("multi-academy — 사이드바 academy switcher UI", () => {
   test.beforeEach(async ({ page }) => {
@@ -47,10 +51,32 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
     await expect(page.getByText(/새 학원 만들기/)).toBeVisible({ timeout: 3000 });
   });
 
-  test.skip("multi-academy switch — 두 번째 academy 생성 후 전환 → reload → data scope 변경", async () => {
-    // FIXME: service role로 두 번째 academy seed + cleanup 보장 후속 PR.
-    // - sb.from('academies').insert({ name: 'Second Academy', created_by: userId })
-    // - sb.from('academy_members').insert({ academy_id, user_id, role: 'admin' })
-    // - 사이드바 switch → POST /api/auth/set-active-academy → reload → schedule 데이터 변경
+  test("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
+    // PR K — service role로 두 번째 academy seed (멱등 + cleanup)
+    await clearSecondAcademies();
+    const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
+
+    await page.goto("/schedule");
+    const switcherButton = page
+      .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
+      .first();
+    await expect(switcherButton).toBeVisible({ timeout: 10000 });
+    await switcherButton.click();
+
+    // 메뉴에 두 academy 모두 visible
+    await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
+
+    await clearSecondAcademies();
+  });
+
+  test.skip("multi-academy switch → reload → data scope 변경", async () => {
+    // FIXME: switch 클릭 → POST /api/auth/set-active-academy → reload → schedule 데이터 변경
+    // 검증은 reload 후 page state 재진입 + 데이터 일관성 검증 — page.context() 새로 필요.
+    // 후속 PR에서 reload pattern 정립 후 unskip.
   });
 });
