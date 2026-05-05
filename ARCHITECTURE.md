@@ -64,7 +64,8 @@
   - `Sidebar` — 데스크톱 사이드 네비게이션.
   - `TopBar` — 데스크톱 상단 헤더.
   - `PdfExportRangeModal` — PDF 출력 범위 선택 다이얼로그. viewMode별 옵션 분기.
-  - `SaveTemplateModal`, `ApplyTemplateModal` — 시간표 템플릿 저장/불러오기 모달.
+  - `SlotPickerModal` — 시간표 템플릿 슬롯 picker (save/apply mode 분기, ADR-008 multi-slot UI).
+  - `TemplateMenuV2`, `ApplyTemplateConfirm`, `TemplatePreviewModal` — 템플릿 메뉴 + 적용 확인 + 미리보기.
   - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
   - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
