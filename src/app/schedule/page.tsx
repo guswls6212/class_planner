@@ -48,7 +48,8 @@ import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
 import { filterSessionsByTeachers } from "../../features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
-import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { getActiveAcademyId, getClassPlannerData } from "../../lib/localStorageCrud";
+import { createSnapshot } from "../../lib/snapshots/createSnapshot";
 import { syncSubjectUpdate } from "../../lib/apiSync";
 import { logger } from "../../lib/logger";
 import { showActionToast, showError, showToast } from "../../lib/toast";
@@ -1638,8 +1639,22 @@ function SchedulePageContent(): JSX.Element {
         showToast("success", `"${finalName}" 슬롯에 저장되었습니다.`);
       }
       setShowSavePickerModal(false);
+
+      // 템플릿 저장 직후 자동 백업 (auto_template) — fire-and-forget, 사용자 흐름 차단 X.
+      // 시간표가 의미있는 milestone이라는 명시적 신호 시점 (사용자가 save 의도)이라
+      // 백업 trigger로 적합. 30일/10개 retention은 server side에서 atomic 처리.
+      if (userId) {
+        const academyId = getActiveAcademyId(userId);
+        if (academyId) {
+          void createSnapshot(userId, academyId, {
+            type: "auto_template",
+            payload: getClassPlannerData(),
+            description: `템플릿 "${finalName}" 저장 직후 자동 백업`,
+          });
+        }
+      }
     },
-    [buildTemplateData, templates, updateTemplate, saveTemplate]
+    [buildTemplateData, templates, updateTemplate, saveTemplate, userId]
   );
 
   /**
