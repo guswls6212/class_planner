@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ScheduleTemplate, RawTemplate, TemplateData } from "@/shared/types/templateTypes";
 import { logger } from "@/lib/logger";
 
@@ -28,6 +28,12 @@ export function useTemplates(userId: string | null) {
         const { data } = await res.json();
         setTemplates((data ?? []).map(mapTemplate));
       }
+    } catch (error) {
+      logger.error(
+        "템플릿 목록 조회 네트워크 오류",
+        undefined,
+        error as Error
+      );
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +119,11 @@ export function useTemplates(userId: string | null) {
     },
     [userId]
   );
+
+  // userId 가 처음 들어오거나 바뀔 때 자동 동기화 — 새로고침 후에도 메뉴 활성 보장.
+  useEffect(() => {
+    if (userId) fetchTemplates();
+  }, [userId, fetchTemplates]);
 
   // 가장 최근 1개 (API가 created_at DESC 정렬)
   const activeTemplate = templates.length > 0 ? templates[0] : null;
