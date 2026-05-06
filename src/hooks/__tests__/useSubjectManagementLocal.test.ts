@@ -77,15 +77,14 @@ describe("useSubjectManagementLocal", () => {
     expect(typeof result.current.clearError).toBe("function");
   });
 
-  it("기본 과목이 로드되어야 한다", () => {
+  it("초기 빈 localStorage에서 빈 배열로 시작한다", () => {
     localStorageMock.getItem.mockReturnValue(null);
 
     const { result } = renderHook(() => useSubjectManagementLocal());
 
-    // 기본 과목들이 있어야 함
-    expect(result.current.subjects.length).toBeGreaterThan(0);
-    expect(result.current.subjects[0]).toHaveProperty("name");
-    expect(result.current.subjects[0]).toHaveProperty("color");
+    // PR #264: 디폴트 과목 9개 정책 제거. 빈 배열이 정답.
+    // 신규 학원은 GroupSessionModal 인라인 "+" 버튼(PR #257)으로 직접 추가.
+    expect(result.current.subjects).toEqual([]);
   });
 
   it("이벤트 리스너를 등록해야 한다", () => {

@@ -537,6 +537,47 @@ export function syncEnrollmentCreate(
   });
 }
 
+/**
+ * Awaitable enrollment create — 응답으로 server가 반환한 enrollment id를 돌려준다.
+ *
+ * Idempotent server 계약: server `POST /api/enrollments`가 (student_id, subject_id)
+ * UNIQUE 충돌 시 *기존 row의 id*를 200으로 반환. 클라이언트는 이 응답 id가
+ * 보낸 id와 다르면 localStorage(enrollments + sessions[].enrollmentIds)를
+ * reconcile해야 함. 호출자(useIntegratedDataLocal.addEnrollment) 책임.
+ *
+ * 실패 시 (네트워크 down / 5xx) `null` 반환 + 기존 fire-and-forget outbox로 재시도.
+ */
+export async function syncEnrollmentCreateAsync(
+  userId: string | null,
+  data: { id: string; studentId: string; subjectId: string }
+): Promise<{ id: string } | null> {
+  if (!userId) return null;
+  const url = `/api/enrollments?userId=${encodeURIComponent(userId)}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      // 네트워크 도달했으나 server 5xx — outbox로 재시도 위임
+      syncEnrollmentCreate(userId, data);
+      return null;
+    }
+    const payload = (await res.json()) as { success?: boolean; data?: { id?: string } };
+    const serverId = payload?.data?.id;
+    if (!serverId) {
+      syncEnrollmentCreate(userId, data);
+      return null;
+    }
+    return { id: serverId };
+  } catch {
+    // fetch 자체 실패 (offline 등) — outbox 위임
+    syncEnrollmentCreate(userId, data);
+    return null;
+  }
+}
+
 export function syncEnrollmentDelete(userId: string | null, id: string): void {
   if (!userId) return;
   const url = `/api/enrollments?id=${id}&userId=${encodeURIComponent(userId)}`;

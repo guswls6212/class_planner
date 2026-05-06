@@ -99,6 +99,22 @@ export class SupabaseEnrollmentRepository implements EnrollmentRepository {
         .single();
 
       if (error) {
+        // (student_id, subject_id) UNIQUE 위반 — 클라이언트 localStorage id가
+        // server id와 다른 케이스. 기존 row를 조회해 그대로 반환 (idempotent create).
+        // 클라이언트는 응답 id로 localStorage를 reconcile.
+        if ((error as { code?: string }).code === "23505") {
+          const { data: existing, error: selectError } = await client
+            .from("enrollments")
+            .select()
+            .eq("student_id", enrollmentData.studentId)
+            .eq("subject_id", enrollmentData.subjectId)
+            .single();
+          if (selectError || !existing) {
+            logger.error("수강신청 23505 후 기존 row 조회 실패:", undefined, (selectError ?? error) as Error);
+            throw selectError ?? error;
+          }
+          return this.rowToEnrollment(existing);
+        }
         logger.error("수강신청 생성 실패:", undefined, error as Error);
         throw error;
       }

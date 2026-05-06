@@ -71,7 +71,7 @@ describe("DataConflictModal", () => {
     expect(screen.getByText("서버학생")).toBeInTheDocument();
   });
 
-  it("과목 섹션 펼치면 사용자 추가 과목이 보이고 기본 과목은 힌트로 표시", () => {
+  it("과목 섹션 펼치면 모든 과목이 표시된다", () => {
     render(
       <DataConflictModal
         localData={localData}
@@ -84,8 +84,7 @@ describe("DataConflictModal", () => {
     const subjectLabels = screen.getAllByText("2개");
     fireEvent.click(subjectLabels[0]);
     expect(screen.getAllByText("피아노").length).toBeGreaterThan(0);
-    // 기본 과목은 힌트 텍스트로 표시
-    expect(screen.getByText(/기본 과목 1개/)).toBeInTheDocument();
+    expect(screen.getAllByText("초등수학").length).toBeGreaterThan(0);
   });
 
   it("로컬 라디오 선택 후 확인 버튼 클릭 시 onSelectLocal 호출", () => {
@@ -104,7 +103,8 @@ describe("DataConflictModal", () => {
     expect(onSelectLocal).toHaveBeenCalledTimes(1);
   });
 
-  it("서버 라디오 선택 후 확인 버튼 클릭 시 onSelectServer 호출", () => {
+  it("서버 라디오 선택 후 확인 버튼 클릭 시 onSelectServer 호출 (큰 손실 ConfirmModal 거침)", () => {
+    // localData(학생 3명) → serverData(학생 1명) 선택 시 학생 3명 잃음 = 큰 손실 임계치
     const onSelectServer = vi.fn();
     render(
       <DataConflictModal
@@ -116,7 +116,11 @@ describe("DataConflictModal", () => {
     );
     const radios = screen.getAllByRole("radio");
     fireEvent.click(radios[1]); // 서버 라디오 선택
-    fireEvent.click(screen.getByRole("button", { name: "선택한 데이터로 시작" }));
+    // 큰 손실 → 버튼 라벨 "(위험)" + ConfirmModal 거침
+    fireEvent.click(
+      screen.getByRole("button", { name: "선택한 데이터로 시작 (위험)" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "덮어쓰기" }));
     expect(onSelectServer).toHaveBeenCalledTimes(1);
   });
 
@@ -359,5 +363,131 @@ describe("DataConflictModal", () => {
       expect(screen.queryByText("동기화에 실패했습니다.")).toBeNull();
       expect(screen.getByText("데이터를 동기화하는 중...")).toBeInTheDocument();
     });
+  });
+});
+
+describe("DataConflictModal — Layered Defense (Phase 1)", () => {
+  // 큰 손실 시나리오: local(작음) vs server(학생 3 + 수업 5)
+  const localSmall = makeData(
+    [{ id: "s1", name: "김철수" }],
+    [],
+    [],
+  );
+  const serverLarge = makeData(
+    Array.from({ length: 3 }, (_, i) => ({
+      id: `ss${i}`,
+      name: `서버학생${i}`,
+    })),
+    [],
+    Array.from({ length: 5 }, (_, i) => ({
+      id: `sess${i}`,
+      weekday: i,
+      startsAt: "10:00",
+      endsAt: "11:00",
+      weekStartDate: "",
+    })),
+  );
+
+  it("큰 손실(local 선택 시) — 손실 텍스트 + 데스크톱 버튼 '(위험)' 라벨", () => {
+    render(
+      <DataConflictModal
+        localData={localSmall}
+        serverData={serverLarge}
+        onSelectServer={vi.fn()}
+        onSelectLocal={vi.fn()}
+      />,
+    );
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]); // local
+    // 데스크톱 버튼 라벨 "(위험)"
+    expect(
+      screen.getByRole("button", { name: "선택한 데이터로 시작 (위험)" }),
+    ).toBeInTheDocument();
+    // 카드 inline 손실 텍스트 존재
+    expect(screen.getAllByText(/학생 3명/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/수업 5개/).length).toBeGreaterThan(0);
+  });
+
+  it("큰 손실 — 확인 버튼 클릭 시 ConfirmModal 발동 (onSelectLocal 직접 호출 안 함)", () => {
+    const onSelectLocal = vi.fn();
+    render(
+      <DataConflictModal
+        localData={localSmall}
+        serverData={serverLarge}
+        onSelectServer={vi.fn()}
+        onSelectLocal={onSelectLocal}
+      />,
+    );
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "선택한 데이터로 시작 (위험)" }),
+    );
+    expect(
+      screen.getByText("정말 이 데이터로 덮어쓸까요?"),
+    ).toBeInTheDocument();
+    expect(onSelectLocal).not.toHaveBeenCalled();
+  });
+
+  it("ConfirmModal 덮어쓰기 — onSelectLocal 호출", () => {
+    const onSelectLocal = vi.fn();
+    render(
+      <DataConflictModal
+        localData={localSmall}
+        serverData={serverLarge}
+        onSelectServer={vi.fn()}
+        onSelectLocal={onSelectLocal}
+      />,
+    );
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "선택한 데이터로 시작 (위험)" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "덮어쓰기" }));
+    expect(onSelectLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it("ConfirmModal 취소 — onSelectLocal 미호출 + 다이얼로그 닫힘", () => {
+    const onSelectLocal = vi.fn();
+    render(
+      <DataConflictModal
+        localData={localSmall}
+        serverData={serverLarge}
+        onSelectServer={vi.fn()}
+        onSelectLocal={onSelectLocal}
+      />,
+    );
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[0]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "선택한 데이터로 시작 (위험)" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(onSelectLocal).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText("정말 이 데이터로 덮어쓸까요?"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("작은 손실(server 선택 시) — confirm 미발동, onSelectServer 즉시 호출", () => {
+    const onSelectServer = vi.fn();
+    render(
+      <DataConflictModal
+        localData={localSmall}
+        serverData={serverLarge}
+        onSelectServer={onSelectServer}
+        onSelectLocal={vi.fn()}
+      />,
+    );
+    const radios = screen.getAllByRole("radio");
+    fireEvent.click(radios[1]); // server 선택 (학생 1만 잃음 — 작은 손실)
+    fireEvent.click(
+      screen.getByRole("button", { name: "선택한 데이터로 시작" }),
+    );
+    expect(onSelectServer).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText("정말 이 데이터로 덮어쓸까요?"),
+    ).not.toBeInTheDocument();
   });
 });

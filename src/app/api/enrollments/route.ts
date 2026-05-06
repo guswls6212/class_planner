@@ -60,10 +60,9 @@ export async function POST(request: NextRequest) {
       },
       academyId
     );
-    return NextResponse.json(
-      { success: true, data: newEnrollment },
-      { status: 201 }
-    );
+    // status 200: idempotent — repo가 새로 만들었든 기존 row를 반환했든 동일 처리.
+    // 클라이언트는 응답 data.id가 보낸 id와 다르면 localStorage를 reconcile.
+    return NextResponse.json({ success: true, data: newEnrollment });
   } catch (error) {
     return toErrorResponse(error);
   }

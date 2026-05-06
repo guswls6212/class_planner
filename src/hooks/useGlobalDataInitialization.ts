@@ -7,15 +7,16 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { syncSubjectCreate } from "../lib/apiSync";
 import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
   clearUserClassPlannerData,
+  getActiveAcademyId,
   getClassPlannerData,
   setClassPlannerData,
 } from "../lib/localStorageCrud";
 import type { ClassPlannerData } from "../lib/localStorageCrud";
+import { createSnapshot } from "../lib/snapshots/createSnapshot";
 import {
   computeServerLastModified,
   decideOverwrite,
@@ -28,18 +29,6 @@ import {
 import type { MigrationResult } from "../lib/auth/handleLoginDataMigration";
 import { logger } from "../lib/logger";
 import { supabase } from "../utils/supabaseClient";
-
-const DEFAULT_SUBJECTS = [
-  { name: "초등수학", color: "#fbbf24" },
-  { name: "중등수학", color: "#f59e0b" },
-  { name: "중등영어", color: "#3b82f6" },
-  { name: "중등국어", color: "#10b981" },
-  { name: "중등과학", color: "#ec4899" },
-  { name: "중등사회", color: "#06b6d4" },
-  { name: "고등수학", color: "#ef4444" },
-  { name: "고등영어", color: "#8b5cf6" },
-  { name: "고등국어", color: "#059669" },
-];
 
 type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
 
@@ -59,6 +48,25 @@ export const useGlobalDataInitialization = () => {
       setMigrationError(null);
 
       try {
+        // 충돌 직전 자동 백업 — 양쪽 데이터 모두 before_conflict로 보존.
+        // 사용자가 잘못 선택해도 설정 페이지 데이터 이력에서 복원 가능
+        // (before_conflict는 freemium 정책에 안 걸림 — 핵심 안전망).
+        // academyId 미존재 시(신규 계정 등) skip.
+        const academyId = getActiveAcademyId(pendingUserId);
+        if (academyId) {
+          const localData = getClassPlannerData();
+          const backupResult = await createSnapshot(pendingUserId, academyId, {
+            type: "before_conflict",
+            payload: { local: localData, server: pendingServerData },
+            description: `충돌 해결 직전 (선택: ${choice === "server" ? "내 계정" : "이 기기"})`,
+          });
+          if (!backupResult.success) {
+            logger.warn("충돌 직전 자동 백업 실패 — 진행은 계속", {
+              error: backupResult.error,
+            });
+          }
+        }
+
         if (choice === "server") {
           applyServerChoice();
           setClassPlannerData(pendingServerData);
@@ -172,6 +180,50 @@ export const useGlobalDataInitialization = () => {
           })
         );
 
+        // serverData.lastModified는 모달 표시(timestamp) + 다음 진입 시 동기화
+        // 결정 둘 다에 쓰임. fetch 시각이 아니라 entity 중 가장 최근 updatedAt을
+        // 사용해야 정확함 (이전 버그: fetch 끝난 "지금" 시각이 박혀 server가
+        // 항상 local보다 최신으로 보였음).
+        const serverEntityLastModified = computeServerLastModified({
+          students,
+          subjects: subjects ?? [],
+          sessions,
+          enrollments,
+          teachers: teachersWithSubjects,
+        });
+
+        // 운영 디버깅 — 어느 entity 카테고리/id가 server timestamp의 출처인지
+        // 추적. "왜 server max(updatedAt)이 사용자 기대보다 최신인가?" 같은
+        // 의문이 들었을 때 로그에서 즉시 원인 파악 가능 (omni-radar console_log
+        // 이벤트로 자동 캡처됨).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const findMostRecent = (arr: any[], label: string) => {
+          let maxEntity: { id?: string; name?: string; updatedAt?: string } | null = null;
+          let maxMs = -Infinity;
+          for (const e of arr) {
+            const ts = e?.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+            if (Number.isFinite(ts) && ts > maxMs) {
+              maxEntity = e;
+              maxMs = ts;
+            }
+          }
+          return {
+            label,
+            count: arr.length,
+            mostRecentId: maxEntity?.id ?? null,
+            mostRecentName: maxEntity?.name ?? null,
+            mostRecentUpdatedAt: maxEntity?.updatedAt ?? null,
+          };
+        };
+        logger.info("서버 데이터 max(updatedAt) 분포", {
+          serverEntityLastModified,
+          students: findMostRecent(students, "students"),
+          subjects: findMostRecent(subjects ?? [], "subjects"),
+          sessions: findMostRecent(sessions, "sessions"),
+          enrollments: findMostRecent(enrollments, "enrollments"),
+          teachers: findMostRecent(teachersWithSubjects, "teachers"),
+        });
+
         const serverData: ClassPlannerData = {
           students,
           subjects: subjects ?? [],
@@ -179,7 +231,8 @@ export const useGlobalDataInitialization = () => {
           enrollments,
           teachers: teachersWithSubjects,
           version: "1.0",
-          lastModified: new Date().toISOString(),
+          // 모든 entity가 updatedAt 없으면 빈 문자열 → DataCard에서 timestamp 미표시
+          lastModified: serverEntityLastModified ?? "",
         };
 
         logger.info("서버 데이터 조회 완료", {
@@ -208,28 +261,12 @@ export const useGlobalDataInitialization = () => {
           return;
         }
 
-        // use-server: 정상 경로
-        // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
-        if (subjectsFetched && serverData.subjects.length === 0) {
-          // 신규 계정 / 학원 — DEFAULT_SUBJECTS bootstrap. 비교 없이 항상 seed.
-          logger.info("과목이 없어서 기본 과목을 추가합니다", {
-            count: DEFAULT_SUBJECTS.length,
-          });
-          for (const subject of DEFAULT_SUBJECTS) {
-            syncSubjectCreate(userId, subject);
-          }
-          const defaultSubjectsWithId = DEFAULT_SUBJECTS.map((s, i) => ({
-            id: `default-${i + 1}`,
-            ...s,
-          }));
-          setClassPlannerData({
-            ...serverData,
-            subjects: defaultSubjectsWithId,
-          });
-        } else {
-          // Phase 1 (Local-first hybrid): timestamp 비교로 unsynced local writes 보호.
-          // 이전엔 무조건 overwrite → fire-and-forget sync 실패 시 데이터 손실.
-          // 이제 local lastModified > server max(updatedAt) 면 skip.
+        // use-server: 정상 경로 — 과목 자동 시드 없음.
+        // 빈 학원도 그대로 진입 → 사용자가 GroupSessionModal 인라인 "+" 버튼
+        // (PR #257)으로 첫 과목 직접 추가. 익명/로그인 동작 일관 + 충돌 모달
+        // false positive 영구 소거.
+        // Phase 1 (Local-first hybrid): timestamp 비교로 unsynced local writes 보호.
+        {
           const localBag = getClassPlannerData();
           const localIsEmpty =
             localBag.students.length === 0 &&

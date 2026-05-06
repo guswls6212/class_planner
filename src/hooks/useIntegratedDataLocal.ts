@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  syncEnrollmentCreate,
+  syncEnrollmentCreateAsync,
   syncEnrollmentDelete,
   syncSessionCreate,
   syncSessionDelete,
@@ -24,6 +24,7 @@ import {
   deleteSessionFromLocal,
   deleteTeacherFromLocal,
   getClassPlannerData,
+  replaceEnrollmentId,
   setClassPlannerData,
   updateClassPlannerData,
   updateSessionInLocal,
@@ -528,16 +529,30 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 서버 동기화 (fire-and-forget) — client UUID 포함 (FK 매칭)
+          // 서버 동기화 — server가 idempotent create를 보장. (student_id, subject_id)
+          // 충돌 시 *기존 row의 id*를 200으로 반환하므로, 응답 id가 보낸 id와
+          // 다르면 localStorage(enrollments + sessions[].enrollmentIds)를 reconcile.
+          // 이게 없으면 후속 session POST가 잘못된 enrollmentIds로 가서 FK 위반.
           const userId = localStorage.getItem("supabase_user_id");
-          syncEnrollmentCreate(userId, {
-            id: result.data.id,
+          const localId = result.data.id;
+          const serverResp = await syncEnrollmentCreateAsync(userId, {
+            id: localId,
             studentId,
             subjectId,
           });
+          if (serverResp && serverResp.id !== localId) {
+            replaceEnrollmentId(localId, serverResp.id);
+            loadDataFromLocal();
+            logger.info("useIntegratedDataLocal - enrollment id reconciled", {
+              localId,
+              serverId: serverResp.id,
+              studentId,
+              subjectId,
+            });
+          }
 
           logger.info("useIntegratedDataLocal - 등록 추가 성공", {
-            enrollmentId: result.data.id,
+            enrollmentId: serverResp?.id ?? localId,
             studentId,
             subjectId,
           });

@@ -82,8 +82,9 @@ RootLayout
 SchedulePage
   ├── [Row 1: flex justify-between, border-b]
   │     ├── ScheduleHeader (_components/) — 타이틀("일별/주간/월별 시간표") + 로딩 상태
-  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenu▼ + 공유 아이콘
-  │           └── TemplateMenu (molecules) — 드롭다운: "템플릿 저장" / "템플릿 적용"
+  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenuV2▼ + 공유 아이콘
+  │           └── TemplateMenuV2 (molecules) — 드롭다운: "템플릿 적용하기" / "시간표 비우기" / "현재 주를 템플릿으로 저장" / "미리보기"
+  │                 → SlotPickerModal (save/apply mode, ADR-008 multi-slot)
   ├── StudentFilterChipBar (_components/) — colorBy=student 시만 표시
   ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
   ├── [Row 2: flex justify-between, 그리드 직전]
@@ -396,7 +397,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 |----------|------|
 | `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
 | `ScheduleHeader` | 시간표 페이지 헤더(Row 1 좌). title prop + 로딩 상태만 렌더 (뷰/색상 토글 제거됨) |
-| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenu + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
+| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenuV2 + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
 | `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
 | `GroupSessionModal` | 수업 추가 3-step Glass Stepper wizard (학생→과목/시간→확인) |
 | `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |
@@ -591,11 +592,13 @@ SchedulePage
 1. 로그인 완료
    → useGlobalDataInitialization: 서버 데이터 fetch
    → checkLoginDataConflict: 로컬 vs 서버 비교
-2. 충돌 있으면 → DataConflictModal 표시
+2. 충돌 있으면 → DataConflictModal 표시 (백드롭 `bg-black/85` + `backdrop-blur-sm` — 시간표 그리드와 명확히 분리)
    - 좌측 카드: "이 기기의 데이터" (로컬 localStorage)
    - 우측 카드: "내 계정의 데이터" (서버)
    - 각 카드: 학생/과목/수업 섹션 접기/펼치기 가능
+   - **각 카드 하단에 "선택 시 손실" 인라인 표기** (잃을 학생/과목/수업 카운트, `computeLossDiff`로 계산)
 3. 라디오 선택 → "선택한 데이터로 시작" 클릭
+   - **Layered Defense 임계치**: 수업 ≥5개 또는 학생/과목 ≥3개 손실 시 → 모달 하단 빨간 banner + 버튼 빨간색 + 라벨 "(위험)" + 클릭 시 별도 ConfirmModal("정말 이 데이터로 덮어쓸까요?") 발동. 작은 손실은 즉시 진행.
    - 서버 선택: localStorage에 서버 데이터 덮어쓰기
    - 로컬 선택: 로컬 데이터를 서버에 업로드 (fullDataMigration)
      → isMigrating=true → 로딩 오버레이
@@ -608,7 +611,7 @@ SchedulePage
 익명 (비로그인) 상태:
 - localStorage 키: "class_planner_anonymous"
 - 모든 기능 사용 가능 (시간표/학생/과목 CRUD)
-- 기본 과목 9개 자동 시딩 (초등수학 ~ 고등국어)
+- 과목은 빈 배열로 시작 — GroupSessionModal step 2 인라인 "+" 버튼으로 첫 과목 추가 (자동 색상 할당)
 
 로그인 후:
 - localStorage 키: "class_planner_{userId}"
@@ -806,7 +809,6 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | SessionBlock 폰트 크기 | 학생 수에 따라 동적 계산. 기준: 세션 셀 너비 ~72px, 이름 4글자 가정 |
 | 스크롤 위치 보존 | `localStorage: schedule_scroll_position`, 5분 TTL, 드래그앤드롭 후 자동 복원 |
 | 충돌 감지 | `repositionSessions` (sessionCollisionUtils.ts): 겹치는 세션 yPosition 밀어내기 |
-| 기본 과목 | `DEFAULT_SUBJECTS` 9개 (초등수학~고등국어). 사용자 추가 과목과 구분하여 DataConflictModal에서 표시 |
 | PDF | A4 종이 인쇄 최적화. html2canvas 캡처 → jsPDF |
 | 로그아웃 | 현재 `supabase.auth.signOut()` 대신 localStorage 토큰 수동 삭제. 개선 예정 (TASKS.md) |
 | 공유 페이지 변경 배지 | `/share/{token}` 페이지 상단. `hasChanges=true && lastViewedAt !== null`일 때만 `ScheduleChangeBanner` 렌더. 최초 방문(lastViewedAt=null)은 배너 미표시. 배지 표시 후 페이지 갱신 시 자동 사라짐 (last_viewed_at 갱신됨). |

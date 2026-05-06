@@ -55,7 +55,8 @@ import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
 import { filterSessionsByTeachers } from "../../features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
-import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { getActiveAcademyId, getClassPlannerData } from "../../lib/localStorageCrud";
+import { createSnapshot } from "../../lib/snapshots/createSnapshot";
 import { syncSubjectUpdate } from "../../lib/apiSync";
 import { logger } from "../../lib/logger";
 import { showActionToast, showError, showToast } from "../../lib/toast";
@@ -144,12 +145,8 @@ const ScheduleActionBar = dynamic(
   () => import("./_components/ScheduleActionBar"),
   { ssr: false }
 );
-const SaveTemplateModal = dynamic(
-  () => import("../../components/molecules/SaveTemplateModal"),
-  { ssr: false, loading: () => null }
-);
-const ApplyTemplateModal = dynamic(
-  () => import("../../components/molecules/ApplyTemplateModal"),
+const SlotPickerModal = dynamic(
+  () => import("../../components/molecules/SlotPickerModal").then((m) => ({ default: m.SlotPickerModal })),
   { ssr: false, loading: () => null }
 );
 const ScheduleDailyView = dynamic(
@@ -1545,8 +1542,8 @@ function SchedulePageContent(): JSX.Element {
   // ================================
   // 🎯 템플릿 기능
   // ================================
-  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
-  const [showApplyTemplateModal, setShowApplyTemplateModal] = useState(false);
+  const [showSavePickerModal, setShowSavePickerModal] = useState(false);
+  const [showApplyPickerModal, setShowApplyPickerModal] = useState(false);
   const [applyConfirmTemplate, setApplyConfirmTemplate] = useState<ScheduleTemplate | null>(null);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<ScheduleTemplate | null>(null);
@@ -1679,32 +1676,37 @@ function SchedulePageContent(): JSX.Element {
     showToast("success", `${weekFilteredSessions.length}개 수업이 삭제되었습니다.`);
   }, [weekFilteredSessions, sessions, updateData]);
 
-  const handleSaveTemplate = useCallback(
-    async (name: string, description?: string) => {
+  /**
+   * T2 (ADR-008): SlotPickerModal save mode 의 onSelect 콜백.
+   * 슬롯 별 PUT (기존) 또는 POST (빈 슬롯) 분기. quota 초과는 server 가 reject.
+   */
+  const handleSaveSlot = useCallback(
+    async (slotIndex: number, userName?: string) => {
       const data = buildTemplateData();
       if (data.sessions.length === 0) {
         showToast("error", "저장할 수업이 없습니다.");
         return;
       }
-      if (activeTemplate) {
-        const result = await updateTemplate(activeTemplate.id, {
-          name,
-          description,
+      const finalName = userName ?? `슬롯 ${slotIndex + 1}`;
+      const existing = templates.find((t) => t.slotIndex === slotIndex);
+
+      if (existing) {
+        const result = await updateTemplate(existing.id, {
+          name: finalName,
           template_data: data,
         });
         if (!result) {
           showToast("error", "템플릿 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.");
           return;
         }
-        showToast("success", "템플릿이 갱신되었습니다.");
+        showToast("success", `"${finalName}" 슬롯이 갱신되었습니다.`);
       } else {
         const result = await saveTemplate({
-          name,
-          description: description ?? "",
+          name: finalName,
+          description: "",
           templateData: data,
         });
         if (!result.ok) {
-          // T2 (ADR-008): quota 초과 시 별도 toast — "추후 업데이트 예정"
           if (result.reason === "quota_exceeded") {
             showToast(
               "error",
@@ -1715,11 +1717,39 @@ function SchedulePageContent(): JSX.Element {
           }
           return;
         }
-        showToast("success", "템플릿이 저장되었습니다.");
+        showToast("success", `"${finalName}" 슬롯에 저장되었습니다.`);
       }
-      setShowSaveTemplateModal(false);
+      setShowSavePickerModal(false);
+
+      // 템플릿 저장 직후 자동 백업 (auto_template) — fire-and-forget, 사용자 흐름 차단 X.
+      // 시간표가 의미있는 milestone이라는 명시적 신호 시점 (사용자가 save 의도)이라
+      // 백업 trigger로 적합. 30일/10개 retention은 server side에서 atomic 처리.
+      if (userId) {
+        const academyId = getActiveAcademyId(userId);
+        if (academyId) {
+          void createSnapshot(userId, academyId, {
+            type: "auto_template",
+            payload: getClassPlannerData(),
+            description: `템플릿 "${finalName}" 저장 직후 자동 백업`,
+          });
+        }
+      }
     },
-    [buildTemplateData, activeTemplate, updateTemplate, saveTemplate]
+    [buildTemplateData, templates, updateTemplate, saveTemplate, userId]
+  );
+
+  /**
+   * T2: SlotPickerModal apply mode 의 onSelect 콜백.
+   * 사용자가 선택한 slotIndex 의 template 으로 handleApplyTemplate 호출.
+   */
+  const handleApplySlot = useCallback(
+    (slotIndex: number) => {
+      const template = templates.find((t) => t.slotIndex === slotIndex);
+      if (!template) return;
+      setShowApplyPickerModal(false);
+      handleApplyTemplate(template);
+    },
+    [templates, handleApplyTemplate]
   );
 
   const handlePreviewTemplate = useCallback(() => {
@@ -1829,9 +1859,9 @@ function SchedulePageContent(): JSX.Element {
         <div className="flex items-center gap-2">
           {canManage && userId && viewMode === "weekly" && (
             <TemplateMenuV2
-              onApply={() => { _fetchTemplates(); if (activeTemplate) handleApplyTemplate(activeTemplate); }}
+              onApply={() => { _fetchTemplates(); setShowApplyPickerModal(true); }}
               onClearWeek={handleClearWeek}
-              onSave={() => setShowSaveTemplateModal(true)}
+              onSave={() => setShowSavePickerModal(true)}
               onPreview={handlePreviewTemplate}
               canManage={canManage}
               hasTemplate={Boolean(activeTemplate)}
@@ -1845,10 +1875,10 @@ function SchedulePageContent(): JSX.Element {
             onDownloadEnd={() => {}}
             userId={userId}
             canManage={canManage}
-            onSaveTemplate={() => setShowSaveTemplateModal(true)}
+            onSaveTemplate={() => setShowSavePickerModal(true)}
             onApplyTemplate={() => {
               _fetchTemplates();
-              setShowApplyTemplateModal(true);
+              setShowApplyPickerModal(true);
             }}
             isSaving={templateSaving}
           />
@@ -1989,7 +2019,7 @@ function SchedulePageContent(): JSX.Element {
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
               hasTemplate={Boolean(activeTemplate)}
-              onApplyTemplate={() => { if (activeTemplate && canManage) handleApplyTemplate(activeTemplate); }}
+              onApplyTemplate={() => { if (canManage) setShowApplyPickerModal(true); }}
               onAddSession={() => {
                 if (!canManage) return;
                 const now = new Date();
@@ -2195,25 +2225,24 @@ function SchedulePageContent(): JSX.Element {
 
       {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}
 
-      {/* 템플릿 저장 모달 */}
-      <SaveTemplateModal
-        isOpen={showSaveTemplateModal}
-        onClose={() => setShowSaveTemplateModal(false)}
-        onSave={async (payload) => {
-          await handleSaveTemplate(payload.name, payload.description ?? undefined);
-        }}
-        templateData={buildTemplateData()}
-        isSaving={templateSaving}
+      {/* T2 (ADR-008): 슬롯 picker — 저장 */}
+      <SlotPickerModal
+        open={showSavePickerModal}
+        onClose={() => setShowSavePickerModal(false)}
+        onSelect={(slotIndex, name) => { void handleSaveSlot(slotIndex, name); }}
+        templates={templates}
+        mode="save"
+        isSubmitting={templateSaving}
       />
 
-      {/* 템플릿 적용 모달 (기존) */}
-      <ApplyTemplateModal
-        isOpen={showApplyTemplateModal}
-        onClose={() => setShowApplyTemplateModal(false)}
-        onApply={handleApplyTemplate}
+      {/* T2: 슬롯 picker — 적용 */}
+      <SlotPickerModal
+        open={showApplyPickerModal}
+        onClose={() => setShowApplyPickerModal(false)}
+        onSelect={(slotIndex) => handleApplySlot(slotIndex)}
         templates={templates}
-        isApplying={false}
-        isLoading={templatesLoading}
+        mode="apply"
+        isSubmitting={isApplyingTemplate}
       />
 
       {/* 템플릿 적용 확인 모달 (교체 충돌 감지) */}
