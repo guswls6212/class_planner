@@ -63,9 +63,9 @@ bash scripts/uat-new.sh core    # 또는 extended / full
 
 | 모드 | 시간 | 카테고리 | 언제 |
 |---|---|---|---|
-| **Core Path** | 40분 | 1, 2, 3, 5, 7, 12 (P0만) | 매 dev → main 머지 전 |
-| **Extended** | 80분 | Core + 4, 6, 8, 9, 10 (P0+P1) | PR이 여러 영역 영향 시 |
-| **Full Coverage** | 120분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
+| **Core Path** | 50분 | 1, 2, 3, 5, 7, 12, 14 (P0만) | 매 dev → main 머지 전 |
+| **Extended** | 90분 | Core + 4, 6, 8, 9, 10 (P0+P1) | PR이 여러 영역 영향 시 |
+| **Full Coverage** | 130분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
 
 ### 3. 결과 기록 규칙
 
@@ -90,7 +90,7 @@ bash scripts/uat-summary.sh
 - `[!]` → Fail (note 필수: 어떤 단계에서 어떤 결과가 났는지)
 - `[~]` → Skip (skip 사유 필수)
 
-P0 19개 모두 Pass = main 머지 그린라이트.
+P0 28개 모두 Pass = main 머지 그린라이트.
 
 자동 e2e 후보 시나리오는 `[auto-friendly]` 라벨 — 향후 별도 PR로 Playwright 마이그레이션 후 본 checklist에서 제외 예정.
 
@@ -183,7 +183,7 @@ uat.isAnonymous();           // → true
 1. 직접 URL `http://localhost:3000/schedule` 접속
 **Expected:**
 - 익명 모드 시간표 화면 진입 (로그인 강제 X — 익명 사용 가능 정책)
-- 사이드바 하단 "로그인" 링크 표시
+- 사이드바 메뉴 마지막("강사" 아래) "로그인" 링크 표시
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.2 Google OAuth 로그인 [P1]
@@ -462,7 +462,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 
 ---
 
-## 5. 시간표 — 수업 추가/편집/삭제 (P0: 4 / 12) [Core 포함]
+## 5. 시간표 — 수업 추가/편집/삭제 (P0: 8 / 15) [Core 포함]
 
 ### S-5.1 FAB 클릭 → 모달 열림 [P0] [auto-friendly]
 **Pre:** `/schedule`
@@ -584,6 +584,42 @@ console.log('새 호출 수:', after - before);  // ≥1
 - 일괄 삭제 모달 → 확인 → 모두 제거
 **Result:** [ ] Pass [ ] Fail — note: ___
 
+### S-5.13 모달 Step 2 — 과목 인라인 "＋" 추가 [P0] ⚠️ PR #257
+**Pre:** 모달 Step 2 (과목 & 시간) 진입, 과목 select dropdown 빈 상태 또는 임의 상태
+**Steps:**
+1. 과목 select 옆 dashed amber "＋" 버튼 클릭
+2. 인라인 row 표시 — 이름 input + 색상 미리보기
+3. "수학" 입력 → Enter 또는 "생성" 클릭
+**Expected:**
+- 과목 즉시 생성 (자동 색상 — `getNextUnusedColor` 미사용 색 우선 할당, 소진 시 modulo)
+- select 자동 갱신 + 새 과목이 선택값으로 set
+- 인라인 row 자동 닫힘
+- 인증: `/api/subjects` POST 호출 발사
+- 익명: localStorage `class_planner_anonymous` 갱신, 서버 호출 없음
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.14 모달 Step 2 — 강사 "＋ 새 강사" pill 추가 [P0] ⚠️ PR #257
+**Pre:** 모달 Step 2, 강사 pill picker 영역
+**Steps:**
+1. TeacherPillPicker에 "＋ 새 강사" pill 클릭
+2. 인라인 row → 이름 입력 → Enter 또는 "생성"
+**Expected:**
+- 강사 즉시 생성 (DEFAULT_TEACHER_COLORS 8색 중 미사용 우선 할당)
+- pill list에 새 강사 pill 추가 + 자동 선택 (aria-pressed=true)
+- 인라인 row 자동 닫힘 + 인풋 비워짐
+- 인증: `/api/teachers` POST 호출
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.15 모달 Step 2 — member 역할 시 "＋" 숨김 [P1] ⚠️ PR #257 RBAC
+**Pre:** member 역할 사용자 + 모달 Step 2
+**Steps:**
+1. FAB → 모달 진입 → Step 2
+**Expected:**
+- 과목 select 옆 dashed amber "＋" 버튼 미렌더 (canManage=false)
+- "＋ 새 강사" pill 미렌더 — 기존 pill만 표시
+- 기존 과목/강사 선택만 가능
+**Result:** [ ] Pass [ ] Fail — note: ___
+
 ---
 
 ## 6. 시간표 — 드래그/충돌/멀티선택 (P0: 2 / 10)
@@ -681,7 +717,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 
 ---
 
-## 7. 템플릿 (P0: 3 / 8) [⚠️ PR #211 회귀 집중]
+## 7. 템플릿 (P0: 4 / 10) [⚠️ PR #211 회귀 집중]
 
 > **자동 회귀 가드:**
 > - `src/app/schedule/_utils/__tests__/buildTemplateData.test.ts` (10 unit)
@@ -785,6 +821,31 @@ restore();
 **Expected:**
 - 매칭 실패 학생/과목/강사가 토스트 메시지에 명시 (e.g. "매칭 실패: 학생 '홍길동', 과목 '수학' 외")
 - 매칭 성공한 세션만 생성
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-7.9 슬롯 선택 모달 — save mode (ADR-008 Free 2 슬롯) [P1]
+**Pre:** ScheduleActionBar 템플릿 메뉴 → "현재 주를 템플릿으로 저장"
+**Steps:**
+1. SlotPickerModal 열림
+2. 슬롯 1, 2 활성 (FREE_TIER_QUOTA=2)
+3. 슬롯 3, 4, 5 disabled + Lock 아이콘 + "추후 업데이트 예정" 라벨
+4. 슬롯 1 선택 → 이름 "주간 기본" 입력 → "저장"
+**Expected:**
+- 슬롯 1에 "주간 기본" 저장 success 토스트
+- 다음 진입 시 슬롯 1 채워진 표시 + 슬롯 2 빈 표시
+- save mode default 선택: 첫 빈 슬롯 (slotsInfo.find(!filled))
+- API `/api/templates` POST 발사 (slotIndex=0 포함)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-7.10 슬롯 선택 모달 — apply mode [P1]
+**Pre:** 슬롯 1에 템플릿 1개 저장됨 + 슬롯 2 비어있음
+**Steps:**
+1. 템플릿 메뉴 → "템플릿 적용하기" 클릭
+**Expected:**
+- 슬롯 1 활성 (filled — apply 가능)
+- 슬롯 2 disabled (empty — apply 불가)
+- 슬롯 3-5 disabled "추후 업데이트 예정"
+- apply mode default 선택: 첫 채워진 슬롯
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -1006,7 +1067,7 @@ open -na "Google Chrome" --args --incognito --new-window "http://localhost:3000/
 **Steps:**
 1. 임의 페이지 진입
 **Expected:**
-- 하단 고정 BottomTabBar에 4개 탭 (시간표/학생/과목/설정 또는 비슷)
+- 하단 고정 BottomTabBar에 5개 탭 (시간표/학생/과목/강사/설정)
 - 데스크탑 사이드바 숨김
 **Result:** [ ] Pass [ ] Fail — note: ___
 
@@ -1175,6 +1236,173 @@ uat.expireToken();           // sb-*-auth-token 키 + 쿠키 모두 삭제 + 새
 
 ---
 
+## 14. 데이터 보호 — 충돌 모달 + 백업 이력 (P0: 4 / 13) [PR #260 + PR #261/#263 신규]
+
+> **자동 회귀 가드:**
+> - `src/lib/conflict/__tests__/computeLossDiff.test.ts` (4 unit — 큰 손실 임계치 검증)
+> - `src/components/molecules/__tests__/DataConflictModal.test.tsx` (26 unit — Layered Defense 인터랙션)
+> - `src/hooks/__tests__/useGlobalDataInitialization.test.ts` (충돌 감지 + before_conflict 백업 hook)
+
+### S-14.1 데이터 충돌 모달 자동 발동 [P0] ⚠️ PR #260
+**Pre:** 익명 모드에서 데이터 입력 (학생 1, 과목 1, 수업 1) → 같은 브라우저로 OAuth 로그인 (서버 user에 학생 5, 과목 3, 수업 50 데이터 있음)
+
+**Quick Setup**:
+```js
+// 시드: 익명에 작은 데이터, 그 user 서버에 큰 데이터 (관리자 직접 또는 다른 디바이스에서 미리)
+uat.clearAll();
+uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
+// 그 후 UAT_TEST_USER 로 OAuth 로그인 (uat:setup 으로 미리 시드된 인증 데이터 있어야 함)
+```
+
+**Steps:**
+1. 로그인 후 `/schedule` 진입
+**Expected:**
+- DataConflictModal 자동 발동 (`useGlobalDataInitialization` 충돌 감지 → 모달)
+- 백드롭 솔리드 (`bg-black/85 backdrop-blur-sm`) — 시간표 그리드 전혀 안 보임 + blur 효과
+- 데스크탑: 카드 2개 side-by-side ("이 기기의 데이터" / "내 계정의 데이터")
+- 각 카드에 학생/과목/수업 카운트 + 마지막 수정 시각
+- Escape 키로 닫히지 않음 (명시적 선택 강제 — `useModalA11y onClose: () => {}`)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.2 카드 선택 시 "선택 시 N 잃음" 인라인 표시 [P1] ⚠️ PR #260
+**Pre:** S-14.1 모달 발동
+**Steps:**
+1. "이 기기의 데이터" 카드의 라디오 클릭
+**Expected:**
+- 카드 하단에 "선택 시 학생 N명 · 과목 N개 · 수업 N개 잃음" 텍스트 (`computeLossDiff(local, server)` 결과)
+- 큰 손실(수업 ≥5 OR 학생/과목 ≥3) 시 빨간색 + "⚠ " prefix
+- 작은 손실 시 회색 일반 텍스트
+- 손실 0 시 텍스트 미표시 (`totalLoss > 0` 조건)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.3 큰 손실 — banner + 버튼 빨강 (Layered Defense L1) [P0] ⚠️ PR #260
+**Pre:** S-14.1 + 한 쪽이 큰 손실 (예: 익명 1 → 서버 50 선택 시)
+**Steps:**
+1. 작은 쪽 카드 라디오 선택 (큰 손실 발생)
+**Expected:**
+- 데스크탑: 모달 하단에 빨간 banner "데이터 손실 위험" + 손실 entity 명시 + "이 작업은 되돌릴 수 없습니다"
+- 카드 테두리 빨강 + 박스 그림자 빨강
+- 확인 버튼 빨강 + 라벨 "선택한 데이터로 시작 (위험)"
+- 모바일(탭 전환): 각 탭 안 banner + 버튼 빨강 + "(위험)" 라벨
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.4 큰 손실 → ConfirmModal 2단계 확인 (Layered Defense L2) [P0] ⚠️ PR #260
+**Pre:** S-14.3 상태
+**Steps:**
+1. 빨간 "선택한 데이터로 시작 (위험)" 버튼 클릭
+**Expected:**
+- ConfirmModal 발동 — 제목 "정말 이 데이터로 덮어쓸까요?"
+- 메시지에 손실 entity (학생 N · 과목 N · 수업 N) 명시 + "이 작업은 되돌릴 수 없습니다"
+- 두 버튼 — "취소" / "덮어쓰기" (variant=danger 빨강)
+- "취소" 시 ConfirmModal 닫힘, DataConflictModal 그대로 유지 (재선택 가능)
+- "덮어쓰기" 시 머지 진행
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.5 작은 손실 — 즉시 진행 (ConfirmModal 미발동) [P1] ⚠️ PR #260
+**Pre:** 양쪽 데이터 거의 같음 (예: 학생 1 차이만)
+**Steps:**
+1. 카드 선택 → 확인 버튼 클릭
+**Expected:**
+- ConfirmModal 발동하지 않음 (`isLargeLoss=false`)
+- 즉시 머지 진행 (loading spinner)
+- 완료 후 모달 자동 닫힘
+- isMigrating 중 spinner overlay + "데이터를 동기화하는 중..."
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.6 데이터 이력 아코디언 펼침 [P1] ⚠️ PR #263/#265
+**Pre:** 인증 모드 owner/admin + `/settings` 진입
+**Steps:**
+1. "데이터 이력" 아코디언 헤더 클릭 → 펼침 (`expanded=true`)
+**Expected:**
+- 아코디언 헤더에 백업 카운트 배지 (예: "5개")
+- ChevronDown 아이콘 180° 회전
+- Master-Detail 레이아웃 — 왼쪽 list (md:w-2/5) + 오른쪽 detail panel
+- 상단 안내 — "충돌 직전·템플릿 저장 직후·수동 백업이 자동 저장됩니다..."
+- free plan 안내 — amber 텍스트 "(무료: 충돌 백업 무제한 복구 + 일반 자동 백업 최근 N건 복구. 그 외는 미리보기만)"
+- 빈 상태: dashed border 박스 "아직 백업이 없습니다. 시간표 변경 시 자동 생성됩니다."
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.7 충돌 직전 백업 자동 생성 [P1] ⚠️ PR #261
+**Pre:** S-14.4 또는 S-14.5 완료 (충돌 모달 머지 직후)
+**Steps:**
+1. `/settings` → "데이터 이력" 펼침
+**Expected:**
+- 가장 최근 row가 type "충돌 직전" (`before_conflict`, amber 라벨)
+- 학생/과목/수업 카운트 = 머지 직전 양쪽 데이터 합본
+- 무료 plan 잠금 X (before_conflict는 핵심 안전망 — 무제한 복구)
+- API 검증: `data_snapshots` 테이블에 `snapshot_type='before_conflict'` row 1개 신규
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.8 템플릿 저장 직후 자동 백업 [P1] ⚠️ PR #261
+**Pre:** S-7.1 (템플릿 저장) 완료
+**Steps:**
+1. `/settings` → "데이터 이력"
+**Expected:**
+- type "템플릿 저장" (`auto_template`, indigo 라벨) 백업 row 자동 생성
+- 무료 plan: 시간순 최근 3건만 복원 가능, 그 외 미리보기 + Lock 아이콘
+- 11번째 auto_template 들어왔을 때 가장 오래된 것 자동 삭제 (retention atomic, max 10)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.9 백업 복원 (chain of safety) [P0] ⚠️ PR #263/#265
+**Pre:** 백업 1개 이상 존재 + detail panel 선택됨
+**Steps:**
+1. detail panel "이 백업으로 복원" 버튼 클릭
+2. ConfirmModal "이 백업으로 복원할까요?" → "복원"
+**Expected:**
+- 복원 직전 자동 백업 생성 (chain of safety — 복원 자체도 되돌릴 수 있게 `before_conflict` type으로 직전 데이터 저장)
+- 데이터 덮어쓰기 (학생/과목/수업/enrollment 모두)
+- success toast "데이터가 복원됐습니다. 페이지를 새로고침해 주세요."
+- list 갱신 (방금 생성된 chain of safety 백업이 최상단)
+- 복원 실패 시 error toast (네트워크/API 에러)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.10 잠긴 백업 — 미리보기 정상 + 복원 disabled [P2] ⚠️ PR #263/#265
+**Pre:** auto_template 백업 4개 이상 (4번째 이상은 free plan 잠금) 또는 manual 백업 + 무료 plan
+**Steps:**
+1. 잠긴 백업 카드 클릭 → detail panel 표시
+2. detail panel 복원 버튼 클릭
+**Expected:**
+- 백업 카드 opacity 60% + Lock 아이콘
+- detail panel 미리보기 정상 (학생/과목/수업 카운트 표시)
+- "프리미엄" 배지 (Lock 아이콘) 표시
+- 복원 버튼 disabled + Lock 아이콘 + 라벨 "프리미엄 곧 출시" + cursor-not-allowed
+- 클릭 시 info toast "프리미엄 출시 후 복원 가능합니다."
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.11 백업 개별 삭제 [P2] ⚠️ PR #263/#265
+**Pre:** detail panel 선택 + 백업 1개 이상
+**Steps:**
+1. detail panel 휴지통 아이콘 (Trash2) 클릭
+2. ConfirmModal "이 백업을 삭제할까요?" → "삭제"
+**Expected:**
+- 백업 list에서 즉시 제거
+- detail panel 비워짐 (`selectedId === confirmDeleteId` 시 setSelectedId(null))
+- success toast "백업이 삭제됐습니다."
+- API: `DELETE /api/data-snapshots/:id?userId=xxx` 호출
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.12 수동 백업 — 무료 plan disabled [P2] ⚠️ PR #263/#265
+**Pre:** 무료 plan 사용자 + 데이터 이력 펼침
+**Steps:**
+1. "지금 백업" 버튼 시각 확인 + 클릭
+**Expected:**
+- 버튼 dashed border + Lock 아이콘 (free) — "지금 백업 (프리미엄 곧 출시)"
+- 클릭 시 info toast "수동 백업은 프리미엄 출시 후 사용 가능합니다."
+- 실제 백업 생성 안 됨 (Network에 POST 없음)
+- 프로 plan 시: solid accent border + Save 아이콘 + 정상 동작
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.13 member 역할 — 데이터 이력 섹션 미렌더 [P2] ⚠️ PR #263/#265 RBAC
+**Pre:** member 역할 사용자 + `/settings` 진입
+**Steps:**
+1. 설정 페이지 진입 → 스크롤
+**Expected:**
+- "데이터 이력" 섹션 자체 미렌더 (`useMyRole.canManage=false` gate, line 67 `if (!canManage) return null`)
+- 강사 추가 모달 다음으로 바로 다른 섹션 표시
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
 ## Edge Cases (P0: 0 / 10)
 
 ### E-1. 학생 0명 + 수업 추가 시도 [P2]
@@ -1266,3 +1494,4 @@ Issue 등록 형식:
 - 2026-05-05: Quick Setup 콘솔 명령 박스 + `tests/manual/seed-uat.js` / `uat-helpers.js` 신설. `runs/` 디렉터리로 결과 기록 분리 (template은 본 파일 유지). `[auto-friendly]` 라벨로 향후 e2e 마이그레이션 후보 표시.
 - 2026-05-05 (2): 자동 inject 도입 — `public/uat/console-tools.js` 신설, layout.tsx가 NODE_ENV=development 분기로 자동 로드. 콘솔 paste 0번. `tests/manual/{uat-helpers,seed-uat}.js` 는 deprecated (legacy 보존). UAT 전용 인증 셋업 추가: `npm run uat:setup` / `uat:seed` / `uat:teardown` (e2e와 격리된 UAT_TEST_USER_*).
 - 2026-05-05 (3): §0 "전체 흐름 (Quick Reference)" 추가 — 처음 1회 셋업 + 매 사이클 표. 사본을 위에서부터 따라가면 빠뜨림 없이 완료 가능.
+- 2026-05-06: dev 코드 동기화 — §5 인라인 강사·과목 추가 시나리오 (S-5.13~5.15, PR #257), §7 슬롯 선택 모달 (S-7.9~7.10, ADR-008 free 2 슬롯), §14 신설 — 데이터 보호 (충돌 모달 Layered Defense + 백업 이력 / freemium 잠금, PR #260 + PR #261/#263/#265). P0 본문 정확 카운트로 헤더 갱신 (이전 19 표기는 부정확) → 실제 28개. §5 P0: 4→8 (+S-5.13 +S-5.14, 기존 카운트 보정), §7 P0: 3→4 (기존 카운트 보정), §14 신규 P0: 4. Core 모드 카테고리에 14 추가 (40분 → 50분). 회귀 가드: `computeLossDiff.test.ts` 4 unit + `DataConflictModal.test.tsx` 26 unit + `useGlobalDataInitialization.test.ts` 충돌 감지 unit.
