@@ -337,6 +337,7 @@ src/components/molecules/__tests__/TimeTableCell.test.tsx
 src/components/molecules/__tests__/TimeTableRow.test.tsx
 src/components/organisms/AboutPageLayout.tsx
 src/components/organisms/AppShell.tsx
+src/components/organisms/DataHistorySection.tsx
 src/components/organisms/HelpDrawer.tsx
 src/components/organisms/LoginButton.tsx
 src/components/organisms/ScheduleDailyView.tsx
