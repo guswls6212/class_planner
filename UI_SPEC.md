@@ -611,7 +611,7 @@ SchedulePage
 익명 (비로그인) 상태:
 - localStorage 키: "class_planner_anonymous"
 - 모든 기능 사용 가능 (시간표/학생/과목 CRUD)
-- 기본 과목 9개 자동 시딩 (초등수학 ~ 고등국어)
+- 과목은 빈 배열로 시작 — GroupSessionModal step 2 인라인 "+" 버튼으로 첫 과목 추가 (자동 색상 할당)
 
 로그인 후:
 - localStorage 키: "class_planner_{userId}"
@@ -809,7 +809,6 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | SessionBlock 폰트 크기 | 학생 수에 따라 동적 계산. 기준: 세션 셀 너비 ~72px, 이름 4글자 가정 |
 | 스크롤 위치 보존 | `localStorage: schedule_scroll_position`, 5분 TTL, 드래그앤드롭 후 자동 복원 |
 | 충돌 감지 | `repositionSessions` (sessionCollisionUtils.ts): 겹치는 세션 yPosition 밀어내기 |
-| 기본 과목 | `DEFAULT_SUBJECTS` 9개 (초등수학~고등국어). 사용자 추가 과목과 구분하여 DataConflictModal에서 표시 |
 | PDF | A4 종이 인쇄 최적화. html2canvas 캡처 → jsPDF |
 | 로그아웃 | 현재 `supabase.auth.signOut()` 대신 localStorage 토큰 수동 삭제. 개선 예정 (TASKS.md) |
 | 공유 페이지 변경 배지 | `/share/{token}` 페이지 상단. `hasChanges=true && lastViewedAt !== null`일 때만 `ScheduleChangeBanner` 렌더. 최초 방문(lastViewedAt=null)은 배너 미표시. 배지 표시 후 페이지 갱신 시 자동 사라짐 (last_viewed_at 갱신됨). |

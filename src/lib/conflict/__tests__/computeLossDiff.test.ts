@@ -92,17 +92,4 @@ describe("computeLossDiff", () => {
     });
     expect(diffJustBelow.isLargeLoss).toBe(false);
   });
-
-  it("excludes default subjects from loss count", () => {
-    const rejected: ClassPlannerData = {
-      ...empty,
-      subjects: [
-        { id: "d1", name: "초등수학", color: "#fff" },
-        { id: "d2", name: "중등수학", color: "#fff" },
-        { id: "u1", name: "사용자정의과목", color: "#fff" },
-      ],
-    };
-    const diff = computeLossDiff(empty, rejected);
-    expect(diff.subjects).toBe(1);
-  });
 });

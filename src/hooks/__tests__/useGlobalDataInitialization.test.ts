@@ -522,23 +522,4 @@ describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)
     expect(saved).toBeNull(); // 로컬 보존 (보수적)
   });
 
-  it("DEFAULT_SUBJECTS bootstrap 분기 — 서버 subjects 비어 있고 fetch 성공 → 그대로 동작 (회귀 방지)", async () => {
-    // 이 분기는 timestamp 비교를 거치지 않음. seed 동작 그대로.
-    mockLocalBag({
-      lastModified: new Date(Date.now()).toISOString(),
-    });
-    mockServerFetches({
-      students: [],
-      subjects: [], // 서버에 과목 없음 → DEFAULT_SUBJECTS 추가
-    });
-
-    const { result } = renderHook(() => useGlobalDataInitialization());
-    await waitFor(() => expect(result.current.isInitialized).toBe(true));
-
-    const saved = setItemDataPayload();
-    expect(saved).not.toBeNull();
-    // DEFAULT_SUBJECTS 9개 추가됨
-    expect(saved.subjects.length).toBe(9);
-    expect(saved.subjects[0].id).toBe("default-1");
-  });
 });

@@ -7,7 +7,6 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { syncSubjectCreate } from "../lib/apiSync";
 import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
@@ -30,18 +29,6 @@ import {
 import type { MigrationResult } from "../lib/auth/handleLoginDataMigration";
 import { logger } from "../lib/logger";
 import { supabase } from "../utils/supabaseClient";
-
-const DEFAULT_SUBJECTS = [
-  { name: "초등수학", color: "#fbbf24" },
-  { name: "중등수학", color: "#f59e0b" },
-  { name: "중등영어", color: "#3b82f6" },
-  { name: "중등국어", color: "#10b981" },
-  { name: "중등과학", color: "#ec4899" },
-  { name: "중등사회", color: "#06b6d4" },
-  { name: "고등수학", color: "#ef4444" },
-  { name: "고등영어", color: "#8b5cf6" },
-  { name: "고등국어", color: "#059669" },
-];
 
 type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
 
@@ -274,28 +261,12 @@ export const useGlobalDataInitialization = () => {
           return;
         }
 
-        // use-server: 정상 경로
-        // fetch 에러(null)와 "정말 과목이 없음"(빈 배열)을 구분하여 불필요한 재생성 방지
-        if (subjectsFetched && serverData.subjects.length === 0) {
-          // 신규 계정 / 학원 — DEFAULT_SUBJECTS bootstrap. 비교 없이 항상 seed.
-          logger.info("과목이 없어서 기본 과목을 추가합니다", {
-            count: DEFAULT_SUBJECTS.length,
-          });
-          for (const subject of DEFAULT_SUBJECTS) {
-            syncSubjectCreate(userId, subject);
-          }
-          const defaultSubjectsWithId = DEFAULT_SUBJECTS.map((s, i) => ({
-            id: `default-${i + 1}`,
-            ...s,
-          }));
-          setClassPlannerData({
-            ...serverData,
-            subjects: defaultSubjectsWithId,
-          });
-        } else {
-          // Phase 1 (Local-first hybrid): timestamp 비교로 unsynced local writes 보호.
-          // 이전엔 무조건 overwrite → fire-and-forget sync 실패 시 데이터 손실.
-          // 이제 local lastModified > server max(updatedAt) 면 skip.
+        // use-server: 정상 경로 — 과목 자동 시드 없음.
+        // 빈 학원도 그대로 진입 → 사용자가 GroupSessionModal 인라인 "+" 버튼
+        // (PR #257)으로 첫 과목 직접 추가. 익명/로그인 동작 일관 + 충돌 모달
+        // false positive 영구 소거.
+        // Phase 1 (Local-first hybrid): timestamp 비교로 unsynced local writes 보호.
+        {
           const localBag = getClassPlannerData();
           const localIsEmpty =
             localBag.students.length === 0 &&

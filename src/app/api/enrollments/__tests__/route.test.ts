@@ -72,7 +72,9 @@ describe("/api/enrollments API Routes", () => {
   });
 
   describe("POST /api/enrollments", () => {
-    it("올바른 응답 구조를 반환해야 한다", async () => {
+    // status 200: idempotent — repo가 새로 만들었든 (student_id, subject_id) 충돌로
+    // 기존 row를 반환했든 동일 응답. 클라이언트는 data.id로 localStorage reconcile.
+    it("올바른 응답 구조를 반환해야 한다 (idempotent 200)", async () => {
       const request = new NextRequest(
         "http://localhost:3000/api/enrollments?userId=test-user",
         {
@@ -88,9 +90,10 @@ describe("/api/enrollments API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(200);
       expect(data).toHaveProperty("success", true);
       expect(data).toHaveProperty("data");
+      expect(data.data).toHaveProperty("id");
     });
 
     it("member role은 POST에 403을 반환해야 한다", async () => {

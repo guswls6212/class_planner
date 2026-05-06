@@ -1,10 +1,9 @@
 import type { ClassPlannerData } from "../localStorageCrud";
-import { filterNonDefaultSubjects } from "./defaultSubjects";
 
 export type LossDiff = {
   /** rejected에는 있고 selected에는 없는 학생 수 */
   students: number;
-  /** 기본 과목 제외, rejected에는 있고 selected에는 없는 과목 수 */
+  /** rejected에는 있고 selected에는 없는 과목 수 */
   subjects: number;
   /** rejected에는 있고 selected에는 없는 수업 수 */
   sessions: number;
@@ -18,7 +17,6 @@ const LARGE_LOSS_ENTITY_THRESHOLD = 3;
 /**
  * `selected` 데이터로 시작했을 때 `rejected`에서 잃게 될 entity 수를 계산한다.
  * id 기반 비교 — 동일 id가 양쪽에 있으면 보존되는 것으로 간주.
- * 기본 과목(DEFAULT_SUBJECT_NAMES)은 손실 카운트에서 제외 (서버가 항상 시드).
  */
 export function computeLossDiff(
   selected: ClassPlannerData,
@@ -32,7 +30,7 @@ export function computeLossDiff(
     (s) => !selectedStudentIds.has(s.id),
   ).length;
 
-  const subjectsLost = filterNonDefaultSubjects(rejected.subjects).filter(
+  const subjectsLost = rejected.subjects.filter(
     (s) => !selectedSubjectIds.has(s.id),
   ).length;
 
