@@ -93,6 +93,52 @@ vi.mock("../../../hooks/useUiState", () => ({
   }),
 }));
 
+// PR #257: SchedulePage 가 useTeacherManagementLocal/useSubjectManagementLocal 추가 호출.
+// mock 누락 시 실제 훅이 fetch infinite cycle → undici Promise stack overflow.
+vi.mock("../../../hooks/useStudentManagementLocal", () => ({
+  useStudentManagementLocal: () => ({
+    students: [],
+    loading: false,
+    error: null,
+    addStudent: vi.fn(),
+    updateStudent: vi.fn(),
+    deleteStudent: vi.fn(),
+    getStudent: vi.fn(),
+    refreshStudents: vi.fn(),
+    clearError: vi.fn(),
+    studentCount: 0,
+  }),
+}));
+
+vi.mock("../../../hooks/useTeacherManagementLocal", () => ({
+  useTeacherManagementLocal: () => ({
+    teachers: [],
+    loading: false,
+    error: null,
+    addTeacher: vi.fn(),
+    updateTeacher: vi.fn(),
+    deleteTeacher: vi.fn(),
+    refreshTeachers: vi.fn(),
+    clearError: vi.fn(),
+    teacherCount: 0,
+  }),
+}));
+
+vi.mock("../../../hooks/useSubjectManagementLocal", () => ({
+  useSubjectManagementLocal: () => ({
+    subjects: [],
+    loading: false,
+    error: null,
+    addSubject: vi.fn(),
+    updateSubject: vi.fn(),
+    deleteSubject: vi.fn(),
+    getSubject: vi.fn(),
+    refreshSubjects: vi.fn(),
+    clearError: vi.fn(),
+    subjectCount: 0,
+  }),
+}));
+
 describe("스케줄 페이지 스크롤 위치 보존 통합 테스트", () => {
   beforeEach(() => {
     vi.clearAllMocks();
