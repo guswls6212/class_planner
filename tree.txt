@@ -518,7 +518,9 @@ src/lib/auth/handleLoginDataMigration.ts
 src/lib/auth/permissions.ts
 src/lib/auth/signOut.ts
 src/lib/authUtils.ts
+src/lib/colors/__tests__/getNextUnusedColor.test.ts
 src/lib/colors/__tests__/tintFromHex.test.ts
+src/lib/colors/getNextUnusedColor.ts
 src/lib/colors/hexToRgba.ts
 src/lib/colors/tintFromHex.ts
 src/lib/dateUtils.ts

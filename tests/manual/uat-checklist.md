@@ -221,7 +221,7 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 ```
 
 **Steps:**
-1. `/schedule`에서 학생/과목/수업 추가
+1. `/schedule`에서 학생/과목/강사/수업 추가 (모달 step 2 인라인 "＋" / "＋ 새 강사")
 2. 새로고침
 **Expected:**
 - 데이터 localStorage `classPlannerData:anonymous`에 유지

@@ -127,7 +127,7 @@ SchedulePage
 - 데스크톱: 중앙 `rounded-2xl` 카드, `backdrop-blur-xl`, max-w-md
 - 모바일: BottomSheet (기존 유지)
 - Step 1 — 학생: amber chip 태그 + 검색 input + 아바타(초성) autocomplete
-- Step 2 — 과목/시간: 과목 select(전체 너비) + 요일/강의실(2열) + 통합 시간 range input
+- Step 2 — 과목/시간: 과목 select + "＋" 인라인 추가(자동 색상 할당, canManage gate) + 요일 + TeacherPillPicker + "＋ 새 강사" 인라인 추가 + 강의실 + 통합 시간 range input. 인라인 row는 ESC/× 닫힘, Enter/생성 버튼으로 등록, 성공 시 자동 닫힘 + 새 항목 자동 선택
 - Step 3 — 확인: 과목 색상 accent 헤더 카드 + 학생/요일/시간 구조화 요약
 - Footer: "N / 3" 진행 표시 + 이전/다음/수업추가 버튼 (단계별 비활성화 조건 포함)
 

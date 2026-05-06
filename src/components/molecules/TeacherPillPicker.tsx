@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import type { Teacher } from "@/lib/planner";
 
 interface TeacherPillPickerProps {
@@ -8,6 +10,14 @@ interface TeacherPillPickerProps {
   selectedTeacherId?: string | null;
   onSelect: (teacherId: string | null) => void;
   className?: string;
+  /** owner/admin 만 인라인 추가 가능. false 또는 onCreate/setInputValue 미제공이면 "＋ 새 강사" pill 숨김. */
+  canManage?: boolean;
+  inputValue?: string;
+  setInputValue?: (val: string) => void;
+  /** 성공 시 true 반환 — true 받으면 인라인 row 자동 닫힘. */
+  onCreate?: () => Promise<boolean>;
+  creating?: boolean;
+  createError?: string;
 }
 
 export default function TeacherPillPicker({
@@ -15,8 +25,50 @@ export default function TeacherPillPicker({
   selectedTeacherId,
   onSelect,
   className = "",
+  canManage = false,
+  inputValue = "",
+  setInputValue,
+  onCreate,
+  creating = false,
+  createError = "",
 }: TeacherPillPickerProps) {
-  if (teachers.length === 0) {
+  const [expanding, setExpanding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const showInlineCreate = canManage && !!setInputValue && !!onCreate;
+
+  useEffect(() => {
+    if (expanding) inputRef.current?.focus();
+  }, [expanding]);
+
+  useEffect(() => {
+    if (!expanding) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setExpanding(false);
+        setInputValue?.("");
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [expanding, setInputValue]);
+
+  const handleCreate = async () => {
+    if (!onCreate) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed || creating) return;
+    const success = await onCreate();
+    if (success) setExpanding(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleCreate();
+    }
+  };
+
+  if (teachers.length === 0 && !showInlineCreate) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <span className="text-[12px] text-[var(--color-text-muted)]">강사 없음</span>
@@ -32,40 +84,93 @@ export default function TeacherPillPicker({
   }
 
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`}>
-      {teachers.map((teacher) => {
-        const isActive = selectedTeacherId === teacher.id;
-        return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="flex flex-wrap gap-2">
+        {teachers.map((teacher) => {
+          const isActive = selectedTeacherId === teacher.id;
+          return (
+            <button
+              key={teacher.id}
+              type="button"
+              onClick={() => onSelect(isActive ? null : teacher.id)}
+              aria-pressed={isActive}
+              className={[
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] transition-all duration-150",
+                isActive
+                  ? "border border-[#a78bfa] text-[var(--color-text-primary)] font-medium"
+                  : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]",
+              ].join(" ")}
+              style={
+                isActive
+                  ? {
+                      // Dynamic rgba values can't be expressed as static Tailwind classes
+                      background: "rgba(167,139,250,0.18)",
+                      boxShadow: "0 0 0 3px rgba(167,139,250,0.08)",
+                    }
+                  : { background: "var(--color-bg-secondary)" }
+              }
+            >
+              <span
+                className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                // teacher.color is a runtime value — inline style required
+                style={{ backgroundColor: teacher.color }}
+              />
+              {teacher.name}
+            </button>
+          );
+        })}
+
+        {showInlineCreate && !expanding && (
           <button
-            key={teacher.id}
             type="button"
-            onClick={() => onSelect(isActive ? null : teacher.id)}
-            aria-pressed={isActive}
-            className={[
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] transition-all duration-150",
-              isActive
-                ? "border border-[#a78bfa] text-[var(--color-text-primary)] font-medium"
-                : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]",
-            ].join(" ")}
-            style={
-              isActive
-                ? {
-                    // Dynamic rgba values can't be expressed as static Tailwind classes
-                    background: "rgba(167,139,250,0.18)",
-                    boxShadow: "0 0 0 3px rgba(167,139,250,0.08)",
-                  }
-                : { background: "var(--color-bg-secondary)" }
-            }
+            onClick={() => setExpanding(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] border border-dashed border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-overlay-light)] transition-colors"
           >
-            <span
-              className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-              // teacher.color is a runtime value — inline style required
-              style={{ backgroundColor: teacher.color }}
-            />
-            {teacher.name}
+            ＋ 새 강사
           </button>
-        );
-      })}
+        )}
+      </div>
+
+      {showInlineCreate && expanding && (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-2 py-1.5">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue?.(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="새 강사 이름"
+              className="flex-1 bg-transparent text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none px-2 py-1"
+              disabled={creating}
+            />
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={!inputValue.trim() || creating}
+              className="flex-shrink-0 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
+            >
+              {creating ? "생성 중..." : "생성"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExpanding(false);
+                setInputValue?.("");
+              }}
+              aria-label="닫기"
+              className="flex-shrink-0 rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              <X size={14} strokeWidth={2} />
+            </button>
+          </div>
+          {createError && (
+            <p className="text-[11px] text-[var(--color-danger)] px-2" role="alert">
+              {createError}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

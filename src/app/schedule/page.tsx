@@ -44,6 +44,13 @@ import type { ScheduleViewMode } from "../../hooks/useScheduleView";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
 import { useStudentManagementLocal } from "../../hooks/useStudentManagementLocal";
+import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
+import { useSubjectManagementLocal } from "../../hooks/useSubjectManagementLocal";
+import {
+  getNextUnusedColor,
+  TEACHER_PALETTE,
+  SUBJECT_PALETTE,
+} from "../../lib/colors/getNextUnusedColor";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
 import { filterSessionsByTeachers } from "../../features/schedule/filters";
@@ -759,10 +766,22 @@ function SchedulePageContent(): JSX.Element {
   // 학생 생성 훅 (모달에서 신규 학생 추가 시 사용)
   const { addStudent: createStudent } = useStudentManagementLocal();
 
+  // 강사·과목 인라인 추가 훅 (수업 추가 모달에서 즉시 등록)
+  const { addTeacher: createTeacher } = useTeacherManagementLocal();
+  const { addSubject: createSubject } = useSubjectManagementLocal();
+
   // 🆕 학생 입력 관련 상태
   const [studentInputValue, setStudentInputValue] = useState("");
   const [studentCreating, setStudentCreating] = useState(false);
   const [studentCreateError, setStudentCreateError] = useState<string>("");
+
+  // 강사·과목 인라인 입력 상태 (학생 패턴 미러링)
+  const [teacherInputValue, setTeacherInputValue] = useState("");
+  const [teacherCreating, setTeacherCreating] = useState(false);
+  const [teacherCreateError, setTeacherCreateError] = useState<string>("");
+  const [subjectInputValue, setSubjectInputValue] = useState("");
+  const [subjectCreating, setSubjectCreating] = useState(false);
+  const [subjectCreateError, setSubjectCreateError] = useState<string>("");
 
   // 🆕 모달용 학생 검색 결과 — 입력이 비어 있으면 전체 학생 목록을 보여 주는
   // 리스트 우선(list-first) UX. 빈 문자열일 때 빈 배열을 반환하던 기존 동작은
@@ -908,6 +927,68 @@ function SchedulePageContent(): JSX.Element {
       setStudentCreateError("학생 생성에 실패했습니다.");
     } finally {
       setStudentCreating(false);
+    }
+  };
+
+  // 강사 인라인 추가 — 성공 시 true 반환 (모달 row 자동 닫힘 트리거)
+  const handleCreateTeacherFromInput = async (): Promise<boolean> => {
+    if (!canManage) return false;
+    const trimmed = teacherInputValue.trim();
+    if (!trimmed) return false;
+    setTeacherCreating(true);
+    setTeacherCreateError("");
+    try {
+      const usedColors = teachers.map((t) => t.color);
+      const color = getNextUnusedColor(TEACHER_PALETTE, usedColors);
+      const success = await createTeacher(trimmed, color);
+      if (!success) {
+        setTeacherCreateError("이미 같은 이름의 강사가 존재합니다.");
+        return false;
+      }
+      const data = getClassPlannerData();
+      const newTeacher = data.teachers.find((t) => t.name.trim() === trimmed);
+      if (newTeacher) {
+        setGroupModalData((prev) => ({ ...prev, teacherId: newTeacher.id }));
+      }
+      setTeacherInputValue("");
+      return true;
+    } catch {
+      setTeacherCreateError("강사 생성에 실패했습니다.");
+      return false;
+    } finally {
+      setTeacherCreating(false);
+    }
+  };
+
+  // 과목 인라인 추가 — 성공 시 true 반환
+  const handleCreateSubjectFromInput = async (): Promise<boolean> => {
+    if (!canManage) return false;
+    const trimmed = subjectInputValue.trim();
+    if (!trimmed) return false;
+    setSubjectCreating(true);
+    setSubjectCreateError("");
+    try {
+      const usedColors = subjects
+        .map((s) => s.color)
+        .filter((c): c is string => !!c);
+      const color = getNextUnusedColor(SUBJECT_PALETTE, usedColors);
+      const success = await createSubject(trimmed, color);
+      if (!success) {
+        setSubjectCreateError("이미 같은 이름의 과목이 존재합니다.");
+        return false;
+      }
+      const data = getClassPlannerData();
+      const newSubject = data.subjects.find((s) => s.name.trim() === trimmed);
+      if (newSubject) {
+        setGroupModalData((prev) => ({ ...prev, subjectId: newSubject.id }));
+      }
+      setSubjectInputValue("");
+      return true;
+    } catch {
+      setSubjectCreateError("과목 생성에 실패했습니다.");
+      return false;
+    } finally {
+      setSubjectCreating(false);
     }
   };
 
@@ -1990,6 +2071,16 @@ function SchedulePageContent(): JSX.Element {
         studentCreating={studentCreating}
         studentCreateError={studentCreateError}
         canManage={canManage}
+        subjectInputValue={subjectInputValue}
+        setSubjectInputValue={setSubjectInputValue}
+        onCreateSubject={handleCreateSubjectFromInput}
+        subjectCreating={subjectCreating}
+        subjectCreateError={subjectCreateError}
+        teacherInputValue={teacherInputValue}
+        setTeacherInputValue={setTeacherInputValue}
+        onCreateTeacher={handleCreateTeacherFromInput}
+        teacherCreating={teacherCreating}
+        teacherCreateError={teacherCreateError}
       />
 
       {/* 출석 시트 */}

@@ -245,3 +245,107 @@ describe("GroupSessionModal - list-first UX", () => {
     expect(addStudent).toHaveBeenCalledWith("stu-1");
   });
 });
+
+describe("GroupSessionModal - 강사·과목 인라인 추가", () => {
+  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+  const subjects = [{ id: "sub-1", name: "수학" }];
+  const students = [{ id: "stu-1", name: "홍길동" }];
+  const baseData: GroupSessionData = {
+    studentIds: ["stu-1"],
+    subjectId: "",
+    weekday: 1,
+    startTime: "10:00",
+    endTime: "11:00",
+    yPosition: 1,
+    room: "",
+  };
+
+  function renderAtStep1(
+    overrides: Partial<Parameters<typeof GroupSessionModal>[0]> = {}
+  ) {
+    const defaults = {
+      isOpen: true,
+      groupModalData: baseData,
+      setGroupModalData: () => {},
+      setShowGroupModal: () => {},
+      removeStudent: () => {},
+      studentInputValue: "",
+      setStudentInputValue: () => {},
+      handleStudentInputKeyDown: () => {},
+      addStudentFromInput: () => {},
+      filteredStudentsForModal: [],
+      addStudent: () => {},
+      subjects,
+      teachers: [],
+      students,
+      weekdays,
+      handleStartTimeChange: () => {},
+      handleEndTimeChange: () => {},
+      groupTimeError: "",
+      addGroupSession: () => {},
+      onCreateStudent: () => {},
+      studentCreating: false,
+      studentCreateError: "",
+    };
+    const result = render(<GroupSessionModal {...defaults} {...overrides} />);
+    fireEvent.click(screen.getByRole("button", { name: /다음/ }));
+    return result;
+  }
+
+  it("canManage=true 이면 과목 select 옆 '+' 버튼이 렌더된다", () => {
+    renderAtStep1({ canManage: true });
+    expect(
+      screen.getByRole("button", { name: "새 과목 추가" })
+    ).toBeInTheDocument();
+  });
+
+  it("canManage=false 이면 과목 '+' 버튼 미렌더", () => {
+    renderAtStep1({ canManage: false });
+    expect(
+      screen.queryByRole("button", { name: "새 과목 추가" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("과목 '+' 클릭 시 인라인 row가 표시된다", () => {
+    renderAtStep1({ canManage: true });
+    fireEvent.click(screen.getByRole("button", { name: "새 과목 추가" }));
+    expect(screen.getByPlaceholderText("새 과목 이름")).toBeInTheDocument();
+  });
+
+  it("과목 '생성' 클릭 시 onCreateSubject 호출", async () => {
+    const onCreateSubject = vi.fn().mockResolvedValue(true);
+    renderAtStep1({
+      canManage: true,
+      subjectInputValue: "국어",
+      onCreateSubject,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "새 과목 추가" }));
+    fireEvent.click(screen.getByRole("button", { name: "생성" }));
+    expect(onCreateSubject).toHaveBeenCalledTimes(1);
+  });
+
+  it("subjectCreateError 있으면 에러 메시지 표시", () => {
+    renderAtStep1({
+      canManage: true,
+      subjectInputValue: "수학",
+      subjectCreateError: "이미 같은 이름의 과목이 존재합니다.",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "새 과목 추가" }));
+    expect(
+      screen.getByText("이미 같은 이름의 과목이 존재합니다.")
+    ).toBeInTheDocument();
+  });
+
+  it("canManage=true 이면 '+ 새 강사' pill이 렌더된다 (TeacherPillPicker 통합)", () => {
+    renderAtStep1({
+      canManage: true,
+      teachers: [],
+      teacherInputValue: "",
+      setTeacherInputValue: () => {},
+      onCreateTeacher: vi.fn().mockResolvedValue(true),
+    });
+    expect(
+      screen.getByRole("button", { name: /＋ 새 강사/ })
+    ).toBeInTheDocument();
+  });
+});
