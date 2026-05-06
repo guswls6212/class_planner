@@ -63,9 +63,9 @@ bash scripts/uat-new.sh core    # 또는 extended / full
 
 | 모드 | 시간 | 카테고리 | 언제 |
 |---|---|---|---|
-| **Core Path** | 50분 | 1, 2, 3, 5, 7, 12, 14 (P0만) | 매 dev → main 머지 전 |
-| **Extended** | 90분 | Core + 4, 6, 8, 9, 10 (P0+P1) | PR이 여러 영역 영향 시 |
-| **Full Coverage** | 130분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
+| **Core Path** | 60분 | 1, 2, 3, 5, 7, 12, 14, 16 (P0만) | 매 dev → main 머지 전 |
+| **Extended** | 110분 | Core + 4, 6, 8, 9, 10, 15 (P0+P1) | PR이 여러 영역 영향 시 |
+| **Full Coverage** | 150분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
 
 ### 3. 결과 기록 규칙
 
@@ -90,7 +90,7 @@ bash scripts/uat-summary.sh
 - `[!]` → Fail (note 필수: 어떤 단계에서 어떤 결과가 났는지)
 - `[~]` → Skip (skip 사유 필수)
 
-P0 28개 모두 Pass = main 머지 그린라이트.
+P0 33개 모두 Pass = main 머지 그린라이트.
 
 자동 e2e 후보 시나리오는 `[auto-friendly]` 라벨 — 향후 별도 PR로 Playwright 마이그레이션 후 본 checklist에서 제외 예정.
 
@@ -462,7 +462,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 
 ---
 
-## 5. 시간표 — 수업 추가/편집/삭제 (P0: 8 / 15) [Core 포함]
+## 5. 시간표 — 수업 추가/편집/삭제 + 뷰 모드 (P0: 10 / 21) [Core 포함]
 
 ### S-5.1 FAB 클릭 → 모달 열림 [P0] [auto-friendly]
 **Pre:** `/schedule`
@@ -618,6 +618,72 @@ console.log('새 호출 수:', after - before);  // ≥1
 - 과목 select 옆 dashed amber "＋" 버튼 미렌더 (canManage=false)
 - "＋ 새 강사" pill 미렌더 — 기존 pill만 표시
 - 기존 과목/강사 선택만 가능
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.16 일별 뷰 토글 [P0]
+**Pre:** `/schedule` 주간 뷰
+**Steps:**
+1. SegmentedButton "일별" 클릭
+**Expected:**
+- ScheduleDailyView 렌더 — 그 날 세션 시간순(`startsAt` localeCompare) 정렬 list
+- 상단에 DayChipBar (월~일 7 chip + 그 주 날짜) 표시
+- 세션 카드는 SessionCard molecule, colorBy 모드 적용
+- 빈 상태 시 적절한 placeholder
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.17 월별 뷰 토글 [P0]
+**Pre:** `/schedule`
+**Steps:**
+1. SegmentedButton "월별" 클릭
+**Expected:**
+- ScheduleMonthlyView 렌더 — Mon-based 7×N 달력 격자
+- 첫 줄: 월/화/수/목/금/토/일 헤더
+- 각 날 cell(`MonthDayCell`)에 그 날 세션 미니 표시 (카운트 또는 dot)
+- 인접 달 날짜는 muted 표시 (currentMonth 비교)
+- 오늘 cell 강조
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.18 DayChipBar — 요일 선택 [P1]
+**Pre:** 일별 뷰 진입
+**Steps:**
+1. DayChipBar에서 다른 요일 chip 클릭
+**Expected:**
+- selectedWeekday 변경 + 그 요일 세션 표시로 갱신
+- 선택된 chip — accent 배경 + 흰 텍스트 (aria-pressed=true)
+- 오늘 chip — active 아닐 때도 accent 색상 강조 (구별 가능)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.19 ScheduleDateNavigator — 다음/이전/오늘 [P1]
+**Pre:** 주간 또는 일별 뷰
+**Steps:**
+1. ▶ (다음) 클릭 → 다음 주(또는 일/월)
+2. ◀ (이전) 클릭 → 이전 주
+3. "오늘" 버튼 클릭
+**Expected:**
+- 라벨 갱신 ("5월 2주" / "2026-05-08 (목)" / "2026년 5월" 등 뷰 모드별)
+- 시간표 데이터 그 주의 세션으로 갱신
+- "오늘" 클릭 시 오늘 포함된 주/일/월로 jump
+- 모든 navigation에서 lossless (이동 후 돌아와도 데이터 동일)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.20 월별 뷰 → 일별 drill-down [P2]
+**Pre:** 월별 뷰
+**Steps:**
+1. 임의 날짜 cell 클릭 (`onDayClick`)
+**Expected:**
+- 일별 뷰로 자동 전환 + 그 날짜로 selectedWeekday 설정
+- 또는 그 날 세션 popover 표시 (구현 정책에 따라)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.21 일별 뷰 좌우 스와이프 — 모바일 [P2]
+**Pre:** 모바일 뷰포트(375×667) + 일별 뷰
+**Steps:**
+1. 화면 좌측으로 스와이프 (≥50px)
+2. 화면 우측으로 스와이프
+**Expected:**
+- 좌 스와이프 → 다음 요일 (`onSwipeLeft`)
+- 우 스와이프 → 이전 요일 (`onSwipeRight`)
+- 세로 스와이프와 구분 (Math.abs(dx) > Math.abs(dy))
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -1127,7 +1193,7 @@ open -na "Google Chrome" --args --incognito --new-window "http://localhost:3000/
 
 ---
 
-## 12. 새로고침 / 네트워크 (P0: 2 / 5) [Core 포함]
+## 12. 새로고침 / 네트워크 / Sync 회복 (P0: 4 / 9) [Core 포함]
 
 ### S-12.1 새로고침 후 데이터 유지 [P0] [auto-friendly]
 **Pre:** 시간표 + 학생/과목/세션 입력 완료
@@ -1179,6 +1245,55 @@ uat.expireToken();           // sb-*-auth-token 키 + 쿠키 모두 삭제 + 새
 **Expected:**
 - 자동 로그아웃 또는 로그인 화면 리다이렉트
 - 사용자에게 명확한 안내
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-12.6 오프라인 변경 → outbox 자동 누적 [P0]
+**Pre:** 인증 모드 + DevTools Network → Offline
+**Steps:**
+1. 학생 추가 또는 세션 추가 등 mutating 작업
+2. localStorage `sync_outbox_*` 키 확인
+**Expected:**
+- 변경은 localStorage(SSOT)에 즉시 반영 (UI 즉시 업데이트)
+- 서버 호출은 실패하지만 outbox에 entry 자동 누적 (`flushOutbox` deferred)
+- 사용자에게 Sync status 표시 (예: 사이드바 또는 banner — `useSyncStatus`)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-12.7 온라인 복구 → 자동 flush [P0]
+**Pre:** S-12.6 후 outbox에 entry N개 누적
+**Steps:**
+1. DevTools Network → Online
+2. 잠시 대기 (또는 페이지 interaction)
+**Expected:**
+- outbox entries 자동으로 flush (`flushOutbox` 호출)
+- Network에 모든 deferred POST/PUT/DELETE 발사
+- 성공 시 entry 제거됨, sync status `idle` 또는 `success`
+- localStorage `sync_outbox_*` 키 비워짐
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-12.8 SyncQueueModal — 수동 열림 + entry 액션 [P1]
+**Pre:** outbox에 entry 1개 이상 (sync 실패 또는 진행 중)
+**Steps:**
+1. SyncQueueModal 열림 (사이드바 또는 sync status indicator 클릭)
+2. entry 항목별 [재시도] 또는 [버리기] 클릭
+3. 또는 전체 [모두 재시도] / [모두 버리기]
+**Expected:**
+- 모달 상단에 Recovery 안내 (Info 아이콘 + 텍스트)
+- 각 entry 행: context label (`getContextLabel`) + 재시도/버리기 버튼
+- [재시도] 클릭 시 `flushOutboxEntry` 호출 — 성공 시 entry 사라짐
+- [버리기] 클릭 시 `removeOutboxEntry` 호출 — 즉시 사라짐
+- 전체 액션: 모든 entry 일괄 처리
+- bulk busy 중 다른 액션 disabled
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-12.9 sync 실패 — AlertTriangle 표시 [P2]
+**Pre:** entry 재시도 시 서버 500 또는 네트워크 에러
+**Steps:**
+1. SyncQueueModal에서 [재시도] 클릭
+2. 응답 fail
+**Expected:**
+- entry 행에 AlertTriangle 아이콘 + 에러 메시지 표시
+- entry는 outbox에 그대로 남아 있음 (재시도 가능)
+- toast "동기화 실패" 또는 inline 에러 표시
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -1403,6 +1518,113 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
+## 15. 출석부 (P0: 0 / 5)
+
+> **무엇:** `useAttendance` 훅 + `AttendanceSheet` molecule. 한 세션의 학생 출석을 4-state(`present`/`absent`/`late`/`excused`)로 마킹. 학원 daily 운영 핵심.
+
+### S-15.1 출석부 모달 열기 [P1]
+**Pre:** 시간표에 세션 1개 이상 + 그 세션에 enrollment된 학생 있음
+**Steps:**
+1. SessionCard에서 출석 아이콘(또는 메뉴) 클릭
+**Expected:**
+- AttendanceSheet 열림 — 세션 정보(과목/시간/요일) + 학생 list
+- 모바일: bottom sheet 슬라이드업 (`items-end`)
+- 데스크탑: 중앙 모달 (`md:items-center`)
+- 각 학생 행에 4 status 버튼 (출석/결석/지각/사유) + 메모 영역
+- 백드롭 클릭 시 닫힘 (`onClick`이 `e.target === e.currentTarget` 조건)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-15.2 학생별 4-state 마킹 [P1]
+**Pre:** AttendanceSheet 열림
+**Steps:**
+1. 학생 1명에 "출석" 버튼 클릭
+2. 다른 학생에 "지각" 클릭
+3. 또 다른 학생에 "사유" 클릭
+**Expected:**
+- `onMarkAttendance(studentId, status)` 호출
+- 시각적 표시 — 선택된 status 버튼 강조 (배경/테두리), 다른 status는 muted
+- 새로고침 후 마킹 유지 (localStorage 또는 server 저장)
+- 인증: API 호출 발사 (POST /api/attendances 또는 유사)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-15.3 "전체 출석" 일괄 마킹 [P2]
+**Pre:** AttendanceSheet 열림 + 학생 5명 이상
+**Steps:**
+1. "전체 출석" 버튼 클릭
+**Expected:**
+- `onMarkAllPresent` 호출 — 모든 학생 status="present" 일괄 set
+- 시각적으로 모든 행에 "출석" 표시
+- 이미 다른 status였던 학생도 present로 덮어쓰기 (정책 확인)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-15.4 새로고침 후 출석 유지 [P1]
+**Pre:** S-15.2 마킹 후
+**Steps:**
+1. 페이지 새로고침
+2. 다시 AttendanceSheet 열기
+**Expected:**
+- 마킹된 status 모두 유지
+- 인증: 서버 fetch한 attendance와 일치
+- 익명: localStorage SSOT 유지
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-15.5 member 역할 시 read-only [P2]
+**Pre:** member 역할 + AttendanceSheet 열림 (canManage=false)
+**Steps:**
+1. status 버튼 클릭 시도
+2. "전체 출석" 버튼 클릭 시도
+**Expected:**
+- 모든 status 버튼 disabled (cursor-not-allowed)
+- "전체 출석" 버튼 disabled
+- 기존 마킹 표시는 정상 (read-only 뷰)
+- onMarkAttendance 호출 안 됨
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
+## 16. 온보딩 / 도움말 (P0: 1 / 3)
+
+### S-16.1 빈 주 — EmptyWeekState 발동 [P0]
+**Pre:** 신규 학원 또는 빈 주 (sessions.length === 0)
+**Steps:**
+1. `/schedule` 진입
+**Expected:**
+- 시간표 그리드 위에 absolute overlay 표시 (`pointer-events-none` 컨테이너 + `pointer-events-auto` 카드)
+- CalendarX2 아이콘 + "이번 주 수업이 없어요" 헤드라인
+- 안내 텍스트 — hasTemplate 분기:
+  - `hasTemplate=true`: "지난 시간표를 그대로 적용하거나 수업을 직접 추가해보세요"
+  - `hasTemplate=false`: "수업을 추가하고 저장하면 다음 주에 바로 재사용할 수 있어요"
+- CTA — hasTemplate=true 시 "템플릿 적용" + "수업 추가" 둘 다 / false 시 "수업 추가"만
+- 그리드는 그대로 (overlay) — 테두리/시간 헤더 보임
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-16.2 EmptyWeekState CTA → 흐름 진입 [P1]
+**Pre:** S-16.1 상태
+**Steps:**
+1. "수업 추가" CTA 클릭
+2. (또는) "템플릿 적용" CTA 클릭 (hasTemplate 시)
+**Expected:**
+- "수업 추가" → GroupSessionModal 열림 (FAB와 동일 흐름)
+- "템플릿 적용" → SlotPickerModal apply mode 또는 ApplyTemplateConfirm
+- CTA 클릭 후 EmptyWeekState 자체는 유지 (세션 추가되면 자연 사라짐)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-16.3 HelpDrawer 열기/닫기 [P2]
+**Pre:** 임의 페이지
+**Steps:**
+1. 사이드바(또는 헤더)의 "도움말" 트리거 클릭
+2. drawer 열림 확인 → 5개 섹션 스크롤 확인
+3. X 버튼 또는 backdrop 클릭으로 닫기
+**Expected:**
+- 우측에서 슬라이드 drawer (w-80, `right-0 top-0 bottom-0`)
+- 백드롭 (z-10000, bg-black/30) 표시 + 클릭 시 close
+- 5개 섹션 모두 렌더 — 시간표 시작 / 일별·주간·월별 / 템플릿 저장·적용 / PDF 출력 / 공유 링크
+- X 버튼 → close (HelpDrawerContext close 호출)
+- 데이터 검증은 정적 콘텐츠라 PASS 위주 (변경 시 회귀 가드)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
 ## Edge Cases (P0: 0 / 10)
 
 ### E-1. 학생 0명 + 수업 추가 시도 [P2]
@@ -1495,3 +1717,4 @@ Issue 등록 형식:
 - 2026-05-05 (2): 자동 inject 도입 — `public/uat/console-tools.js` 신설, layout.tsx가 NODE_ENV=development 분기로 자동 로드. 콘솔 paste 0번. `tests/manual/{uat-helpers,seed-uat}.js` 는 deprecated (legacy 보존). UAT 전용 인증 셋업 추가: `npm run uat:setup` / `uat:seed` / `uat:teardown` (e2e와 격리된 UAT_TEST_USER_*).
 - 2026-05-05 (3): §0 "전체 흐름 (Quick Reference)" 추가 — 처음 1회 셋업 + 매 사이클 표. 사본을 위에서부터 따라가면 빠뜨림 없이 완료 가능.
 - 2026-05-06: dev 코드 동기화 — §5 인라인 강사·과목 추가 시나리오 (S-5.13~5.15, PR #257), §7 슬롯 선택 모달 (S-7.9~7.10, ADR-008 free 2 슬롯), §14 신설 — 데이터 보호 (충돌 모달 Layered Defense + 백업 이력 / freemium 잠금, PR #260 + PR #261/#263/#265). P0 본문 정확 카운트로 헤더 갱신 (이전 19 표기는 부정확) → 실제 28개. §5 P0: 4→8 (+S-5.13 +S-5.14, 기존 카운트 보정), §7 P0: 3→4 (기존 카운트 보정), §14 신규 P0: 4. Core 모드 카테고리에 14 추가 (40분 → 50분). 회귀 가드: `computeLossDiff.test.ts` 4 unit + `DataConflictModal.test.tsx` 26 unit + `useGlobalDataInitialization.test.ts` 충돌 감지 unit.
+- 2026-05-06 (2): UAT 정의 재정렬 — "사용자 입장 전체 검증" 원칙으로 누락 영역 보강. 이전 "out of scope" 분류한 8개 영역 모두 사용자 노출 기능이라 UAT 필수 포함. §5 확장 — 일별/월별 뷰 토글 + DayChipBar + ScheduleDateNavigator (S-5.16~5.21, 6개 추가). §12 확장 — Sync 회복 (S-12.6~12.9, 4개 추가, SyncQueueModal). §15 신설 — 출석부 (`AttendanceSheet`, 5개 시나리오, 학원 daily 운영 핵심). §16 신설 — 온보딩 / 도움말 (`EmptyWeekState` + `HelpDrawer`, 3개 시나리오). 신규 P0: S-5.16/5.17 (뷰 토글), S-12.6/12.7 (sync 자동 회복), S-16.1 (빈 주 발동). 총 P0: 28 → 33. Core 모드: 50분 → 60분, 카테고리에 16 추가. Extended에 15 추가 (110분).
