@@ -1941,10 +1941,12 @@ function SchedulePageContent(): JSX.Element {
       */}
       {/* P3: 헤더/필터/네비는 layout-anchored 영역. default 모드는 단순 wrap. */}
       <div className={isP3 ? "shrink-0" : ""}>
-      {/* Row 1: 제목(좌) + 액션(우) — P3 + scroll 시 압축 */}
+      {/* Row 1: 제목(좌) + 액션(우) — P3 + scroll 시 강하게 압축 */}
       <div
         className={`flex items-start justify-between border-b border-[--color-border] transition-all duration-200 ${
-          isP3 && headerScrolled ? "mb-0 pb-1" : "mb-4 pb-3"
+          isP3 && headerScrolled
+            ? "mb-0 pb-0.5 pt-0.5 [&_h2]:text-sm [&_h2]:font-medium opacity-80"
+            : "mb-4 pb-3"
         }`}
       >
         <ScheduleHeader
@@ -2059,7 +2061,7 @@ function SchedulePageContent(): JSX.Element {
       {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
       <div
         ref={mainScrollRef}
-        className={isP3 ? "flex-1 min-h-0 overflow-auto" : ""}
+        className={isP3 ? "flex-1 min-h-0 overflow-auto schedule-p3-scroll" : ""}
       >
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (

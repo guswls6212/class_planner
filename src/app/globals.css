@@ -1232,3 +1232,23 @@ body {
   .confirm-modal-fade-in,
   .confirm-modal-pop-in { animation: none; }
 }
+
+/* ===== Schedule P3 — thin scrollbar (가로 scrollbar 시야 가림 완화) ===== */
+.schedule-p3-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+.schedule-p3-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.schedule-p3-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 3px;
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
