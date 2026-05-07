@@ -600,7 +600,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             gridRef.current = node;
           }}
           className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg relative isolate ${
-            fillHeight ? "" : "overflow-y-auto overflow-x-auto max-h-[80vh]"
+            fillHeight
+              ? "overflow-x-auto schedule-p3-scroll"
+              : "overflow-y-auto overflow-x-auto max-h-[80vh]"
           } ${className}`}
           style={{
             gridTemplateColumns,

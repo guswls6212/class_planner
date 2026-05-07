@@ -2061,7 +2061,11 @@ function SchedulePageContent(): JSX.Element {
       {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
       <div
         ref={mainScrollRef}
-        className={isP3 ? "flex-1 min-h-0 overflow-auto schedule-p3-scroll" : ""}
+        className={
+          isP3
+            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden schedule-p3-scroll"
+            : ""
+        }
       >
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
