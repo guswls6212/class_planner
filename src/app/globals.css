@@ -1088,3 +1088,19 @@ body {
               0 0 0 1.5px var(--color-cluster-overflow-ring),
               inset 0 0 0 1px rgba(255,255,255,0.08);
 }
+
+/* ===== ConfirmModal — Refined Elevation entrance ===== */
+@keyframes confirm-modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes confirm-modal-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.confirm-modal-fade-in { animation: confirm-modal-fade-in 140ms ease-out; }
+.confirm-modal-pop-in  { animation: confirm-modal-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal-fade-in,
+  .confirm-modal-pop-in { animation: none; }
+}
