@@ -121,6 +121,63 @@ gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래
 | **Extended** | 110분 | Core + 4, 6, 8, 9, 10, 15 (P0+P1) | PR이 여러 영역 영향 시 |
 | **Full Coverage** | 150분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
 
+### 2.5 실행 순서 가이드 (Phase 기반 — 상태 토글 최소화)
+
+> **카테고리(§1~§16) 는 lookup 용, Phase 는 실행 순서.** 두 축으로 사용.
+>
+> 카테고리대로 위에서 아래 진행하면 비로그인 ↔ 로그인 ↔ 로그아웃 토글이 빈번 (예: S-1.2 로그인 후 S-1.4 비로그인 다시). 비효율. 아래 7-Phase 흐름으로 묶어 진행하면 **상태 셋업 reset 1회씩**으로 끝남.
+
+#### Phase 1 — 익명 모드 (비로그인, localStorage SSOT)
+- **진입**: 콘솔 `uat.clearAll()` → 새로고침 → `uat.isAnonymous() === true`
+- **시나리오 묶음**: S-1.1, S-1.4, §2 (학생), §3 (과목), §4 (강사), §5 (시간표 + 뷰 모드), §6 (드래그), §13 (색상), S-16.1, S-16.2, S-16.3, S-12.1
+- **핵심 검증**: 서버 호출 0건 (Local-First 정책)
+- **끝 상태**: 익명 모드 + 학생/과목/강사/세션 입력된 상태 → Phase 2 충돌 시드로 활용
+
+#### Phase 2 — 익명 → 로그인 전환 (충돌 발생)
+- **진입**: Phase 1 끝 상태 그대로 → UAT_TEST_USER 로그인 (`/login` → password) → 사전 시드된 서버 데이터와 충돌
+- **사전 셋업**: `npm run uat:seed` (인증 데이터 미리 박아둠 — 충돌 발동 보장)
+- **시나리오 묶음**: S-14.1~5 (DataConflictModal Layered Defense), S-14.7 (충돌 직전 자동 백업)
+- **끝 상태**: 인증 모드 (한 쪽 데이터 선택 후 머지 완료)
+
+> **신규 user 케이스 (S-1.5)**: 첫 로그인 시 충돌 X (서버 데이터 0) → 학원 자동 생성. 별도 user 또는 `npm run uat:teardown` 후 진행 (Phase 3 끝부분에 배치).
+
+#### Phase 3 — 인증 모드 (서버 sync)
+- **진입**: Phase 2 끝 상태 그대로
+- **시나리오 묶음**: §7 (템플릿), §8 (PDF), §9 (공유), §10 (다중 Academy), S-12.2, S-12.3, S-14.6, S-14.8~13 (데이터 이력), §15 (출석부), 마지막에 S-1.5 (신규 user 학원 생성 — `uat:teardown` 후)
+- **핵심 검증**: API POST/PUT 호출 발사 + 서버 sync 정확
+
+#### Phase 4 — 모바일 뷰포트
+- **진입**: 인증 모드 그대로 + DevTools `Cmd+Shift+M` (iPhone SE 375×667)
+- **시나리오 묶음**: §11 (모바일 7개), S-5.21 (일별 뷰 좌우 스와이프)
+
+#### Phase 5 — OAuth + 로그아웃/재인증
+- **진입**: 인증 모드. OAuth 시나리오는 본인 Google/Kakao 계정 1회 (Extended/Full 만)
+- **시나리오 묶음**: S-1.2 (Google OAuth), S-1.3 (Kakao OAuth), S-1.6 (로그인 → /login 접근), S-1.7 (로그아웃 → 재로그인), S-12.5 (API 401)
+
+#### Phase 6 — 오프라인 / Sync 회복
+- **진입**: 인증 모드 + DevTools Network → Offline
+- **시나리오 묶음**: S-12.4, S-12.6~9 (SyncQueueModal)
+
+#### Phase 7 — Edge Cases
+- **진입**: 시나리오마다 Pre 따로 (대부분 reset 필요)
+- **시나리오 묶음**: E-1 ~ E-10
+
+#### Phase 8 — Cleanup
+- `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제)
+- 결과 commit + push + PR (§0 "매 UAT 사이클" 8~9 단계)
+
+#### 모드별 Phase 매핑
+
+| 모드 | 거치는 Phase | 비고 |
+|---|---|---|
+| **Core (60분)** | 1 → 2 → 3 → 6 (각 Phase 의 P0 만) | dev → main 머지 전 핵심 path |
+| **Extended (110분)** | Core + 4 + 5 (OAuth 본인 계정 1회) | PR 이 모바일/인증 영역 영향 시 |
+| **Full (150분)** | 1 → 2 → 3 → 4 → 5 → 6 → 7 (전체 + Edge) | 분기당 1회 + 큰 리팩터 후 |
+
+#### 비유
+
+지하철 노선도 — 한 노선(Phase) 안에서는 같은 방향으로 진행, 환승(상태 토글)은 정해진 지점(Phase 경계)에서만. 시나리오 ID 는 **역 이름** (불변), Phase 는 **노선** (실행 순서).
+
 ### 3. 결과 기록 규칙
 
 매 실행은 **본 파일 사본**(`tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md`)에 기록. 본 파일은 template — 직접 수정 금지.
@@ -1814,3 +1871,4 @@ Issue 등록 형식:
 - 2026-05-07: §1 인증 시나리오 4개에 검증 방법 박스 추가 — `localStorage.getItem('supabase_user_id')` / `uat.isAnonymous()` / Application 탭 시각 확인 셋. S-1.2/1.3/1.5/1.7 모두 적용 (PR #269).
 - 2026-05-07 (2): §0 "전체 흐름" 보강 — branch 관리 + push/PR 단계 명시. dev/main 직접 commit 금지 원칙 + branch 케이스 표 (dev 누적 / 특정 PR / pre-main) + 임시 spot-check 가이드 + 이전 cycle 사본 late commit 패턴 추가. 표를 0~10번 단계로 재번호 (이전 5단계).
 - 2026-05-07 (3): cwd 가정 명시 fix — 이전 (2) 의 `git -C class-planner ...` 패턴이 cwd=dev-pack 부모 가정을 안 박아 사용자가 다른 cwd 에서 실행 시 `cannot change to 'class-planner'` 에러. 사전 단계 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 추가 + 이후 명령은 단순 `git switch ...` 형식. 다른 cwd 사용 시 fallback (절대경로 `git -C ~/...`) 박스도 명시.
+- 2026-05-07 (4): §2.5 "실행 순서 가이드 (Phase 기반)" 신설 — 카테고리별 위→아래 진행 시 비로그인↔로그인↔로그아웃 상태 토글 빈번 (S-1.2 로그인 → S-1.4 다시 비로그인 → S-1.5 다시 로그인) → 비효율. 7-Phase 흐름 (익명 → 충돌 전환 → 인증 → 모바일 → OAuth/로그아웃 → 오프라인 → Edge) 으로 묶어 상태 셋업 1회씩으로 끝남. 카테고리는 lookup 용, Phase 는 실행 순서. 모드별 Phase 매핑 표 (Core 1→2→3→6 / Extended +4+5 / Full 전체) 추가.
