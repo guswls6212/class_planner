@@ -112,8 +112,12 @@ export default function OnboardingPage() {
     academyName.length > 0 && academyName.trim().length < 2;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] px-4">
-      <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] w-full max-w-[440px] rounded-2xl p-10 shadow-admin-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] px-4 overflow-hidden">
+      <div
+        className="bg-onboarding-decoration pointer-events-none absolute inset-0"
+        aria-hidden="true"
+      />
+      <div className="relative bg-[var(--color-bg-secondary)] border border-[var(--color-border)] w-full max-w-[440px] rounded-2xl p-10 shadow-admin-md">
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)] text-center mb-2">
           학원 정보 설정
         </h1>
