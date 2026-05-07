@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding 디자인 옵션 비교 — class-planner</title>
+<style>
+  /* === Shared base === */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Pretendard Variable', 'Pretendard', -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif; }
+  body { background: #0b0b0c; color: #e5e7eb; padding: 24px 16px 80px; }
+
+  .doc-header { max-width: 1100px; margin: 0 auto 32px; }
+  .doc-header h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; color: #f9fafb; margin-bottom: 6px; }
+  .doc-header p { font-size: 14px; color: #9ca3af; line-height: 1.6; }
+  .doc-header code { background: #1f2937; padding: 2px 6px; border-radius: 4px; font-family: 'SF Mono', monospace; font-size: 12px; color: #fbbf24; }
+
+  .option { max-width: 1100px; margin: 0 auto 56px; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+  .opt-meta { background: #18181b; padding: 16px 20px; border-bottom: 1px solid #27272a; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .opt-meta .num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #fbbf24; color: #18181b; font-weight: 800; font-size: 14px; }
+  .opt-meta .title { font-size: 16px; font-weight: 700; color: #f9fafb; }
+  .opt-meta .desc { font-size: 12px; color: #9ca3af; flex: 1; line-height: 1.5; }
+  .opt-meta .pick { background: #27272a; color: #fbbf24; font-weight: 600; font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid #3f3f46; white-space: nowrap; }
+
+  .opt-tags { background: #18181b; padding: 0 20px 14px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .opt-tags span { font-size: 10px; color: #9ca3af; background: #27272a; padding: 4px 8px; border-radius: 4px; }
+
+  .opt-frame { min-height: 720px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; }
+
+  /* === Shared form atoms (used by mockups) === */
+  .label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .help-error { font-size: 12px; color: #ef4444; margin-top: 6px; }
+  .role-list { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ============================================
+     OPTION 1 — Linear-style Minimal
+     ============================================ */
+  .v1-frame { background: #0a0a0a; }
+  .v1-card { width: 100%; max-width: 420px; padding: 36px 32px; }
+  .v1-card h1 { font-size: 22px; font-weight: 700; color: #fafafa; margin-bottom: 4px; letter-spacing: -0.01em; }
+  .v1-card .welcome { font-size: 13px; color: #71717a; margin-bottom: 32px; }
+  .v1-card .welcome b { color: #fbbf24; font-weight: 600; }
+  .v1-card .label { color: #a1a1aa; }
+  .v1-input { width: 100%; padding: 11px 14px; background: transparent; border: none; border-bottom: 1px solid #3f3f46; color: #fafafa; font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .v1-input::placeholder { color: #52525b; }
+  .v1-input:focus { border-bottom-color: #fbbf24; }
+  .v1-fieldset { margin-top: 28px; }
+  .v1-radio { display: flex; align-items: center; gap: 12px; padding: 10px 4px; cursor: pointer; border-radius: 0; border-bottom: 1px solid #27272a; }
+  .v1-radio:last-child { border-bottom: none; }
+  .v1-radio.selected .dot { background: #fbbf24; box-shadow: inset 0 0 0 2px #0a0a0a, 0 0 0 1px #fbbf24; }
+  .v1-radio .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #52525b; flex-shrink: 0; }
+  .v1-radio .opt-label { font-size: 14px; font-weight: 500; color: #fafafa; }
+  .v1-radio .opt-desc { font-size: 12px; color: #71717a; margin-top: 2px; }
+  .v1-btn { width: 100%; margin-top: 32px; padding: 12px 20px; background: #fbbf24; color: #18181b; font-weight: 600; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; }
+  .v1-btn:hover { background: #f59e0b; }
+
+  /* ============================================
+     OPTION 2 — Vercel-style Premium Dark
+     ============================================ */
+  .v2-frame { background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.12), transparent 60%), #000; position: relative; }
+  .v2-frame::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 40% at 50% 100%, rgba(168, 85, 247, 0.08), transparent 60%); pointer-events: none; }
+  .v2-card { width: 100%; max-width: 440px; padding: 40px; background: rgba(10, 10, 12, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; backdrop-filter: blur(12px); position: relative; }
+  .v2-card::before { content: ''; position: absolute; inset: 0; border-radius: 12px; padding: 1px; background: linear-gradient(135deg, rgba(251,191,36,0.4), transparent 30%, transparent 70%, rgba(251,191,36,0.2)); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+  .v2-card h1 { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.025em; margin-bottom: 6px; }
+  .v2-card .welcome { font-size: 13px; color: #a1a1aa; margin-bottom: 28px; }
+  .v2-card .welcome b { color: #fbbf24; }
+  .v2-card .label { color: #d4d4d8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .v2-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.15s; }
+  .v2-input::placeholder { color: #52525b; }
+  .v2-input:focus { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.2); }
+  .v2-fieldset { margin-top: 24px; }
+  .v2-radio { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .v2-radio:hover { background: rgba(255,255,255,0.05); border-color: rgba(251,191,36,0.3); }
+  .v2-radio.selected { background: rgba(251,191,36,0.08); border-color: #fbbf24; box-shadow: 0 0 12px rgba(251,191,36,0.15); }
+  .v2-radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #52525b; flex-shrink: 0; }
+  .v2-radio.selected .dot { background: #fbbf24; border-color: #fbbf24; box-shadow: inset 0 0 0 3px #18181b; }
+  .v2-radio .opt-label { font-size: 14px; font-weight: 600; color: #fff; }
+  .v2-radio .opt-desc { font-size: 12px; color: #a1a1aa; margin-top: 2px; }
+  .v2-btn { width: 100%; margin-top: 28px; padding: 13px 20px; background: linear-gradient(180deg, #fbbf24, #f59e0b); color: #18181b; font-weight: 700; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 16px rgba(251,191,36,0.3), inset 0 1px 0 rgba(255,255,255,0.3); }
+  .v2-btn:hover { box-shadow: 0 6px 20px rgba(251,191,36,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
+
+  /* ============================================
+     OPTION 3 — Glassmorphism Modern
+     ============================================ */
+  .v3-frame { background: linear-gradient(135deg, #1f2937 0%, #1a1a1a 50%, #1f2937 100%); position: relative; overflow: hidden; }
+  .v3-frame::before { content: ''; position: absolute; width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(251,191,36,0.35), transparent 70%); top: -200px; left: -150px; filter: blur(40px); }
+  .v3-frame::after { content: ''; position: absolute; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(245,158,11,0.25), transparent 70%); bottom: -150px; right: -100px; filter: blur(40px); }
+  .v3-card { width: 100%; max-width: 440px; padding: 40px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%); box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15); position: relative; z-index: 1; }
+  .v3-card h1 { font-size: 24px; font-weight: 700; color: #fff; text-align: center; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .v3-card .welcome { font-size: 14px; color: rgba(255,255,255,0.7); text-align: center; margin-bottom: 32px; }
+  .v3-card .welcome b { color: #fbbf24; font-weight: 600; }
+  .v3-card .label { color: rgba(255,255,255,0.85); }
+  .v3-input { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 10px; font-size: 14px; outline: none; backdrop-filter: blur(10px); }
+  .v3-input::placeholder { color: rgba(255,255,255,0.4); }
+  .v3-input:focus { border-color: #fbbf24; background: rgba(251,191,36,0.06); }
+  .v3-fieldset { margin-top: 24px; }
+  .v3-radio { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+  .v3-radio:hover { background: rgba(255,255,255,0.07); border-color: rgba(251,191,36,0.4); }
+  .v3-radio.selected { background: rgba(251,191,36,0.15); border-color: #fbbf24; }
+  .v3-radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.4); flex-shrink: 0; }
+  .v3-radio.selected .dot { background: #fbbf24; border-color: #fbbf24; box-shadow: inset 0 0 0 3px rgba(251,191,36,0.3); }
+  .v3-radio .opt-label { font-size: 14px; font-weight: 600; color: #fff; }
+  .v3-radio .opt-desc { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+  .v3-btn { width: 100%; margin-top: 28px; padding: 13px 20px; background: rgba(251,191,36,0.95); color: #18181b; font-weight: 700; font-size: 14px; border: none; border-radius: 10px; cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 4px 20px rgba(251,191,36,0.4); }
+  .v3-btn:hover { background: #fbbf24; box-shadow: 0 6px 24px rgba(251,191,36,0.55); }
+
+  /* ============================================
+     OPTION 4 — Welcoming Light Card on Dark
+     ============================================ */
+  .v4-frame { background: #1f2937; position: relative; }
+  .v4-frame::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 30%, rgba(251,191,36,0.1), transparent 50%), radial-gradient(circle at 80% 70%, rgba(251,191,36,0.06), transparent 50%); pointer-events: none; }
+  .v4-card { width: 100%; max-width: 440px; padding: 40px; background: #fafafa; border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,0.4), 0 4px 20px rgba(251,191,36,0.15); position: relative; z-index: 1; }
+  .v4-card .brand { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #18181b; font-weight: 800; font-size: 22px; margin: 0 auto 20px; box-shadow: 0 6px 16px rgba(251,191,36,0.4); }
+  .v4-card h1 { font-size: 24px; font-weight: 800; color: #18181b; text-align: center; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .v4-card .welcome { font-size: 14px; color: #71717a; text-align: center; margin-bottom: 32px; }
+  .v4-card .welcome b { color: #f59e0b; font-weight: 700; }
+  .v4-card .label { color: #18181b; font-weight: 600; }
+  .v4-input { width: 100%; padding: 12px 14px; background: #fff; border: 1.5px solid #e4e4e7; color: #18181b; border-radius: 10px; font-size: 14px; outline: none; transition: all 0.15s; }
+  .v4-input::placeholder { color: #a1a1aa; }
+  .v4-input:focus { border-color: #fbbf24; box-shadow: 0 0 0 4px rgba(251,191,36,0.15); }
+  .v4-fieldset { margin-top: 24px; }
+  .v4-radio { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff; border: 1.5px solid #e4e4e7; border-radius: 12px; cursor: pointer; transition: all 0.15s; }
+  .v4-radio:hover { border-color: #fbbf24; background: #fffbeb; }
+  .v4-radio.selected { background: #fffbeb; border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.15); }
+  .v4-radio .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #d4d4d8; flex-shrink: 0; }
+  .v4-radio.selected .dot { background: #fbbf24; border-color: #fbbf24; box-shadow: inset 0 0 0 3px #fff; }
+  .v4-radio .opt-label { font-size: 14px; font-weight: 600; color: #18181b; }
+  .v4-radio .opt-desc { font-size: 12px; color: #71717a; margin-top: 2px; }
+  .v4-btn { width: 100%; margin-top: 28px; padding: 13px 20px; background: #18181b; color: #fbbf24; font-weight: 700; font-size: 14px; border: none; border-radius: 10px; cursor: pointer; }
+  .v4-btn:hover { background: #27272a; }
+
+  /* === Footer === */
+  .doc-footer { max-width: 1100px; margin: 64px auto 0; padding: 24px; background: #18181b; border-radius: 12px; border: 1px solid #27272a; }
+  .doc-footer h3 { font-size: 16px; font-weight: 700; color: #fafafa; margin-bottom: 8px; }
+  .doc-footer ul { list-style: none; padding-left: 0; }
+  .doc-footer ul li { font-size: 13px; color: #d4d4d8; margin-bottom: 6px; padding-left: 16px; position: relative; }
+  .doc-footer ul li::before { content: '→'; position: absolute; left: 0; color: #fbbf24; }
+</style>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>Onboarding 디자인 옵션 — 4가지 비교</h1>
+  <p>최신 UI/UX 트렌드 4가지를 class-planner Phase 3 시스템(Amber accent / dark default)에 맞춰 적용한 mockup. 단순 정적 viewer — 인터랙션은 없습니다. 보고 마음에 드는 옵션이 있으면 답변에 <code>1</code>/<code>2</code>/<code>3</code>/<code>4</code> 또는 옵션 이름으로 알려주세요.</p>
+</header>
+
+<!-- ============================================
+     OPTION 1 — Linear-style Minimal
+     ============================================ -->
+<section class="option">
+  <div class="opt-meta">
+    <span class="num">1</span>
+    <span class="title">Linear-style Minimal</span>
+    <span class="desc">매우 어두운 배경(#0a0a0a) + 카드 테두리 없음 + underline-only 입력. 폰트 무게 작고, amber는 강조 텍스트와 selected dot에만. "Premium minimal" 톤.</span>
+    <span class="pick">답변: 1</span>
+  </div>
+  <div class="opt-tags"><span>Linear</span><span>매우 미니멀</span><span>Underline 입력</span><span>amber 5% 노출</span></div>
+  <div class="opt-frame v1-frame">
+    <div class="v1-card">
+      <h1>학원 정보 설정</h1>
+      <p class="welcome"><b>HYUNJIN LEE</b>님, 환영합니다</p>
+
+      <label class="label">학원명</label>
+      <input class="v1-input" placeholder="예: 해피수학학원" value="" />
+
+      <fieldset class="v1-fieldset">
+        <label class="label">역할</label>
+        <div class="role-list" style="gap:0">
+          <div class="v1-radio selected"><span class="dot"></span><div><div class="opt-label">원장</div><div class="opt-desc">학원 전체를 관리합니다</div></div></div>
+          <div class="v1-radio"><span class="dot"></span><div><div class="opt-label">관리자</div><div class="opt-desc">수업과 학생을 관리합니다</div></div></div>
+          <div class="v1-radio"><span class="dot"></span><div><div class="opt-label">강사</div><div class="opt-desc">시간표를 조회합니다</div></div></div>
+        </div>
+      </fieldset>
+
+      <button class="v1-btn">시작하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     OPTION 2 — Vercel-style Premium Dark
+     ============================================ -->
+<section class="option">
+  <div class="opt-meta">
+    <span class="num">2</span>
+    <span class="title">Vercel-style Premium Dark</span>
+    <span class="desc">완전 검정에 가까운 배경 + 외곽 amber radial glow + 카드는 1px gradient border + amber neon. 버튼은 그라데이션 + glow. "Tech premium" 톤.</span>
+    <span class="pick">답변: 2</span>
+  </div>
+  <div class="opt-tags"><span>Vercel</span><span>Stripe</span><span>Neon glow</span><span>Gradient border</span></div>
+  <div class="opt-frame v2-frame">
+    <div class="v2-card">
+      <h1>학원 정보 설정</h1>
+      <p class="welcome"><b>HYUNJIN LEE</b>님, 환영합니다</p>
+
+      <label class="label">학원명</label>
+      <input class="v2-input" placeholder="예: 해피수학학원" value="" />
+
+      <fieldset class="v2-fieldset">
+        <label class="label" style="margin-bottom:10px">역할</label>
+        <div class="role-list">
+          <div class="v2-radio selected"><span class="dot"></span><div><div class="opt-label">원장</div><div class="opt-desc">학원 전체를 관리합니다</div></div></div>
+          <div class="v2-radio"><span class="dot"></span><div><div class="opt-label">관리자</div><div class="opt-desc">수업과 학생을 관리합니다</div></div></div>
+          <div class="v2-radio"><span class="dot"></span><div><div class="opt-label">강사</div><div class="opt-desc">시간표를 조회합니다</div></div></div>
+        </div>
+      </fieldset>
+
+      <button class="v2-btn">시작하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     OPTION 3 — Glassmorphism Modern
+     ============================================ -->
+<section class="option">
+  <div class="opt-meta">
+    <span class="num">3</span>
+    <span class="title">Glassmorphism Modern</span>
+    <span class="desc">amber blob 두 개로 외곽 분위기 강함 + 카드는 frosted glass(반투명 + blur 24px) + 흰 텍스트. 환영 분위기 강함, 모던 SaaS 느낌. "Glass futuristic" 톤.</span>
+    <span class="pick">답변: 3</span>
+  </div>
+  <div class="opt-tags"><span>Glassmorphism</span><span>Backdrop blur</span><span>Amber blob</span><span>모던 SaaS</span></div>
+  <div class="opt-frame v3-frame">
+    <div class="v3-card">
+      <h1>학원 정보 설정</h1>
+      <p class="welcome"><b>HYUNJIN LEE</b>님, 환영합니다!</p>
+
+      <label class="label">학원명</label>
+      <input class="v3-input" placeholder="예: 해피수학학원" value="" />
+
+      <fieldset class="v3-fieldset">
+        <label class="label" style="margin-bottom:10px">역할</label>
+        <div class="role-list">
+          <div class="v3-radio selected"><span class="dot"></span><div><div class="opt-label">원장</div><div class="opt-desc">학원 전체를 관리합니다</div></div></div>
+          <div class="v3-radio"><span class="dot"></span><div><div class="opt-label">관리자</div><div class="opt-desc">수업과 학생을 관리합니다</div></div></div>
+          <div class="v3-radio"><span class="dot"></span><div><div class="opt-label">강사</div><div class="opt-desc">시간표를 조회합니다</div></div></div>
+        </div>
+      </fieldset>
+
+      <button class="v3-btn">시작하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     OPTION 4 — Welcoming Light Card on Dark
+     ============================================ -->
+<section class="option">
+  <div class="opt-meta">
+    <span class="num">4</span>
+    <span class="title">Welcoming Light Card on Dark</span>
+    <span class="desc">어두운 외곽(class-planner 다크) + 매우 밝은 흰 카드(라이트 톤) + amber brand mark + 어두운 ink 버튼. 강한 contrast로 카드가 압도적으로 떠오름. "Welcoming bright" 톤.</span>
+    <span class="pick">답변: 4</span>
+  </div>
+  <div class="opt-tags"><span>Notion</span><span>Stripe checkout</span><span>White card</span><span>강한 contrast</span></div>
+  <div class="opt-frame v4-frame">
+    <div class="v4-card">
+      <div class="brand">학</div>
+      <h1>학원 정보 설정</h1>
+      <p class="welcome"><b>HYUNJIN LEE</b>님, 환영합니다!</p>
+
+      <label class="label">학원명</label>
+      <input class="v4-input" placeholder="예: 해피수학학원" value="" />
+
+      <fieldset class="v4-fieldset">
+        <label class="label" style="margin-bottom:10px">역할</label>
+        <div class="role-list">
+          <div class="v4-radio selected"><span class="dot"></span><div><div class="opt-label">원장</div><div class="opt-desc">학원 전체를 관리합니다</div></div></div>
+          <div class="v4-radio"><span class="dot"></span><div><div class="opt-label">관리자</div><div class="opt-desc">수업과 학생을 관리합니다</div></div></div>
+          <div class="v4-radio"><span class="dot"></span><div><div class="opt-label">강사</div><div class="opt-desc">시간표를 조회합니다</div></div></div>
+        </div>
+      </fieldset>
+
+      <button class="v4-btn">시작하기</button>
+    </div>
+  </div>
+</section>
+
+<footer class="doc-footer">
+  <h3>다음 단계</h3>
+  <ul>
+    <li>마음에 드는 옵션 번호로 답변 (또는 "2번 + 4번 카드 결합" 같은 합성도 가능)</li>
+    <li>특정 디테일 변경 요청도 환영 (예: "3번에서 amber blob 더 작게")</li>
+    <li>완전히 다른 방향이면 그것도 알려주세요 — 정밀 mockup 다시 만들어드림</li>
+    <li>결정되면 정밀 mockup → plan mode → 구현 진입</li>
+  </ul>
+</footer>
+
+</body>
+</html>
