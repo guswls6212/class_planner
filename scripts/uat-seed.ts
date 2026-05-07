@@ -116,17 +116,18 @@ async function main(): Promise<void> {
         console.error(`❌ academies INSERT 실패: ${academyErr?.message}`);
         process.exit(1);
       }
-      academyId = newAcademy.id;
+      const newId: string = newAcademy.id;
+      academyId = newId;
       const { error: memberErr } = await sbAdmin
         .from("academy_members")
-        .insert({ academy_id: academyId, user_id: userId, role: "owner" });
+        .insert({ academy_id: newId, user_id: userId, role: "owner" });
       if (memberErr) {
         console.error(
           `❌ academy_members INSERT 실패: ${memberErr.message}`,
         );
         process.exit(1);
       }
-      console.log(`✅ Academy 신규 생성 (id=${academyId.slice(0, 8)}...)`);
+      console.log(`✅ Academy 신규 생성 (id=${newId.slice(0, 8)}...)`);
     }
   }
 
