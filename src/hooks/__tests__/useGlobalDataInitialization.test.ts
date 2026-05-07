@@ -619,6 +619,43 @@ describe("Onboarding 가드 (academy 사전 검증)", () => {
     expect(checkLoginDataConflict).toHaveBeenCalled();
   });
 
+  it("이미 /onboarding에 있으면 redirect 발동 안 함 (무한 루프 방지)", async () => {
+    // pathname을 /onboarding으로 override
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        pathname: "/onboarding",
+        replace: replaceMock,
+      },
+    });
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ success: true, hasAcademy: false }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    // 초기화는 종결되어야 함 (UI 멈춤 방지)
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    // replace는 절대 호출되면 안 됨 (무한 루프 핵심 방어)
+    expect(replaceMock).not.toHaveBeenCalled();
+
+    // 마이그레이션도 시작 안 함 (academy 없음 — Bug 2 그대로 적용)
+    expect(checkLoginDataConflict).not.toHaveBeenCalled();
+  });
+
   it("status fetch 네트워크 실패 시 기존 흐름 폴백", async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/api/onboarding/status")) {

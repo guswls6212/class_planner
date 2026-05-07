@@ -138,6 +138,7 @@ export const useGlobalDataInitialization = () => {
         // frame flash 방지 위해 setIsInitialized(true) 후 hard navigate.
         // status fetch 자체 실패 시(네트워크 에러 등) 기존 흐름 폴백 — anonymous
         // 데이터 보존은 applyLocalDataChoice의 totalSynced=0 분기가 2차 방어.
+        // 이미 /onboarding에 있는 경우 redirect 발동 시 무한 루프 — pathname 체크 필수.
         try {
           const statusRes = await fetch(
             `/api/onboarding/status?userId=${encodeURIComponent(userId)}`
@@ -145,12 +146,19 @@ export const useGlobalDataInitialization = () => {
           if (statusRes.ok) {
             const statusJson = await statusRes.json();
             if (statusJson?.success && statusJson?.hasAcademy === false) {
-              logger.info("학원 매핑 없음 — onboarding으로 이동, 마이그레이션 skip");
+              const onOnboarding =
+                typeof window !== "undefined" &&
+                window.location.pathname === "/onboarding";
+              logger.info("학원 매핑 없음 — 마이그레이션 skip", {
+                redirect: !onOnboarding,
+              });
               if (mounted) {
                 setIsInitialized(true);
                 setIsInitializing(false);
               }
-              window.location.replace("/onboarding");
+              if (!onOnboarding) {
+                window.location.replace("/onboarding");
+              }
               return;
             }
           }
