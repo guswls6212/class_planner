@@ -26,15 +26,18 @@
 #### 매 UAT 사이클 (반복)
 
 ```bash
+# ─ 사전: cwd 를 class-planner 로 이동 (이후 모든 명령 이 cwd 기준) ─
+cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
+
 # 0. dev 최신 동기화 (검증 대상이 dev 누적인 경우)
-git -C class-planner switch dev
-git -C class-planner pull --ff-only origin dev
+git switch dev
+git pull --ff-only origin dev
 
 # 1. 새 branch cut (dev/main 직접 commit 금지 — § 브랜치 케이스 참조)
-git -C class-planner switch -c chore/uat-$(date +%Y-%m-%d)-core
+git switch -c chore/uat-$(date +%Y-%m-%d)-core
 # → 예: chore/uat-2026-05-07-core
 
-# 2. dev 서버 시작 (다른 터미널, 처음 1회 셋업 후)
+# 2. dev 서버 시작 (다른 터미널, 같은 cwd 에서)
 PORT=3000 npm run dev   # http://localhost:3000
 
 # 3. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
@@ -42,21 +45,26 @@ bash scripts/uat-new.sh core    # 또는 extended / full
 # → tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 생성됨
 ```
 
+> **cwd 주의** — 위 명령들은 cwd 가 `class-planner` 디렉토리일 때 동작. 다른 곳에서 실행하면 `cannot change to 'class-planner'` 또는 `scripts/uat-new.sh: No such file` 에러. 사전 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 필수.
+
 이후 그 **사본**을 에디터에서 열고 위에서부터 따라간다:
 
 | 단계 | 어디서 | 무엇을 |
 |---|---|---|
-| 0. dev 최신 동기화 | 터미널 | `git -C class-planner switch dev && git pull --ff-only origin dev` |
-| 1. 새 branch cut | 터미널 | `git -C class-planner switch -c chore/uat-YYYY-MM-DD-<mode>` |
-| 2. dev 서버 시작 | 터미널 (다른 창) | `PORT=3000 npm run dev` |
+| 사전. cwd 이동 | 터미널 | `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` |
+| 0. dev 최신 동기화 | 터미널 | `git switch dev && git pull --ff-only origin dev` |
+| 1. 새 branch cut | 터미널 | `git switch -c chore/uat-YYYY-MM-DD-<mode>` |
+| 2. dev 서버 시작 | 터미널 (다른 창, 같은 cwd) | `PORT=3000 npm run dev` |
 | 3. 사본 생성 | 터미널 | `bash scripts/uat-new.sh core` (또는 extended / full) |
 | 4. 사전 준비 (익명) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
 | 5. 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
 | 6. §1~§16 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
 | 7. 인증 cleanup (인증 시나리오 끝) | 터미널 | `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제) |
-| 8. 결과 commit | 터미널 | `git -C class-planner add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
+| 8. 결과 commit | 터미널 | `git add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
 | 9. push + PR | 터미널 | `git push -u origin <branch>` + `gh pr create --base dev --title "chore(uat): <YYYY-MM-DD> <mode> run"` |
 | 10. (선택) 추세 확인 | 터미널 | `bash scripts/uat-summary.sh` |
+
+> **다른 cwd 에서 진행해야 한다면** (예: dev-pack workspace 루트) — `git` 명령은 `git -C ~/lee_file/entrepreneur/project/dev-pack/class-planner ...` 절대경로로, `npm`/`bash scripts/...` 는 `npm --prefix ~/...` 또는 사전 cd 후 실행. dev-pack/CLAUDE.md § Shell Command Conventions 참조.
 
 > **본 `uat-checklist.md` 는 직접 수정 X** — 사본(`runs/<...>.md`)에 결과 기록.
 > 사본 내용은 본 파일과 같지만 메타가 자동 채워진 버전.
@@ -81,12 +89,14 @@ bash scripts/uat-new.sh core    # 또는 extended / full
 #### 이전 cycle 사본이 untracked 로 남아 있다면
 
 ```bash
+cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
+
 # 새 branch 로 옮겨 commit
-git -C class-planner switch -c chore/uat-<원래-실행일>-core-late-commit
-git -C class-planner add tests/manual/runs/<해당-run>.md
-git -C class-planner commit -m "chore(uat): <원래-실행일> core run (late commit)"
-git -C class-planner push -u origin <branch>
-gh pr create --base dev --title "chore(uat): <원래-실행일> core run"
+git switch -c chore/uat-<원래-실행일>-core-late-commit
+git add tests/manual/runs/<해당-run>.md
+git commit -m "chore(uat): <원래-실행일> core run (late commit)"
+git push -u origin chore/uat-<원래-실행일>-core-late-commit
+gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래-실행일> core run"
 ```
 
 ---
@@ -1803,3 +1813,4 @@ Issue 등록 형식:
 - 2026-05-06 (2): UAT 정의 재정렬 — "사용자 입장 전체 검증" 원칙으로 누락 영역 보강. 이전 "out of scope" 분류한 8개 영역 모두 사용자 노출 기능이라 UAT 필수 포함. §5 확장 — 일별/월별 뷰 토글 + DayChipBar + ScheduleDateNavigator (S-5.16~5.21, 6개 추가). §12 확장 — Sync 회복 (S-12.6~12.9, 4개 추가, SyncQueueModal). §15 신설 — 출석부 (`AttendanceSheet`, 5개 시나리오, 학원 daily 운영 핵심). §16 신설 — 온보딩 / 도움말 (`EmptyWeekState` + `HelpDrawer`, 3개 시나리오). 신규 P0: S-5.16/5.17 (뷰 토글), S-12.6/12.7 (sync 자동 회복), S-16.1 (빈 주 발동). 총 P0: 28 → 33. Core 모드: 50분 → 60분, 카테고리에 16 추가. Extended에 15 추가 (110분).
 - 2026-05-07: §1 인증 시나리오 4개에 검증 방법 박스 추가 — `localStorage.getItem('supabase_user_id')` / `uat.isAnonymous()` / Application 탭 시각 확인 셋. S-1.2/1.3/1.5/1.7 모두 적용 (PR #269).
 - 2026-05-07 (2): §0 "전체 흐름" 보강 — branch 관리 + push/PR 단계 명시. dev/main 직접 commit 금지 원칙 + branch 케이스 표 (dev 누적 / 특정 PR / pre-main) + 임시 spot-check 가이드 + 이전 cycle 사본 late commit 패턴 추가. 표를 0~10번 단계로 재번호 (이전 5단계).
+- 2026-05-07 (3): cwd 가정 명시 fix — 이전 (2) 의 `git -C class-planner ...` 패턴이 cwd=dev-pack 부모 가정을 안 박아 사용자가 다른 cwd 에서 실행 시 `cannot change to 'class-planner'` 에러. 사전 단계 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 추가 + 이후 명령은 단순 `git switch ...` 형식. 다른 cwd 사용 시 fallback (절대경로 `git -C ~/...`) 박스도 명시.
