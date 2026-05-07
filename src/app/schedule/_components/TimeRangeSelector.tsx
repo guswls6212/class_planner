@@ -11,6 +11,8 @@ import {
 interface TimeRangeSelectorProps {
   current: TimeRange;
   userId: string | null;
+  /** dropdown 펼침 방향. floating toolbar처럼 하단 위치 시 "up". default "down". */
+  dropdownDirection?: "up" | "down";
 }
 
 interface Preset {
@@ -41,6 +43,7 @@ function describeCurrent(current: TimeRange): string {
 export default function TimeRangeSelector({
   current,
   userId,
+  dropdownDirection = "down",
 }: TimeRangeSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,7 +85,11 @@ export default function TimeRangeSelector({
           />
           <ul
             role="menu"
-            className="absolute right-0 top-full mt-1 z-30 min-w-[200px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-lg overflow-hidden"
+            className={`absolute right-0 z-30 min-w-[200px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-lg overflow-hidden ${
+              dropdownDirection === "up"
+                ? "bottom-full mb-1"
+                : "top-full mt-1"
+            }`}
           >
             {PRESETS.map((preset) => {
               const isCurrent =

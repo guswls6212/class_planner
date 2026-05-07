@@ -128,7 +128,11 @@ export default function ScheduleFloatingToolbar({
 
       <Divider />
 
-      <TimeRangeSelector current={timeRange} userId={userId} />
+      <TimeRangeSelector
+        current={timeRange}
+        userId={userId}
+        dropdownDirection="up"
+      />
 
       <Divider />
 

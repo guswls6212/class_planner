@@ -2125,6 +2125,7 @@ function SchedulePageContent(): JSX.Element {
             onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
             startHour={timeRange.startHour}
             endHour={timeRange.endHour}
+            fillHeight={isP3}
           />
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
