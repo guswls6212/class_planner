@@ -10,6 +10,12 @@ src/app/_components/RootProviders.tsx
 src/app/about/__tests__/page.test.tsx
 src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
+src/app/design-explorations/_mock/MockGrid.tsx
+src/app/design-explorations/_mock/data.ts
+src/app/design-explorations/p4-a/page.tsx
+src/app/design-explorations/p4-b/page.tsx
+src/app/design-explorations/p4-c/page.tsx
+src/app/design-explorations/page.tsx
 src/app/admin/layout.tsx
 src/app/admin/logs/page.tsx
 src/app/api/academies/active/schedule-meta/__tests__/route.test.ts
