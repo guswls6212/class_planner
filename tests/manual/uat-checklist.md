@@ -51,14 +51,17 @@ git pull --ff-only origin dev
 
 # 1. 새 branch cut (dev/main 직접 commit 금지 — § 브랜치 케이스 참조)
 git switch -c chore/uat-$(date +%Y-%m-%d)-release
-# → 예: chore/uat-2026-05-07-release
 
 # 2. dev 서버 시작 (다른 터미널, 같은 cwd 에서)
 PORT=3000 npm run dev   # http://localhost:3000
 
 # 3. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
-bash scripts/uat-new.sh release    # 또는 smoke (이건 사본 X 이라 권장 X)
+bash scripts/uat-new.sh release
 # → tests/manual/runs/<DATE>-<COMMIT>-release.md 생성됨
+
+# 4. UAT_TEST_USER fresh-start cleanup (이전 사이클 잔재 academy 까지 모두 삭제)
+#    → S-1.5 (첫 로그인 학원 자동 생성) 시나리오 매 사이클 자연 발동 보장
+npm run uat:teardown
 ```
 
 > **cwd 주의** — 위 명령들은 cwd 가 `class-planner` 디렉토리일 때 동작. 다른 곳에서 실행하면 `cannot change to 'class-planner'` 또는 `scripts/uat-new.sh: No such file` 에러. 사전 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 필수.
@@ -299,22 +302,36 @@ UAT_TEST_USER_PASSWORD=<강한 password>
 그리고:
 ```bash
 npm run uat:setup
-# → user + UAT 전용 academy 멱등 생성. 한 번만 실행하면 끝.
-# → 출력의 user_id/academy_id는 자동 lookup 되니 .env.local에 적을 필요 없음
-#   (lookup 100ms 줄이려면 선택적으로 적어도 OK)
+# → user 만 멱등 생성 (academy 는 매 사이클 fresh-start 위해 셋업 X)
+# → 출력의 user_id 는 자동 lookup 되니 .env.local 에 적을 필요 없음
+#   (lookup 100ms 줄이려면 선택적으로 UAT_TEST_USER_ID 만 추가)
 ```
+
+> **2026-05-07 변경** — 이전엔 setup 이 academy 도 만들었지만 매 사이클 academy 보존
+> 모델이 S-1.5 (첫 로그인 학원 자동 생성) 시나리오 재현 못 함. 사용자 결정으로
+> fresh-start default 로 전환 — setup 은 user 만, academy 는 매 사이클 재생성
+> (S-1.5 또는 uat:seed 가 자동 생성).
 
 #### 매 UAT 사이클 (인증 시나리오 진행 시)
 
 ```bash
-# 1. 시드 데이터 INSERT (cleanup 후 재시드 — 멱등. email 기반 auto lookup)
+# 1. fresh-start cleanup (이전 사이클 academy/scope 모두 삭제, user 보존)
+npm run uat:teardown
+# → S-1.5 매 사이클 자연 발동 보장
+
+# 2. 시나리오 진행 두 옵션:
+
+# (a) S-1.5 검증부터 — Phase 1 (익명) → Phase 2 (로그인 → S-1.5 발동 = 학원 자동 생성)
+#     → 인증 시나리오 (시드 데이터 없이 직접 입력)
+#     브라우저: UAT_TEST_USER_EMAIL 로 password 로그인 → /onboarding → 학원 생성
+
+# (b) S-1.5 skip + 시드로 빠른 진입 — academy + 학생/과목/강사/세션 자동 시드
 npm run uat:seed
+# → academy 없으면 자동 생성 + 시드 데이터 INSERT (멱등)
+#   학생: 홍길동 / 김영수 / 박지수 — 과목: 수학(#FF0000) / 영어(#00FF00)
+#   강사: 김선생 / 이선생 — 세션: 월/수/금 09:00-10:00
 
-# 2. 브라우저 — UAT_TEST_USER_EMAIL로 password 로그인
-#    /schedule 진입 → 시드 데이터 (학생 3 / 과목 2 / 강사 2 / 세션 3) 표시 확인
-#    인증 P0 시나리오 진행
-
-# 3. 끝나면 cleanup (academy/user 자체는 보존)
+# 3. 끝나면 fresh-start cleanup (다음 사이클 위해)
 npm run uat:teardown
 ```
 
@@ -412,7 +429,7 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.5 첫 로그인 — 학원 자동 생성 [P0]
-**Pre:** 신규 사용자 (이전 academy_members row 없음)
+**Pre:** 신규 사용자 (academy_members row 없음). 재현 방법 — `npm run uat:teardown` 으로 UAT_TEST_USER 의 academy 까지 cleanup → 그 user 로 로그인 시 신규 사용자 상태. 또는 별도 신규 OAuth 계정 사용.
 **Steps:**
 1. OAuth 로그인 후 `/onboarding` 진입
 2. 학원명 입력 (2자 이상)
@@ -1927,3 +1944,4 @@ Issue 등록 형식:
 - 2026-05-07 (4): §2.5 "실행 순서 가이드 (Phase 기반)" 신설 — 카테고리별 위→아래 진행 시 비로그인↔로그인↔로그아웃 상태 토글 빈번 (S-1.2 로그인 → S-1.4 다시 비로그인 → S-1.5 다시 로그인) → 비효율. 7-Phase 흐름 (익명 → 충돌 전환 → 인증 → 모바일 → OAuth/로그아웃 → 오프라인 → Edge) 으로 묶어 상태 셋업 1회씩으로 끝남. 카테고리는 lookup 용, Phase 는 실행 순서. 모드별 Phase 매핑 표 (Core 1→2→3→6 / Extended +4+5 / Full 전체) 추가.
 - 2026-05-07 (5): **Hybrid C 모델 채택** — 매 PR 60분 UAT 가 1인 환경 부담 + 무용지물 → 자동 e2e + Claude AI 검증 (Playwright MCP / computer-use) 으로 분산. 사용자 직접 검증은 두 모드만: **Smoke** (10-15분, 매 PR 직전, 사본 X, 핵심 5 시나리오) + **Release UAT** (150분, 분기 1회, 사본 commit). Core/Extended/Full 3-모드 → Smoke/Release 2-모드. 그린라이트 기준 분리 (main 머지: Smoke + 자동 검증 / Release: P0 33 전체). §0 매 사이클 흐름 두 모드 분기 + §3 결과 기록 두 모드 분기. 사용자 결정 사유: \"AI 가 더 빠른데 사용자가 직접 하는 의미?\" 에 대한 답 — 자동화 가능 영역은 모두 자동, 사용자 직접은 시각/UX 직감 영역만.
 - 2026-05-07 (6): `bash scripts/uat-new.sh release` 모드 지원 — Hybrid C 채택 시 스크립트가 legacy `core|extended|full` 만 받아 `release` 입력 시 ERROR 발생. 사용자 지적: \"release 랑 full 같은 거면 하나만 두는게 좋지않아?\" → 정확. `release` 하나로 통일 (의미상 시점 기준이 더 정확). legacy `core|extended|full` 입력 시 deprecated WARN 출력 후 `release` 자동 alias. md 의 `bash scripts/uat-new.sh core (또는 extended / full)` → `release` 단일로 갱신, branch 이름 예시 `chore/uat-...-core` → `-release` 갱신.
+- 2026-05-07 (7): **UAT fresh-start default** — 사용자 비판: "옵션으로 한 이유? 옵션없이 전부 신규사용자로 만들게 하면 되지않나?" → 정확. `naming-consolidation` 메모리 또 위반할 뻔. 매 UAT 사이클 fresh-start 가 default — `uat:teardown` 자체가 academy 까지 cleanup (이전엔 academy 보존). `cleanupUatUserData` 신규 함수 (fresh-start) + 기존 `cleanupAcademyScopedDataForUser` (scope only — seed 멱등 재시드용) 책임 분리. `setup-uat-test-user.ts` 단순화 — user 만 생성 (academy 부분 제거). `uat-seed.ts` 강화 — academy 없으면 자동 생성. UAT 문서 §0 매 사이클 (`uat:teardown` 단계 추가) / §5 인증 셋업 (setup user 만 + 매 사이클 흐름 옵션 a/b) / S-1.5 Pre (재현 방법 명시) 갱신. 신규/기존 user 분기는 매 사이클 단일 user reset 으로 자연 진행 (사이클 안에 신규→기존 전환). invite 시나리오 (S-10.6/10.7) 검증 시점에 별도 user (`UAT_TEST_INVITEE_EMAIL`) 추가 future work.

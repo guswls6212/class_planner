@@ -103,12 +103,38 @@ async function main(): Promise<void> {
   }
   if (!academyId) {
     academyId = (await findAcademyIdForOwner(sbAdmin, userId)) ?? undefined;
+    // academy 없으면 자동 생성 (uat-teardown 후 fresh-start 가정 — sucrose 2026-05-07)
+    // S-1.5 시나리오 거치지 않고 seed 만 호출하는 케이스 대응
     if (!academyId) {
-      console.error(
-        `❌ user의 owner academy 없음 (userId=${userId.slice(0, 8)}...). npm run uat:setup 먼저 실행.`,
-      );
-      process.exit(1);
+      console.log("ℹ️  user 에게 academy 없음 — 새로 생성 (UAT Test Academy)");
+      const { data: newAcademy, error: academyErr } = await sbAdmin
+        .from("academies")
+        .insert({ name: "UAT Test Academy", created_by: userId })
+        .select("id")
+        .single();
+      if (academyErr || !newAcademy) {
+        console.error(`❌ academies INSERT 실패: ${academyErr?.message}`);
+        process.exit(1);
+      }
+      const newId: string = newAcademy.id;
+      academyId = newId;
+      const { error: memberErr } = await sbAdmin
+        .from("academy_members")
+        .insert({ academy_id: newId, user_id: userId, role: "owner" });
+      if (memberErr) {
+        console.error(
+          `❌ academy_members INSERT 실패: ${memberErr.message}`,
+        );
+        process.exit(1);
+      }
+      console.log(`✅ Academy 신규 생성 (id=${newId.slice(0, 8)}...)`);
     }
+  }
+
+  // TypeScript narrow — 위 if 블록 안 어느 분기든 academyId set 보장
+  if (!academyId) {
+    console.error("❌ academyId 결정 실패 — 코드 흐름 버그");
+    process.exit(1);
   }
 
   // 1. 멱등성: 같은 academy의 기존 시드 cleanup (academy/members는 보존)
