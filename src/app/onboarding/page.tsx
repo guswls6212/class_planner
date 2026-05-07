@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
+import { Button } from "../../components/atoms/Button";
+import { Input } from "../../components/atoms/Input";
 
 type Role = "owner" | "admin" | "member";
 
@@ -100,24 +102,23 @@ export default function OnboardingPage() {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)]">
         <p className="text-[var(--color-text-secondary)]">확인 중...</p>
       </div>
     );
   }
 
+  const showInputError =
+    academyName.length > 0 && academyName.trim().length < 2;
+
   return (
-    <div
-      className="bg-brand-gradient flex items-center justify-center p-5 min-h-[calc(100vh-60px)]"
-    >
-      <div
-        className="bg-white w-full max-w-[440px] rounded-2xl p-10 shadow-[0_20px_40px_rgba(0,0,0,0.1)]"
-      >
-        <h1 className="text-2xl font-bold text-gray-800 text-center mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)] px-4">
+      <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] w-full max-w-[440px] rounded-2xl p-10 shadow-admin-md">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)] text-center mb-2">
           학원 정보 설정
         </h1>
         {userName && (
-          <p className="text-gray-500 text-center mb-8">
+          <p className="text-[var(--color-text-muted)] text-center mb-8">
             {userName}님, 환영합니다!
           </p>
         )}
@@ -127,22 +128,23 @@ export default function OnboardingPage() {
           <div>
             <label
               htmlFor="academyName"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1"
             >
               학원명
             </label>
-            <input
+            <Input
               id="academyName"
               type="text"
               value={academyName}
               onChange={(e) => setAcademyName(e.target.value)}
               placeholder="예: 해피수학학원"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              size="large"
               autoFocus
+              error={showInputError}
               disabled={isSubmitting}
             />
-            {academyName.length > 0 && academyName.trim().length < 2 && (
-              <p className="text-red-500 text-sm mt-1">
+            {showInputError && (
+              <p className="text-[var(--color-semantic-danger)] text-sm mt-1">
                 학원명은 2글자 이상 입력해주세요.
               </p>
             )}
@@ -150,7 +152,7 @@ export default function OnboardingPage() {
 
           {/* 역할 선택 */}
           <fieldset>
-            <legend className="block text-sm font-medium text-gray-700 mb-2">
+            <legend className="block text-sm font-medium text-[var(--color-text-secondary)] mb-2">
               역할
             </legend>
             <div className="flex flex-col gap-2">
@@ -159,8 +161,8 @@ export default function OnboardingPage() {
                   key={option.value}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     role === option.value
-                      ? "border-purple-500 bg-purple-50"
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-accent bg-accent/5"
+                      : "border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-bg-tertiary)]"
                   }`}
                 >
                   <input
@@ -169,14 +171,16 @@ export default function OnboardingPage() {
                     value={option.value}
                     checked={role === option.value}
                     onChange={() => setRole(option.value)}
-                    className="accent-purple-600"
+                    className="accent-[var(--color-accent)]"
                     disabled={isSubmitting}
                   />
                   <div>
-                    <span className="font-medium text-gray-800">
+                    <span className="font-medium text-[var(--color-text-primary)]">
                       {option.label}
                     </span>
-                    <p className="text-sm text-gray-500">{option.description}</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">
+                      {option.description}
+                    </p>
                   </div>
                 </label>
               ))}
@@ -187,20 +191,23 @@ export default function OnboardingPage() {
           {error && (
             <div
               role="alert"
-              className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm"
+              className="bg-[var(--color-semantic-danger)]/10 text-[var(--color-semantic-danger)] border border-[var(--color-semantic-danger)]/30 px-4 py-3 rounded-lg text-sm"
             >
               {error}
             </div>
           )}
 
           {/* 제출 버튼 */}
-          <button
+          <Button
             type="submit"
-            disabled={!isValid || isSubmitting}
-            className={`w-full min-h-[44px] py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isValid && !isSubmitting ? "bg-brand-gradient" : "bg-[var(--color-border)]"}`}
+            variant="accent"
+            size="large"
+            disabled={!isValid}
+            loading={isSubmitting}
+            className="w-full"
           >
             {isSubmitting ? "생성 중..." : "시작하기"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

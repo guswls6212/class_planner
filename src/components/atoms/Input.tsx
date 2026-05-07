@@ -12,6 +12,7 @@ interface InputProps {
   error?: boolean;
   disabled?: boolean;
   required?: boolean;
+  autoFocus?: boolean;
   maxLength?: number;
   className?: string;
   style?: React.CSSProperties;
@@ -35,6 +36,7 @@ export const Input: React.FC<InputProps> = ({
   error = false,
   disabled = false,
   required = false,
+  autoFocus = false,
   maxLength,
   className = "",
   style = {},
@@ -64,6 +66,7 @@ export const Input: React.FC<InputProps> = ({
       onKeyDown={onKeyDown}
       disabled={disabled}
       required={required}
+      autoFocus={autoFocus}
       maxLength={maxLength}
       className={inputClasses}
       style={style}
