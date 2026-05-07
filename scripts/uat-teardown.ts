@@ -1,5 +1,9 @@
 /**
- * UAT 시드 데이터 cleanup — academy/user 자체는 보존, scope 데이터만 삭제.
+ * UAT user fresh-start cleanup — scope 데이터 + academy_members + orphan
+ * academies 까지 모두 삭제. user (auth.users) 보존 (재로그인 가능).
+ *
+ * 매 UAT 사이클 시작 시 호출 — user 를 신규 사용자 상태로 reset 해서 S-1.5
+ * (첫 로그인 학원 자동 생성) 시나리오 자연 발동 보장.
  *
  * 실행:
  *   cd class-planner
@@ -8,13 +12,13 @@
  *
  * Prerequisites (.env.local):
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   UAT_TEST_USER_EMAIL  (필수 — email 기반 자동 lookup)
+ *   UAT_TEST_USER_EMAIL  (필수 — email 기반 자동 lookup, fresh-start 가드)
  *   UAT_TEST_USER_ID     (선택 — 적어두면 lookup 생략)
  *
  * 동작:
  *   1. UAT_TEST_USER_ID 없으면 email로 자동 lookup
- *   2. cleanupAcademyScopedDataForUser() 호출 — sessions/students/subjects/teachers/...
- *      academy_members + academies 보존 (다음 uat:seed에서 같은 academy 재사용).
+ *   2. cleanupUatUserData() 호출 — scope 데이터 + academy_members + orphan academies
+ *      삭제. user 자체는 보존.
  *
  * 멱등 — 데이터 없어도 안전.
  */
@@ -22,7 +26,7 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  cleanupAcademyScopedDataForUser,
+  cleanupUatUserData,
   findUserIdByEmail,
 } from "./uat-cleanup-helper";
 
@@ -87,12 +91,14 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`🧹 UAT cleanup: userId=${userId.slice(0, 8)}...`);
-  await cleanupAcademyScopedDataForUser(sbAdmin, userId);
+  console.log(`🧹 UAT fresh-start cleanup: userId=${userId.slice(0, 8)}...`);
+  await cleanupUatUserData(sbAdmin, userId);
 
   console.log("");
-  console.log("✅ UAT cleanup 완료. academy/user 자체는 보존됨.");
-  console.log("   다음 사이클: npm run uat:seed → 같은 academy에 재시드.");
+  console.log("✅ UAT cleanup 완료. user 는 보존, academy/scope 데이터 모두 삭제.");
+  console.log("   다음 단계:");
+  console.log("     1. 브라우저 로그인 → S-1.5 (첫 로그인 학원 자동 생성) 발동");
+  console.log("     2. (선택) npm run uat:seed → 인증 시나리오용 시드 데이터 INSERT");
 }
 
 main().catch((err) => {

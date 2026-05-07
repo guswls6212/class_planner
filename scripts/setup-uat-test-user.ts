@@ -118,70 +118,25 @@ async function main(): Promise<void> {
     console.log(`✅ 신규 user 생성 (id=${userId})`);
   }
 
-  // 2. UAT 전용 academy 셋업 (owner role)
-  console.log("");
-  console.log(`🏫 UAT Academy 셋업: user ${userId.slice(0, 8)}...`);
-  const { data: existingMembership, error: memberSelectError } = await sbAdmin
-    .from("academy_members")
-    .select("academy_id")
-    .eq("user_id", userId)
-    .eq("role", "owner")
-    .maybeSingle();
-  if (memberSelectError) {
-    console.error(`❌ academy_members 조회 실패: ${memberSelectError.message}`);
-    process.exit(1);
-  }
-
-  let academyId: string;
-  if (existingMembership) {
-    academyId = existingMembership.academy_id;
-    console.log(
-      `ℹ️  이미 owner인 academy 존재 (id=${academyId.slice(0, 8)}...)`,
-    );
-  } else {
-    const { data: newAcademy, error: academyInsertError } = await sbAdmin
-      .from("academies")
-      .insert({ name: "UAT Test Academy", created_by: userId })
-      .select("id")
-      .single();
-    if (academyInsertError || !newAcademy) {
-      console.error(
-        `❌ academies INSERT 실패: ${academyInsertError?.message}`,
-      );
-      process.exit(1);
-    }
-    academyId = newAcademy.id;
-    const { error: memberInsertError } = await sbAdmin
-      .from("academy_members")
-      .insert({ academy_id: academyId, user_id: userId, role: "owner" });
-    if (memberInsertError) {
-      console.error(
-        `❌ academy_members INSERT 실패: ${memberInsertError.message}`,
-      );
-      process.exit(1);
-    }
-    console.log(`✅ Academy 신규 생성 (id=${academyId})`);
-  }
+  // (academy 셋업 제거 — 2026-05-07 사용자 결정 fresh-start default)
+  // 매 UAT 사이클: uat:teardown 으로 academy 까지 cleanup → S-1.5 (browser 로그인) 또는
+  // uat:seed 가 academy 자동 생성. setup 은 user 만 생성.
 
   console.log("");
-  console.log("✅ UAT Setup 완료.");
+  console.log("✅ UAT Setup 완료. (user 만 생성 — academy 는 매 사이클 fresh-start)");
   console.log("");
-  console.log(`   user_id    = ${userId}`);
-  console.log(`   academy_id = ${academyId}`);
+  console.log(`   user_id = ${userId}`);
   console.log("");
-  console.log(
-    "이후 매 UAT 사이클 (.env.local에 EMAIL/PASSWORD만 있으면 됨):",
-  );
-  console.log("  1. npm run uat:seed       # 시드 데이터 INSERT (email로 auto lookup)");
-  console.log("  2. 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인");
-  console.log("  3. /schedule 진입 → 시나리오 진행");
-  console.log("  4. npm run uat:teardown   # 데이터 cleanup");
+  console.log("이후 매 UAT 사이클 (.env.local 에 EMAIL/PASSWORD 만 있으면 됨):");
+  console.log("  1. npm run uat:teardown   # fresh-start (이전 사이클 academy/scope 모두 삭제)");
+  console.log("  2. 시나리오 진행 두 옵션:");
+  console.log("     (a) S-1.5 검증 — 브라우저 로그인 → 학원 자동 생성 → 인증 시나리오");
+  console.log("     (b) S-1.5 skip — npm run uat:seed → 학원 + 시드 자동 생성 → 시나리오");
+  console.log("  3. 끝나면 npm run uat:teardown");
   console.log("");
-  console.log(
-    "💡 lookup 1회 줄이려면 (선택) .env.local 에 위 두 줄 추가 가능:",
-  );
+  console.log("💡 lookup 1회 줄이려면 (선택) .env.local 에 한 줄 추가 가능:");
   console.log(`     UAT_TEST_USER_ID=${userId}`);
-  console.log(`     UAT_TEST_ACADEMY_ID=${academyId}`);
+  console.log("   (UAT_TEST_ACADEMY_ID 는 매 사이클 새로 생성되므로 .env.local 명시 의미 X)");
 }
 
 main().catch((err) => {

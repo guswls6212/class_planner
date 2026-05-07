@@ -103,11 +103,30 @@ async function main(): Promise<void> {
   }
   if (!academyId) {
     academyId = (await findAcademyIdForOwner(sbAdmin, userId)) ?? undefined;
+    // academy 없으면 자동 생성 (uat-teardown 후 fresh-start 가정 — sucrose 2026-05-07)
+    // S-1.5 시나리오 거치지 않고 seed 만 호출하는 케이스 대응
     if (!academyId) {
-      console.error(
-        `❌ user의 owner academy 없음 (userId=${userId.slice(0, 8)}...). npm run uat:setup 먼저 실행.`,
-      );
-      process.exit(1);
+      console.log("ℹ️  user 에게 academy 없음 — 새로 생성 (UAT Test Academy)");
+      const { data: newAcademy, error: academyErr } = await sbAdmin
+        .from("academies")
+        .insert({ name: "UAT Test Academy", created_by: userId })
+        .select("id")
+        .single();
+      if (academyErr || !newAcademy) {
+        console.error(`❌ academies INSERT 실패: ${academyErr?.message}`);
+        process.exit(1);
+      }
+      academyId = newAcademy.id;
+      const { error: memberErr } = await sbAdmin
+        .from("academy_members")
+        .insert({ academy_id: academyId, user_id: userId, role: "owner" });
+      if (memberErr) {
+        console.error(
+          `❌ academy_members INSERT 실패: ${memberErr.message}`,
+        );
+        process.exit(1);
+      }
+      console.log(`✅ Academy 신규 생성 (id=${academyId.slice(0, 8)}...)`);
     }
   }
 
