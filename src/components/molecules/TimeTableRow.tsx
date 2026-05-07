@@ -161,10 +161,19 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return hours * 60 + minutes;
   }, []);
 
-  // Sessions for this weekday
+  // Sessions for this weekday — startHour/endHour 범위 밖은 hide.
+  // 부분 overlap도 제외 (clamping 시 시각적 혼란 방지). 범위 변경은 Settings/
+  // TimeRangeSelector를 통해 사용자가 명시적으로 하므로 hide가 의도와 일치.
   const weekdaySessions = React.useMemo(() => {
-    return sessions?.get(weekday) || [];
-  }, [sessions, weekday]);
+    const all = sessions?.get(weekday) || [];
+    const lowerBound = startHour * 60;
+    const upperBound = (endHour + 1) * 60;
+    return all.filter((s) => {
+      const startMin = timeToMinutes(s.startsAt);
+      const endMin = timeToMinutes(s.endsAt);
+      return startMin >= lowerBound && endMin <= upperBound;
+    });
+  }, [sessions, weekday, startHour, endHour, timeToMinutes]);
 
   // Reset internal expanded state when weekday switches or session list changes.
   // Controlled mode에서는 부모(TimeTableGrid)가 expandedWeekdays를 직접 관리한다.
