@@ -1233,11 +1233,35 @@ body {
   .confirm-modal-pop-in { animation: none; }
 }
 
-/* ===== Schedule P3 — scrollbar 완전 hide (시야 깔끔, swipe/wheel로 scroll) ===== */
+/* ===== Schedule P3 — Hover-to-show scrollbar (Linear / Notion 패턴) =====
+   평소엔 scrollbar invisible (시야 깔끔, floating toolbar와 안 겹침).
+   사용자가 grid 영역 hover 시만 scrollbar fade-in (가로 영역 큰 환경에서
+   Windows 사용자도 scroll 가능 인지). macOS overlay 패턴 통일. */
 .schedule-p3-scroll {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 200ms ease-out;
+}
+.schedule-p3-scroll:hover,
+.schedule-p3-scroll:focus-within {
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
 }
 .schedule-p3-scroll::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Webkit */
+  height: 8px;
+  width: 8px;
+}
+.schedule-p3-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 200ms ease-out;
+}
+.schedule-p3-scroll:hover::-webkit-scrollbar-thumb,
+.schedule-p3-scroll:focus-within::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6);
 }
