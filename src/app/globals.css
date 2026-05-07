@@ -576,11 +576,11 @@ body {
 
 /* Onboarding decorative amber radial — dark-only.
    외곽이 단조로운 다크 슬레이트라 카드의 elevation이 약해 보이는 문제 보완.
-   amber 5-8% radial 두 spot으로 카드 배경에 미세한 brand 분위기 부여. */
+   amber 10-15% radial 두 spot으로 카드 배경에 brand 환영 분위기 부여. */
 [data-theme="dark"] .bg-onboarding-decoration {
   background:
-    radial-gradient(circle at 18% 22%, rgba(251, 191, 36, 0.08), transparent 45%),
-    radial-gradient(circle at 82% 78%, rgba(251, 191, 36, 0.05), transparent 50%);
+    radial-gradient(circle at 18% 22%, rgba(251, 191, 36, 0.15), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(251, 191, 36, 0.10), transparent 50%);
 }
 
 .text-left {

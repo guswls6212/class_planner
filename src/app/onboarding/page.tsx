@@ -117,7 +117,7 @@ export default function OnboardingPage() {
         className="bg-onboarding-decoration pointer-events-none absolute inset-0"
         aria-hidden="true"
       />
-      <div className="relative bg-[var(--color-bg-secondary)] border border-[var(--color-border)] w-full max-w-[440px] rounded-2xl p-10 shadow-admin-md">
+      <div className="relative bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] w-full max-w-[440px] rounded-2xl p-10 shadow-admin-md">
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)] text-center mb-2">
           학원 정보 설정
         </h1>
@@ -165,8 +165,8 @@ export default function OnboardingPage() {
                   key={option.value}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     role === option.value
-                      ? "border-accent bg-accent/5"
-                      : "border-[var(--color-border)] hover:border-[var(--color-border-light)] hover:bg-[var(--color-bg-tertiary)]"
+                      ? "border-accent bg-accent/12"
+                      : "border-[var(--color-border)] hover:border-accent/60 hover:bg-accent/5"
                   }`}
                 >
                   <input
