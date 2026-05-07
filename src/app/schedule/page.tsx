@@ -2157,7 +2157,9 @@ function SchedulePageContent(): JSX.Element {
             const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
             openGroupModal(selectedWeekday, currentTime, 1);
           }}
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
+          className={`fixed right-4 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80 ${
+            isP3 ? "bottom-24 md:bottom-16" : "bottom-20 md:bottom-6"
+          }`}
           aria-label="수업 추가"
         >
           <Plus size={24} strokeWidth={2} />
