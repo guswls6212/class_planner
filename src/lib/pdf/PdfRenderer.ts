@@ -31,11 +31,15 @@ export interface PdfRenderOptions {
   perTeacher?: boolean;
   /** 강사별 분할 모드에서 학생 이름 표시 여부 (기본값: false = 숨김) */
   showStudentNames?: boolean;
+  /** 표시 시작 시각 (0-23). default 9. */
+  startHour?: number;
+  /** 표시 종료 시각 (1-24). exclusive. default 24 (23:30 슬롯까지). */
+  endHour?: number;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-const START_HOUR = 9;
-const END_HOUR = 23;
+const DEFAULT_START_HOUR = 9;
+const DEFAULT_END_HOUR = 24;
 
 function toMin(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -148,9 +152,11 @@ function drawWeekPage(
   teachers: Teacher[],
   options: PdfRenderOptions
 ): void {
+  const startHour = options.startHour ?? DEFAULT_START_HOUR;
+  const endHour = options.endHour ?? DEFAULT_END_HOUR;
   const operatingDays = options.operatingDays ?? [0, 1, 2, 3, 4, 5, 6];
   const weekdayCount = operatingDays.length;
-  const dims = calculateGridDimensions(weekdayCount, START_HOUR, END_HOUR);
+  const dims = calculateGridDimensions(weekdayCount, startHour, endHour);
   const weekdayLabels = operatingDays.map((d) => WEEKDAY_LABELS[d]);
 
   drawHeader(doc, dims, {
@@ -159,7 +165,7 @@ function drawWeekPage(
     printDate: new Date().toISOString().slice(0, 10),
   });
 
-  drawGridLines(doc, dims, weekdayLabels, START_HOUR, END_HOUR);
+  drawGridLines(doc, dims, weekdayLabels, startHour, endHour);
 
   const studentFiltered = filterSessions(sessions, enrollments, options.filterStudentId);
   const targetSessions = options.filterTeacherId
@@ -180,7 +186,7 @@ function drawWeekPage(
   for (const session of targetSessions) {
     if (!session.startsAt || !session.endsAt) continue;
     const [sh] = session.startsAt.split(":").map(Number);
-    if (sh < START_HOUR || sh >= END_HOUR) continue;
+    if (sh < startHour || sh >= endHour) continue;
 
     const colIndex = operatingDays.indexOf(session.weekday);
     if (colIndex === -1) continue;
@@ -193,7 +199,7 @@ function drawWeekPage(
       colIndex,
       session.startsAt,
       session.endsAt,
-      START_HOUR,
+      startHour,
       laneIndex,
       totalLanes
     );
@@ -227,7 +233,7 @@ function drawWeekPage(
   const maxLanes = Math.max(1, ...operatingDays.map((wd) => lanesByWeekday.get(wd) ?? 1));
   const splitLabel = options.perTeacher ? "강사별" : "전체";
   drawFooter(doc, dims, {
-    meta: `출력 범위 ${START_HOUR}:00~${END_HOUR}:00 · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
+    meta: `출력 범위 ${startHour}:00~${endHour}:00 · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
   });
 }
 

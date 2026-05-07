@@ -42,6 +42,7 @@ type Props = {
     yPosition?: number
   ) => void;
   selectedStudentIds?: string[];
+  selectedSubjectIds?: string[];
   isStudentDragging: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
@@ -54,6 +55,10 @@ type Props = {
   onSessionContextMenuCopy?: (sessionId: string) => void;
   /** 모바일 long-press 메뉴 — "선택 시작" */
   onSessionContextMenuStartSelect?: (sessionId: string) => void;
+  /** 시간표 표시 시작 시각 (0-23). default 9. */
+  startHour?: number;
+  /** 시간표 표시 종료 시각 (0-23, inclusive). default 23. */
+  endHour?: number;
 };
 
 export default function ScheduleGridSection({
@@ -70,6 +75,7 @@ export default function ScheduleGridSection({
   onSessionCopy,
   onEmptySpaceClick,
   selectedStudentIds,
+  selectedSubjectIds,
   isStudentDragging,
   teachers = [],
   colorBy = "subject",
@@ -78,6 +84,8 @@ export default function ScheduleGridSection({
   onSessionSelectToggle,
   onSessionContextMenuCopy,
   onSessionContextMenuStartSelect,
+  startHour,
+  endHour,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -94,6 +102,7 @@ export default function ScheduleGridSection({
         onSessionCopy={onSessionCopy}
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
+        selectedSubjectIds={selectedSubjectIds}
         isStudentDragging={isStudentDragging}
         teachers={teachers}
         colorBy={colorBy}
@@ -102,6 +111,8 @@ export default function ScheduleGridSection({
         onSessionSelectToggle={onSessionSelectToggle}
         onSessionContextMenuCopy={onSessionContextMenuCopy}
         onSessionContextMenuStartSelect={onSessionContextMenuStartSelect}
+        startHour={startHour}
+        endHour={endHour}
       />
     </div>
   );

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 interface TeacherFilterChipBarProps {
   teachers: { id: string; name: string; color: string }[];
   selectedTeacherIds: string[];
   onToggleTeacher: (id: string) => void;
   onClearFilter: () => void;
+  /** P3 — 활성 강사 + 검색 결과만 표시. default — 모든 강사 표시. */
+  variant?: "default" | "active-only";
 }
 
 export default function TeacherFilterChipBar({
@@ -14,17 +16,31 @@ export default function TeacherFilterChipBar({
   selectedTeacherIds,
   onToggleTeacher,
   onClearFilter,
+  variant = "default",
 }: TeacherFilterChipBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const visibleTeachers = teachers.filter((t) =>
-    searchQuery.trim()
-      ? t.name.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
-  );
+  const isActiveOnly = variant === "active-only";
+
+  const displayedTeachers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (isActiveOnly) {
+      return teachers.filter(
+        (t) =>
+          selectedTeacherIds.includes(t.id) ||
+          (q && t.name.toLowerCase().includes(q)),
+      );
+    }
+    return teachers.filter((t) =>
+      q ? t.name.toLowerCase().includes(q) : true,
+    );
+  }, [teachers, selectedTeacherIds, searchQuery, isActiveOnly]);
 
   const hasFilter = selectedTeacherIds.length > 0;
+  const hiddenCount = isActiveOnly
+    ? teachers.length - displayedTeachers.length
+    : 0;
 
   return (
     <div
@@ -51,7 +67,7 @@ export default function TeacherFilterChipBar({
         />
       )}
 
-      {visibleTeachers.map((teacher) => {
+      {displayedTeachers.map((teacher) => {
         const isSelected = selectedTeacherIds.includes(teacher.id);
         return (
           <button
@@ -73,6 +89,17 @@ export default function TeacherFilterChipBar({
           </button>
         );
       })}
+
+      {isActiveOnly && hiddenCount > 0 && !searchQuery.trim() && (
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="px-2.5 py-1 rounded-full text-xs text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
+          aria-label={`${hiddenCount}명 더 — 검색으로 추가`}
+        >
+          + {hiddenCount}명 (검색)
+        </button>
+      )}
 
       {hasFilter && (
         <button

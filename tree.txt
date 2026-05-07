@@ -10,6 +10,13 @@ src/app/_components/RootProviders.tsx
 src/app/about/__tests__/page.test.tsx
 src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
+src/app/design-explorations/_mock/MockGrid.tsx
+src/app/design-explorations/_mock/data.ts
+src/app/design-explorations/option-c/page.tsx
+src/app/design-explorations/p4-a/page.tsx
+src/app/design-explorations/p4-b/page.tsx
+src/app/design-explorations/p4-c/page.tsx
+src/app/design-explorations/page.tsx
 src/app/admin/layout.tsx
 src/app/admin/logs/page.tsx
 src/app/api/academies/active/schedule-meta/__tests__/route.test.ts
@@ -113,14 +120,19 @@ src/app/schedule/__tests__/edit-modal-integration.test.tsx
 src/app/schedule/__tests__/page.test.tsx
 src/app/schedule/__tests__/scroll-position-integration.test.tsx
 src/app/schedule/__tests__/ui-integration.test.tsx
+src/app/schedule/_components/ChipFilterPopover.tsx
 src/app/schedule/_components/EditSessionModal.tsx
 src/app/schedule/_components/GroupSessionModal.tsx
 src/app/schedule/_components/PdfDownloadSection.tsx
+src/app/schedule/_components/PrimarySidebar.tsx
 src/app/schedule/_components/ScheduleActionBar.tsx
+src/app/schedule/_components/ScheduleFloatingToolbar.tsx
 src/app/schedule/_components/ScheduleGridSection.tsx
 src/app/schedule/_components/ScheduleHeader.tsx
 src/app/schedule/_components/StudentFilterChipBar.tsx
 src/app/schedule/_components/TeacherFilterChipBar.tsx
+src/app/schedule/_components/TimeRangeSelector.tsx
+src/app/schedule/_components/UnifiedFilterPopover.tsx
 src/app/schedule/_components/__tests__/EditSessionModal.test.tsx
 src/app/schedule/_components/__tests__/GroupSessionModal.test.tsx
 src/app/schedule/_components/__tests__/PdfDownloadSection.test.tsx
@@ -129,6 +141,7 @@ src/app/schedule/_components/__tests__/ScheduleGridSection.test.tsx
 src/app/schedule/_components/__tests__/ScheduleHeader.test.tsx
 src/app/schedule/_components/__tests__/StudentFilterChipBar.test.tsx
 src/app/schedule/_components/__tests__/TeacherFilterChipBar.test.tsx
+src/app/schedule/_components/__tests__/TimeRangeSelector.test.tsx
 src/app/schedule/_constants/scheduleConstants.ts
 src/app/schedule/_hooks/__tests__/useEditModalState.test.ts
 src/app/schedule/_hooks/__tests__/useStudentFilter.test.ts
@@ -340,6 +353,7 @@ src/components/organisms/AppShell.tsx
 src/components/organisms/DataHistorySection.tsx
 src/components/organisms/HelpDrawer.tsx
 src/components/organisms/LoginButton.tsx
+src/components/organisms/OperatingHoursSection.tsx
 src/components/organisms/ScheduleDailyView.tsx
 src/components/organisms/ScheduleMonthlyView.tsx
 src/components/organisms/StudentDetailPanel.tsx
@@ -360,6 +374,7 @@ src/components/organisms/__tests__/ScheduleDailyView.test.tsx
 src/components/organisms/__tests__/ScheduleMonthlyView.test.tsx
 src/components/organisms/__tests__/StudentDetailPanel.test.tsx
 src/components/organisms/__tests__/StudentsPageLayout.test.tsx
+src/components/organisms/__tests__/OperatingHoursSection.test.tsx
 src/components/organisms/__tests__/SubjectsPageLayout.test.tsx
 src/components/organisms/__tests__/TeacherDetailPanel.test.tsx
 src/components/organisms/__tests__/TeachersPageLayout.test.tsx
@@ -411,6 +426,7 @@ src/hooks/__tests__/useModalA11y.test.ts
 src/hooks/__tests__/useMyRole.test.ts
 src/hooks/__tests__/useMyTeacher.test.ts
 src/hooks/__tests__/useNowMinute.test.ts
+src/hooks/__tests__/useScheduleLayout.test.ts
 src/hooks/__tests__/useScheduleMeta.test.ts
 src/hooks/__tests__/useScheduleSessionManagement.test.ts
 src/hooks/__tests__/useScheduleView.test.ts
@@ -421,6 +437,7 @@ src/hooks/__tests__/useSubjectManagementLocal.test.ts
 src/hooks/__tests__/useSyncStatus.test.ts
 src/hooks/__tests__/useTeacherManagementLocal.test.ts
 src/hooks/__tests__/useTemplates.test.ts
+src/hooks/__tests__/useTimeRange.test.ts
 src/hooks/__tests__/useTimeValidation.test.ts
 src/hooks/__tests__/useUserTracking.test.ts
 src/hooks/useAccessCodes.ts
@@ -440,6 +457,7 @@ src/hooks/useMyTeacher.ts
 src/hooks/useNowMinute.ts
 src/hooks/useOutboxFlush.ts
 src/hooks/usePerformanceMonitoring.ts
+src/hooks/useScheduleLayout.ts
 src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
 src/hooks/useScheduleView.ts
@@ -451,6 +469,7 @@ src/hooks/useSyncStatus.ts
 src/hooks/useTeacherDisplaySessions.ts
 src/hooks/useTeacherManagementLocal.ts
 src/hooks/useTemplates.ts
+src/hooks/useTimeRange.ts
 src/hooks/useTimeValidation.ts
 src/hooks/useUserTracking.ts
 src/infrastructure/__tests__/RepositoryRegistry.test.ts
