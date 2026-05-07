@@ -353,6 +353,7 @@ src/components/organisms/AppShell.tsx
 src/components/organisms/DataHistorySection.tsx
 src/components/organisms/HelpDrawer.tsx
 src/components/organisms/LoginButton.tsx
+src/components/organisms/OperatingHoursSection.tsx
 src/components/organisms/ScheduleDailyView.tsx
 src/components/organisms/ScheduleMonthlyView.tsx
 src/components/organisms/StudentDetailPanel.tsx
@@ -373,6 +374,7 @@ src/components/organisms/__tests__/ScheduleDailyView.test.tsx
 src/components/organisms/__tests__/ScheduleMonthlyView.test.tsx
 src/components/organisms/__tests__/StudentDetailPanel.test.tsx
 src/components/organisms/__tests__/StudentsPageLayout.test.tsx
+src/components/organisms/__tests__/OperatingHoursSection.test.tsx
 src/components/organisms/__tests__/SubjectsPageLayout.test.tsx
 src/components/organisms/__tests__/TeacherDetailPanel.test.tsx
 src/components/organisms/__tests__/TeachersPageLayout.test.tsx
