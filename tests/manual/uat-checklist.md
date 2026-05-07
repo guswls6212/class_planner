@@ -1,8 +1,9 @@
 # class-planner — User Acceptance Test (UAT) Checklist
 
-**대상:** main 머지 전 종합 검증 + 분기당 1회 회귀 검증.
-**소요:** Core 40분 / Extended 80분 / Full 120분.
-**소유:** 1인 학원 운영자 (개발자 = 테스터).
+**대상:** Release 전 사용자 시각 검증 + Smoke 즉석 spot-check.
+**소요:** Smoke 10-15분 / Release UAT 150분.
+**소유:** 1인 학원 운영자 (개발자 = 테스터) + Claude (자동 검증).
+**모델:** Hybrid C — 매 PR 자동 e2e + Claude Playwright MCP / computer-use 자동 검증, 사용자 직접 UAT 는 Smoke (매 PR 직전) + Release UAT (분기/큰 리팩터 후) 두 시점만.
 
 > **이 파일은 template.** 실제 결과는 `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` 사본에 기록 (§3 참조).
 > 시나리오 본문의 **Quick Setup** 박스에 적힌 `uat.xxx()` 함수는 `localhost:3000` 진입 시 자동 노출 (콘솔 paste 0번).
@@ -23,26 +24,41 @@
 2. `npm run uat:setup` — UAT 전용 user + academy 멱등 생성 (이미 있으면 skip).
 3. `npm run dev` — `localhost:3000` 서버 띄움 (브라우저 열어둠).
 
-#### 매 UAT 사이클 (반복)
+#### Smoke 모드 매 사이클 (10-15분, 매 PR 직전 — 사본 X)
+
+```bash
+# ─ cwd 이동 (처음만) ─
+cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
+
+# dev 서버 시작 (다른 터미널, 같은 cwd)
+PORT=3000 npm run dev   # http://localhost:3000
+
+# 브라우저 진입 후 콘솔 (F12)
+# uat.clearAll();   ← 깨끗한 상태 보장
+```
+
+§2 의 **Smoke 5개 시나리오** (S-1.1, S-2.1, S-5.6, S-12.1, S-14.1) 즉석 진행. fail 발견 시 GitHub Issue 등록 — 사본/commit 없음. Pass 면 main 머지 진행.
+
+#### Release UAT 모드 매 사이클 (150분, 분기 1회 — 사본 commit + PR)
 
 ```bash
 # ─ 사전: cwd 를 class-planner 로 이동 (이후 모든 명령 이 cwd 기준) ─
 cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
 
-# 0. dev 최신 동기화 (검증 대상이 dev 누적인 경우)
+# 0. dev 최신 동기화
 git switch dev
 git pull --ff-only origin dev
 
 # 1. 새 branch cut (dev/main 직접 commit 금지 — § 브랜치 케이스 참조)
-git switch -c chore/uat-$(date +%Y-%m-%d)-core
-# → 예: chore/uat-2026-05-07-core
+git switch -c chore/uat-$(date +%Y-%m-%d)-release
+# → 예: chore/uat-2026-05-07-release
 
 # 2. dev 서버 시작 (다른 터미널, 같은 cwd 에서)
 PORT=3000 npm run dev   # http://localhost:3000
 
 # 3. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
-bash scripts/uat-new.sh core    # 또는 extended / full
-# → tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 생성됨
+bash scripts/uat-new.sh release    # 또는 smoke (이건 사본 X 이라 권장 X)
+# → tests/manual/runs/<DATE>-<COMMIT>-release.md 생성됨
 ```
 
 > **cwd 주의** — 위 명령들은 cwd 가 `class-planner` 디렉토리일 때 동작. 다른 곳에서 실행하면 `cannot change to 'class-planner'` 또는 `scripts/uat-new.sh: No such file` 에러. 사전 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 필수.
@@ -113,13 +129,44 @@ gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래
 | 환경 | dev server (localhost:3000) / staging / prod |
 | 뷰포트 | 데스크탑 1440×900 / 모바일 375×667 |
 
-### 2. 실행 모드 선택
+### 2. 실행 모드 선택 (Hybrid C 모델)
 
-| 모드 | 시간 | 카테고리 | 언제 |
+UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영역은 자동 e2e + Claude AI 검증으로 분산**. 사용자 직접 검증은 두 모드만:
+
+| 모드 | 시간 | 시점 | 사본 |
 |---|---|---|---|
-| **Core Path** | 60분 | 1, 2, 3, 5, 7, 12, 14, 16 (P0만) | 매 dev → main 머지 전 |
-| **Extended** | 110분 | Core + 4, 6, 8, 9, 10, 15 (P0+P1) | PR이 여러 영역 영향 시 |
-| **Full Coverage** | 150분 | 전체 + 11, 13, Edge (P0+P1+P2) | 분기당 1회 + 큰 리팩터 후 |
+| **Smoke** | 10-15분 | 매 PR (dev → main 머지 직전 또는 변경 큰 PR) | ❌ 즉석 spot-check, 사본 없음 |
+| **Release UAT** | 150분 | 분기 1회 또는 큰 리팩터 후 | ✅ `runs/<DATE>-<COMMIT>-release.md` commit |
+
+#### Smoke 5개 핵심 시나리오 (10-15분)
+
+학원 운영자가 \"오늘 이게 안 되면 망함\" 시나리오만:
+
+| # | 시나리오 | 무엇 |
+|---|---|---|
+| 1 | **S-1.1** | 비로그인 → 익명 진입 (앱 로딩 자체) |
+| 2 | **S-2.1** | 학생 추가 (CRUD 핵심) |
+| 3 | **S-5.6** | 모달 → 수업 추가 (시간표 핵심) |
+| 4 | **S-12.1** | 새로고침 후 데이터 유지 (영속성) |
+| 5 | **S-14.1** | 익명→로그인 시 충돌 모달 발동 (데이터 안전) |
+
+회귀 의심 영역만 추가 cherry-pick — 변경 영역 따라.
+
+#### Release UAT 시점 — 전체 (§1~§16 + Edge)
+
+§2.5 Phase 가이드 (1→2→3→4→5→6→7) 따라 진행. 사본 commit + PR 로 시계열 보존.
+
+#### 매 PR 자동 검증 (Smoke 보강)
+
+본 UAT 와 별개로 매 PR 시 자동 진행:
+
+| 도구 | 무엇 | 트리거 |
+|---|---|---|
+| **자동 e2e** (Playwright Chromium CI) | 코드 회귀 가드 | 매 push (CI) |
+| **Claude Playwright MCP** | 변경 영역 자동 클릭/스크린샷 | UI 파일 변경 시 (CLAUDE.md UI Verification Protocol 의무) |
+| **Claude computer-use MCP** | 시각적 변경 (모달/드래그/애니메이션) 탐험 | Playwright 로 어려운 시각 |
+
+사용자 직접 검증은 위 자동화가 **못 잡는 시각 직감 + UX 위화감** 영역만.
 
 ### 2.5 실행 순서 가이드 (Phase 기반 — 상태 토글 최소화)
 
@@ -180,17 +227,21 @@ gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래
 
 ### 3. 결과 기록 규칙
 
-매 실행은 **본 파일 사본**(`tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md`)에 기록. 본 파일은 template — 직접 수정 금지.
+**Smoke 모드** — 사본/commit X. fail 시 GitHub Issue 등록만 (제목: `[UAT Smoke Fail] S-X.Y 시나리오`).
+
+**Release UAT 모드** — 사본 commit + PR 통해 시계열 누적.
 
 ```bash
-# 새 실행 인스턴스 생성 (메타 자동 채움)
-bash scripts/uat-new.sh core   # 또는 extended / full
+# (Release UAT 만) 새 실행 인스턴스 생성
+bash scripts/uat-new.sh release
 
-# 끝나면 commit
+# 끝나면 commit + push + PR
 git add tests/manual/runs/<file>.md
-git commit -m "chore(uat): 2026-05-05-1430 core run — 19/19 P0 pass"
+git commit -m "chore(uat): 2026-05-07 release run — N/N P0 pass"
+git push -u origin chore/uat-$(date +%Y-%m-%d)-release
+gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): 2026-05-07 release run"
 
-# 추세 확인
+# 추세 확인 (Release UAT 누적만)
 bash scripts/uat-summary.sh
 ```
 
@@ -201,9 +252,11 @@ bash scripts/uat-summary.sh
 - `[!]` → Fail (note 필수: 어떤 단계에서 어떤 결과가 났는지)
 - `[~]` → Skip (skip 사유 필수)
 
-P0 33개 모두 Pass = main 머지 그린라이트.
+**그린라이트 기준** (Hybrid C):
+- main 머지 직전 — Smoke 5개 Pass + 매 PR 자동 e2e + Claude Playwright MCP Pass 조합
+- Release (분기/큰 리팩터) — Release UAT P0 33개 모두 Pass
 
-자동 e2e 후보 시나리오는 `[auto-friendly]` 라벨 — 향후 별도 PR로 Playwright 마이그레이션 후 본 checklist에서 제외 예정.
+자동 e2e 마이그레이션 후보는 `[auto-friendly]` 라벨 — Hybrid C 모델에선 이 시나리오들이 매 PR **Claude Playwright MCP 자동 검증 대상** 이라 사용자 수동에서 점진 제외.
 
 ### 4. 사전 준비 (Core Path 시작 전)
 
@@ -1872,3 +1925,4 @@ Issue 등록 형식:
 - 2026-05-07 (2): §0 "전체 흐름" 보강 — branch 관리 + push/PR 단계 명시. dev/main 직접 commit 금지 원칙 + branch 케이스 표 (dev 누적 / 특정 PR / pre-main) + 임시 spot-check 가이드 + 이전 cycle 사본 late commit 패턴 추가. 표를 0~10번 단계로 재번호 (이전 5단계).
 - 2026-05-07 (3): cwd 가정 명시 fix — 이전 (2) 의 `git -C class-planner ...` 패턴이 cwd=dev-pack 부모 가정을 안 박아 사용자가 다른 cwd 에서 실행 시 `cannot change to 'class-planner'` 에러. 사전 단계 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 추가 + 이후 명령은 단순 `git switch ...` 형식. 다른 cwd 사용 시 fallback (절대경로 `git -C ~/...`) 박스도 명시.
 - 2026-05-07 (4): §2.5 "실행 순서 가이드 (Phase 기반)" 신설 — 카테고리별 위→아래 진행 시 비로그인↔로그인↔로그아웃 상태 토글 빈번 (S-1.2 로그인 → S-1.4 다시 비로그인 → S-1.5 다시 로그인) → 비효율. 7-Phase 흐름 (익명 → 충돌 전환 → 인증 → 모바일 → OAuth/로그아웃 → 오프라인 → Edge) 으로 묶어 상태 셋업 1회씩으로 끝남. 카테고리는 lookup 용, Phase 는 실행 순서. 모드별 Phase 매핑 표 (Core 1→2→3→6 / Extended +4+5 / Full 전체) 추가.
+- 2026-05-07 (5): **Hybrid C 모델 채택** — 매 PR 60분 UAT 가 1인 환경 부담 + 무용지물 → 자동 e2e + Claude AI 검증 (Playwright MCP / computer-use) 으로 분산. 사용자 직접 검증은 두 모드만: **Smoke** (10-15분, 매 PR 직전, 사본 X, 핵심 5 시나리오) + **Release UAT** (150분, 분기 1회, 사본 commit). Core/Extended/Full 3-모드 → Smoke/Release 2-모드. 그린라이트 기준 분리 (main 머지: Smoke + 자동 검증 / Release: P0 33 전체). §0 매 사이클 흐름 두 모드 분기 + §3 결과 기록 두 모드 분기. 사용자 결정 사유: \"AI 가 더 빠른데 사용자가 직접 하는 의미?\" 에 대한 답 — 자동화 가능 영역은 모두 자동, 사용자 직접은 시각/UX 직감 영역만.
