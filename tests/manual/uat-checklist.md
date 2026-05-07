@@ -26,7 +26,18 @@
 #### 매 UAT 사이클 (반복)
 
 ```bash
-# 1. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
+# 0. dev 최신 동기화 (검증 대상이 dev 누적인 경우)
+git -C class-planner switch dev
+git -C class-planner pull --ff-only origin dev
+
+# 1. 새 branch cut (dev/main 직접 commit 금지 — § 브랜치 케이스 참조)
+git -C class-planner switch -c chore/uat-$(date +%Y-%m-%d)-core
+# → 예: chore/uat-2026-05-07-core
+
+# 2. dev 서버 시작 (다른 터미널, 처음 1회 셋업 후)
+PORT=3000 npm run dev   # http://localhost:3000
+
+# 3. 사본 생성 — 메타(Build, 실행 일시) 자동 채움
 bash scripts/uat-new.sh core    # 또는 extended / full
 # → tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 생성됨
 ```
@@ -35,15 +46,48 @@ bash scripts/uat-new.sh core    # 또는 extended / full
 
 | 단계 | 어디서 | 무엇을 |
 |---|---|---|
-| §4 사전 준비 (익명 모드) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
-| §5 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
-| §1~§13 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
-| 시나리오 끝나면 (인증) | 터미널 | `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제) |
-| 결과 commit | 터미널 | `git add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
-| (선택) 추세 확인 | 터미널 | `bash scripts/uat-summary.sh` |
+| 0. dev 최신 동기화 | 터미널 | `git -C class-planner switch dev && git pull --ff-only origin dev` |
+| 1. 새 branch cut | 터미널 | `git -C class-planner switch -c chore/uat-YYYY-MM-DD-<mode>` |
+| 2. dev 서버 시작 | 터미널 (다른 창) | `PORT=3000 npm run dev` |
+| 3. 사본 생성 | 터미널 | `bash scripts/uat-new.sh core` (또는 extended / full) |
+| 4. 사전 준비 (익명) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
+| 5. 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
+| 6. §1~§16 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
+| 7. 인증 cleanup (인증 시나리오 끝) | 터미널 | `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제) |
+| 8. 결과 commit | 터미널 | `git -C class-planner add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
+| 9. push + PR | 터미널 | `git push -u origin <branch>` + `gh pr create --base dev --title "chore(uat): <YYYY-MM-DD> <mode> run"` |
+| 10. (선택) 추세 확인 | 터미널 | `bash scripts/uat-summary.sh` |
 
 > **본 `uat-checklist.md` 는 직접 수정 X** — 사본(`runs/<...>.md`)에 결과 기록.
 > 사본 내용은 본 파일과 같지만 메타가 자동 채워진 버전.
+
+#### 브랜치 선택 케이스
+
+검증 대상에 따라 어디서 branch 를 cut 하느냐가 다름. UAT 사본의 commit hash 메타는 **그 시점 HEAD** 를 자동으로 박으므로, "검증할 코드가 있는 branch" 에서 실행해야 의미 있음.
+
+| 검증 대상 | 어디서 cut | branch 이름 예시 |
+|---|---|---|
+| **dev 누적 변경** (가장 흔함, 매 dev → main 머지 전) | `dev` 최신 | `chore/uat-2026-05-07-core` |
+| **특정 PR 검증** (그 PR 안전성 확인 — 머지 전) | 그 PR branch 그대로 (별도 cut 불필요) | (그 PR branch 자체) |
+| **머지 직전 main 검증** (production 배포 전) | `main` 최신 | `chore/uat-2026-05-07-pre-main` |
+
+**왜 dev/main 직접 X**:
+- `class-planner/CLAUDE.md` § 브랜치 규칙 — main/dev 직접 commit 금지. UAT run 결과도 PR 거쳐야 시계열 보존 + review 가능.
+- `bash scripts/uat-summary.sh` 가 git history 의 `chore(uat): ...` commit 들을 grep 해서 추세 분석. PR 통과한 것만 집계.
+
+**임시 spot-check (commit 없이)**:
+사본 생성 자체는 dev 에서 `bash scripts/uat-new.sh` 해도 untracked 파일로 만들어짐. 단 시계열 누적 가치 잃음 — 끝나면 새 branch 만들어 commit 권장.
+
+#### 이전 cycle 사본이 untracked 로 남아 있다면
+
+```bash
+# 새 branch 로 옮겨 commit
+git -C class-planner switch -c chore/uat-<원래-실행일>-core-late-commit
+git -C class-planner add tests/manual/runs/<해당-run>.md
+git -C class-planner commit -m "chore(uat): <원래-실행일> core run (late commit)"
+git -C class-planner push -u origin <branch>
+gh pr create --base dev --title "chore(uat): <원래-실행일> core run"
+```
 
 ---
 
@@ -1757,3 +1801,5 @@ Issue 등록 형식:
 - 2026-05-05 (3): §0 "전체 흐름 (Quick Reference)" 추가 — 처음 1회 셋업 + 매 사이클 표. 사본을 위에서부터 따라가면 빠뜨림 없이 완료 가능.
 - 2026-05-06: dev 코드 동기화 — §5 인라인 강사·과목 추가 시나리오 (S-5.13~5.15, PR #257), §7 슬롯 선택 모달 (S-7.9~7.10, ADR-008 free 2 슬롯), §14 신설 — 데이터 보호 (충돌 모달 Layered Defense + 백업 이력 / freemium 잠금, PR #260 + PR #261/#263/#265). P0 본문 정확 카운트로 헤더 갱신 (이전 19 표기는 부정확) → 실제 28개. §5 P0: 4→8 (+S-5.13 +S-5.14, 기존 카운트 보정), §7 P0: 3→4 (기존 카운트 보정), §14 신규 P0: 4. Core 모드 카테고리에 14 추가 (40분 → 50분). 회귀 가드: `computeLossDiff.test.ts` 4 unit + `DataConflictModal.test.tsx` 26 unit + `useGlobalDataInitialization.test.ts` 충돌 감지 unit.
 - 2026-05-06 (2): UAT 정의 재정렬 — "사용자 입장 전체 검증" 원칙으로 누락 영역 보강. 이전 "out of scope" 분류한 8개 영역 모두 사용자 노출 기능이라 UAT 필수 포함. §5 확장 — 일별/월별 뷰 토글 + DayChipBar + ScheduleDateNavigator (S-5.16~5.21, 6개 추가). §12 확장 — Sync 회복 (S-12.6~12.9, 4개 추가, SyncQueueModal). §15 신설 — 출석부 (`AttendanceSheet`, 5개 시나리오, 학원 daily 운영 핵심). §16 신설 — 온보딩 / 도움말 (`EmptyWeekState` + `HelpDrawer`, 3개 시나리오). 신규 P0: S-5.16/5.17 (뷰 토글), S-12.6/12.7 (sync 자동 회복), S-16.1 (빈 주 발동). 총 P0: 28 → 33. Core 모드: 50분 → 60분, 카테고리에 16 추가. Extended에 15 추가 (110분).
+- 2026-05-07: §1 인증 시나리오 4개에 검증 방법 박스 추가 — `localStorage.getItem('supabase_user_id')` / `uat.isAnonymous()` / Application 탭 시각 확인 셋. S-1.2/1.3/1.5/1.7 모두 적용 (PR #269).
+- 2026-05-07 (2): §0 "전체 흐름" 보강 — branch 관리 + push/PR 단계 명시. dev/main 직접 commit 금지 원칙 + branch 케이스 표 (dev 누적 / 특정 PR / pre-main) + 임시 spot-check 가이드 + 이전 cycle 사본 late commit 패턴 추가. 표를 0~10번 단계로 재번호 (이전 5단계).
