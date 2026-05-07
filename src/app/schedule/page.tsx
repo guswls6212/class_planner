@@ -1527,8 +1527,12 @@ function SchedulePageContent(): JSX.Element {
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
     const allSessions = Array.from(displaySessions.values()).flat();
-    return preflightCheck(allSessions, { isStudentFilter: selectedStudentIds.length > 0 });
-  }, [isPdfDialogOpen, displaySessions, selectedStudentIds]);
+    return preflightCheck(allSessions, {
+      isStudentFilter: selectedStudentIds.length > 0,
+      startHour: timeRange.startHour,
+      endHour: timeRange.endHour + 1,
+    });
+  }, [isPdfDialogOpen, displaySessions, selectedStudentIds, timeRange]);
 
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
@@ -1556,6 +1560,8 @@ function SchedulePageContent(): JSX.Element {
               weekRange: { startDate: range.startDate, endDate: range.endDate },
               filterTeacherId: teacher.id,
               showStudentNames: range.showStudentNames ?? false,
+              startHour: timeRange.startHour,
+              endHour: timeRange.endHour + 1,
             }
           );
         }
@@ -1581,6 +1587,8 @@ function SchedulePageContent(): JSX.Element {
             title: pdfTitle,
             filterStudentId: selectedStudentIds[0] ?? undefined,
             weekRange: range,
+            startHour: timeRange.startHour,
+            endHour: timeRange.endHour + 1,
           }
         );
       }
