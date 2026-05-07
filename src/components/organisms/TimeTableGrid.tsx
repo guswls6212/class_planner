@@ -697,6 +697,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}
+                startHour={startHour}
+                endHour={endHour}
                 selectedSessionIds={selectedSessionIds}
                 onSessionSelectToggle={
                   isReadOnly ? undefined : onSessionSelectToggle

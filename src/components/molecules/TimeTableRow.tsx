@@ -87,6 +87,10 @@ interface TimeTableRowProps {
   // Controlled overflow expansion (부모가 column 폭까지 같이 관리할 때 사용)
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  /** 시간 라벨/세션 위치 계산 기준 시작 시각 (0-23). default 9. */
+  startHour?: number;
+  /** 표시 종료 시각 (inclusive — endHour:30 슬롯까지 표시). default 23. */
+  endHour?: number;
 }
 
 /**
@@ -125,6 +129,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onSessionSelectToggle,
   onSessionContextMenuCopy,
   onSessionContextMenuStartSelect,
+  startHour = 9,
+  endHour = 23,
 }) => {
   const [internalExpanded, setInternalExpanded] = React.useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
@@ -185,15 +191,15 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const isDraggingToThis = isDragging && dragPreview?.targetWeekday === weekday;
   const baseWidth = isDraggingToThis ? width - DRAG_HOVER_PAD * 2 : width;
 
-  // 30-minute time slots (9:00 – 23:30)
+  // 30분 단위 time slots — startHour:00 ~ endHour:30 (inclusive).
   const timeSlots30Min = React.useMemo(() => {
     const slots: string[] = [];
-    for (let hour = 9; hour < 24; hour++) {
+    for (let hour = startHour; hour <= endHour; hour++) {
       slots.push(`${hour.toString().padStart(2, "0")}:00`);
       slots.push(`${hour.toString().padStart(2, "0")}:30`);
     }
     return slots;
-  }, []);
+  }, [startHour, endHour]);
 
   // Lane width for horizontal overlap stacking within this weekday column
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
@@ -242,8 +248,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     if (candidates.length === 0) return null;
     const first = candidates[0];
     const [h, m] = first.startsAt.split(":").map(Number);
-    return Math.max(4, ((h * 60 + m - 9 * 60) / 30) * SLOT_HEIGHT_PX);
-  }, [orderedSessions, isOverflow, isStudentFilterActive]);
+    return Math.max(4, ((h * 60 + m - startHour * 60) / 30) * SLOT_HEIGHT_PX);
+  }, [orderedSessions, isOverflow, isStudentFilterActive, startHour]);
 
   // Compute per-session layout (top/height from time, left/width from lane)
   const laidOutSessions = React.useMemo(() => {
@@ -256,7 +262,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const laneIdx = Math.min(Math.max(0, rawIdx), effectiveLanes - 1);
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
-      const timeIdx = Math.max(0, (startMin - 9 * 60) / 30);
+      const timeIdx = Math.max(0, (startMin - startHour * 60) / 30);
       const durationSlots = Math.max(1, (endMin - startMin) / 30);
       return {
         session,
@@ -450,7 +456,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
         const [sh, sm] = (ds.startsAt ?? "").split(":").map(Number);
         const [eh, em] = (ds.endsAt ?? "").split(":").map(Number);
-        const timeIdx = Math.max(0, (sh * 60 + sm - 9 * 60) / 30);
+        const timeIdx = Math.max(0, (sh * 60 + sm - startHour * 60) / 30);
         const durationSlots = Math.max(1, ((eh * 60 + em) - (sh * 60 + sm)) / 30);
         const laneIdx = Math.min(Math.max(0, (ds.yPosition ?? 1) - 1), effectiveLanes - 1);
 
