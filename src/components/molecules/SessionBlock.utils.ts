@@ -161,6 +161,40 @@ export const sessionContainsSelected = (
   });
 };
 
+export const sessionContainsSelectedSubject = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  selectedSubjectIds: string[]
+): boolean => {
+  if (!selectedSubjectIds.length || !session.enrollmentIds?.length) return false;
+  return session.enrollmentIds.some((eid) => {
+    const enrollment = enrollments.find((e) => e.id === eid);
+    return enrollment
+      ? selectedSubjectIds.includes(enrollment.subjectId)
+      : false;
+  });
+};
+
+/**
+ * 학생/과목 필터의 AND 결합 — 활성 필터 type 모두를 만족하는 sessions만 매칭.
+ * 비활성 type은 무시. 둘 다 비활성이면 모든 sessions 매칭.
+ */
+export const sessionMatchesFilters = (
+  session: Session,
+  enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
+  selectedStudentIds: string[],
+  selectedSubjectIds: string[]
+): boolean => {
+  const studentActive = selectedStudentIds.length > 0;
+  const subjectActive = selectedSubjectIds.length > 0;
+  if (!studentActive && !subjectActive) return true;
+  if (studentActive && !sessionContainsSelected(session, enrollments, selectedStudentIds))
+    return false;
+  if (subjectActive && !sessionContainsSelectedSubject(session, enrollments, selectedSubjectIds))
+    return false;
+  return true;
+};
+
 export const resolveSessionColor = (
   session: Session,
   colorBy: ColorByMode,

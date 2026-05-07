@@ -2092,6 +2092,7 @@ function SchedulePageContent(): JSX.Element {
             onSessionCopy={canManage ? handleSessionCopy : undefined}
             onEmptySpaceClick={handleEmptySpaceClick}
             selectedStudentIds={selectedStudentIds}
+            selectedSubjectIds={selectedSubjectIds}
             isStudentDragging={isStudentDragging}
             teachers={teachers}
             colorBy={colorBy}

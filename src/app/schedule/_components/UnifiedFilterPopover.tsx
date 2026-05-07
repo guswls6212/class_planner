@@ -145,10 +145,7 @@ export default function UnifiedFilterPopover({
                 )}
               </FilterSection>
 
-              <FilterSection
-                title={`과목 (${subjects.length})`}
-                badge="placeholder"
-              >
+              <FilterSection title={`과목 (${subjects.length})`}>
                 {filteredSubjects.length === 0 ? (
                   <Empty />
                 ) : (

@@ -42,6 +42,7 @@ type Props = {
     yPosition?: number
   ) => void;
   selectedStudentIds?: string[];
+  selectedSubjectIds?: string[];
   isStudentDragging: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
@@ -74,6 +75,7 @@ export default function ScheduleGridSection({
   onSessionCopy,
   onEmptySpaceClick,
   selectedStudentIds,
+  selectedSubjectIds,
   isStudentDragging,
   teachers = [],
   colorBy = "subject",
@@ -100,6 +102,7 @@ export default function ScheduleGridSection({
         onSessionCopy={onSessionCopy}
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
+        selectedSubjectIds={selectedSubjectIds}
         isStudentDragging={isStudentDragging}
         teachers={teachers}
         colorBy={colorBy}

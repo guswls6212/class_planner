@@ -6,7 +6,7 @@ import { resolveSessionTone } from "./SessionCard.utils";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
-import { sessionContainsSelected } from "./SessionBlock.utils";
+import { sessionMatchesFilters } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
 import HiddenSessionsPopover from "./HiddenSessionsPopover";
@@ -65,6 +65,8 @@ interface TimeTableRowProps {
   className?: string;
   style?: React.CSSProperties;
   selectedStudentIds?: string[];
+  /** 과목 필터 — 학생과 AND 결합. 매칭 sessions이 앞 lane으로 정렬. */
+  selectedSubjectIds?: string[];
   isAnyDragging?: boolean;
   /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
   isCopyMode?: boolean;
@@ -114,6 +116,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   className = "",
   style = {},
   selectedStudentIds,
+  selectedSubjectIds,
   isAnyDragging = false,
   isCopyMode = false,
   teachers = [],
@@ -214,58 +217,66 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // 학생 필터 활성 시 매칭 세션을 앞 lane에 우선 배치 (렌더 타임 재정렬, yPosition 불변)
-  // 필터 미활성 시에는 yPosition 오름차순 정렬 — useDisplaySessions의 startsAt 정렬과 독립적으로
-  // yPosition을 lane 배치의 SSOT로 유지한다.
-  const isStudentFilterActive = Boolean(selectedStudentIds?.length);
+  // 학생/과목 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
+  // 학생 + 과목 동시 활성이면 AND 결합 — 둘 다 매칭하는 sessions만 매칭으로 본다.
+  const studentIdsKey = selectedStudentIds ?? [];
+  const subjectIdsKey = selectedSubjectIds ?? [];
+  const isStudentFilterActive = studentIdsKey.length > 0;
+  const isSubjectFilterActive = subjectIdsKey.length > 0;
+  const isFilterActive = isStudentFilterActive || isSubjectFilterActive;
   const sortByYPos = (a: Session, b: Session) => (a.yPosition || 1) - (b.yPosition || 1);
   const orderedSessions = React.useMemo(() => {
-    if (!isStudentFilterActive) return [...weekdaySessions].sort(sortByYPos);
+    if (!isFilterActive) return [...weekdaySessions].sort(sortByYPos);
     const matching = weekdaySessions
-      .filter((s) => sessionContainsSelected(s, enrollments, selectedStudentIds!))
+      .filter((s) =>
+        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+      )
       .sort(sortByYPos);
     const nonMatching = weekdaySessions
-      .filter((s) => !sessionContainsSelected(s, enrollments, selectedStudentIds!))
+      .filter(
+        (s) =>
+          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+      )
       .sort(sortByYPos);
     return [...matching, ...nonMatching];
-  }, [weekdaySessions, selectedStudentIds, enrollments, isStudentFilterActive]);
+  }, [weekdaySessions, studentIdsKey, subjectIdsKey, enrollments, isFilterActive]);
 
   // Visible sessions:
   //   - 필터 미활성: yPosition <= 3 기반 (startsAt 순서와 무관하게 yPosition SSOT 유지)
   //   - 필터 활성: slice(0,3) — matching 세션이 앞으로 재정렬되어 있으므로 slice가 옳음
   const visibleSessions = React.useMemo(() => {
     if (!(isOverflow && !isExpanded)) return orderedSessions;
-    return isStudentFilterActive
+    return isFilterActive
       ? orderedSessions.slice(0, 3)
       : orderedSessions.filter((s) => (s.yPosition || 1) <= 3);
-  }, [orderedSessions, isOverflow, isExpanded, isStudentFilterActive]);
+  }, [orderedSessions, isOverflow, isExpanded, isFilterActive]);
 
   // Hidden sessions: visible 기준 반대
   const hiddenSessions = React.useMemo(() => {
     if (!(isOverflow && !isExpanded)) return [];
-    return isStudentFilterActive
+    return isFilterActive
       ? orderedSessions.slice(3)
       : orderedSessions.filter((s) => (s.yPosition || 1) >= 4);
-  }, [orderedSessions, isOverflow, isExpanded, isStudentFilterActive]);
+  }, [orderedSessions, isOverflow, isExpanded, isFilterActive]);
 
   // Position the +N chip near the first hidden session's start time (stable regardless of isExpanded).
   const chipTopPx = React.useMemo(() => {
     if (!isOverflow) return null;
-    const candidates = isStudentFilterActive
+    const candidates = isFilterActive
       ? orderedSessions.slice(3)
       : orderedSessions.filter((s) => (s.yPosition || 1) >= 4);
     if (candidates.length === 0) return null;
     const first = candidates[0];
     const [h, m] = first.startsAt.split(":").map(Number);
     return Math.max(4, ((h * 60 + m - startHour * 60) / 30) * SLOT_HEIGHT_PX);
-  }, [orderedSessions, isOverflow, isStudentFilterActive, startHour]);
+  }, [orderedSessions, isOverflow, isFilterActive, startHour]);
 
   // Compute per-session layout (top/height from time, left/width from lane)
   const laidOutSessions = React.useMemo(() => {
     return visibleSessions.map((session) => {
       // 필터 미활성: yPosition - 1 을 laneIdx로 사용 (yPosition이 SSOT).
       // 필터 활성: orderedSessions 배열 index 기반 (matching 우선 시각 배치 유지).
-      const rawIdx = isStudentFilterActive
+      const rawIdx = isFilterActive
         ? visibleSessions.findIndex((s) => s.id === session.id)
         : (session.yPosition || 1) - 1;
       const laneIdx = Math.min(Math.max(0, rawIdx), effectiveLanes - 1);
