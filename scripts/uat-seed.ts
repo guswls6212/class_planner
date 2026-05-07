@@ -130,6 +130,12 @@ async function main(): Promise<void> {
     }
   }
 
+  // TypeScript narrow — 위 if 블록 안 어느 분기든 academyId set 보장
+  if (!academyId) {
+    console.error("❌ academyId 결정 실패 — 코드 흐름 버그");
+    process.exit(1);
+  }
+
   // 1. 멱등성: 같은 academy의 기존 시드 cleanup (academy/members는 보존)
   console.log(`🧹 기존 시드 cleanup (academy=${academyId.slice(0, 8)}...)`);
   await cleanupAcademyScopedDataForUser(sbAdmin, userId);
