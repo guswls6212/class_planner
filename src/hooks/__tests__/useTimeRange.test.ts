@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   computeAutoRange,
+  readStoredRange,
   resolveTimeRange,
   timeRangeStorageKey,
   writeStoredRange,
@@ -93,45 +94,49 @@ describe("resolveTimeRange", () => {
 
   it("storage 미설정 + query 없음 → default 9-23 (BC)", () => {
     expect(
-      resolveTimeRange({ queryValue: null, sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: null, sessions: [], stored: readStoredRange(null) }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("query ?range=auto → auto computed", () => {
     const sessions = [makeSession("10:00", "11:00")];
     expect(
-      resolveTimeRange({ queryValue: "auto", sessions, userId: null }),
+      resolveTimeRange({ queryValue: "auto", sessions, stored: null }),
     ).toEqual({ startHour: 9, endHour: 12, mode: "auto" });
   });
 
   it("query ?range=7-22 → custom", () => {
     expect(
-      resolveTimeRange({ queryValue: "7-22", sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: "7-22", sessions: [], stored: null }),
     ).toEqual({ startHour: 7, endHour: 22, mode: "custom" });
   });
 
   it("query ?range=default → default", () => {
     expect(
-      resolveTimeRange({ queryValue: "default", sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: "default", sessions: [], stored: null }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("query 잘못된 format → storage/default fallback", () => {
     expect(
-      resolveTimeRange({ queryValue: "garbage", sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: "garbage", sessions: [], stored: null }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("query start >= end → storage/default fallback", () => {
     expect(
-      resolveTimeRange({ queryValue: "20-10", sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: "20-10", sessions: [], stored: null }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("storage custom → 적용", () => {
     writeStoredRange("user-x", { mode: "custom", startHour: 7, endHour: 22 });
     expect(
-      resolveTimeRange({ queryValue: null, sessions: [], userId: "user-x" }),
+      resolveTimeRange({
+        queryValue: null,
+        sessions: [],
+        stored: readStoredRange("user-x"),
+      }),
     ).toEqual({ startHour: 7, endHour: 22, mode: "custom" });
   });
 
@@ -139,35 +144,51 @@ describe("resolveTimeRange", () => {
     writeStoredRange("user-y", { mode: "auto" });
     const sessions = [makeSession("13:00", "16:30")];
     expect(
-      resolveTimeRange({ queryValue: null, sessions, userId: "user-y" }),
+      resolveTimeRange({
+        queryValue: null,
+        sessions,
+        stored: readStoredRange("user-y"),
+      }),
     ).toEqual({ startHour: 12, endHour: 18, mode: "auto" });
   });
 
   it("storage default → 9-23", () => {
     writeStoredRange("user-z", { mode: "default" });
     expect(
-      resolveTimeRange({ queryValue: null, sessions: [], userId: "user-z" }),
+      resolveTimeRange({
+        queryValue: null,
+        sessions: [],
+        stored: readStoredRange("user-z"),
+      }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("storage custom 잘못된 값 (start >= end) → default fallback", () => {
     writeStoredRange("user-bad", { mode: "custom", startHour: 20, endHour: 10 });
     expect(
-      resolveTimeRange({ queryValue: null, sessions: [], userId: "user-bad" }),
+      resolveTimeRange({
+        queryValue: null,
+        sessions: [],
+        stored: readStoredRange("user-bad"),
+      }),
     ).toEqual(DEFAULT_TIME_RANGE);
   });
 
   it("query가 storage보다 우선", () => {
     writeStoredRange("user-q", { mode: "custom", startHour: 7, endHour: 22 });
     expect(
-      resolveTimeRange({ queryValue: "10-15", sessions: [], userId: "user-q" }),
+      resolveTimeRange({
+        queryValue: "10-15",
+        sessions: [],
+        stored: readStoredRange("user-q"),
+      }),
     ).toEqual({ startHour: 10, endHour: 15, mode: "custom" });
   });
 
   it("anonymous (userId=null) storage key 사용", () => {
     writeStoredRange(null, { mode: "custom", startHour: 8, endHour: 21 });
     expect(
-      resolveTimeRange({ queryValue: null, sessions: [], userId: null }),
+      resolveTimeRange({ queryValue: null, sessions: [], stored: readStoredRange(null) }),
     ).toEqual({ startHour: 8, endHour: 21, mode: "custom" });
   });
 });

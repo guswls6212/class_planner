@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
+  readStoredRange,
   resolveTimeRange,
   writeStoredRange,
   type TimeRangeMode,
@@ -52,7 +53,7 @@ export default function OperatingHoursSection({
     const initial = resolveTimeRange({
       queryValue: null,
       sessions: [],
-      userId,
+      stored: readStoredRange(userId),
     });
     setMode(initial.mode);
     setStartHour(initial.startHour);

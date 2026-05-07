@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "../lib/planner";
 
 export type TimeRangeMode = "default" | "auto" | "custom";
@@ -43,27 +43,37 @@ export function timeRangeStorageKey(userId: string | null): string {
   return `${STORAGE_KEY_PREFIX}${id}${STORAGE_KEY_SUFFIX}`;
 }
 
+/**
+ * SSR-safe — 첫 렌더는 stored=null로 default 반환 (server와 client 일치).
+ * mount 후 useEffect로 localStorage read 후 state update → 두 번째 렌더에 적용.
+ * Hydration mismatch 방지.
+ */
 export function useTimeRange(options: UseTimeRangeOptions = {}): TimeRange {
   const { sessions = [], userId = null } = options;
   const searchParams = useSearchParams();
   const queryValue = searchParams?.get("range") ?? null;
 
+  const [stored, setStored] = useState<StoredTimeRange | null>(null);
+  useEffect(() => {
+    setStored(readStoredRange(userId));
+  }, [userId]);
+
   return useMemo(
-    () => resolveTimeRange({ queryValue, sessions, userId }),
-    [queryValue, sessions, userId],
+    () => resolveTimeRange({ queryValue, sessions, stored }),
+    [queryValue, sessions, stored],
   );
 }
 
 interface ResolveInput {
   queryValue: string | null;
   sessions: Session[];
-  userId: string | null;
+  stored: StoredTimeRange | null;
 }
 
 export function resolveTimeRange({
   queryValue,
   sessions,
-  userId,
+  stored,
 }: ResolveInput): TimeRange {
   // 1. URL query (preview/debug)
   if (queryValue) {
@@ -73,8 +83,7 @@ export function resolveTimeRange({
     if (parsed) return parsed;
   }
 
-  // 2. localStorage user setting
-  const stored = readStoredRange(userId);
+  // 2. stored — hook이 useEffect로 client-only read 후 prop 전달
   if (stored) {
     if (stored.mode === "default") return DEFAULT_TIME_RANGE;
     if (stored.mode === "auto") return computeAutoRange(sessions);
@@ -96,7 +105,9 @@ export function resolveTimeRange({
   return DEFAULT_TIME_RANGE;
 }
 
-function readStoredRange(userId: string | null): StoredTimeRange | null {
+export function readStoredRange(
+  userId: string | null,
+): StoredTimeRange | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(timeRangeStorageKey(userId));
