@@ -196,6 +196,18 @@ uat.isAnonymous();           // → true
 - OAuth 콜백 후 `/schedule` 또는 `/onboarding` 라우팅
 - localStorage에 `supabase_user_id` 저장
 - 사이드바 하단에 이메일 표시
+
+**검증 방법** (셋 중 아무거나, DevTools 콘솔):
+```js
+// 1. uat helper (간단)
+uat.isAnonymous();                            // → false (로그인됨)
+
+// 2. 직접 키 확인
+localStorage.getItem('supabase_user_id');     // → "uuid-string" (null 아님)
+
+// 3. 시각 확인 — F12 → Application 탭 → Local Storage
+//    → http://localhost:3000 선택 → supabase_user_id row 에 UUID 값 표시
+```
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.3 Kakao OAuth 로그인 [P1]
@@ -207,6 +219,13 @@ uat.isAnonymous();           // → true
 **Expected:**
 - OAuth 콜백 후 `/schedule` 또는 `/onboarding` 라우팅
 - localStorage `supabase_user_id` 저장
+
+**검증 방법** (S-1.2 와 동일 — 셋 중 아무거나, DevTools 콘솔):
+```js
+uat.isAnonymous();                            // → false
+localStorage.getItem('supabase_user_id');     // → "uuid-string"
+// 또는 F12 → Application → Local Storage → supabase_user_id row 확인
+```
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.4 익명 사용자 모드 [P1] [auto-friendly]
@@ -238,6 +257,15 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 - `/schedule` 라우팅
 - 사이드바 상단에 학원명 + Academy Switcher 표시
 - API `/api/academies` POST 성공 (Network 확인)
+
+**검증 방법** (DevTools 콘솔 — userId + activeAcademyId 둘 다 set 됐는지):
+```js
+const userId = localStorage.getItem('supabase_user_id');
+console.log('userId:', userId);                                 // UUID
+console.log('activeAcademy:', localStorage.getItem(`active_academy:${userId}`));  // academy UUID
+// 또는 쿠키 확인
+document.cookie.match(/active_academy_id=([^;]+)/)?.[1];        // academy UUID
+```
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.6 로그인 상태 → /login 접근 [P2]
@@ -263,6 +291,17 @@ uat.expireToken();           // sb-*-auth-token 키 + 쿠키 모두 삭제 + 새
 **Expected:**
 - 로그아웃 후 익명 모드 (localStorage `supabase_user_id` + 3개 쿠키 정리됨)
 - 재로그인 시 이전 데이터 복원
+
+**검증 방법** (DevTools 콘솔):
+```js
+// 로그아웃 직후:
+uat.isAnonymous();                            // → true (익명 복귀)
+localStorage.getItem('supabase_user_id');     // → null
+
+// 재로그인 후:
+uat.isAnonymous();                            // → false
+localStorage.getItem('supabase_user_id');     // → 이전과 동일 UUID
+```
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
