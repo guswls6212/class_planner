@@ -220,7 +220,10 @@ export function Sidebar() {
         expanded ? "w-52 items-start" : "w-14 items-center"
       }`}
     >
-      {/* Academy Switcher (replaces the old "CP" logo). */}
+      {/* Academy Switcher (replaces the old "CP" logo).
+          Anonymous mode (anonymous-first 정책): 학원 개념 자체가 무의미하므로
+          switcher 영역을 미렌더. 사용자가 학원 만들고 싶으면 로그인 메뉴로 자연 유도. */}
+      {isLoggedIn && (
       <div
         className={`relative mb-4 ${expanded ? "w-full px-2" : ""}`}
         ref={switcherRef}
@@ -253,7 +256,11 @@ export function Sidebar() {
 
         {showSwitcher && (
           <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
-            {academies.length > 0 ? (
+            {isLoading ? (
+              <div className="px-3 py-3 text-[11px] text-slate-500 text-center">
+                학원 정보를 불러오는 중...
+              </div>
+            ) : academies.length > 0 ? (
               <>
                 <div className="px-3 py-1 text-[10px] text-slate-500 font-medium tracking-wide uppercase">
                   내 학원
@@ -301,7 +308,7 @@ export function Sidebar() {
               </>
             ) : (
               <div className="px-3 py-3 text-[11px] text-slate-500 text-center">
-                학원 정보를 불러오는 중...
+                참여 중인 학원이 없어요
               </div>
             )}
             <div className="border-t border-slate-700 mt-1 pt-1">
@@ -316,6 +323,7 @@ export function Sidebar() {
           </div>
         )}
       </div>
+      )}
 
       <div className={`flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
         {visibleTopItems.map((item) => (

@@ -4,7 +4,7 @@
  */
 
 import { renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGlobalDataInitialization } from "../useGlobalDataInitialization";
 import { supabase } from "../../utils/supabaseClient";
 import { checkLoginDataConflict } from "../../lib/auth/handleLoginDataMigration";
@@ -522,4 +522,120 @@ describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)
     expect(saved).toBeNull(); // 로컬 보존 (보수적)
   });
 
+});
+
+describe("Onboarding 가드 (academy 사전 검증)", () => {
+  let originalLocation: Location;
+  let replaceMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.getItem.mockClear();
+    localStorageMock.setItem.mockClear();
+    localStorageMock.removeItem.mockClear();
+
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: "user-123", email: "test@test.com" } } },
+      error: null,
+    } as any);
+
+    localStorageMock.getItem.mockReturnValue(null);
+
+    // window.location.replace 호출 검증을 위한 mock
+    originalLocation = window.location;
+    replaceMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        ...originalLocation,
+        replace: replaceMock,
+      },
+    });
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: originalLocation,
+    });
+  });
+
+  it("academy 매핑 없으면 onboarding으로 redirect + 마이그레이션 skip", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ success: true, hasAcademy: false }),
+        });
+      }
+      // 다른 API는 호출되면 안 되지만 안전망으로 빈 응답
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+
+    renderHook(() => useGlobalDataInitialization());
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith("/onboarding"));
+
+    // 마이그레이션 함수 호출 X
+    expect(checkLoginDataConflict).not.toHaveBeenCalled();
+
+    // anonymous 키 삭제 X (보존)
+    const removeCalls: string[][] = localStorageMock.removeItem.mock.calls;
+    const anonymousRemove = removeCalls.find(
+      (args) => args[0] === "classPlannerData:anonymous"
+    );
+    expect(anonymousRemove).toBeUndefined();
+  });
+
+  it("academy 매핑 있으면 기존 흐름대로 마이그레이션 진행", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              hasAcademy: true,
+              academyId: "ac-1",
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(checkLoginDataConflict).toHaveBeenCalled();
+  });
+
+  it("status fetch 네트워크 실패 시 기존 흐름 폴백", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.reject(new Error("network down"));
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(checkLoginDataConflict).toHaveBeenCalled();
+  });
 });
