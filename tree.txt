@@ -411,6 +411,7 @@ src/hooks/__tests__/useModalA11y.test.ts
 src/hooks/__tests__/useMyRole.test.ts
 src/hooks/__tests__/useMyTeacher.test.ts
 src/hooks/__tests__/useNowMinute.test.ts
+src/hooks/__tests__/useScheduleLayout.test.ts
 src/hooks/__tests__/useScheduleMeta.test.ts
 src/hooks/__tests__/useScheduleSessionManagement.test.ts
 src/hooks/__tests__/useScheduleView.test.ts
@@ -421,6 +422,7 @@ src/hooks/__tests__/useSubjectManagementLocal.test.ts
 src/hooks/__tests__/useSyncStatus.test.ts
 src/hooks/__tests__/useTeacherManagementLocal.test.ts
 src/hooks/__tests__/useTemplates.test.ts
+src/hooks/__tests__/useTimeRange.test.ts
 src/hooks/__tests__/useTimeValidation.test.ts
 src/hooks/__tests__/useUserTracking.test.ts
 src/hooks/useAccessCodes.ts
@@ -440,6 +442,7 @@ src/hooks/useMyTeacher.ts
 src/hooks/useNowMinute.ts
 src/hooks/useOutboxFlush.ts
 src/hooks/usePerformanceMonitoring.ts
+src/hooks/useScheduleLayout.ts
 src/hooks/useScheduleMeta.ts
 src/hooks/useScheduleSessionManagement.ts
 src/hooks/useScheduleView.ts
@@ -451,6 +454,7 @@ src/hooks/useSyncStatus.ts
 src/hooks/useTeacherDisplaySessions.ts
 src/hooks/useTeacherManagementLocal.ts
 src/hooks/useTemplates.ts
+src/hooks/useTimeRange.ts
 src/hooks/useTimeValidation.ts
 src/hooks/useUserTracking.ts
 src/infrastructure/__tests__/RepositoryRegistry.test.ts
