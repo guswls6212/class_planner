@@ -126,11 +126,13 @@ src/app/schedule/_components/GroupSessionModal.tsx
 src/app/schedule/_components/PdfDownloadSection.tsx
 src/app/schedule/_components/PrimarySidebar.tsx
 src/app/schedule/_components/ScheduleActionBar.tsx
+src/app/schedule/_components/ScheduleFloatingToolbar.tsx
 src/app/schedule/_components/ScheduleGridSection.tsx
 src/app/schedule/_components/ScheduleHeader.tsx
 src/app/schedule/_components/StudentFilterChipBar.tsx
 src/app/schedule/_components/TeacherFilterChipBar.tsx
 src/app/schedule/_components/TimeRangeSelector.tsx
+src/app/schedule/_components/UnifiedFilterPopover.tsx
 src/app/schedule/_components/__tests__/EditSessionModal.test.tsx
 src/app/schedule/_components/__tests__/GroupSessionModal.test.tsx
 src/app/schedule/_components/__tests__/PdfDownloadSection.test.tsx

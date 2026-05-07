@@ -82,6 +82,7 @@ import { useSessionSelection } from "../../hooks/useSessionSelection";
 import SelectionBar from "@/components/atoms/SelectionBar";
 import ChipFilterPopover from "./_components/ChipFilterPopover";
 import PrimarySidebar from "./_components/PrimarySidebar";
+import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
@@ -759,6 +760,38 @@ function SchedulePageContent(): JSX.Element {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }, []);
+
+  // Option C — 자동 colorBy: 단일 type 필터 활성 → 그 type 색, 혼합/없음 → subject
+  const autoColorBy = useMemo(() => {
+    const hasStudent = selectedStudentIds.length > 0;
+    const hasTeacher = selectedTeacherIds.length > 0;
+    const hasSubject = selectedSubjectIds.length > 0;
+    if (hasStudent && !hasTeacher && !hasSubject) return "student" as const;
+    if (hasTeacher && !hasStudent && !hasSubject) return "teacher" as const;
+    return "subject" as const;
+  }, [selectedStudentIds, selectedTeacherIds, selectedSubjectIds]);
+
+  useEffect(() => {
+    if (isP3 && colorBy !== autoColorBy) {
+      setColorBy(autoColorBy);
+    }
+  }, [isP3, autoColorBy, colorBy, setColorBy]);
+
+  // Option C — Hide-on-Scroll: 시간표 스크롤 시 헤더 압축
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+  const [headerScrolled, setHeaderScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!isP3) {
+      setHeaderScrolled(false);
+      return;
+    }
+    const el = mainScrollRef.current;
+    if (!el) return;
+    const onScroll = () => setHeaderScrolled(el.scrollTop > 20);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [isP3]);
 
   const {
     validateTimeRange,
@@ -1886,8 +1919,12 @@ function SchedulePageContent(): JSX.Element {
       */}
       {/* P3: 헤더/필터/네비는 layout-anchored 영역. default 모드는 단순 wrap. */}
       <div className={isP3 ? "shrink-0" : ""}>
-      {/* Row 1: 제목(좌) + 액션(우) */}
-      <div className="flex items-start justify-between mb-4 border-b border-[--color-border] pb-3">
+      {/* Row 1: 제목(좌) + 액션(우) — P3 + scroll 시 압축 */}
+      <div
+        className={`flex items-start justify-between border-b border-[--color-border] transition-all duration-200 ${
+          isP3 && headerScrolled ? "mb-0 pb-1" : "mb-4 pb-3"
+        }`}
+      >
         <ScheduleHeader
           dataLoading={dataLoading}
           error={error ?? undefined}
@@ -1925,49 +1962,26 @@ function SchedulePageContent(): JSX.Element {
         </div>
       </div>
 
-      {colorBy === "student" &&
-        (isP3 ? (
-          <div className="py-2 mb-3 border-b border-[var(--color-border)] flex items-center gap-2 flex-wrap">
-            <ChipFilterPopover
-              type="student"
-              items={students}
-              selectedIds={selectedStudentIds}
-              onToggle={toggleStudentFilter}
-              onClearAll={clearStudentFilter}
-              onExpandToSidebar={() => setSidebarOpen(true)}
-            />
-          </div>
-        ) : (
-          <StudentFilterChipBar
-            students={students}
-            selectedStudentIds={selectedStudentIds}
-            onToggleStudent={toggleStudentFilter}
-            onClearFilter={clearStudentFilter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          />
-        ))}
+      {/* default 모드 — 기존 chip bar 그대로. P3 모드는 floating toolbar의 통합 필터로 이동. */}
+      {!isP3 && colorBy === "student" && (
+        <StudentFilterChipBar
+          students={students}
+          selectedStudentIds={selectedStudentIds}
+          onToggleStudent={toggleStudentFilter}
+          onClearFilter={clearStudentFilter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+      )}
 
-      {colorBy === "teacher" &&
-        (isP3 ? (
-          <div className="py-2 mb-3 border-b border-[var(--color-border)] flex items-center gap-2 flex-wrap">
-            <ChipFilterPopover
-              type="teacher"
-              items={teachers}
-              selectedIds={selectedTeacherIds}
-              onToggle={toggleTeacherFilter}
-              onClearAll={clearTeacherFilter}
-              onExpandToSidebar={() => setSidebarOpen(true)}
-            />
-          </div>
-        ) : (
-          <TeacherFilterChipBar
-            teachers={teachers}
-            selectedTeacherIds={selectedTeacherIds}
-            onToggleTeacher={toggleTeacherFilter}
-            onClearFilter={clearTeacherFilter}
-          />
-        ))}
+      {!isP3 && colorBy === "teacher" && (
+        <TeacherFilterChipBar
+          teachers={teachers}
+          selectedTeacherIds={selectedTeacherIds}
+          onToggleTeacher={toggleTeacherFilter}
+          onClearFilter={clearTeacherFilter}
+        />
+      )}
 
       {/* 일별 뷰: 요일 칩 바 */}
       {viewMode === "daily" && (
@@ -1983,46 +1997,48 @@ function SchedulePageContent(): JSX.Element {
         />
       )}
 
-      {/* Row 2: 날짜 네비(좌) + 뷰·색상 토글(우) — 그리드 직전 */}
-      <div className="flex items-center justify-between gap-2 px-1 py-2">
-        <ScheduleDateNavigator
-          label={dateLabel}
-          onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
-          onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
-          onToday={goToToday}
-          prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
-          nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
-        />
-        <div className="flex items-center gap-2 shrink-0">
-          {isP3 && (
-            <TimeRangeSelector current={timeRange} userId={userId} />
-          )}
-          <SegmentedButton
-            options={VIEW_MODES}
-            value={viewMode}
-            onChange={setViewMode}
-            aria-label="뷰 모드"
+      {/* Row 2: 날짜 네비 + 뷰·색상 토글. P3 모드는 ScheduleFloatingToolbar로 이동. */}
+      {!isP3 && (
+        <div className="flex items-center justify-between gap-2 px-1 py-2">
+          <ScheduleDateNavigator
+            label={dateLabel}
+            onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
+            onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
+            onToday={goToToday}
+            prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
+            nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
           />
-          <div className="flex items-center gap-1">
-            <ColorByToggle
-              colorBy={colorBy}
-              onChange={(mode) => {
-                setColorBy(mode);
-                if (mode !== "student") clearStudentFilter();
-                if (mode !== "teacher") clearTeacherFilter();
-              }}
+          <div className="flex items-center gap-2 shrink-0">
+            <SegmentedButton
+              options={VIEW_MODES}
+              value={viewMode}
+              onChange={setViewMode}
+              aria-label="뷰 모드"
             />
-            {colorBy === "teacher" && teachers.length > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(167,139,250,0.15)] text-[var(--color-accent)] border border-[rgba(167,139,250,0.3)]">
-                강사 {teachers.length}명
-              </span>
-            )}
+            <div className="flex items-center gap-1">
+              <ColorByToggle
+                colorBy={colorBy}
+                onChange={(mode) => {
+                  setColorBy(mode);
+                  if (mode !== "student") clearStudentFilter();
+                  if (mode !== "teacher") clearTeacherFilter();
+                }}
+              />
+              {colorBy === "teacher" && teachers.length > 0 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(167,139,250,0.15)] text-[var(--color-accent)] border border-[rgba(167,139,250,0.3)]">
+                  강사 {teachers.length}명
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       </div>
       {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
-      <div className={isP3 ? "flex-1 min-h-0 overflow-auto" : ""}>
+      <div
+        ref={mainScrollRef}
+        className={isP3 ? "flex-1 min-h-0 overflow-auto" : ""}
+      >
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
         <ScheduleDailyView
@@ -2359,6 +2375,38 @@ function SchedulePageContent(): JSX.Element {
         hasStudentFilter={selectedStudentIds.length > 0}
       />
     </div>
+
+    {/* Option C: P3 모드의 floating toolbar — 날짜 네비 + 통합 필터 + 시간 + 뷰모드 */}
+    {isP3 && (
+      <ScheduleFloatingToolbar
+        dateLabel={dateLabel}
+        onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
+        onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
+        onToday={goToToday}
+        prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
+        nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
+        students={students}
+        selectedStudentIds={selectedStudentIds}
+        onToggleStudent={toggleStudentFilter}
+        subjects={subjects}
+        selectedSubjectIds={selectedSubjectIds}
+        onToggleSubject={toggleSubjectFilter}
+        teachers={teachers}
+        selectedTeacherIds={selectedTeacherIds}
+        onToggleTeacher={toggleTeacherFilter}
+        onClearAllFilters={() => {
+          clearStudentFilter();
+          clearTeacherFilter();
+          setSelectedSubjectIds([]);
+        }}
+        onExpandToSidebar={() => setSidebarOpen(true)}
+        colorBy={colorBy}
+        timeRange={timeRange}
+        userId={userId}
+        viewMode={viewMode}
+        onChangeViewMode={setViewMode}
+      />
+    )}
     </div>
   );
 }
