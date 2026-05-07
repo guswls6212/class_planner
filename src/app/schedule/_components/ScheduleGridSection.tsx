@@ -59,6 +59,8 @@ type Props = {
   startHour?: number;
   /** 시간표 표시 종료 시각 (0-23, inclusive). default 23. */
   endHour?: number;
+  /** P3 모드처럼 외부 scroll container가 있을 때 grid 자체 max-h 제거. */
+  fillHeight?: boolean;
 };
 
 export default function ScheduleGridSection({
@@ -86,6 +88,7 @@ export default function ScheduleGridSection({
   onSessionContextMenuStartSelect,
   startHour,
   endHour,
+  fillHeight,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -113,6 +116,7 @@ export default function ScheduleGridSection({
         onSessionContextMenuStartSelect={onSessionContextMenuStartSelect}
         startHour={startHour}
         endHour={endHour}
+        fillHeight={fillHeight}
       />
     </div>
   );

@@ -91,6 +91,9 @@ interface TimeTableGridProps {
   startHour?: number;
   /** 표시 종료 시각 (0-23, inclusive — endHour:30 슬롯까지 표시). default 23. */
   endHour?: number;
+  /** 외부 scroll container가 있을 때 (P3 floating layout 등) grid 자체
+   *  max-h-[80vh]/overflow 제거 → outer가 scroll 받음. default false. */
+  fillHeight?: boolean;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -124,6 +127,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onSessionContextMenuStartSelect,
       startHour = 9,
       endHour = 23,
+      fillHeight = false,
     },
     ref
   ) => {
@@ -595,7 +599,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
             }
             gridRef.current = node;
           }}
-          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg overflow-y-auto overflow-x-auto relative isolate max-h-[80vh] ${className}`}
+          className={`time-table-grid grid bg-[var(--color-bg-primary)] border border-[var(--color-border-grid-light)] rounded-t-lg relative isolate ${
+            fillHeight
+              ? "overflow-x-auto schedule-p3-scroll"
+              : "overflow-y-auto overflow-x-auto max-h-[80vh]"
+          } ${className}`}
           style={{
             gridTemplateColumns,
             gridTemplateRows,

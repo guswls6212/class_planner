@@ -1941,10 +1941,12 @@ function SchedulePageContent(): JSX.Element {
       */}
       {/* P3: 헤더/필터/네비는 layout-anchored 영역. default 모드는 단순 wrap. */}
       <div className={isP3 ? "shrink-0" : ""}>
-      {/* Row 1: 제목(좌) + 액션(우) — P3 + scroll 시 압축 */}
+      {/* Row 1: 제목(좌) + 액션(우) — P3 + scroll 시 헤더 영역 자체 hide */}
       <div
-        className={`flex items-start justify-between border-b border-[--color-border] transition-all duration-200 ${
-          isP3 && headerScrolled ? "mb-0 pb-1" : "mb-4 pb-3"
+        className={`flex items-start justify-between border-b transition-all duration-200 overflow-hidden ${
+          isP3 && headerScrolled
+            ? "max-h-0 mb-0 pb-0 pt-0 opacity-0 border-b-0 pointer-events-none"
+            : "max-h-32 mb-4 pb-3 border-[--color-border]"
         }`}
       >
         <ScheduleHeader
@@ -2059,7 +2061,11 @@ function SchedulePageContent(): JSX.Element {
       {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
       <div
         ref={mainScrollRef}
-        className={isP3 ? "flex-1 min-h-0 overflow-auto" : ""}
+        className={
+          isP3
+            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden schedule-p3-scroll"
+            : ""
+        }
       >
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
@@ -2125,6 +2131,7 @@ function SchedulePageContent(): JSX.Element {
             onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
             startHour={timeRange.startHour}
             endHour={timeRange.endHour}
+            fillHeight={isP3}
           />
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
@@ -2150,7 +2157,9 @@ function SchedulePageContent(): JSX.Element {
             const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
             openGroupModal(selectedWeekday, currentTime, 1);
           }}
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80"
+          className={`fixed right-4 md:right-6 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors hover:opacity-90 active:opacity-80 ${
+            isP3 ? "bottom-20 md:bottom-12" : "bottom-20 md:bottom-6"
+          }`}
           aria-label="수업 추가"
         >
           <Plus size={24} strokeWidth={2} />

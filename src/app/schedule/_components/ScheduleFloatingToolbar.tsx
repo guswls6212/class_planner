@@ -80,7 +80,7 @@ export default function ScheduleFloatingToolbar({
       role="toolbar"
       aria-label="시간표 컨트롤"
       data-testid="schedule-floating-toolbar"
-      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[var(--color-bg-secondary)]/95 backdrop-blur-md shadow-2xl border border-[var(--color-border)]"
+      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[var(--color-bg-secondary)]/95 backdrop-blur-md shadow-2xl border border-[var(--color-border)] max-w-[min(calc(100vw-3rem),900px)]"
     >
       <button
         type="button"
@@ -128,7 +128,11 @@ export default function ScheduleFloatingToolbar({
 
       <Divider />
 
-      <TimeRangeSelector current={timeRange} userId={userId} />
+      <TimeRangeSelector
+        current={timeRange}
+        userId={userId}
+        dropdownDirection="up"
+      />
 
       <Divider />
 

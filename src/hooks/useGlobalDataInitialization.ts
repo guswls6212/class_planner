@@ -32,6 +32,31 @@ import { supabase } from "../utils/supabaseClient";
 
 type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
 
+/**
+ * Partial 손상 감지 — sessions=0이지만 다른 entity는 있는 비정상 상태.
+ *
+ * 발생 시나리오: multi-tab race / 부분 sync 실패 / 일부 storage write가
+ * sessions만 reset. server에 sessions 있으면 local lastModified가 newer라도
+ * server overwrite 강제 — 영구 sessions=0 stuck 방지 (EmptyWeekState false
+ * positive 회피).
+ *
+ * Pure function — 단위 테스트 가능.
+ */
+export function detectPartialCorruption(
+  localBag: ClassPlannerData,
+  serverData: ClassPlannerData,
+  localIsEmpty: boolean,
+): boolean {
+  return (
+    !localIsEmpty &&
+    localBag.sessions.length === 0 &&
+    serverData.sessions.length > 0 &&
+    (localBag.students.length > 0 ||
+      localBag.subjects.length > 0 ||
+      localBag.enrollments.length > 0)
+  );
+}
+
 export const useGlobalDataInitialization = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -314,6 +339,12 @@ export const useGlobalDataInitialization = () => {
             localBag.enrollments.length === 0 &&
             localBag.teachers.length === 0;
 
+          const localIsPartiallyCorrupted = detectPartialCorruption(
+            localBag,
+            serverData,
+            localIsEmpty,
+          );
+
           const serverLastModified = computeServerLastModified(serverData);
           const decision = decideOverwrite({
             localLastModified: localBag.lastModified,
@@ -324,6 +355,7 @@ export const useGlobalDataInitialization = () => {
           logger.info("로컬-서버 동기화 결정", {
             decision: decision.decision,
             reason: decision.reason,
+            localIsPartiallyCorrupted,
             localLastModified: localBag.lastModified ?? null,
             serverLastModified,
             localMs: decision.localMs,
@@ -344,7 +376,19 @@ export const useGlobalDataInitialization = () => {
             },
           });
 
-          if (decision.decision === "overwrite") {
+          if (localIsPartiallyCorrupted) {
+            logger.warn(
+              "로컬 데이터 partial 손상 감지 — server overwrite 강제",
+              {
+                localSessions: localBag.sessions.length,
+                serverSessions: serverData.sessions.length,
+                localStudents: localBag.students.length,
+                localSubjects: localBag.subjects.length,
+                localEnrollments: localBag.enrollments.length,
+              },
+            );
+            setClassPlannerData(serverData);
+          } else if (decision.decision === "overwrite") {
             setClassPlannerData(serverData);
           }
           // skip 시 local 그대로. Eventual consistency via apiSync.ts fire-and-forget.
