@@ -772,10 +772,24 @@ function SchedulePageContent(): JSX.Element {
   }, [selectedStudentIds, selectedTeacherIds, selectedSubjectIds]);
 
   useEffect(() => {
-    if (isP3 && colorBy !== autoColorBy) {
+    if (!isP3) return;
+    // 활성 필터 있을 때만 colorBy 자동 결정 — 모두 빈 상태면 사용자 이전 preference 유지
+    const anyActive =
+      selectedStudentIds.length > 0 ||
+      selectedTeacherIds.length > 0 ||
+      selectedSubjectIds.length > 0;
+    if (anyActive && colorBy !== autoColorBy) {
       setColorBy(autoColorBy);
     }
-  }, [isP3, autoColorBy, colorBy, setColorBy]);
+  }, [
+    isP3,
+    autoColorBy,
+    colorBy,
+    setColorBy,
+    selectedStudentIds.length,
+    selectedTeacherIds.length,
+    selectedSubjectIds.length,
+  ]);
 
   // Option C — Hide-on-Scroll: 시간표 스크롤 시 헤더 압축
   const mainScrollRef = useRef<HTMLDivElement>(null);
