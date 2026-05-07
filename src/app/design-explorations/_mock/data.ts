@@ -45,6 +45,20 @@ export const MOCK_STUDENTS: MockStudent[] = [
   { id: "s17", name: "남궁남궁" },
 ];
 
+export interface MockSubject {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export const MOCK_SUBJECTS: MockSubject[] = [
+  { id: "subj1", name: "중등수학", color: "#FEF3C7" },
+  { id: "subj2", name: "중등영어", color: "#DBEAFE" },
+  { id: "subj3", name: "중등사회", color: "#CCFBF1" },
+  { id: "subj4", name: "고등수학", color: "#FEE2E2" },
+  { id: "subj5", name: "초등영어", color: "#EDE9FE" },
+];
+
 export const MOCK_TEACHERS: MockTeacher[] = [
   { id: "t1", name: "김선생", color: "#3B82F6" },
   { id: "t2", name: "이선생", color: "#EC4899" },

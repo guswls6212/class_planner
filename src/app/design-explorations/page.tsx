@@ -2,9 +2,16 @@ import Link from "next/link";
 
 const PROTOTYPES = [
   {
+    href: "/design-explorations/option-c",
+    title: "★ Option C · Hide-on-Scroll + Floating Toolbar",
+    desc: "최신 결정안. 헤더 압축 (스크롤 시 더 압축) + 하단 floating toolbar에 모든 컨트롤 (날짜, 필터, 시간, 뷰모드). ColorByToggle 제거 (자동 colorBy). 학생/과목/강사 통합 필터.",
+    pros: "Timetable ~98% (스크롤 시), Material 3 + Linear 패턴, 자동 색상",
+    cons: "헤더 압축 학습, Floating toolbar 친숙도 낮음",
+  },
+  {
     href: "/design-explorations/p4-a",
     title: "P4-A · Sidebar",
-    desc: "좌측 collapsible 사이드바에 학생/강사 리스트 + 메인은 시간표만. Google Calendar / Sana AI 패턴. 권장.",
+    desc: "좌측 collapsible 사이드바에 학생/강사 리스트 + 메인은 시간표만. Google Calendar / Sana AI 패턴.",
     pros: "시간표 영역 최대, Mobile에서 collapse 자연",
     cons: "좁은 노트북에서 가로 압박 가능",
   },
