@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   resolveTimeRange,
@@ -30,9 +30,20 @@ const MODE_OPTIONS: { value: TimeRangeMode; label: string; desc: string }[] = [
   },
 ];
 
+function describeSummary(
+  mode: TimeRangeMode,
+  startHour: number,
+  endHour: number,
+): string {
+  if (mode === "default") return "기본 9 - 23시";
+  if (mode === "auto") return "자동 (데이터 기반)";
+  return `${startHour} - ${endHour}시 (사용자 지정)`;
+}
+
 export default function OperatingHoursSection({
   userId,
 }: OperatingHoursSectionProps) {
+  const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<TimeRangeMode>("default");
   const [startHour, setStartHour] = useState(9);
   const [endHour, setEndHour] = useState(23);
@@ -60,112 +71,136 @@ export default function OperatingHoursSection({
   const handleStartChange = (value: number) => {
     setStartHour(value);
     if (mode === "custom" && value < endHour) {
-      writeStoredRange(userId, {
-        mode: "custom",
-        startHour: value,
-        endHour,
-      });
+      writeStoredRange(userId, { mode: "custom", startHour: value, endHour });
     }
   };
 
   const handleEndChange = (value: number) => {
     setEndHour(value);
     if (mode === "custom" && startHour < value) {
-      writeStoredRange(userId, {
-        mode: "custom",
-        startHour,
-        endHour: value,
-      });
+      writeStoredRange(userId, { mode: "custom", startHour, endHour: value });
     }
   };
 
   const isInvalidRange = mode === "custom" && startHour >= endHour;
+  const summary = describeSummary(mode, startHour, endHour);
 
   return (
     <section
       data-testid="operating-hours-section"
-      className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]"
+      className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden"
     >
-      <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-1 flex items-center gap-2">
-        <Clock size={18} aria-hidden="true" />
-        시간표 운영시간
-      </h2>
-      <p className="text-xs text-[var(--color-text-muted)] mb-4">
-        시간표 grid + PDF 출력에 적용됩니다. 학원 운영 패턴에 맞춰 조정하세요.
-        변경사항은 자동 저장됩니다.
-      </p>
-
-      <div className="space-y-2">
-        {MODE_OPTIONS.map((opt) => (
-          <label
-            key={opt.value}
-            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-              mode === opt.value
-                ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
-                : "border-[var(--color-border)] hover:border-[var(--color-border-light)]"
-            }`}
-          >
-            <input
-              type="radio"
-              name="time-range-mode"
-              value={opt.value}
-              checked={mode === opt.value}
-              onChange={() => handleModeChange(opt.value)}
-              className="mt-0.5 accent-[var(--color-accent)]"
-            />
-            <div className="flex-1">
-              <div className="text-sm font-medium text-[var(--color-text-primary)]">
-                {opt.label}
-              </div>
-              <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
-                {opt.desc}
-              </div>
-            </div>
-          </label>
-        ))}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+        className="w-full flex items-start justify-between gap-3 p-5 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] rounded-t-xl"
+      >
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-amber-400/15 text-amber-400 flex items-center justify-center flex-shrink-0">
+            <Clock size={18} strokeWidth={1.5} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold text-[var(--color-text-primary)]">
+              시간표 운영시간{" "}
+              <span className="text-[11px] font-normal text-[var(--color-text-muted)] ml-1">
+                {summary}
+              </span>
+            </h2>
+            <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
+              시간표 grid + PDF 출력에 적용. 학원 운영 패턴에 맞춰 조정
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          {expanded ? (
+            <ChevronUp size={16} className="text-[var(--color-text-muted)]" />
+          ) : (
+            <ChevronDown size={16} className="text-[var(--color-text-muted)]" />
+          )}
+        </div>
       </div>
 
-      {mode === "custom" && (
-        <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
-                시작 시각
-              </label>
-              <select
-                value={startHour}
-                onChange={(e) => handleStartChange(Number(e.target.value))}
-                className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-              >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {h.toString().padStart(2, "0")}:00
-                  </option>
-                ))}
-              </select>
+      {expanded && (
+        <div className="px-5 pb-5 pt-3 border-t border-[var(--color-border)] space-y-2">
+          {MODE_OPTIONS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                mode === opt.value
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent)]/5"
+                  : "border-[var(--color-border)] hover:border-[var(--color-border-light)]"
+              }`}
+            >
+              <input
+                type="radio"
+                name="time-range-mode"
+                value={opt.value}
+                checked={mode === opt.value}
+                onChange={() => handleModeChange(opt.value)}
+                className="mt-0.5 accent-[var(--color-accent)]"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {opt.label}
+                </div>
+                <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
+                  {opt.desc}
+                </div>
+              </div>
+            </label>
+          ))}
+
+          {mode === "custom" && (
+            <div className="pt-2 border-t border-[var(--color-border)]">
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
+                    시작 시각
+                  </label>
+                  <select
+                    value={startHour}
+                    onChange={(e) => handleStartChange(Number(e.target.value))}
+                    className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {h.toString().padStart(2, "0")}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <span className="text-[var(--color-text-muted)] pb-1.5">—</span>
+                <div className="flex-1">
+                  <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
+                    종료 시각 (해당 시 30분까지 표시)
+                  </label>
+                  <select
+                    value={endHour}
+                    onChange={(e) => handleEndChange(Number(e.target.value))}
+                    className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {h.toString().padStart(2, "0")}:30
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {isInvalidRange && (
+                <p className="mt-2 text-xs text-red-400">
+                  시작 시각이 종료 시각보다 작아야 합니다.
+                </p>
+              )}
             </div>
-            <span className="text-[var(--color-text-muted)] pb-1.5">—</span>
-            <div className="flex-1">
-              <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
-                종료 시각 (해당 시각 30분까지 표시)
-              </label>
-              <select
-                value={endHour}
-                onChange={(e) => handleEndChange(Number(e.target.value))}
-                className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
-              >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {h.toString().padStart(2, "0")}:30
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {isInvalidRange && (
-            <p className="mt-2 text-xs text-red-400">
-              시작 시각이 종료 시각보다 작아야 합니다.
-            </p>
           )}
         </div>
       )}
