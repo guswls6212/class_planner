@@ -132,6 +132,45 @@ export const useGlobalDataInitialization = () => {
 
         if (mounted) setIsInitializing(true);
 
+        // Onboarding 가드 — academy 매핑 없으면 마이그레이션 시작 안 함.
+        // /api/onboarding/status가 academy 발견 시 onboarded 쿠키도 set하므로
+        // middleware 쿠키와 DB 진실 정합성 자동 회복. academy 부재 시 schedule
+        // frame flash 방지 위해 setIsInitialized(true) 후 hard navigate.
+        // status fetch 자체 실패 시(네트워크 에러 등) 기존 흐름 폴백 — anonymous
+        // 데이터 보존은 applyLocalDataChoice의 totalSynced=0 분기가 2차 방어.
+        // 이미 /onboarding에 있는 경우 redirect 발동 시 무한 루프 — pathname 체크 필수.
+        try {
+          const statusRes = await fetch(
+            `/api/onboarding/status?userId=${encodeURIComponent(userId)}`
+          );
+          if (statusRes.ok) {
+            const statusJson = await statusRes.json();
+            if (statusJson?.success && statusJson?.hasAcademy === false) {
+              const onOnboarding =
+                typeof window !== "undefined" &&
+                window.location.pathname === "/onboarding";
+              logger.info("학원 매핑 없음 — 마이그레이션 skip", {
+                redirect: !onOnboarding,
+              });
+              if (mounted) {
+                setIsInitialized(true);
+                setIsInitializing(false);
+              }
+              if (!onOnboarding) {
+                window.location.replace("/onboarding");
+              }
+              return;
+            }
+          }
+        } catch (statusError) {
+          logger.warn("onboarding 상태 확인 실패 — 기존 흐름 폴백", {
+            error:
+              statusError instanceof Error
+                ? statusError.message
+                : String(statusError),
+          });
+        }
+
         // 5개 API 병렬 fetch
         logger.info("서버에서 데이터를 병렬 조회합니다");
         const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes, teachersRes] =

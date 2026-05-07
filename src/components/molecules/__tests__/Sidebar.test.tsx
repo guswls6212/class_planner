@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock useMyRole — controls academies + role state
 const mockUseMyRole = vi.fn();
@@ -9,11 +9,19 @@ vi.mock("@/hooks/useMyRole", () => ({
 }));
 
 // Mock supabase (UserSection calls getUser; Sidebar isLoggedIn calls getSession + onAuthStateChange)
+// Default: logged-in session — academy switcher 가시성은 isLoggedIn에 종속.
+// 비로그인 케이스는 mockResolvedValueOnce로 case별 override.
 vi.mock("../../../utils/supabaseClient", () => ({
   supabase: {
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      getSession: vi.fn().mockResolvedValue({
+        data: {
+          session: {
+            user: { id: "user-test", email: "test@test.com" },
+          },
+        },
+      }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
@@ -76,7 +84,7 @@ describe("Sidebar — Academy Switcher", () => {
     });
   });
 
-  it("academies가 비어 있으면 'CP' 라벨로 폴백한다", () => {
+  it("academies가 비어 있으면 'CP' 라벨로 폴백한다", async () => {
     mockUseMyRole.mockReturnValue({
       role: null,
       isLoading: false,
@@ -87,7 +95,8 @@ describe("Sidebar — Academy Switcher", () => {
       linkedTeacherColor: null,
     });
     renderSidebar();
-    const button = screen.getByRole("button", { name: "학원" });
+    // isLoggedIn 비동기 갱신(getSession Promise resolve) 대기
+    const button = await screen.findByRole("button", { name: "학원" });
     expect(button.textContent?.trim()).toBe("CP");
   });
 
@@ -412,5 +421,83 @@ describe("Sidebar — User Bottom Section", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText("owner@test.com")).not.toBeInTheDocument();
     expect(screen.queryByText("원장")).not.toBeInTheDocument();
+  });
+});
+
+describe("Sidebar — Anonymous Mode + Loading State", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetActiveAcademyId.mockReturnValue(null);
+    window.localStorage.getItem = vi.fn(() => null);
+  });
+
+  it("비로그인 사용자는 academy switcher 영역이 미렌더된다", async () => {
+    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
+      data: { session: null },
+    } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+
+    mockUseMyRole.mockReturnValue({
+      role: null,
+      isLoading: false,
+      canManage: true,
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+
+    renderSidebar();
+
+    // isLoggedIn 비동기 갱신 대기
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // switcher 버튼(aria-label="학원" 또는 academy 이름)이 존재하지 않아야 함
+    expect(
+      screen.queryByRole("button", { name: "학원" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("로그인 + isLoading=true이면 dropdown에 '학원 정보를 불러오는 중...' 표시", async () => {
+    mockUseMyRole.mockReturnValue({
+      role: null,
+      isLoading: true,
+      canManage: true,
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+
+    renderSidebar();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "학원" })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "학원" }));
+    expect(screen.getByText("학원 정보를 불러오는 중...")).toBeInTheDocument();
+  });
+
+  it("로그인 + isLoading=false + academies=[]이면 dropdown에 '참여 중인 학원이 없어요' 표시", async () => {
+    mockUseMyRole.mockReturnValue({
+      role: null,
+      isLoading: false,
+      canManage: true,
+      academies: [],
+      linkedTeacherId: null,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+    });
+
+    renderSidebar();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "학원" })
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "학원" }));
+    expect(screen.getByText("참여 중인 학원이 없어요")).toBeInTheDocument();
   });
 });
