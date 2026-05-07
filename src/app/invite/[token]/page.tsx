@@ -249,8 +249,8 @@ export default function InvitePage({
 
   if (inviteState === "loading") {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-5">
-        <p className="text-slate-400 text-sm">초대 정보를 확인하는 중...</p>
+      <div className="onboarding-bg min-h-screen flex items-center justify-center p-5">
+        <p className="text-zinc-400 text-sm">초대 정보를 확인하는 중...</p>
       </div>
     );
   }
@@ -258,29 +258,31 @@ export default function InvitePage({
   if (inviteState === "invalid" || !inviteInfo) {
     const reason = inviteInfo?.reason;
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-5">
-        <div className="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-8 text-center shadow-2xl">
-          <div className="text-5xl mb-4">⚠️</div>
-          <h2 className="text-xl font-bold text-slate-100 mb-2">
-            {reason === "expired"
-              ? "만료된 초대 링크"
-              : reason === "used"
-              ? "이미 사용된 초대 링크"
-              : "유효하지 않은 초대 링크"}
-          </h2>
-          <p className="text-sm text-slate-400 mb-6">
-            {reason === "expired"
-              ? "7일이 지난 초대 링크입니다. 학원장에게 새로운 초대를 요청하세요."
-              : reason === "used"
-              ? "이미 사용된 초대 링크입니다."
-              : "초대 링크가 올바르지 않습니다."}
-          </p>
-          <button
-            onClick={() => router.push("/")}
-            className="w-full py-2.5 bg-slate-700 text-slate-200 rounded-lg text-sm hover:bg-slate-600 transition-colors"
-          >
-            홈으로 이동
-          </button>
+      <div className="onboarding-bg min-h-screen flex items-center justify-center p-5">
+        <div className="onboarding-card w-full max-w-sm p-8 text-center">
+          <div className="relative">
+            <div className="text-5xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-white mb-2">
+              {reason === "expired"
+                ? "만료된 초대 링크"
+                : reason === "used"
+                ? "이미 사용된 초대 링크"
+                : "유효하지 않은 초대 링크"}
+            </h2>
+            <p className="text-sm text-zinc-400 mb-6">
+              {reason === "expired"
+                ? "7일이 지난 초대 링크입니다. 학원장에게 새로운 초대를 요청하세요."
+                : reason === "used"
+                ? "이미 사용된 초대 링크입니다."
+                : "초대 링크가 올바르지 않습니다."}
+            </p>
+            <button
+              onClick={() => router.push("/")}
+              className="w-full py-2.5 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-200 text-sm font-medium hover:border-amber-400/40 hover:bg-white/[0.07] transition-all"
+            >
+              홈으로 이동
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -290,157 +292,159 @@ export default function InvitePage({
     ROLE_LABEL[inviteInfo.role ?? ""] ?? inviteInfo.role ?? "구성원";
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-5">
-      <div className="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-8 shadow-2xl">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="text-5xl mb-3">🎓</div>
-          <h2 className="text-2xl font-bold text-slate-100 mb-2">학원 초대</h2>
-          {inviteInfo.teacherName ? (
-            <p className="text-sm text-slate-300">
-              <strong className="text-slate-100">{inviteInfo.academyName}</strong>의
-              강사{" "}
-              <strong className="text-slate-100">
-                {inviteInfo.teacherName}
-              </strong>
-              으로 초대되었습니다
-            </p>
-          ) : (
-            <p className="text-sm text-slate-300">
-              <strong className="text-slate-100">{inviteInfo.academyName}</strong>
-              에서{" "}
-              <span className="inline-block bg-purple-900/40 text-purple-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                {roleLabel}
-              </span>{" "}
-              역할로 초대했습니다
+    <div className="onboarding-bg min-h-screen flex items-center justify-center p-5">
+      <div className="onboarding-card w-full max-w-sm p-8">
+        <div className="relative">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="text-5xl mb-3">🎓</div>
+            <h2 className="text-2xl font-bold text-white mb-2">학원 초대</h2>
+            {inviteInfo.teacherName ? (
+              <p className="text-sm text-zinc-300">
+                <strong className="text-white">{inviteInfo.academyName}</strong>의
+                강사{" "}
+                <strong className="text-white">
+                  {inviteInfo.teacherName}
+                </strong>
+                으로 초대되었습니다
+              </p>
+            ) : (
+              <p className="text-sm text-zinc-300">
+                <strong className="text-white">{inviteInfo.academyName}</strong>
+                에서{" "}
+                <span className="inline-block bg-accent/15 text-amber-400 border border-amber-400/30 text-xs px-2.5 py-0.5 rounded-full font-medium">
+                  {roleLabel}
+                </span>{" "}
+                역할로 초대했습니다
+              </p>
+            )}
+          </div>
+
+          {/* Error banner (shared) */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-2.5 rounded-lg text-sm mb-4">
+              {error}
+            </div>
+          )}
+
+          {/* State A — not logged in */}
+          {inviteState === "state-a" && (
+            <div>
+              {!shareUrl ? (
+                <>
+                  <button
+                    onClick={handleLogin}
+                    className="onboarding-btn mb-3"
+                  >
+                    Google로 가입하기
+                  </button>
+                  <button
+                    onClick={handleShareLinkOnly}
+                    disabled={shareLinkLoading}
+                    className="w-full py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                  >
+                    {shareLinkLoading
+                      ? "링크 생성 중..."
+                      : "시간표 보기 링크만 받기 →"}
+                  </button>
+                </>
+              ) : (
+                <div>
+                  <div className="bg-black/40 border border-white/10 rounded-lg p-3 mb-3">
+                    <p className="text-xs text-zinc-400 mb-1.5">시간표 공유 링크</p>
+                    <p className="text-xs text-zinc-200 break-all font-mono">
+                      {shareUrl}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleCopyShareUrl}
+                    className="w-full py-2.5 rounded-lg border border-white/10 bg-white/[0.04] text-zinc-100 text-sm font-medium hover:border-amber-400/40 hover:bg-white/[0.07] transition-all"
+                  >
+                    {copySuccess ? "✓ 복사됨" : "링크 복사"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* State B — logged in, accept-ready */}
+          {(inviteState === "state-b" || inviteState === "accepting") && (
+            <div>
+              {inviteInfo.inviteEmail && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-2.5 rounded-lg text-sm mb-4">
+                  <strong className="text-emerald-300">{inviteInfo.inviteEmail}</strong>
+                  {" "}계정으로 로그인됨
+                </div>
+              )}
+              <button
+                onClick={handleAccept}
+                disabled={inviteState === "accepting"}
+                className="onboarding-btn"
+              >
+                {inviteState === "accepting" ? "수락 중..." : "초대 수락"}
+              </button>
+            </div>
+          )}
+
+          {/* State C — email mismatch */}
+          {inviteState === "state-c" && (
+            <div>
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm mb-4">
+                <p className="font-medium text-red-300 mb-1">
+                  다른 이메일로 로그인됨
+                </p>
+                <p className="text-xs text-red-400/80">
+                  이 초대는{" "}
+                  <strong className="text-red-300">
+                    {inviteInfo.inviteEmail}
+                  </strong>
+                  {" "}계정 전용입니다.
+                  {sessionEmail && (
+                    <>
+                      {" "}현재{" "}
+                      <strong className="text-red-300">{sessionEmail}</strong>으로
+                      로그인되어 있습니다.
+                    </>
+                  )}
+                </p>
+              </div>
+              <button
+                onClick={handleSwitchAccount}
+                className="onboarding-btn mb-3"
+              >
+                {inviteInfo.inviteEmail} 계정으로 전환하기
+              </button>
+              <p className="text-xs text-zinc-400 text-center">
+                계정 전환이 어려우신가요? 학원장에게 문의해주세요.
+              </p>
+            </div>
+          )}
+
+          {/* State D — already a member */}
+          {inviteState === "state-d" && (
+            <div>
+              <div className="bg-accent/10 border border-amber-400/30 text-amber-300 px-4 py-3 rounded-lg text-sm mb-4">
+                <p className="font-medium text-amber-200 mb-1">이미 멤버입니다</p>
+                <p className="text-xs text-amber-300/80">
+                  이 학원의 구성원으로 등록되어 있습니다.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/schedule")}
+                className="onboarding-btn"
+              >
+                학원으로 이동하기
+              </button>
+            </div>
+          )}
+
+          {/* Footer — expiry */}
+          {inviteInfo.expiresAt && (
+            <p className="text-xs text-zinc-500 mt-5 text-center">
+              만료: {new Date(inviteInfo.expiresAt).toLocaleDateString("ko-KR")}
             </p>
           )}
         </div>
-
-        {/* Error banner (shared) */}
-        {error && (
-          <div className="bg-red-900/30 border border-red-800 text-red-300 px-4 py-2.5 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* State A — not logged in */}
-        {inviteState === "state-a" && (
-          <div>
-            {!shareUrl ? (
-              <>
-                <button
-                  onClick={handleLogin}
-                  className="w-full py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 transition-colors mb-3"
-                >
-                  Google로 가입하기
-                </button>
-                <button
-                  onClick={handleShareLinkOnly}
-                  disabled={shareLinkLoading}
-                  className="w-full py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-50"
-                >
-                  {shareLinkLoading
-                    ? "링크 생성 중..."
-                    : "시간표 보기 링크만 받기 →"}
-                </button>
-              </>
-            ) : (
-              <div>
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-slate-400 mb-1.5">시간표 공유 링크</p>
-                  <p className="text-xs text-slate-200 break-all font-mono">
-                    {shareUrl}
-                  </p>
-                </div>
-                <button
-                  onClick={handleCopyShareUrl}
-                  className="w-full py-2.5 bg-slate-700 text-slate-100 rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors"
-                >
-                  {copySuccess ? "✓ 복사됨" : "링크 복사"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* State B — logged in, accept-ready */}
-        {(inviteState === "state-b" || inviteState === "accepting") && (
-          <div>
-            {inviteInfo.inviteEmail && (
-              <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-300 px-4 py-2.5 rounded-lg text-sm mb-4">
-                <strong className="text-emerald-200">{inviteInfo.inviteEmail}</strong>
-                {" "}계정으로 로그인됨
-              </div>
-            )}
-            <button
-              onClick={handleAccept}
-              disabled={inviteState === "accepting"}
-              className="w-full py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 transition-colors disabled:opacity-50"
-            >
-              {inviteState === "accepting" ? "수락 중..." : "초대 수락"}
-            </button>
-          </div>
-        )}
-
-        {/* State C — email mismatch */}
-        {inviteState === "state-c" && (
-          <div>
-            <div className="bg-red-900/30 border border-red-800 text-red-300 px-4 py-3 rounded-lg text-sm mb-4">
-              <p className="font-medium text-red-200 mb-1">
-                다른 이메일로 로그인됨
-              </p>
-              <p className="text-xs text-red-300/80">
-                이 초대는{" "}
-                <strong className="text-red-200">
-                  {inviteInfo.inviteEmail}
-                </strong>
-                {" "}계정 전용입니다.
-                {sessionEmail && (
-                  <>
-                    {" "}현재{" "}
-                    <strong className="text-red-200">{sessionEmail}</strong>으로
-                    로그인되어 있습니다.
-                  </>
-                )}
-              </p>
-            </div>
-            <button
-              onClick={handleSwitchAccount}
-              className="w-full py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 transition-colors mb-3"
-            >
-              {inviteInfo.inviteEmail} 계정으로 전환하기
-            </button>
-            <p className="text-xs text-slate-400 text-center">
-              계정 전환이 어려우신가요? 학원장에게 문의해주세요.
-            </p>
-          </div>
-        )}
-
-        {/* State D — already a member */}
-        {inviteState === "state-d" && (
-          <div>
-            <div className="bg-purple-900/30 border border-purple-800 text-purple-300 px-4 py-3 rounded-lg text-sm mb-4">
-              <p className="font-medium text-purple-200 mb-1">이미 멤버입니다</p>
-              <p className="text-xs text-purple-300/80">
-                이 학원의 구성원으로 등록되어 있습니다.
-              </p>
-            </div>
-            <button
-              onClick={() => router.push("/schedule")}
-              className="w-full py-3 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-500 transition-colors"
-            >
-              학원으로 이동하기
-            </button>
-          </div>
-        )}
-
-        {/* Footer — expiry */}
-        {inviteInfo.expiresAt && (
-          <p className="text-xs text-slate-500 mt-5 text-center">
-            만료: {new Date(inviteInfo.expiresAt).toLocaleDateString("ko-KR")}
-          </p>
-        )}
       </div>
     </div>
   );
