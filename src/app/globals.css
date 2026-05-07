@@ -1238,6 +1238,19 @@ body:has(.schedule-p3-scroll) {
   overflow-x: hidden;
 }
 
+/* P3 모드에서 grid의 native scrollbar hide — virtual scrollbar (sticky bottom)
+   하나만 visible. 사용자가 native + virtual 두 개 겹쳐 보이는 issue 해결. */
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar,
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar-track,
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar-thumb {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.time-table-grid.schedule-p3-scroll {
+  scrollbar-width: none !important;
+}
+
 /* ===== Schedule P3 — Always-visible thin scrollbar (Linear/Vercel/Stripe 트렌드) =====
    사용자 가로 scroll 미리 인지 (Windows 사용자 친화). 매우 thin (5px) +
    dimmed (rgba 0.2)로 시야 가림 최소화. hover/active 시 더 진해짐 (clear
