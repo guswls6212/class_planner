@@ -71,7 +71,7 @@ bash scripts/uat-new.sh release    # 또는 smoke (이건 사본 X 이라 권장
 | 0. dev 최신 동기화 | 터미널 | `git switch dev && git pull --ff-only origin dev` |
 | 1. 새 branch cut | 터미널 | `git switch -c chore/uat-YYYY-MM-DD-<mode>` |
 | 2. dev 서버 시작 | 터미널 (다른 창, 같은 cwd) | `PORT=3000 npm run dev` |
-| 3. 사본 생성 | 터미널 | `bash scripts/uat-new.sh core` (또는 extended / full) |
+| 3. 사본 생성 (Release UAT 만) | 터미널 | `bash scripts/uat-new.sh release` |
 | 4. 사전 준비 (익명) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
 | 5. 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
 | 6. §1~§16 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
@@ -91,7 +91,7 @@ bash scripts/uat-new.sh release    # 또는 smoke (이건 사본 X 이라 권장
 
 | 검증 대상 | 어디서 cut | branch 이름 예시 |
 |---|---|---|
-| **dev 누적 변경** (가장 흔함, 매 dev → main 머지 전) | `dev` 최신 | `chore/uat-2026-05-07-core` |
+| **dev 누적 변경** (가장 흔함, 매 dev → main 머지 전) | `dev` 최신 | `chore/uat-2026-05-07-release` |
 | **특정 PR 검증** (그 PR 안전성 확인 — 머지 전) | 그 PR branch 그대로 (별도 cut 불필요) | (그 PR branch 자체) |
 | **머지 직전 main 검증** (production 배포 전) | `main` 최신 | `chore/uat-2026-05-07-pre-main` |
 
@@ -108,11 +108,11 @@ bash scripts/uat-new.sh release    # 또는 smoke (이건 사본 X 이라 권장
 cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
 
 # 새 branch 로 옮겨 commit
-git switch -c chore/uat-<원래-실행일>-core-late-commit
+git switch -c chore/uat-<원래-실행일>-release-late-commit
 git add tests/manual/runs/<해당-run>.md
-git commit -m "chore(uat): <원래-실행일> core run (late commit)"
-git push -u origin chore/uat-<원래-실행일>-core-late-commit
-gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래-실행일> core run"
+git commit -m "chore(uat): <원래-실행일> release run (late commit)"
+git push -u origin chore/uat-<원래-실행일>-release-late-commit
+gh -R guswls6212/class_planner pr create --base dev --title "chore(uat): <원래-실행일> release run"
 ```
 
 ---
@@ -1926,3 +1926,4 @@ Issue 등록 형식:
 - 2026-05-07 (3): cwd 가정 명시 fix — 이전 (2) 의 `git -C class-planner ...` 패턴이 cwd=dev-pack 부모 가정을 안 박아 사용자가 다른 cwd 에서 실행 시 `cannot change to 'class-planner'` 에러. 사전 단계 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 추가 + 이후 명령은 단순 `git switch ...` 형식. 다른 cwd 사용 시 fallback (절대경로 `git -C ~/...`) 박스도 명시.
 - 2026-05-07 (4): §2.5 "실행 순서 가이드 (Phase 기반)" 신설 — 카테고리별 위→아래 진행 시 비로그인↔로그인↔로그아웃 상태 토글 빈번 (S-1.2 로그인 → S-1.4 다시 비로그인 → S-1.5 다시 로그인) → 비효율. 7-Phase 흐름 (익명 → 충돌 전환 → 인증 → 모바일 → OAuth/로그아웃 → 오프라인 → Edge) 으로 묶어 상태 셋업 1회씩으로 끝남. 카테고리는 lookup 용, Phase 는 실행 순서. 모드별 Phase 매핑 표 (Core 1→2→3→6 / Extended +4+5 / Full 전체) 추가.
 - 2026-05-07 (5): **Hybrid C 모델 채택** — 매 PR 60분 UAT 가 1인 환경 부담 + 무용지물 → 자동 e2e + Claude AI 검증 (Playwright MCP / computer-use) 으로 분산. 사용자 직접 검증은 두 모드만: **Smoke** (10-15분, 매 PR 직전, 사본 X, 핵심 5 시나리오) + **Release UAT** (150분, 분기 1회, 사본 commit). Core/Extended/Full 3-모드 → Smoke/Release 2-모드. 그린라이트 기준 분리 (main 머지: Smoke + 자동 검증 / Release: P0 33 전체). §0 매 사이클 흐름 두 모드 분기 + §3 결과 기록 두 모드 분기. 사용자 결정 사유: \"AI 가 더 빠른데 사용자가 직접 하는 의미?\" 에 대한 답 — 자동화 가능 영역은 모두 자동, 사용자 직접은 시각/UX 직감 영역만.
+- 2026-05-07 (6): `bash scripts/uat-new.sh release` 모드 지원 — Hybrid C 채택 시 스크립트가 legacy `core|extended|full` 만 받아 `release` 입력 시 ERROR 발생. 사용자 지적: \"release 랑 full 같은 거면 하나만 두는게 좋지않아?\" → 정확. `release` 하나로 통일 (의미상 시점 기준이 더 정확). legacy `core|extended|full` 입력 시 deprecated WARN 출력 후 `release` 자동 alias. md 의 `bash scripts/uat-new.sh core (또는 extended / full)` → `release` 단일로 갱신, branch 이름 예시 `chore/uat-...-core` → `-release` 갱신.

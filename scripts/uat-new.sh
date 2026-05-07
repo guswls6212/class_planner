@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# UAT 실행 인스턴스 markdown 생성기
+# UAT 실행 인스턴스 markdown 생성기 (Hybrid C 모델)
 #
 # 사용:
-#   bash scripts/uat-new.sh [core|extended|full]   (기본 core)
+#   bash scripts/uat-new.sh                # 기본 release
+#   bash scripts/uat-new.sh release        # 분기 1회 또는 큰 리팩터 후 — 사본 commit
+#   bash scripts/uat-new.sh smoke          # 매 PR 직전 — 사본 X (안내만 출력)
 #
 # 동작:
-#   - tests/manual/uat-checklist.md 를 tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md 로 복사
+#   - tests/manual/uat-checklist.md 를 tests/manual/runs/<DATE>-<COMMIT>-release.md 로 복사
 #   - 메타 (Build, 실행 일시) 자동 채움
 #   - 이후 사용자는 사본에서 [ ] → [x]/[!]/[~]로 결과 기록 후 git commit
+#
+# Legacy: core / extended / full 입력은 deprecated 경고 후 release 로 자동 alias
 set -euo pipefail
 
 # class-planner repo 루트에서 실행되는지 확인
@@ -17,10 +21,24 @@ if [[ ! -f tests/manual/uat-checklist.md ]]; then
   exit 1
 fi
 
-MODE="${1:-core}"
+MODE="${1:-release}"
 case "$MODE" in
-  core|extended|full) ;;
-  *) echo "ERROR: 모드는 core|extended|full 중 하나" >&2; exit 1 ;;
+  release) ;;
+  smoke)
+    echo "Smoke 모드는 사본 X — 즉석 spot-check 만 진행." >&2
+    echo "  1. PORT=3000 npm run dev   (다른 터미널)" >&2
+    echo "  2. 브라우저 콘솔: uat.clearAll()" >&2
+    echo "  3. uat-checklist.md §2 의 Smoke 5 시나리오 즉석 진행" >&2
+    echo "     (S-1.1, S-2.1, S-5.6, S-12.1, S-14.1)" >&2
+    echo "  4. fail 시 GitHub Issue 등록만 (사본/commit 없음)" >&2
+    exit 0
+    ;;
+  core|extended|full)
+    echo "WARN: '${MODE}' 는 deprecated. release 로 자동 alias 진행." >&2
+    echo "      다음 사이클부터 'release' 사용 권장." >&2
+    MODE="release"
+    ;;
+  *) echo "ERROR: 모드는 release|smoke 중 하나 (legacy: core|extended|full)" >&2; exit 1 ;;
 esac
 
 DATE=$(date +%Y-%m-%d-%H%M)
