@@ -119,9 +119,11 @@ src/app/schedule/__tests__/edit-modal-integration.test.tsx
 src/app/schedule/__tests__/page.test.tsx
 src/app/schedule/__tests__/scroll-position-integration.test.tsx
 src/app/schedule/__tests__/ui-integration.test.tsx
+src/app/schedule/_components/ChipFilterPopover.tsx
 src/app/schedule/_components/EditSessionModal.tsx
 src/app/schedule/_components/GroupSessionModal.tsx
 src/app/schedule/_components/PdfDownloadSection.tsx
+src/app/schedule/_components/PrimarySidebar.tsx
 src/app/schedule/_components/ScheduleActionBar.tsx
 src/app/schedule/_components/ScheduleGridSection.tsx
 src/app/schedule/_components/ScheduleHeader.tsx

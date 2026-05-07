@@ -80,6 +80,8 @@ import { useScheduleMeta } from "../../hooks/useScheduleMeta";
 import { useOutboxFlush } from "../../hooks/useOutboxFlush";
 import { useSessionSelection } from "../../hooks/useSessionSelection";
 import SelectionBar from "@/components/atoms/SelectionBar";
+import ChipFilterPopover from "./_components/ChipFilterPopover";
+import PrimarySidebar from "./_components/PrimarySidebar";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
@@ -749,6 +751,14 @@ function SchedulePageContent(): JSX.Element {
   const { isP3 } = useScheduleLayout();
   // 시간 범위 — query > storage > default(9-23). 전체 sessions 기준으로 auto 계산.
   const timeRange = useTimeRange({ sessions, userId });
+  // P3 사이드바 토글 + 과목 필터 placeholder (UI only, 실 시간표 필터링은 별도 PR)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const toggleSubjectFilter = useCallback((id: string) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
 
   const {
     validateTimeRange,
@@ -1847,9 +1857,25 @@ function SchedulePageContent(): JSX.Element {
   );
 
   return (
+    <div className={isP3 ? "flex h-screen overflow-hidden" : ""}>
+      {isP3 && (
+        <PrimarySidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          students={students}
+          selectedStudentIds={selectedStudentIds}
+          onToggleStudent={toggleStudentFilter}
+          subjects={subjects}
+          selectedSubjectIds={selectedSubjectIds}
+          onToggleSubject={toggleSubjectFilter}
+          teachers={teachers}
+          selectedTeacherIds={selectedTeacherIds}
+          onToggleTeacher={toggleTeacherFilter}
+        />
+      )}
     <div
       className={`timetable-container p-4 ${
-        isP3 ? "flex flex-col h-screen overflow-hidden" : ""
+        isP3 ? "flex-1 min-w-0 flex flex-col overflow-hidden" : ""
       }`}
     >
       {/*
@@ -1899,27 +1925,49 @@ function SchedulePageContent(): JSX.Element {
         </div>
       </div>
 
-      {colorBy === "student" && (
-        <StudentFilterChipBar
-          students={students}
-          selectedStudentIds={selectedStudentIds}
-          onToggleStudent={toggleStudentFilter}
-          onClearFilter={clearStudentFilter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          variant={isP3 ? "active-only" : "default"}
-        />
-      )}
+      {colorBy === "student" &&
+        (isP3 ? (
+          <div className="py-2 mb-3 border-b border-[var(--color-border)] flex items-center gap-2 flex-wrap">
+            <ChipFilterPopover
+              type="student"
+              items={students}
+              selectedIds={selectedStudentIds}
+              onToggle={toggleStudentFilter}
+              onClearAll={clearStudentFilter}
+              onExpandToSidebar={() => setSidebarOpen(true)}
+            />
+          </div>
+        ) : (
+          <StudentFilterChipBar
+            students={students}
+            selectedStudentIds={selectedStudentIds}
+            onToggleStudent={toggleStudentFilter}
+            onClearFilter={clearStudentFilter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          />
+        ))}
 
-      {colorBy === "teacher" && (
-        <TeacherFilterChipBar
-          teachers={teachers}
-          selectedTeacherIds={selectedTeacherIds}
-          onToggleTeacher={toggleTeacherFilter}
-          onClearFilter={clearTeacherFilter}
-          variant={isP3 ? "active-only" : "default"}
-        />
-      )}
+      {colorBy === "teacher" &&
+        (isP3 ? (
+          <div className="py-2 mb-3 border-b border-[var(--color-border)] flex items-center gap-2 flex-wrap">
+            <ChipFilterPopover
+              type="teacher"
+              items={teachers}
+              selectedIds={selectedTeacherIds}
+              onToggle={toggleTeacherFilter}
+              onClearAll={clearTeacherFilter}
+              onExpandToSidebar={() => setSidebarOpen(true)}
+            />
+          </div>
+        ) : (
+          <TeacherFilterChipBar
+            teachers={teachers}
+            selectedTeacherIds={selectedTeacherIds}
+            onToggleTeacher={toggleTeacherFilter}
+            onClearFilter={clearTeacherFilter}
+          />
+        ))}
 
       {/* 일별 뷰: 요일 칩 바 */}
       {viewMode === "daily" && (
@@ -2310,6 +2358,7 @@ function SchedulePageContent(): JSX.Element {
         preflightResult={pdfPreflightResult}
         hasStudentFilter={selectedStudentIds.length > 0}
       />
+    </div>
     </div>
   );
 }
