@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { DragEvent } from "react";
 
 interface StudentFilterChipBarProps {
@@ -10,6 +10,8 @@ interface StudentFilterChipBarProps {
   onClearFilter: () => void;
   onDragStart: (e: DragEvent<HTMLButtonElement>, student: { id: string; name: string }) => void;
   onDragEnd: (e: DragEvent<HTMLButtonElement>) => void;
+  /** P3 — 활성 학생 + 검색 결과만 표시. default — 모든 학생 표시. */
+  variant?: "default" | "active-only";
 }
 
 export default function StudentFilterChipBar({
@@ -19,17 +21,31 @@ export default function StudentFilterChipBar({
   onClearFilter,
   onDragStart,
   onDragEnd,
+  variant = "default",
 }: StudentFilterChipBarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const visibleStudents = students.filter((s) =>
-    searchQuery.trim()
-      ? s.name.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
-  );
+  const isActiveOnly = variant === "active-only";
+
+  const displayedStudents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (isActiveOnly) {
+      return students.filter(
+        (s) =>
+          selectedStudentIds.includes(s.id) ||
+          (q && s.name.toLowerCase().includes(q)),
+      );
+    }
+    return students.filter((s) =>
+      q ? s.name.toLowerCase().includes(q) : true,
+    );
+  }, [students, selectedStudentIds, searchQuery, isActiveOnly]);
 
   const hasFilter = selectedStudentIds.length > 0;
+  const hiddenCount = isActiveOnly
+    ? students.length - displayedStudents.length
+    : 0;
 
   return (
     <div
@@ -56,7 +72,7 @@ export default function StudentFilterChipBar({
         />
       )}
 
-      {visibleStudents.map((student) => {
+      {displayedStudents.map((student) => {
         const isSelected = selectedStudentIds.includes(student.id);
         return (
           <button
@@ -77,6 +93,17 @@ export default function StudentFilterChipBar({
           </button>
         );
       })}
+
+      {isActiveOnly && hiddenCount > 0 && !searchQuery.trim() && (
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="px-2.5 py-1 rounded-full text-xs text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
+          aria-label={`${hiddenCount}명 더 — 검색으로 추가`}
+        >
+          + {hiddenCount}명 (검색)
+        </button>
+      )}
 
       {hasFilter && (
         <button

@@ -85,6 +85,10 @@ interface TimeTableGridProps {
   onSessionContextMenuCopy?: (sessionId: string) => void;
   /** 모바일 long-press 메뉴 — "선택 시작" */
   onSessionContextMenuStartSelect?: (sessionId: string) => void;
+  /** 표시 시작 시각 (0-23). default 9. */
+  startHour?: number;
+  /** 표시 종료 시각 (0-23, inclusive — endHour:30 슬롯까지 표시). default 23. */
+  endHour?: number;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -115,6 +119,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onSessionSelectToggle,
       onSessionContextMenuCopy,
       onSessionContextMenuStartSelect,
+      startHour = 9,
+      endHour = 23,
     },
     ref
   ) => {
@@ -370,12 +376,12 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const timeSlots30Min = useMemo(() => {
       const slots: string[] = [];
-      for (let hour = 9; hour < 24; hour++) {
+      for (let hour = startHour; hour <= endHour; hour++) {
         slots.push(`${hour.toString().padStart(2, "0")}:00`);
         slots.push(`${hour.toString().padStart(2, "0")}:30`);
       }
       return slots;
-    }, []);
+    }, [startHour, endHour]);
 
     const slotCount = timeSlots30Min.length;
 
@@ -458,12 +464,16 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     const todayStr = now.toDateString();
 
-    // 현재 시각 → 픽셀 위치 (9:00 기준, SLOT_HEIGHT_PX per 30min)
+    // 현재 시각 → 픽셀 위치 (startHour 기준, SLOT_HEIGHT_PX per 30min).
+    // 마지막 slot 시작 분(= (slotCount-1) * 30) 이후의 시각은 표시 X.
     const nowLinePx = useMemo(() => {
-      const minutesSince9 = (now.getHours() - 9) * 60 + now.getMinutes();
-      if (minutesSince9 < 0 || minutesSince9 > 870) return null; // 870 = (23-9)*60+30 — last slot is 23:30
-      return (minutesSince9 / 30) * SLOT_HEIGHT_PX;
-    }, [now]);
+      const minutesSinceStart =
+        (now.getHours() - startHour) * 60 + now.getMinutes();
+      const lastSlotStartMinutes = (slotCount - 1) * 30;
+      if (minutesSinceStart < 0 || minutesSinceStart > lastSlotStartMinutes)
+        return null;
+      return (minutesSinceStart / 30) * SLOT_HEIGHT_PX;
+    }, [now, startHour, slotCount]);
 
     const nowTimeStr = useMemo(() => {
       const h = now.getHours().toString().padStart(2, "0");

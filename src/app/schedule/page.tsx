@@ -25,7 +25,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useColorBy } from "../../hooks/useColorBy";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useScheduleLayout } from "../../hooks/useScheduleLayout";
 import { useScheduleView } from "../../hooks/useScheduleView";
+import { useTimeRange } from "../../hooks/useTimeRange";
 import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
 import { buildTemplateDataPure } from "./_utils/buildTemplateData";
@@ -80,6 +82,7 @@ import { useSessionSelection } from "../../hooks/useSessionSelection";
 import SelectionBar from "@/components/atoms/SelectionBar";
 import StudentFilterChipBar from "./_components/StudentFilterChipBar";
 import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
+import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
   ERROR_MESSAGES,
@@ -741,6 +744,11 @@ function SchedulePageContent(): JSX.Element {
     enrollments,
     ""
   );
+
+  // P3 옵션 — ?layout=p3 또는 localStorage로 활성. default 모드는 영향 없음.
+  const { isP3 } = useScheduleLayout();
+  // 시간 범위 — query > storage > default(9-23). 전체 sessions 기준으로 auto 계산.
+  const timeRange = useTimeRange({ sessions, userId });
 
   const {
     validateTimeRange,
@@ -1839,13 +1847,19 @@ function SchedulePageContent(): JSX.Element {
   );
 
   return (
-    <div className="timetable-container p-4">
+    <div
+      className={`timetable-container p-4 ${
+        isP3 ? "flex flex-col h-screen overflow-hidden" : ""
+      }`}
+    >
       {/*
         ⚠️ 변경 알림 UX (2026-05-04): 이전엔 화면 상단을 가로로 가득 채우는 banner였으나
         (a) 사용자 본인 변경에도 잘못 발화 (b) 시각 영역 잠식 — 두 가지 문제로 토스트로 변경.
         본인 변경은 useScheduleMeta + apiSync.subscribeSelfSync 윈도우(10s)로 자동 suppress.
         다른 admin 변경만 토스트로 안내 + [새로고침] 액션 버튼 (sync 옵션 useEffect 아래).
       */}
+      {/* P3: 헤더/필터/네비는 layout-anchored 영역. default 모드는 단순 wrap. */}
+      <div className={isP3 ? "shrink-0" : ""}>
       {/* Row 1: 제목(좌) + 액션(우) */}
       <div className="flex items-start justify-between mb-4 border-b border-[--color-border] pb-3">
         <ScheduleHeader
@@ -1893,6 +1907,7 @@ function SchedulePageContent(): JSX.Element {
           onClearFilter={clearStudentFilter}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          variant={isP3 ? "active-only" : "default"}
         />
       )}
 
@@ -1902,6 +1917,7 @@ function SchedulePageContent(): JSX.Element {
           selectedTeacherIds={selectedTeacherIds}
           onToggleTeacher={toggleTeacherFilter}
           onClearFilter={clearTeacherFilter}
+          variant={isP3 ? "active-only" : "default"}
         />
       )}
 
@@ -1930,6 +1946,9 @@ function SchedulePageContent(): JSX.Element {
           nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
         />
         <div className="flex items-center gap-2 shrink-0">
+          {isP3 && (
+            <TimeRangeSelector current={timeRange} userId={userId} />
+          )}
           <SegmentedButton
             options={VIEW_MODES}
             value={viewMode}
@@ -1953,7 +1972,9 @@ function SchedulePageContent(): JSX.Element {
           </div>
         </div>
       </div>
-
+      </div>
+      {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
+      <div className={isP3 ? "flex-1 min-h-0 overflow-auto" : ""}>
       {/* 시간표 뷰 (일별/주간/월별 조건부 렌더링) */}
       {viewMode === "daily" ? (
         <ScheduleDailyView
@@ -2015,6 +2036,8 @@ function SchedulePageContent(): JSX.Element {
             onSessionSelectToggle={canManage ? sessionSelection.toggle : undefined}
             onSessionContextMenuCopy={canManage ? handleContextMenuCopy : undefined}
             onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
+            startHour={timeRange.startHour}
+            endHour={timeRange.endHour}
           />
           {weekFilteredSessions.length === 0 && (
             <EmptyWeekState
@@ -2030,6 +2053,7 @@ function SchedulePageContent(): JSX.Element {
           )}
         </div>
       )}
+      </div>
 
       {/* FAB — 모든 뷰(일별/주간/월별)에서 공통 표시; member 역할은 숨김 */}
       {canManage && (

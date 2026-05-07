@@ -121,6 +121,7 @@ src/app/schedule/_components/ScheduleGridSection.tsx
 src/app/schedule/_components/ScheduleHeader.tsx
 src/app/schedule/_components/StudentFilterChipBar.tsx
 src/app/schedule/_components/TeacherFilterChipBar.tsx
+src/app/schedule/_components/TimeRangeSelector.tsx
 src/app/schedule/_components/__tests__/EditSessionModal.test.tsx
 src/app/schedule/_components/__tests__/GroupSessionModal.test.tsx
 src/app/schedule/_components/__tests__/PdfDownloadSection.test.tsx
@@ -129,6 +130,7 @@ src/app/schedule/_components/__tests__/ScheduleGridSection.test.tsx
 src/app/schedule/_components/__tests__/ScheduleHeader.test.tsx
 src/app/schedule/_components/__tests__/StudentFilterChipBar.test.tsx
 src/app/schedule/_components/__tests__/TeacherFilterChipBar.test.tsx
+src/app/schedule/_components/__tests__/TimeRangeSelector.test.tsx
 src/app/schedule/_constants/scheduleConstants.ts
 src/app/schedule/_hooks/__tests__/useEditModalState.test.ts
 src/app/schedule/_hooks/__tests__/useStudentFilter.test.ts
