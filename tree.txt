@@ -415,6 +415,7 @@ src/features/schedule/filters.ts
 src/hooks/__tests__/useAttendance.test.ts
 src/hooks/__tests__/useBottomSheet.test.ts
 src/hooks/__tests__/useDisplaySessions.test.ts
+src/hooks/__tests__/detectPartialCorruption.test.ts
 src/hooks/__tests__/useDragController.test.ts
 src/hooks/__tests__/useGlobalDataInitialization.security.test.ts
 src/hooks/__tests__/useGlobalDataInitialization.test.ts
