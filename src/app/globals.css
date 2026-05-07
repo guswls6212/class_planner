@@ -1251,6 +1251,13 @@ body:has(.schedule-p3-scroll) {
   scrollbar-width: none !important;
 }
 
+/* P3 모드에서 virtual scrollbar의 우측 padding — FAB(bottom-20 right-4)
+   영역 회피. scrollbar가 FAB까지 안 늘어나 visual 겹침 X. */
+.time-table-grid.schedule-p3-scroll .virtual-scrollbar-container {
+  right: 80px !important;
+  border-bottom-right-radius: 0 !important;
+}
+
 /* ===== Schedule P3 — Always-visible thin scrollbar (Linear/Vercel/Stripe 트렌드) =====
    사용자 가로 scroll 미리 인지 (Windows 사용자 친화). 매우 thin (5px) +
    dimmed (rgba 0.2)로 시야 가림 최소화. hover/active 시 더 진해짐 (clear
