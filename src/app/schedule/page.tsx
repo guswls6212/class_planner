@@ -1876,10 +1876,17 @@ function SchedulePageContent(): JSX.Element {
     : viewMode === "monthly" ? "월별 시간표"
     : "주간 시간표";
 
-  const dateLabel = (() => {
+  // dateLabel 두 형태 — desktop은 full, mobile은 함축(year+month). day는 grid 상단에
+  // 표시되므로 toolbar는 month/year 단위로 충분 (모바일 toolbar overflow 방지).
+  const { dateLabel, dateLabelShort } = (() => {
     if (viewMode === "daily") {
       const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-      return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`;
+      const yy = String(selectedDate.getFullYear()).slice(2);
+      const m = selectedDate.getMonth() + 1;
+      return {
+        dateLabel: `${selectedDate.getFullYear()}년 ${m}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`,
+        dateLabelShort: `${yy}년 ${m}월`,
+      };
     }
     if (viewMode === "weekly") {
       const mon = new Date(selectedDate);
@@ -1887,15 +1894,31 @@ function SchedulePageContent(): JSX.Element {
       const sun = new Date(mon);
       sun.setDate(sun.getDate() + 6);
       const sameMonth = mon.getMonth() === sun.getMonth();
-      const start = `${mon.getFullYear()}년 ${mon.getMonth() + 1}월 ${mon.getDate()}일`;
+      const sameYear = mon.getFullYear() === sun.getFullYear();
+      const monMM = mon.getMonth() + 1;
+      const sunMM = sun.getMonth() + 1;
+      const monYY = String(mon.getFullYear()).slice(2);
+      const sunYY = String(sun.getFullYear()).slice(2);
+      const start = `${mon.getFullYear()}년 ${monMM}월 ${mon.getDate()}일`;
       const end = sameMonth
         ? `${sun.getDate()}일`
-        : sun.getFullYear() !== mon.getFullYear()
-          ? `${sun.getFullYear()}년 ${sun.getMonth() + 1}월 ${sun.getDate()}일`
-          : `${sun.getMonth() + 1}월 ${sun.getDate()}일`;
-      return `${start} — ${end}`;
+        : !sameYear
+          ? `${sun.getFullYear()}년 ${sunMM}월 ${sun.getDate()}일`
+          : `${sunMM}월 ${sun.getDate()}일`;
+      return {
+        dateLabel: `${start} — ${end}`,
+        dateLabelShort: sameMonth
+          ? `${monYY}년 ${monMM}월`
+          : !sameYear
+            ? `${monYY}-${sunYY}년 ${monMM}-${sunMM}월`
+            : `${monYY}년 ${monMM}-${sunMM}월`,
+      };
     }
-    return `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`;
+    const yy = String(selectedDate.getFullYear()).slice(2);
+    return {
+      dateLabel: `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`,
+      dateLabelShort: `${yy}년 ${selectedDate.getMonth() + 1}월`,
+    };
   })();
 
   const teachersForPdfModal = useMemo(
@@ -2405,6 +2428,7 @@ function SchedulePageContent(): JSX.Element {
     {isP3 && (
       <ScheduleFloatingToolbar
         dateLabel={dateLabel}
+        dateLabelShort={dateLabelShort}
         onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
         onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
         onToday={goToToday}
