@@ -114,7 +114,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
               className="text-[11px] text-[var(--color-text-secondary)] hover:text-accent transition-colors"
               aria-label="학생 상세 등록"
             >
-              + 상세 추가
+              + 상세 등록
             </button>
           )}
         </div>

@@ -97,7 +97,7 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
               className="text-[11px] text-[var(--color-text-secondary)] hover:text-accent transition-colors"
               aria-label="강사 상세 등록"
             >
-              + 상세 추가
+              + 상세 등록
             </button>
           )}
         </div>
