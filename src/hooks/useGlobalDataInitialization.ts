@@ -58,6 +58,15 @@ export function detectPartialCorruption(
   );
 }
 
+/**
+ * Custom event name dispatched when active academy changes (onboarding 완료,
+ * 학원 추가 등). useGlobalDataInitialization이 이 이벤트를 감지하여 mig 흐름을
+ * 재실행한다. Sidebar의 academy switcher는 `window.location.reload()`로 우회 중이라
+ * 이벤트 dispatch 불필요. 본 이벤트는 SPA navigation 컨텍스트(onboarding → schedule)
+ * 에서 hook이 mount 후 academy 생성을 감지할 수 없는 결함을 보호한다 (UAT 2026-05-08).
+ */
+export const ACADEMY_CHANGED_EVENT = "class-planner:academy-changed";
+
 export const useGlobalDataInitialization = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -66,6 +75,10 @@ export const useGlobalDataInitialization = () => {
   const [pendingServerData, setPendingServerData] = useState<ClassPlannerData | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationError, setMigrationError] = useState<string | null>(null);
+  // academy 변화 감지용 monotonic counter — bump 시 mig effect 재실행.
+  // mount 시 한 번만 실행되는 deps:[] 패턴이 onboarding → schedule SPA navigation
+  // 후 academy 생성을 인지 못 하는 결함 (UAT 2026-05-08) 회복.
+  const [academyVersion, setAcademyVersion] = useState(0);
 
   const resolveConflict = useCallback(
     async (choice: "server" | "local") => {
@@ -117,6 +130,23 @@ export const useGlobalDataInitialization = () => {
     },
     [pendingUserId, pendingServerData]
   );
+
+  // ACADEMY_CHANGED_EVENT / cross-tab storage 이벤트 → academy 변화 감지 → mig
+  // effect 재실행. mount 시 한 번만 등록.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setAcademyVersion((v) => v + 1);
+    window.addEventListener(ACADEMY_CHANGED_EVENT, bump);
+    const onStorage = (e: StorageEvent) => {
+      // active_academy:{userId} 키 변경 시에만 bump (다른 tab에서 학원 전환 등)
+      if (e.key && e.key.startsWith("active_academy:")) bump();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(ACADEMY_CHANGED_EVENT, bump);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -436,7 +466,7 @@ export const useGlobalDataInitialization = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [academyVersion]);
 
   return { isInitialized, isInitializing, conflictState, resolveConflict, isMigrating, migrationError };
 };

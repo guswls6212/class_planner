@@ -690,6 +690,24 @@ SchedulePage
 - **PR #286** — `fullDataMigration`의 sessions POST에 `weekStartDate` fallback (`getWeekStartDate(new Date())`, KST 월요일). API 통일 에러 응답 (`{success:false, error:{code, message}}`)에 맞춘 폴백 로직 + `extractErrorMessage` helper로 `[object Object]` 회귀 차단.
 - **PR #287** — `upload-local` 자동 경로 throw 시 `toast.error("자동 동기화 실패", { description })` + `setMigrationError` + `setIsInitialized(true)` (앱 진입 보장, anonymous 데이터 보존).
 - **PR #288** — `findDuplicateStudent` graceful 매칭 (academy 단위 격리 가정 → 동명이인 0명이고 한쪽이라도 빈 메타면 이름만으로 매칭, 동명이인 다수일 때만 strict 비교).
+- **PR #294 (UAT 2026-05-09)** — `useGlobalDataInitialization`이 academy 변화에 반응하도록 `[academyVersion]` deps 추가. 첫 로그인 시 `hasAcademy=false` 가드로 early return된 후 onboarding 완료 시 SPA navigation(`router.push`)으로 schedule 진입해도 hook이 재마운트되지 않아 마이그가 트리거되지 않던 결함 fix. `class-planner:academy-changed` custom event + `storage` 이벤트(`active_academy:{userId}` 키 변경)가 `academyVersion`을 bump → mig effect 재실행. onboarding 완료 시 `window.dispatchEvent(new CustomEvent("class-planner:academy-changed"))`. Sidebar의 academy switcher는 이미 `window.location.reload()`로 우회 중이라 별도 dispatch 불필요.
+
+### 5.6.1 Academy Switcher (Sidebar)
+
+```
+isLoggedIn 시에만 렌더 (anonymous-first 정책 — 익명 모드는 학원 개념 무의미).
+
+학원 전환 클릭:
+1. POST /api/auth/set-active-academy { userId, academyId } → active_academy_id 쿠키 set
+2. setActiveAcademyId(userId, academyId) → localStorage active_academy:{userId} 갱신
+3. window.location.reload() — React state 전체 reset, 새 academy의 storage 키로 진입
+
+"+ 새 학원 만들기" 버튼:
+- 현재 disabled (추후 업데이트 예정). 다중 학원 워크플로우(데이터 격리, 학원별 권한,
+  결제 연동 등) 미완성 상태라 의도적 차단.
+- 활성화 시점: 다중 학원 spec 합의 후 (ADR 별도).
+- UAT 시나리오에는 미포함 (동작 검증 불필요).
+```
 
 ---
 
