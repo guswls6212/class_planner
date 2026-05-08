@@ -5,33 +5,60 @@ import type { Student, Subject, Enrollment, Session } from "../planner";
  */
 
 /**
- * 학생 중복 판단.
- * name + gender + birthDate 세 필드가 모두 존재하고 모두 일치할 때만 중복으로 판단한다.
- * 어느 한 쪽이라도 필드가 없으면 null 반환.
+ * 학생 중복 판단 (graceful 매칭).
+ *
+ * 규칙:
+ *  1) 이름이 서로 다르면 null.
+ *  2) 같은 이름의 server 후보가 1명이고 양쪽 모두 birthDate+gender가 채워져 있으면
+ *     strict 비교 (값이 다르면 null → 폴백에 위임).
+ *  3) 같은 이름의 server 후보가 1명이고 한쪽이라도 메타가 비어있으면 이름이 학원 내
+ *     unique key 역할을 한다고 가정하고 그 server를 반환한다 (UAT 케이스).
+ *  4) 동명이인 다수면 양쪽 모두 메타가 채워졌을 때만 strict 비교, 아니면 null (모호).
+ *
+ * 가정: academy 단위로 격리되며 한 학원 안에서 동일 이름은 거의 같은 사람이다.
+ * 동명이인 우려는 (4)의 strict 비교로 보호한다.
  */
 export function findDuplicateStudent(
   local: Student,
   serverStudents: Student[]
 ): Student | null {
   const localName = local.name?.trim();
+  if (!localName) return null;
+
+  const sameName = serverStudents.filter((s) => s.name?.trim() === localName);
+  if (sameName.length === 0) return null;
+
   const localGender = local.gender?.trim();
   const localBirthDate = local.birthDate?.trim();
 
-  if (!localName || !localGender || !localBirthDate) return null;
+  if (sameName.length === 1) {
+    const candidate = sameName[0];
+    const candGender = candidate.gender?.trim();
+    const candBirthDate = candidate.birthDate?.trim();
 
-  for (const server of serverStudents) {
-    const serverName = server.name?.trim();
-    const serverGender = server.gender?.trim();
-    const serverBirthDate = server.birthDate?.trim();
+    // 양쪽 모두 메타가 완전한 경우에만 strict 비교 — mismatch면 null로 폴백 위임.
+    // (예: 같은 이름이지만 다른 성별/생일 = 다른 학생일 가능성)
+    if (localGender && localBirthDate && candGender && candBirthDate) {
+      return localGender === candGender && localBirthDate === candBirthDate
+        ? candidate
+        : null;
+    }
+    // 부분 정보 — 이름이 unique key 역할, 그 server 반환.
+    return candidate;
+  }
 
-    if (!serverName || !serverGender || !serverBirthDate) continue;
+  // 동명이인 다수 — 모호. 메타가 부족하면 폴백에 위임.
+  if (!localGender || !localBirthDate) return null;
 
+  for (const candidate of sameName) {
+    const candGender = candidate.gender?.trim();
+    const candBirthDate = candidate.birthDate?.trim();
+    if (!candGender || !candBirthDate) continue;
     if (
-      localName === serverName &&
-      localGender === serverGender &&
-      localBirthDate === serverBirthDate
+      localGender === candGender &&
+      localBirthDate === candBirthDate
     ) {
-      return server;
+      return candidate;
     }
   }
 

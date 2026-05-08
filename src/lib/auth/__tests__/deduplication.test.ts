@@ -8,7 +8,9 @@ import {
 import type { Student, Subject, Enrollment, Session } from "../../planner";
 
 // ---------------------------------------------------------------------------
-// findDuplicateStudent
+// findDuplicateStudent — graceful matching
+//   academy 단위 격리 가정 → 같은 이름은 거의 같은 사람.
+//   동명이인 다수일 때만 메타로 strict 분기.
 // ---------------------------------------------------------------------------
 describe("findDuplicateStudent", () => {
   const serverStudents: Student[] = [
@@ -17,7 +19,7 @@ describe("findDuplicateStudent", () => {
     { id: "s3", name: "이영희", gender: "female" }, // birthDate 없음
   ];
 
-  it("세 필드가 모두 존재하고 모두 일치하면 서버 학생을 반환한다", () => {
+  it("동명이인 0명 + 세 필드 모두 일치 → 매칭", () => {
     const local: Student = {
       id: "local-1",
       name: "홍길동",
@@ -27,28 +29,28 @@ describe("findDuplicateStudent", () => {
     expect(findDuplicateStudent(local, serverStudents)).toEqual(serverStudents[0]);
   });
 
-  it("로컬에 birthDate가 없으면 null을 반환한다", () => {
+  it("동명이인 0명 + 로컬에 birthDate 없음 → 이름만으로 graceful 매칭 (UAT 케이스)", () => {
     const local: Student = {
       id: "local-2",
       name: "홍길동",
       gender: "male",
       // birthDate 없음
     };
-    expect(findDuplicateStudent(local, serverStudents)).toBeNull();
+    expect(findDuplicateStudent(local, serverStudents)).toEqual(serverStudents[0]);
   });
 
-  it("서버 학생에 gender가 없으면 null을 반환한다", () => {
+  it("동명이인 0명 + 서버 학생에 birthDate 없음 → 이름만으로 graceful 매칭", () => {
     const local: Student = {
       id: "local-3",
       name: "이영희",
       gender: "female",
       birthDate: "2012-03-20",
     };
-    // serverStudents[2]는 birthDate가 없으므로 매칭 불가
-    expect(findDuplicateStudent(local, serverStudents)).toBeNull();
+    // serverStudents[2]는 birthDate 부재 — 한쪽이라도 부분 정보면 graceful로 매칭
+    expect(findDuplicateStudent(local, serverStudents)).toEqual(serverStudents[2]);
   });
 
-  it("이름이 다르면 null을 반환한다", () => {
+  it("이름이 다르면 null", () => {
     const local: Student = {
       id: "local-4",
       name: "박민수",
@@ -58,7 +60,7 @@ describe("findDuplicateStudent", () => {
     expect(findDuplicateStudent(local, serverStudents)).toBeNull();
   });
 
-  it("gender가 다르면 null을 반환한다", () => {
+  it("동명이인 0명 + 양쪽 메타 완전 + gender mismatch → null (다른 학생 가능성)", () => {
     const local: Student = {
       id: "local-5",
       name: "홍길동",
@@ -68,12 +70,59 @@ describe("findDuplicateStudent", () => {
     expect(findDuplicateStudent(local, serverStudents)).toBeNull();
   });
 
-  it("로컬에 gender가 없으면 null을 반환한다", () => {
+  it("동명이인 0명 + 로컬에 gender 없음 → 이름만으로 graceful 매칭", () => {
     const local: Student = {
       id: "local-6",
       name: "홍길동",
       birthDate: "2010-01-01",
       // gender 없음
+    };
+    expect(findDuplicateStudent(local, serverStudents)).toEqual(serverStudents[0]);
+  });
+
+  it("로컬에 이름 없으면 null", () => {
+    const local: Student = {
+      id: "local-7",
+      name: "",
+      gender: "male",
+      birthDate: "2010-01-01",
+    };
+    expect(findDuplicateStudent(local, serverStudents)).toBeNull();
+  });
+});
+
+describe("findDuplicateStudent — 동명이인 다수", () => {
+  const serverStudents: Student[] = [
+    { id: "s1", name: "김민준", gender: "male", birthDate: "2010-01-01" },
+    { id: "s2", name: "김민준", gender: "male", birthDate: "2012-05-15" },
+    { id: "s3", name: "이수진", gender: "female", birthDate: "2010-03-03" },
+  ];
+
+  it("동명이인 다수 + 양쪽 메타 완전 + 일치하는 후보 1명 → 그 server 반환", () => {
+    const local: Student = {
+      id: "loc",
+      name: "김민준",
+      gender: "male",
+      birthDate: "2012-05-15",
+    };
+    expect(findDuplicateStudent(local, serverStudents)).toEqual(serverStudents[1]);
+  });
+
+  it("동명이인 다수 + 로컬 메타 부족 → null (모호 — 폴백에 위임)", () => {
+    const local: Student = {
+      id: "loc",
+      name: "김민준",
+      // gender/birthDate 없음
+    };
+    expect(findDuplicateStudent(local, serverStudents)).toBeNull();
+  });
+
+  it("동명이인 다수 + 양쪽 메타 완전 + 모두 mismatch → null", () => {
+    const local: Student = {
+      id: "loc",
+      name: "김민준",
+      gender: "female", // server 두 김민준 모두 male
+      birthDate: "2010-01-01",
     };
     expect(findDuplicateStudent(local, serverStudents)).toBeNull();
   });
