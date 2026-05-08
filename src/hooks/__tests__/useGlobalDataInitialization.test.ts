@@ -25,6 +25,10 @@ vi.mock("../../lib/auth/handleLoginDataMigration", () => ({
   applyLocalDataChoice: vi.fn(),
 }));
 
+vi.mock("sonner", () => ({
+  toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
+
 // timeUtils mock removed - using standard Date now
 
 vi.mock("../../utils/supabaseClient", () => ({
@@ -289,6 +293,26 @@ describe("로그인 사용자 — 충돌 처리", () => {
     await waitFor(() => expect(result.current.isInitialized).toBe(true));
 
     expect(result.current.conflictState).toBeNull();
+  });
+
+  it("upload-local 자동 마이그레이션 실패 시 toast로 표면화 + migrationError set + isInitialized true 진행 (UAT 2026-05-08 회귀 가드)", async () => {
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "upload-local" });
+    const { applyLocalDataChoice } = await import("../../lib/auth/handleLoginDataMigration");
+    const errMsg =
+      "데이터 동기화에 실패했습니다: session: weekStartDate (YYYY-MM-DD) is required";
+    vi.mocked(applyLocalDataChoice).mockRejectedValueOnce(new Error(errMsg));
+    const { toast } = await import("sonner");
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+
+    // catch 후 setIsInitialized(true)로 앱 진입을 막지 않는다
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    expect(result.current.migrationError).toBe(errMsg);
+    expect(toast.error).toHaveBeenCalledWith(
+      "자동 동기화 실패",
+      expect.objectContaining({ description: errMsg }),
+    );
   });
 
   it("resolveConflict('server') 호출 시 isInitialized true, conflictState null", async () => {

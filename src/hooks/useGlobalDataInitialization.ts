@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { Teacher } from "../lib/planner";
 import {
   ANONYMOUS_STORAGE_KEY,
@@ -320,7 +321,30 @@ export const useGlobalDataInitialization = () => {
         }
 
         if (migrationResult.action === "upload-local") {
-          await applyLocalDataChoice(userId, serverData);
+          // 자동 경로 — conflictState가 없어 DataConflictModal이 뜨지 않으므로
+          // 실패를 모달 안에서 표시할 수 없다. throw가 외부 useEffect.catch에 잡혀
+          // logger.error만 찍히고 사용자가 인지하지 못하면 다음 로그인에서 충돌
+          // false positive cascade로 이어짐 (UAT 2026-05-08 사고).
+          // 사용자가 즉시 알 수 있도록 toast로 표면화하고 anonymous 데이터를 보존한
+          // 채 앱 진입을 허용한다 (다음 로그인 시 재시도).
+          try {
+            await applyLocalDataChoice(userId, serverData);
+          } catch (error) {
+            const msg =
+              error instanceof Error
+                ? error.message
+                : "데이터 동기화 중 오류가 발생했습니다.";
+            if (mounted) setMigrationError(msg);
+            toast.error("자동 동기화 실패", {
+              description: msg,
+              duration: 8000,
+            });
+            logger.error(
+              "upload-local 마이그레이션 실패 — 사용자 알림 표시",
+              { msg },
+              error as Error,
+            );
+          }
           if (mounted) setIsInitialized(true);
           return;
         }
