@@ -76,6 +76,15 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 0 0 1px var(--color-session-overlay-ring);
 }
 
+/* session-overflow-top/bottom: 시간 범위 경계를 넘어 잘린 세션의 위/아래 cap.
+   "이 블록이 화면 밖으로도 이어진다"는 시각 단서. 어두워지는 그라데이션이 잘림을 명시. */
+@utility session-overflow-top {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent);
+}
+@utility session-overflow-bottom {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.45), transparent);
+}
+
 /* 색상 변수 */
 :root {
   /* 기본 색상 */

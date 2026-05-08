@@ -41,6 +41,10 @@ interface SessionBlockProps {
    * (사용자 멘탈 모델: "원본은 그대로, preview만 위치 표시"). 일반 이동은 false.
    */
   isCopyMode?: boolean;
+  /** 시간 범위 lower bound를 넘어 위쪽으로 잘린 세션 — 상단에 그라데이션 cap 표시 */
+  overflowsTop?: boolean;
+  /** 시간 범위 upper bound를 넘어 아래쪽으로 잘린 세션 — 하단에 그라데이션 cap 표시 */
+  overflowsBottom?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
@@ -91,6 +95,8 @@ function SessionBlock({
   draggedSessionId,
   isAnyDragging = false,
   isCopyMode = false,
+  overflowsTop = false,
+  overflowsBottom = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
@@ -379,6 +385,8 @@ function SessionBlock({
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
       data-selected={selected ? "true" : undefined}
+      data-overflows-top={overflowsTop ? "true" : undefined}
+      data-overflows-bottom={overflowsBottom ? "true" : undefined}
       aria-label={ariaLabel}
       aria-pressed={selected ? true : undefined}
     >
@@ -437,6 +445,22 @@ function SessionBlock({
           >
             ⚠
           </span>
+        )}
+
+        {/* 시간 범위 경계 overflow 표지 — 잘린 끝에 그라데이션 cap으로 "이어짐" 시각화. */}
+        {overflowsTop && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-top"
+            className="session-overflow-top absolute top-0 left-0 right-0 h-2 pointer-events-none rounded-t-[4px] z-[1]"
+          />
+        )}
+        {overflowsBottom && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-bottom"
+            className="session-overflow-bottom absolute bottom-0 left-0 right-0 h-2 pointer-events-none rounded-b-[4px] z-[1]"
+          />
         )}
 
         <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
