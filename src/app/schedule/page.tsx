@@ -256,8 +256,10 @@ function SchedulePageContent(): JSX.Element {
   useEffect(() => {
     if (!hasScheduleChanges || !scheduleUpdatedAt) return;
     if (lastAlertedAtRef.current === scheduleUpdatedAt) return;
-    // 단일 admin 학원 → 토스트 자체 발화 안 함 (논리적으로 다른 사람 변경 불가능)
-    if (adminCount > 0 && adminCount <= 1) return;
+    // 단일 admin 학원 → 토스트 자체 발화 안 함 (논리적으로 다른 사람 변경 불가능).
+    // adminCount=0은 useMyRole이 아직 fetch 중인 race 상태로, 이때도 발화 막음
+    // (UAT 2026-05-09 회귀 가드 — fullDataMigration 직후 race로 토스트 잘못 발화).
+    if (adminCount <= 1) return;
     lastAlertedAtRef.current = scheduleUpdatedAt;
     showActionToast({
       message: "시간표가 새로 갱신되었어요. 새로고침할까요?",

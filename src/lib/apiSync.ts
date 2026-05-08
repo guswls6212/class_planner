@@ -187,7 +187,14 @@ export function subscribeSelfSync(callback: () => void): () => void {
  */
 export const SELF_SYNC_STORAGE_KEY = "class_planner_last_self_sync";
 
-function notifySelfSync(): void {
+/**
+ * 본인 sync 신호를 dispatch한다 — apiSync 함수가 아닌 경로(fullDataMigration 등
+ * 직접 fetch 사용)에서도 본인 변경을 useScheduleMeta가 인지하도록 export.
+ *
+ * 호출 시점: sessions(또는 schedule_updated_at trigger source) INSERT/UPDATE/DELETE
+ * 성공 직후. server timestamp가 SELF_SYNC_WINDOW_MS(10초) 안으로 들어와야 자동 ack.
+ */
+export function notifySelfSync(): void {
   selfSyncEvents.dispatchEvent(new CustomEvent("self-sync"));
   if (typeof window !== "undefined") {
     try {
