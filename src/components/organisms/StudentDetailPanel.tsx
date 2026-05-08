@@ -296,6 +296,9 @@ export function StudentDetailPanel({
             </div>
           </div>
         ) : (
+          // read-only: 프로필 5개 필드(이름은 헤더에 이미 표시되므로 중복 제외)를
+          // 라벨과 값으로 표시. 빈 값은 "—"로 placeholder — 사용자가 어느 필드가
+          // 비어있는지 한눈에 인지하고 편집 버튼으로 보강 유도.
           <dl className="flex flex-col gap-1.5 text-sm">
             {(
               [
@@ -305,17 +308,24 @@ export function StudentDetailPanel({
                 { key: "gender", label: "성별" },
                 { key: "birthDate", label: "생년월일" },
               ] as { key: keyof Student; label: string }[]
-            ).map(({ key, label }) =>
-              student[key] ? (
-                <div key={key} className="flex items-baseline gap-2">
+            ).map(({ key, label }) => {
+              const value = student[key];
+              const hasValue = value !== undefined && value !== null && value !== "";
+              return (
+                <div key={String(key)} className="flex items-baseline gap-2">
                   <dt className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">{label}</dt>
-                  <dd className="text-[var(--color-text-primary)]">{String(student[key])}</dd>
+                  <dd
+                    className={
+                      hasValue
+                        ? "text-[var(--color-text-primary)]"
+                        : "text-[var(--color-text-muted)] italic"
+                    }
+                  >
+                    {hasValue ? String(value) : "—"}
+                  </dd>
                 </div>
-              ) : null
-            )}
-            {!student.grade && !student.school && !student.phone && (
-              <p className="text-[11px] text-[var(--color-text-muted)]">프로필을 입력해 편집 버튼을 누르세요.</p>
-            )}
+              );
+            })}
           </dl>
         )}
       </section>
