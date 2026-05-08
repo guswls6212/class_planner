@@ -64,7 +64,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name } = body;
+    // 학생 프로필 전체 필드 — UAT 2026-05-09 S-2.4 fix. 이전엔 name만 받아
+    // gender/birthDate/grade/school/phone 모두 drop → 새로고침 시 server fetch가
+    // 빈 값으로 덮어써 사용자 입력이 사라지는 결함.
+    const { name, gender, birthDate, grade, school, phone } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -85,7 +88,7 @@ export async function PUT(
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      { name },
+      { name, gender, birthDate, grade, school, phone },
       academyId
     );
 

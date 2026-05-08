@@ -43,7 +43,14 @@ export class StudentApplicationServiceImpl {
 
   async updateStudent(
     id: string,
-    studentData: { name?: string; gender?: string; birthDate?: string },
+    studentData: {
+      name?: string;
+      gender?: string;
+      birthDate?: string;
+      grade?: string;
+      school?: string;
+      phone?: string;
+    },
     academyId: string
   ): Promise<Student> {
     try {
