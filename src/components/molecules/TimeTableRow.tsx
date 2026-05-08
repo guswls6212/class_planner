@@ -67,6 +67,8 @@ interface TimeTableRowProps {
   selectedStudentIds?: string[];
   /** 과목 필터 — 학생과 AND 결합. 매칭 sessions이 앞 lane으로 정렬. */
   selectedSubjectIds?: string[];
+  /** 강사 필터 — 학생/과목과 AND 결합. session.teacherId로 매칭. */
+  selectedTeacherIds?: string[];
   isAnyDragging?: boolean;
   /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
   isCopyMode?: boolean;
@@ -117,6 +119,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   style = {},
   selectedStudentIds,
   selectedSubjectIds,
+  selectedTeacherIds,
   isAnyDragging = false,
   isCopyMode = false,
   teachers = [],
@@ -218,29 +221,31 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // 학생/과목 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
-  // 학생 + 과목 동시 활성이면 AND 결합 — 둘 다 매칭하는 sessions만 매칭으로 본다.
+  // 학생/과목/강사 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
+  // 3 entity AND 결합 — 활성 type 모두 만족하는 sessions만 매칭. dim 시각은 SessionBlock이 담당.
   const studentIdsKey = selectedStudentIds ?? [];
   const subjectIdsKey = selectedSubjectIds ?? [];
+  const teacherIdsKey = selectedTeacherIds ?? [];
   const isStudentFilterActive = studentIdsKey.length > 0;
   const isSubjectFilterActive = subjectIdsKey.length > 0;
-  const isFilterActive = isStudentFilterActive || isSubjectFilterActive;
+  const isTeacherFilterActive = teacherIdsKey.length > 0;
+  const isFilterActive = isStudentFilterActive || isSubjectFilterActive || isTeacherFilterActive;
   const sortByYPos = (a: Session, b: Session) => (a.yPosition || 1) - (b.yPosition || 1);
   const orderedSessions = React.useMemo(() => {
     if (!isFilterActive) return [...weekdaySessions].sort(sortByYPos);
     const matching = weekdaySessions
       .filter((s) =>
-        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
       )
       .sort(sortByYPos);
     const nonMatching = weekdaySessions
       .filter(
         (s) =>
-          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
       )
       .sort(sortByYPos);
     return [...matching, ...nonMatching];
-  }, [weekdaySessions, studentIdsKey, subjectIdsKey, enrollments, isFilterActive]);
+  }, [weekdaySessions, studentIdsKey, subjectIdsKey, teacherIdsKey, enrollments, isFilterActive]);
 
   // Visible sessions:
   //   - 필터 미활성: yPosition <= 3 기반 (startsAt 순서와 무관하게 yPosition SSOT 유지)
@@ -450,6 +455,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             onSessionDelete ? () => onSessionDelete(session) : undefined
           }
           selectedStudentIds={selectedStudentIds}
+          selectedSubjectIds={selectedSubjectIds}
+          selectedTeacherIds={selectedTeacherIds}
           teachers={teachers}
           colorBy={colorBy}
           isMobile={isMobile}

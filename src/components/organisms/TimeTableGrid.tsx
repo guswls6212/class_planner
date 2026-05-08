@@ -72,6 +72,8 @@ interface TimeTableGridProps {
   selectedStudentIds?: string[];
   /** 과목 필터 — 학생 필터와 AND 결합 (lane 정렬). */
   selectedSubjectIds?: string[];
+  /** 강사 필터 — 학생/과목과 AND 결합 (lane 정렬 + dim 통일). */
+  selectedTeacherIds?: string[];
   isAnyDragging?: boolean;
   isStudentDragging?: boolean;
   teachers?: Teacher[];
@@ -115,6 +117,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       style = {},
       selectedStudentIds,
       selectedSubjectIds,
+      selectedTeacherIds,
       isAnyDragging = false,
       isStudentDragging = false,
       teachers = [],
@@ -693,6 +696,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 onEmptySpaceClick={isReadOnly ? () => {} : onEmptySpaceClick}
                 selectedStudentIds={selectedStudentIds}
                 selectedSubjectIds={selectedSubjectIds}
+                selectedTeacherIds={selectedTeacherIds}
                 isAnyDragging={dragController.isAnyDragging() || isStudentDragging}
                 isCopyMode={dragController.isCopyMode && Boolean(onSessionCopy)}
                 teachers={teachers}

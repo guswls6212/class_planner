@@ -55,7 +55,6 @@ import {
 } from "../../lib/colors/getNextUnusedColor";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
 import { useStudentFilter } from "./_hooks/useStudentFilter";
-import { filterSessionsByTeachers } from "../../features/schedule/filters";
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getActiveAcademyId, getClassPlannerData } from "../../lib/localStorageCrud";
 import { createSnapshot } from "../../lib/snapshots/createSnapshot";
@@ -732,18 +731,11 @@ function SchedulePageContent(): JSX.Element {
     [sessions, currentWeekStart]
   );
 
-  // 강사 필터 적용 (colorBy === "teacher"일 때 선택된 강사의 세션만 표시)
-  const teacherFilteredSessions = useMemo(
-    () =>
-      colorBy === "teacher"
-        ? filterSessionsByTeachers(weekFilteredSessions, selectedTeacherIds)
-        : weekFilteredSessions,
-    [colorBy, weekFilteredSessions, selectedTeacherIds]
-  );
-
-  // 주간·일별 뷰용: 현재 주 세션만 weekday Map으로 변환
+  // 주간·일별 뷰용: 현재 주 세션만 weekday Map으로 변환.
+  // 강사 필터는 더 이상 hide 패턴이 아니라 dim 패턴(SessionBlock + TimeTableRow의
+  // sessionMatchesFilters 4-param)으로 통일됐으므로 여기서 사전 필터하지 않는다.
   const { sessions: displaySessions } = useDisplaySessions(
-    teacherFilteredSessions,
+    weekFilteredSessions,
     enrollments,
     ""
   );
@@ -2121,6 +2113,7 @@ function SchedulePageContent(): JSX.Element {
             onEmptySpaceClick={handleEmptySpaceClick}
             selectedStudentIds={selectedStudentIds}
             selectedSubjectIds={selectedSubjectIds}
+            selectedTeacherIds={selectedTeacherIds}
             isStudentDragging={isStudentDragging}
             teachers={teachers}
             colorBy={colorBy}

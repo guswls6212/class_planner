@@ -10,8 +10,9 @@ import {
   getImprovedStudentDisplayText,
   getSessionBlockStyles,
   getSessionSubject,
-  getStudentDeterministicColor,
+  pickRingHex,
   resolveSessionColor,
+  sessionMatchesFilters,
 } from "./SessionBlock.utils";
 import { hexToRgba } from "@/lib/colors/hexToRgba";
 import { tintFromHex } from "@/lib/colors/tintFromHex";
@@ -32,6 +33,10 @@ interface SessionBlockProps {
   /** 평클릭 핸들러. modifier(Shift/Ctrl/Meta) 클릭은 onSelectToggle로 분기됨. */
   onClick: () => void;
   selectedStudentIds?: string[];
+  /** 과목 필터 — 학생과 AND 결합 + 매칭 시 ring glow / 비매칭 시 dim. */
+  selectedSubjectIds?: string[];
+  /** 강사 필터 — 위와 동일 패턴. session.teacherId로 매칭. */
+  selectedTeacherIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
   draggedSessionId?: string;
@@ -90,6 +95,8 @@ function SessionBlock({
   height,
   onClick,
   selectedStudentIds,
+  selectedSubjectIds,
+  selectedTeacherIds,
   isMobile = false,
   isDragging = false,
   draggedSessionId,
@@ -276,23 +283,38 @@ function SessionBlock({
     selectedStudentIds != null &&
     selectedStudentIds.length > 0;
 
-  // Dim/glow logic: only active when student mode is on and not dragging
-  const sessionContainsSelectedStudent =
-    isStudentModeActive &&
-    (session.enrollmentIds ?? []).some((eid) => {
-      const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment != null && selectedStudentIds!.includes(enrollment.studentId);
-    });
+  // 필터 매칭 dim/glow 일반화 — 학생/과목/강사 중 하나라도 활성이면 매칭/비매칭에 따라
+  // ring glow 또는 opacity dim. AND 결합은 sessionMatchesFilters에서 처리.
+  const isAnyFilterActive =
+    (selectedStudentIds?.length ?? 0) > 0 ||
+    (selectedSubjectIds?.length ?? 0) > 0 ||
+    (selectedTeacherIds?.length ?? 0) > 0;
+
+  const sessionMatchesAllFilters =
+    isAnyFilterActive &&
+    sessionMatchesFilters(
+      session,
+      enrollments ?? [],
+      selectedStudentIds ?? [],
+      selectedSubjectIds ?? [],
+      selectedTeacherIds ?? [],
+    );
 
   const isDragActive = isAnyDragging || isDragging;
 
   let dimGlowStyle: React.CSSProperties = {};
-  if (isStudentModeActive && !isDragActive) {
-    if (sessionContainsSelectedStudent) {
-      // Color from first chip — multi-chip selection uses first selected student's color
-      const hex = getStudentDeterministicColor(selectedStudentIds![0]);
+  if (isAnyFilterActive && !isDragActive) {
+    if (sessionMatchesAllFilters) {
+      const ringHex = pickRingHex(
+        colorBy,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        subjects,
+        teachers,
+      );
       dimGlowStyle = {
-        boxShadow: `0 0 0 1.5px ${hexToRgba(hex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
+        boxShadow: `0 0 0 1.5px ${hexToRgba(ringHex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
       };
     } else {
       // Combined with completed session's 0.55 inner opacity this results in ~0.14 total

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   getGroupStudentNames,
   getSessionBlockStyles,
+  pickRingHex,
   resolveSessionColor,
+  sessionMatchesFilters,
 } from "../SessionBlock.utils";
 
 describe("getSessionBlockStyles", () => {
@@ -390,5 +392,97 @@ describe("getGroupStudentNames", () => {
   it("students 배열에 record 없는 enrollment → 해당 항목 제외", () => {
     const result = getGroupStudentNames(session, enrollments, [{ id: "sid-A", name: "이현진" }], ["sid-A", "sid-B"]);
     expect(result).toEqual(["이현진"]);
+  });
+});
+
+describe("sessionMatchesFilters — 학생/과목/강사 AND 결합", () => {
+  const enrollments = [
+    { id: "e1", studentId: "stu-A", subjectId: "sub-1" },
+    { id: "e2", studentId: "stu-B", subjectId: "sub-2" },
+  ];
+  const sessionWithBoth = {
+    id: "s1",
+    enrollmentIds: ["e1", "e2"],
+    teacherId: "tch-1",
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+  } as any;
+
+  it("필터 모두 비활성 → 항상 매칭", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, [], [], [])).toBe(true);
+  });
+
+  it("학생만 활성 + 매칭 → true", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], [], [])).toBe(true);
+  });
+
+  it("학생만 활성 + 비매칭 → false", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-X"], [], [])).toBe(false);
+  });
+
+  it("강사만 활성 + 매칭 → true", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, [], [], ["tch-1"])).toBe(true);
+  });
+
+  it("강사만 활성 + 비매칭 → false", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, [], [], ["tch-9"])).toBe(false);
+  });
+
+  it("session.teacherId=null + 강사 활성 → false", () => {
+    const noTeacher = { ...sessionWithBoth, teacherId: null };
+    expect(sessionMatchesFilters(noTeacher, enrollments, [], [], ["tch-1"])).toBe(false);
+  });
+
+  it("학생+강사 동시 활성 + 둘 다 매칭 → true", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], [], ["tch-1"])).toBe(true);
+  });
+
+  it("학생+강사 동시 활성 + 학생 매칭 / 강사 비매칭 → false (AND)", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], [], ["tch-9"])).toBe(false);
+  });
+
+  it("학생+과목+강사 3 동시 활성 + 모두 매칭 → true", () => {
+    expect(
+      sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], ["sub-1"], ["tch-1"]),
+    ).toBe(true);
+  });
+
+  it("학생+과목+강사 3 동시 활성 + 과목만 비매칭 → false", () => {
+    expect(
+      sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], ["sub-9"], ["tch-1"]),
+    ).toBe(false);
+  });
+
+  it("4번째 인자 default(미전달) → 학생/과목 필터만으로 동작 (BC)", () => {
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-A"], [])).toBe(true);
+    expect(sessionMatchesFilters(sessionWithBoth, enrollments, ["stu-X"], [])).toBe(false);
+  });
+});
+
+describe("pickRingHex — 매칭 ring 색 우선순위", () => {
+  const subjects = [{ id: "sub-1", name: "수학", color: "#AB1234" }] as any;
+  const teachers = [{ id: "tch-1", name: "홍", color: "#56CDEF" }];
+
+  it("colorBy=teacher + 강사 선택 → 강사 색", () => {
+    expect(pickRingHex("teacher", [], [], ["tch-1"], subjects, teachers)).toBe("#56CDEF");
+  });
+
+  it("colorBy=subject + 과목 선택 → 과목 색", () => {
+    expect(pickRingHex("subject", [], ["sub-1"], [], subjects, teachers)).toBe("#AB1234");
+  });
+
+  it("colorBy=student + 학생 선택 → 학생 결정론적 색 (Q_PASTEL_PALETTE 중 하나)", () => {
+    const hex = pickRingHex("student", ["stu-X"], [], [], subjects, teachers);
+    expect(hex).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  it("colorBy=teacher 인데 강사 미선택 → fallback (subject → student)", () => {
+    const hex = pickRingHex("teacher", [], ["sub-1"], [], subjects, teachers);
+    expect(hex).toBe("#AB1234");
+  });
+
+  it("아무 것도 선택 안 됨 → 기본 #888", () => {
+    expect(pickRingHex("subject", [], [], [], subjects, teachers)).toBe("#888");
   });
 });
