@@ -99,3 +99,38 @@ describe("TeachersPageLayout", () => {
     });
   });
 });
+
+describe("TeachersPageLayout — 빈 메타 hint (Phase 2-C)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("email/phone 둘 다 비어있는 강사만 연락처 보강 hint가 표시된다", () => {
+    const teachers = [
+      { id: "incomplete", name: "박미완", color: "#3b82f6" },
+      {
+        id: "complete",
+        name: "박완전",
+        color: "#3b82f6",
+        email: "park@academy.com",
+        phone: "010-1234-5678",
+      },
+    ];
+    render(<TeachersPageLayout {...baseProps} teachers={teachers} />);
+    expect(screen.getByTestId("teacher-meta-hint-incomplete")).toBeInTheDocument();
+    expect(screen.queryByTestId("teacher-meta-hint-complete")).toBeNull();
+  });
+
+  it("email만 있고 phone 없는 강사도 hint 표시 (부분 채움도 보강 권장)", () => {
+    const teachers = [
+      {
+        id: "partial",
+        name: "박부분",
+        color: "#3b82f6",
+        email: "park@academy.com",
+      },
+    ];
+    render(<TeachersPageLayout {...baseProps} teachers={teachers} />);
+    expect(screen.getByTestId("teacher-meta-hint-partial")).toBeInTheDocument();
+  });
+});

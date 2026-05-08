@@ -140,6 +140,16 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
                         {canManage && !accessCodesReady && (
                           <Skeleton className="h-3 w-16 opacity-60" />
                         )}
+                        {(!student.gender || !student.birthDate) && (
+                          <span
+                            className="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-[9px] font-bold text-indigo-400"
+                            title="성별/생년월일을 추가하면 동명이인 식별과 데이터 동기화가 더 정확해집니다"
+                            aria-label="프로필 정보 보강 가능"
+                            data-testid={`student-meta-hint-${student.id}`}
+                          >
+                            ⓘ
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-[var(--color-text-muted)] truncate">
                         {[student.grade, student.school].filter(Boolean).join(" · ") || "프로필 미입력"}
