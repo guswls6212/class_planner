@@ -26,9 +26,26 @@ export async function createSnapshot(
       },
     );
     if (!res.ok) {
-      const errText = await res.text().catch(() => "Unknown error");
-      logger.warn("createSnapshot 실패", { status: res.status, error: errText, type: input.type });
-      return { success: false, error: errText };
+      // 통일 에러 응답: { success:false, error:{ code, message, details? } }
+      // (toErrorResponse — src/lib/errors/httpErrors.ts)
+      let message = "백업 생성에 실패했습니다.";
+      let code: string | undefined;
+      try {
+        const json = (await res.json()) as {
+          error?: { code?: string; message?: string };
+        };
+        code = json.error?.code;
+        message = json.error?.message ?? message;
+      } catch {
+        // JSON 파싱 실패 — 메시지는 기본 fallback 유지
+      }
+      logger.warn("createSnapshot 실패", {
+        status: res.status,
+        code,
+        message,
+        type: input.type,
+      });
+      return { success: false, error: message };
     }
     const json = await res.json();
     return { success: !!json.success, snapshotId: json?.data?.id };

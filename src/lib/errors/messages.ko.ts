@@ -24,6 +24,13 @@ const messages: Record<ErrorCode, string> = {
   INVITE_ROLE_INVALID: "role은 'admin' 또는 'member'여야 합니다.",
   INVITE_MEMBER_INSERT_FAILED: "멤버 등록에 실패했습니다.",
 
+  // Snapshot
+  SNAPSHOT_TYPE_INVALID: "유효하지 않은 백업 종류입니다.",
+  SNAPSHOT_PAYLOAD_REQUIRED: "백업할 데이터가 필요합니다.",
+  SNAPSHOT_INSERT_FAILED: "백업 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  SNAPSHOT_LIST_FAILED: "백업 목록 조회에 실패했습니다.",
+  SNAPSHOT_PERMISSION_DENIED: "백업 생성 권한이 없습니다.",
+
   // General (HTTP 의미론적 범용 에러 — {ENTITY}_{FIELD}_{RULE} 세그먼트 예외 허용)
   VALIDATION_FAILED: "입력값이 올바르지 않습니다.",
   UNAUTHORIZED: "로그인이 필요합니다.",

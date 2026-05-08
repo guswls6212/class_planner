@@ -1,7 +1,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
 type SnapshotType = "auto_template" | "before_conflict" | "manual";
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
+      throw new AppError("VALIDATION_FAILED", { statusHint: 400 });
     }
 
     const { academyId } = await resolveAcademyMembership(userId);
@@ -65,7 +65,10 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       logger.error("data_snapshots 조회 실패", { userId }, error as Error);
-      return NextResponse.json({ success: false, error: "목록 조회 실패" }, { status: 500 });
+      throw new AppError("SNAPSHOT_LIST_FAILED", {
+        statusHint: 500,
+        cause: error,
+      });
     }
 
     // dataPayload 미리 stripping + counts 미리 계산 (대역폭 절약)
@@ -91,12 +94,12 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
     if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
+      throw new AppError("VALIDATION_FAILED", { statusHint: 400 });
     }
 
     const { academyId, role } = await resolveAcademyMembership(userId);
     if (!canManage(role)) {
-      return NextResponse.json({ success: false, error: "백업 생성 권한이 없습니다." }, { status: 403 });
+      throw new AppError("SNAPSHOT_PERMISSION_DENIED", { statusHint: 403 });
     }
 
     const body = (await request.json().catch(() => ({}))) as {
@@ -107,10 +110,10 @@ export async function POST(request: NextRequest) {
     const { type, payload, description } = body;
 
     if (!type || !["auto_template", "before_conflict", "manual"].includes(type)) {
-      return NextResponse.json({ success: false, error: "유효하지 않은 snapshot_type" }, { status: 400 });
+      throw new AppError("SNAPSHOT_TYPE_INVALID", { statusHint: 400 });
     }
     if (!payload) {
-      return NextResponse.json({ success: false, error: "payload is required" }, { status: 400 });
+      throw new AppError("SNAPSHOT_PAYLOAD_REQUIRED", { statusHint: 400 });
     }
 
     const client = getServiceRoleClient();
@@ -130,7 +133,10 @@ export async function POST(request: NextRequest) {
 
     if (insertError || !inserted) {
       logger.error("data_snapshot insert 실패", { userId, type }, insertError as Error);
-      return NextResponse.json({ success: false, error: "백업 생성 실패" }, { status: 500 });
+      throw new AppError("SNAPSHOT_INSERT_FAILED", {
+        statusHint: 500,
+        cause: insertError ?? new Error("Insert returned null"),
+      });
     }
 
     // 2) Retention atomic enforce (type별 정책)
