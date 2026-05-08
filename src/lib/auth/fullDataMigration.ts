@@ -13,6 +13,7 @@ import {
   findDuplicateEnrollment,
   findDuplicateSession,
 } from "./deduplication";
+import { getWeekStartDate } from "../weekStart";
 import { logger } from "../logger";
 
 
@@ -267,6 +268,11 @@ export async function migrateLocalDataToServer(
       continue;
     }
 
+    // 마이그레이션 시점에 weekStartDate가 비어있는 anonymous 데이터에 대비한 fallback.
+    // API는 YYYY-MM-DD 형식을 요구하므로 빈 값일 경우 "지금 시점이 속한 주의 월요일(KST)"로 채운다.
+    const sessionWeekStartDate =
+      session.weekStartDate || getWeekStartDate(new Date());
+
     try {
       const res = await fetch(`/api/sessions?userId=${userId}`, {
         method: "POST",
@@ -275,6 +281,7 @@ export async function migrateLocalDataToServer(
           subjectId,
           enrollmentIds: newEnrollmentIds,
           weekday: session.weekday,
+          weekStartDate: sessionWeekStartDate,
           startsAt: session.startsAt,
           endsAt: session.endsAt,
           room: session.room,

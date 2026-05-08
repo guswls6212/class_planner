@@ -91,6 +91,63 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
     const sessionBody = JSON.parse(sessionCall[1].body);
     expect(sessionBody.enrollmentIds).toContain("srv-en1");
     expect(sessionBody.subjectId).toBe("srv-sub1"); // API 필수 필드
+    // weekStartDate는 API 필수. 빈 문자열 입력이면 fallback이 채워야 한다.
+    expect(sessionBody.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ── Test 1b: session weekStartDate fallback (회귀 가드) ──────────────────────
+// anonymous에서 만든 session이 weekStartDate=""인 채 마이그레이션될 때 API
+// validation(YYYY-MM-DD required)을 통과해야 한다. 회귀 시 errorCount cascade로
+// 이어져 ID 매핑 누락 폭발이 발생함 (UAT 2026-05-08 사고).
+describe("migrateLocalDataToServer — session weekStartDate fallback", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("session.weekStartDate가 비어있으면 현재 주의 월요일(KST, YYYY-MM-DD)로 fallback하여 POST한다", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "홍길동", gender: "male", birthDate: "2010-01-01" }],
+      subjects: [{ id: "loc-sub1", name: "수학", color: "#ff0000" }],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 3,
+          startsAt: "11:00",
+          endsAt: "12:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+        },
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.sessions).toBe(1);
+
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // 월요일이어야 한다 — getWeekStartDate(KST)가 보장
+    const wd = new Date(`${sessionBody.weekStartDate}T12:00:00+09:00`).getUTCDay();
+    // KST noon → UTC 03:00 → 같은 날짜 유지. 월요일=1
+    expect(wd).toBe(1);
 
     vi.unstubAllGlobals();
   });
