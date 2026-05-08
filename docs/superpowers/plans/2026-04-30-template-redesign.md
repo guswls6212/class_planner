@@ -513,7 +513,7 @@ git commit -m "fix(share): filter sessions by currently-selected week to prevent
 
 ### Task 3.1: localStorage 마이그레이션 헬퍼 (TDD)
 
-기존 localStorage(`class_planner_anonymous`, `class_planner_{userId}`)에 저장된 sessions에 weekStartDate가 없을 수 있음. 첫 로드 시 자동 주입.
+기존 localStorage(`classPlannerData:anonymous`, `classPlannerData:{userId}` / multi-academy 후 `classPlannerData:{userId}:{academyId}`)에 저장된 sessions에 weekStartDate가 없을 수 있음. 첫 로드 시 자동 주입.
 
 - [ ] **Step 1: 실패 테스트**
 

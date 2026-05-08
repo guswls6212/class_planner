@@ -17,8 +17,8 @@
 
 ### localStorage 스코프 분리 (가장 중요)
 
-**현재:** `class_planner_{userId}` — 학원 구분 없음 → 데이터 혼재 위험  
-**변경:** `class_planner_{userId}_{academyId}` — 학원별 완전 분리
+**현재:** `classPlannerData:{userId}` — 학원 구분 없음 → 데이터 혼재 위험  
+**변경:** `classPlannerData:{userId}:{academyId}` — 학원별 완전 분리 (구현 후 실제 키, `getStorageKey` in `src/lib/localStorageCrud.ts`)
 
 모든 localStorage 읽기/쓰기 함수가 academyId를 포함한 키 사용. 각 학원의 학생/과목/수업은 독립된 스코프에 저장.
 
@@ -101,7 +101,7 @@
 
 ## Data Migration Notes
 
-기존 `class_planner_{userId}` localStorage 키 → 처음 로드 시 `class_planner_{userId}_{academyId}`로 마이그레이션 (one-time). 기존 데이터 유실 없음.
+기존 `classPlannerData:{userId}` localStorage 키 → 처음 로드 시 `classPlannerData:{userId}:{academyId}`로 마이그레이션 (one-time). 기존 데이터 유실 없음.
 
 ---
 
