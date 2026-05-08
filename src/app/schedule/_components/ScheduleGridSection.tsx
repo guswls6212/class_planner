@@ -43,6 +43,7 @@ type Props = {
   ) => void;
   selectedStudentIds?: string[];
   selectedSubjectIds?: string[];
+  selectedTeacherIds?: string[];
   isStudentDragging: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
@@ -78,6 +79,7 @@ export default function ScheduleGridSection({
   onEmptySpaceClick,
   selectedStudentIds,
   selectedSubjectIds,
+  selectedTeacherIds,
   isStudentDragging,
   teachers = [],
   colorBy = "subject",
@@ -106,6 +108,7 @@ export default function ScheduleGridSection({
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
         selectedSubjectIds={selectedSubjectIds}
+        selectedTeacherIds={selectedTeacherIds}
         isStudentDragging={isStudentDragging}
         teachers={teachers}
         colorBy={colorBy}

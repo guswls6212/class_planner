@@ -923,6 +923,98 @@ describe("student mode dim/glow on session blocks", () => {
     expect(wrapper.style.opacity).not.toBe("0.25");
     expect(wrapper.style.boxShadow).toBe("");
   });
+
+  // 변경 3: 강사/과목 필터 dim 통일 — 학생과 동일 패턴.
+  it("teacher mode + chip selected + session.teacherId 매칭 → boxShadow glow", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="teacher"
+        session={{ ...glowSession, teacherId: "tch-1" } as any}
+        teachers={teachers}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+  });
+
+  it("teacher mode + chip selected + session.teacherId 비매칭 → opacity 0.25 dim", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="teacher"
+        session={{ ...glowSession, teacherId: "tch-9" } as any}
+        teachers={teachers}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("subject mode + chip selected + session에 subject 매칭 → boxShadow glow", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={glowSession}
+        selectedSubjectIds={["sub-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+  });
+
+  it("subject mode + chip selected + 비매칭 → opacity 0.25 dim", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={glowSession}
+        selectedSubjectIds={["sub-9"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+  });
+
+  it("3 entity 동시 활성 + 모두 매칭 → boxShadow glow (AND 결합)", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={{ ...glowSession, teacherId: "tch-1" } as any}
+        teachers={teachers}
+        selectedStudentIds={["student-A"]}
+        selectedSubjectIds={["sub-1"]}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+  });
+
+  it("3 entity 동시 활성 + 강사만 비매칭 → opacity 0.25 dim (AND fail)", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={{ ...glowSession, teacherId: "tch-9" } as any}
+        teachers={teachers}
+        selectedStudentIds={["student-A"]}
+        selectedSubjectIds={["sub-1"]}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+  });
 });
 
 describe("SessionBlock Utility Functions", () => {

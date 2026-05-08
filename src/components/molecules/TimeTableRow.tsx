@@ -67,6 +67,8 @@ interface TimeTableRowProps {
   selectedStudentIds?: string[];
   /** 과목 필터 — 학생과 AND 결합. 매칭 sessions이 앞 lane으로 정렬. */
   selectedSubjectIds?: string[];
+  /** 강사 필터 — 학생/과목과 AND 결합. session.teacherId로 매칭. */
+  selectedTeacherIds?: string[];
   isAnyDragging?: boolean;
   /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
   isCopyMode?: boolean;
@@ -117,6 +119,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   style = {},
   selectedStudentIds,
   selectedSubjectIds,
+  selectedTeacherIds,
   isAnyDragging = false,
   isCopyMode = false,
   teachers = [],
@@ -164,9 +167,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return hours * 60 + minutes;
   }, []);
 
-  // Sessions for this weekday — startHour/endHour 범위 밖은 hide.
-  // 부분 overlap도 제외 (clamping 시 시각적 혼란 방지). 범위 변경은 Settings/
-  // TimeRangeSelector를 통해 사용자가 명시적으로 하므로 hide가 의도와 일치.
+  // [startHour:00, endHour+1:00) 와 strict overlap이 있는 세션. 경계를 넘는
+  // 세션(예: 11:30-16:30 + range 7-13)은 양쪽 시간 모드(7-13, 13-22)에서
+  // 모두 보이도록 부분 겹침을 허용한다. laidOutSessions에서 보이는 영역만
+  // clamp 하고 overflowsTop/Bottom flag로 SessionBlock에 시각 표지를 전달.
   const weekdaySessions = React.useMemo(() => {
     const all = sessions?.get(weekday) || [];
     const lowerBound = startHour * 60;
@@ -174,7 +178,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return all.filter((s) => {
       const startMin = timeToMinutes(s.startsAt);
       const endMin = timeToMinutes(s.endsAt);
-      return startMin >= lowerBound && endMin <= upperBound;
+      return startMin < upperBound && endMin > lowerBound;
     });
   }, [sessions, weekday, startHour, endHour, timeToMinutes]);
 
@@ -217,29 +221,31 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // 학생/과목 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
-  // 학생 + 과목 동시 활성이면 AND 결합 — 둘 다 매칭하는 sessions만 매칭으로 본다.
+  // 학생/과목/강사 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
+  // 3 entity AND 결합 — 활성 type 모두 만족하는 sessions만 매칭. dim 시각은 SessionBlock이 담당.
   const studentIdsKey = selectedStudentIds ?? [];
   const subjectIdsKey = selectedSubjectIds ?? [];
+  const teacherIdsKey = selectedTeacherIds ?? [];
   const isStudentFilterActive = studentIdsKey.length > 0;
   const isSubjectFilterActive = subjectIdsKey.length > 0;
-  const isFilterActive = isStudentFilterActive || isSubjectFilterActive;
+  const isTeacherFilterActive = teacherIdsKey.length > 0;
+  const isFilterActive = isStudentFilterActive || isSubjectFilterActive || isTeacherFilterActive;
   const sortByYPos = (a: Session, b: Session) => (a.yPosition || 1) - (b.yPosition || 1);
   const orderedSessions = React.useMemo(() => {
     if (!isFilterActive) return [...weekdaySessions].sort(sortByYPos);
     const matching = weekdaySessions
       .filter((s) =>
-        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
       )
       .sort(sortByYPos);
     const nonMatching = weekdaySessions
       .filter(
         (s) =>
-          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey),
+          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
       )
       .sort(sortByYPos);
     return [...matching, ...nonMatching];
-  }, [weekdaySessions, studentIdsKey, subjectIdsKey, enrollments, isFilterActive]);
+  }, [weekdaySessions, studentIdsKey, subjectIdsKey, teacherIdsKey, enrollments, isFilterActive]);
 
   // Visible sessions:
   //   - 필터 미활성: yPosition <= 3 기반 (startsAt 순서와 무관하게 yPosition SSOT 유지)
@@ -267,12 +273,17 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       : orderedSessions.filter((s) => (s.yPosition || 1) >= 4);
     if (candidates.length === 0) return null;
     const first = candidates[0];
-    const [h, m] = first.startsAt.split(":").map(Number);
-    return Math.max(4, ((h * 60 + m - startHour * 60) / 30) * SLOT_HEIGHT_PX);
-  }, [orderedSessions, isOverflow, isFilterActive, startHour]);
+    // first.startsAt이 lowerBound보다 작을 수 있다 (overflowsTop 세션) → clamp.
+    const visStartMin = Math.max(timeToMinutes(first.startsAt), startHour * 60);
+    return Math.max(4, ((visStartMin - startHour * 60) / 30) * SLOT_HEIGHT_PX);
+  }, [orderedSessions, isOverflow, isFilterActive, startHour, timeToMinutes]);
 
-  // Compute per-session layout (top/height from time, left/width from lane)
+  // Compute per-session layout. 경계 초과 세션(startMin<lowerBound 또는
+  // endMin>upperBound)은 보이는 영역으로 clamp 하고, overflowsTop/Bottom flag로
+  // SessionBlock에 시각 표지(그라데이션 cap)를 전달한다.
   const laidOutSessions = React.useMemo(() => {
+    const lowerBound = startHour * 60;
+    const upperBound = (endHour + 1) * 60;
     return visibleSessions.map((session) => {
       // 필터 미활성: yPosition - 1 을 laneIdx로 사용 (yPosition이 SSOT).
       // 필터 활성: orderedSessions 배열 index 기반 (matching 우선 시각 배치 유지).
@@ -282,8 +293,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       const laneIdx = Math.min(Math.max(0, rawIdx), effectiveLanes - 1);
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
-      const timeIdx = Math.max(0, (startMin - startHour * 60) / 30);
-      const durationSlots = Math.max(1, (endMin - startMin) / 30);
+      const visStart = Math.max(startMin, lowerBound);
+      const visEnd = Math.min(endMin, upperBound);
+      const timeIdx = Math.max(0, (visStart - lowerBound) / 30);
+      const durationSlots = Math.max(0.5, (visEnd - visStart) / 30);
       return {
         session,
         left: Math.round(laneIdx * laneWidth) + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
@@ -291,9 +304,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         top: Math.round(timeIdx * SLOT_HEIGHT_PX),
         height: Math.round(durationSlots * SLOT_HEIGHT_PX),
         yPosition: laneIdx + 1,
+        overflowsTop: startMin < lowerBound,
+        overflowsBottom: endMin > upperBound,
       };
     });
-  }, [visibleSessions, timeToMinutes, laneWidth]);
+  }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes, isFilterActive]);
 
   return (
     <div
@@ -415,7 +430,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       })}
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
-      {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition }) => (
+      {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition, overflowsTop, overflowsBottom }) => (
         // target weekday에서만 SessionBlock을 skip하고 DragGhost가 대신 렌더.
         // targetWeekday === null (아직 셀 위를 안 지남)이면 원본 위치에 정상 렌더.
         session.id === dragPreview?.draggedSession?.id
@@ -440,6 +455,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             onSessionDelete ? () => onSessionDelete(session) : undefined
           }
           selectedStudentIds={selectedStudentIds}
+          selectedSubjectIds={selectedSubjectIds}
+          selectedTeacherIds={selectedTeacherIds}
           teachers={teachers}
           colorBy={colorBy}
           isMobile={isMobile}
@@ -447,6 +464,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
           isCopyMode={isCopyMode}
+          overflowsTop={overflowsTop}
+          overflowsBottom={overflowsBottom}
           selected={selectedSessionIds?.has(session.id) ?? false}
           onSelectToggle={
             onSessionSelectToggle

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ColorByMode } from "../../../hooks/useColorBy";
 import type { ScheduleViewMode } from "../../../hooks/useScheduleView";
@@ -16,6 +17,8 @@ interface FilterItem {
 export interface ScheduleFloatingToolbarProps {
   // Date navigation
   dateLabel: string;
+  /** 모바일(<768px) 함축 형태 — 미제공 시 dateLabel fallback. */
+  dateLabelShort?: string;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -53,6 +56,7 @@ const VIEW_LABELS: Record<ScheduleViewMode, string> = {
 
 export default function ScheduleFloatingToolbar({
   dateLabel,
+  dateLabelShort,
   onPrev,
   onNext,
   onToday,
@@ -75,12 +79,23 @@ export default function ScheduleFloatingToolbar({
   viewMode,
   onChangeViewMode,
 }: ScheduleFloatingToolbarProps) {
+  // 모바일(<768px) 감지 — SSR-safe (default false → mount 후 update + resize 추적).
+  // dateLabel을 함축형으로 swap해 toolbar overflow를 막는다.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 768);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  const displayLabel = isMobile && dateLabelShort ? dateLabelShort : dateLabel;
+
   return (
     <div
       role="toolbar"
       aria-label="시간표 컨트롤"
       data-testid="schedule-floating-toolbar"
-      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-[var(--color-bg-secondary)]/95 backdrop-blur-md shadow-2xl border border-[var(--color-border)] max-w-[min(calc(100vw-3rem),900px)]"
+      className="fixed bottom-10 left-1/2 -translate-x-1/2 z-30 flex items-center gap-0.5 px-2 py-1.5 sm:gap-1 sm:px-2.5 rounded-full bg-[var(--color-bg-secondary)]/95 backdrop-blur-md shadow-2xl border border-[var(--color-border)] max-w-[min(calc(100vw-1rem),900px)]"
     >
       <button
         type="button"
@@ -90,8 +105,8 @@ export default function ScheduleFloatingToolbar({
       >
         <ChevronLeft size={13} />
       </button>
-      <span className="text-xs font-medium px-2 select-none whitespace-nowrap">
-        {dateLabel}
+      <span className="text-xs font-medium px-1 sm:px-2 select-none whitespace-nowrap">
+        {displayLabel}
       </span>
       <button
         type="button"
@@ -101,11 +116,10 @@ export default function ScheduleFloatingToolbar({
       >
         <ChevronRight size={13} />
       </button>
-      <Divider />
       <button
         type="button"
         onClick={onToday}
-        className="px-2 py-1 text-xs rounded-md hover:bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]"
+        className="hidden sm:inline-flex px-2 py-1 text-xs rounded-md hover:bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]"
       >
         오늘
       </button>
@@ -145,6 +159,7 @@ export default function ScheduleFloatingToolbar({
               type="button"
               onClick={() => onChangeViewMode(mode)}
               aria-pressed={isActive}
+              data-testid={`view-mode-${mode}`}
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
                 isActive
                   ? "bg-[var(--color-accent)] text-white font-medium"

@@ -176,23 +176,64 @@ export const sessionContainsSelectedSubject = (
 };
 
 /**
- * 학생/과목 필터의 AND 결합 — 활성 필터 type 모두를 만족하는 sessions만 매칭.
- * 비활성 type은 무시. 둘 다 비활성이면 모든 sessions 매칭.
+ * 학생/과목/강사 필터의 AND 결합 — 활성 필터 type 모두를 만족하는 sessions만 매칭.
+ * 비활성 type은 무시. 모두 비활성이면 모든 sessions 매칭. 강사 매칭은 session.teacherId
+ * 단일 필드 비교 (enrollment 통하지 않음).
  */
 export const sessionMatchesFilters = (
   session: Session,
   enrollments: Array<{ id: string; studentId: string; subjectId: string }>,
   selectedStudentIds: string[],
-  selectedSubjectIds: string[]
+  selectedSubjectIds: string[],
+  selectedTeacherIds: string[] = []
 ): boolean => {
   const studentActive = selectedStudentIds.length > 0;
   const subjectActive = selectedSubjectIds.length > 0;
-  if (!studentActive && !subjectActive) return true;
+  const teacherActive = selectedTeacherIds.length > 0;
+  if (!studentActive && !subjectActive && !teacherActive) return true;
   if (studentActive && !sessionContainsSelected(session, enrollments, selectedStudentIds))
     return false;
   if (subjectActive && !sessionContainsSelectedSubject(session, enrollments, selectedSubjectIds))
     return false;
+  if (
+    teacherActive &&
+    !(session.teacherId != null && selectedTeacherIds.includes(session.teacherId))
+  )
+    return false;
   return true;
+};
+
+/**
+ * 매칭 ring 색 결정 — colorBy 우선, 없으면 fallback chain (학생 → 과목 → 강사).
+ * 사용처: SessionBlock의 dim/glow 일반화. 필터 매칭 세션의 boxShadow ring 색.
+ */
+export const pickRingHex = (
+  colorBy: ColorByMode,
+  selectedStudentIds?: string[],
+  selectedSubjectIds?: string[],
+  selectedTeacherIds?: string[],
+  subjects?: Subject[],
+  teachers?: Array<{ id: string; color: string }>
+): string => {
+  const teacherHex = () => {
+    if (!selectedTeacherIds?.length) return null;
+    const t = teachers?.find((x) => x.id === selectedTeacherIds[0]);
+    return t?.color ?? null;
+  };
+  const subjectHex = () => {
+    if (!selectedSubjectIds?.length) return null;
+    const s = subjects?.find((x) => x.id === selectedSubjectIds[0]);
+    return s?.color ?? null;
+  };
+  const studentHex = () =>
+    selectedStudentIds?.length
+      ? getStudentDeterministicColor(selectedStudentIds[0])
+      : null;
+
+  if (colorBy === "teacher") return teacherHex() ?? subjectHex() ?? studentHex() ?? "#888";
+  if (colorBy === "subject") return subjectHex() ?? teacherHex() ?? studentHex() ?? "#888";
+  // colorBy === "student" or default
+  return studentHex() ?? subjectHex() ?? teacherHex() ?? "#888";
 };
 
 export const resolveSessionColor = (

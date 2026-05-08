@@ -32,8 +32,15 @@ vi.mock("../TimeTableCell", () => ({
 }));
 
 vi.mock("../SessionBlock", () => ({
-  default: ({ session, onClick, left }: any) => (
-    <div data-testid={`session-${session.id}`} data-left={left} onClick={onClick}>
+  default: ({ session, onClick, left, height, overflowsTop, overflowsBottom }: any) => (
+    <div
+      data-testid={`session-${session.id}`}
+      data-left={left}
+      data-height={height}
+      data-overflows-top={overflowsTop ? "true" : undefined}
+      data-overflows-bottom={overflowsBottom ? "true" : undefined}
+      onClick={onClick}
+    >
       Session: {session.id}
     </div>
   ),
@@ -943,6 +950,106 @@ describe("5423339 회귀 — 필터 미활성: yPosition 기반 laneIdx (left �
     render(<TimeTableRow {...baseProps} />);
     const el = screen.getByTestId("session-s_y3");
     expect(el.getAttribute("data-left")).toBe("80");
+  });
+});
+
+// ===================================================================
+// 시간 범위 경계 — overlap allow + clamp + overflow indicator
+// 11:30-16:30이 7-13(오전반), 13-22(오후반) 양쪽에서 모두 보이게.
+// ===================================================================
+describe("시간 범위 경계 세션 — overlap allow + clamp + overflow indicator", () => {
+  const subjects = [{ id: "sub-1", name: "수학", color: "#3B82F6" }];
+  const students = [{ id: "stu-1", name: "테스트" }];
+  const enrollments = [{ id: "enr-1", studentId: "stu-1", subjectId: "sub-1" }];
+  const SLOT_H = 32;
+
+  const makeSess = (id: string, startsAt: string, endsAt: string) =>
+    ({
+      id,
+      weekday: 0,
+      startsAt,
+      endsAt,
+      enrollmentIds: ["enr-1"],
+      yPosition: 1,
+      weekStartDate: "",
+    }) as Session;
+
+  const baseProps = {
+    weekday: 0,
+    width: 120,
+    subjects,
+    enrollments,
+    students,
+    onSessionClick: vi.fn(),
+    onDrop: vi.fn(),
+    onEmptySpaceClick: vi.fn(),
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("11:30-16:30 + range 7-13: 보임 + bottom indicator (range 13시까지)", () => {
+    const sessions = new Map([[0, [makeSess("s1", "11:30", "16:30")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={7} endHour={13} />);
+    const el = screen.getByTestId("session-s1");
+    expect(el.getAttribute("data-overflows-top")).toBeNull();
+    expect(el.getAttribute("data-overflows-bottom")).toBe("true");
+    // visStart=11:30 (lower=07:00) → timeIdx=(690-420)/30=9 → top=288
+    // visEnd=14:00 (upper=14:00) → durationSlots=(840-690)/30=5 → height=160
+    expect(el.getAttribute("data-height")).toBe(`${5 * SLOT_H}`);
+  });
+
+  it("11:30-16:30 + range 13-22: 보임 + top indicator", () => {
+    const sessions = new Map([[0, [makeSess("s1", "11:30", "16:30")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={13} endHour={22} />);
+    const el = screen.getByTestId("session-s1");
+    expect(el.getAttribute("data-overflows-top")).toBe("true");
+    expect(el.getAttribute("data-overflows-bottom")).toBeNull();
+    // visStart=13:00 (lower=13:00) → timeIdx=0 → top=0
+    // visEnd=16:30 (upper=23:00) → durationSlots=(990-780)/30=7 → height=224
+    expect(el.getAttribute("data-height")).toBe(`${7 * SLOT_H}`);
+  });
+
+  it("07:00-10:00 + range 9-23: 보임 + top indicator (앞쪽 잘림)", () => {
+    const sessions = new Map([[0, [makeSess("s1", "07:00", "10:00")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={9} endHour={23} />);
+    const el = screen.getByTestId("session-s1");
+    expect(el.getAttribute("data-overflows-top")).toBe("true");
+    expect(el.getAttribute("data-overflows-bottom")).toBeNull();
+  });
+
+  it("21:00-23:30 + range 9-22 (upper=23:00): 보임 + bottom indicator", () => {
+    const sessions = new Map([[0, [makeSess("s1", "21:00", "23:30")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={9} endHour={22} />);
+    const el = screen.getByTestId("session-s1");
+    expect(el.getAttribute("data-overflows-bottom")).toBe("true");
+  });
+
+  it("11:30-12:30 + range 7-13: 완전 포함 → indicator 없음", () => {
+    const sessions = new Map([[0, [makeSess("s1", "11:30", "12:30")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={7} endHour={13} />);
+    const el = screen.getByTestId("session-s1");
+    expect(el.getAttribute("data-overflows-top")).toBeNull();
+    expect(el.getAttribute("data-overflows-bottom")).toBeNull();
+  });
+
+  it("14:00-15:00 + range 7-13: 완전 밖 → 숨김", () => {
+    const sessions = new Map([[0, [makeSess("s1", "14:00", "15:00")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={7} endHour={13} />);
+    expect(screen.queryByTestId("session-s1")).toBeNull();
+  });
+
+  it("06:00-08:00 + range 9-23: 완전 밖(boundary 닿음 X) → 숨김", () => {
+    const sessions = new Map([[0, [makeSess("s1", "06:00", "08:00")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={9} endHour={23} />);
+    expect(screen.queryByTestId("session-s1")).toBeNull();
+  });
+
+  it("startsAt=endsAt(=lower) edge: endMin=lowerBound 이면 overlap 아님 → 숨김", () => {
+    // 09:00-09:00 같은 0-duration은 비현실적이지만 boundary 검사: endMin > lowerBound 조건.
+    // 09:00 시작 09:00 종료 → endMin(540) > lowerBound(540) false → 숨김.
+    const sessions = new Map([[0, [makeSess("s1", "09:00", "09:00")]]]);
+    render(<TimeTableRow {...baseProps} sessions={sessions} startHour={9} endHour={23} />);
+    expect(screen.queryByTestId("session-s1")).toBeNull();
   });
 });
 

@@ -75,7 +75,9 @@ RootLayout
 
 ### 2.2 시간표 (`/schedule`)
 
-**3가지 뷰 모드:** 일별(daily) / 주간(weekly) / 월별(monthly). `SegmentedButton`으로 전환. `localStorage` 저장.
+**3가지 뷰 모드:** 일별(daily) / 주간(weekly) / 월별(monthly). `localStorage` 저장.
+
+**기본 Layout (ADR-010, 2026-05-08 부터):** **P3** — Hide-on-Scroll 헤더 + 좌하단 fixed `ScheduleFloatingToolbar` (`data-testid="schedule-floating-toolbar"`: 날짜 네비 + 통합 필터 popover + TimeRangeSelector + viewMode 단축 버튼 "일/주/월" — `data-testid="view-mode-{daily|weekly|monthly}"`) + 좌측 `PrimarySidebar`. 백출은 `?layout=default` query 또는 localStorage `class_planner_schedule_layout = "default"` (`useScheduleLayout` 훅).
 
 **컴포넌트 트리 (현행):**
 ```
@@ -85,7 +87,7 @@ SchedulePage
   │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenuV2▼ + 공유 아이콘
   │           └── TemplateMenuV2 (molecules) — 드롭다운: "템플릿 적용하기" / "시간표 비우기" / "현재 주를 템플릿으로 저장" / "미리보기"
   │                 → SlotPickerModal (save/apply mode, ADR-008 multi-slot)
-  ├── StudentFilterChipBar (_components/) — colorBy=student 시만 표시
+  ├── StudentFilterChipBar (_components/) — ?layout=default 백출 + colorBy=student 시만. P3 default에서는 ScheduleFloatingToolbar의 UnifiedFilterPopover로 통합.
   ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
   ├── [Row 2: flex justify-between, 그리드 직전]
   │     ├── ScheduleDateNavigator (molecules) — ‹/›(±1일/주/월) + 오늘 버튼
@@ -116,7 +118,8 @@ SchedulePage
 
 **TimeTableGrid 상세 (주간 뷰):**
 - 그리드 칼럼: `56px(시간 라벨) + weekdayWidths[7]` (lane 수 × laneWidth px 동적)
-- 시간 범위: 09:00 ~ 23:30 (30분 단위, SLOT_HEIGHT_PX=32px per slot)
+- 시간 범위: 사용자 customizable (`TimeRangeSelector` — `?range=auto|default|HH-HH` query / localStorage `class_planner_{userId}_time_range` / default 9-23). 30분 단위, `SLOT_HEIGHT_PX=32px` per slot.
+- **시간 범위 경계 걸침 세션** (예: 11:30-16:30 + 7-13 모드): strict overlap 검사로 양쪽 모드 모두에서 표시. `TimeTableRow.weekdaySessions` 필터 = `startMin < upperBound && endMin > lowerBound`. `laidOutSessions`에서 visStart/visEnd로 clamp + `overflowsTop`/`overflowsBottom` flag → `SessionBlock` 상/하단 그라데이션 cap (`session-overflow-top/bottom` Tailwind utility, `globals.css`).
 - 헤더 높이: 60px. Stacked Circle: 요일명(10px) 위 + 날짜 숫자(22px bold, w-9 h-9 rounded-full) 아래
 - 오늘: amber 원 배지(`var(--color-accent-hover)`) + 컬럼 배경 `rgba(245,158,11,0.025)` + now-line
 - 수평 시간선: 정시 `rgba(255,255,255,0.09)` / 30분 `rgba(255,255,255,0.04)`, pointer-events:none
@@ -147,14 +150,17 @@ SchedulePage
 - 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 표시
 - 학생 칩을 SessionBlock에 드롭 → 해당 수업에 학생 추가(드래그앤드롭)
 
-**ColorBy 모드 동작 (student 모드 상세):**
-- Student mode + 칩 미선택 → 과목 색상·라벨로 폴백 (이전: 학생 해시 색상). `resolveSessionColor`의 `selectedStudentIds` 빈 배열 → 과목 색 반환.
-- Student mode + 칩 선택 → 비선택 세션 opacity 0.25로 dim; 선택된 세션은 학생 해시 색상 + outer glow ring (1.5px)
+**ColorBy 모드 동작 — 학생/과목/강사 통일된 dim/glow 패턴 (PR #284, 2026-05-08):**
+- 활성 필터 type 모두를 만족하는 세션 (AND 결합, `sessionMatchesFilters(session, enrollments, studentIds, subjectIds, teacherIds)`) → 매칭 세션은 lane reorder로 앞 lane 우선 배치 + outer glow ring (1.5px boxShadow, `pickRingHex`로 colorBy 우선 + fallback chain의 첫 selected entity 색).
+- 비매칭 세션 → `opacity: 0.25` dim. 학생/과목/강사 모두 동일.
+- 강사 매칭은 `session.teacherId` 단일 필드 비교 (enrollment 통하지 않음).
+- `colorBy` 자동 전환: 단일 type 활성 → 그 type 색상; 혼합 또는 모두 빈 → "subject" fallback.
+- Student mode + 칩 미선택 → 과목 색상·라벨로 폴백 (`resolveSessionColor`의 `selectedStudentIds` 빈 배열 → 과목 색).
 - Student mode + 칩 선택 + 세션 총 인원 ≥ 2명 → 블록 우측 상단에 `Users 아이콘 + 총 N명` 뱃지 노출 (`aria-label="총 N명"`). 선택한 학생이 미포함된 dim 블록에는 뱃지 미표시.
-- `getGroupStudentNames` 시그니처: `selectedStudentIds?: string[]` — multi-select 시 매칭된 모든 학생명 반환 (구: 단일 ID만 매칭).
+- `getGroupStudentNames` 시그니처: `selectedStudentIds?: string[]` — multi-select 시 매칭된 모든 학생명 반환.
 - 드래그 중 glow/dim 비활성 (포인터 인터랙션 우선)
-- 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity)
-- 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달
+- 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity).
+- 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달. Weekly는 `SessionBlock`이 자체적으로 `isAnyFilterActive` 체크.
 
 **Session Overflow (인라인 확장):**
 - 겹침 세션 ≥ 4개: 최대 3개 인라인 표시 + `+N` 인라인 칩 버튼

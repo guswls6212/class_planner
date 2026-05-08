@@ -58,10 +58,8 @@ test.describe("offline network behavior", () => {
     await expect(page.getByTestId("session-block-sess-offline")).toBeVisible();
 
     // viewMode 토글 동작 — UI는 네트워크 없이도 동작
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }).click();
-    await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("view-mode-monthly").click();
+    await expect(page.getByTestId("view-mode-monthly")).toHaveAttribute("aria-pressed", "true");
   });
 
   test("offline 전환 후 reload → schedule 페이지 정상 렌더 (SW 캐시 기반)", async ({

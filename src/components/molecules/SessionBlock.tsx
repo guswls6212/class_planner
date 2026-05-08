@@ -10,8 +10,9 @@ import {
   getImprovedStudentDisplayText,
   getSessionBlockStyles,
   getSessionSubject,
-  getStudentDeterministicColor,
+  pickRingHex,
   resolveSessionColor,
+  sessionMatchesFilters,
 } from "./SessionBlock.utils";
 import { hexToRgba } from "@/lib/colors/hexToRgba";
 import { tintFromHex } from "@/lib/colors/tintFromHex";
@@ -32,6 +33,10 @@ interface SessionBlockProps {
   /** 평클릭 핸들러. modifier(Shift/Ctrl/Meta) 클릭은 onSelectToggle로 분기됨. */
   onClick: () => void;
   selectedStudentIds?: string[];
+  /** 과목 필터 — 학생과 AND 결합 + 매칭 시 ring glow / 비매칭 시 dim. */
+  selectedSubjectIds?: string[];
+  /** 강사 필터 — 위와 동일 패턴. session.teacherId로 매칭. */
+  selectedTeacherIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
   draggedSessionId?: string;
@@ -41,6 +46,10 @@ interface SessionBlockProps {
    * (사용자 멘탈 모델: "원본은 그대로, preview만 위치 표시"). 일반 이동은 false.
    */
   isCopyMode?: boolean;
+  /** 시간 범위 lower bound를 넘어 위쪽으로 잘린 세션 — 상단에 그라데이션 cap 표시 */
+  overflowsTop?: boolean;
+  /** 시간 범위 upper bound를 넘어 아래쪽으로 잘린 세션 — 하단에 그라데이션 cap 표시 */
+  overflowsBottom?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
@@ -86,11 +95,15 @@ function SessionBlock({
   height,
   onClick,
   selectedStudentIds,
+  selectedSubjectIds,
+  selectedTeacherIds,
   isMobile = false,
   isDragging = false,
   draggedSessionId,
   isAnyDragging = false,
   isCopyMode = false,
+  overflowsTop = false,
+  overflowsBottom = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
@@ -270,23 +283,38 @@ function SessionBlock({
     selectedStudentIds != null &&
     selectedStudentIds.length > 0;
 
-  // Dim/glow logic: only active when student mode is on and not dragging
-  const sessionContainsSelectedStudent =
-    isStudentModeActive &&
-    (session.enrollmentIds ?? []).some((eid) => {
-      const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment != null && selectedStudentIds!.includes(enrollment.studentId);
-    });
+  // 필터 매칭 dim/glow 일반화 — 학생/과목/강사 중 하나라도 활성이면 매칭/비매칭에 따라
+  // ring glow 또는 opacity dim. AND 결합은 sessionMatchesFilters에서 처리.
+  const isAnyFilterActive =
+    (selectedStudentIds?.length ?? 0) > 0 ||
+    (selectedSubjectIds?.length ?? 0) > 0 ||
+    (selectedTeacherIds?.length ?? 0) > 0;
+
+  const sessionMatchesAllFilters =
+    isAnyFilterActive &&
+    sessionMatchesFilters(
+      session,
+      enrollments ?? [],
+      selectedStudentIds ?? [],
+      selectedSubjectIds ?? [],
+      selectedTeacherIds ?? [],
+    );
 
   const isDragActive = isAnyDragging || isDragging;
 
   let dimGlowStyle: React.CSSProperties = {};
-  if (isStudentModeActive && !isDragActive) {
-    if (sessionContainsSelectedStudent) {
-      // Color from first chip — multi-chip selection uses first selected student's color
-      const hex = getStudentDeterministicColor(selectedStudentIds![0]);
+  if (isAnyFilterActive && !isDragActive) {
+    if (sessionMatchesAllFilters) {
+      const ringHex = pickRingHex(
+        colorBy,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        subjects,
+        teachers,
+      );
       dimGlowStyle = {
-        boxShadow: `0 0 0 1.5px ${hexToRgba(hex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
+        boxShadow: `0 0 0 1.5px ${hexToRgba(ringHex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
       };
     } else {
       // Combined with completed session's 0.55 inner opacity this results in ~0.14 total
@@ -379,6 +407,8 @@ function SessionBlock({
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
       data-selected={selected ? "true" : undefined}
+      data-overflows-top={overflowsTop ? "true" : undefined}
+      data-overflows-bottom={overflowsBottom ? "true" : undefined}
       aria-label={ariaLabel}
       aria-pressed={selected ? true : undefined}
     >
@@ -437,6 +467,22 @@ function SessionBlock({
           >
             ⚠
           </span>
+        )}
+
+        {/* 시간 범위 경계 overflow 표지 — 잘린 끝에 그라데이션 cap으로 "이어짐" 시각화. */}
+        {overflowsTop && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-top"
+            className="session-overflow-top absolute top-0 left-0 right-0 h-2 pointer-events-none rounded-t-[4px] z-[1]"
+          />
+        )}
+        {overflowsBottom && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-bottom"
+            className="session-overflow-bottom absolute bottom-0 left-0 right-0 h-2 pointer-events-none rounded-b-[4px] z-[1]"
+          />
         )}
 
         <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
