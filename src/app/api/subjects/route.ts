@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, color } = body;
+    const { id, name, color } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -59,14 +59,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    // Local-first: client UUID 수용. 응답 data.id가 보낸 id와 다르면 클라가 reconcile.
     const newSubject = await getSubjectService().addSubject(
-      { name, color },
+      {
+        ...(id && typeof id === "string" && { id }),
+        name,
+        color,
+      },
       academyId
     );
-    return NextResponse.json(
-      { success: true, data: newSubject },
-      { status: 201 }
-    );
+    // status 200: idempotent
+    return NextResponse.json({ success: true, data: newSubject });
   } catch (error) {
     return toErrorResponse(error);
   }

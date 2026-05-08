@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  syncTeacherCreate,
+  syncTeacherCreateAsync,
   syncTeacherDelete,
   syncTeacherSubjectAdd,
   syncTeacherSubjectRemove,
@@ -21,6 +21,7 @@ import {
   getClassPlannerData,
   getTeacherFromLocal,
   removeTeacherSubjectFromLocal,
+  replaceTeacherId,
   setClassPlannerData,
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
@@ -148,14 +149,32 @@ export const useTeacherManagementLocal =
           if (result.success && result.data) {
             loadTeachersFromLocal();
 
+            // 서버 동기화 — 응답 id가 localId와 다르면 localStorage 측
+            // teacher + sessions[].teacherId 를 reconcile.
             const currentUserId = localStorage.getItem("supabase_user_id");
-            syncTeacherCreate(currentUserId, { name, color, userId, ...profile });
+            const localId = result.data.id;
+            const serverResp = await syncTeacherCreateAsync(currentUserId, {
+              id: localId,
+              name,
+              color,
+              userId,
+              ...profile,
+            });
+            if (serverResp && serverResp.id !== localId) {
+              replaceTeacherId(localId, serverResp.id);
+              loadTeachersFromLocal();
+              logger.info("useTeacherManagementLocal - teacher id reconciled", {
+                localId,
+                serverId: serverResp.id,
+                name,
+              });
+            }
 
             showToast("success", `${name.trim()} 강사가 추가됐습니다`);
 
             logger.info("useTeacherManagementLocal - 강사 추가 성공", {
               name,
-              teacherId: result.data.id,
+              teacherId: serverResp?.id ?? localId,
             });
 
             return true;

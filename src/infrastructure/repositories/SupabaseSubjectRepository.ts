@@ -71,19 +71,23 @@ export class SupabaseSubjectRepository implements SubjectRepository {
   }
 
   async create(
-    subjectData: { name: string; color: string },
+    subjectData: { id?: string; name: string; color: string },
     academyId: string
   ): Promise<Subject> {
     try {
       const client = this.createServiceRoleClient();
 
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전).
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        name: subjectData.name,
+        color: subjectData.color,
+      };
+      if (subjectData.id) insertPayload.id = subjectData.id;
+
       const { data, error } = await client
         .from("subjects")
-        .insert({
-          academy_id: academyId,
-          name: subjectData.name,
-          color: subjectData.color,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

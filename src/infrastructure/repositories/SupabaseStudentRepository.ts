@@ -85,23 +85,28 @@ export class SupabaseStudentRepository implements StudentRepository {
   }
 
   async create(
-    studentData: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
+    studentData: { id?: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
     academyId: string
   ): Promise<Student> {
     try {
       const client = this.createServiceRoleClient();
 
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전).
+      // id 충돌 시 onConflict:"id" → 같은 row 그대로 반환 (의미적 get-or-create).
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        name: studentData.name,
+        gender: studentData.gender ?? null,
+        birth_date: studentData.birthDate ?? null,
+        grade: studentData.grade ?? null,
+        school: studentData.school ?? null,
+        phone: studentData.phone ?? null,
+      };
+      if (studentData.id) insertPayload.id = studentData.id;
+
       const { data, error } = await client
         .from("students")
-        .insert({
-          academy_id: academyId,
-          name: studentData.name,
-          gender: studentData.gender ?? null,
-          birth_date: studentData.birthDate ?? null,
-          grade: studentData.grade ?? null,
-          school: studentData.school ?? null,
-          phone: studentData.phone ?? null,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

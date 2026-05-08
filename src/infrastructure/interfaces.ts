@@ -7,7 +7,8 @@ export interface StudentRepository {
   getAll(academyId: string): Promise<Student[]>;
   getById(id: string, academyId?: string): Promise<Student | null>;
   create(
-    student: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
+    /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
+    student: { id?: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
     academyId: string
   ): Promise<Student>;
   update(
@@ -21,7 +22,8 @@ export interface StudentRepository {
 export interface SubjectRepository {
   getAll(academyId: string): Promise<Subject[]>;
   getById(id: string, academyId?: string): Promise<Subject | null>;
-  create(subject: { name: string; color: string }, academyId: string): Promise<Subject>;
+  /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
+  create(subject: { id?: string; name: string; color: string }, academyId: string): Promise<Subject>;
   update(
     id: string,
     subject: { name: string; color: string },
@@ -52,7 +54,8 @@ export interface TeacherRepository {
   getAll(academyId: string): Promise<Teacher[]>;
   getById(id: string, academyId?: string): Promise<Teacher | null>;
   create(
-    teacher: { name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: import("@/domain/entities/Teacher").TeacherRole | null; notes?: string | null },
+    /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
+    teacher: { id?: string; name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: import("@/domain/entities/Teacher").TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher>;
   update(

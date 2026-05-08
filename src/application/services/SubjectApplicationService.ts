@@ -15,22 +15,30 @@ export class SubjectApplicationServiceImpl {
   }
 
   async addSubject(
-    subjectData: { name: string; color: string },
+    subjectData: { id?: string; name: string; color: string },
     academyId: string
   ): Promise<Subject> {
     try {
-      const existingSubjects = await this.subjectRepository.getAll(academyId);
-      const isDuplicate = existingSubjects.some(
-        (subject) => subject.name === subjectData.name
-      );
+      // Local-first reconcile path: client UUID(`id`)가 주어지면 client에서 이미
+      // 중복 검증 + repository.upsert가 retry-safe. server-allocated path만 체크.
+      if (!subjectData.id) {
+        const existingSubjects = await this.subjectRepository.getAll(academyId);
+        const isDuplicate = existingSubjects.some(
+          (subject) => subject.name === subjectData.name
+        );
 
-      if (isDuplicate) {
-        throw new AppError("SUBJECT_NAME_DUPLICATE", { statusHint: 409 });
+        if (isDuplicate) {
+          throw new AppError("SUBJECT_NAME_DUPLICATE", { statusHint: 409 });
+        }
       }
 
       const newSubject = Subject.create(subjectData.name, subjectData.color);
       return await this.subjectRepository.create(
-        { name: newSubject.name, color: newSubject.color.value },
+        {
+          ...(subjectData.id && { id: subjectData.id }),
+          name: newSubject.name,
+          color: newSubject.color.value,
+        },
         academyId
       );
     } catch (error) {

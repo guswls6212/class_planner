@@ -355,7 +355,8 @@ describe("/api/teachers API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
+      // 200: idempotent (local-first id reconcile)
+      expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data).toHaveProperty("data");
       expect(mockAddTeacher).toHaveBeenCalledWith(
@@ -402,7 +403,8 @@ describe("/api/teachers API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
+      // 200: idempotent (local-first id reconcile)
+      expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(mockAddTeacher).toHaveBeenCalledWith(
         expect.objectContaining({

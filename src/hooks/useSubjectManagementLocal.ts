@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  syncSubjectCreate,
+  syncSubjectCreateAsync,
   syncSubjectDelete,
   syncSubjectUpdate,
 } from "../lib/apiSync";
@@ -17,6 +17,7 @@ import {
   getAllSubjectsFromLocal,
   getClassPlannerData,
   getSubjectFromLocal,
+  replaceSubjectId,
   setClassPlannerData,
   updateSubjectInLocal,
 } from "../lib/localStorageCrud";
@@ -140,16 +141,32 @@ export const useSubjectManagementLocal =
             // UI 즉시 업데이트
             loadSubjectsFromLocal();
 
-            // 서버 동기화 (fire-and-forget)
+            // 서버 동기화 — server가 받은 id를 INSERT/UPSERT에 사용. 응답 id가
+            // localId와 다르면 localStorage 측 subject + enrollments[].subjectId
+            // 를 reconcile.
             const userId = localStorage.getItem("supabase_user_id");
-            syncSubjectCreate(userId, { name, color });
+            const localId = result.data.id;
+            const serverResp = await syncSubjectCreateAsync(userId, {
+              id: localId,
+              name,
+              color,
+            });
+            if (serverResp && serverResp.id !== localId) {
+              replaceSubjectId(localId, serverResp.id);
+              loadSubjectsFromLocal();
+              logger.info("useSubjectManagementLocal - subject id reconciled", {
+                localId,
+                serverId: serverResp.id,
+                name,
+              });
+            }
 
             showToast("success", `${name.trim()} 과목이 추가됐습니다`);
 
             logger.info("useSubjectManagementLocal - 과목 추가 성공", {
               name,
               color,
-              subjectId: result.data.id,
+              subjectId: serverResp?.id ?? localId,
             });
 
             return true;

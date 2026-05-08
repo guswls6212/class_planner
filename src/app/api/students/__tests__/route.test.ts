@@ -99,7 +99,9 @@ describe("/api/students API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
+      // 200: idempotent (PR #fix/local-first-id-reconcile) — server가 새로
+      // 만들었든 기존 row를 반환했든 동일 status. 클라가 응답 id 비교 후 reconcile.
+      expect(response.status).toBe(200);
       expect(data).toHaveProperty("success");
       expect(data).toHaveProperty("data");
     });

@@ -73,23 +73,27 @@ export class SupabaseTeacherRepository implements TeacherRepository {
   }
 
   async create(
-    teacherData: { name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
+    teacherData: { id?: string; name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher> {
     try {
       const client = this.createServiceRoleClient();
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전).
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        name: teacherData.name,
+        color: teacherData.color,
+        user_id: teacherData.userId ?? null,
+        email: teacherData.email ?? null,
+        phone: teacherData.phone ?? null,
+        role: teacherData.role ?? null,
+        notes: teacherData.notes ?? null,
+      };
+      if (teacherData.id) insertPayload.id = teacherData.id;
+
       const { data, error } = await client
         .from("teachers")
-        .insert({
-          academy_id: academyId,
-          name: teacherData.name,
-          color: teacherData.color,
-          user_id: teacherData.userId ?? null,
-          email: teacherData.email ?? null,
-          phone: teacherData.phone ?? null,
-          role: teacherData.role ?? null,
-          notes: teacherData.notes ?? null,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 
