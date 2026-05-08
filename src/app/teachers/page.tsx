@@ -39,6 +39,27 @@ const TeachersPage = () => {
     [updateTeacher]
   );
 
+  // useTeacherManagementLocal의 addTeacher는 (name, color, userId?, profile?)을 받지만
+  // TeachersPageLayout는 (name, color, profile?) 형태만 노출. userId는 신규 추가 시점에
+  // 항상 null (강사를 user 계정에 link하는 별도 흐름은 detail panel에서).
+  const handleAddTeacher = useCallback(
+    async (
+      name: string,
+      color: string,
+      profile?: { email?: string; phone?: string },
+    ): Promise<boolean> => {
+      return addTeacher(
+        name,
+        color,
+        null,
+        profile
+          ? { email: profile.email ?? null, phone: profile.phone ?? null }
+          : undefined,
+      );
+    },
+    [addTeacher],
+  );
+
   return (
     <TeachersPageLayout
       teachers={teachers}
@@ -48,7 +69,7 @@ const TeachersPage = () => {
       students={students}
       selectedTeacherId={selectedTeacherId}
       onSelectTeacher={setSelectedTeacherId}
-      onAddTeacher={addTeacher}
+      onAddTeacher={handleAddTeacher}
       onDeleteTeacher={deleteTeacher}
       onUpdateTeacher={handleUpdate}
       onAddTeacherSubject={addTeacherSubject}
