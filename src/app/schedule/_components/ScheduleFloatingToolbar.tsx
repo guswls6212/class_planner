@@ -145,6 +145,7 @@ export default function ScheduleFloatingToolbar({
               type="button"
               onClick={() => onChangeViewMode(mode)}
               aria-pressed={isActive}
+              data-testid={`view-mode-${mode}`}
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
                 isActive
                   ? "bg-[var(--color-accent)] text-white font-medium"

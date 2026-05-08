@@ -77,7 +77,7 @@ RootLayout
 
 **3가지 뷰 모드:** 일별(daily) / 주간(weekly) / 월별(monthly). `localStorage` 저장.
 
-**기본 Layout (ADR-010, 2026-05-08 부터):** **P3** — Hide-on-Scroll 헤더 + 좌하단 fixed `ScheduleFloatingToolbar` (`data-testid="schedule-floating-toolbar"`: 날짜 네비 + 통합 필터 popover + TimeRangeSelector + viewMode 단축 버튼 "일/주/월") + 좌측 `PrimarySidebar`. 백출은 `?layout=default` query 또는 localStorage `class_planner_schedule_layout = "default"` (`useScheduleLayout` 훅).
+**기본 Layout (ADR-010, 2026-05-08 부터):** **P3** — Hide-on-Scroll 헤더 + 좌하단 fixed `ScheduleFloatingToolbar` (`data-testid="schedule-floating-toolbar"`: 날짜 네비 + 통합 필터 popover + TimeRangeSelector + viewMode 단축 버튼 "일/주/월" — `data-testid="view-mode-{daily|weekly|monthly}"`) + 좌측 `PrimarySidebar`. 백출은 `?layout=default` query 또는 localStorage `class_planner_schedule_layout = "default"` (`useScheduleLayout` 훅).
 
 **컴포넌트 트리 (현행):**
 ```

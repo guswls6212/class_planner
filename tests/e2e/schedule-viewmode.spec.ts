@@ -51,11 +51,10 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    const toolbar = page.getByTestId("schedule-floating-toolbar");
-    await expect(toolbar).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "일" })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "주" })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "월" })).toBeVisible();
+    await expect(page.getByTestId("schedule-floating-toolbar")).toBeVisible();
+    await expect(page.getByTestId("view-mode-daily")).toBeVisible();
+    await expect(page.getByTestId("view-mode-weekly")).toBeVisible();
+    await expect(page.getByTestId("view-mode-monthly")).toBeVisible();
   });
 
   test("'월별' 클릭 → aria-pressed=true + localStorage `ui:scheduleView`=monthly", async ({
@@ -64,11 +63,9 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }).click();
+    await page.getByTestId("view-mode-monthly").click();
 
-    await expect(
-      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("view-mode-monthly")).toHaveAttribute("aria-pressed", "true");
 
     const stored = await page.evaluate(() => localStorage.getItem("ui:scheduleView"));
     expect(stored).toContain("monthly");
@@ -78,7 +75,7 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "일" }).click();
+    await page.getByTestId("view-mode-daily").click();
 
     // DayChipBar — 0=월, 6=일 모두 보임
     await expect(page.getByTestId("day-chip-0")).toBeVisible({ timeout: 5000 });
@@ -89,16 +86,14 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }).click();
-    await expect(
-      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("view-mode-monthly").click();
+    await expect(page.getByTestId("view-mode-monthly")).toHaveAttribute("aria-pressed", "true");
 
     await page.reload();
 
     // localStorage에 persist되었으므로 reload 후에도 월별이 active
-    await expect(
-      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
-    ).toHaveAttribute("aria-pressed", "true", { timeout: 5000 });
+    await expect(page.getByTestId("view-mode-monthly")).toHaveAttribute("aria-pressed", "true", {
+      timeout: 5000,
+    });
   });
 });
