@@ -116,11 +116,10 @@ export default function ScheduleFloatingToolbar({
       >
         <ChevronRight size={13} />
       </button>
-      <Divider />
       <button
         type="button"
         onClick={onToday}
-        className="px-2 py-1 text-xs rounded-md hover:bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]"
+        className="hidden sm:inline-flex px-2 py-1 text-xs rounded-md hover:bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)]"
       >
         오늘
       </button>
