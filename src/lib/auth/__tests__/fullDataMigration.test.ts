@@ -17,9 +17,11 @@ function makePostResponse(id: string) {
   );
 }
 
-function makeErrorResponse(message: string, status = 400) {
+// API 통일 응답 포맷: { success: false, error: { code, message } }
+// (src/lib/errors/httpErrors.ts toErrorResponse 와 일치)
+function makeErrorResponse(code: string, message: string, status = 400) {
   return Promise.resolve(
-    new Response(JSON.stringify({ success: false, message }), {
+    new Response(JSON.stringify({ success: false, error: { code, message } }), {
       status,
       headers: { "Content-Type": "application/json" },
     })
@@ -249,7 +251,7 @@ describe("migrateLocalDataToServer — student upload error cascades", () => {
 
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce(() => makeErrorResponse("서버 오류"))    // student fails
+      .mockImplementationOnce(() => makeErrorResponse("INTERNAL_ERROR", "서버 오류", 500))    // student fails
       .mockImplementationOnce(() => makePostResponse("srv-sub1"));    // subject OK
 
     vi.stubGlobal("fetch", fetchMock);
@@ -364,18 +366,11 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "이미 존재하는 학생 이름입니다.",
-            }),
-            {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        )
+        makeErrorResponse(
+          "STUDENT_NAME_DUPLICATE",
+          "이미 존재하는 학생 이름입니다.",
+          409,
+        ),
       );
 
     vi.stubGlobal("fetch", fetchMock);
@@ -423,11 +418,14 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       callCount++;
       if (callCount === 1) {
-        // 학생 POST: 409 name-conflict
+        // 학생 POST: 409 name-conflict (통일 에러 포맷)
         return new Response(
           JSON.stringify({
             success: false,
-            message: "이미 존재하는 학생 이름입니다.",
+            error: {
+              code: "STUDENT_NAME_DUPLICATE",
+              message: "이미 존재하는 학생 이름입니다.",
+            },
           }),
           { status: 409, headers: { "Content-Type": "application/json" } }
         );
@@ -497,19 +495,12 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
-        // 학생 POST: 409 name-conflict 오류
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "이미 존재하는 학생 이름입니다.",
-            }),
-            {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        )
+        // 학생 POST: 409 name-conflict 오류 (통일 에러 포맷)
+        makeErrorResponse(
+          "STUDENT_NAME_DUPLICATE",
+          "이미 존재하는 학생 이름입니다.",
+          409,
+        ),
       )
       .mockImplementationOnce(() => makePostResponse("srv-sub1"));    // 과목 OK
 
@@ -532,6 +523,13 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     expect(result.errors.some((e) => e.entity === "student" && e.localId === "loc-s1")).toBe(true);
     expect(result.errors.some((e) => e.entity === "enrollment" && e.localId === "loc-en1")).toBe(true);
     expect(result.errors.some((e) => e.entity === "session" && e.localId === "loc-sess1")).toBe(true);
+
+    // [object Object] 회귀 가드 (UAT 2026-05-08 사고) — error 객체가 그대로 message에
+    // 누적되면 사용자 모달에 "student: [object Object]"로 보인다. extractErrorMessage가
+    // error.message 만 추출하는지 확인.
+    const studentError = result.errors.find((e) => e.entity === "student");
+    expect(studentError?.message).toBe("이미 존재하는 학생 이름입니다.");
+    expect(studentError?.message).not.toContain("[object Object]");
 
     vi.unstubAllGlobals();
   });

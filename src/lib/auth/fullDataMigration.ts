@@ -28,6 +28,21 @@ export type MigrationSyncResult = {
   errors: { entity: string; localId: string; message: string }[];
 };
 
+// API의 통일된 에러 응답({ success: false, error: { code, message } })에서
+// 사람이 읽을 수 있는 메시지만 안전하게 추출. 객체가 그대로 string concat에
+// 흘러들어 [object Object]가 되는 회귀를 막는 단일 출입구.
+function extractErrorMessage(json: unknown, fallback: string): string {
+  if (typeof json !== "object" || json === null) return fallback;
+  const j = json as { error?: { message?: string } };
+  return j.error?.message ?? fallback;
+}
+
+function getErrorCode(json: unknown): string | undefined {
+  if (typeof json !== "object" || json === null) return undefined;
+  const j = json as { error?: { code?: string } };
+  return j.error?.code;
+}
+
 export async function migrateLocalDataToServer(
   userId: string,
   localData: ClassPlannerData,
@@ -73,11 +88,12 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        // 이름 중복 오류 → 서버에서 같은 이름 학생 찾아 ID 재사용
+        // 이름 중복 오류 → 서버에서 같은 이름 학생 찾아 ID 재사용.
+        // code 기반 검사 — toErrorResponse가 항상 { error: { code } }로 직렬화하므로
+        // message 텍스트 매칭(언어/문구 변경에 취약)에 의존하지 않는다.
         const isNameConflict =
           res.status === 409 &&
-          typeof json.message === "string" &&
-          json.message.includes("이미 존재하는 학생 이름");
+          getErrorCode(json) === "STUDENT_NAME_DUPLICATE";
         if (isNameConflict) {
           const fallback = serverData.students.find(
             (s) => s.name === student.name
@@ -92,7 +108,7 @@ export async function migrateLocalDataToServer(
             continue;
           }
         }
-        const message = json.message ?? json.error ?? "학생 업로드 실패";
+        const message = extractErrorMessage(json, "학생 업로드 실패");
         errors.push({ entity: "student", localId: student.id, message });
         logger.warn("fullDataMigration - 학생 업로드 실패", {
           localId: student.id,
@@ -138,7 +154,7 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "과목 업로드 실패";
+        const message = extractErrorMessage(json, "과목 업로드 실패");
         errors.push({ entity: "subject", localId: subject.id, message });
         logger.warn("fullDataMigration - 과목 업로드 실패", {
           localId: subject.id,
@@ -201,7 +217,7 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "수강 업로드 실패";
+        const message = extractErrorMessage(json, "수강 업로드 실패");
         errors.push({ entity: "enrollment", localId: enrollment.id, message });
         logger.warn("fullDataMigration - 수강 업로드 실패", {
           localId: enrollment.id,
@@ -297,7 +313,7 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "수업 업로드 실패";
+        const message = extractErrorMessage(json, "수업 업로드 실패");
         errors.push({ entity: "session", localId: session.id, message });
         logger.warn("fullDataMigration - 수업 업로드 실패", {
           localId: session.id,
