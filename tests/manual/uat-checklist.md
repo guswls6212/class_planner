@@ -557,6 +557,32 @@ console.log('새 호출 수:', after - before);  // ≥1
 - 우측 패널 빈 상태 안내
 **Result:** [ ] Pass [ ] Fail — note: ___
 
+### S-2.7 학생 상세 등록 모달 [P1] (PR #289)
+**Pre:** `/students` 진입
+**Steps:**
+1. 헤더 "+ 상세 등록" 클릭 → StudentAddDetailModal 표시
+2. 이름만 입력 → "추가" → 모달 닫힘 + 학생 등록
+3. 다시 "+ 상세 등록" → 이름 + 성별(남/여) + 생년월일 입력 → "추가"
+**Expected:**
+- 이름 비었을 때 "추가" 버튼 disabled
+- "권장" 라벨이 성별/생년월일 옆에 인디고 칩
+- 안내: "성별/생년월일은 동명이인 식별과 정확한 데이터 동기화에 사용됩니다"
+- 4글자 초과 입력 시 잘림, 중복 이름 시 alert role 에러 메시지
+- 등록 후 detail panel에 입력한 메타가 정확히 반영
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-2.8 학생 빈 메타 hint (ⓘ) [P1] (PR #290)
+**Pre:** `/students`에 학생 2명 — 1명은 이름만, 1명은 성별+생년월일 모두 채움
+**Steps:**
+1. 목록 행 비교
+**Expected:**
+- 이름만 등록한 학생 행 → 이름 옆에 ⓘ 인디고 칩 표시
+  - title="성별/생년월일을 추가하면 동명이인 식별과 데이터 동기화가 더 정확해집니다"
+  - aria-label="프로필 정보 보강 가능"
+- 메타가 모두 채워진 학생 행 → ⓘ 칩 미표시
+- detail panel에서 메타 입력 후 목록으로 돌아오면 ⓘ 자연 사라짐
+**Result:** [ ] Pass [ ] Fail — note: ___
+
 ---
 
 ## 3. 과목 관리 (P0: 1 / 5) [Core 포함]
@@ -678,6 +704,33 @@ console.log('새 호출 수:', after - before);  // ≥1
 **Expected:**
 - 색상/아이콘이 상태마다 구분되게 표시
 - 마우스 hover tooltip으로 상태 설명
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-4.9 강사 상세 등록 모달 [P1] (PR #289)
+**Pre:** `/teachers` 진입
+**Steps:**
+1. 헤더 "+ 상세 등록" 클릭 → TeacherAddDetailModal 표시
+2. 이름만 입력 → "추가" → 모달 닫힘 + 강사 등록
+3. 다시 "+ 상세 등록" → 이름 + 이메일 (`test@academy.com`) + 전화 (`010-1234-5678`) → "추가"
+4. 잘못된 이메일 형식 (`not-an-email`) → "추가" 시도
+**Expected:**
+- 이름 비었을 때 "추가" 버튼 disabled
+- "권장" 라벨이 이메일/전화 옆 인디고 칩
+- 잘못된 이메일 형식 시 alert role 에러 메시지 ("올바른 이메일 형식이 아닙니다")
+- 대소문자 무관 중복 이름 검사 (e.g., "Park"이 있으면 "park"도 막힘)
+- 등록 후 detail panel에 입력한 메타가 정확히 반영
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-4.10 강사 빈 메타 hint (ⓘ) [P1] (PR #290)
+**Pre:** `/teachers`에 강사 2명 — 1명은 이름만, 1명은 이메일+전화 모두 채움
+**Steps:**
+1. 목록 행 비교
+**Expected:**
+- 이름만 등록한 강사 행 → 이름 옆에 ⓘ 인디고 칩 표시
+  - title="이메일/전화번호를 추가하면 운영 정보가 충실해집니다"
+  - aria-label="연락처 정보 보강 가능"
+- 메타가 모두 채워진 강사 행 → ⓘ 칩 미표시
+- detail panel에서 메타 입력 후 목록으로 돌아오면 ⓘ 자연 사라짐
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -1758,6 +1811,40 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 **Expected:**
 - "데이터 이력" 섹션 자체 미렌더 (`useMyRole.canManage=false` gate, line 67 `if (!canManage) return null`)
 - 강사 추가 모달 다음으로 바로 다른 섹션 표시
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.14 익명→첫 로그인 sessions 마이그레이션 [P0] ⚠️ PR #286 (UAT 2026-05-08 회귀 가드)
+**Pre:** 익명 모드에서 학생 4명(이름만) + 과목 1개 + 수업 1개 등록 → 로그아웃
+**Steps:**
+1. UAT 계정으로 로그인
+2. omni-radar 로그 또는 DevTools console 관찰
+**Expected:**
+- `/api/sessions` POST가 `weekStartDate (YYYY-MM-DD) is required`로 거부되지 않음
+- `fullDataMigration 마이그레이션 완료 {syncedCounts:{students:4,subjects:1,enrollments:4,sessions:1}, errorCount:0}` 또는 sessions:1 정상 sync
+- DataConflictModal 미표시 (false positive 차단)
+- localStorage user 키 + server 양쪽 학생/과목/수업 모두 sync 완료
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.15 dedup graceful matching (빈 메타) [P0] ⚠️ PR #288 (UAT 2026-05-08 회귀 가드)
+**Pre:** S-14.14 직후 또는 익명 학생 1명 + 동일 이름이 server에 이미 등록 (gender/birthDate 모두 빈 상태)
+**Steps:**
+1. "이 기기 데이터로 시작" 클릭 (또는 재로그인 시 충돌 모달)
+2. 마이그레이션 결과 관찰
+**Expected:**
+- "ID 매핑 누락" cascade 발생 안 함 (`enrollment: ID 매핑 누락`, `session: 수업에 매핑된 수강 ID가 없음` 메시지 미발생)
+- `student: [object Object]` 표기 미발생 (extractErrorMessage helper)
+- 1차 dedup에서 이름 매칭으로 즉시 server ID 재사용 → POST round-trip 절약
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-14.16 upload-local 자동 경로 실패 toast [P1] ⚠️ PR #287 (UAT 2026-05-08 회귀 가드)
+**Pre:** 익명 모드에서 학생/과목/수업 입력 → UAT 환경에서 의도적으로 server 5xx 강제 (또는 권한 누락 시뮬레이션)
+**Steps:**
+1. 로그인 트리거 → upload-local 자동 경로 실행 → throw
+**Expected:**
+- sonner `toast.error("자동 동기화 실패", { description: ... })` 표시 (bottom-center)
+- `setIsInitialized(true)`로 앱 진입 보장 (loading 무한 대기 X)
+- anonymous 데이터 보존 (`localStorage.getItem("class_planner_anonymous")` 유지)
+- 다음 로그인 시 재시도 가능
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---

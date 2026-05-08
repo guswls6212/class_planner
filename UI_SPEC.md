@@ -372,10 +372,12 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
 | `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 주간 시간표 전용 수업 블록. 드래그 이동 가능. Phase 6 이후 Daily/Monthly/Landing은 SessionCard로 대체됨. |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
-| `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
+| `StudentAddDetailModal` | `StudentAddDetailModal.tsx` | `isOpen`, `onClose`, `onSubmit(name, options)`, `existingNames` | `/students` 페이지 헤더 "+ 상세 등록" 진입점. 이름 필수 + 성별/생년월일 "권장" 라벨 + 안내 문구. 동명이인 식별과 마이그레이션 dedup 정확도를 위한 메타 입력 (PR #289) |
+| `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 (legacy — 현재 schedule 모달의 인라인 추가 흐름에서만 사용) |
 | `StudentList` | `StudentList.tsx` | `students`, `selectedStudentId`, `onSelect`, `onDelete` | 학생 목록 (StudentListItem 반복) |
 | `SubjectInputSection` | `SubjectInputSection.tsx` | `onAdd`, `errorMessage?` | 과목 추가 입력 + 색상 선택 |
 | `SubjectList` | `SubjectList.tsx` | `subjects`, `selectedSubjectId`, `onSelect`, `onDelete`, `onUpdate` | 과목 목록 (SubjectListItem 반복) |
+| `TeacherAddDetailModal` | `TeacherAddDetailModal.tsx` | `isOpen`, `onClose`, `onSubmit(name, profile)`, `existingNames` | `/teachers` 페이지 헤더 "+ 상세 등록" 진입점. 이름 필수 + 이메일/전화번호 "권장" 라벨 + 이메일 형식 검증. 운영 정보 충실성 목적 (PR #289). settings 페이지의 `TeacherAddModal`(invite/share 다중 액션)과 별개. |
 | `TimeTableRow` | `TimeTableRow.tsx` | `weekday`, `height`, `sessions`, `subjects`, `enrollments`, `students`, ... | TimeTableGrid 내 1개 요일 행. SessionBlock + DropZone 조합 |
 
 > `ScheduleHeader`는 `src/components/molecules/`에 없음 — `src/app/schedule/_components/`에만 존재 (§3.4 참조)
@@ -585,12 +587,69 @@ SchedulePage
 
 ### 5.4 학생 추가 (학생 페이지)
 
+학생 페이지(`/students`)는 **두 진입점**을 제공한다:
+
+**A. 빠른 추가 (ListFilterBar — 검색+추가 통합 흐름)**
 ```
 1. 이름 입력 → Enter 또는 "+" 버튼 클릭
 2. IME 조합 중 Enter: 한글 입력 완료 후에만 추가 (composing 체크)
 3. 중복 이름: 에러 메시지 표시, 추가 안 됨
 4. 성공: 목록에 즉시 추가 → 서버 동기화
 ```
+신학기 일괄 등록처럼 이름만으로 빠르게 추가하는 흐름 (메타 입력 마찰 회피).
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → StudentAddDetailModal)** — PR #289
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수) + 성별 / 생년월일 ("권장" 라벨)
+3. 안내: "성별/생년월일은 동명이인 식별과 정확한 데이터 동기화에 사용됩니다. 비워두고 나중에 채워도 됩니다."
+4. "추가" 클릭 → onSubmit(name, { gender?, birthDate? }) → 모달 닫힘
+5. 빈 이름: "추가" 버튼 disabled
+6. 중복 이름 / 4글자 초과: alert role 에러 메시지
+```
+메타 정보를 함께 등록할 운영자를 위한 진입점. detail panel의 편집을 거치지 않고 한 번에 입력.
+
+### 5.4.1 빈 메타 보강 hint (학생 목록) — PR #290
+
+```
+학생 목록 행에서:
+- gender || birthDate 비어있는 학생 → 이름 옆에 ⓘ 인디고 칩 표시
+- title="성별/생년월일을 추가하면 동명이인 식별과 데이터 동기화가 더 정확해집니다"
+- aria-label="프로필 정보 보강 가능"
+- data-testid="student-meta-hint-{id}"
+- 양쪽 메타가 모두 채워지면 hint 자연 사라짐
+```
+발견형 UX — 강제하지 않고 운영자 인지 시 detail panel에서 보강.
+
+### 5.4.2 강사 추가 (강사 페이지) — PR #289, PR #290
+
+학생 페이지와 동일한 두 진입점 패턴:
+
+**A. 빠른 추가 (ListFilterBar)**
+```
+1. 이름 입력 → Enter 또는 "+" 버튼 → 자동 색상 할당으로 강사 추가
+2. 대소문자 무관 중복 검사: 이미 존재 시 추가 안 됨
+3. IME composing 가드 적용
+```
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → TeacherAddDetailModal)**
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수) + 이메일 / 전화번호 ("권장" 라벨)
+3. 이메일 형식 검증: 비워둠 OK, 입력 시 /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 매칭
+4. 안내: "이메일/전화번호는 운영 정보로 사용됩니다. 비워두고 나중에 채워도 됩니다."
+5. "추가" 클릭 → onAddTeacher(name, color, { email?, phone? }) → 모달 닫힘
+```
+
+**C. 빈 메타 hint (강사 목록)**
+```
+- email || phone 비어있는 강사 → 이름 옆 ⓘ 인디고 칩
+- title="이메일/전화번호를 추가하면 운영 정보가 충실해집니다"
+- aria-label="연락처 정보 보강 가능"
+- data-testid="teacher-meta-hint-{id}"
+```
+
+> settings 페이지의 `TeacherAddModal`(invite/share 다중 액션)과는 별개 — `/teachers` 페이지는 학원 운영의 강사 카탈로그 등록, settings는 강사 계정 초대/공유.
 
 ### 5.5 Data Conflict Resolution (로그인 시)
 
@@ -623,9 +682,14 @@ SchedulePage
 - localStorage 키: "class_planner_{userId}"
 - handleLoginDataMigration.ts 실행
   → 충돌 없으면 서버 데이터 사용
-  → 로컬에만 데이터 있으면 서버에 업로드
+  → 로컬에만 데이터 있으면 서버에 업로드 (upload-local 자동 경로)
   → 양쪽 모두 데이터 있으면 DataConflictModal
 ```
+
+**마이그레이션 안전망 (UAT 2026-05-08 사고 fix)**:
+- **PR #286** — `fullDataMigration`의 sessions POST에 `weekStartDate` fallback (`getWeekStartDate(new Date())`, KST 월요일). API 통일 에러 응답 (`{success:false, error:{code, message}}`)에 맞춘 폴백 로직 + `extractErrorMessage` helper로 `[object Object]` 회귀 차단.
+- **PR #287** — `upload-local` 자동 경로 throw 시 `toast.error("자동 동기화 실패", { description })` + `setMigrationError` + `setIsInitialized(true)` (앱 진입 보장, anonymous 데이터 보존).
+- **PR #288** — `findDuplicateStudent` graceful 매칭 (academy 단위 격리 가정 → 동명이인 0명이고 한쪽이라도 빈 메타면 이름만으로 매칭, 동명이인 다수일 때만 strict 비교).
 
 ---
 

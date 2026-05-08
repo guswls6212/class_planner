@@ -294,11 +294,13 @@ src/components/molecules/SessionCard.utils.ts
 src/components/molecules/SessionForm.tsx
 src/components/molecules/Sidebar.tsx
 src/components/molecules/StudentAccessCodeBadge.tsx
+src/components/molecules/StudentAddDetailModal.tsx
 src/components/molecules/StudentInputSection.tsx
 src/components/molecules/StudentList.tsx
 src/components/molecules/SubjectInputSection.tsx
 src/components/molecules/SubjectList.tsx
 src/components/molecules/SyncQueueModal.tsx
+src/components/molecules/TeacherAddDetailModal.tsx
 src/components/molecules/TeacherAddModal.stories.tsx
 src/components/molecules/TeacherAddModal.tsx
 src/components/molecules/TeacherColorPicker.tsx
@@ -337,11 +339,13 @@ src/components/molecules/__tests__/SessionCard.utils.test.ts
 src/components/molecules/__tests__/SessionForm.test.tsx
 src/components/molecules/__tests__/Sidebar.test.tsx
 src/components/molecules/__tests__/StudentAccessCodeBadge.test.tsx
+src/components/molecules/__tests__/StudentAddDetailModal.test.tsx
 src/components/molecules/__tests__/StudentInputSection.test.tsx
 src/components/molecules/__tests__/StudentList.test.tsx
 src/components/molecules/__tests__/SubjectInputSection.test.tsx
 src/components/molecules/__tests__/SubjectList.test.tsx
 src/components/molecules/__tests__/SyncQueueModal.test.tsx
+src/components/molecules/__tests__/TeacherAddDetailModal.test.tsx
 src/components/molecules/__tests__/TeacherAddModal.test.tsx
 src/components/molecules/__tests__/TeacherPillPicker.test.tsx
 src/components/molecules/__tests__/TemplateMenuV2.test.tsx
