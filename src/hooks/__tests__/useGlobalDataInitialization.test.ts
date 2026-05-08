@@ -700,3 +700,104 @@ describe("Onboarding 가드 (academy 사전 검증)", () => {
     expect(checkLoginDataConflict).toHaveBeenCalled();
   });
 });
+
+describe("Academy 변화 재실행 (UAT 2026-05-09 회귀 가드)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: "u-1", email: "u1@ex.com" } } } as never,
+      error: null,
+    });
+  });
+
+  it("class-planner:academy-changed event dispatch 시 mig 흐름이 재실행된다", async () => {
+    // 첫 mount: academy 없음 → onboarding redirect → mig skip
+    let hasAcademy = false;
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, hasAcademy }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    // 첫 흐름은 academy 없어서 mig 진입 안 함
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/onboarding/status?userId=u-1"),
+      ),
+    );
+    expect(checkLoginDataConflict).not.toHaveBeenCalled();
+
+    // onboarding 완료 시뮬레이션: academy 생성 + event dispatch
+    hasAcademy = true;
+    vi.mocked(checkLoginDataConflict).mockClear();
+    window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+
+    // mig effect 재실행 → checkLoginDataConflict 호출
+    await waitFor(() => expect(checkLoginDataConflict).toHaveBeenCalled());
+    expect(result.current.isInitialized).toBe(true);
+  });
+
+  it("storage 이벤트(active_academy:{userId} 변경)도 mig 흐름을 재실행한다", async () => {
+    let hasAcademy = false;
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, hasAcademy }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    });
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+
+    renderHook(() => useGlobalDataInitialization());
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/onboarding/status?userId=u-1"),
+      ),
+    );
+    expect(checkLoginDataConflict).not.toHaveBeenCalled();
+
+    hasAcademy = true;
+    vi.mocked(checkLoginDataConflict).mockClear();
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "active_academy:u-1", newValue: "a-1" }),
+    );
+
+    await waitFor(() => expect(checkLoginDataConflict).toHaveBeenCalled());
+  });
+
+  it("관련 없는 storage 이벤트는 mig 재실행을 트리거하지 않는다", async () => {
+    global.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, hasAcademy: true, data: [] }),
+      }),
+    );
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+
+    renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(checkLoginDataConflict).toHaveBeenCalled());
+    const initialCalls = vi.mocked(checkLoginDataConflict).mock.calls.length;
+
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: "theme", newValue: "dark" }),
+    );
+    // 짧게 기다려서 listener race 회피
+    await new Promise((r) => setTimeout(r, 30));
+
+    expect(vi.mocked(checkLoginDataConflict).mock.calls.length).toBe(initialCalls);
+  });
+});

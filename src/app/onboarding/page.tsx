@@ -91,6 +91,12 @@ export default function OnboardingPage() {
       }
 
       logger.info("온보딩 완료", { academyId: data.academyId });
+      // useGlobalDataInitialization이 academy 변화를 감지하도록 이벤트 dispatch.
+      // SPA navigation으로 schedule/students 진입 시 hook의 mig effect가 deps 변화로
+      // 재실행 → anonymous → server 마이그레이션 정상 트리거 (UAT 2026-05-08 결함 fix).
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+      }
       router.push("/students");
     } catch {
       setError("네트워크 연결을 확인해주세요.");
