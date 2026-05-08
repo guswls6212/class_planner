@@ -54,8 +54,8 @@
 ### 데이터 관리 패턴
 - **Local-first:** localStorage 직접 조작으로 즉시 반응 (0ms)
 - **Fire-and-forget sync:** `src/lib/apiSync.ts`의 `syncXxxCreate/Delete` 함수로 서버에 비동기 동기화. 실패해도 localStorage는 유지.
-- **익명 사용자:** localStorage만 사용 (key: `class_planner_anonymous`). 서버 호출 없음.
-- **로그인 후:** localStorage (key: `class_planner_{userId}`) + 서버 양방향 동기화
+- **익명 사용자:** localStorage만 사용 (key: `classPlannerData:anonymous`). 서버 호출 없음.
+- **로그인 후:** localStorage (key: `classPlannerData:{userId}:{academyId}` — multi-academy scoped, academy 미선택 시 legacy fallback `classPlannerData:{userId}`) + 서버 양방향 동기화. 상수/구현은 `src/lib/localStorageCrud.ts`(`ANONYMOUS_STORAGE_KEY`, `getStorageKey`).
 - **useLocal 훅 우선:** 신규 기능은 반드시 `useXxxLocal` 훅 사용 (레거시 API 기반 훅 사용 금지)
 
 ## 코딩 규칙

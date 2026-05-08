@@ -868,7 +868,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 - select 자동 갱신 + 새 과목이 선택값으로 set
 - 인라인 row 자동 닫힘
 - 인증: `/api/subjects` POST 호출 발사
-- 익명: localStorage `class_planner_anonymous` 갱신, 서버 호출 없음
+- 익명: localStorage `classPlannerData:anonymous` 갱신, 서버 호출 없음
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-5.14 모달 Step 2 — 강사 "＋ 새 강사" pill 추가 [P0] ⚠️ PR #257
@@ -1843,7 +1843,7 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 **Expected:**
 - sonner `toast.error("자동 동기화 실패", { description: ... })` 표시 (bottom-center)
 - `setIsInitialized(true)`로 앱 진입 보장 (loading 무한 대기 X)
-- anonymous 데이터 보존 (`localStorage.getItem("class_planner_anonymous")` 유지)
+- anonymous 데이터 보존 (`localStorage.getItem("classPlannerData:anonymous")` 유지)
 - 다음 로그인 시 재시도 가능
 **Result:** [ ] Pass [ ] Fail — note: ___
 

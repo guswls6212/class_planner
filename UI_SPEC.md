@@ -674,12 +674,13 @@ SchedulePage
 
 ```
 익명 (비로그인) 상태:
-- localStorage 키: "class_planner_anonymous"
+- localStorage 키: "classPlannerData:anonymous" (`ANONYMOUS_STORAGE_KEY`, src/lib/localStorageCrud.ts:32)
 - 모든 기능 사용 가능 (시간표/학생/과목 CRUD)
 - 과목은 빈 배열로 시작 — GroupSessionModal step 2 인라인 "+" 버튼으로 첫 과목 추가 (자동 색상 할당)
 
 로그인 후:
-- localStorage 키: "class_planner_{userId}"
+- localStorage 키: "classPlannerData:{userId}:{academyId}" (multi-academy scoped, getStorageKey)
+  - academy 미선택(legacy single-academy era) fallback: "classPlannerData:{userId}"
 - handleLoginDataMigration.ts 실행
   → 충돌 없으면 서버 데이터 사용
   → 로컬에만 데이터 있으면 서버에 업로드 (upload-local 자동 경로)
