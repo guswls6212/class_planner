@@ -79,9 +79,12 @@ function StudentsPageContent() {
   } = useStudentManagementLocal();
 
   // 학생 추가 핸들러
-  const handleAddStudent = async (name: string) => {
+  const handleAddStudent = async (
+    name: string,
+    options?: { gender?: string; birthDate?: string },
+  ) => {
     try {
-      const success = await addStudent(name);
+      const success = await addStudent(name, options);
       if (success) {
         await refreshStudents();
       }

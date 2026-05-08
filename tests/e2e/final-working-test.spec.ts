@@ -76,8 +76,8 @@ test.describe("E2E 테스트 - 학생 관리", () => {
     );
     await nameInput.fill(studentName);
 
-    // 추가 버튼 클릭
-    const addButton = page.locator('button:has-text("추가")');
+    // 추가 버튼 클릭 — "+ 상세 추가" 버튼(헤더)과 구분하기 위해 ListFilterBar의 aria-label 사용
+    const addButton = page.locator('button[aria-label="학생 추가"]');
     await addButton.click();
 
     // 브라우저별 적절한 대기 시간
@@ -120,7 +120,7 @@ test.describe("E2E 테스트 - 학생 관리", () => {
       'input[placeholder="학생 이름으로 검색"]'
     );
     await nameInput.fill(studentName);
-    await page.locator('button:has-text("추가")').click();
+    await page.locator('button[aria-label="학생 추가"]').click();
     await page.waitForTimeout(2000);
 
     try {

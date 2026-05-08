@@ -5,6 +5,7 @@ import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
+import TeacherAddDetailModal from "@/components/molecules/TeacherAddDetailModal";
 
 interface TeachersPageLayoutProps {
   teachers: Teacher[];
@@ -14,7 +15,11 @@ interface TeachersPageLayoutProps {
   students: Student[];
   selectedTeacherId: string;
   onSelectTeacher: (id: string) => void;
-  onAddTeacher: (name: string, color: string) => Promise<boolean>;
+  onAddTeacher: (
+    name: string,
+    color: string,
+    profile?: { email?: string; phone?: string },
+  ) => Promise<boolean>;
   onDeleteTeacher: (id: string) => void;
   onUpdateTeacher: (id: string, updates: {
     name?: string;
@@ -39,6 +44,7 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const canManage = props.canManage ?? true;
   const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
+  const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
 
   const filtered = teachers.filter((t) => t.name.includes(query));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
@@ -53,6 +59,13 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
     if (isDuplicate) return;
     const success = await props.onAddTeacher(trimmed, getNextColor());
     if (success) setQuery("");
+  };
+
+  const handleAddDetail = async (
+    name: string,
+    profile: { email?: string; phone?: string },
+  ) => {
+    await props.onAddTeacher(name, getNextColor(), profile);
   };
 
   const handleSelect = (id: string) => {
@@ -75,8 +88,18 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
         }`}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">강사 목록</h2>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setIsAddDetailOpen(true)}
+              className="text-[11px] text-[var(--color-text-secondary)] hover:text-accent transition-colors"
+              aria-label="강사 상세 등록"
+            >
+              + 상세 등록
+            </button>
+          )}
         </div>
 
         {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
@@ -161,6 +184,13 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
           강사를 선택하세요
         </div>
       )}
+
+      <TeacherAddDetailModal
+        isOpen={isAddDetailOpen}
+        onClose={() => setIsAddDetailOpen(false)}
+        onSubmit={handleAddDetail}
+        existingNames={teachers.map((t) => t.name)}
+      />
     </div>
   );
 }
