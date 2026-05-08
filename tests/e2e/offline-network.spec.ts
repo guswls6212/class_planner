@@ -58,9 +58,9 @@ test.describe("offline network behavior", () => {
     await expect(page.getByTestId("session-block-sess-offline")).toBeVisible();
 
     // viewMode 토글 동작 — UI는 네트워크 없이도 동작
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }).click();
+    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }).click();
     await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }),
+      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
     ).toHaveAttribute("aria-pressed", "true");
   });
 

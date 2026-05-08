@@ -2,7 +2,7 @@
  * Schedule view mode e2e — 일별/주간/월별 토글 + localStorage persist 회귀 가드.
  *
  * 핵심:
- * - SegmentedButton aria-label="뷰 모드" — 일별/주간/월별 3 버튼
+ * - ScheduleFloatingToolbar (P3 default, ADR-010) view 버튼 — "일/주/월" 단축 라벨
  * - viewMode === "daily" → ScheduleDailyView mount
  * - viewMode === "monthly" → ScheduleMonthlyView mount
  * - localStorage key `ui:scheduleView` 에 persist
@@ -51,11 +51,11 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    const group = page.getByRole("group", { name: "뷰 모드" });
-    await expect(group).toBeVisible();
-    await expect(group.getByRole("button", { name: "일별" })).toBeVisible();
-    await expect(group.getByRole("button", { name: "주간" })).toBeVisible();
-    await expect(group.getByRole("button", { name: "월별" })).toBeVisible();
+    const toolbar = page.getByTestId("schedule-floating-toolbar");
+    await expect(toolbar).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "일" })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "주" })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "월" })).toBeVisible();
   });
 
   test("'월별' 클릭 → aria-pressed=true + localStorage `ui:scheduleView`=monthly", async ({
@@ -64,10 +64,10 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }).click();
+    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }).click();
 
     await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }),
+      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
     ).toHaveAttribute("aria-pressed", "true");
 
     const stored = await page.evaluate(() => localStorage.getItem("ui:scheduleView"));
@@ -78,7 +78,7 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "일별" }).click();
+    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "일" }).click();
 
     // DayChipBar — 0=월, 6=일 모두 보임
     await expect(page.getByTestId("day-chip-0")).toBeVisible({ timeout: 5000 });
@@ -89,16 +89,16 @@ test.describe("schedule view mode toggle", () => {
     await seedSchedule(page);
     await page.goto("/schedule");
 
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }).click();
+    await page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }).click();
     await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }),
+      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
     ).toHaveAttribute("aria-pressed", "true");
 
     await page.reload();
 
     // localStorage에 persist되었으므로 reload 후에도 월별이 active
     await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "월별" }),
+      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "월" }),
     ).toHaveAttribute("aria-pressed", "true", { timeout: 5000 });
   });
 });

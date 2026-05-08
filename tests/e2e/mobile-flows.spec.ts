@@ -86,9 +86,11 @@ test.describe("mobile schedule flows (375×667)", () => {
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    // useScheduleView: mobile (<768px) default = "daily"
+    // useScheduleView: mobile (<768px) default = "daily".
+    // P3 default 승격(ADR-010) 이후 view 버튼은 ScheduleFloatingToolbar에 있고
+    // 라벨은 "일/주/월" 단축 — testid scope로 DayChipBar 등 충돌 회피.
     await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "일별" }),
+      page.getByTestId("schedule-floating-toolbar").getByRole("button", { name: "일" }),
     ).toHaveAttribute("aria-pressed", "true", { timeout: 5000 });
   });
 
@@ -118,24 +120,23 @@ test.describe("mobile schedule flows (375×667)", () => {
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    await page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "주간" }).click();
+    const toolbar = page.getByTestId("schedule-floating-toolbar");
+    await toolbar.getByRole("button", { name: "주" }).click();
 
-    await expect(
-      page.getByRole("group", { name: "뷰 모드" }).getByRole("button", { name: "주간" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(toolbar.getByRole("button", { name: "주" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("모바일에서 일별 → 월별 → 일별 토글이 정상 동작", async ({ page }) => {
     await seedScheduleMobile(page);
     await page.goto("/schedule");
 
-    const group = page.getByRole("group", { name: "뷰 모드" });
+    const toolbar = page.getByTestId("schedule-floating-toolbar");
 
-    await group.getByRole("button", { name: "월별" }).click();
-    await expect(group.getByRole("button", { name: "월별" })).toHaveAttribute("aria-pressed", "true");
+    await toolbar.getByRole("button", { name: "월" }).click();
+    await expect(toolbar.getByRole("button", { name: "월" })).toHaveAttribute("aria-pressed", "true");
 
-    await group.getByRole("button", { name: "일별" }).click();
-    await expect(group.getByRole("button", { name: "일별" })).toHaveAttribute("aria-pressed", "true");
+    await toolbar.getByRole("button", { name: "일" }).click();
+    await expect(toolbar.getByRole("button", { name: "일" })).toHaveAttribute("aria-pressed", "true");
   });
 
   test("모바일 일별 모드에서 SessionCard visible — sess-mon (월요일 09:00)", async ({ page }) => {
