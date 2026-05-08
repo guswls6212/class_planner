@@ -7,6 +7,7 @@ import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCode
 import { Skeleton } from "@/components/atoms/Skeleton";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
+import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 
 interface StudentsPageLayoutProps {
@@ -16,7 +17,10 @@ interface StudentsPageLayoutProps {
   sessions: Session[];
   selectedStudentId: string;
   onSelectStudent: (id: string) => void;
-  onAddStudent: (name: string) => void;
+  onAddStudent: (
+    name: string,
+    options?: { gender?: string; birthDate?: string },
+  ) => void;
   onDeleteStudent: (id: string) => void;
   onUpdateStudent: (id: string, updates: Partial<Student>) => Promise<boolean>;
   errorMessage?: string;
@@ -51,6 +55,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const accessCodesReady = props.accessCodesReady ?? true;
   const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
+  const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
 
   const filtered = students.filter((s) => s.name.includes(query));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
@@ -75,6 +80,13 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
     setQuery("");
   };
 
+  const handleAddDetail = (
+    name: string,
+    options: { gender?: string; birthDate?: string },
+  ) => {
+    props.onAddStudent(name, options);
+  };
+
   const handleSelect = (id: string) => {
     onSelectStudent(id);
     setShowDetail(true);
@@ -93,8 +105,18 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
         }`}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">학생 목록</h2>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setIsAddDetailOpen(true)}
+              className="text-[11px] text-[var(--color-text-secondary)] hover:text-accent transition-colors"
+              aria-label="학생 상세 등록"
+            >
+              + 상세 추가
+            </button>
+          )}
         </div>
 
         {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
@@ -211,6 +233,13 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           학생을 선택하세요
         </div>
       )}
+
+      <StudentAddDetailModal
+        isOpen={isAddDetailOpen}
+        onClose={() => setIsAddDetailOpen(false)}
+        onSubmit={handleAddDetail}
+        existingNames={students.map((s) => s.name)}
+      />
     </div>
   );
 }
