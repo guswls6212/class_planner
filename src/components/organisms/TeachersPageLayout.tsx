@@ -134,9 +134,21 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
                     style={{ backgroundColor: teacher.color }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                      {teacher.name}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                        {teacher.name}
+                      </p>
+                      {(!teacher.email || !teacher.phone) && (
+                        <span
+                          className="inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-indigo-500/15 text-[9px] font-bold text-indigo-400"
+                          title="이메일/전화번호를 추가하면 운영 정보가 충실해집니다"
+                          aria-label="연락처 정보 보강 가능"
+                          data-testid={`teacher-meta-hint-${teacher.id}`}
+                        >
+                          ⓘ
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[11px] text-[var(--color-text-muted)]">
                       주간 {teacherWeeklyCount(teacher)}회
                     </p>

@@ -137,3 +137,44 @@ describe("StudentsPageLayout Component", () => {
     }).not.toThrow();
   });
 });
+
+describe("StudentsPageLayout — 빈 메타 hint (Phase 2-C)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("gender/birthDate 둘 다 비어있는 학생만 정보 보강 hint가 표시된다", () => {
+    const students = [
+      { id: "incomplete", name: "박미완" },
+      {
+        id: "complete",
+        name: "박완전",
+        gender: "male",
+        birthDate: "2010-01-01",
+      },
+    ];
+    render(
+      <StudentsPageLayout
+        {...mockProps}
+        students={students}
+        selectedStudentId=""
+      />,
+    );
+    expect(screen.getByTestId("student-meta-hint-incomplete")).toBeInTheDocument();
+    expect(screen.queryByTestId("student-meta-hint-complete")).toBeNull();
+  });
+
+  it("gender만 있고 birthDate 없는 학생도 hint 표시 (부분 채움도 보강 권장)", () => {
+    const students = [
+      { id: "partial", name: "박부분", gender: "male" },
+    ];
+    render(
+      <StudentsPageLayout
+        {...mockProps}
+        students={students}
+        selectedStudentId=""
+      />,
+    );
+    expect(screen.getByTestId("student-meta-hint-partial")).toBeInTheDocument();
+  });
+});
