@@ -407,7 +407,7 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 2. 학원명 입력 (2자 이상)
 3. "학원 생성" 클릭
 **Expected:**
-- `/schedule` 라우팅
+- **`/students` 라우팅** (학원 생성 직후 학생 등록 안내가 자연스러운 흐름이라는 설계 의도 — `docs/superpowers/plans/2026-04-14-onboarding-flow.md` 참조. 익명/재방문은 `/schedule`로 가지만 신규 학원 생성 직후만 `/students`로 의도적 분기)
 - 사이드바 상단에 학원명 + Academy Switcher 표시
 - API `/api/academies` POST 성공 (Network 확인)
 - **anonymous → server 자동 마이그 (`upload-local` 경로) 트리거** (PR #294 fix). 충돌 모달은 server 비어있어 안 뜨는 게 정상. PR #295 후엔 마이그 직후 "시간표가 새로 갱신되었어요" 토스트 false positive 발화 안 함.
