@@ -312,12 +312,17 @@ export function Sidebar() {
               </div>
             )}
             <div className="border-t border-slate-700 mt-1 pt-1">
+              {/* "새 학원 만들기" — 추후 업데이트 예정. 다중 학원 워크플로우(데이터 격리,
+                  학원별 권한, 결제 연동 등) 미완성 상태라 의도적으로 disabled. 활성화는
+                  다중 학원 spec 합의 후. UAT 시나리오에는 미포함. */}
               <button
                 type="button"
-                onClick={() => { setShowSwitcher(false); window.location.href = '/onboarding'; }}
-                className="w-full px-3 py-2 text-left text-[11px] text-slate-400 hover:bg-slate-700 hover:text-slate-200 transition-colors rounded-lg"
+                disabled
+                aria-disabled="true"
+                title="추후 업데이트 예정"
+                className="w-full px-3 py-2 text-left text-[11px] text-slate-500 cursor-not-allowed opacity-50 rounded-lg"
               >
-                + 새 학원 만들기
+                + 새 학원 만들기 <span className="text-[10px] text-slate-600">(추후 업데이트)</span>
               </button>
             </div>
           </div>
