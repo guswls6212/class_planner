@@ -15,17 +15,23 @@ export class StudentApplicationServiceImpl {
   }
 
   async addStudent(
-    studentData: { name: string; gender?: string; birthDate?: string },
+    studentData: { id?: string; name: string; gender?: string; birthDate?: string },
     academyId: string
   ): Promise<Student> {
     try {
-      const existingStudents = await this.studentRepository.getAll(academyId);
-      const isDuplicate = existingStudents.some(
-        (student) => student.name === studentData.name
-      );
+      // Local-first reconcile path: client UUID(`id`)가 주어지면 client가 이미
+      // 중복 검증한 것 (localStorageCrud.addStudentToLocal). repository.upsert가
+      // id 충돌 시 idempotent 처리 → retry-safe. server-allocated path(id 없음)
+      // 에서만 server-side duplicate 체크 적용.
+      if (!studentData.id) {
+        const existingStudents = await this.studentRepository.getAll(academyId);
+        const isDuplicate = existingStudents.some(
+          (student) => student.name === studentData.name
+        );
 
-      if (isDuplicate) {
-        throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
+        if (isDuplicate) {
+          throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
+        }
       }
 
       return await this.studentRepository.create(studentData, academyId);

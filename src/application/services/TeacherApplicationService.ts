@@ -16,15 +16,19 @@ export class TeacherApplicationServiceImpl {
   }
 
   async addTeacher(
-    teacherData: { name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
+    teacherData: { id?: string; name: string; color: string; userId?: string | null; email?: string | null; phone?: string | null; role?: TeacherRole | null; notes?: string | null },
     academyId: string
   ): Promise<Teacher> {
     try {
-      const existingTeachers = await this.teacherRepository.getAll(academyId);
-      const isDuplicate = Teacher.isNameDuplicate(teacherData.name, existingTeachers);
+      // Local-first reconcile path: client UUID(`id`)가 주어지면 client에서 이미
+      // 중복 검증 + repository.upsert가 retry-safe. server-allocated path만 체크.
+      if (!teacherData.id) {
+        const existingTeachers = await this.teacherRepository.getAll(academyId);
+        const isDuplicate = Teacher.isNameDuplicate(teacherData.name, existingTeachers);
 
-      if (isDuplicate) {
-        throw new AppError("TEACHER_NAME_DUPLICATE", { statusHint: 409 });
+        if (isDuplicate) {
+          throw new AppError("TEACHER_NAME_DUPLICATE", { statusHint: 409 });
+        }
       }
 
       const newTeacher = Teacher.create(
@@ -41,6 +45,7 @@ export class TeacherApplicationServiceImpl {
 
       return await this.teacherRepository.create(
         {
+          ...(teacherData.id && { id: teacherData.id }),
           name: newTeacher.name,
           color: newTeacher.color.value,
           userId: newTeacher.userId,

@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  syncStudentCreate,
+  syncStudentCreateAsync,
   syncStudentDelete,
   syncStudentUpdate,
 } from "../lib/apiSync";
@@ -17,6 +17,7 @@ import {
   getAllStudentsFromLocal,
   getClassPlannerData,
   getStudentFromLocal,
+  replaceStudentId,
   setClassPlannerData,
   updateStudentInLocal,
 } from "../lib/localStorageCrud";
@@ -150,15 +151,31 @@ export const useStudentManagementLocal =
             // UI 즉시 업데이트
             loadStudentsFromLocal();
 
-            // 서버 동기화 (fire-and-forget)
+            // 서버 동기화 — server는 받은 id를 INSERT/UPSERT에 사용. 응답 id가
+            // localId와 다르면 (드물게 발생) localStorage 측 학생 + 모든
+            // enrollments[].studentId 를 reconcile.
             const userId = localStorage.getItem("supabase_user_id");
-            syncStudentCreate(userId, { name: name.trim(), ...options });
+            const localId = result.data.id;
+            const serverResp = await syncStudentCreateAsync(userId, {
+              id: localId,
+              name: name.trim(),
+              ...options,
+            });
+            if (serverResp && serverResp.id !== localId) {
+              replaceStudentId(localId, serverResp.id);
+              loadStudentsFromLocal();
+              logger.info("useStudentManagementLocal - student id reconciled", {
+                localId,
+                serverId: serverResp.id,
+                name,
+              });
+            }
 
             showToast("success", `${name.trim()} 학생이 추가됐습니다`);
 
             logger.info("useStudentManagementLocal - 학생 추가 성공", {
               name,
-              studentId: result.data.id,
+              studentId: serverResp?.id ?? localId,
             });
 
             return true;

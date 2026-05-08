@@ -387,11 +387,15 @@ function fireAndForget(
 
 export function syncStudentCreate(
   userId: string | null,
-  data: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
+  data: { id?: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
   const url = `/api/students?userId=${encodeURIComponent(userId)}`;
+  // Local-first: client UUID 포함 그대로 전송. server는 받은 id를 INSERT에 사용
+  // → 후속 PUT /api/students/{id} 시 id 매칭 보장 (이전엔 server가 자체 id 발급
+  // 하여 client localStorage와 불일치 → ghost 누적, PUT 404 무한 루프).
   const body = {
+    ...(data.id && { id: data.id }),
     name: data.name,
     gender: data.gender,
     birthDate: data.birthDate,
@@ -406,12 +410,52 @@ export function syncStudentCreate(
       body: JSON.stringify(body),
     });
   fireAndForget(makeRequest, "student:create", 0, {
-    id: makeOutboxId("student:create"),
+    // outbox dedup: client id 있으면 그대로 사용 (재시도 시 idempotent)
+    id: data.id ? `student:create:${data.id}` : makeOutboxId("student:create"),
     userId,
     method: "POST",
     url,
     body,
   });
+}
+
+/**
+ * Awaitable student create — 응답으로 server가 반환한 student id를 돌려준다.
+ *
+ * Idempotent server 계약: server `POST /api/students`가 id 충돌 시 *기존 row의
+ * id*를 반환. 클라이언트는 응답 id가 보낸 id와 다르면 localStorage(students +
+ * enrollments[].studentId)를 reconcile해야 함. 호출자(useStudentManagementLocal.
+ * addStudent) 책임.
+ *
+ * 실패 시 (네트워크 down / 5xx) `null` 반환 + 기존 fire-and-forget outbox로 재시도.
+ */
+export async function syncStudentCreateAsync(
+  userId: string | null,
+  data: { id: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
+): Promise<{ id: string } | null> {
+  if (!userId) return null;
+  const url = `/api/students?userId=${encodeURIComponent(userId)}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      syncStudentCreate(userId, data);
+      return null;
+    }
+    const payload = (await res.json()) as { success?: boolean; data?: { id?: string } };
+    const serverId = payload?.data?.id;
+    if (!serverId) {
+      syncStudentCreate(userId, data);
+      return null;
+    }
+    return { id: serverId };
+  } catch {
+    syncStudentCreate(userId, data);
+    return null;
+  }
 }
 
 export function syncStudentUpdate(
@@ -460,23 +504,62 @@ export function syncStudentDelete(userId: string | null, id: string): void {
 
 export function syncSubjectCreate(
   userId: string | null,
-  data: { name: string; color: string }
+  data: { id?: string; name: string; color: string }
 ): void {
   if (!userId) return;
   const url = `/api/subjects?userId=${encodeURIComponent(userId)}`;
+  // Local-first: client UUID 포함 그대로 전송. id mismatch ghost 방지.
+  const body = {
+    ...(data.id && { id: data.id }),
+    name: data.name,
+    color: data.color,
+  };
   const makeRequest = () =>
     fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(body),
     });
   fireAndForget(makeRequest, "subject:create", 0, {
-    id: makeOutboxId("subject:create"),
+    id: data.id ? `subject:create:${data.id}` : makeOutboxId("subject:create"),
     userId,
     method: "POST",
     url,
-    body: data,
+    body,
   });
+}
+
+/**
+ * Awaitable subject create. 응답 id가 보낸 id와 다르면 호출자가
+ * localStorage(subjects + enrollments[].subjectId)를 reconcile.
+ */
+export async function syncSubjectCreateAsync(
+  userId: string | null,
+  data: { id: string; name: string; color: string }
+): Promise<{ id: string } | null> {
+  if (!userId) return null;
+  const url = `/api/subjects?userId=${encodeURIComponent(userId)}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      syncSubjectCreate(userId, data);
+      return null;
+    }
+    const payload = (await res.json()) as { success?: boolean; data?: { id?: string } };
+    const serverId = payload?.data?.id;
+    if (!serverId) {
+      syncSubjectCreate(userId, data);
+      return null;
+    }
+    return { id: serverId };
+  } catch {
+    syncSubjectCreate(userId, data);
+    return null;
+  }
 }
 
 export function syncSubjectUpdate(
@@ -754,6 +837,7 @@ export function syncSessionDelete(userId: string | null, id: string): void {
 export function syncTeacherCreate(
   userId: string | null,
   data: {
+    id?: string;
     name: string;
     color: string;
     userId?: string | null;
@@ -765,19 +849,72 @@ export function syncTeacherCreate(
 ): void {
   if (!userId) return;
   const url = `/api/teachers?userId=${encodeURIComponent(userId)}`;
+  // Local-first: client UUID 포함 그대로 전송. id mismatch ghost 방지.
+  const body = {
+    ...(data.id && { id: data.id }),
+    name: data.name,
+    color: data.color,
+    userId: data.userId,
+    email: data.email,
+    phone: data.phone,
+    role: data.role,
+    notes: data.notes,
+  };
   const makeRequest = () =>
     fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(body),
     });
   fireAndForget(makeRequest, "teacher:create", 0, {
-    id: makeOutboxId("teacher:create"),
+    id: data.id ? `teacher:create:${data.id}` : makeOutboxId("teacher:create"),
     userId,
     method: "POST",
     url,
-    body: data,
+    body,
   });
+}
+
+/**
+ * Awaitable teacher create. 응답 id가 보낸 id와 다르면 호출자가
+ * localStorage(teachers + sessions[].teacherId)를 reconcile.
+ */
+export async function syncTeacherCreateAsync(
+  userId: string | null,
+  data: {
+    id: string;
+    name: string;
+    color: string;
+    userId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: string | null;
+    notes?: string | null;
+  }
+): Promise<{ id: string } | null> {
+  if (!userId) return null;
+  const url = `/api/teachers?userId=${encodeURIComponent(userId)}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      syncTeacherCreate(userId, data);
+      return null;
+    }
+    const payload = (await res.json()) as { success?: boolean; data?: { id?: string } };
+    const serverId = payload?.data?.id;
+    if (!serverId) {
+      syncTeacherCreate(userId, data);
+      return null;
+    }
+    return { id: serverId };
+  } catch {
+    syncTeacherCreate(userId, data);
+    return null;
+  }
 }
 
 export function syncTeacherUpdate(

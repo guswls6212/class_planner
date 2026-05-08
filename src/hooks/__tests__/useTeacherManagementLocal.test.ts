@@ -24,8 +24,11 @@ vi.mock("../../lib/localStorageCrud", () => ({
 
 vi.mock("../../lib/apiSync", () => ({
   syncTeacherCreate: vi.fn(),
+  syncTeacherCreateAsync: vi.fn(() => Promise.resolve({ id: "t-1" })),
   syncTeacherUpdate: vi.fn(),
   syncTeacherDelete: vi.fn(),
+  syncTeacherSubjectAdd: vi.fn(),
+  syncTeacherSubjectRemove: vi.fn(),
 }));
 
 import { useTeacherManagementLocal } from "../useTeacherManagementLocal";

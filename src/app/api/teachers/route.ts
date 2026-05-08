@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, color, userId: bodyUserId, email, phone, role, notes } = body;
+    const { id, name, color, userId: bodyUserId, email, phone, role, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -156,11 +156,22 @@ export async function POST(request: NextRequest) {
     }
 
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    // Local-first: client UUID 수용. 응답 data.id가 보낸 id와 다르면 클라가 reconcile.
     const newTeacher = await getTeacherService().addTeacher(
-      { name, color, userId: bodyUserId ?? null, email: email ?? null, phone: phone ?? null, role: role ?? null, notes: notes ?? null },
+      {
+        ...(id && typeof id === "string" && { id }),
+        name,
+        color,
+        userId: bodyUserId ?? null,
+        email: email ?? null,
+        phone: phone ?? null,
+        role: role ?? null,
+        notes: notes ?? null,
+      },
       academyId
     );
-    return NextResponse.json({ success: true, data: newTeacher }, { status: 201 });
+    // status 200: idempotent
+    return NextResponse.json({ success: true, data: newTeacher });
   } catch (error) {
     return toErrorResponse(error);
   }

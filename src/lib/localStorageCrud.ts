@@ -1303,6 +1303,135 @@ export const replaceEnrollmentId = (oldId: string, newId: string): boolean => {
   }
 };
 
+/**
+ * Student id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`students[].id` + 모든 `enrollments[].studentId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 students에 없으면 no-op + true.
+ */
+export const replaceStudentId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.students.find((s) => s.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.students.some((s) => s.id === newId);
+    if (newAlreadyPresent) {
+      data.students = data.students.filter((s) => s.id !== oldId);
+    } else {
+      data.students = data.students.map((s) =>
+        s.id === oldId ? { ...s, id: newId } : s
+      );
+    }
+
+    data.enrollments = data.enrollments.map((e) =>
+      e.studentId === oldId ? { ...e, studentId: newId } : e
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - student id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - student id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
+/**
+ * Subject id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`subjects[].id` + 모든 `enrollments[].subjectId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 subjects에 없으면 no-op + true.
+ */
+export const replaceSubjectId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.subjects.find((s) => s.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.subjects.some((s) => s.id === newId);
+    if (newAlreadyPresent) {
+      data.subjects = data.subjects.filter((s) => s.id !== oldId);
+    } else {
+      data.subjects = data.subjects.map((s) =>
+        s.id === oldId ? { ...s, id: newId } : s
+      );
+    }
+
+    data.enrollments = data.enrollments.map((e) =>
+      e.subjectId === oldId ? { ...e, subjectId: newId } : e
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - subject id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - subject id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
+/**
+ * Teacher id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`teachers[].id` + 모든 `sessions[].teacherId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 teachers에 없으면 no-op + true.
+ */
+export const replaceTeacherId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.teachers.find((t) => t.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.teachers.some((t) => t.id === newId);
+    if (newAlreadyPresent) {
+      data.teachers = data.teachers.filter((t) => t.id !== oldId);
+    } else {
+      data.teachers = data.teachers.map((t) =>
+        t.id === oldId ? { ...t, id: newId } : t
+      );
+    }
+
+    data.sessions = data.sessions.map((session) =>
+      session.teacherId === oldId ? { ...session, teacherId: newId } : session
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - teacher id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - teacher id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
 // ===== 사용자별 데이터 삭제 =====
 
 export const clearUserClassPlannerData = (userId: string): boolean => {
