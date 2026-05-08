@@ -692,6 +692,7 @@ SchedulePage
 - **PR #287** — `upload-local` 자동 경로 throw 시 `toast.error("자동 동기화 실패", { description })` + `setMigrationError` + `setIsInitialized(true)` (앱 진입 보장, anonymous 데이터 보존).
 - **PR #288** — `findDuplicateStudent` graceful 매칭 (academy 단위 격리 가정 → 동명이인 0명이고 한쪽이라도 빈 메타면 이름만으로 매칭, 동명이인 다수일 때만 strict 비교).
 - **PR #294 (UAT 2026-05-09)** — `useGlobalDataInitialization`이 academy 변화에 반응하도록 `[academyVersion]` deps 추가. 첫 로그인 시 `hasAcademy=false` 가드로 early return된 후 onboarding 완료 시 SPA navigation(`router.push`)으로 schedule 진입해도 hook이 재마운트되지 않아 마이그가 트리거되지 않던 결함 fix. `class-planner:academy-changed` custom event + `storage` 이벤트(`active_academy:{userId}` 키 변경)가 `academyVersion`을 bump → mig effect 재실행. onboarding 완료 시 `window.dispatchEvent(new CustomEvent("class-planner:academy-changed"))`. Sidebar의 academy switcher는 이미 `window.location.reload()`로 우회 중이라 별도 dispatch 불필요.
+- **PR #295 (UAT 2026-05-09 후속)** — `fullDataMigration`의 sessions INSERT 직후 `notifySelfSync()` 호출 (`apiSync.ts`에서 `export` 노출). apiSync 우회 경로(직접 `fetch`)에서도 본인 변경 신호를 dispatch하므로 `useScheduleMeta` polling이 `academies.schedule_updated_at` bump를 본인 변경으로 인식 → 자동 ack (토스트 발화 안 함). + `schedule/page.tsx` 가드를 `adminCount <= 1`로 strict하게 (0도 suppress — `useMyRole` fetch race 보호).
 
 ### 5.6.1 Academy Switcher (Sidebar)
 

@@ -175,7 +175,7 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 
 > **카테고리(§1~§16) 는 lookup 용, Phase 는 실행 순서.** 두 축으로 사용.
 >
-> 카테고리대로 위에서 아래 진행하면 비로그인 ↔ 로그인 ↔ 로그아웃 토글이 빈번 (예: S-1.2 로그인 후 S-1.4 비로그인 다시). 비효율. 아래 7-Phase 흐름으로 묶어 진행하면 **상태 셋업 reset 1회씩**으로 끝남.
+> 카테고리대로 위에서 아래 진행하면 state 토글이 잦음. §1은 2026-05-09에 §1.A(비로그인) → §1.B(transition) → §1.C(로그인) 그룹 구조로 재정렬됨. 다른 카테고리(§2~§16)는 7-Phase 흐름으로 묶어 진행하면 **상태 셋업 reset 1회씩**으로 끝남.
 
 #### Phase 1 — 익명 모드 (비로그인, localStorage SSOT)
 - **진입**: 콘솔 `uat.clearAll()` → 새로고침 → `uat.isAnonymous() === true`
@@ -201,8 +201,8 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 - **시나리오 묶음**: §11 (모바일 7개), S-5.21 (일별 뷰 좌우 스와이프)
 
 #### Phase 5 — OAuth + 로그아웃/재인증
-- **진입**: 인증 모드. OAuth 시나리오는 본인 Google/Kakao 계정 1회 (Extended/Full 만)
-- **시나리오 묶음**: S-1.2 (Google OAuth), S-1.3 (Kakao OAuth), S-1.6 (로그인 → /login 접근), S-1.7 (로그아웃 → 재로그인), S-12.5 (API 401)
+- **진입**: 인증 모드. OAuth 시나리오는 본인 Google 계정 1회 (Extended/Full 만). Kakao는 미구현이라 제외.
+- **시나리오 묶음**: S-1.2 (Google OAuth), S-1.6 (로그인 → /login 접근), S-1.7 (로그아웃 → 재로그인), S-12.5 (API 401). (S-1.3 Kakao OAuth는 미구현 상태라 UAT 미포함)
 
 #### Phase 6 — 오프라인 / Sync 회복
 - **진입**: 인증 모드 + DevTools Network → Offline
@@ -335,7 +335,7 @@ npm run uat:seed
 npm run uat:teardown
 ```
 
-> **OAuth 시나리오 (S-1.2, S-1.3)**: UAT user는 password auth로 진입. OAuth 흐름 자체 검증은 본인 Google/Kakao 계정으로 별도 1회 (Extended/Full 모드만).
+> **OAuth 시나리오 (S-1.2)**: UAT user는 password auth로 진입. OAuth 흐름 자체 검증은 본인 Google 계정으로 별도 1회 (Extended/Full 모드만). Kakao OAuth는 미구현이라 UAT 제외.
 
 > **e2e 와 격리**: `UAT_TEST_USER_*` 와 `E2E_TEST_USER_*` 별도. 같은 Supabase 프로젝트지만 user_id 단위로 cleanup이 격리되어 있어 동시 실행 시에도 서로 데이터 안 건드림.
 
@@ -348,7 +348,19 @@ npm run uat:teardown
 
 ---
 
-## 1. Auth & 학원 셋업 (P0: 2 / 7) [40분 Core 포함]
+## 1. Auth & 학원 셋업 (P0: 2 / 6) [40분 Core 포함]
+
+> **순서 정책 (2026-05-09 갱신)** — 비로그인/로그인 state 토글이 잦으면 매번
+> `npm run uat:teardown`/재로그인 비효율. **비로그인 그룹 → transition → 로그인
+> 그룹** 순으로 진행하면 state 셋업이 1회씩.
+>
+> - **§1.A 비로그인 그룹**: S-1.1, S-1.4
+> - **§1.B Transition (비로그인 → 로그인)**: S-1.5 (첫 로그인 + 학원 생성, anonymous → server 마이그 자연 검증)
+> - **§1.C 로그인 그룹**: S-1.2, S-1.6, S-1.7
+>
+> S-1.3 Kakao OAuth는 **미구현** 상태라 UAT 시나리오에서 제외.
+
+### §1.A 비로그인 그룹
 
 ### S-1.1 비로그인 → 로그인 리디렉트 [P0] [auto-friendly]
 **Pre:** 비로그인 상태 (localStorage `supabase_user_id` 없음)
@@ -365,48 +377,6 @@ uat.isAnonymous();           // → true
 **Expected:**
 - 익명 모드 시간표 화면 진입 (로그인 강제 X — 익명 사용 가능 정책)
 - 사이드바 메뉴 마지막("강사" 아래) "로그인" 링크 표시
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-1.2 Google OAuth 로그인 [P1]
-**Pre:** 비로그인 상태
-**Steps:**
-1. `/login` 접속
-2. "Google로 로그인" 버튼 클릭
-3. Google 계정 선택
-**Expected:**
-- OAuth 콜백 후 `/schedule` 또는 `/onboarding` 라우팅
-- localStorage에 `supabase_user_id` 저장
-- 사이드바 하단에 이메일 표시
-
-**검증 방법** (셋 중 아무거나, DevTools 콘솔):
-```js
-// 1. uat helper (간단)
-uat.isAnonymous();                            // → false (로그인됨)
-
-// 2. 직접 키 확인
-localStorage.getItem('supabase_user_id');     // → "uuid-string" (null 아님)
-
-// 3. 시각 확인 — F12 → Application 탭 → Local Storage
-//    → http://localhost:3000 선택 → supabase_user_id row 에 UUID 값 표시
-```
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-1.3 Kakao OAuth 로그인 [P1]
-**Pre:** 비로그인 상태
-**Steps:**
-1. `/login` 접속
-2. "Kakao로 로그인" 버튼 클릭
-3. Kakao 계정 인증
-**Expected:**
-- OAuth 콜백 후 `/schedule` 또는 `/onboarding` 라우팅
-- localStorage `supabase_user_id` 저장
-
-**검증 방법** (S-1.2 와 동일 — 셋 중 아무거나, DevTools 콘솔):
-```js
-uat.isAnonymous();                            // → false
-localStorage.getItem('supabase_user_id');     // → "uuid-string"
-// 또는 F12 → Application → Local Storage → supabase_user_id row 확인
-```
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-1.4 익명 사용자 모드 [P1] [auto-friendly]
@@ -428,8 +398,10 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 - 서버 호출 없음 (Network 탭에 `/api/sessions` POST 없음)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
+### §1.B Transition (비로그인 → 로그인)
+
 ### S-1.5 첫 로그인 — 학원 자동 생성 [P0]
-**Pre:** 신규 사용자 (academy_members row 없음). 재현 방법 — `npm run uat:teardown` 으로 UAT_TEST_USER 의 academy 까지 cleanup → 그 user 로 로그인 시 신규 사용자 상태. 또는 별도 신규 OAuth 계정 사용.
+**Pre:** S-1.4 직후 (anonymous에 데이터 있음) + 신규 사용자 (academy_members row 없음). 재현 방법 — `npm run uat:teardown` 으로 UAT_TEST_USER 의 academy 까지 cleanup → 그 user 로 로그인 시 신규 사용자 상태. 또는 별도 신규 OAuth 계정 사용.
 **Steps:**
 1. OAuth 로그인 후 `/onboarding` 진입
 2. 학원명 입력 (2자 이상)
@@ -438,6 +410,7 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 - `/schedule` 라우팅
 - 사이드바 상단에 학원명 + Academy Switcher 표시
 - API `/api/academies` POST 성공 (Network 확인)
+- **anonymous → server 자동 마이그 (`upload-local` 경로) 트리거** (PR #294 fix). 충돌 모달은 server 비어있어 안 뜨는 게 정상. PR #295 후엔 마이그 직후 "시간표가 새로 갱신되었어요" 토스트 false positive 발화 안 함.
 
 **검증 방법** (DevTools 콘솔 — userId + activeAcademyId 둘 다 set 됐는지):
 ```js
@@ -446,6 +419,34 @@ console.log('userId:', userId);                                 // UUID
 console.log('activeAcademy:', localStorage.getItem(`active_academy:${userId}`));  // academy UUID
 // 또는 쿠키 확인
 document.cookie.match(/active_academy_id=([^;]+)/)?.[1];        // academy UUID
+// anonymous 데이터가 server로 마이그됐는지 (학생 카운트 ≥1)
+fetch(`/api/students?userId=${userId}`).then(r => r.json()).then(j => console.log('server students:', j.data?.length));
+```
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### §1.C 로그인 그룹
+
+### S-1.2 Google OAuth 로그인 [P1]
+**Pre:** 비로그인 상태 (S-1.5 끝나고 로그아웃 후 또는 별도 진입)
+**Steps:**
+1. `/login` 접속
+2. "Google로 로그인" 버튼 클릭
+3. Google 계정 선택
+**Expected:**
+- OAuth 콜백 후 `/schedule` 또는 `/onboarding` 라우팅
+- localStorage에 `supabase_user_id` 저장
+- 사이드바 하단에 이메일 표시
+
+**검증 방법** (셋 중 아무거나, DevTools 콘솔):
+```js
+// 1. uat helper (간단)
+uat.isAnonymous();                            // → false (로그인됨)
+
+// 2. 직접 키 확인
+localStorage.getItem('supabase_user_id');     // → "uuid-string" (null 아님)
+
+// 3. 시각 확인 — F12 → Application 탭 → Local Storage
+//    → http://localhost:3000 선택 → supabase_user_id row 에 UUID 값 표시
 ```
 **Result:** [ ] Pass [ ] Fail — note: ___
 

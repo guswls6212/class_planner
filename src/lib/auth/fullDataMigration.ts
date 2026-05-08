@@ -14,6 +14,7 @@ import {
   findDuplicateSession,
 } from "./deduplication";
 import { getWeekStartDate } from "../weekStart";
+import { notifySelfSync } from "../apiSync";
 import { logger } from "../logger";
 
 
@@ -308,6 +309,10 @@ export async function migrateLocalDataToServer(
 
       if (json.success && json.data?.id) {
         syncedCounts.sessions++;
+        // sessions INSERT는 server-side trigger로 academies.schedule_updated_at을 bump.
+        // useScheduleMeta polling이 이 변화를 "다른 admin 변경"으로 오인해 토스트 발화하는
+        // 회귀 방지 — apiSync 우회 경로(직접 fetch)에서도 본인 변경 신호 dispatch.
+        notifySelfSync();
         logger.debug("fullDataMigration - 수업 업로드 성공", {
           localId: session.id,
           serverId: json.data.id,
