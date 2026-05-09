@@ -4,6 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  __resetCacheForTest,
   addStudentToLocal,
   addSubjectToLocal,
   addTeacherToLocal,
@@ -83,6 +84,9 @@ describe("localStorage CRUD 유틸리티", () => {
 
     // storage 내용 초기화
     Object.keys(storage).forEach((key) => delete storage[key]);
+
+    // module-level dataCache 비우기 (B-2 cache 도입 후 stale 방지)
+    __resetCacheForTest();
 
     // 모의 구현 리셋 (이전 테스트에서 덮어쓴 구현 복원)
     localStorageMock.getItem.mockImplementation(
@@ -737,6 +741,7 @@ describe("getStorageKey / scoped storage", () => {
 describe("migrateUnkeyedStorage", () => {
   beforeEach(() => {
     localStorageMock.clear();
+    __resetCacheForTest();
   });
 
   it("레거시 classPlannerData가 있으면 현재 스코프 키로 마이그레이션", () => {
@@ -889,6 +894,7 @@ describe("getClassPlannerData per-academy migration", () => {
   beforeEach(() => {
     localStorageMock.clear();
     Object.keys(storage).forEach((k) => delete storage[k]);
+    __resetCacheForTest();
   });
 
   it("새 스코프 키가 비어있고 레거시 키에 데이터가 있으면 첫 조회 시 복사", () => {

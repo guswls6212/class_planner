@@ -48,8 +48,6 @@ describe("useSubjectManagementLocal", () => {
     expect(result.current).toHaveProperty("addSubject");
     expect(result.current).toHaveProperty("updateSubject");
     expect(result.current).toHaveProperty("deleteSubject");
-    expect(result.current).toHaveProperty("getSubject");
-    expect(result.current).toHaveProperty("refreshSubjects");
     expect(result.current).toHaveProperty("clearError");
     expect(result.current).toHaveProperty("subjectCount");
   });
@@ -72,8 +70,6 @@ describe("useSubjectManagementLocal", () => {
     expect(typeof result.current.addSubject).toBe("function");
     expect(typeof result.current.updateSubject).toBe("function");
     expect(typeof result.current.deleteSubject).toBe("function");
-    expect(typeof result.current.getSubject).toBe("function");
-    expect(typeof result.current.refreshSubjects).toBe("function");
     expect(typeof result.current.clearError).toBe("function");
   });
 

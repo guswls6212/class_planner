@@ -18,6 +18,10 @@ class MockTeacherRepository implements TeacherRepository {
     return [];
   }
 
+  async getAllPaginated(): Promise<{ items: Teacher[]; nextCursor: string | null }> {
+    return { items: [], nextCursor: null };
+  }
+
   async getById(): Promise<Teacher | null> {
     return null;
   }

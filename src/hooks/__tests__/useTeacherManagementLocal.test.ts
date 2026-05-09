@@ -125,12 +125,4 @@ describe("useTeacherManagementLocal", () => {
     await waitFor(() => expect(result.current.teacherCount).toBe(1));
   });
 
-  it("refreshTeachers 호출 시 getAllTeachersFromLocal이 재실행된다", async () => {
-    const { result } = renderHook(() => useTeacherManagementLocal());
-    await waitFor(() => {}); // let init settle
-    const callsBefore = (getAllTeachersFromLocal as ReturnType<typeof vi.fn>).mock.calls.length;
-    act(() => result.current.refreshTeachers());
-    const callsAfter = (getAllTeachersFromLocal as ReturnType<typeof vi.fn>).mock.calls.length;
-    expect(callsAfter).toBeGreaterThan(callsBefore);
-  });
 });

@@ -14,6 +14,7 @@ const makeEnrollment = (id: string): Enrollment => ({
 
 const mockEnrollmentRepository: EnrollmentRepository = {
   getAll: vi.fn(),
+  getByStudentId: vi.fn(),
   getById: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
