@@ -8,25 +8,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   syncEnrollmentCreateAsync,
-  syncEnrollmentDelete,
-  syncSessionCreate,
   syncSessionDelete,
-  syncSessionUpdate,
-  syncTeacherCreate,
-  syncTeacherUpdate,
 } from "../lib/apiSync";
 import {
   addEnrollmentToLocal,
-  addSessionToLocal,
-  addTeacherToLocal,
-  deleteEnrollmentFromLocal,
   deleteSessionFromLocal,
   getClassPlannerData,
   replaceEnrollmentId,
   setClassPlannerData,
   updateClassPlannerData,
-  updateSessionInLocal,
-  updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
 import {
@@ -63,24 +53,12 @@ export interface UseIntegratedDataLocalReturn {
   updateData: (newData: Partial<IntegratedData>) => Promise<boolean>;
   clearError: () => void;
 
-  // 세션 관련 액션
-  addSession: (
-    sessionData: Omit<Session, "id" | "createdAt" | "updatedAt">
-  ) => Promise<boolean>;
-  updateSession: (
-    id: string,
-    updates: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
-  ) => Promise<boolean>;
+  // 세션 관련 액션 (단일/일괄 삭제만 — 추가/수정은 useScheduleSessionManagement)
   deleteSession: (id: string) => Promise<boolean>;
   bulkDeleteSessions: (ids: string[]) => Promise<void>;
 
   // 등록 관련 액션
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>;
-  deleteEnrollment: (id: string) => Promise<boolean>;
-
-  // 강사 관련 액션
-  addTeacher: (name: string, color: string, userId?: string | null) => Promise<boolean>;
-  updateTeacher: (id: string, updates: { name?: string; color?: string; userId?: string | null }) => Promise<boolean>;
 
   // 통계
   studentCount: number;
@@ -344,107 +322,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
   );
 
   // ===== 세션 관련 액션 =====
-
-  const addSession = useCallback(
-    async (
-      sessionData: Omit<Session, "id" | "createdAt" | "updatedAt">
-    ): Promise<boolean> => {
-      try {
-        setError(null);
-
-        logger.debug("useIntegratedDataLocal - 세션 추가 시작", {
-          sessionData,
-        });
-
-        // localStorage에 즉시 추가
-        const result = addSessionToLocal(sessionData);
-
-        if (result.success && result.data) {
-          // UI 즉시 업데이트
-          loadDataFromLocal();
-
-          // 서버 동기화 (fire-and-forget) — client UUID 포함 전송 (ghost 방지)
-          const userId = localStorage.getItem("supabase_user_id");
-          syncSessionCreate(userId, { ...sessionData, id: result.data.id });
-
-          showToast("success", "수업이 추가됐습니다");
-
-          logger.info("useIntegratedDataLocal - 세션 추가 성공", {
-            sessionId: result.data.id,
-          });
-
-          return true;
-        } else {
-          setError(result.error || "세션 추가 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "세션 추가 실패";
-        setError(errorMessage);
-        logger.error(
-          "useIntegratedDataLocal - 세션 추가 실패:",
-          undefined,
-          err as Error
-        );
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
-
-  const updateSession = useCallback(
-    async (
-      id: string,
-      updates: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
-    ): Promise<boolean> => {
-      try {
-        setError(null);
-
-        logger.debug("useIntegratedDataLocal - 세션 수정 시작", {
-          id,
-          updates,
-        });
-
-        // localStorage에 즉시 수정
-        const result = updateSessionInLocal(id, updates);
-
-        if (result.success && result.data) {
-          // UI 즉시 업데이트
-          loadDataFromLocal();
-
-          // 서버 동기화 (fire-and-forget)
-          const userId = localStorage.getItem("supabase_user_id");
-          syncSessionUpdate(userId, id, updates);
-
-          // NOTE: 세션 update는 토스트 안 띄움. 드래그 이동이 너무 잦아서
-          // 사용자가 원치 않음 ("수업세션 드래그로 옮기는건 자주... 그건 빼고").
-          // 명시적 modal edit만 토스트하려면 caller가 origin을 hint해야 함 (TODO).
-
-          logger.info("useIntegratedDataLocal - 세션 수정 성공", {
-            id,
-            updates,
-          });
-
-          return true;
-        } else {
-          setError(result.error || "세션 수정 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "세션 수정 실패";
-        setError(errorMessage);
-        logger.error(
-          "useIntegratedDataLocal - 세션 수정 실패:",
-          undefined,
-          err as Error
-        );
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
+  // addSession / updateSession은 useScheduleSessionManagement로 이전됨 (PR #301 후속).
 
   const deleteSession = useCallback(
     async (id: string): Promise<boolean> => {
@@ -659,101 +537,8 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     [loadDataFromLocal]
   );
 
-  const deleteEnrollment = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        setError(null);
-
-        logger.debug("useIntegratedDataLocal - 등록 삭제 시작", { id });
-
-        // localStorage에서 즉시 삭제
-        const result = deleteEnrollmentFromLocal(id);
-
-        if (result.success) {
-          // UI 즉시 업데이트
-          loadDataFromLocal();
-
-          // 서버 동기화 (fire-and-forget)
-          const userId = localStorage.getItem("supabase_user_id");
-          syncEnrollmentDelete(userId, id);
-
-          logger.info("useIntegratedDataLocal - 등록 삭제 성공", { id });
-
-          return true;
-        } else {
-          setError(result.error || "등록 삭제 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "등록 삭제 실패";
-        setError(errorMessage);
-        logger.error(
-          "useIntegratedDataLocal - 등록 삭제 실패:",
-          undefined,
-          err as Error
-        );
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
-
-  // ===== 강사 관련 액션 =====
-
-  const addTeacher = useCallback(
-    async (name: string, color: string, userId?: string | null): Promise<boolean> => {
-      try {
-        setError(null);
-        const result = addTeacherToLocal(name, color, userId);
-        if (result.success && result.data) {
-          loadDataFromLocal();
-          const currentUserId = localStorage.getItem("supabase_user_id");
-          syncTeacherCreate(currentUserId, { name, color, userId });
-          return true;
-        } else {
-          setError(result.error || "강사 추가 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "강사 추가 실패";
-        setError(errorMessage);
-        logger.error("useIntegratedDataLocal - 강사 추가 실패:", undefined, err as Error);
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
-
-  const updateTeacher = useCallback(
-    async (
-      id: string,
-      updates: { name?: string; color?: string; userId?: string | null }
-    ): Promise<boolean> => {
-      try {
-        setError(null);
-        const result = updateTeacherInLocal(id, updates);
-        if (result.success && result.data) {
-          loadDataFromLocal();
-          const userId = localStorage.getItem("supabase_user_id");
-          syncTeacherUpdate(userId, id, updates);
-          return true;
-        } else {
-          setError(result.error || "강사 수정 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "강사 수정 실패";
-        setError(errorMessage);
-        logger.error("useIntegratedDataLocal - 강사 수정 실패:", undefined, err as Error);
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
-
-  // deleteTeacher는 useTeacherManagementLocal로 이전 (5초 deferred + undo + pendingDeletes).
-  // 본 hook의 fire-and-forget 흐름은 외부 사용처가 없어 제거 (PR #300 후속 cleanup).
+  // 강사 관련 액션 (add/update/delete)은 모두 useTeacherManagementLocal로 이전.
+  // 등록 삭제(deleteEnrollment)는 외부 사용처가 없어 제거.
 
   // ===== 데이터 새로고침 =====
 
@@ -788,19 +573,12 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     updateData,
     clearError,
 
-    // 세션 관련 액션
-    addSession,
-    updateSession,
+    // 세션 관련 액션 (단일/일괄 삭제만)
     deleteSession,
     bulkDeleteSessions,
 
     // 등록 관련 액션
     addEnrollment,
-    deleteEnrollment,
-
-    // 강사 관련 액션
-    addTeacher,
-    updateTeacher,
 
     // 통계
     studentCount,
