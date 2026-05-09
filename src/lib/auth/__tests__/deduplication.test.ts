@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   findDuplicateStudent,
   findDuplicateSubject,
+  findDuplicateTeacher,
   findDuplicateEnrollment,
   findDuplicateSession,
 } from "../deduplication";
-import type { Student, Subject, Enrollment, Session } from "../../planner";
+import type { Student, Subject, Teacher, Enrollment, Session } from "../../planner";
 
 // ---------------------------------------------------------------------------
 // findDuplicateStudent — graceful matching
@@ -151,6 +152,41 @@ describe("findDuplicateSubject", () => {
     const local: Subject = { id: "local-sub3", name: "Math" };
     const serverWithEnglish: Subject[] = [{ id: "srv1", name: "math" }];
     expect(findDuplicateSubject(local, serverWithEnglish)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findDuplicateTeacher
+// ---------------------------------------------------------------------------
+describe("findDuplicateTeacher", () => {
+  const serverTeachers: Teacher[] = [
+    { id: "t1", name: "김학성", color: "#6366f1" },
+    { id: "t2", name: "김민철", color: "#0891b2" },
+  ];
+
+  it("이름이 정확히 일치하면 서버 강사를 반환한다", () => {
+    const local: Teacher = { id: "loc-t1", name: "김학성", color: "#000" };
+    expect(findDuplicateTeacher(local, serverTeachers)).toEqual(serverTeachers[0]);
+  });
+
+  it("이름이 다르면 null을 반환한다", () => {
+    const local: Teacher = { id: "loc-t2", name: "박교수", color: "#000" };
+    expect(findDuplicateTeacher(local, serverTeachers)).toBeNull();
+  });
+
+  it("이름 앞뒤 공백을 trim 후 비교한다", () => {
+    const local: Teacher = { id: "loc-t3", name: " 김학성 ", color: "#000" };
+    expect(findDuplicateTeacher(local, serverTeachers)).toEqual(serverTeachers[0]);
+  });
+
+  it("로컬에 이름이 비어있으면 null", () => {
+    const local: Teacher = { id: "loc-t4", name: "", color: "#000" };
+    expect(findDuplicateTeacher(local, serverTeachers)).toBeNull();
+  });
+
+  it("server 목록이 비어있으면 null", () => {
+    const local: Teacher = { id: "loc-t5", name: "김학성", color: "#000" };
+    expect(findDuplicateTeacher(local, [])).toBeNull();
   });
 });
 
