@@ -2,6 +2,13 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  decodeCursor,
+  encodeCursor,
+  isPaginatedRequest,
+  parsePaginationParams,
+} from "@/lib/pagination";
 import { NextRequest, NextResponse } from "next/server";
 
 function canManageShareTokens(role: string): boolean {
@@ -24,6 +31,53 @@ export async function GET(request: NextRequest) {
     }
 
     const client = getServiceRoleClient();
+    const paginationOpts = parsePaginationParams(searchParams);
+
+    if (isPaginatedRequest(paginationOpts)) {
+      // Paginated mode — cursor (created_at + id tie-break) + limit + q (label search)
+      let query = client
+        .from("share_tokens")
+        .select("id, token, label, filter_student_id, expires_at, created_at, revoked_at, access_code")
+        .eq("academy_id", academyId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (paginationOpts.q) {
+        query = query.ilike("label", `%${paginationOpts.q}%`);
+      }
+      if (paginationOpts.cursor) {
+        const decoded = decodeCursor(paginationOpts.cursor);
+        if (decoded) {
+          query = query.or(
+            `created_at.gt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.gt.${decoded.id})`,
+          );
+        }
+      }
+      const limit = paginationOpts.limit ?? PAGINATION_DEFAULT_LIMIT;
+      query = query.limit(limit + 1);
+
+      const { data, error } = await query;
+      if (error) {
+        logger.error("공유 링크 페이징 조회 실패", { userId }, error as Error);
+        return NextResponse.json({ success: false, error: "목록 조회에 실패했습니다." }, { status: 500 });
+      }
+
+      const rows = data ?? [];
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      let nextCursor: string | null = null;
+      if (hasMore && items.length > 0) {
+        const last = items[items.length - 1];
+        nextCursor = encodeCursor({
+          createdAt: last.created_at as string,
+          id: last.id as string,
+        });
+      }
+      return NextResponse.json({ success: true, data: items, nextCursor });
+    }
+
+    // 기존 흐름 (회귀 0) — 옵션 없으면 모두 반환
     const { data, error } = await client
       .from("share_tokens")
       .select("id, token, label, filter_student_id, expires_at, created_at, revoked_at, access_code")
