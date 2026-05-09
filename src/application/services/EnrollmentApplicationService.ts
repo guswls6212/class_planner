@@ -8,6 +8,13 @@ export class EnrollmentApplicationServiceImpl {
     return this.enrollmentRepository.getAll(academyId);
   }
 
+  async getEnrollmentsByStudent(
+    studentId: string,
+    academyId: string,
+  ): Promise<Enrollment[]> {
+    return this.enrollmentRepository.getByStudentId(studentId, academyId);
+  }
+
   async getEnrollmentById(id: string): Promise<Enrollment | null> {
     return this.enrollmentRepository.getById(id);
   }
