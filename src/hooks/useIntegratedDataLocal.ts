@@ -205,7 +205,13 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           Array.isArray(subjectsRes.value.data) &&
           subjectsRes.value.data.length > 0
         ) {
-          updates.subjects = subjectsRes.value.data as Subject[];
+          // pendingDeletes 필터 — students와 동일
+          const pendingSubjectDeleteIds = getPendingDeleteIds("subject");
+          const fetched = subjectsRes.value.data as Subject[];
+          updates.subjects =
+            pendingSubjectDeleteIds.size > 0
+              ? fetched.filter((s) => !pendingSubjectDeleteIds.has(s.id))
+              : fetched;
         }
         // teachers는 보너스 — admin-only 페이지가 막혀도 강사 컬러/이름이
         // 시간표 색상 모드에 필요하다.

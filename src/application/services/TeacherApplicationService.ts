@@ -20,15 +20,21 @@ export class TeacherApplicationServiceImpl {
     academyId: string
   ): Promise<Teacher> {
     try {
-      // Local-first reconcile path: client UUID(`id`)가 주어지면 client에서 이미
-      // 중복 검증 + repository.upsert가 retry-safe. server-allocated path만 체크.
-      if (!teacherData.id) {
-        const existingTeachers = await this.teacherRepository.getAll(academyId);
-        const isDuplicate = Teacher.isNameDuplicate(teacherData.name, existingTeachers);
-
-        if (isDuplicate) {
-          throw new AppError("TEACHER_NAME_DUPLICATE", { statusHint: 409 });
-        }
+      // Idempotent get-or-create: 같은 (academy, name)에 강사가 이미 있으면 그 row 반환.
+      // client UUID 명시 여부와 무관 — DB의 UNIQUE (academy_id, name) 제약(23505)을
+      // 200 응답으로 흡수하고, client는 응답 id로 reconcile (useTeacherManagementLocal
+      // 의 syncTeacherCreateAsync 응답 처리). PR #295의 student/subject 패턴(7b5d121)과 동일.
+      const existingTeachers = await this.teacherRepository.getAll(academyId);
+      const dup = existingTeachers.find((t) =>
+        Teacher.isNameDuplicate(teacherData.name, [t]),
+      );
+      if (dup) {
+        logger.info("addTeacher: name duplicate → returning existing", {
+          requestedId: teacherData.id ?? null,
+          existingId: dup.id.value,
+          name: teacherData.name,
+        });
+        return dup;
       }
 
       const newTeacher = Teacher.create(
