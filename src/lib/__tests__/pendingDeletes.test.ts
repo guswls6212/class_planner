@@ -178,4 +178,29 @@ describe("pendingDeletes", () => {
       expect(result[0].id).toBe("ok");
     });
   });
+
+  describe("entityType 분리 (student vs subject)", () => {
+    it("같은 id라도 entityType이 다르면 별개 entry로 저장", () => {
+      addPendingDelete({ entityType: "student", id: "x1", deadline: 100 });
+      addPendingDelete({ entityType: "subject", id: "x1", deadline: 200 });
+      expect(getPendingDeletes()).toHaveLength(2);
+      expect(getPendingDeleteIds("student").has("x1")).toBe(true);
+      expect(getPendingDeleteIds("subject").has("x1")).toBe(true);
+    });
+
+    it("removePendingDelete는 entityType + id 모두 매칭 시에만 제거", () => {
+      addPendingDelete({ entityType: "student", id: "x1", deadline: 100 });
+      addPendingDelete({ entityType: "subject", id: "x1", deadline: 200 });
+      removePendingDelete("student", "x1");
+      expect(getPendingDeleteIds("student").size).toBe(0);
+      expect(getPendingDeleteIds("subject").size).toBe(1);
+    });
+
+    it("getPendingDeleteIds는 entityType 한정", () => {
+      addPendingDelete({ entityType: "student", id: "s1", deadline: 100 });
+      addPendingDelete({ entityType: "subject", id: "j1", deadline: 200 });
+      expect(getPendingDeleteIds("student")).toEqual(new Set(["s1"]));
+      expect(getPendingDeleteIds("subject")).toEqual(new Set(["j1"]));
+    });
+  });
 });

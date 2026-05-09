@@ -270,7 +270,21 @@ export const useGlobalDataInitialization = () => {
             );
           }
         }
-        const subjects = await parseJson(subjectsRes);
+        let subjects = await parseJson(subjectsRes);
+        // subjects도 students와 동일 패턴 — 5초 deferred-commit 진행 중인 과목은 fetch 결과에서 제외
+        const pendingSubjectDeleteIds = getPendingDeleteIds("subject");
+        if (subjects && pendingSubjectDeleteIds.size > 0) {
+          const before = subjects.length;
+          subjects = subjects.filter(
+            (s: { id: string }) => !pendingSubjectDeleteIds.has(s.id),
+          );
+          if (subjects.length !== before) {
+            logger.info(
+              "useGlobalDataInitialization - subjects pendingDeletes filter 적용",
+              { excluded: before - subjects.length },
+            );
+          }
+        }
         const subjectsFetched = subjects !== null;
         const sessions = (await parseJson(sessionsRes)) ?? [];
         const enrollments = (await parseJson(enrollmentsRes)) ?? [];
