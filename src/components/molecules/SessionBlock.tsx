@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Users } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { logger } from "../../lib/logger";
@@ -134,28 +134,42 @@ function SessionBlock({
     return null;
   }
 
-  // 과목과 학생 정보 가져오기
-  const subject = getSessionSubject(session, enrollments || [], subjects || []);
-  const studentNames = getGroupStudentNames(
-    session,
-    enrollments || [],
-    students || [],
-    selectedStudentIds
+  // 과목과 학생 정보 가져오기 — props 변경 시만 재계산 (drag jitter 핫패스)
+  const subject = useMemo(
+    () => getSessionSubject(session, enrollments || [], subjects || []),
+    [session, enrollments, subjects],
+  );
+  const studentNames = useMemo(
+    () =>
+      getGroupStudentNames(
+        session,
+        enrollments || [],
+        students || [],
+        selectedStudentIds,
+      ),
+    [session, enrollments, students, selectedStudentIds],
   );
 
   // colorBy에 따라 블록 색상 결정
-  const blockColor = resolveSessionColor(
-    session,
-    colorBy,
-    enrollments || [],
-    subjects || [],
-    students || [],
-    teachers,
-    selectedStudentIds
+  const blockColor = useMemo(
+    () =>
+      resolveSessionColor(
+        session,
+        colorBy,
+        enrollments || [],
+        subjects || [],
+        students || [],
+        teachers,
+        selectedStudentIds,
+      ),
+    [session, colorBy, enrollments, subjects, students, teachers, selectedStudentIds],
   );
 
   // 강사 정보
-  const teacher = teachers.find((t) => t.id === session.teacherId);
+  const teacher = useMemo(
+    () => teachers.find((t) => t.id === session.teacherId),
+    [teachers, session.teacherId],
+  );
 
   if (!subject) {
     logger.warn("SessionBlock: 과목 정보 없음", {
@@ -266,8 +280,8 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
-  // 3-tone 파스텔 톤 (pastel bg + dark fg + accent)
-  const tone = resolveSessionTone(blockColor);
+  // 3-tone 파스텔 톤 (pastel bg + dark fg + accent) — blockColor 변경 시만
+  const tone = useMemo(() => resolveSessionTone(blockColor), [blockColor]);
 
   // 상태 레이어 (Phase 3 SSOT): 완료 = opacity 0.55. in-progress/conflict = borderLeft accent
   const isCompleted = sessionStatus === "completed" && !isAnyDragging && !isDragging;
@@ -383,7 +397,7 @@ function SessionBlock({
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
-  const totalStudentCount = (() => {
+  const totalStudentCount = useMemo(() => {
     if (!isStudentModeActive || !selectedStudentIds?.length) return 0;
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
@@ -391,11 +405,11 @@ function SessionBlock({
     });
     // 게이트: 선택된 학생이 이 세션에 없으면 표시 안 함 (비매칭 dim 블록)
     const hasSelectedInSession = allStudentIds.some((id) =>
-      selectedStudentIds.includes(id)
+      selectedStudentIds.includes(id),
     );
     if (!hasSelectedInSession) return 0;
     return allStudentIds.length;
-  })();
+  }, [isStudentModeActive, selectedStudentIds, session.enrollmentIds, enrollments]);
 
   return (
     <div

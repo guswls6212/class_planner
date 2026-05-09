@@ -303,7 +303,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       }
     }, []);
 
+    // mount 1회 read한 결과를 ref에 캐시 — 같은 mount 동안 재 read 방지.
+    // (saveScrollPosition은 매 scroll write이지만, get은 restore 1회만 호출)
+    const savedScrollRef = useRef<{ scrollLeft: number; scrollTop: number } | null | undefined>(undefined);
     const getSavedScrollPosition = useCallback(() => {
+      if (savedScrollRef.current !== undefined) return savedScrollRef.current;
       try {
         const savedData = localStorage.getItem("schedule_scroll_position");
         if (savedData) {
@@ -311,12 +315,14 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
           // 5분 이내의 데이터만 사용
           if (Date.now() - timestamp < 5 * 60 * 1000) {
-            return { scrollLeft, scrollTop };
+            savedScrollRef.current = { scrollLeft, scrollTop };
+            return savedScrollRef.current;
           }
         }
       } catch (error) {
         // localStorage 에러는 무시
       }
+      savedScrollRef.current = null;
       return null;
     }, []);
 
