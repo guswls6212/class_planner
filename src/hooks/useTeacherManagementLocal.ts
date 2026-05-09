@@ -117,8 +117,29 @@ export const useTeacherManagementLocal =
       const userId = localStorage.getItem("supabase_user_id");
       const now = Date.now();
 
-      const commitOne = (id: string) => {
-        syncTeacherDelete(userId, id);
+      // server DELETE await — race window 0 (UAT 2026-05-09 학생 부활 패턴 동일).
+      const commitOne = async (id: string) => {
+        if (!userId) {
+          removePendingDelete("teacher", id);
+          return;
+        }
+        try {
+          const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
+          const response = await fetch(url, { method: "DELETE" });
+          if (!response.ok) {
+            logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
+              id,
+              status: response.status,
+            });
+            return;
+          }
+        } catch (err) {
+          logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+            id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return;
+        }
         removePendingDelete("teacher", id);
       };
 
@@ -337,9 +358,30 @@ export const useTeacherManagementLocal =
             const deadline = Date.now() + PENDING_DELETE_TTL_MS;
             addPendingDelete({ entityType: "teacher", id, deadline });
             let cancelled = false;
-            const commitTimer = setTimeout(() => {
+            // server DELETE await — race window 0.
+            const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              syncTeacherDelete(userId, id);
+              if (!userId) {
+                removePendingDelete("teacher", id);
+                return;
+              }
+              try {
+                const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
+                const response = await fetch(url, { method: "DELETE" });
+                if (!response.ok) {
+                  logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
+                    id,
+                    status: response.status,
+                  });
+                  return;
+                }
+              } catch (err) {
+                logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+                  id,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+                return;
+              }
               removePendingDelete("teacher", id);
               logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
