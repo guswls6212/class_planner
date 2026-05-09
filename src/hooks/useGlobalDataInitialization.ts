@@ -29,6 +29,7 @@ import {
 } from "../lib/auth/handleLoginDataMigration";
 import type { MigrationResult } from "../lib/auth/handleLoginDataMigration";
 import { logger } from "../lib/logger";
+import { getPendingDeleteIds } from "../lib/pendingDeletes";
 import { supabase } from "../utils/supabaseClient";
 
 type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
@@ -251,7 +252,24 @@ export const useGlobalDataInitialization = () => {
           }
         };
 
-        const students = (await parseJson(studentsRes)) ?? [];
+        let students = (await parseJson(studentsRes)) ?? [];
+
+        // pendingDeletes 필터 — 5초 deferred-commit 진행 중인 학생은 server에서
+        // 다시 끌어오지 않는다. recovery hook이 commit timer를 재등록하므로
+        // 동일한 흐름으로 commit이 마무리됨.
+        const pendingStudentDeleteIds = getPendingDeleteIds("student");
+        if (pendingStudentDeleteIds.size > 0) {
+          const before = students.length;
+          students = students.filter(
+            (s: { id: string }) => !pendingStudentDeleteIds.has(s.id),
+          );
+          if (students.length !== before) {
+            logger.info(
+              "useGlobalDataInitialization - pendingDeletes filter 적용",
+              { excluded: before - students.length },
+            );
+          }
+        }
         const subjects = await parseJson(subjectsRes);
         const subjectsFetched = subjects !== null;
         const sessions = (await parseJson(sessionsRes)) ?? [];

@@ -49,7 +49,7 @@ export function clearActiveAcademy(userId: string): void {
   localStorage.removeItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
 }
 
-function getStorageKey(academyId?: string): string {
+export function getStorageKey(academyId?: string): string {
   if (typeof window === "undefined") return ANONYMOUS_STORAGE_KEY;
   const userId = localStorage.getItem("supabase_user_id");
   if (!userId) return ANONYMOUS_STORAGE_KEY;
