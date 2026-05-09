@@ -286,9 +286,37 @@ export const useGlobalDataInitialization = () => {
           }
         }
         const subjectsFetched = subjects !== null;
-        const sessions = (await parseJson(sessionsRes)) ?? [];
+        let sessions = (await parseJson(sessionsRes)) ?? [];
+        // sessions pendingDeletes 필터 — 학생/과목/강사와 동일 패턴
+        const pendingSessionDeleteIds = getPendingDeleteIds("session");
+        if (pendingSessionDeleteIds.size > 0) {
+          const before = sessions.length;
+          sessions = sessions.filter(
+            (s: { id: string }) => !pendingSessionDeleteIds.has(s.id),
+          );
+          if (sessions.length !== before) {
+            logger.info(
+              "useGlobalDataInitialization - sessions pendingDeletes filter 적용",
+              { excluded: before - sessions.length },
+            );
+          }
+        }
         const enrollments = (await parseJson(enrollmentsRes)) ?? [];
-        const teachers = (await parseJson(teachersRes)) ?? [];
+        let teachers = (await parseJson(teachersRes)) ?? [];
+        // teachers pendingDeletes 필터
+        const pendingTeacherDeleteIds = getPendingDeleteIds("teacher");
+        if (pendingTeacherDeleteIds.size > 0) {
+          const before = teachers.length;
+          teachers = teachers.filter(
+            (t: { id: string }) => !pendingTeacherDeleteIds.has(t.id),
+          );
+          if (teachers.length !== before) {
+            logger.info(
+              "useGlobalDataInitialization - teachers pendingDeletes filter 적용",
+              { excluded: before - teachers.length },
+            );
+          }
+        }
 
         // teacher별 subjectIds를 병렬로 fetch
         const teachersWithSubjects = await Promise.all(
