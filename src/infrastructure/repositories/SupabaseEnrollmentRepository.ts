@@ -55,6 +55,36 @@ export class SupabaseEnrollmentRepository implements EnrollmentRepository {
     }
   }
 
+  /**
+   * 학생 ID로 enrollments 필터링 — 학생 detail / 학생당 수업 list 등에서 사용.
+   * 학생 N명 × 과목 M개 = N*M enrollments 모두 받지 않고 1 학생만 받기 위함.
+   * academyId로 권한 검증 (해당 학생이 그 academy 소속이어야 결과 반환).
+   */
+  async getByStudentId(
+    studentId: string,
+    academyId: string,
+  ): Promise<Enrollment[]> {
+    try {
+      const client = this.createServiceRoleClient();
+      const { data, error } = await client
+        .from("enrollments")
+        .select("*, students!inner(academy_id)")
+        .eq("student_id", studentId)
+        .eq("students.academy_id", academyId)
+        .order("created_at");
+
+      if (error) {
+        logger.error("학생별 수강신청 조회 실패:", undefined, error as Error);
+        return [];
+      }
+
+      return (data ?? []).map((row: any) => this.rowToEnrollment(row));
+    } catch (error) {
+      logger.error("학생별 수강신청 조회 중 오류:", undefined, error as Error);
+      return [];
+    }
+  }
+
   async getById(id: string): Promise<Enrollment | null> {
     try {
       const client = this.createServiceRoleClient();

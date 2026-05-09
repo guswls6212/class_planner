@@ -82,6 +82,8 @@ export interface TeacherRepository {
 
 export interface EnrollmentRepository {
   getAll(academyId: string): Promise<Enrollment[]>;
+  /** 학생 ID로 필터링 — N+M 부담 회피. */
+  getByStudentId(studentId: string, academyId: string): Promise<Enrollment[]>;
   getById(id: string): Promise<Enrollment | null>;
   create(
     enrollment: Omit<Enrollment, "id" | "createdAt" | "updatedAt"> & {

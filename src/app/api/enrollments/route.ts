@@ -22,6 +22,18 @@ export async function GET(request: NextRequest) {
     }
 
     const academyId = await resolveAcademyId(userId);
+    const studentId = searchParams.get("studentId");
+
+    // studentId 필터 옵션 — 1 학생 enrollments만 (N+M 부담 회피).
+    // 옵션 없으면 기존 getAllEnrollments (회귀 0).
+    if (studentId) {
+      const filtered = await getEnrollmentService().getEnrollmentsByStudent(
+        studentId,
+        academyId,
+      );
+      return NextResponse.json({ success: true, data: filtered });
+    }
+
     const enrollments = await getEnrollmentService().getAllEnrollments(academyId);
     return NextResponse.json({ success: true, data: enrollments });
   } catch (error) {
