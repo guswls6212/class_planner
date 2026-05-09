@@ -120,14 +120,43 @@ export const useStudentManagementLocal =
       const userId = localStorage.getItem("supabase_user_id");
       const now = Date.now();
 
-      const commitOne = (id: string) => {
-        syncStudentDelete(userId, id);
-        if (userId) {
-          fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+      // Server DELETE를 await — 응답 받은 후에만 pendingDeletes 제거 (UAT 2026-05-09
+      // 김요섭/강지원/김승건 부활 root cause). fire-and-forget commit은 server에 DELETE
+      // 도착 전 useGlobalData 재실행 시 server fetch가 학생 그대로 받아옴 + pendingDeletes
+      // 비었음 → filter 못 함 → 부활. await로 race window 0.
+      // 실패 시 pendingDeletes 그대로 둠 → 다음 mount의 recovery hook이 재시도.
+      const commitOne = async (id: string) => {
+        if (!userId) {
+          // userId 없으면 sync 자체 의미 없음 — pendingDeletes만 정리
+          removePendingDelete("student", id);
+          return;
+        }
+        try {
+          const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
+          const response = await fetch(url, { method: "DELETE" });
+          if (!response.ok) {
+            logger.warn("학생 삭제 commit 실패 — pendingDeletes 유지, 다음 mount에 재시도", {
+              id,
+              status: response.status,
+            });
+            return; // pendingDeletes 그대로
+          }
+        } catch (err) {
+          logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+            id,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return;
+        }
+        // share-tokens revoke는 best-effort (학생 삭제는 이미 성공)
+        try {
+          await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ studentId: id }),
-          }).catch(() => {});
+          });
+        } catch {
+          // ignore — access-code revoke 실패는 학생 삭제 성공과 무관
         }
         removePendingDelete("student", id);
       };
@@ -374,15 +403,39 @@ export const useStudentManagementLocal =
             const deadline = Date.now() + PENDING_DELETE_TTL_MS;
             addPendingDelete({ entityType: "student", id, deadline });
             let cancelled = false;
-            const commitTimer = setTimeout(() => {
+            // server DELETE await — 응답 받은 후만 pendingDeletes 제거 (race window 0).
+            // 실패 시 pendingDeletes 그대로 → 다음 mount의 recovery hook이 재시도.
+            const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              syncStudentDelete(userId, id);
-              if (userId) {
-                fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+              if (!userId) {
+                removePendingDelete("student", id);
+                return;
+              }
+              try {
+                const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
+                const response = await fetch(url, { method: "DELETE" });
+                if (!response.ok) {
+                  logger.warn("학생 삭제 commit 실패 — pendingDeletes 유지, 재시도 대기", {
+                    id,
+                    status: response.status,
+                  });
+                  return; // pendingDeletes 그대로
+                }
+              } catch (err) {
+                logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+                  id,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+                return;
+              }
+              try {
+                await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
                   method: "DELETE",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ studentId: id }),
-                }).catch(() => {});
+                });
+              } catch {
+                // share-token revoke best-effort
               }
               removePendingDelete("student", id);
               logger.info("useStudentManagementLocal - 학생 삭제 commit", {
