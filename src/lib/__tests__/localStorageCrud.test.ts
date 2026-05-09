@@ -1284,3 +1284,86 @@ describe("replaceTeacherId — server idempotent reconciliation", () => {
     expect(replaceTeacherId("missing", "any")).toBe(true);
   });
 });
+
+// ── setClassPlannerData sub-array reference safety (T8 회귀 가드) ────────────
+// dataCache(2bad68f) memoization으로 같은 reference를 반환하기 때문에, 호출자가
+// push/splice/sort 등으로 sub-array를 mutate하면 다음 setData(localData) 시
+// React.memo가 sub-array reference 동일로 판정 → DOM 미갱신 회귀 (T8 사고).
+// setClassPlannerData가 sub-array를 1-level shallow copy로 cache에 저장하는
+// 흐름이 root cause guard.
+describe("setClassPlannerData — sub-array reference safety", () => {
+  beforeEach(() => {
+    __resetCacheForTest();
+    localStorage.clear();
+    localStorage.setItem("supabase_user_id", "test-user");
+  });
+
+  it("저장 직후 getClassPlannerData가 input과 다른 sub-array reference를 반환한다", () => {
+    const inputSessions = [{ id: "s1" }] as never[];
+    const inputStudents = [{ id: "stu1", name: "A" }] as never[];
+    setClassPlannerData({
+      students: inputStudents,
+      subjects: [],
+      sessions: inputSessions,
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    const fetched = getClassPlannerData();
+
+    // 같은 element 내용이지만 array reference는 달라야 함
+    expect(fetched.sessions).toEqual(inputSessions);
+    expect(fetched.sessions).not.toBe(inputSessions);
+    expect(fetched.students).toEqual(inputStudents);
+    expect(fetched.students).not.toBe(inputStudents);
+  });
+
+  it("input array를 외부에서 mutate해도 cache에 저장된 데이터에는 영향 없음", () => {
+    const inputSessions = [{ id: "s1" }] as never[];
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: inputSessions,
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    // 외부 array에 직접 mutate
+    (inputSessions as { id: string }[]).push({ id: "s2" });
+
+    // cache는 영향 없어야 함 (1개 그대로)
+    const fetched = getClassPlannerData();
+    expect(fetched.sessions).toHaveLength(1);
+    expect((fetched.sessions[0] as { id: string }).id).toBe("s1");
+  });
+
+  it("연속 setClassPlannerData 호출 시 매번 새 sub-array reference 발급 (React.memo 정상 인지 보장)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [{ id: "s1" }] as never[],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    const first = getClassPlannerData();
+
+    // 동일 내용 재저장 — sub-array는 매 호출마다 새 reference여야 React가 변화 인지 가능
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [{ id: "s1" }, { id: "s2" }] as never[],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "y",
+    });
+    const second = getClassPlannerData();
+
+    expect(first.sessions).not.toBe(second.sessions);
+    expect(second.sessions).toHaveLength(2);
+  });
+});
