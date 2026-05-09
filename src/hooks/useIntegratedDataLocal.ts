@@ -31,6 +31,7 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { getPendingDeleteIds } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
 
@@ -189,7 +190,13 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           Array.isArray(studentsRes.value.data) &&
           studentsRes.value.data.length > 0
         ) {
-          updates.students = studentsRes.value.data as Student[];
+          // pendingDeletes 필터 — 5초 deferred-commit 진행 중인 학생은 부트스트랩에서 제외
+          const pendingStudentDeleteIds = getPendingDeleteIds("student");
+          const fetched = studentsRes.value.data as Student[];
+          updates.students =
+            pendingStudentDeleteIds.size > 0
+              ? fetched.filter((s) => !pendingStudentDeleteIds.has(s.id))
+              : fetched;
         }
         if (
           subjectsEmpty &&
