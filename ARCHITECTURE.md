@@ -264,8 +264,8 @@ src/lib/               # 핵심 유틸리티
 │   └── teacherServiceFactory.ts  # 서버사이드 강사 서비스 팩토리 (API Route 전용)
 └── auth/                      # 로그인 데이터 마이그레이션
     ├── handleLoginDataMigration.ts  # 로그인 시 로컬/서버 충돌 감지
-    ├── fullDataMigration.ts         # 로컬 전체 데이터 서버 업로드
-    ├── deduplication.ts             # 중복 데이터 제거
+    ├── fullDataMigration.ts         # 로컬 전체 데이터 서버 업로드 (5 entity sequential, ADR-013)
+    ├── deduplication.ts             # 중복 데이터 제거 (student/subject/teacher/enrollment/session)
     └── permissions.ts               # Role 기반 권한 검사 유틸리티 (canManage, canEdit 등)
 
 src/hooks/             # 커스텀 React 훅
