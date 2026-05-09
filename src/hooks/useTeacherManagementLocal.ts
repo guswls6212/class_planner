@@ -19,7 +19,6 @@ import {
   deleteTeacherFromLocal,
   getAllTeachersFromLocal,
   getClassPlannerData,
-  getTeacherFromLocal,
   removeTeacherSubjectFromLocal,
   replaceTeacherId,
   setClassPlannerData,
@@ -69,12 +68,10 @@ export interface UseTeacherManagementLocalReturn {
     }
   ) => Promise<boolean>;
   deleteTeacher: (id: string) => Promise<boolean>;
-  getTeacher: (id: string) => Teacher | null;
   addTeacherSubject: (teacherId: string, subjectId: string) => Promise<boolean>;
   removeTeacherSubject: (teacherId: string, subjectId: string) => Promise<boolean>;
 
   // 유틸리티
-  refreshTeachers: () => void;
   clearError: () => void;
 
   // 통계
@@ -440,17 +437,7 @@ export const useTeacherManagementLocal =
       [loadTeachersFromLocal]
     );
 
-    // ===== 강사 조회 =====
-
-    const getTeacher = useCallback((id: string): Teacher | null => {
-      return getTeacherFromLocal(id);
-    }, []);
-
     // ===== 유틸리티 =====
-
-    const refreshTeachers = useCallback(() => {
-      loadTeachersFromLocal();
-    }, [loadTeachersFromLocal]);
 
     const clearError = useCallback(() => {
       setError(null);
@@ -465,11 +452,9 @@ export const useTeacherManagementLocal =
       addTeacher,
       updateTeacher,
       deleteTeacher,
-      getTeacher,
       addTeacherSubject,
       removeTeacherSubject,
 
-      refreshTeachers,
       clearError,
 
       teacherCount,

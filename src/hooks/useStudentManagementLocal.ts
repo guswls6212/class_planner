@@ -16,7 +16,6 @@ import {
   deleteStudentFromLocal,
   getAllStudentsFromLocal,
   getClassPlannerData,
-  getStudentFromLocal,
   replaceStudentId,
   setClassPlannerData,
   updateStudentInLocal,
@@ -63,7 +62,6 @@ export interface UseStudentManagementLocalReturn {
     updates: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
   ) => Promise<boolean>;
   deleteStudent: (id: string) => Promise<boolean>;
-  getStudent: (id: string) => Student | null;
 
   // 유틸리티
   refreshStudents: () => void;
@@ -462,12 +460,6 @@ export const useStudentManagementLocal =
       [loadStudentsFromLocal, canManage, roleLoading]
     );
 
-    // ===== 학생 조회 =====
-
-    const getStudent = useCallback((id: string): Student | null => {
-      return getStudentFromLocal(id);
-    }, []);
-
     // ===== 학생 목록 새로고침 =====
 
     const refreshStudents = useCallback(() => {
@@ -496,7 +488,6 @@ export const useStudentManagementLocal =
       addStudent,
       updateStudent,
       deleteStudent,
-      getStudent,
 
       // 유틸리티
       refreshStudents,

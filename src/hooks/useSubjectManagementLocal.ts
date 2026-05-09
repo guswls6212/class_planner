@@ -16,7 +16,6 @@ import {
   deleteSubjectFromLocal,
   getAllSubjectsFromLocal,
   getClassPlannerData,
-  getSubjectFromLocal,
   replaceSubjectId,
   setClassPlannerData,
   updateSubjectInLocal,
@@ -55,10 +54,8 @@ export interface UseSubjectManagementLocalReturn {
     updates: { name?: string; color?: string }
   ) => Promise<boolean>;
   deleteSubject: (id: string) => Promise<boolean>;
-  getSubject: (id: string) => Subject | null;
 
   // 유틸리티
-  refreshSubjects: () => void;
   clearError: () => void;
 
   // 통계
@@ -401,19 +398,6 @@ export const useSubjectManagementLocal =
       [loadSubjectsFromLocal, canManage, roleLoading]
     );
 
-    // ===== 과목 조회 =====
-
-    const getSubject = useCallback((id: string): Subject | null => {
-      const subject = getSubjectFromLocal(id);
-      return subject ? { ...subject, color: subject.color || "#3b82f6" } : null;
-    }, []);
-
-    // ===== 과목 목록 새로고침 =====
-
-    const refreshSubjects = useCallback(() => {
-      loadSubjectsFromLocal();
-    }, [loadSubjectsFromLocal]);
-
     // ===== 에러 초기화 =====
 
     const clearError = useCallback(() => {
@@ -435,10 +419,8 @@ export const useSubjectManagementLocal =
       addSubject,
       updateSubject,
       deleteSubject,
-      getSubject,
 
       // 유틸리티
-      refreshSubjects,
       clearError,
 
       // 통계

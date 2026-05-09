@@ -42,13 +42,12 @@ function DraggableSessionCard({
       {...attributes}
       {...listeners}
       data-testid={`overflow-popover-session-${session.id}`}
-      className="flex items-start gap-1.5 px-3 py-1.5 cursor-grab hover:bg-[var(--color-bg-hover)] active:cursor-grabbing"
-      style={{ userSelect: "none" }}
+      className="flex items-start gap-1.5 px-3 py-1.5 cursor-grab select-none hover:bg-[var(--color-bg-hover)] active:cursor-grabbing"
       onClick={(e) => e.stopPropagation()}
     >
       <span
-        className="mt-[3px] shrink-0 rounded-full"
-        style={{ width: 8, height: 8, background: subject?.color ?? "#888" }}
+        className="mt-[3px] w-2 h-2 shrink-0 rounded-full"
+        style={{ background: subject?.color ?? "#888" }}
       />
       <div className="min-w-0">
         <div className="text-[10px] font-semibold text-[var(--color-text-primary)] truncate leading-tight">
@@ -94,8 +93,7 @@ export const HiddenSessionsPopover: React.FC<HiddenSessionsPopoverProps> = ({
       {/* Backdrop — full-page catch for click-outside (below popover) */}
       <div
         data-testid="overflow-popover-backdrop"
-        className="fixed inset-0"
-        style={{ zIndex: 119 }}
+        className="fixed inset-0 z-[119]"
         onClick={onClose}
       />
 
@@ -103,8 +101,8 @@ export const HiddenSessionsPopover: React.FC<HiddenSessionsPopoverProps> = ({
       <div
         ref={popoverRef}
         data-testid="overflow-popover"
-        className="absolute right-0 min-w-[130px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg"
-        style={{ top: anchorTop, zIndex: 120, padding: "6px 0" }}
+        className="absolute right-0 min-w-[130px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg z-[120] py-1.5"
+        style={{ top: anchorTop }}
       >
         {hiddenSessions.map((session) => (
           <DraggableSessionCard

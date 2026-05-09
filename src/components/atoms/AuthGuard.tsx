@@ -103,7 +103,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     });
 
     return () => subscription.unsubscribe();
-  }, []); // 의존성 배열을 빈 배열로 변경하여 무한 루프 방지
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 리다이렉트 로직을 별도 useEffect로 분리
   useEffect(() => {
