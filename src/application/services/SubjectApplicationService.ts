@@ -19,17 +19,20 @@ export class SubjectApplicationServiceImpl {
     academyId: string
   ): Promise<Subject> {
     try {
-      // Local-first reconcile path: client UUID(`id`)가 주어지면 client에서 이미
-      // 중복 검증 + repository.upsert가 retry-safe. server-allocated path만 체크.
-      if (!subjectData.id) {
-        const existingSubjects = await this.subjectRepository.getAll(academyId);
-        const isDuplicate = existingSubjects.some(
-          (subject) => subject.name === subjectData.name
-        );
-
-        if (isDuplicate) {
-          throw new AppError("SUBJECT_NAME_DUPLICATE", { statusHint: 409 });
-        }
+      // Idempotent get-or-create — student/teacher 패턴 동일. (academy_id, name)
+      // UNIQUE 제약은 없지만 client/server sync 어긋난 상태에서 중복 row 생성을
+      // 막아 데이터 정합성 유지.
+      const existingSubjects = await this.subjectRepository.getAll(academyId);
+      const dup = existingSubjects.find(
+        (subject) => subject.name === subjectData.name,
+      );
+      if (dup) {
+        logger.info("addSubject: name duplicate → returning existing", {
+          requestedId: subjectData.id ?? null,
+          existingId: dup.id.value,
+          name: subjectData.name,
+        });
+        return dup;
       }
 
       const newSubject = Subject.create(subjectData.name, subjectData.color);

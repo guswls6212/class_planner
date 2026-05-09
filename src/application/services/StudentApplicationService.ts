@@ -19,19 +19,22 @@ export class StudentApplicationServiceImpl {
     academyId: string
   ): Promise<Student> {
     try {
-      // Local-first reconcile path: client UUID(`id`)가 주어지면 client가 이미
-      // 중복 검증한 것 (localStorageCrud.addStudentToLocal). repository.upsert가
-      // id 충돌 시 idempotent 처리 → retry-safe. server-allocated path(id 없음)
-      // 에서만 server-side duplicate 체크 적용.
-      if (!studentData.id) {
-        const existingStudents = await this.studentRepository.getAll(academyId);
-        const isDuplicate = existingStudents.some(
-          (student) => student.name === studentData.name
-        );
-
-        if (isDuplicate) {
-          throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
-        }
+      // Idempotent get-or-create: 같은 academy의 같은 이름 학생이 이미 있으면 그
+      // row 반환. client UUID 명시 여부와 무관 — students table에 (academy_id, name)
+      // UNIQUE 제약은 없지만 client localStorage가 server와 sync 안 된 상태에서
+      // 같은 이름 추가 시 서버 측에 중복 row가 생기는 잠재 issue 차단.
+      // teacher idempotent (PR #299) 동일 패턴.
+      const existingStudents = await this.studentRepository.getAll(academyId);
+      const dup = existingStudents.find(
+        (student) => student.name === studentData.name,
+      );
+      if (dup) {
+        logger.info("addStudent: name duplicate → returning existing", {
+          requestedId: studentData.id ?? null,
+          existingId: dup.id.value,
+          name: studentData.name,
+        });
+        return dup;
       }
 
       return await this.studentRepository.create(studentData, academyId);
