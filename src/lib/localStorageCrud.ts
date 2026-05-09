@@ -62,6 +62,23 @@ export function getStorageKey(academyId?: string): string {
   return `classPlannerData:${userId}`;
 }
 
+// ===== In-module memoization cache =====
+// classPlannerData는 51 호출처에서 매번 localStorage.getItem + JSON.parse(K바이트).
+// 같은 mount 동안 set/clear 시점에서만 invalidate되도록 module-level Map 캐시.
+// 다른 tab의 변경은 window 'storage' event로 감지하여 invalidate.
+//
+// Cache key는 storage key 그대로 (academy/anonymous 자동 분리).
+const dataCache = new Map<string, ClassPlannerData>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    // 다른 tab이 같은 key를 변경하면 cache invalidate (다음 read에서 fresh load)
+    if (e.key && e.key.startsWith("classPlannerData:")) {
+      dataCache.delete(e.key);
+    }
+  });
+}
+
 function migrateUnkeyedStorage(): void {
   if (typeof window === "undefined") return;
   const legacy = localStorage.getItem("classPlannerData");
@@ -93,6 +110,11 @@ export const getClassPlannerData = (academyId?: string): ClassPlannerData => {
       logger.debug("localStorageCrud - SSR 환경, 기본 데이터 반환");
       return createDefaultData();
     }
+
+    // Cache hit short-circuit — set/clear/storage-event 외엔 invalidate 없음.
+    const cacheKey = getStorageKey(academyId);
+    const cached = dataCache.get(cacheKey);
+    if (cached) return cached;
 
     migrateUnkeyedStorage();
 
@@ -157,6 +179,8 @@ export const getClassPlannerData = (academyId?: string): ClassPlannerData => {
       enrollmentCount: result.enrollments.length,
     });
 
+    // Cache populate — 다음 호출은 short-circuit (set/clear 시 invalidate)
+    dataCache.set(cacheKey, result);
     return result;
   } catch (error) {
     logger.error(
@@ -183,7 +207,10 @@ export const setClassPlannerData = (data: ClassPlannerData, academyId?: string):
       ...data,
     };
 
-    localStorage.setItem(getStorageKey(academyId), JSON.stringify(dataToSave));
+    const writeKey = getStorageKey(academyId);
+    localStorage.setItem(writeKey, JSON.stringify(dataToSave));
+    // Cache update — 다음 read는 cache에서 (다른 tab은 storage event로 자체 invalidate)
+    dataCache.set(writeKey, dataToSave);
 
     logger.debug("localStorageCrud - 데이터 저장 성공", {
       studentCount: dataToSave.students.length,
@@ -224,7 +251,9 @@ export const clearClassPlannerData = (academyId?: string): boolean => {
       return false;
     }
 
-    localStorage.removeItem(getStorageKey(academyId));
+    const clearKey = getStorageKey(academyId);
+    localStorage.removeItem(clearKey);
+    dataCache.delete(clearKey);
     logger.info("localStorageCrud - 데이터 초기화 완료");
 
     // 초기화 이벤트 발생 (실패해도 무시)
@@ -1437,7 +1466,9 @@ export const replaceTeacherId = (oldId: string, newId: string): boolean => {
 export const clearUserClassPlannerData = (userId: string): boolean => {
   try {
     if (typeof window === "undefined") return false;
-    localStorage.removeItem(`classPlannerData:${userId}`);
+    const legacyKey = `classPlannerData:${userId}`;
+    localStorage.removeItem(legacyKey);
+    dataCache.delete(legacyKey);
     logger.info("localStorageCrud - 사용자 데이터 삭제 완료", { userId });
     return true;
   } catch (error) {
