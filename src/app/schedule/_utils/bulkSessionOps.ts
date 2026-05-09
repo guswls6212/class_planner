@@ -55,15 +55,20 @@ export function bulkDeleteSessionsFromLocal(
 /**
  * undo — bulkDeleteSessionsFromLocal로 제거한 sessions 복원.
  * 이미 같은 id가 있으면 건너뜀 (서버 sync race 방지).
+ *
+ * sessions array를 spread로 새 reference 생성 — getClassPlannerData가
+ * dataCache memoization(2bad68f)으로 같은 reference를 반환하기 때문에 push로
+ * mutate하면 setData(localData) 후 React가 sub-array 변화 인지 못 한다
+ * (T8 e2e 회귀 root cause: SessionBlock memo skip → 화면 미갱신).
  */
 export function restoreBulkDeletedSessions(deleted: Session[]): void {
   if (deleted.length === 0) return;
   const data = getClassPlannerData();
   const existingIds = new Set(data.sessions.map((s) => s.id));
-  for (const s of deleted) {
-    if (!existingIds.has(s.id)) data.sessions.push(s);
-  }
+  const toRestore = deleted.filter((s) => !existingIds.has(s.id));
+  if (toRestore.length === 0) return;
+  data.sessions = [...data.sessions, ...toRestore];
   data.lastModified = new Date().toISOString();
   setClassPlannerData(data);
-  logger.info("restoreBulkDeletedSessions", { restored: deleted.length });
+  logger.info("restoreBulkDeletedSessions", { restored: toRestore.length });
 }
