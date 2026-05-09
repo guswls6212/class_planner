@@ -11,6 +11,13 @@ export class TeacherApplicationServiceImpl {
     return this.teacherRepository.getAll(academyId);
   }
 
+  async getAllTeachersPaginated(
+    academyId: string,
+    options: import("@/lib/pagination").PaginationOptions,
+  ): Promise<import("@/lib/pagination").PaginationResult<Teacher>> {
+    return this.teacherRepository.getAllPaginated(academyId, options);
+  }
+
   async getTeacherById(id: string): Promise<Teacher | null> {
     return this.teacherRepository.getById(id);
   }

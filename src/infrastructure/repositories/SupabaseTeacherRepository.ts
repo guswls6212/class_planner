@@ -3,6 +3,13 @@ import type { TeacherRole } from "@/domain/entities/Teacher";
 import type { TeacherRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  decodeCursor,
+  encodeCursor,
+  type PaginationOptions,
+  type PaginationResult,
+} from "../../lib/pagination";
 
 export class SupabaseTeacherRepository implements TeacherRepository {
   private createServiceRoleClient() {
@@ -63,6 +70,66 @@ export class SupabaseTeacherRepository implements TeacherRepository {
     } catch (error) {
       logger.error("강사 데이터 조회 중 오류:", undefined, error as Error);
       return [];
+    }
+  }
+
+  async getAllPaginated(
+    academyId: string,
+    options: PaginationOptions,
+  ): Promise<PaginationResult<Teacher>> {
+    try {
+      const client = this.createServiceRoleClient();
+      let query = client
+        .from("teachers")
+        .select("*, teacher_subjects(subject_id)")
+        .eq("academy_id", academyId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (options.q) {
+        query = query.ilike("name", `%${options.q}%`);
+      }
+
+      if (options.cursor) {
+        const decoded = decodeCursor(options.cursor);
+        if (decoded) {
+          query = query.or(
+            `created_at.gt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.gt.${decoded.id})`,
+          );
+        }
+      }
+
+      const limit = options.limit ?? PAGINATION_DEFAULT_LIMIT;
+      query = query.limit(limit + 1);
+
+      const { data, error } = await query;
+      if (error) {
+        logger.error("강사 페이징 조회 실패:", undefined, error as Error);
+        return { items: [], nextCursor: null };
+      }
+
+      const rows = data ?? [];
+      const hasMore = rows.length > limit;
+      const itemRows = hasMore ? rows.slice(0, limit) : rows;
+      const items = itemRows.map((row) => {
+        const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
+        const subjectIds = links.map((link) => link.subject_id);
+        return this.rowToTeacher(row, subjectIds);
+      });
+
+      let nextCursor: string | null = null;
+      if (hasMore && itemRows.length > 0) {
+        const last = itemRows[itemRows.length - 1];
+        nextCursor = encodeCursor({
+          createdAt: last.created_at as string,
+          id: last.id as string,
+        });
+      }
+
+      return { items, nextCursor };
+    } catch (error) {
+      logger.error("강사 페이징 조회 중 오류:", undefined, error as Error);
+      return { items: [], nextCursor: null };
     }
   }
 

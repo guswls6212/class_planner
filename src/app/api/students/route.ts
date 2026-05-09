@@ -3,6 +3,7 @@ import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
+import { isPaginatedRequest, parsePaginationParams } from "@/lib/pagination";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getStudentService() {
@@ -24,6 +25,21 @@ export async function GET(request: NextRequest) {
     logger.debug("API GET /api/students", { userId });
 
     const academyId = await resolveAcademyId(userId);
+    const paginationOpts = parsePaginationParams(searchParams);
+
+    if (isPaginatedRequest(paginationOpts)) {
+      const result = await getStudentService().getAllStudentsPaginated(
+        academyId,
+        paginationOpts,
+      );
+      return NextResponse.json({
+        success: true,
+        data: result.items,
+        nextCursor: result.nextCursor,
+      });
+    }
+
+    // 기존 흐름 (회귀 0) — 옵션 없으면 모두 반환
     const students = await getStudentService().getAllStudents(academyId);
     return NextResponse.json({ success: true, data: students });
   } catch (error) {

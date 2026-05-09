@@ -10,6 +10,13 @@ export class StudentApplicationServiceImpl {
     return this.studentRepository.getAll(academyId);
   }
 
+  async getAllStudentsPaginated(
+    academyId: string,
+    options: import("@/lib/pagination").PaginationOptions,
+  ): Promise<import("@/lib/pagination").PaginationResult<Student>> {
+    return this.studentRepository.getAllPaginated(academyId, options);
+  }
+
   async getStudentById(id: string, academyId?: string): Promise<Student | null> {
     return this.studentRepository.getById(id, academyId);
   }
