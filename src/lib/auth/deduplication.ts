@@ -1,4 +1,4 @@
-import type { Student, Subject, Enrollment, Session } from "../planner";
+import type { Student, Subject, Enrollment, Session, Teacher } from "../planner";
 
 /**
  * 서버 데이터 우선 원칙에 따라 로컬 엔티티와 서버 엔티티 간 중복 여부를 판단하는 순수 함수 모듈.
@@ -75,6 +75,28 @@ export function findDuplicateSubject(
 ): Subject | null {
   for (const server of serverSubjects) {
     if (local.name === server.name) {
+      return server;
+    }
+  }
+  return null;
+}
+
+/**
+ * 강사 중복 판단.
+ * name이 정확히 일치하면 중복으로 판단한다 (대소문자 구분, trim 적용).
+ *
+ * 가정: academy 단위 격리 + 학원 내 강사 이름은 unique key 역할.
+ * findDuplicateSubject와 동일 패턴 — anonymous→로그인 마이그레이션에서
+ * 같은 이름의 server 강사가 있으면 그 ID를 재사용한다.
+ */
+export function findDuplicateTeacher(
+  local: Teacher,
+  serverTeachers: Teacher[]
+): Teacher | null {
+  const localName = local.name?.trim();
+  if (!localName) return null;
+  for (const server of serverTeachers) {
+    if (server.name?.trim() === localName) {
       return server;
     }
   }

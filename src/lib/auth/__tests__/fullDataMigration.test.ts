@@ -287,6 +287,7 @@ describe("migrateLocalDataToServer — empty local data", () => {
     expect(result.success).toBe(true);
     expect(result.syncedCounts.students).toBe(0);
     expect(result.syncedCounts.subjects).toBe(0);
+    expect(result.syncedCounts.teachers).toBe(0);
     expect(result.syncedCounts.enrollments).toBe(0);
     expect(result.syncedCounts.sessions).toBe(0);
     expect(result.errors).toHaveLength(0);
@@ -530,6 +531,215 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     const studentError = result.errors.find((e) => e.entity === "student");
     expect(studentError?.message).toBe("이미 존재하는 학생 이름입니다.");
     expect(studentError?.message).not.toContain("[object Object]");
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ── Test 8: Teachers — anonymous → server 마이그레이션 (UAT 2026-05-09 회귀) ──
+// anonymous 모드에서 schedule 인라인으로 추가한 강사가 로그인 후 server에 누락되어
+// 사라지던 사고를 막는 회귀 가드. session.teacherId도 함께 reconcile돼야 한다.
+describe("migrateLocalDataToServer — teachers anonymous→server (UAT 2026-05-09)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("강사 + session.teacherId 함께 마이그레이션 — server ID로 reconcile된 채 session POST", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [
+        { id: "loc-t1", name: "김학성", color: "#6366f1", role: "member" },
+      ],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // 순서: student → subject → teacher → enrollment → session
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-t1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.teachers).toBe(1);
+    expect(result.syncedCounts.sessions).toBe(1);
+    expect(result.errors).toHaveLength(0);
+
+    // teacher POST가 일어났는지 + body에 name/color 포함
+    const teacherCall = fetchMock.mock.calls[2];
+    expect(teacherCall[0]).toContain("/api/teachers");
+    const teacherBody = JSON.parse(teacherCall[1].body);
+    expect(teacherBody.name).toBe("김학성");
+    expect(teacherBody.color).toBe("#6366f1");
+    expect(teacherBody.role).toBe("member");
+
+    // session POST의 teacherId가 server ID로 reconcile됐는지
+    const sessionCall = fetchMock.mock.calls[4];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBe("srv-t1");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("server에 같은 이름 강사 존재 시 POST 안 호출, idMap으로 reconcile해 session.teacherId가 server ID로 전송", async () => {
+    const serverData: ClassPlannerData = {
+      students: [],
+      subjects: [],
+      teachers: [{ id: "srv-existing-t", name: "김학성", color: "#000" }],
+      enrollments: [],
+      sessions: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [
+        { id: "loc-t1", name: "김학성", color: "#6366f1" }, // server에 같은 이름 존재
+      ],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // teacher POST는 호출 안 됨 (중복) → student/subject/enrollment/session 4번
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, serverData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.teachers).toBe(1); // 중복도 카운트 (mapping 성공)
+    expect(fetchMock).toHaveBeenCalledTimes(4); // teacher POST 호출 안 됨
+
+    // session POST의 teacherId가 server existing teacher id로 전송됐는지
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBe("srv-existing-t");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("강사 mig 실패 시 session.teacherId 매핑 누락 → session POST body에서 teacherId 제외 (FK 보호)", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [{ id: "loc-t1", name: "김학성", color: "#6366f1" }],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // teacher POST 500 실패, 나머지 OK
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makeErrorResponse("INTERNAL_ERROR", "서버 오류", 500))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(false);
+    expect(result.syncedCounts.teachers).toBe(0);
+    expect(result.errors.some((e) => e.entity === "teacher" && e.localId === "loc-t1")).toBe(true);
+
+    // session은 그대로 등록됐지만 teacherId는 매핑 누락이므로 body에서 제외 — FK 위반 방지
+    const sessionCall = fetchMock.mock.calls[4];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBeUndefined();
+    expect(result.syncedCounts.sessions).toBe(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("session.teacherId가 없으면 session POST body에 teacherId 키 자체가 없음", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          // teacherId 없음
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect("teacherId" in sessionBody).toBe(false);
 
     vi.unstubAllGlobals();
   });
