@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from "@/lib/planner";
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
@@ -48,6 +48,14 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
 
   const filtered = teachers.filter((t) => t.name.includes(query));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
+
+  // 작은 화면(< lg)에서 detail 보다가 강사 삭제 시 자동으로 list 복귀.
+  // students 패턴과 동일.
+  useEffect(() => {
+    if (!selectedTeacher && showDetail) {
+      setShowDetail(false);
+    }
+  }, [selectedTeacher, showDetail]);
 
   const getNextColor = () =>
     DEFAULT_TEACHER_COLORS[teachers.length % DEFAULT_TEACHER_COLORS.length];

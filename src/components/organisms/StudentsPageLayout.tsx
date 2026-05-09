@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
@@ -59,6 +59,15 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
 
   const filtered = students.filter((s) => s.name.includes(query));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
+
+  // 작은 화면(< lg)에서 detail 보다가 학생 삭제 시 자동으로 list 복귀.
+  // 삭제 → students에서 사라짐 → selectedStudent=undefined → detail empty.
+  // showDetail=true면 list가 hidden이라 빈 화면이 보임 (UAT 2026-05-09 보고).
+  useEffect(() => {
+    if (!selectedStudent && showDetail) {
+      setShowDetail(false);
+    }
+  }, [selectedStudent, showDetail]);
 
   // O(1) lookup: studentId → access code
   const codeByStudentId = new Map(
