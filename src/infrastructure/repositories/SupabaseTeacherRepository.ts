@@ -18,7 +18,10 @@ export class SupabaseTeacherRepository implements TeacherRepository {
     });
   }
 
-  private rowToTeacher(row: Record<string, unknown>): Teacher {
+  private rowToTeacher(
+    row: Record<string, unknown>,
+    subjectIds: string[] = [],
+  ): Teacher {
     return Teacher.restore(
       row.id as string,
       row.name as string,
@@ -31,6 +34,7 @@ export class SupabaseTeacherRepository implements TeacherRepository {
         phone: (row.phone as string | null) ?? null,
         role: (row.role as TeacherRole | null) ?? null,
         notes: (row.notes as string | null) ?? null,
+        subjectIds,
       }
     );
   }
@@ -38,9 +42,11 @@ export class SupabaseTeacherRepository implements TeacherRepository {
   async getAll(academyId: string): Promise<Teacher[]> {
     try {
       const client = this.createServiceRoleClient();
+      // Nested select로 teacher_subjects를 한 번에 가져와 N+1 fetch 제거.
+      // 응답 row.teacher_subjects: Array<{ subject_id: string }>
       const { data, error } = await client
         .from("teachers")
-        .select("*")
+        .select("*, teacher_subjects(subject_id)")
         .eq("academy_id", academyId)
         .order("created_at");
 
@@ -49,7 +55,11 @@ export class SupabaseTeacherRepository implements TeacherRepository {
         return [];
       }
 
-      return (data ?? []).map((row) => this.rowToTeacher(row));
+      return (data ?? []).map((row) => {
+        const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
+        const subjectIds = links.map((link) => link.subject_id);
+        return this.rowToTeacher(row, subjectIds);
+      });
     } catch (error) {
       logger.error("강사 데이터 조회 중 오류:", undefined, error as Error);
       return [];

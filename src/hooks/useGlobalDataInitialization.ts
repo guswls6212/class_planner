@@ -318,22 +318,9 @@ export const useGlobalDataInitialization = () => {
           }
         }
 
-        // teacher별 subjectIds를 병렬로 fetch
-        const teachersWithSubjects = await Promise.all(
-          teachers.map(async (teacher: Teacher) => {
-            try {
-              const res = await fetch(
-                `/api/teacher-subjects?userId=${encodeURIComponent(userId)}&teacherId=${encodeURIComponent(teacher.id)}`
-              );
-              if (!res.ok) return teacher;
-              const json = await res.json();
-              const subjectIds: string[] = json?.data ?? [];
-              return { ...teacher, subjectIds };
-            } catch {
-              return teacher; // subjectIds 없이 graceful fallback
-            }
-          })
-        );
+        // teachers GET 응답에 subjectIds 이미 포함 (PR #B-3 — server-side nested join).
+        // N+1 fetch 제거: 강사 N명일 때 (N+5 RTT) → (5 RTT)로 단축.
+        const teachersWithSubjects = teachers as Teacher[];
 
         // serverData.lastModified는 모달 표시(timestamp) + 다음 진입 시 동기화
         // 결정 둘 다에 쓰임. fetch 시각이 아니라 entity 중 가장 최근 updatedAt을
