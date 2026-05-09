@@ -1,12 +1,20 @@
 /**
- * 학생/강사 프로필 입력 검증 — UI form에서 직접 사용하는 상수 + helper.
+ * 학생/강사/과목/학원 입력 검증 — UI form/client sync/server route/domain entity가
+ * 모두 동일 helper를 호출하는 단일 진입점(SSOT).
  *
  * UAT 2026-05-08 보고: input에 이상값(예: 생년월일 222233년, 성별 "남ㅇㅇㅇ",
  * 학년 자유 텍스트)이 들어가는 문제. 화이트리스트 강제로 데이터 깨끗하게 유지.
+ *
+ * UAT 2026-05-10 보고: schedule 인라인 추가 시 길이 제한 미적용 — 학생/과목/강사가
+ * 6자 초과 입력으로 들어옴. validateXxxName helper로 모든 입구 일관 적용.
  */
+
+import { ErrorCodes, type ErrorCode } from "../errors/codes";
 
 export const NAME_MAX_LENGTH = 6;
 export const SCHOOL_MAX_LENGTH = 30;
+export const SUBJECT_NAME_MAX_LENGTH = 12;
+export const ACADEMY_NAME_MAX_LENGTH = 30;
 
 export const GRADE_OPTIONS = [
   "초1",
@@ -116,4 +124,116 @@ export function getTeacherBirthDateRange(today: Date = new Date()): BirthDateRan
 export function isBirthDateInRange(value: string, range: BirthDateRange): boolean {
   if (!value) return true;
   return value >= range.min && value <= range.max;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 검증 helper — UI 입구/client sync/server route/domain entity 모두 동일 호출.
+// 결과는 discriminated union: 성공이면 trim된 값을 함께 반환해 caller가
+// 그대로 저장할 수 있게 한다 (trim 누락 방지).
+// ─────────────────────────────────────────────────────────────────────────
+
+export type NameValidationResult =
+  | { ok: true; value: string }
+  | { ok: false; code: ErrorCode };
+
+export type FieldValidationResult = { ok: true } | { ok: false; code: ErrorCode };
+
+interface NameValidationOptions {
+  required: ErrorCode;
+  tooLong: ErrorCode;
+  maxLength: number;
+}
+
+function validateNameField(value: string, opts: NameValidationOptions): NameValidationResult {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return { ok: false, code: opts.required };
+  if (trimmed.length > opts.maxLength) return { ok: false, code: opts.tooLong };
+  return { ok: true, value: trimmed };
+}
+
+export function validateStudentName(value: string): NameValidationResult {
+  return validateNameField(value, {
+    required: ErrorCodes.STUDENT_NAME_REQUIRED,
+    tooLong: ErrorCodes.STUDENT_NAME_TOO_LONG,
+    maxLength: NAME_MAX_LENGTH,
+  });
+}
+
+export function validateTeacherName(value: string): NameValidationResult {
+  return validateNameField(value, {
+    required: ErrorCodes.TEACHER_NAME_REQUIRED,
+    tooLong: ErrorCodes.TEACHER_NAME_TOO_LONG,
+    maxLength: NAME_MAX_LENGTH,
+  });
+}
+
+export function validateSubjectName(value: string): NameValidationResult {
+  return validateNameField(value, {
+    required: ErrorCodes.SUBJECT_NAME_REQUIRED,
+    tooLong: ErrorCodes.SUBJECT_NAME_TOO_LONG,
+    maxLength: SUBJECT_NAME_MAX_LENGTH,
+  });
+}
+
+export function validateAcademyName(value: string): NameValidationResult {
+  return validateNameField(value, {
+    required: ErrorCodes.ACADEMY_NAME_REQUIRED,
+    tooLong: ErrorCodes.ACADEMY_NAME_TOO_LONG,
+    maxLength: ACADEMY_NAME_MAX_LENGTH,
+  });
+}
+
+/**
+ * 학교명 — 권장 필드. 빈 값은 통과, 입력값 있으면 길이만 검증.
+ */
+export function validateStudentSchool(value: string): FieldValidationResult {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return { ok: true };
+  if (trimmed.length > SCHOOL_MAX_LENGTH) {
+    return { ok: false, code: ErrorCodes.STUDENT_SCHOOL_TOO_LONG };
+  }
+  return { ok: true };
+}
+
+/**
+ * 학년 — 권장 필드. 빈 값 통과, 입력 시 화이트리스트 강제.
+ */
+export function validateStudentGrade(value: string): FieldValidationResult {
+  if (value.trim().length === 0) return { ok: true };
+  if (!isValidGrade(value)) return { ok: false, code: ErrorCodes.STUDENT_GRADE_INVALID };
+  return { ok: true };
+}
+
+/**
+ * 성별 — 권장 필드. 빈 값 통과, 입력 시 male/female만 허용.
+ */
+export function validateStudentGender(value: string): FieldValidationResult {
+  if (value.trim().length === 0) return { ok: true };
+  if (!isValidGender(value)) return { ok: false, code: ErrorCodes.STUDENT_GENDER_INVALID };
+  return { ok: true };
+}
+
+/**
+ * 전화번호 — 권장 필드. 빈 값은 isValidKoreanPhone에서 통과.
+ */
+export function validatePhoneNumber(value: string): FieldValidationResult {
+  if (!isValidKoreanPhone(value)) {
+    return { ok: false, code: ErrorCodes.PHONE_INVALID_FORMAT };
+  }
+  return { ok: true };
+}
+
+/**
+ * 학생 생년월일 — 빈 값 통과(권장 필드). 입력 시 만 4~25세 범위.
+ */
+export function validateStudentBirthDate(
+  value: string,
+  today: Date = new Date(),
+): FieldValidationResult {
+  if (!value) return { ok: true };
+  const range = getStudentBirthDateRange(today);
+  if (!isBirthDateInRange(value, range)) {
+    return { ok: false, code: ErrorCodes.STUDENT_BIRTHDATE_OUT_OF_RANGE };
+  }
+  return { ok: true };
 }

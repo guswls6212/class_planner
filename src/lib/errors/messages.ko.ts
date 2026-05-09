@@ -1,28 +1,39 @@
 // src/lib/errors/messages.ko.ts
 import type { ErrorCode } from "./codes";
+import {
+  ACADEMY_NAME_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  SCHOOL_MAX_LENGTH,
+  SUBJECT_NAME_MAX_LENGTH,
+} from "../validation/profileSchemas";
 
 const messages: Record<ErrorCode, string> = {
   // Student
   STUDENT_NAME_REQUIRED: "학생 이름을 입력해주세요.",
   STUDENT_NAME_DUPLICATE: "이미 존재하는 학생 이름입니다.",
-  STUDENT_NAME_TOO_LONG: "학생 이름은 최대 6자까지 입력할 수 있습니다.",
+  STUDENT_NAME_TOO_LONG: `학생 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   STUDENT_NOT_FOUND: "존재하지 않는 학생입니다.",
   STUDENT_GRADE_INVALID: "유효하지 않은 학년입니다.",
   STUDENT_GENDER_INVALID: "성별은 남/여 중에서 선택해주세요.",
-  STUDENT_SCHOOL_TOO_LONG: "학교명은 최대 30자까지 입력할 수 있습니다.",
+  STUDENT_SCHOOL_TOO_LONG: `학교명은 최대 ${SCHOOL_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   STUDENT_BIRTHDATE_OUT_OF_RANGE: "학생 생년월일은 만 4~25세 범위여야 합니다.",
   PHONE_INVALID_FORMAT: "유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678, 02-123-4567)",
 
   // Teacher
   TEACHER_NAME_REQUIRED: "강사 이름을 입력해주세요.",
   TEACHER_NAME_DUPLICATE: "이미 존재하는 강사 이름입니다.",
-  TEACHER_NAME_TOO_LONG: "강사 이름은 최대 6자까지 입력할 수 있습니다.",
+  TEACHER_NAME_TOO_LONG: `강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   TEACHER_EMAIL_INVALID: "올바른 이메일 형식이 아닙니다.",
 
   // Subject
   SUBJECT_NAME_REQUIRED: "과목 이름을 입력해주세요.",
   SUBJECT_NAME_DUPLICATE: "이미 존재하는 과목 이름입니다.",
+  SUBJECT_NAME_TOO_LONG: `과목 이름은 최대 ${SUBJECT_NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   SUBJECT_NOT_FOUND: "존재하지 않는 과목입니다.",
+
+  // Academy
+  ACADEMY_NAME_REQUIRED: "학원 이름을 입력해주세요.",
+  ACADEMY_NAME_TOO_LONG: `학원 이름은 최대 ${ACADEMY_NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`,
 
   // Session
   SESSION_NOT_FOUND: "존재하지 않는 수업입니다.",
