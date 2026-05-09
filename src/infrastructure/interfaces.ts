@@ -2,9 +2,15 @@ import { Student } from "@/domain/entities/Student";
 import { Subject } from "@/domain/entities/Subject";
 import { Teacher } from "@/domain/entities/Teacher";
 import { Enrollment, Session } from "@/shared/types/DomainTypes";
+import type { PaginationOptions, PaginationResult } from "@/lib/pagination";
 
 export interface StudentRepository {
   getAll(academyId: string): Promise<Student[]>;
+  /** Cursor-based 페이징. limit/cursor/q 옵션 처리. */
+  getAllPaginated(
+    academyId: string,
+    options: PaginationOptions,
+  ): Promise<PaginationResult<Student>>;
   getById(id: string, academyId?: string): Promise<Student | null>;
   create(
     /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */
@@ -52,6 +58,11 @@ export interface SessionRepository {
 
 export interface TeacherRepository {
   getAll(academyId: string): Promise<Teacher[]>;
+  /** Cursor-based 페이징 (subjectIds nested join 포함). */
+  getAllPaginated(
+    academyId: string,
+    options: PaginationOptions,
+  ): Promise<PaginationResult<Teacher>>;
   getById(id: string, academyId?: string): Promise<Teacher | null>;
   create(
     /** Local-first: client UUID 미제공 시 DB가 생성. 제공 시 그대로 사용. */

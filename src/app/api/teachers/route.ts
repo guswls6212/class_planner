@@ -4,6 +4,7 @@ import { toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
+import { isPaginatedRequest, parsePaginationParams } from "@/lib/pagination";
 import { NextRequest, NextResponse } from "next/server";
 
 export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
@@ -34,8 +35,24 @@ export async function GET(request: NextRequest) {
     logger.debug("API GET /api/teachers", { userId });
 
     const unlinkedOnly = searchParams.get("unlinked") === "true";
+    const paginationOpts = parsePaginationParams(searchParams);
 
     const academyId = await resolveAcademyId(userId);
+
+    if (isPaginatedRequest(paginationOpts)) {
+      // Paginated mode — invite token status enrich는 skip (page-by-page라 부담).
+      // client UI에서 status 필요한 경우 별도 endpoint 호출 또는 미래 enrich 옵션 추가.
+      const result = await getTeacherService().getAllTeachersPaginated(
+        academyId,
+        paginationOpts,
+      );
+      return NextResponse.json({
+        success: true,
+        data: result.items,
+        nextCursor: result.nextCursor,
+      });
+    }
+
     const teachers = await getTeacherService().getAllTeachers(academyId);
 
     if (unlinkedOnly) {
