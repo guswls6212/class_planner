@@ -492,21 +492,34 @@ export const useGlobalDataInitialization = () => {
             },
           });
 
-          // Server intentional empty 감지 — 모든 fetch 200 OK + 모든 entity 빈 배열.
-          // computeServerLastModified=null 이지만 진짜 빈 academy. decideOverwrite는
-          // "server-unreachable-or-no-timestamps"로 skip 결정해 local data를 보존하지만,
-          // 이 케이스는 사용자가 마지막 entity 삭제 후 새로고침 한 것이므로 server를
-          // 진실로 따라가야 한다 (UAT 2026-05-09 김요섭 부활 사고 root cause).
+          // Per-entity intentional empty 감지 — entity별로 server=0 + local>0 케이스 처리.
+          // decideOverwrite의 lastModified 통합 비교는 "학생만 모두 삭제 + subject/session
+          // 남은" 케이스를 cover 못 한다 (lastModified가 다른 entity 기준이라 local-newer로
+          // 판정되어 학생이 부활). UAT 2026-05-09 이동현 부활 사고 root cause.
           //
-          // server unreachable과 구분: allFetchesOk가 true면 server가 응답한 빈 academy.
-          // false면 fetch 실패 → 기존 흐름으로 보수적 skip 유지.
-          const serverIsIntentionalEmpty =
-            allFetchesOk &&
-            serverData.students.length === 0 &&
-            serverData.subjects.length === 0 &&
-            serverData.sessions.length === 0 &&
-            serverData.enrollments.length === 0 &&
-            serverData.teachers.length === 0;
+          // 전제: allFetchesOk (모든 fetch 200 OK). fetch 실패면 unreachable 가능성이라
+          // 기존 흐름(skip)으로 보수적 보호 유지.
+          //
+          // pendingDeletes는 위에서 이미 server entity에서 filter 됐다. 즉 server[entity]=0
+          // 이 "사용자가 그 entity의 모든 row 삭제했다"는 의미.
+          const entitiesToClear: Array<keyof ClassPlannerData> = [];
+          if (allFetchesOk) {
+            if (serverData.students.length === 0 && localBag.students.length > 0) {
+              entitiesToClear.push("students");
+            }
+            if (serverData.subjects.length === 0 && localBag.subjects.length > 0) {
+              entitiesToClear.push("subjects");
+            }
+            if (serverData.sessions.length === 0 && localBag.sessions.length > 0) {
+              entitiesToClear.push("sessions");
+            }
+            if (serverData.enrollments.length === 0 && localBag.enrollments.length > 0) {
+              entitiesToClear.push("enrollments");
+            }
+            if (serverData.teachers.length === 0 && localBag.teachers.length > 0) {
+              entitiesToClear.push("teachers");
+            }
+          }
 
           if (localIsPartiallyCorrupted) {
             logger.warn(
@@ -520,19 +533,53 @@ export const useGlobalDataInitialization = () => {
               },
             );
             setClassPlannerData(serverData);
-          } else if (serverIsIntentionalEmpty && !localIsEmpty) {
+          } else if (entitiesToClear.length > 0) {
             logger.info(
-              "useGlobalDataInitialization - server intentionally empty, " +
-                "local 데이터를 빈 상태로 동기화",
+              "useGlobalDataInitialization - per-entity intentional empty 감지, " +
+                "해당 entity만 local에서 비움",
               {
-                localStudents: localBag.students.length,
-                localSubjects: localBag.subjects.length,
-                localSessions: localBag.sessions.length,
-                localEnrollments: localBag.enrollments.length,
-                localTeachers: localBag.teachers.length,
+                entitiesToClear,
+                localCounts: {
+                  students: localBag.students.length,
+                  subjects: localBag.subjects.length,
+                  sessions: localBag.sessions.length,
+                  enrollments: localBag.enrollments.length,
+                  teachers: localBag.teachers.length,
+                },
               },
             );
-            setClassPlannerData(serverData);
+            // 다른 entity는 lastModified 비교 결과에 따름. server에서 비운 entity만 local에서도 비움.
+            const merged: ClassPlannerData = {
+              ...localBag,
+              ...(decision.decision === "overwrite" ? serverData : {}),
+              students: entitiesToClear.includes("students")
+                ? []
+                : decision.decision === "overwrite"
+                  ? serverData.students
+                  : localBag.students,
+              subjects: entitiesToClear.includes("subjects")
+                ? []
+                : decision.decision === "overwrite"
+                  ? serverData.subjects
+                  : localBag.subjects,
+              sessions: entitiesToClear.includes("sessions")
+                ? []
+                : decision.decision === "overwrite"
+                  ? serverData.sessions
+                  : localBag.sessions,
+              enrollments: entitiesToClear.includes("enrollments")
+                ? []
+                : decision.decision === "overwrite"
+                  ? serverData.enrollments
+                  : localBag.enrollments,
+              teachers: entitiesToClear.includes("teachers")
+                ? []
+                : decision.decision === "overwrite"
+                  ? serverData.teachers
+                  : localBag.teachers,
+              lastModified: new Date().toISOString(),
+            };
+            setClassPlannerData(merged);
           } else if (decision.decision === "overwrite") {
             setClassPlannerData(serverData);
           }
