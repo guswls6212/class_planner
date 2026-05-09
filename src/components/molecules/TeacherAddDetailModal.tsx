@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
+import {
+  NAME_MAX_LENGTH,
+  formatKoreanPhone,
+  isValidKoreanPhone,
+} from "@/lib/validation/profileSchemas";
 
 interface TeacherAddDetailModalProps {
   isOpen: boolean;
@@ -43,6 +48,10 @@ export default function TeacherAddDetailModal({
       setErrMsg("강사 이름을 입력해주세요.");
       return;
     }
+    if (trimmed.length > NAME_MAX_LENGTH) {
+      setErrMsg(`강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+      return;
+    }
     if (
       existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())
     ) {
@@ -54,9 +63,13 @@ export default function TeacherAddDetailModal({
       setErrMsg("올바른 이메일 형식이 아닙니다.");
       return;
     }
+    if (phone && !isValidKoreanPhone(phone)) {
+      setErrMsg("유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678, 02-123-4567)");
+      return;
+    }
     onSubmit(trimmed, {
       email: trimmedEmail || undefined,
-      phone: phone.trim() || undefined,
+      phone: phone || undefined,
     });
     setName("");
     setEmail("");
@@ -66,7 +79,7 @@ export default function TeacherAddDetailModal({
   };
 
   const handleNameChange = (v: string) => {
-    setName(v);
+    setName(v.slice(0, NAME_MAX_LENGTH));
     if (errMsg) setErrMsg("");
   };
 
@@ -103,6 +116,7 @@ export default function TeacherAddDetailModal({
               type="text"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
+              maxLength={NAME_MAX_LENGTH}
               placeholder="예: 박선생"
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               onKeyDown={(e) => {
@@ -148,7 +162,7 @@ export default function TeacherAddDetailModal({
               id="teacher-add-phone"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatKoreanPhone(e.target.value))}
               placeholder="010-1234-5678"
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />

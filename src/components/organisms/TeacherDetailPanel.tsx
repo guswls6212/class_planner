@@ -5,6 +5,10 @@ import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, TeacherRole } from "@/lib/planner";
 import { TeacherEditForm } from "@/components/molecules/TeacherEditForm";
 import { TeacherContactDisplay } from "@/components/molecules/TeacherContactDisplay";
+import {
+  NAME_MAX_LENGTH,
+  isValidKoreanPhone,
+} from "@/lib/validation/profileSchemas";
 import { TeacherScheduleList } from "@/components/molecules/TeacherScheduleList";
 import { TeacherColorPicker } from "@/components/molecules/TeacherColorPicker";
 import { TeacherSubjectPills } from "@/components/molecules/TeacherSubjectPills";
@@ -54,6 +58,7 @@ export function TeacherDetailPanel({
   const [editPhone, setEditPhone] = useState(teacher.phone ?? "");
   const [editRole, setEditRole] = useState<TeacherRole | null>(teacher.role ?? null);
   const [editNotes, setEditNotes] = useState(teacher.notes ?? "");
+  const [editErr, setEditErr] = useState("");
 
   useEffect(() => {
     setEditName(teacher.name);
@@ -62,6 +67,7 @@ export function TeacherDetailPanel({
     setEditPhone(teacher.phone ?? "");
     setEditRole(teacher.role ?? null);
     setEditNotes(teacher.notes ?? "");
+    setEditErr("");
     setIsEditing(false);
   }, [teacher.id]);
 
@@ -75,9 +81,25 @@ export function TeacherDetailPanel({
   );
 
   const handleSave = () => {
+    if (editEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail)) {
+      setEditErr("올바른 이메일 형식이 아닙니다.");
+      return;
+    }
+    if (editPhone && !isValidKoreanPhone(editPhone)) {
+      setEditErr("유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678, 02-123-4567)");
+      return;
+    }
+
     if (canManage) {
       const name = editName.trim();
-      if (!name) return;
+      if (!name) {
+        setEditErr("강사 이름을 입력해주세요.");
+        return;
+      }
+      if (name.length > NAME_MAX_LENGTH) {
+        setEditErr(`강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+        return;
+      }
       onUpdate(teacher.id, {
         name,
         email: editEmail || null,
@@ -93,6 +115,7 @@ export function TeacherDetailPanel({
         notes: editNotes || null,
       });
     }
+    setEditErr("");
     setIsEditing(false);
   };
 
@@ -228,6 +251,7 @@ export function TeacherDetailPanel({
             editPhone={editPhone}
             editRole={editRole}
             editNotes={editNotes}
+            error={editErr}
             onNameChange={setEditName}
             onEmailChange={setEditEmail}
             onPhoneChange={setEditPhone}
@@ -240,6 +264,7 @@ export function TeacherDetailPanel({
               setEditPhone(teacher.phone ?? "");
               setEditRole(teacher.role ?? null);
               setEditNotes(teacher.notes ?? "");
+              setEditErr("");
               setIsEditing(false);
             }}
           />

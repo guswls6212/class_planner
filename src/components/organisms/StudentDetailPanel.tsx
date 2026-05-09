@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy, Plus, RefreshCw, XCircle } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { showToast } from "@/lib/toast";
+import {
+  GENDER_LABEL,
+  GRADE_OPTIONS,
+  NAME_MAX_LENGTH,
+  SCHOOL_MAX_LENGTH,
+  formatKoreanPhone,
+  getStudentBirthDateRange,
+  isBirthDateInRange,
+  isValidKoreanPhone,
+} from "@/lib/validation/profileSchemas";
 
 interface StudentDetailPanelProps {
   student: Student;
@@ -47,6 +57,8 @@ export function StudentDetailPanel({
     gender: student.gender ?? "",
     birthDate: student.birthDate ?? "",
   });
+  const [editErr, setEditErr] = useState("");
+  const birthRange = useMemo(() => getStudentBirthDateRange(), []);
 
   // Re-sync when student changes
   useEffect(() => {
@@ -68,15 +80,41 @@ export function StudentDetailPanel({
   );
 
   const handleSave = async () => {
-    const updates: Partial<Student> = {};
-    if (editFields.name) updates.name = editFields.name;
-    if (editFields.grade !== undefined) updates.grade = editFields.grade || undefined;
-    if (editFields.school !== undefined) updates.school = editFields.school || undefined;
-    if (editFields.phone !== undefined) updates.phone = editFields.phone || undefined;
-    if (editFields.gender !== undefined) updates.gender = editFields.gender || undefined;
-    if (editFields.birthDate !== undefined) updates.birthDate = editFields.birthDate || undefined;
+    const trimmedName = editFields.name.trim();
+    if (!trimmedName) {
+      setEditErr("학생 이름을 입력해주세요.");
+      return;
+    }
+    if (trimmedName.length > NAME_MAX_LENGTH) {
+      setEditErr(`학생 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+      return;
+    }
+    if (editFields.school && editFields.school.length > SCHOOL_MAX_LENGTH) {
+      setEditErr(`학교명은 최대 ${SCHOOL_MAX_LENGTH}자까지 입력할 수 있습니다.`);
+      return;
+    }
+    if (editFields.phone && !isValidKoreanPhone(editFields.phone)) {
+      setEditErr("유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678, 02-123-4567)");
+      return;
+    }
+    if (editFields.birthDate && !isBirthDateInRange(editFields.birthDate, birthRange)) {
+      setEditErr("학생 생년월일은 만 4~25세 범위여야 합니다.");
+      return;
+    }
+
+    const updates: Partial<Student> = {
+      name: trimmedName,
+      grade: editFields.grade || undefined,
+      school: editFields.school || undefined,
+      phone: editFields.phone || undefined,
+      gender: editFields.gender || undefined,
+      birthDate: editFields.birthDate || undefined,
+    };
     const success = await onUpdate(student.id, updates);
-    if (success) setIsEditing(false);
+    if (success) {
+      setEditErr("");
+      setIsEditing(false);
+    }
   };
 
   const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -259,27 +297,104 @@ export function StudentDetailPanel({
         <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2">프로필</h3>
         {isEditing ? (
           <div className="flex flex-col gap-2">
-            {(
-              [
-                { key: "name", label: "이름", type: "text" },
-                { key: "grade", label: "학년", type: "text", placeholder: "예: 중2" },
-                { key: "school", label: "학교", type: "text" },
-                { key: "phone", label: "전화번호", type: "tel", placeholder: "010-0000-0000" },
-                { key: "gender", label: "성별", type: "text", placeholder: "남 / 여" },
-                { key: "birthDate", label: "생년월일", type: "date" },
-              ] as { key: keyof typeof editFields; label: string; type: string; placeholder?: string }[]
-            ).map(({ key, label, type, placeholder }) => (
-              <div key={key} className="flex items-center gap-2">
-                <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">{label}</label>
-                <input
-                  type={type}
-                  value={editFields[key]}
-                  onChange={(e) => setEditFields((f) => ({ ...f, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
-                />
+            {/* 이름 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">이름</label>
+              <input
+                type="text"
+                value={editFields.name}
+                onChange={(e) =>
+                  setEditFields((f) => ({ ...f, name: e.target.value.slice(0, NAME_MAX_LENGTH) }))
+                }
+                maxLength={NAME_MAX_LENGTH}
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            {/* 학년 — 12개 + 미취학/재수/기타 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">학년</label>
+              <select
+                value={editFields.grade}
+                onChange={(e) => setEditFields((f) => ({ ...f, grade: e.target.value }))}
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="">선택 안 함</option>
+                {GRADE_OPTIONS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* 학교 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">학교</label>
+              <input
+                type="text"
+                value={editFields.school}
+                onChange={(e) =>
+                  setEditFields((f) => ({ ...f, school: e.target.value.slice(0, SCHOOL_MAX_LENGTH) }))
+                }
+                maxLength={SCHOOL_MAX_LENGTH}
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            {/* 전화번호 — 한국 형식 자동 하이픈 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">전화번호</label>
+              <input
+                type="tel"
+                value={editFields.phone}
+                onChange={(e) =>
+                  setEditFields((f) => ({ ...f, phone: formatKoreanPhone(e.target.value) }))
+                }
+                placeholder="010-0000-0000"
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            {/* 성별 — 남/여 select + 권장 라벨 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+                성별
+                <span className="rounded bg-indigo-500/15 px-1 py-0.5 text-[9px] font-semibold text-indigo-400">
+                  권장
+                </span>
+              </label>
+              <select
+                value={editFields.gender}
+                onChange={(e) => setEditFields((f) => ({ ...f, gender: e.target.value }))}
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="">선택 안 함</option>
+                <option value="male">남</option>
+                <option value="female">여</option>
+              </select>
+            </div>
+            {/* 생년월일 — 만 4~25세 범위 + 권장 라벨 */}
+            <div className="flex items-center gap-2">
+              <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+                생년월일
+                <span className="rounded bg-indigo-500/15 px-1 py-0.5 text-[9px] font-semibold text-indigo-400">
+                  권장
+                </span>
+              </label>
+              <input
+                type="date"
+                value={editFields.birthDate}
+                onChange={(e) => setEditFields((f) => ({ ...f, birthDate: e.target.value }))}
+                min={birthRange.min}
+                max={birthRange.max}
+                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            {editErr && (
+              <div
+                className="rounded-md border border-red-500/40 bg-red-500/[0.08] px-3 py-2 text-xs text-red-400"
+                role="alert"
+              >
+                {editErr}
               </div>
-            ))}
+            )}
             <div className="flex gap-2 mt-2">
               <button
                 onClick={handleSave}
@@ -288,7 +403,10 @@ export function StudentDetailPanel({
                 저장
               </button>
               <button
-                onClick={() => setIsEditing(false)}
+                onClick={() => {
+                  setEditErr("");
+                  setIsEditing(false);
+                }}
                 className="flex-1 py-2 bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] rounded-md text-[13px] hover:opacity-80 transition-opacity"
               >
                 취소
@@ -311,6 +429,11 @@ export function StudentDetailPanel({
             ).map(({ key, label }) => {
               const value = student[key];
               const hasValue = value !== undefined && value !== null && value !== "";
+              const displayValue = !hasValue
+                ? "—"
+                : key === "gender" && (value === "male" || value === "female")
+                  ? GENDER_LABEL[value]
+                  : String(value);
               return (
                 <div key={String(key)} className="flex items-baseline gap-2">
                   <dt className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">{label}</dt>
@@ -321,7 +444,7 @@ export function StudentDetailPanel({
                         : "text-[var(--color-text-muted)] italic"
                     }
                   >
-                    {hasValue ? String(value) : "—"}
+                    {displayValue}
                   </dd>
                 </div>
               );

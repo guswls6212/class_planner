@@ -2,6 +2,10 @@
 
 import { Mail, Phone, User, FileText } from "lucide-react";
 import type { TeacherRole } from "@/lib/planner";
+import {
+  NAME_MAX_LENGTH,
+  formatKoreanPhone,
+} from "@/lib/validation/profileSchemas";
 
 const ROLE_LABELS: Record<Exclude<TeacherRole, "owner">, string> = {
   admin: "관리자",
@@ -16,6 +20,7 @@ export interface TeacherEditFormProps {
   editPhone: string;
   editRole: TeacherRole | null;
   editNotes: string;
+  error?: string;
   onNameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
   onPhoneChange: (v: string) => void;
@@ -32,6 +37,7 @@ export function TeacherEditForm({
   editPhone,
   editRole,
   editNotes,
+  error,
   onNameChange,
   onEmailChange,
   onPhoneChange,
@@ -49,7 +55,8 @@ export function TeacherEditForm({
           <input
             type="text"
             value={editName}
-            onChange={(e) => onNameChange(e.target.value)}
+            onChange={(e) => onNameChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
+            maxLength={NAME_MAX_LENGTH}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.nativeEvent.isComposing) onSave();
             }}
@@ -80,7 +87,7 @@ export function TeacherEditForm({
           <input
             type="tel"
             value={editPhone}
-            onChange={(e) => onPhoneChange(e.target.value)}
+            onChange={(e) => onPhoneChange(formatKoreanPhone(e.target.value))}
             placeholder="010-0000-0000"
             className="border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
           />
@@ -132,6 +139,14 @@ export function TeacherEditForm({
           className="border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent resize-none"
         />
       </div>
+      {error && (
+        <div
+          className="rounded-md border border-red-500/40 bg-red-500/[0.08] px-3 py-2 text-xs text-red-400"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
       {/* Save / Cancel */}
       <div className="flex gap-2 mt-1">
         <button
