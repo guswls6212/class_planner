@@ -210,9 +210,20 @@ export const setClassPlannerData = (data: ClassPlannerData, academyId?: string):
       return false;
     }
 
-    // 데이터 저장 준비
-    const dataToSave = {
+    // 데이터 저장 준비.
+    // sub-array도 새 reference로 만들어 cache에 저장한다. dataCache(2bad68f)가
+    // 같은 reference를 반환하기 때문에, 호출자가 push/splice로 mutate한 array가
+    // cache에 그대로 남으면 다음 setData(localData) 시 React.memo가 sub-array
+    // reference 동일로 판정 → DOM 미갱신 회귀 (T8 e2e 사고, ADR-013).
+    // 1-level shallow copy면 충분 — sub-array 안의 entity 객체 reference는 보존
+    // (immutable 사용 가정). entity 자체 mutate는 별개 책임.
+    const dataToSave: ClassPlannerData = {
       ...data,
+      students: [...data.students],
+      subjects: [...data.subjects],
+      sessions: [...data.sessions],
+      enrollments: [...data.enrollments],
+      teachers: [...data.teachers],
     };
 
     const writeKey = getStorageKey(academyId);
