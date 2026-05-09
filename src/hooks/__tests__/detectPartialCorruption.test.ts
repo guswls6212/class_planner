@@ -28,10 +28,13 @@ describe("detectPartialCorruption", () => {
     expect(detectPartialCorruption(local, server, false)).toBe(true);
   });
 
-  it("local sessions=0 + subjects 있음 + server sessions 있음 → partial 손상", () => {
+  it("local sessions=0 + subjects만 있음 → partial 아님 (학생 모두 삭제한 정상 흐름)", () => {
+    // UAT 2026-05-09: 사용자가 학생 다 삭제하면 students=0 + enrollments=0이지만
+    // subjects는 사용자가 안 지웠으면 그대로 있을 수 있다. 이 케이스는 corruption이
+    // 아니라 정상 의도. server in-flight 상태에서 server overwrite 강제하면 학생 부활.
     const local = makeData({ subjects: [{ id: "sub1" } as never] });
     const server = makeData({ sessions: [{ id: "s1" } as never] });
-    expect(detectPartialCorruption(local, server, false)).toBe(true);
+    expect(detectPartialCorruption(local, server, false)).toBe(false);
   });
 
   it("local sessions=0 + enrollments 있음 + server sessions 있음 → partial 손상", () => {

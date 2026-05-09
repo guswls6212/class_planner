@@ -49,13 +49,18 @@ export function detectPartialCorruption(
   serverData: ClassPlannerData,
   localIsEmpty: boolean,
 ): boolean {
+  // 사용자가 학생을 모두 삭제한 정상 흐름 (students=0 + sessions=0 + subject만 남음)을
+  // corruption으로 잘못 판정하지 않도록, students 또는 enrollments가 local에 있을 때만
+  // partial 손상으로 판정. (UAT 2026-05-09 강지원 부활 사고 — server가 in-flight 상태에서
+  // session 1개 남아있을 때 corruption 분기로 강제 overwrite 발생.)
+  //
+  // partial 손상의 진짜 시그니처: 학생/수강신청은 그대로 있는데 sessions만 reset됨.
+  // 학생을 모두 삭제하면 enrollments + sessions도 cascade라 모두 0이 정상.
   return (
     !localIsEmpty &&
     localBag.sessions.length === 0 &&
     serverData.sessions.length > 0 &&
-    (localBag.students.length > 0 ||
-      localBag.subjects.length > 0 ||
-      localBag.enrollments.length > 0)
+    (localBag.students.length > 0 || localBag.enrollments.length > 0)
   );
 }
 

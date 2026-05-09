@@ -478,6 +478,33 @@ describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)
     expect(saved).toBeNull();
   });
 
+  it("UAT 강지원 시나리오: 학생 모두 삭제 + subject 1개 + server in-flight (학생 1명) → 학생 부활 안 함", async () => {
+    // 사용자가 학생 7명 다 삭제 → local students=0 + sessions=0 + subject 1개 살아있음.
+    // server는 마지막 학생 DELETE in-flight 또는 fetch가 그 직전 snapshot.
+    // detectPartialCorruption이 (sessions=0 + subject 있음 + server.sessions>0) 매칭으로
+    // server overwrite 강제하면 학생 부활. fix: students/enrollments 조건 추가.
+    const T = Date.now();
+    mockLocalBag({
+      subjects: [{ id: "sub1", name: "수학", color: "#fff" }],
+      lastModified: new Date(T).toISOString(),
+    });
+    mockServerFetches({
+      students: [{ id: "srv-resurrect", name: "강지원", updatedAt: new Date(T - 5000).toISOString() }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff", updatedAt: new Date(T - 60000).toISOString() }],
+      sessions: [{ id: "ses1", updatedAt: new Date(T - 60000).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    // local students=0 그대로 — server in-flight student 무시 (사용자 의도 우선)
+    if (saved) {
+      expect(saved.students).toEqual([]);
+    }
+    // saved=null (skip)인 경우도 OK — 어쨌든 부활 안 함
+  });
+
   it("로컬 비어 있음 → 덮어쓴다 (local-empty, academy switch 보호)", async () => {
     const T = Date.now();
     // 빈 entity + fresh lastModified (academy switch 시뮬레이션)
