@@ -252,7 +252,22 @@ export const useGlobalDataInitialization = () => {
           }
         };
 
-        let students = (await parseJson(studentsRes)) ?? [];
+        // parseJson 결과를 별도 변수에 보관 — null=fetch 실패, []=정상 빈 응답.
+        // allFetchesOk 판정에 fetch 성공 여부가 필요.
+        const studentsResult = await parseJson(studentsRes);
+        const subjectsResult = await parseJson(subjectsRes);
+        const sessionsResult = await parseJson(sessionsRes);
+        const enrollmentsResult = await parseJson(enrollmentsRes);
+        const teachersResult = await parseJson(teachersRes);
+
+        const allFetchesOk =
+          studentsResult !== null &&
+          subjectsResult !== null &&
+          sessionsResult !== null &&
+          enrollmentsResult !== null &&
+          teachersResult !== null;
+
+        let students = studentsResult ?? [];
 
         // pendingDeletes 필터 — 5초 deferred-commit 진행 중인 학생은 server에서
         // 다시 끌어오지 않는다. recovery hook이 commit timer를 재등록하므로
@@ -270,7 +285,7 @@ export const useGlobalDataInitialization = () => {
             );
           }
         }
-        let subjects = await parseJson(subjectsRes);
+        let subjects = subjectsResult;
         // subjects도 students와 동일 패턴 — 5초 deferred-commit 진행 중인 과목은 fetch 결과에서 제외
         const pendingSubjectDeleteIds = getPendingDeleteIds("subject");
         if (subjects && pendingSubjectDeleteIds.size > 0) {
@@ -286,7 +301,7 @@ export const useGlobalDataInitialization = () => {
           }
         }
         const subjectsFetched = subjects !== null;
-        let sessions = (await parseJson(sessionsRes)) ?? [];
+        let sessions = sessionsResult ?? [];
         // sessions pendingDeletes 필터 — 학생/과목/강사와 동일 패턴
         const pendingSessionDeleteIds = getPendingDeleteIds("session");
         if (pendingSessionDeleteIds.size > 0) {
@@ -301,8 +316,8 @@ export const useGlobalDataInitialization = () => {
             );
           }
         }
-        const enrollments = (await parseJson(enrollmentsRes)) ?? [];
-        let teachers = (await parseJson(teachersRes)) ?? [];
+        const enrollments = enrollmentsResult ?? [];
+        let teachers = teachersResult ?? [];
         // teachers pendingDeletes 필터
         const pendingTeacherDeleteIds = getPendingDeleteIds("teacher");
         if (pendingTeacherDeleteIds.size > 0) {
@@ -477,6 +492,22 @@ export const useGlobalDataInitialization = () => {
             },
           });
 
+          // Server intentional empty 감지 — 모든 fetch 200 OK + 모든 entity 빈 배열.
+          // computeServerLastModified=null 이지만 진짜 빈 academy. decideOverwrite는
+          // "server-unreachable-or-no-timestamps"로 skip 결정해 local data를 보존하지만,
+          // 이 케이스는 사용자가 마지막 entity 삭제 후 새로고침 한 것이므로 server를
+          // 진실로 따라가야 한다 (UAT 2026-05-09 김요섭 부활 사고 root cause).
+          //
+          // server unreachable과 구분: allFetchesOk가 true면 server가 응답한 빈 academy.
+          // false면 fetch 실패 → 기존 흐름으로 보수적 skip 유지.
+          const serverIsIntentionalEmpty =
+            allFetchesOk &&
+            serverData.students.length === 0 &&
+            serverData.subjects.length === 0 &&
+            serverData.sessions.length === 0 &&
+            serverData.enrollments.length === 0 &&
+            serverData.teachers.length === 0;
+
           if (localIsPartiallyCorrupted) {
             logger.warn(
               "로컬 데이터 partial 손상 감지 — server overwrite 강제",
@@ -486,6 +517,19 @@ export const useGlobalDataInitialization = () => {
                 localStudents: localBag.students.length,
                 localSubjects: localBag.subjects.length,
                 localEnrollments: localBag.enrollments.length,
+              },
+            );
+            setClassPlannerData(serverData);
+          } else if (serverIsIntentionalEmpty && !localIsEmpty) {
+            logger.info(
+              "useGlobalDataInitialization - server intentionally empty, " +
+                "local 데이터를 빈 상태로 동기화",
+              {
+                localStudents: localBag.students.length,
+                localSubjects: localBag.subjects.length,
+                localSessions: localBag.sessions.length,
+                localEnrollments: localBag.enrollments.length,
+                localTeachers: localBag.teachers.length,
               },
             );
             setClassPlannerData(serverData);
