@@ -44,9 +44,38 @@ Allowed prefixes: `feature/`, `fix/`, `hotfix/`, `docs/`, `chore/`, `test/`, `ph
 
 ## Local-First Data Pattern
 
-- localStorage is SSOT for all data. Mutations update localStorage first, then fire-and-forget server sync via `apiSync.ts`.
+- localStorage is SSOT for all data. Mutations update localStorage first, then server sync via `apiSync.ts`.
 - Never call API directly from components. Use `useXxxLocal` hooks.
 - Anonymous users: no API calls. Server sync activates only after login.
+
+### Server sync — fire-and-forget vs await (Non-negotiable)
+
+상세 결정 + 사고 사례: **ADR-012** (`docs/adr/012-fire-and-forget-vs-await-for-cud.md`)
+
+| 흐름 | 방식 | 사유 |
+|------|------|------|
+| 사용자 데이터 CUD commit (학생/강사/과목/세션 등) | **`await fetch(...)` + 응답 OK 후 후속 정리** | race window 0. UAT 2026-05-09 학생 부활 사고 5회 반복 → 분기 fix로 해결 불가, await만 정공 |
+| 로그/텔레메트리, 알림, self-sync 신호 | fire-and-forget OK | non-critical, 잃어도 안전 |
+| Background prefetch / cache refresh | fire-and-forget OK | UI 의존 X |
+
+**의무 (commit 시점)**:
+1. `await` server response → 응답 OK 받은 후에만 `pendingDeletes`에서 entity 제거
+2. 실패 시 `pendingDeletes` 그대로 유지 → 다음 mount의 recovery hook이 자동 재시도
+3. `apiSync.ts`의 fire-and-forget 함수 (`syncXxxDelete` 등)는 호출자에게 응답 안 돌려줌 — commit 시점에는 직접 `fetch + await` 권장
+
+**금지 (Anti-pattern)**:
+- ❌ commit timer 안에서 `syncXxxDelete()` 발사 + 즉시 `removePendingDelete()` 호출 (race window 발생)
+- ❌ "5초만 기다리면 server에 도달했을 것" 같은 시간 휴리스틱
+- ❌ commit 직후 다른 sync 메커니즘(`useGlobalDataInitialization` 재실행 등) 시점 무시
+
+**점검 체크리스트 (새 sync 흐름 추가 시)**:
+1. Critical 여부 (사용자 데이터 CUD)?
+2. 다른 sync 메커니즘과 race 가능한가? (useGlobalData / polling / self_sync / storage event)
+3. 실패 인지가 중요한가?
+
+위 셋 중 하나라도 yes → **await + pendingDeletes 패턴 의무**.
+
+회귀 가드: `src/hooks/__tests__/useGlobalDataInitialization.test.ts`에 강지원/박태환 시나리오 정확히 재현 — 같은 race 재발 시 CI red.
 
 ## PWA / Service Worker
 

@@ -28,13 +28,35 @@
 
 ### 1.2 Local-First Architecture
 - UI 조작 → localStorage 즉시 반영 (0ms)
-- 서버 동기화: `apiSync.ts`의 fire-and-forget 함수 (syncStudentCreate, syncSubjectCreate 등)
+- 서버 동기화 (개별 mutation): `apiSync.ts`의 fire-and-forget 함수 (syncStudentCreate 등) — 10회 retry + outbox enqueue
 - 익명 사용자: localStorage만 사용 (서버 호출 없음)
 - 로그인 사용자: localStorage → 서버 양방향 동기화
 - 네트워크 불안정 시에도 UX 유지
 - **Phase 1 (현재)**: passive timestamp sync — 페이지 로드 시 1회 server fetch + `decideOverwrite` (`src/lib/sync/timestamps.ts`)
 - **Phase 2 (미구현)**: 활성 탭 30s 백그라운드 폴링 — `docs/superpowers/specs/2026-05-04-hybrid-sync-phases-design.md`
 - **Phase 3 (미구현)**: Supabase Realtime + BroadcastChannel multi-tab dedup — 동상 spec 참조
+
+#### Deferred-commit + await 패턴 (CUD 정합성, ADR-012)
+삭제 흐름은 5초 deferred-commit (undo) + commit 시점 server response **await** 패턴 의무 (UAT 2026-05-09 학생 부활 사고 5사이클 후 정착):
+1. localStorage 즉시 제거 (UI 0ms)
+2. `pendingDeletes` 영속화 + 5초 timer
+3. 5초 후 commit timer fires → `await fetch DELETE` → 응답 OK 후에만 `removePendingDelete`
+4. 실패 시 `pendingDeletes` 그대로 → 다음 mount의 recovery hook이 자동 재시도
+
+**Race window 0** 보장 — `useGlobalDataInitialization` 재실행과 fire-and-forget DELETE in-flight 시점 race 제거. 자세한 결정 + trade-off는 ADR-012 참조.
+
+적용: `useStudentManagementLocal`, `useTeacherManagementLocal`, `useSubjectManagementLocal`, `useIntegratedDataLocal` (session).
+
+#### AuthContext 단일화 (PR #313)
+페이지/컴포넌트별 `supabase.auth.getSession()` 직접 호출 → `RootProviders`의 `AuthProvider` + `useAuth()` 훅 단일 source. 7곳 마이그레이션 완료. `useGlobalDataInitialization`, `invite/[token]/page.tsx`, `lib/authUtils.ts`는 OAuth flow / hook 사용 불가 등 사유로 보류.
+
+#### Cursor-based Pagination (PR #307~#312)
+List endpoint 공통 helper: `src/lib/pagination.ts` SSOT.
+- `encodeCursor` / `decodeCursor` (base64 JSON of `{createdAt, id}`)
+- `parsePaginationParams` / `isPaginatedRequest` / `buildNextCursor`
+- `PAGINATION_DEFAULT_LIMIT=50`, `PAGINATION_MAX_LIMIT=200`
+
+적용: students, teachers, share_tokens, audit_log, app_logs (cursor 옵션 + 기존 offset 호환), enrollments (studentId 필터). 옵션 미지정 시 기존 흐름 유지로 회귀 0.
 
 ### 1.3 Atomic Design (Presentation Layer)
 - **Atoms:** 최소 단위 UI 요소 (Button, Input, Label)

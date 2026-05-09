@@ -53,10 +53,13 @@
 
 ### 데이터 관리 패턴
 - **Local-first:** localStorage 직접 조작으로 즉시 반응 (0ms)
-- **Fire-and-forget sync:** `src/lib/apiSync.ts`의 `syncXxxCreate/Delete` 함수로 서버에 비동기 동기화. 실패해도 localStorage는 유지.
+- **Fire-and-forget sync (개별 mutation):** `src/lib/apiSync.ts`의 `syncXxxCreate` 등이 사용. 10회 retry + outbox enqueue로 reliable delivery.
+- **Deferred-commit + await (CUD commit, ADR-012):** 5초 deferred-commit 패턴(undo)에서 commit 시점은 **server response를 await**한 후에만 `pendingDeletes` 정리. fire-and-forget commit은 `useGlobalDataInitialization` 재실행과 race window 발생 (UAT 2026-05-09 학생 부활 5사이클 사고). 실패 시 `pendingDeletes` 그대로 → recovery hook 자동 재시도.
 - **익명 사용자:** localStorage만 사용 (key: `classPlannerData:anonymous`). 서버 호출 없음.
 - **로그인 후:** localStorage (key: `classPlannerData:{userId}:{academyId}` — multi-academy scoped, academy 미선택 시 legacy fallback `classPlannerData:{userId}`) + 서버 양방향 동기화. 상수/구현은 `src/lib/localStorageCrud.ts`(`ANONYMOUS_STORAGE_KEY`, `getStorageKey`).
+- **AuthContext 단일화 (PR #313):** `useAuth()` 훅 단일 source. 페이지/컴포넌트별 `supabase.auth.getSession()` 직접 호출 금지 (보류 3곳 외).
 - **useLocal 훅 우선:** 신규 기능은 반드시 `useXxxLocal` 훅 사용 (레거시 API 기반 훅 사용 금지)
+- **새 sync 흐름 추가 시 fire-and-forget vs await 점검 의무:** `docs/adr/012-fire-and-forget-vs-await-for-cud.md` 체크리스트 통과 후에만 도입 결정.
 
 ## 코딩 규칙
 - TypeScript strict mode 준수

@@ -391,6 +391,7 @@ src/components/organisms/about/HeroSection.tsx
 src/components/organisms/about/__tests__/FeatureCard.test.tsx
 src/components/organisms/about/__tests__/FeatureDetail.test.tsx
 src/components/organisms/about/__tests__/HeroSection.test.tsx
+src/contexts/AuthContext.tsx
 src/contexts/HelpDrawerContext.tsx
 src/contexts/SidebarContext.tsx
 src/contexts/ThemeContext.tsx
@@ -562,6 +563,7 @@ src/lib/formatExpiry.ts
 src/lib/localStorageCrud.ts
 src/lib/logger.ts
 src/lib/migrateLocalSessions.ts
+src/lib/pagination.ts
 src/lib/pdf/PdfGridLayout.ts
 src/lib/pdf/PdfHeader.ts
 src/lib/pdf/PdfRenderer.ts
