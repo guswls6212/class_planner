@@ -82,36 +82,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch auth user info for each member in parallel via admin API
-    const members = await Promise.all(
-      memberRows.map(async (row) => {
-        const linkedTeacher = teachersByUserId[row.user_id] ?? null;
-        try {
-          const { data: { user } } = await client.auth.admin.getUserById(row.user_id);
-          return {
-            userId: row.user_id,
-            role: row.role,
-            joinedAt: row.joined_at,
-            email: user?.email ?? null,
-            name: (user?.user_metadata?.full_name as string | undefined) ?? null,
-            linkedTeacherId: linkedTeacher?.id ?? null,
-            linkedTeacherName: linkedTeacher?.name ?? null,
-            linkedTeacherColor: linkedTeacher?.color ?? null,
-          };
-        } catch {
-          return {
-            userId: row.user_id,
-            role: row.role,
-            joinedAt: row.joined_at,
-            email: null,
-            name: null,
-            linkedTeacherId: linkedTeacher?.id ?? null,
-            linkedTeacherName: linkedTeacher?.name ?? null,
-            linkedTeacherColor: linkedTeacher?.color ?? null,
-          };
-        }
-      })
-    );
+    // listUsers 1회 + in-memory Map join — getUserById N+1 RTT 제거.
+    // perPage 1000은 supabase admin API max — 일반 서비스 user 수 안전 cover.
+    // 1000 초과 시 paging 필요 (학원 운영 시스템에서 매우 드문 케이스, 별도 follow-up).
+    const usersById = new Map<string, { email: string | null; name: string | null }>();
+    try {
+      const { data: listed } = await client.auth.admin.listUsers({ perPage: 1000 });
+      for (const u of listed?.users ?? []) {
+        usersById.set(u.id, {
+          email: u.email ?? null,
+          name: (u.user_metadata?.full_name as string | undefined) ?? null,
+        });
+      }
+    } catch (err) {
+      logger.warn("api/members - auth.admin.listUsers 실패, member email/name 누락", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    const members = memberRows.map((row) => {
+      const linkedTeacher = teachersByUserId[row.user_id] ?? null;
+      const user = usersById.get(row.user_id);
+      return {
+        userId: row.user_id,
+        role: row.role,
+        joinedAt: row.joined_at,
+        email: user?.email ?? null,
+        name: user?.name ?? null,
+        linkedTeacherId: linkedTeacher?.id ?? null,
+        linkedTeacherName: linkedTeacher?.name ?? null,
+        linkedTeacherColor: linkedTeacher?.color ?? null,
+      };
+    });
 
     return NextResponse.json({ success: true, data: members, hasAcademy: true, academyName, academyId, academySlug });
   } catch (error) {
