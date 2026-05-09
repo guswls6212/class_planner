@@ -8,25 +8,15 @@ vi.mock("@/hooks/useMyRole", () => ({
   useMyRole: () => mockUseMyRole(),
 }));
 
-// Mock supabase (UserSection calls getUser; Sidebar isLoggedIn calls getSession + onAuthStateChange)
-// Default: logged-in session — academy switcher 가시성은 isLoggedIn에 종속.
-// 비로그인 케이스는 mockResolvedValueOnce로 case별 override.
-vi.mock("../../../utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
-      getSession: vi.fn().mockResolvedValue({
-        data: {
-          session: {
-            user: { id: "user-test", email: "test@test.com" },
-          },
-        },
-      }),
-      onAuthStateChange: vi.fn().mockReturnValue({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      }),
-    },
-  },
+// Mock useAuth — Sidebar의 isLoggedIn + UserBottomSection의 email 단일 source.
+// Default: logged-in. 비로그인 케이스는 mockUseAuth.mockReturnValueOnce(...)로 case별 override.
+const mockUseAuth = vi.fn().mockReturnValue({
+  session: { user: { id: "user-test", email: "test@test.com" } },
+  user: { id: "user-test", email: "test@test.com" },
+  loading: false,
+});
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => mockUseAuth(),
 }));
 
 // Mock signOut (used by UserSection)
@@ -56,7 +46,6 @@ Object.defineProperty(window, "location", {
 
 import { Sidebar } from "../Sidebar";
 import { SidebarProvider } from "@/contexts/SidebarContext";
-import { supabase } from "@/utils/supabaseClient";
 
 const renderSidebar = () =>
   render(
@@ -328,9 +317,7 @@ describe("Sidebar — User Bottom Section", () => {
     });
     window.localStorage.setItem = vi.fn();
     // Default: not logged in (each test overrides as needed)
-    vi.mocked(supabase.auth.getUser).mockResolvedValue({
-      data: { user: null },
-    } as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
   });
 
   afterEach(() => {
@@ -338,9 +325,11 @@ describe("Sidebar — User Bottom Section", () => {
   });
 
   function mockLoggedInAs(email: string, role: "owner" | "admin" | "member") {
-    vi.mocked(supabase.auth.getUser).mockResolvedValue({
-      data: { user: { email } },
-    } as Awaited<ReturnType<typeof supabase.auth.getUser>>);
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-test", email } },
+      user: { id: "user-test", email },
+      loading: false,
+    });
     mockUseMyRole.mockReturnValue({
       role,
       isLoading: false,
@@ -432,9 +421,7 @@ describe("Sidebar — Anonymous Mode + Loading State", () => {
   });
 
   it("비로그인 사용자는 academy switcher 영역이 미렌더된다", async () => {
-    vi.mocked(supabase.auth.getSession).mockResolvedValueOnce({
-      data: { session: null },
-    } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+    mockUseAuth.mockReturnValueOnce({ session: null, user: null, loading: false });
 
     mockUseMyRole.mockReturnValue({
       role: null,

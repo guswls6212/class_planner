@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { supabase } from "../../utils/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
 
 type Role = "owner" | "admin" | "member";
@@ -15,37 +15,30 @@ const ROLE_OPTIONS: { value: Role; label: string; description: string }[] = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user?.id ?? null;
+  const userName =
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.email?.split("@")[0] ||
+    "";
   const [academyName, setAcademyName] = useState("");
   const [role, setRole] = useState<Role>("owner");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>("");
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    if (authLoading) return;
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
 
-      if (!session) {
-        router.replace("/login");
-        return;
-      }
-
-      const uid = session.user.id;
-      setUserId(uid);
-      setUserName(
-        session.user.user_metadata?.full_name ||
-          session.user.email?.split("@")[0] ||
-          ""
-      );
-
-      // 이미 온보딩 완료된 사용자인지 확인
+    // 이미 온보딩 완료된 사용자인지 확인
+    (async () => {
       try {
         const res = await fetch(
-          `/api/onboarding/status?userId=${encodeURIComponent(uid)}`
+          `/api/onboarding/status?userId=${encodeURIComponent(session.user.id)}`
         );
         const data = await res.json();
         if (data.hasAcademy) {
@@ -56,12 +49,9 @@ export default function OnboardingPage() {
         // status 확인 실패 시 폼 표시 (최악의 경우 중복 생성은 idempotency가 방어)
         logger.warn("온보딩 상태 확인 실패");
       }
-
       setIsChecking(false);
-    };
-
-    checkAuth();
-  }, [router]);
+    })();
+  }, [authLoading, session, router]);
 
   const isValid = academyName.trim().length >= 2;
 

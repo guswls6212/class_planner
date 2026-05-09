@@ -14,10 +14,10 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
 import { signOut } from "@/lib/auth/signOut";
 import { useMyRole } from "@/hooks/useMyRole";
 import { useSidebar } from "@/contexts/SidebarContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SidebarItem {
   href: string;
@@ -35,20 +35,8 @@ const topItems: SidebarItem[] = [
 ];
 
 function UserBottomSection({ role }: { role: "owner" | "admin" | "member" | null }) {
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    const isConfigured =
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!isConfigured) return;
-    supabase.auth
-      .getUser()
-      .then(({ data }) => {
-        setEmail(data.user?.email ?? null);
-      })
-      .catch(() => {});
-  }, []);
+  const { user } = useAuth();
+  const email = user?.email ?? null;
 
   if (!email) return null;
 
@@ -142,21 +130,9 @@ export function Sidebar() {
   const isMember = !isLoading && role === "member";
   const visibleTopItems = topItems.filter((item) => !item.adminOnly || !isMember);
 
-  // Login state — drives bottom nav icon (LogIn vs Settings).
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  useEffect(() => {
-    const isConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!isConfigured) return;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
-    }).catch(() => {});
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  // Login state — AuthContext에서 단일 source로 받음.
+  const { session } = useAuth();
+  const isLoggedIn = !!session;
 
   // Multi-academy switcher state. Reads the active academy id from
   // localStorage on mount; the dropdown lists all the user's academies and

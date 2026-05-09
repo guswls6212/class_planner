@@ -3,17 +3,14 @@ import { renderHook, act } from "@testing-library/react";
 
 // --- Mocks ---------------------------------------------------------------
 
-// vi.mock is hoisted — use vi.hoisted so mockGetSession is available inside the factory
-const { mockGetSession } = vi.hoisted(() => ({
-  mockGetSession: vi.fn(),
+// useAuth는 AuthContext에서 session을 단일 source로 제공.
+// test에서는 vi.mock으로 바로 갈음 (이전엔 supabase.auth.getSession 직접 mock).
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
 }));
 
-vi.mock("@/utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-    },
-  },
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: mockUseAuth,
 }));
 
 const mockFetch = vi.fn();
@@ -83,7 +80,7 @@ describe("useMyRole", () => {
   it("세션 없을 때(익명 사용자) role=null, canManage=true를 반환한다 — Anonymous-First", async () => {
     // Anonymous users own their localStorage data and must be able to create/edit
     // sessions, students, and subjects. canManage must be true after load.
-    mockGetSession.mockResolvedValue({ data: { session: null } });
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
     const { result } = renderHook(() => useMyRole());
 
@@ -97,7 +94,7 @@ describe("useMyRole", () => {
   });
 
   it("owner 역할이면 canManage=true를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER]);
 
     const { result } = renderHook(() => useMyRole());
@@ -115,7 +112,7 @@ describe("useMyRole", () => {
   });
 
   it("admin 역할이면 canManage=true를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_ADMIN } });
+    mockUseAuth.mockReturnValue({ session: SESSION_ADMIN, user: SESSION_ADMIN.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_ADMIN]);
 
     const { result } = renderHook(() => useMyRole());
@@ -134,7 +131,7 @@ describe("useMyRole", () => {
   });
 
   it("member 역할이면 canManage=false를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_MEMBER_USER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_MEMBER_USER, user: SESSION_MEMBER_USER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_MEMBER]);
 
     const { result } = renderHook(() => useMyRole());
@@ -154,7 +151,7 @@ describe("useMyRole", () => {
   });
 
   it("API 응답이 실패하면 canManage=false(fail-closed)를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     mockFetch.mockResolvedValue({ ok: false });
 
     const { result } = renderHook(() => useMyRole());
@@ -172,7 +169,7 @@ describe("useMyRole", () => {
   });
 
   it("초기 isLoading=true이며 canManage=false(보수적 기본값)이다", () => {
-    mockGetSession.mockReturnValue(new Promise(() => {})); // never resolves
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: true }); // still loading
 
     const { result } = renderHook(() => useMyRole());
 
@@ -181,7 +178,7 @@ describe("useMyRole", () => {
   });
 
   it("멤버 목록에 현재 유저가 없으면 canManage=false를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_MEMBER_USER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_MEMBER_USER, user: SESSION_MEMBER_USER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER]); // user-member not in list
 
     const { result } = renderHook(() => useMyRole());
@@ -198,7 +195,7 @@ describe("useMyRole", () => {
   });
 
   it("academies 목록을 fetch해 첫 번째 항목을 active academy로 설정한다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     const ACADEMY_LIST = [
       { id: "ac-1", name: "유빈학원", slug: "yubin", role: "owner" },
       { id: "ac-2", name: "둘째학원", slug: "second", role: "admin" },
@@ -243,7 +240,7 @@ describe("useMyRole", () => {
   });
 
   it("academies fetch가 실패해도 role/canManage 결정에는 영향이 없다", async () => {
-    mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+    mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     mockFetch.mockImplementation((url: string) => {
       if (url.startsWith("/api/members")) {
         return Promise.resolve({
@@ -273,7 +270,7 @@ describe("useMyRole", () => {
 
   describe("adminCount — 단일 admin 학원 토스트 suppress용", () => {
     it("owner 1명 + member만 있으면 adminCount=1", async () => {
-      mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+      mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
       mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_MEMBER]);
 
       const { result } = renderHook(() => useMyRole());
@@ -289,7 +286,7 @@ describe("useMyRole", () => {
     });
 
     it("owner 1명 + admin 1명 + member 1명이면 adminCount=2", async () => {
-      mockGetSession.mockResolvedValue({ data: { session: SESSION_OWNER } });
+      mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
       mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_ADMIN, MEMBER_MEMBER]);
 
       const { result } = renderHook(() => useMyRole());
@@ -305,7 +302,7 @@ describe("useMyRole", () => {
     });
 
     it("익명 사용자(세션 없음)이면 adminCount=0", async () => {
-      mockGetSession.mockResolvedValue({ data: { session: null } });
+      mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
       const { result } = renderHook(() => useMyRole());
 

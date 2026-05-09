@@ -5,14 +5,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-vi.mock("../../../utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "user-1" } } },
-      }),
-    },
-  },
+vi.mock("../../../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    session: { user: { id: "user-1" } },
+    user: { id: "user-1" },
+    loading: false,
+  }),
 }));
 
 global.fetch = vi.fn();
