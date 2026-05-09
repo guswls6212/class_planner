@@ -42,7 +42,10 @@ function AppContent({ children }: { children: React.ReactNode }) {
             migrationError={migrationError}
           />
         )}
-        {children}
+        {/* Loading gate (UAT 2026-05-09): isInitializing 동안 children 안 mount.
+            stale localStorage가 첫 paint에 보이는 flash UX 제거 — server fetch +
+            Phase 1 처리 완료 후만 페이지 mount → 부활처럼 잠깐 보이는 현상 0. */}
+        {!isInitializing && children}
       </ErrorBoundary>
     </AppShell>
   );

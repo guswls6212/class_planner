@@ -44,25 +44,10 @@ type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
  *
  * Pure function — 단위 테스트 가능.
  */
-export function detectPartialCorruption(
-  localBag: ClassPlannerData,
-  serverData: ClassPlannerData,
-  localIsEmpty: boolean,
-): boolean {
-  // 사용자가 학생을 모두 삭제한 정상 흐름 (students=0 + sessions=0 + subject만 남음)을
-  // corruption으로 잘못 판정하지 않도록, students 또는 enrollments가 local에 있을 때만
-  // partial 손상으로 판정. (UAT 2026-05-09 강지원 부활 사고 — server가 in-flight 상태에서
-  // session 1개 남아있을 때 corruption 분기로 강제 overwrite 발생.)
-  //
-  // partial 손상의 진짜 시그니처: 학생/수강신청은 그대로 있는데 sessions만 reset됨.
-  // 학생을 모두 삭제하면 enrollments + sessions도 cascade라 모두 0이 정상.
-  return (
-    !localIsEmpty &&
-    localBag.sessions.length === 0 &&
-    serverData.sessions.length > 0 &&
-    (localBag.students.length > 0 || localBag.enrollments.length > 0)
-  );
-}
+// detectPartialCorruption 함수 제거됨 (UAT 2026-05-09 박태환 부활).
+// 원래 의도(PR #063b274 — sessions=0 stuck 방지) 자체는 유효하지만, 정상 사용자
+// 흐름과 구분 못 하는 광범위한 휴리스틱이 false-positive로 학생 부활 사고 반복 일으킴.
+// 정상 흐름 보호가 매우 드문 multi-tab race 보호보다 우선.
 
 /**
  * Custom event name dispatched when active academy changes (onboarding 완료,
@@ -460,11 +445,14 @@ export const useGlobalDataInitialization = () => {
             localBag.enrollments.length === 0 &&
             localBag.teachers.length === 0;
 
-          const localIsPartiallyCorrupted = detectPartialCorruption(
-            localBag,
-            serverData,
-            localIsEmpty,
-          );
+          // detectPartialCorruption 분기 제거 (UAT 2026-05-09 박태환 부활).
+          // 원래 의도(PR #063b274)는 multi-tab race로 sessions만 reset된 케이스 복원.
+          // 그러나 사용자 정상 흐름(학생 일부/모두 삭제)도 false-positive로 매칭하여
+          // 강제 overwrite → 학생 부활 사고 반복. partial 손상은 매우 드문 multi-tab
+          // race로 한정되고, 정상 사용자 의도를 false-positive로 깨뜨리는 비용이 더 큼.
+          //
+          // partial 손상 발생 시 사용자는 settings의 "데이터 수동 동기화" 또는 다른
+          // 기기에서 같은 계정 로그인으로 server 따라갈 수 있다.
 
           const serverLastModified = computeServerLastModified(serverData);
           const decision = decideOverwrite({
@@ -476,7 +464,6 @@ export const useGlobalDataInitialization = () => {
           logger.info("로컬-서버 동기화 결정", {
             decision: decision.decision,
             reason: decision.reason,
-            localIsPartiallyCorrupted,
             localLastModified: localBag.lastModified ?? null,
             serverLastModified,
             localMs: decision.localMs,
@@ -526,19 +513,7 @@ export const useGlobalDataInitialization = () => {
             }
           }
 
-          if (localIsPartiallyCorrupted) {
-            logger.warn(
-              "로컬 데이터 partial 손상 감지 — server overwrite 강제",
-              {
-                localSessions: localBag.sessions.length,
-                serverSessions: serverData.sessions.length,
-                localStudents: localBag.students.length,
-                localSubjects: localBag.subjects.length,
-                localEnrollments: localBag.enrollments.length,
-              },
-            );
-            setClassPlannerData(serverData);
-          } else if (entitiesToClear.length > 0) {
+          if (entitiesToClear.length > 0) {
             logger.info(
               "useGlobalDataInitialization - per-entity intentional empty 감지, " +
                 "해당 entity만 local에서 비움",
