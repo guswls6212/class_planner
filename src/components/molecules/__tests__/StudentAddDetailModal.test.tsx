@@ -60,11 +60,11 @@ describe("StudentAddDetailModal", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("4글자 초과 시 잘림 (maxLength)", () => {
+  it("6글자 초과 시 잘림 (maxLength)", () => {
     render(<StudentAddDetailModal {...baseProps} />);
     const nameInput = screen.getByLabelText(/이름/) as HTMLInputElement;
-    fireEvent.change(nameInput, { target: { value: "김민준수영" } });
-    expect(nameInput.value.length).toBeLessThanOrEqual(4);
+    fireEvent.change(nameInput, { target: { value: "김민준수영민영" } });
+    expect(nameInput.value.length).toBeLessThanOrEqual(6);
   });
 
   it("중복 이름으로 추가 → 에러 메시지", () => {

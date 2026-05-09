@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
+import {
+  NAME_MAX_LENGTH,
+  getStudentBirthDateRange,
+  isBirthDateInRange,
+} from "@/lib/validation/profileSchemas";
 
 interface StudentAddDetailModalProps {
   isOpen: boolean;
@@ -32,6 +37,7 @@ export default function StudentAddDetailModal({
   const [gender, setGender] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [errMsg, setErrMsg] = useState("");
+  const [birthRange] = useState(() => getStudentBirthDateRange());
 
   const { containerRef } = useModalA11y({ isOpen, onClose });
 
@@ -43,12 +49,16 @@ export default function StudentAddDetailModal({
       setErrMsg("학생 이름을 입력해주세요.");
       return;
     }
-    if (trimmed.length > 4) {
-      setErrMsg("학생 이름은 최대 4글자까지 가능합니다.");
+    if (trimmed.length > NAME_MAX_LENGTH) {
+      setErrMsg(`학생 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
     if (existingNames.includes(trimmed)) {
       setErrMsg("이미 존재하는 학생 이름입니다.");
+      return;
+    }
+    if (birthDate && !isBirthDateInRange(birthDate, birthRange)) {
+      setErrMsg("학생 생년월일은 만 4~25세 범위여야 합니다.");
       return;
     }
     onSubmit(trimmed, {
@@ -63,7 +73,7 @@ export default function StudentAddDetailModal({
   };
 
   const handleNameChange = (v: string) => {
-    setName(v.slice(0, 4));
+    setName(v.slice(0, NAME_MAX_LENGTH));
     if (errMsg) setErrMsg("");
   };
 
@@ -100,7 +110,7 @@ export default function StudentAddDetailModal({
               type="text"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
-              maxLength={4}
+              maxLength={NAME_MAX_LENGTH}
               placeholder="예: 김민준"
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               onKeyDown={(e) => {
@@ -149,6 +159,8 @@ export default function StudentAddDetailModal({
               type="date"
               value={birthDate}
               onChange={(e) => setBirthDate(e.target.value)}
+              min={birthRange.min}
+              max={birthRange.max}
               className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
