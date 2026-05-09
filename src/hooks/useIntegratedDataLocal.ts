@@ -13,7 +13,6 @@ import {
   syncSessionDelete,
   syncSessionUpdate,
   syncTeacherCreate,
-  syncTeacherDelete,
   syncTeacherUpdate,
 } from "../lib/apiSync";
 import {
@@ -22,7 +21,6 @@ import {
   addTeacherToLocal,
   deleteEnrollmentFromLocal,
   deleteSessionFromLocal,
-  deleteTeacherFromLocal,
   getClassPlannerData,
   replaceEnrollmentId,
   setClassPlannerData,
@@ -83,7 +81,6 @@ export interface UseIntegratedDataLocalReturn {
   // 강사 관련 액션
   addTeacher: (name: string, color: string, userId?: string | null) => Promise<boolean>;
   updateTeacher: (id: string, updates: { name?: string; color?: string; userId?: string | null }) => Promise<boolean>;
-  deleteTeacher: (id: string) => Promise<boolean>;
 
   // 통계
   studentCount: number;
@@ -755,29 +752,8 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     [loadDataFromLocal]
   );
 
-  const deleteTeacher = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        setError(null);
-        const result = deleteTeacherFromLocal(id);
-        if (result.success) {
-          loadDataFromLocal();
-          const userId = localStorage.getItem("supabase_user_id");
-          syncTeacherDelete(userId, id);
-          return true;
-        } else {
-          setError(result.error || "강사 삭제 실패");
-          return false;
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "강사 삭제 실패";
-        setError(errorMessage);
-        logger.error("useIntegratedDataLocal - 강사 삭제 실패:", undefined, err as Error);
-        return false;
-      }
-    },
-    [loadDataFromLocal]
-  );
+  // deleteTeacher는 useTeacherManagementLocal로 이전 (5초 deferred + undo + pendingDeletes).
+  // 본 hook의 fire-and-forget 흐름은 외부 사용처가 없어 제거 (PR #300 후속 cleanup).
 
   // ===== 데이터 새로고침 =====
 
@@ -825,7 +801,6 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     // 강사 관련 액션
     addTeacher,
     updateTeacher,
-    deleteTeacher,
 
     // 통계
     studentCount,
