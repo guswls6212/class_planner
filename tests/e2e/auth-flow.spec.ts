@@ -40,14 +40,16 @@ test.describe("auth flow", () => {
     await expect(page).toHaveURL(/\/schedule(\?|$)/);
   });
 
-  test("Supabase 토큰이 있는 상태에서 /login 진입 시 / 로 자동 리다이렉트된다", async ({ page }) => {
+  test("Supabase 토큰이 있는 상태에서 /login 진입 시 /login 밖으로 자동 리다이렉트된다", async ({ page }) => {
     // PR C — 진짜 Supabase password auth로 발급된 토큰 사용. getSession()이 진짜 검증 통과.
     await injectRealSession(page);
 
     await page.goto("/login");
 
-    // useEffect 안 checkAuth가 session을 확인하고 router.push("/") 호출
-    await expect(page).toHaveURL(/\/(\?|$)/, { timeout: 5000 });
+    // login page useEffect → router.push("/") → LandingPage가 userId 감지 시
+    // router.replace("/schedule")로 이중 단계 redirect (UX: 로그인된 사용자는 시간표 진입).
+    // e2e는 "더 이상 /login에 머물지 않음"만 확인 — / 또는 /schedule 모두 valid.
+    await expect(page).toHaveURL(/\/(schedule)?(\?|$)/, { timeout: 5000 });
   });
 
   test("redirectAfterLogin + 토큰 inject 시 원래 페이지로 복귀한다", async ({ page }) => {

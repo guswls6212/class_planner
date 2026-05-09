@@ -178,8 +178,11 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     );
     await page.locator('[data-testid="selection-bar-delete"]').click();
     await expect(sessionBlock(page, "sess-a")).toHaveCount(0);
-    // undo 클릭 (button 텍스트 또는 toast 내부 button)
-    await page.locator("button", { hasText: /되돌리기/ }).first().click();
+    // 토스트가 mount + button이 클릭 가능 상태가 될 때까지 wait — 회귀 가드
+    // (T7은 visible 검증만 했고, T8은 검증 없이 바로 click하던 race로 dev에서 fail).
+    const undoBtn = page.getByRole("button", { name: "되돌리기" });
+    await expect(undoBtn).toBeVisible({ timeout: 3000 });
+    await undoBtn.click();
     // 두 세션 복원
     await expect(sessionBlock(page, "sess-a")).toBeVisible({ timeout: 3000 });
     await expect(sessionBlock(page, "sess-b")).toBeVisible({ timeout: 3000 });

@@ -12,6 +12,8 @@
  *     hasMore 판정 + nextCursor 생성
  */
 
+import { Buffer } from "node:buffer";
+
 export const PAGINATION_DEFAULT_LIMIT = 50;
 export const PAGINATION_MAX_LIMIT = 200;
 
