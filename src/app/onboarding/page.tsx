@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
+import { getKoMessage } from "../../lib/errors/messages.ko";
+import { ACADEMY_NAME_MAX_LENGTH, validateAcademyName } from "../../lib/validation/profileSchemas";
 
 type Role = "owner" | "admin" | "member";
 
@@ -53,11 +55,22 @@ export default function OnboardingPage() {
     })();
   }, [authLoading, session, router]);
 
-  const isValid = academyName.trim().length >= 2;
+  const trimmed = academyName.trim();
+  const nameValidation = validateAcademyName(academyName);
+  // onboarding 자체 정책: min 2자 (학원명이 너무 짧으면 식별 어려움)
+  const isValid = nameValidation.ok && trimmed.length >= 2;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid || !userId) return;
+    if (!userId) return;
+    if (!nameValidation.ok) {
+      setError(getKoMessage(nameValidation.code));
+      return;
+    }
+    if (trimmed.length < 2) {
+      setError("학원명은 2글자 이상 입력해주세요.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -68,7 +81,7 @@ export default function OnboardingPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ academyName: academyName.trim(), role }),
+          body: JSON.stringify({ academyName: nameValidation.value, role }),
         }
       );
 
@@ -137,6 +150,7 @@ export default function OnboardingPage() {
                 className={`onboarding-input ${showInputError ? "error" : ""}`}
                 autoFocus
                 disabled={isSubmitting}
+                maxLength={ACADEMY_NAME_MAX_LENGTH}
               />
               {showInputError && (
                 <p className="text-red-400 text-[13px] mt-1.5">

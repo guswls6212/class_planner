@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Teacher } from "@/lib/planner";
+import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 
 interface TeacherPillPickerProps {
   teachers: Teacher[];
@@ -138,9 +139,10 @@ export default function TeacherPillPicker({
               ref={inputRef}
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue?.(e.target.value)}
+              onChange={(e) => setInputValue?.(e.target.value.slice(0, NAME_MAX_LENGTH))}
               onKeyDown={handleKeyDown}
               placeholder="새 강사 이름"
+              maxLength={NAME_MAX_LENGTH}
               className="flex-1 bg-transparent text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none px-2 py-1"
               disabled={creating}
             />

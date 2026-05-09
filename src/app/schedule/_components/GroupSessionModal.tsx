@@ -6,6 +6,10 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import {
+  NAME_MAX_LENGTH,
+  SUBJECT_NAME_MAX_LENGTH,
+} from "../../../lib/validation/profileSchemas";
 
 type SubjectOption = { id: string; name: string; color?: string };
 type StudentOption = { id: string; name: string };
@@ -227,8 +231,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
           placeholder="학생 이름 검색..."
           value={studentInputValue}
-          onChange={(e) => setStudentInputValue(e.target.value)}
+          onChange={(e) => setStudentInputValue(e.target.value.slice(0, NAME_MAX_LENGTH))}
           onKeyDown={handleStudentInputKeyDown}
+          maxLength={NAME_MAX_LENGTH}
         />
         <button
           type="button"
@@ -343,7 +348,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 ref={subjectInputRef}
                 type="text"
                 value={subjectInputValue}
-                onChange={(e) => setSubjectInputValue(e.target.value)}
+                onChange={(e) => setSubjectInputValue(e.target.value.slice(0, SUBJECT_NAME_MAX_LENGTH))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -352,6 +357,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 }}
                 placeholder="새 과목 이름"
                 disabled={subjectCreating}
+                maxLength={SUBJECT_NAME_MAX_LENGTH}
                 className="flex-1 bg-transparent text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none px-2 py-1"
               />
               <button

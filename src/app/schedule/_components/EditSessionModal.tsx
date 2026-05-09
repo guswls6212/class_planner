@@ -5,6 +5,7 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import { NAME_MAX_LENGTH } from "../../../lib/validation/profileSchemas";
 
 type StudentOption = { id: string; name: string };
 type SubjectOption = { id: string; name: string; color?: string };
@@ -338,8 +339,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               placeholder="학생 이름 검색..."
               className={`${fieldClass} flex-1`}
               value={editStudentInputValue}
-              onChange={(e) => onEditStudentInputChange(e.target.value)}
+              onChange={(e) => onEditStudentInputChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
               onKeyDown={onEditStudentInputKeyDown}
+              maxLength={NAME_MAX_LENGTH}
             />
             <button
               type="button"

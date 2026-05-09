@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import { StudentInputSection } from "../StudentInputSection";
 
 // Mock props
@@ -82,9 +83,10 @@ describe("StudentInputSection Component", () => {
     });
   });
 
-  it("5글자 초과 입력 시 에러 메시지가 표시되어야 한다", async () => {
-    // Arrange
-    const propsWithLong = { ...mockProps, newStudentName: "김철수박이" };
+  it(`${NAME_MAX_LENGTH}글자 초과 입력 시 에러 메시지가 표시되어야 한다`, async () => {
+    // Arrange — slice는 Input handleChange에서 수행. prop으로 직접 긴 이름 주입.
+    const longName = "가".repeat(NAME_MAX_LENGTH + 1);
+    const propsWithLong = { ...mockProps, newStudentName: longName };
     render(<StudentInputSection {...propsWithLong} />);
     const addButton = screen.getByRole("button", { name: /추가/ });
 
@@ -94,7 +96,7 @@ describe("StudentInputSection Component", () => {
     // Assert
     await waitFor(() => {
       expect(
-        screen.getByText("학생 이름은 최대 4글자까지 가능합니다.")
+        screen.getByText(`학생 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`)
       ).toBeInTheDocument();
     });
   });

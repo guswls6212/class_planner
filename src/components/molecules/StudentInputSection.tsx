@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { ErrorCodes } from '@/lib/errors/codes';
+import { getKoMessage } from '@/lib/errors/messages.ko';
+import { NAME_MAX_LENGTH, validateStudentName } from '@/lib/validation/profileSchemas';
 import Button from '../atoms/Button';
 import Input from '../atoms/Input';
 
@@ -26,20 +29,16 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
   const errorMessage = externalErrorMessage || internalErrorMessage;
 
   const handleAddStudent = () => {
-    const name = newStudentName.trim();
-    if (!name) {
-      setInternalErrorMessage('학생 이름을 입력해주세요.');
+    const result = validateStudentName(newStudentName);
+    if (!result.ok) {
+      setInternalErrorMessage(getKoMessage(result.code));
       return;
     }
-
-    if (name.length > 4) {
-      setInternalErrorMessage('학생 이름은 최대 4글자까지 가능합니다.');
-      return;
-    }
+    const name = result.value;
 
     const isDuplicate = students.some(student => student.name === name);
     if (isDuplicate) {
-      setInternalErrorMessage('이미 존재하는 학생 이름입니다.');
+      setInternalErrorMessage(getKoMessage(ErrorCodes.STUDENT_NAME_DUPLICATE));
       return;
     }
 
@@ -49,7 +48,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const limited = value.slice(0, 4);
+    const limited = value.slice(0, NAME_MAX_LENGTH);
     onNewStudentNameChange(limited);
     if (internalErrorMessage) {
       setInternalErrorMessage('');
@@ -65,7 +64,7 @@ export const StudentInputSection: React.FC<StudentInputSectionProps> = ({
           placeholder="학생 이름 (검색 가능)"
           value={newStudentName}
           onChange={handleInputChange}
-          maxLength={4}
+          maxLength={NAME_MAX_LENGTH}
           onKeyPress={e => {
             if (e.key === 'Enter') {
               e.preventDefault();
