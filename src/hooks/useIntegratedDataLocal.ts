@@ -124,8 +124,29 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     const userId = localStorage.getItem("supabase_user_id");
     const now = Date.now();
 
-    const commitOne = (id: string) => {
-      syncSessionDelete(userId, id);
+    // server DELETE await — race window 0 (학생/강사/과목 PR #319과 동일 패턴).
+    const commitOne = async (id: string) => {
+      if (!userId) {
+        removePendingDelete("session", id);
+        return;
+      }
+      try {
+        const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
+        const response = await fetch(url, { method: "DELETE" });
+        if (!response.ok) {
+          logger.warn("세션 삭제 commit 실패 — pendingDeletes 유지", {
+            id,
+            status: response.status,
+          });
+          return;
+        }
+      } catch (err) {
+        logger.warn("세션 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+          id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
       removePendingDelete("session", id);
     };
 
@@ -353,9 +374,30 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           const deadline = Date.now() + PENDING_DELETE_TTL_MS;
           addPendingDelete({ entityType: "session", id, deadline });
           let cancelled = false;
-          const commitTimer = setTimeout(() => {
+          // server DELETE await — race window 0.
+          const commitTimer = setTimeout(async () => {
             if (cancelled) return;
-            syncSessionDelete(userId, id);
+            if (!userId) {
+              removePendingDelete("session", id);
+              return;
+            }
+            try {
+              const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
+              const response = await fetch(url, { method: "DELETE" });
+              if (!response.ok) {
+                logger.warn("세션 삭제 commit 실패 — pendingDeletes 유지", {
+                  id,
+                  status: response.status,
+                });
+                return;
+              }
+            } catch (err) {
+              logger.warn("세션 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+                id,
+                error: err instanceof Error ? err.message : String(err),
+              });
+              return;
+            }
             removePendingDelete("session", id);
             logger.info("useIntegratedDataLocal - 세션 삭제 commit", { id });
           }, PENDING_DELETE_TTL_MS);
@@ -433,12 +475,35 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         addPendingDelete({ entityType: "session", id: s.id, deadline: bulkDeadline });
       }
       let cancelled = false;
-      const commitTimer = setTimeout(() => {
+      // server DELETE await — race window 0. bulk도 한 건씩 응답 받고 commit.
+      const commitTimer = setTimeout(async () => {
         if (cancelled) return;
-        for (const s of deleted) {
-          syncSessionDelete(userId, s.id);
-          removePendingDelete("session", s.id);
+        if (!userId) {
+          for (const s of deleted) removePendingDelete("session", s.id);
+          return;
         }
+        await Promise.all(
+          deleted.map(async (s) => {
+            try {
+              const url = `/api/sessions/${s.id}?userId=${encodeURIComponent(userId)}`;
+              const response = await fetch(url, { method: "DELETE" });
+              if (!response.ok) {
+                logger.warn("일괄 삭제 항목 commit 실패 — pendingDeletes 유지", {
+                  id: s.id,
+                  status: response.status,
+                });
+                return;
+              }
+            } catch (err) {
+              logger.warn("일괄 삭제 항목 commit 네트워크 오류 — pendingDeletes 유지", {
+                id: s.id,
+                error: err instanceof Error ? err.message : String(err),
+              });
+              return;
+            }
+            removePendingDelete("session", s.id);
+          })
+        );
         logger.info("useIntegratedDataLocal - 일괄 삭제 commit", {
           count: deleted.length,
         });
