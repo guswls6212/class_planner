@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { ErrorCodes } from "@/lib/errors/codes";
+import { getKoMessage } from "@/lib/errors/messages.ko";
+import { SUBJECT_NAME_MAX_LENGTH, validateSubjectName } from "@/lib/validation/profileSchemas";
 import { logger } from "../../lib/logger";
 import Button from "../atoms/Button";
 import Input from "../atoms/Input";
@@ -27,24 +30,19 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
   const errorMessage = externalErrorMessage || internalErrorMessage;
 
   const handleAddSubject = async () => {
-    const name = subjectName.trim();
-
-    if (!name) {
-      setInternalErrorMessage("과목 이름을 입력해주세요.");
+    const result = validateSubjectName(subjectName);
+    if (!result.ok) {
+      setInternalErrorMessage(getKoMessage(result.code));
       return;
     }
-
-    if (name.length > 6) {
-      setInternalErrorMessage("과목 이름은 최대 6글자까지 가능합니다.");
-      return;
-    }
+    const name = result.value;
 
     const isDuplicate = subjects.some(
       (subject) => subject.name.toLowerCase() === name.toLowerCase()
     );
 
     if (isDuplicate) {
-      setInternalErrorMessage("이미 존재하는 과목 이름입니다.");
+      setInternalErrorMessage(getKoMessage(ErrorCodes.SUBJECT_NAME_DUPLICATE));
       return;
     }
 
@@ -64,7 +62,7 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    const limited = value.slice(0, 6);
+    const limited = value.slice(0, SUBJECT_NAME_MAX_LENGTH);
     setSubjectName(limited);
 
     if (onSearchChange) {
@@ -85,7 +83,7 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           placeholder="과목 이름 (검색 가능)"
           value={subjectName}
           onChange={handleInputChange}
-          maxLength={6}
+          maxLength={SUBJECT_NAME_MAX_LENGTH}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddSubject();
           }}

@@ -7,6 +7,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { getKoMessage } from "../../lib/errors/messages.ko";
+import { ACADEMY_NAME_MAX_LENGTH, validateAcademyName } from "../../lib/validation/profileSchemas";
 import { Button } from "../../components/atoms/Button";
 import { TeacherStatusPill } from "../../components/atoms/TeacherStatusPill";
 import type { TeacherWithStatus } from "../api/teachers/route";
@@ -213,16 +215,22 @@ export default function SettingsPage() {
   };
 
   const handleSaveAcademyName = async () => {
-    if (!userId || !editNameValue.trim()) return;
+    if (!userId) return;
+    const result = validateAcademyName(editNameValue);
+    if (!result.ok) {
+      showError(getKoMessage(result.code));
+      return;
+    }
+    const name = result.value;
     setIsSavingName(true);
     try {
       const res = await fetch(`/api/academies?userId=${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editNameValue.trim() }),
+        body: JSON.stringify({ name }),
       });
       if (res.ok) {
-        setAcademyName(editNameValue.trim());
+        setAcademyName(name);
         setIsEditingName(false);
       } else {
         showError("학원 이름 변경에 실패했습니다.");
@@ -451,7 +459,7 @@ export default function SettingsPage() {
                     if (e.key === "Escape") setIsEditingName(false);
                   }}
                   autoFocus
-                  maxLength={50}
+                  maxLength={ACADEMY_NAME_MAX_LENGTH}
                   className="flex-1 border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 <Button
