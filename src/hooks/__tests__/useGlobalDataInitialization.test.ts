@@ -505,6 +505,36 @@ describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)
     // saved=null (skip)인 경우도 OK — 어쨌든 부활 안 함
   });
 
+  it("UAT 박태환 시나리오: 학생 일부만 살아있음 + sessions=0 + server in-flight → 부활 안 함", async () => {
+    // 사용자가 학생 7명 추가 후 6명 삭제, 박태환 남음 → 박태환 마저 삭제 → 5초 안 새로고침.
+    // local: students=1 (남은 학생 또는 stale), subjects=1, sessions=0
+    // server: students=1 (박태환 in-flight), subjects=1, sessions=1
+    // 기존 detectPartialCorruption은 (sessions=0 + students>0 + server.sessions>0)으로
+    // false positive 매칭 → 박태환 부활. corruption 분기 제거 후 skip → 부활 안 함.
+    const T = Date.now();
+    mockLocalBag({
+      students: [{ id: "local-survivor", name: "남은학생" }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff" }],
+      lastModified: new Date(T).toISOString(),
+    });
+    mockServerFetches({
+      students: [{ id: "srv-pte", name: "박태환", updatedAt: new Date(T - 5000).toISOString() }],
+      subjects: [{ id: "sub1", name: "수학", color: "#fff", updatedAt: new Date(T - 60000).toISOString() }],
+      sessions: [{ id: "ses1", updatedAt: new Date(T - 60000).toISOString() }],
+    });
+
+    const { result } = renderHook(() => useGlobalDataInitialization());
+    await waitFor(() => expect(result.current.isInitialized).toBe(true));
+
+    const saved = setItemDataPayload();
+    // local students 변경 없어야 (남은학생만, 박태환 부활 X)
+    if (saved) {
+      expect(saved.students.map((s: any) => s.id)).toEqual(["local-survivor"]);
+      expect(saved.students.find((s: any) => s.name === "박태환")).toBeUndefined();
+    }
+    // saved=null (skip)도 OK — local 그대로 유지
+  });
+
   it("로컬 비어 있음 → 덮어쓴다 (local-empty, academy switch 보호)", async () => {
     const T = Date.now();
     // 빈 entity + fresh lastModified (academy switch 시뮬레이션)
