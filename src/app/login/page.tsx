@@ -4,46 +4,28 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { logger } from "../../lib/logger";
 import { supabase } from "../../utils/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 
 const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { session, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const redirectUrl = localStorage.getItem("redirectAfterLogin");
-          if (redirectUrl && redirectUrl !== "/login") {
-            localStorage.removeItem("redirectAfterLogin");
-            router.push(redirectUrl);
-          } else {
-            router.push("/");
-          }
-        }
-      } catch (err) {
-        logger.error("로그인 페이지 인증 확인 오류:", undefined, err as Error);
+    if (authLoading) return;
+    if (session) {
+      const redirectUrl = localStorage.getItem("redirectAfterLogin");
+      if (redirectUrl && redirectUrl !== "/login") {
+        localStorage.removeItem("redirectAfterLogin");
+        router.push(redirectUrl);
+      } else {
+        router.push("/");
       }
-    };
-    checkAuth();
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        setTimeout(() => {
-          const redirectUrl = localStorage.getItem("redirectAfterLogin");
-          if (redirectUrl && redirectUrl !== "/login") {
-            localStorage.removeItem("redirectAfterLogin");
-            router.push(redirectUrl);
-          } else {
-            router.push("/");
-          }
-        }, 500);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [router]);
+    // SIGNED_IN listener는 AuthContext가 단일 source — 위 effect의 session 변화로 자동 redirect.
+  }, [authLoading, session, router]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);

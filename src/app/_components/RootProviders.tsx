@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import { ErrorBoundary } from "../../components/atoms/ErrorBoundary";
 import GlobalErrorHandlers from "../../components/atoms/GlobalErrorHandlers";
 import { AppShell } from "../../components/organisms/AppShell";
+import { AuthProvider } from "../../contexts/AuthContext";
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../../hooks/useGlobalDataInitialization";
 
@@ -49,26 +50,28 @@ function AppContent({ children }: { children: React.ReactNode }) {
 
 export default function RootProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
-      <AppContent>{children}</AppContent>
+    <AuthProvider>
+      <ThemeProvider>
+        <AppContent>{children}</AppContent>
       {/* Toast position: bottom-center
           - 모바일 PWA 친화 (엄지 reach + 화면 위쪽 차단 안 함)
           - PC도 사용자 피드백("우상단은 너무 멀다")
           theme=dark + richColors → class-planner amber theme과 자연스러움 */}
-      <Toaster
-        theme="dark"
-        richColors
-        position="bottom-center"
-        toastOptions={{
-          style: {
-            fontFamily: "var(--font-geist-sans, inherit)",
-            fontSize: "13px",
-            borderRadius: "8px",
-          },
-          className: "class-planner-toast",
-        }}
-      />
-      <div aria-live="polite" aria-atomic="true" id="app-live-region" className="sr-only" />
-    </ThemeProvider>
+        <Toaster
+          theme="dark"
+          richColors
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              fontFamily: "var(--font-geist-sans, inherit)",
+              fontSize: "13px",
+              borderRadius: "8px",
+            },
+            className: "class-planner-toast",
+          }}
+        />
+        <div aria-live="polite" aria-atomic="true" id="app-live-region" className="sr-only" />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

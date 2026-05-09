@@ -3,16 +3,12 @@ import { renderHook, act } from "@testing-library/react";
 
 // --- Mocks ---------------------------------------------------------------
 
-const { mockGetSession } = vi.hoisted(() => ({
-  mockGetSession: vi.fn(),
+const { mockUseAuth } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
 }));
 
-vi.mock("@/utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getSession: mockGetSession,
-    },
-  },
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: mockUseAuth,
 }));
 
 const mockFetch = vi.fn();
@@ -28,8 +24,10 @@ describe("useMyTeacher", () => {
   });
 
   it("연결된 강사가 있으면 teacherId/Name/Color를 반환한다", async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: "user-member" } } },
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-member" } },
+      user: { id: "user-member" },
+      loading: false,
     });
     mockFetch.mockResolvedValue({
       ok: true,
@@ -60,8 +58,10 @@ describe("useMyTeacher", () => {
   });
 
   it("연결된 강사가 없으면 null을 반환한다", async () => {
-    mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: "user-owner" } } },
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-owner" } },
+      user: { id: "user-owner" },
+      loading: false,
     });
     mockFetch.mockResolvedValue({
       ok: true,
@@ -91,7 +91,7 @@ describe("useMyTeacher", () => {
   });
 
   it("로딩 중에는 isLoading=true이다", () => {
-    mockGetSession.mockReturnValue(new Promise(() => {})); // never resolves
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: true }); // still loading
 
     const { result } = renderHook(() => useMyTeacher());
 

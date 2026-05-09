@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
-import { supabase } from "../../utils/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
@@ -38,7 +38,8 @@ interface ShareToken {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user?.id ?? null;
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
   const [academyId, setAcademyId] = useState<string | null>(null);
@@ -76,14 +77,11 @@ export default function SettingsPage() {
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.replace("/login");
-        return;
-      }
-      setUserId(session.user.id);
-    });
-  }, [router]);
+    if (authLoading) return;
+    if (!session) {
+      router.replace("/login");
+    }
+  }, [authLoading, session, router]);
 
   const fetchData = useCallback(async () => {
     if (!userId) return;

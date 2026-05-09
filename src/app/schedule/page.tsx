@@ -65,7 +65,7 @@ import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
 import type { GroupSessionData } from "../../types/scheduleTypes";
-import { supabase } from "../../utils/supabaseClient";
+import { useAuth } from "../../contexts/AuthContext";
 import { useMyRole } from "../../hooks/useMyRole";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { preflightCheck } from "@/lib/pdf/preflightCheck";
@@ -224,16 +224,9 @@ function SchedulePageContent(): JSX.Element {
   const { startApiCall, endApiCall, startInteraction, endInteraction } =
     usePerformanceMonitoring();
 
-  // ================================
-  // 🎯 사용자 ID (useStudentFilter 스코프 키에 필요)
-  // ================================
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id);
-    });
-  }, []);
+  // 사용자 ID — AuthContext에서 단일 source.
+  const { user: authUser } = useAuth();
+  const userId = authUser?.id ?? null;
 
   // Role-based UI gate — member role gets read-only schedule
   const { canManage, adminCount } = useMyRole();
@@ -704,28 +697,14 @@ function SchedulePageContent(): JSX.Element {
     [deleteSession],
   );
 
-  // 🆕 로그인 상태 감지 및 로그아웃 시 정리
+  // 로그인 상태 감지 — AuthContext의 user/session으로 자동 반영.
   useEffect(() => {
-    const checkAuthState = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          logger.debug("로그아웃 상태 감지 - 컴포넌트 정리");
-          // 로그아웃 상태에서는 불필요한 로그 방지
-          return;
-        }
-
-        logger.debug("로그인 상태 확인됨", { email: user.email });
-      } catch (error) {
-        logger.error("인증 상태 확인 실패", undefined, error as Error);
-      }
-    };
-
-    checkAuthState();
-  }, []);
+    if (!authUser) {
+      logger.debug("로그아웃 상태 감지 - 컴포넌트 정리");
+      return;
+    }
+    logger.debug("로그인 상태 확인됨", { email: authUser.email });
+  }, [authUser]);
 
   // 현재 주 세션만 — 주간/일별 그리드 표시 + EmptyWeekState 조건에 사용
   const weekFilteredSessions = useMemo(

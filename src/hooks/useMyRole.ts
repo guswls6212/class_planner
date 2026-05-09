@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface AcademyMembership {
   id: string;
@@ -54,15 +54,15 @@ export function useMyRole(): CurrentMemberData {
     adminCount: 0,
   });
 
+  const { session, loading: authLoading } = useAuth();
+
   useEffect(() => {
+    if (authLoading) return;
+
     let cancelled = false;
 
     async function load() {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
         if (!session) {
           if (!cancelled) {
             // Anonymous-First: no session means the user is not a member of any
@@ -187,7 +187,7 @@ export function useMyRole(): CurrentMemberData {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authLoading, session]);
 
   return data;
 }
