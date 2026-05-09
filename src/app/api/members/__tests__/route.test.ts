@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
-const { mockMembership, mockFrom, mockGetUserById } = vi.hoisted(() => ({
+const { mockMembership, mockFrom, mockListUsers } = vi.hoisted(() => ({
   mockMembership: vi.fn(),
   mockFrom: vi.fn(),
-  mockGetUserById: vi.fn(),
+  mockListUsers: vi.fn(),
 }));
 
 vi.mock("@/lib/resolveAcademyMembership", () => ({
@@ -19,7 +19,8 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
     from: mockFrom,
     auth: {
       admin: {
-        getUserById: mockGetUserById,
+        // PR #B-3-2: getUserById N+1 → listUsers 1회 batch
+        listUsers: mockListUsers,
       },
     },
   }),
@@ -60,9 +61,14 @@ describe("GET /api/members", () => {
         }),
       };
     });
-    mockGetUserById
-      .mockResolvedValueOnce({ data: { user: { email: "owner@test.com", user_metadata: { full_name: "김원장" } } } })
-      .mockResolvedValueOnce({ data: { user: { email: "admin@test.com", user_metadata: { full_name: "박강사" } } } });
+    mockListUsers.mockResolvedValue({
+      data: {
+        users: [
+          { id: "u1", email: "owner@test.com", user_metadata: { full_name: "김원장" } },
+          { id: "u2", email: "admin@test.com", user_metadata: { full_name: "박강사" } },
+        ],
+      },
+    });
 
     const req = new NextRequest("http://localhost/api/members?userId=u1");
     const res = await GET(req);
@@ -112,9 +118,14 @@ describe("GET /api/members", () => {
         }),
       };
     });
-    mockGetUserById
-      .mockResolvedValueOnce({ data: { user: { email: "owner@test.com", user_metadata: { full_name: "김원장" } } } })
-      .mockResolvedValueOnce({ data: { user: { email: "teacher@test.com", user_metadata: { full_name: "김강사" } } } });
+    mockListUsers.mockResolvedValue({
+      data: {
+        users: [
+          { id: "u1", email: "owner@test.com", user_metadata: { full_name: "김원장" } },
+          { id: "u2", email: "teacher@test.com", user_metadata: { full_name: "김강사" } },
+        ],
+      },
+    });
 
     const req = new NextRequest("http://localhost/api/members?userId=u1");
     const res = await GET(req);
@@ -166,7 +177,7 @@ describe("GET /api/members", () => {
         }),
       };
     });
-    mockGetUserById.mockRejectedValue(new Error("admin API 실패"));
+    mockListUsers.mockRejectedValue(new Error("admin API 실패"));
 
     const req = new NextRequest("http://localhost/api/members?userId=u1");
     const res = await GET(req);

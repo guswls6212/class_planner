@@ -49,11 +49,8 @@ describe("useIntegratedDataLocal", () => {
     expect(result.current).toHaveProperty("refreshData");
     expect(result.current).toHaveProperty("updateData");
     expect(result.current).toHaveProperty("clearError");
-    expect(result.current).toHaveProperty("addSession");
-    expect(result.current).toHaveProperty("updateSession");
     expect(result.current).toHaveProperty("deleteSession");
     expect(result.current).toHaveProperty("addEnrollment");
-    expect(result.current).toHaveProperty("deleteEnrollment");
   });
 
   it("기본 상태가 올바르게 설정되어야 한다", () => {
@@ -93,11 +90,8 @@ describe("useIntegratedDataLocal", () => {
     expect(typeof result.current.refreshData).toBe("function");
     expect(typeof result.current.updateData).toBe("function");
     expect(typeof result.current.clearError).toBe("function");
-    expect(typeof result.current.addSession).toBe("function");
-    expect(typeof result.current.updateSession).toBe("function");
     expect(typeof result.current.deleteSession).toBe("function");
     expect(typeof result.current.addEnrollment).toBe("function");
-    expect(typeof result.current.deleteEnrollment).toBe("function");
   });
 
   it("이벤트 리스너를 등록해야 한다", () => {

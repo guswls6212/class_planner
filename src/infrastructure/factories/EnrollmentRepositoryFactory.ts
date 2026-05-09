@@ -22,6 +22,10 @@ class MockEnrollmentRepository implements EnrollmentRepository {
     return [];
   }
 
+  async getByStudentId(_studentId: string, _academyId: string): Promise<any[]> {
+    return [];
+  }
+
   async getById(_id: string): Promise<any | null> {
     return null;
   }

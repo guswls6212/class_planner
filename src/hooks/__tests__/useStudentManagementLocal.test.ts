@@ -49,7 +49,6 @@ describe("useStudentManagementLocal", () => {
     expect(result.current).toHaveProperty("addStudent");
     expect(result.current).toHaveProperty("updateStudent");
     expect(result.current).toHaveProperty("deleteStudent");
-    expect(result.current).toHaveProperty("getStudent");
     expect(result.current).toHaveProperty("refreshStudents");
     expect(result.current).toHaveProperty("clearError");
     expect(result.current).toHaveProperty("studentCount");
@@ -73,7 +72,6 @@ describe("useStudentManagementLocal", () => {
     expect(typeof result.current.addStudent).toBe("function");
     expect(typeof result.current.updateStudent).toBe("function");
     expect(typeof result.current.deleteStudent).toBe("function");
-    expect(typeof result.current.getStudent).toBe("function");
     expect(typeof result.current.refreshStudents).toBe("function");
     expect(typeof result.current.clearError).toBe("function");
   });

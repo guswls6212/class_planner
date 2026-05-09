@@ -52,6 +52,11 @@ class MockStudentRepository implements StudentRepository {
     ];
   }
 
+  async getAllPaginated(): Promise<{ items: any[]; nextCursor: string | null }> {
+    const items = await this.getAll();
+    return { items, nextCursor: null };
+  }
+
   async getById(id: string): Promise<any | null> {
     if (id === "550e8400-e29b-41d4-a716-446655440001") {
       return {

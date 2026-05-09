@@ -79,6 +79,14 @@ if (typeof window !== "undefined") {
   });
 }
 
+/**
+ * Test-only: in-module cache 전체 비우기.
+ * 단위 테스트의 beforeEach에서 호출. production 코드에서 사용 금지.
+ */
+export function __resetCacheForTest(): void {
+  dataCache.clear();
+}
+
 function migrateUnkeyedStorage(): void {
   if (typeof window === "undefined") return;
   const legacy = localStorage.getItem("classPlannerData");

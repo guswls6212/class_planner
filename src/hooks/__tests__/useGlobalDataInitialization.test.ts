@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useGlobalDataInitialization } from "../useGlobalDataInitialization";
 import { supabase } from "../../utils/supabaseClient";
 import { checkLoginDataConflict } from "../../lib/auth/handleLoginDataMigration";
+import { __resetCacheForTest } from "../../lib/localStorageCrud";
 
 // Mock dependencies
 vi.mock("../../lib/logger", () => ({
@@ -202,7 +203,8 @@ describe("로그인 사용자 — 충돌 없음", () => {
   });
 
   it("서버에서 받은 teachers가 localStorage에 저장된다 (빈 배열 덮어쓰기 버그 방지)", async () => {
-    const serverTeachers = [{ id: "t1", name: "김선생", userId: "user-123" }];
+    // PR #B-3 이후 server-side nested join으로 subjectIds가 응답에 포함됨.
+    const serverTeachers = [{ id: "t1", name: "김선생", userId: "user-123", subjectIds: [] }];
 
     global.fetch = vi.fn().mockImplementation((url: string) => {
       const data = url.includes("/api/teachers") ? serverTeachers : [];
@@ -220,8 +222,7 @@ describe("로그인 사용자 — 충돌 없음", () => {
     expect(dataCall).toBeDefined();
 
     const saved = JSON.parse(dataCall![1]);
-    // teacher-subjects fetch가 빈 배열 반환 → subjectIds: [] 가 hydration되는 것이 올바른 동작
-    expect(saved.teachers).toEqual([{ ...serverTeachers[0], subjectIds: [] }]);
+    expect(saved.teachers).toEqual([serverTeachers[0]]);
   });
 });
 
@@ -370,6 +371,9 @@ describe("로그인 사용자 — 로컬-서버 lastModified 동기화 (Phase 1)
     localStorageMock.getItem.mockClear();
     localStorageMock.setItem.mockClear();
     localStorageMock.removeItem.mockClear();
+
+    // module-level cache 비우기 — 이전 test의 stale data가 Phase 1 비교에 영향 차단
+    __resetCacheForTest();
 
     vi.mocked(supabase.auth.getSession).mockResolvedValue({
       data: { session: { user: { id: USER_ID, email: "test@test.com" } } },

@@ -80,18 +80,19 @@ describe("SubjectApplicationService", () => {
       );
     });
 
-    it("중복 이름 추가 시 SUBJECT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
-      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([
-        Subject.create("수학", "#FF0000"),
-      ]);
+    it("중복 이름 추가 시 idempotent — 기존 과목 반환 (throw 안 함)", async () => {
+      // Idempotent get-or-create. localStorage-server sync race에서 중복 row 차단.
+      const existing = Subject.create("수학", "#FF0000");
+      vi.spyOn(mockSubjectRepository, "getAll").mockResolvedValue([existing]);
+      const createSpy = vi.spyOn(mockSubjectRepository, "create");
 
-      const error = await service
-        .addSubject({ name: "수학", color: "#FF0000" }, "test-academy-id")
-        .catch((e) => e);
+      const result = await service.addSubject(
+        { name: "수학", color: "#FF0000" },
+        "test-academy-id"
+      );
 
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe("SUBJECT_NAME_DUPLICATE");
-      expect(error.statusHint).toBe(409);
+      expect(result).toBe(existing);
+      expect(createSpy).not.toHaveBeenCalled();
     });
   });
 
