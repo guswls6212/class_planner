@@ -26,6 +26,14 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import {
+  PENDING_DELETE_TTL_MS,
+  addPendingDelete,
+  getActivePendingDeletes,
+  getExpiredPendingDeletes,
+  isPendingDelete,
+  removePendingDelete,
+} from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import type { Teacher, TeacherRole } from "../lib/planner";
 
@@ -104,6 +112,47 @@ export const useTeacherManagementLocal =
     useEffect(() => {
       loadTeachersFromLocal();
     }, [loadTeachersFromLocal]);
+
+    // Pending delete recovery — 새로고침/탭 재진입 시 진행 중이던 5초 deferred-commit
+    // 복원 (#297 학생 패턴 동일).
+    useEffect(() => {
+      if (typeof window === "undefined") return;
+      const userId = localStorage.getItem("supabase_user_id");
+      const now = Date.now();
+
+      const commitOne = (id: string) => {
+        syncTeacherDelete(userId, id);
+        removePendingDelete("teacher", id);
+      };
+
+      for (const p of getExpiredPendingDeletes(now)) {
+        if (p.entityType !== "teacher") continue;
+        commitOne(p.id);
+        logger.info(
+          "useTeacherManagementLocal - expired pending delete recovered",
+          { id: p.id }
+        );
+      }
+
+      const recoveredTimers: ReturnType<typeof setTimeout>[] = [];
+      for (const p of getActivePendingDeletes(now)) {
+        if (p.entityType !== "teacher") continue;
+        const remaining = Math.max(0, p.deadline - now);
+        const timer = setTimeout(() => {
+          if (!isPendingDelete("teacher", p.id)) return;
+          commitOne(p.id);
+          logger.info(
+            "useTeacherManagementLocal - active pending delete recovered",
+            { id: p.id }
+          );
+        }, remaining);
+        recoveredTimers.push(timer);
+      }
+
+      return () => {
+        for (const t of recoveredTimers) clearTimeout(t);
+      };
+    }, []);
 
     useEffect(() => {
       const handleStorageChange = () => {
@@ -284,14 +333,19 @@ export const useTeacherManagementLocal =
           if (result.success) {
             loadTeachersFromLocal();
 
-            // 3) Defer server commit
+            // 3) Defer server commit. pendingDeletes에 영속화하여 새로고침/탭 재진입
+            // 시 init fetch가 같은 강사를 다시 끌어오지 않도록 + recovery hook이
+            // timer를 다시 잡아 commit을 마침. (학생/과목 #297/#299와 동일 패턴)
             const userId = localStorage.getItem("supabase_user_id");
+            const deadline = Date.now() + PENDING_DELETE_TTL_MS;
+            addPendingDelete({ entityType: "teacher", id, deadline });
             let cancelled = false;
             const commitTimer = setTimeout(() => {
               if (cancelled) return;
               syncTeacherDelete(userId, id);
+              removePendingDelete("teacher", id);
               logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
-            }, 5000);
+            }, PENDING_DELETE_TTL_MS);
 
             // 4) Undo toast
             showUndoToast({
@@ -299,6 +353,7 @@ export const useTeacherManagementLocal =
               onUndo: () => {
                 cancelled = true;
                 clearTimeout(commitTimer);
+                removePendingDelete("teacher", id);
 
                 const dataNow = getClassPlannerData();
                 if (!dataNow.teachers.find((t) => t.id === teacherBefore.id)) {

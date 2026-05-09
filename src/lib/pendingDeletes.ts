@@ -13,7 +13,11 @@ import { logger } from "./logger";
 
 export const PENDING_DELETE_TTL_MS = 5_000;
 
-export type PendingDeleteEntityType = "student" | "subject";
+export type PendingDeleteEntityType =
+  | "student"
+  | "subject"
+  | "teacher"
+  | "session";
 
 export interface PendingDelete {
   entityType: PendingDeleteEntityType;

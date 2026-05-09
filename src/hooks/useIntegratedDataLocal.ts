@@ -31,7 +31,15 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
-import { getPendingDeleteIds } from "../lib/pendingDeletes";
+import {
+  PENDING_DELETE_TTL_MS,
+  addPendingDelete,
+  getActivePendingDeletes,
+  getExpiredPendingDeletes,
+  getPendingDeleteIds,
+  isPendingDelete,
+  removePendingDelete,
+} from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
 
@@ -134,6 +142,47 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     loadDataFromLocal();
   }, [loadDataFromLocal]);
 
+  // Pending delete recovery — session 측 (학생/과목/강사 동일 패턴, deferred-commit
+  // 진행 중 새로고침 시 init fetch 재흡수 차단 + 남은 시간 timer 재등록).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const userId = localStorage.getItem("supabase_user_id");
+    const now = Date.now();
+
+    const commitOne = (id: string) => {
+      syncSessionDelete(userId, id);
+      removePendingDelete("session", id);
+    };
+
+    for (const p of getExpiredPendingDeletes(now)) {
+      if (p.entityType !== "session") continue;
+      commitOne(p.id);
+      logger.info(
+        "useIntegratedDataLocal - expired session pending delete recovered",
+        { id: p.id }
+      );
+    }
+
+    const recoveredTimers: ReturnType<typeof setTimeout>[] = [];
+    for (const p of getActivePendingDeletes(now)) {
+      if (p.entityType !== "session") continue;
+      const remaining = Math.max(0, p.deadline - now);
+      const timer = setTimeout(() => {
+        if (!isPendingDelete("session", p.id)) return;
+        commitOne(p.id);
+        logger.info(
+          "useIntegratedDataLocal - active session pending delete recovered",
+          { id: p.id }
+        );
+      }, remaining);
+      recoveredTimers.push(timer);
+    }
+
+    return () => {
+      for (const t of recoveredTimers) clearTimeout(t);
+    };
+  }, []);
+
   // localStorage 변경 이벤트 리스너 (다른 탭 동기화)
   useEffect(() => {
     const handleStorageChange = () => {
@@ -222,7 +271,13 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           teachersRes.value.data.length > 0 &&
           (!localData.teachers || localData.teachers.length === 0)
         ) {
-          updates.teachers = teachersRes.value.data as Teacher[];
+          // pendingDeletes 필터 — 학생/과목과 동일
+          const pendingTeacherDeleteIds = getPendingDeleteIds("teacher");
+          const fetched = teachersRes.value.data as Teacher[];
+          updates.teachers =
+            pendingTeacherDeleteIds.size > 0
+              ? fetched.filter((t) => !pendingTeacherDeleteIds.has(t.id))
+              : fetched;
         }
 
         if (Object.keys(updates).length === 0) {
@@ -416,14 +471,19 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           // UI 즉시 업데이트
           loadDataFromLocal();
 
-          // 3) Defer server commit by 5s (cancellable via undo)
+          // 3) Defer server commit. pendingDeletes에 영속화 — 새로고침/탭 재진입 시
+          // init fetch가 같은 세션을 다시 끌어오지 않도록 + recovery hook이 timer를
+          // 다시 잡아 commit을 마침. (학생/과목/강사 #297/#299/이번 PR과 동일 패턴)
           const userId = localStorage.getItem("supabase_user_id");
+          const deadline = Date.now() + PENDING_DELETE_TTL_MS;
+          addPendingDelete({ entityType: "session", id, deadline });
           let cancelled = false;
           const commitTimer = setTimeout(() => {
             if (cancelled) return;
             syncSessionDelete(userId, id);
+            removePendingDelete("session", id);
             logger.info("useIntegratedDataLocal - 세션 삭제 commit", { id });
-          }, 5000);
+          }, PENDING_DELETE_TTL_MS);
 
           // 4) Undo toast (드래그-삭제는 없음 — 명시 클릭만 도착하므로 안전)
           showUndoToast({
@@ -431,6 +491,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
             onUndo: () => {
               cancelled = true;
               clearTimeout(commitTimer);
+              removePendingDelete("session", id);
 
               const dataNow = getClassPlannerData();
               if (!dataNow.sessions.find((s) => s.id === sessionBefore.id)) {
@@ -489,16 +550,24 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
       loadDataFromLocal();
 
       const userId = localStorage.getItem("supabase_user_id");
+      // bulk delete TTL은 7초(durationMs와 동일). pendingDeletes에 모든 deleted id를
+      // 영속화 — 새로고침 시 init fetch가 재끌어오는 것 차단 + recovery에서 처리.
+      const BULK_TTL_MS = 7000;
+      const bulkDeadline = Date.now() + BULK_TTL_MS;
+      for (const s of deleted) {
+        addPendingDelete({ entityType: "session", id: s.id, deadline: bulkDeadline });
+      }
       let cancelled = false;
       const commitTimer = setTimeout(() => {
         if (cancelled) return;
         for (const s of deleted) {
           syncSessionDelete(userId, s.id);
+          removePendingDelete("session", s.id);
         }
         logger.info("useIntegratedDataLocal - 일괄 삭제 commit", {
           count: deleted.length,
         });
-      }, 7000);
+      }, BULK_TTL_MS);
 
       showBulkUndoToast({
         count: deleted.length,
@@ -506,6 +575,9 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         onUndo: () => {
           cancelled = true;
           clearTimeout(commitTimer);
+          for (const s of deleted) {
+            removePendingDelete("session", s.id);
+          }
           restoreBulkDeletedSessions(deleted);
           loadDataFromLocal();
           showToast("success", `${deleted.length}개 수업 복원됨`);
@@ -513,7 +585,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
             count: deleted.length,
           });
         },
-        durationMs: 7000,
+        durationMs: BULK_TTL_MS,
       });
 
       if (notFound.length > 0) {
