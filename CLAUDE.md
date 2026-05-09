@@ -60,6 +60,7 @@
 - **AuthContext 단일화 (PR #313):** `useAuth()` 훅 단일 source. 페이지/컴포넌트별 `supabase.auth.getSession()` 직접 호출 금지 (보류 3곳 외).
 - **useLocal 훅 우선:** 신규 기능은 반드시 `useXxxLocal` 훅 사용 (레거시 API 기반 훅 사용 금지)
 - **새 sync 흐름 추가 시 fire-and-forget vs await 점검 의무:** `docs/adr/012-fire-and-forget-vs-await-for-cud.md` 체크리스트 통과 후에만 도입 결정.
+- **anonymous→로그인 마이그레이션 entity 누락 가드 (ADR-013):** `src/lib/auth/fullDataMigration.ts`는 user-facing entity 전체(students/subjects/teachers/enrollments/sessions) 포함 의무. 신규 entity 추가 시 mig Step + `MigrationSyncResult.syncedCounts` 동시 갱신. session-teacher 같은 cross-entity 연결은 reconcile 책임이 마이그레이션에 있다 (PR #322 사고).
 
 ## 코딩 규칙
 - TypeScript strict mode 준수
