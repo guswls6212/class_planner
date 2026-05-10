@@ -1,7 +1,11 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import {
+  validateShareTokenLabel,
+  validateExpiresInDays,
+} from "@/lib/validation/profileSchemas";
 import {
   PAGINATION_DEFAULT_LIMIT,
   decodeCursor,
@@ -118,8 +122,15 @@ export async function POST(request: NextRequest) {
       teacherId?: string;
     };
 
+    // Phase 6: server-side validation — label 길이 + expiresInDays 범위
+    const lv = validateShareTokenLabel(label);
+    if (!lv.ok) throw new AppError(lv.code, { statusHint: 400 });
+    const days = expiresInDays ?? 30;
+    const ev = validateExpiresInDays(days);
+    if (!ev.ok) throw new AppError(ev.code, { statusHint: 400 });
+
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + (expiresInDays ?? 30));
+    expiresAt.setDate(expiresAt.getDate() + days);
 
     const client = getServiceRoleClient();
     const { data, error } = await client

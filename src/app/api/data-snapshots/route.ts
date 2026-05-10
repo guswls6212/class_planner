@@ -2,6 +2,7 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateSnapshotDescription } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 type SnapshotType = "auto_template" | "before_conflict" | "manual";
@@ -115,6 +116,10 @@ export async function POST(request: NextRequest) {
     if (!payload) {
       throw new AppError("SNAPSHOT_PAYLOAD_REQUIRED", { statusHint: 400 });
     }
+
+    // Phase 6: server-side validation — description 길이
+    const dv = validateSnapshotDescription(description);
+    if (!dv.ok) throw new AppError(dv.code, { statusHint: 400 });
 
     const client = getServiceRoleClient();
 
