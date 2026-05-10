@@ -316,12 +316,19 @@ export const addStudentToLocal = (
       ...(options?.phone !== undefined && { phone: options.phone }),
     };
 
-    // 중복 이름 검사
-    const isDuplicate = data.students.some((s) => s.name === newStudent.name);
+    // 중복 검사 (UAT 2026-05-10): 이름+성별+생년월일 모두 일치 시에만 동일인.
+    // 한 필드라도 다르면 동명이인 → 새 학생 등록 허용. server idempotent와 일관.
+    const norm = (v: string | null | undefined) => (v ?? "").trim();
+    const isDuplicate = data.students.some(
+      (s) =>
+        norm(s.name).toLowerCase() === norm(newStudent.name).toLowerCase() &&
+        norm(s.gender) === norm(newStudent.gender) &&
+        norm(s.birthDate) === norm(newStudent.birthDate),
+    );
     if (isDuplicate) {
       return {
         success: false,
-        error: "이미 같은 이름의 학생이 존재합니다.",
+        error: "이미 동일한 학생(이름·성별·생년월일 일치)이 존재합니다.",
       };
     }
 
@@ -376,15 +383,27 @@ export const updateStudentInLocal = (
       };
     }
 
-    // 중복 이름 검사 (자기 자신 제외)
-    if (updates.name) {
+    // 중복 검사 — 변경 후 식별 조합이 다른 학생과 충돌하는지 (UAT 2026-05-10).
+    {
+      const current = data.students[studentIndex];
+      const merged = {
+        name: updates.name !== undefined ? updates.name.trim() : current.name,
+        gender: updates.gender !== undefined ? updates.gender : current.gender,
+        birthDate:
+          updates.birthDate !== undefined ? updates.birthDate : current.birthDate,
+      };
+      const norm = (v: string | null | undefined) => (v ?? "").trim();
       const isDuplicate = data.students.some(
-        (s, index) => s.name === updates.name!.trim() && index !== studentIndex
+        (s, index) =>
+          index !== studentIndex &&
+          norm(s.name).toLowerCase() === norm(merged.name).toLowerCase() &&
+          norm(s.gender) === norm(merged.gender) &&
+          norm(s.birthDate) === norm(merged.birthDate),
       );
       if (isDuplicate) {
         return {
           success: false,
-          error: "이미 같은 이름의 학생이 존재합니다.",
+          error: "이미 동일한 학생(이름·성별·생년월일 일치)이 존재합니다.",
         };
       }
     }
@@ -559,8 +578,10 @@ export const addSubjectToLocal = (
       color: color,
     };
 
-    // 중복 이름 검사
-    const isDuplicate = data.subjects.some((s) => s.name === newSubject.name);
+    // 중복 검사 (UAT 2026-05-10): lowercase trim 일치 (server 정책 일관).
+    const isDuplicate = data.subjects.some(
+      (s) => s.name.trim().toLowerCase() === newSubject.name.trim().toLowerCase(),
+    );
     if (isDuplicate) {
       return {
         success: false,
@@ -620,10 +641,12 @@ export const updateSubjectInLocal = (
       };
     }
 
-    // 중복 이름 검사 (자기 자신 제외)
+    // 중복 검사 (자기 자신 제외) — lowercase trim 일치
     if (updates.name) {
+      const target = updates.name.trim().toLowerCase();
       const isDuplicate = data.subjects.some(
-        (s, index) => s.name === updates.name!.trim() && index !== subjectIndex
+        (s, index) =>
+          index !== subjectIndex && s.name.trim().toLowerCase() === target,
       );
       if (isDuplicate) {
         return {
@@ -789,13 +812,18 @@ export const addTeacherToLocal = (
   try {
     const data = getClassPlannerData();
 
+    // 중복 검사 (UAT 2026-05-10): 이름+이메일+전화 모두 일치 시에만 동일인.
+    const normT = (v: string | null | undefined) => (v ?? "").trim();
     const isDuplicate = data.teachers.some(
-      (t) => t.name.trim().toLowerCase() === name.trim().toLowerCase()
+      (t) =>
+        normT(t.name).toLowerCase() === normT(name).toLowerCase() &&
+        normT(t.email) === normT(profile?.email) &&
+        normT(t.phone) === normT(profile?.phone),
     );
     if (isDuplicate) {
       return {
         success: false,
-        error: "이미 같은 이름의 강사가 존재합니다.",
+        error: "이미 동일한 강사(이름·이메일·전화 일치)가 존재합니다.",
       };
     }
 
@@ -855,14 +883,27 @@ export const updateTeacherInLocal = (
       return { success: false, error: "강사를 찾을 수 없습니다." };
     }
 
-    if (updates.name) {
+    // 중복 검사 — 변경 후 식별 조합이 다른 강사와 충돌하는지 (UAT 2026-05-10).
+    {
+      const current = data.teachers[teacherIndex];
+      const normT = (v: string | null | undefined) => (v ?? "").trim();
+      const merged = {
+        name: updates.name !== undefined ? updates.name : current.name,
+        email: updates.email !== undefined ? updates.email : current.email,
+        phone: updates.phone !== undefined ? updates.phone : current.phone,
+      };
       const isDuplicate = data.teachers.some(
         (t, index) =>
-          t.name.trim().toLowerCase() === updates.name!.trim().toLowerCase() &&
-          index !== teacherIndex
+          index !== teacherIndex &&
+          normT(t.name).toLowerCase() === normT(merged.name).toLowerCase() &&
+          normT(t.email) === normT(merged.email) &&
+          normT(t.phone) === normT(merged.phone),
       );
       if (isDuplicate) {
-        return { success: false, error: "이미 같은 이름의 강사가 존재합니다." };
+        return {
+          success: false,
+          error: "이미 동일한 강사(이름·이메일·전화 일치)가 존재합니다.",
+        };
       }
     }
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
 import { SubjectDetailPanel } from "./SubjectDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
-import { showSuccess, showActionToast } from "@/lib/toast";
+import { showSuccess } from "@/lib/toast";
 
 interface SubjectsPageLayoutProps {
   subjects: Subject[];
@@ -36,20 +36,17 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
     setShowDetail(true);
   };
 
-  const handleAdd = (trimmed: string) => {
-    // UAT 2026-05-10: 검색 + Enter 시 사용자 피드백 (학생 페이지와 동일 패턴).
+  const handleAdd = async (trimmed: string) => {
+    // UAT 2026-05-10 (사용자 결정): Enter 동작
+    // 과목은 동명이인 개념 없음 (이름 lowercase 일치 = 진짜 중복) — 별도 모달 X.
+    // - 0건 → 단순 추가 (즉시) + 성공 토스트
+    // - 1건+ → 첫 결과 select + 안내 토스트
     const matched = subjects.filter((s) =>
       s.name.toLowerCase().includes(trimmed.toLowerCase()),
     );
     if (matched.length === 0) {
-      showActionToast({
-        message: `'${trimmed}' 과목이 없습니다. 새로 추가할까요?`,
-        actionLabel: "새로 추가",
-        onAction: async () => {
-          await props.onAddSubject(trimmed, DEFAULT_COLOR);
-          showSuccess(`'${trimmed}' 과목을 추가했습니다.`);
-        },
-      });
+      await props.onAddSubject(trimmed, DEFAULT_COLOR);
+      showSuccess(`'${trimmed}' 과목을 추가했습니다.`);
     } else {
       handleSelect(matched[0].id);
       showSuccess(

@@ -6,7 +6,9 @@ import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import TeacherAddDetailModal from "@/components/molecules/TeacherAddDetailModal";
-import { showSuccess, showActionToast } from "@/lib/toast";
+import { showSuccess, showToast } from "@/lib/toast";
+
+const showInfo = (message: string) => showToast("info", message);
 
 interface TeachersPageLayoutProps {
   teachers: Teacher[];
@@ -46,6 +48,7 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
+  const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
   const filtered = teachers.filter((t) => t.name.includes(query));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
@@ -73,28 +76,21 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
     setShowDetail(true);
   };
 
-  const handleAdd = (trimmed: string) => {
-    // UAT 2026-05-10: 검색 + Enter 시 사용자 피드백 (학생/과목 페이지 동일 패턴).
-    // client 단순 이름 비교 제거 — 동명이인(같은 이름 다른 이메일/전화) 등록 허용.
-    // 진짜 중복(이름+이메일+전화 모두 일치)은 server idempotent 처리.
+  const handleAdd = async (trimmed: string) => {
+    // UAT 2026-05-10 (사용자 결정): Enter 동작
+    // - 0건 → 단순 추가 (이름만, 즉시) + 성공 토스트
+    // - 1건+ → 상세등록 모달 (이름 prefill) + 안내 토스트 — 동명이인은 이메일/전화로 식별
     const matched = teachers.filter((t) =>
       t.name.toLowerCase().includes(trimmed.toLowerCase()),
     );
     if (matched.length === 0) {
-      showActionToast({
-        message: `'${trimmed}' 강사가 없습니다. 새로 추가할까요?`,
-        actionLabel: "새로 추가",
-        onAction: async () => {
-          const success = await props.onAddTeacher(trimmed, getNextColor());
-          if (success) showSuccess(`'${trimmed}' 강사를 추가했습니다.`);
-        },
-      });
+      const success = await props.onAddTeacher(trimmed, getNextColor());
+      if (success) showSuccess(`'${trimmed}' 강사를 추가했습니다.`);
     } else {
-      handleSelect(matched[0].id);
-      showSuccess(
-        matched.length === 1
-          ? `'${matched[0].name}' 강사를 선택했습니다.`
-          : `'${trimmed}'와(과) 일치하는 강사 ${matched.length}명 중 첫 번째를 선택했습니다.`,
+      setAddDetailPrefillName(trimmed);
+      setIsAddDetailOpen(true);
+      showInfo(
+        `'${trimmed}' 이름의 강사가 ${matched.length}명 있습니다. 이메일/전화로 동명이인을 구분해주세요.`,
       );
     }
     setQuery("");
@@ -226,9 +222,13 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
 
       <TeacherAddDetailModal
         isOpen={isAddDetailOpen}
-        onClose={() => setIsAddDetailOpen(false)}
+        onClose={() => {
+          setIsAddDetailOpen(false);
+          setAddDetailPrefillName("");
+        }}
         onSubmit={handleAddDetail}
         existingNames={teachers.map((t) => t.name)}
+        defaultName={addDetailPrefillName}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import {
   NAME_MAX_LENGTH,
@@ -16,6 +16,8 @@ interface TeacherAddDetailModalProps {
     profile: { email?: string; phone?: string },
   ) => void;
   existingNames: string[];
+  /** 모달 열릴 때 이름 prefill (검색창 + Enter로 동명이인 등록 진입 시 사용). */
+  defaultName?: string;
 }
 
 /**
@@ -32,6 +34,7 @@ export default function TeacherAddDetailModal({
   onClose,
   onSubmit,
   existingNames,
+  defaultName,
 }: TeacherAddDetailModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,6 +42,15 @@ export default function TeacherAddDetailModal({
   const [errMsg, setErrMsg] = useState("");
 
   const { containerRef } = useModalA11y({ isOpen, onClose });
+
+  useEffect(() => {
+    if (isOpen) {
+      setName((defaultName ?? "").slice(0, NAME_MAX_LENGTH));
+      setEmail("");
+      setPhone("");
+      setErrMsg("");
+    }
+  }, [isOpen, defaultName]);
 
   if (!isOpen) return null;
 
