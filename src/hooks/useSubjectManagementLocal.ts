@@ -240,13 +240,16 @@ export const useSubjectManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "과목 추가 실패");
+            const msg = result.error || "과목 추가 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "과목 추가 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useSubjectManagementLocal - 과목 추가 실패:",
             undefined,
@@ -298,13 +301,16 @@ export const useSubjectManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "과목 수정 실패");
+            const msg = result.error || "과목 수정 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "과목 수정 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useSubjectManagementLocal - 과목 수정 실패:",
             undefined,
@@ -423,13 +429,16 @@ export const useSubjectManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "과목 삭제 실패");
+            const msg = result.error || "과목 삭제 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "과목 삭제 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useSubjectManagementLocal - 과목 삭제 실패:",
             undefined,
