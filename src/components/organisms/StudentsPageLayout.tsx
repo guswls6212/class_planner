@@ -9,7 +9,9 @@ import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
 import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
-import { showSuccess, showActionToast } from "@/lib/toast";
+import { showSuccess, showToast } from "@/lib/toast";
+
+const showInfo = (message: string) => showToast("info", message);
 
 interface StudentsPageLayoutProps {
   students: Student[];
@@ -57,6 +59,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
+  const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
   const filtered = students.filter((s) => s.name.includes(query));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
@@ -86,26 +89,21 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const showCodeSkeleton = codeUiCapable && !accessCodesReady;
 
   const handleAdd = (trimmed: string) => {
-    // UAT 2026-05-10: 검색 + Enter 시 사용자 피드백 추가.
-    // 결과 0건 → CTA 토스트("새로 추가" 버튼)로 사용자 명시 액션.
-    // 결과 1건+ → 첫 결과 자동 select + 일반 토스트.
-    const matched = students.filter((s) => s.name.includes(trimmed));
+    // UAT 2026-05-10 (사용자 결정): 검색 + Enter 동작
+    // - 0건 → 단순 추가 (이름만, 즉시) + 성공 토스트
+    // - 1건+ → 상세등록 모달 (이름 prefill) + 안내 토스트 — 동명이인 식별을
+    //   위해 성별/생년월일 입력 유도. 자동 select는 부작용으로 제거.
+    const matched = students.filter((s) =>
+      s.name.toLowerCase().includes(trimmed.toLowerCase()),
+    );
     if (matched.length === 0) {
-      showActionToast({
-        message: `'${trimmed}' 학생이 없습니다. 새로 추가할까요?`,
-        actionLabel: "새로 추가",
-        onAction: () => {
-          props.onAddStudent(trimmed);
-          showSuccess(`'${trimmed}' 학생을 추가했습니다.`);
-        },
-      });
+      props.onAddStudent(trimmed);
+      showSuccess(`'${trimmed}' 학생을 추가했습니다.`);
     } else {
-      onSelectStudent(matched[0].id);
-      setShowDetail(true);
-      showSuccess(
-        matched.length === 1
-          ? `'${matched[0].name}' 학생을 선택했습니다.`
-          : `'${trimmed}'와(과) 일치하는 학생 ${matched.length}명 중 첫 번째를 선택했습니다.`,
+      setAddDetailPrefillName(trimmed);
+      setIsAddDetailOpen(true);
+      showInfo(
+        `'${trimmed}' 이름의 학생이 ${matched.length}명 있습니다. 성별/생년월일로 동명이인을 구분해주세요.`,
       );
     }
     setQuery("");
@@ -277,9 +275,13 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
 
       <StudentAddDetailModal
         isOpen={isAddDetailOpen}
-        onClose={() => setIsAddDetailOpen(false)}
+        onClose={() => {
+          setIsAddDetailOpen(false);
+          setAddDetailPrefillName("");
+        }}
         onSubmit={handleAddDetail}
         existingNames={students.map((s) => s.name)}
+        defaultName={addDetailPrefillName}
       />
     </div>
   );

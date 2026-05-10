@@ -200,11 +200,22 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(localStorageMock.setItem).toHaveBeenCalled();
     });
 
-    it("중복 이름 학생 추가 시 에러를 반환해야 한다", () => {
-      const result = addStudentToLocal("김철수"); // 이미 존재하는 이름
+    it("동명이인 등록 허용 — 이름만 같으면 동일인 X (UAT 2026-05-10)", () => {
+      // 기존 김철수는 성별/생년월일 빈 값. 새 김철수에 성별/생년월일 채워 추가 → 다른 사람 등록 허용.
+      const result = addStudentToLocal("김철수", { gender: "male", birthDate: "2010-03-15" });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("김철수");
+    });
+
+    it("이름·성별·생년월일 모두 일치 시 차단", () => {
+      // 먼저 식별 필드 모두 채운 김철수 만들기 (기존 fixture는 이름만 있음)
+      // → updateStudent로 식별 필드 채움 후, 같은 식별 필드로 새 김철수 추가 시 차단
+      updateStudentInLocal("student-1", { gender: "male", birthDate: "2010-03-15" });
+      const result = addStudentToLocal("김철수", { gender: "male", birthDate: "2010-03-15" });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("이미 같은 이름의 학생이 존재합니다.");
+      expect(result.error).toContain("이미 동일한 학생");
     });
 
     it("학생을 성공적으로 수정해야 한다", () => {
@@ -456,21 +467,25 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(result.data?.role).toBe("member");
     });
 
-    it("중복 이름 강사 추가 시 에러를 반환해야 한다", () => {
+    it("이름+이메일+전화 모두 일치 시 차단 (UAT 2026-05-10)", () => {
+      // fixture의 김강사는 email/phone 필드 미설정(빈 값). 같은 빈 값 식별로 추가 시 차단.
       const result = addTeacherToLocal("김강사", "#ff0000", null);
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
+      expect(result.error).toContain("이미 동일한 강사");
     });
 
-    it("중복 이름(공백 포함) 강사 추가 시 에러를 반환해야 한다", () => {
-      const result = addTeacherToLocal(" 김강사 ", "#ff0000", null);
+    it("이름은 같지만 이메일/전화 다르면 동명이인 등록 허용", () => {
+      const result = addTeacherToLocal("김강사", "#ff0000", null, {
+        email: "kim@academy.com",
+        phone: "010-1234-5678",
+      });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("김강사");
     });
 
-    it("강사 수정 시 다른 강사와 중복 이름이면 에러를 반환해야 한다", () => {
+    it("강사 수정 시 식별 필드(이름·이메일·전화) 모두 일치하는 강사와만 충돌", () => {
       localStorageMock.getItem.mockReturnValue(
         JSON.stringify({
           students: [],
@@ -486,10 +501,11 @@ describe("localStorage CRUD 유틸리티", () => {
         })
       );
 
+      // teacher-2를 김강사 이름으로 수정. teacher-1과 이름+이메일(빈)+전화(빈) 모두 일치 → 차단.
       const result = updateTeacherInLocal("teacher-2", { name: "김강사" });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("이미 같은 이름의 강사가 존재합니다.");
+      expect(result.error).toContain("이미 동일한 강사");
     });
   });
 
