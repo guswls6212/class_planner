@@ -200,7 +200,7 @@ StudentsPage
 - 헤더: "학생 목록"
 - 추가 폼: input (placeholder: "학생 이름 (검색 가능)") + `+ 추가` 앰버 버튼. Enter 키 지원.
 - 검색: `Search` 아이콘 + 이름으로 검색 input
-- 학생 리스트: Amber 아바타(이니셜) + 이름 + 메타(학년·학교 또는 "프로필 미입력"). 선택 시 `border-l-2 border-l-accent`
+- 학생 리스트: Amber 아바타(이니셜) + **학년 chip(amber, `student-grade-chip-{id}`, `student.grade` 입력 시에만 노출)** + 이름 + 메타(학년·학교 또는 "프로필 미입력", 동명이인일 땐 성별·생년월일). 선택 시 `border-l-2 border-l-accent`. 학년 chip 상세는 §5.4.1.1.
 
 **우측 패널 (StudentDetailPanel):**
 - 헤더: 아바타(48px Amber 원형) + 이름 + 메타 + 편집(`Pencil`) / 삭제(`Trash2`) 버튼
@@ -238,26 +238,33 @@ TeachersPage
 
 ### 2.5 과목 관리 (`/subjects`)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (학생/강사와 동일한 2패널 구조):**
 ```
 SubjectsPage
-  └── SubjectsPageLayout
-        └── SubjectManagementSection (좌측 340px 고정)
-              ├── SubjectInputSection (molecule) — 이름 + 색상 + 추가 버튼
-              └── SubjectList (molecule) — 과목 목록
-                    └── SubjectListItem (atom) × N
+  └── SubjectsPageLayout       # 좌측 목록 + 우측 상세
+        ├── ListFilterBar      # 검색 + "+ 추가" 빠른 등록 (이름만, DEFAULT 색상 자동)
+        ├── SubjectAddDetailModal  # 헤더 "+ 상세 등록" 진입 (이름 + 색상 9색 팔레트 + hex)
+        └── SubjectDetailPanel  # 선택된 과목 상세 (우측, 편집/삭제)
 ```
 
-**SubjectInputSection:**
-- 이름 텍스트 입력
-- 색상 선택 (색상 팔레트)
-- 기본 제공 색상 9개 (초등수학 ~ 고등국어 매핑)
+**좌측 패널:**
+- 헤더: "과목 목록" + (canManage 시) `+ 상세 등록` 버튼 (헤더 우측, `aria-label="과목 상세 등록"`)
+- 빠른 추가: ListFilterBar — 이름만 입력 + Enter 또는 `+ 추가` → `SUBJECT_DEFAULT_COLOR` 자동 할당
+  - 0건 → 단순 추가 + 성공 토스트 (`'<name>' 과목을 추가했습니다.`)
+  - 1건+ → 첫 매치 select + 안내 토스트 (과목은 동명이인 개념 없음)
+- 과목 리스트: 9px 색상 dot + 과목명. 선택 시 `border-l-2 border-l-accent`
 
-**SubjectList / SubjectListItem:**
-- 색상 도트 + 과목명 표시
-- 클릭 → 선택 (편집 모드)
+**상세 등록 (SubjectAddDetailModal):**
+- 진입: 헤더 우측 `+ 상세 등록` 버튼
+- 필드: 이름(필수, max 12자) + 색상(9색 팔레트 + native color picker + hex 입력)
+- 9색 팔레트: `src/lib/subjectColors.ts` `DEFAULT_SUBJECT_COLORS` (blue/emerald/amber/red/violet/pink/teal/indigo/orange)
+- 잘못된 hex 입력 시 alert role 에러
+- onSubmit(name, color) → handleAddDetail → onAddSubject + 성공 토스트
+
+**우측 패널 (SubjectDetailPanel):**
+- 헤더: 과목 색상 dot + 이름 + 편집/삭제 버튼
 - 편집 모드: 이름/색상 수정, 저장/취소
-- 삭제 버튼 → ConfirmModal 확인 후 삭제
+- 삭제: ConfirmModal 확인 후 삭제
 
 ### 2.6 소개 (`/about`)
 
@@ -621,6 +628,19 @@ SchedulePage
 ```
 발견형 UX — 강제하지 않고 운영자 인지 시 detail panel에서 보강.
 
+### 5.4.1.1 학년 chip (학생 목록) — PR #338
+
+```
+학생 목록 행 좌측, Amber 아바타 옆에 학년 chip (amber tone):
+- student.grade 입력된 학생 → 아바타와 이름 사이에 chip 노출
+- 학년 미입력 학생 → chip 미렌더 (자리 차지 X)
+- data-testid="student-grade-chip-{id}"
+- aria-/title 미부여(시각 정보만 — 학년 텍스트가 그대로 보임)
+- 동명이인 분기에서 subtitle이 "성별 · 생년월일"로 바뀌어 학년이 사라지던
+  회귀를 시각적으로 보완. chip이 학년 prefix 역할.
+```
+입력 경로: StudentDetailPanel 편집 모드의 `학년` input (자유 입력, 예: "고3", "초5"). StudentAddDetailModal에는 학년 입력 X — 등록 후 detail에서 보강하는 흐름.
+
 ### 5.4.2 강사 추가 (강사 페이지) — PR #289, PR #290
 
 학생 페이지와 동일한 두 진입점 패턴:
@@ -650,6 +670,37 @@ SchedulePage
 ```
 
 > settings 페이지의 `TeacherAddModal`(invite/share 다중 액션)과는 별개 — `/teachers` 페이지는 학원 운영의 강사 카탈로그 등록, settings는 강사 계정 초대/공유.
+
+### 5.4.3 과목 상세 등록 (과목 페이지) — PR #340
+
+학생/강사 페이지와 동일한 두 진입점 패턴 (UAT 2026-05-10 후속, ADR-014).
+
+**A. 빠른 추가 (ListFilterBar)**
+```
+1. 이름 입력 → Enter 또는 "+" 버튼 → SUBJECT_DEFAULT_COLOR 자동 할당으로 과목 추가
+2. 과목은 동명이인 개념 없음 — 1건+ 매치 시 첫 매치 select + 안내 토스트
+3. IME composing 가드 적용
+```
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → SubjectAddDetailModal)**
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수, max 12자) + 색상 (9색 팔레트 + native color picker + hex 직접 입력)
+3. 잘못된 hex 형식 → alert role 에러
+4. "추가" → onAddSubject(name, color) → 모달 닫힘 + 성공 토스트
+```
+
+**색상 상수:** `src/lib/subjectColors.ts` — `DEFAULT_SUBJECT_COLORS` (9색: blue/emerald/amber/red/violet/pink/teal/indigo/orange) / `SUBJECT_DEFAULT_COLOR = #3b82f6`.
+
+### 5.4.4 토스트 SSOT — Layout 책임 (ADR-014)
+
+학생/강사/과목 추가 흐름에서 토스트 발화 책임은 **layout(`XxxPageLayout.handleAdd` / `handleAddDetail`)**이다. `useXxxManagementLocal` hook은 **localStorage write + 서버 sync + 로깅만** 담당하고 `showToast` 호출 금지.
+
+이유:
+- Hook이 토스트를 띄우면 layout의 분기 메시지(0건/1건+, 빠른 추가/상세 모달)와 중복 (UAT 2026-05-10 보고)
+- 메시지 컨텍스트(예: "고등과학 과목을 추가했습니다." vs "고등과학 과목을 선택했습니다.")는 호출부만 알 수 있음
+
+신규 entity hook 작성 시 `showToast` import 자체를 두지 말 것 (회귀 가드).
 
 ### 5.5 Data Conflict Resolution (로그인 시)
 
