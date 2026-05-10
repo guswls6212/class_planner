@@ -64,6 +64,27 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const filtered = students.filter((s) => s.name.includes(query));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
+  // UAT 2026-05-10: 동명이인 식별 위해 같은 이름이 2명 이상이면 리스트 항목에
+  // 성별/생년월일을 subtitle로 표시. 일반은 학년·학교 표시 유지.
+  const duplicateNames = (() => {
+    const counts = new Map<string, number>();
+    for (const s of students) counts.set(s.name, (counts.get(s.name) ?? 0) + 1);
+    return new Set(
+      Array.from(counts.entries()).filter(([, n]) => n > 1).map(([name]) => name),
+    );
+  })();
+  const formatStudentSubtitle = (s: Student): string => {
+    const isDup = duplicateNames.has(s.name);
+    const identity: string[] = [];
+    if (s.gender === "male") identity.push("남");
+    else if (s.gender === "female") identity.push("여");
+    if (s.birthDate) identity.push(s.birthDate);
+    if (isDup && identity.length > 0) return identity.join(" · ");
+    const meta = [s.grade, s.school].filter(Boolean).join(" · ");
+    if (meta) return meta;
+    return isDup ? "프로필 미입력 · 동명이인" : "프로필 미입력";
+  };
+
   // 작은 화면(< lg)에서 detail 보다가 학생 삭제 시 자동으로 list 복귀.
   // 삭제 → students에서 사라짐 → selectedStudent=undefined → detail empty.
   // showDetail=true면 list가 hidden이라 빈 화면이 보임 (UAT 2026-05-09 보고).
@@ -203,7 +224,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
                         )}
                       </div>
                       <p className="text-[11px] text-[var(--color-text-muted)] truncate">
-                        {[student.grade, student.school].filter(Boolean).join(" · ") || "프로필 미입력"}
+                        {formatStudentSubtitle(student)}
                       </p>
                     </div>
                   </button>
