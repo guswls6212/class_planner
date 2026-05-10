@@ -56,6 +56,19 @@ PR #338 이전 — 같은 entity에서 `useXxxManagementLocal` hook과 `XxxPageL
 
 PR #339에서 `handleAddDetail` 토스트 누락 회귀 fix하면서 본 규칙을 명문화.
 
+### D3: 실패 토스트는 Hook 의무 (Silent Failure 차단) — UAT 2026-05-10 후속 보강
+
+D2의 "hook은 silent"는 **성공 한정** 규칙. CUD 함수의 모든 실패 경로(`result.success === false`, `catch`)에서 hook이 `showToast("error", msg)` 발화 의무.
+
+배경 — UAT 2026-05-10 후속 보고: 학생 detail panel 편집에서 이름을 기존 학생과 동명이인이 되도록 변경하면 `updateStudentInLocal`의 dedup이 차단(`success: false, error: "이미 동일한 학생..."`)했지만 hook이 토스트를 발화하지 않아 panel은 편집 모드 그대로 멈춤 → 사용자에게 무피드백.
+
+규칙:
+- 모든 hook의 add/update/delete + teacher-subject add/remove에서 `result.success === false` / `catch` 양쪽에서 `showToast("error", ...)`.
+- 메시지는 entity-agnostic이라 hook이 single source. 호출부는 `success === false` 시 편집 모드 유지 등 후속 처리만 담당.
+- `PERMISSION_DENIED_MESSAGE`도 같은 원칙 (hook 발화).
+
+PR #342에서 학생/강사/과목 hook의 모든 CUD 실패 분기에 일괄 적용.
+
 ## Consequences
 
 ### 긍정적

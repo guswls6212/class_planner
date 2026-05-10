@@ -264,13 +264,16 @@ export const useStudentManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "학생 추가 실패");
+            const msg = result.error || "학생 추가 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "학생 추가 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useStudentManagementLocal - 학생 추가 실패:",
             undefined,
@@ -325,13 +328,16 @@ export const useStudentManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "학생 수정 실패");
+            const msg = result.error || "학생 수정 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "학생 수정 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useStudentManagementLocal - 학생 수정 실패:",
             undefined,
@@ -494,13 +500,16 @@ export const useStudentManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "학생 삭제 실패");
+            const msg = result.error || "학생 삭제 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "학생 삭제 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useStudentManagementLocal - 학생 삭제 실패:",
             undefined,

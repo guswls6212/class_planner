@@ -249,13 +249,16 @@ export const useTeacherManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "강사 추가 실패");
+            const msg = result.error || "강사 추가 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "강사 추가 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useTeacherManagementLocal - 강사 추가 실패:",
             undefined,
@@ -307,13 +310,16 @@ export const useTeacherManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "강사 수정 실패");
+            const msg = result.error || "강사 수정 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "강사 수정 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useTeacherManagementLocal - 강사 수정 실패:",
             undefined,
@@ -418,13 +424,16 @@ export const useTeacherManagementLocal =
 
             return true;
           } else {
-            setError(result.error || "강사 삭제 실패");
+            const msg = result.error || "강사 삭제 실패";
+            setError(msg);
+            showToast("error", msg);
             return false;
           }
         } catch (err) {
           const errorMessage =
             err instanceof Error ? err.message : "강사 삭제 실패";
           setError(errorMessage);
+          showToast("error", errorMessage);
           logger.error(
             "useTeacherManagementLocal - 강사 삭제 실패:",
             undefined,
@@ -449,10 +458,14 @@ export const useTeacherManagementLocal =
             syncTeacherSubjectAdd(currentUserId, teacherId, subjectId);
             return true;
           }
-          setError(result.error || "강사-과목 추가 실패");
+          const msg = result.error || "강사-과목 추가 실패";
+          setError(msg);
+          showToast("error", msg);
           return false;
         } catch (err) {
-          setError(err instanceof Error ? err.message : "강사-과목 추가 실패");
+          const msg = err instanceof Error ? err.message : "강사-과목 추가 실패";
+          setError(msg);
+          showToast("error", msg);
           return false;
         }
       },
@@ -472,10 +485,14 @@ export const useTeacherManagementLocal =
             syncTeacherSubjectRemove(currentUserId, teacherId, subjectId);
             return true;
           }
-          setError(result.error || "강사-과목 삭제 실패");
+          const msg = result.error || "강사-과목 삭제 실패";
+          setError(msg);
+          showToast("error", msg);
           return false;
         } catch (err) {
-          setError(err instanceof Error ? err.message : "강사-과목 삭제 실패");
+          const msg = err instanceof Error ? err.message : "강사-과목 삭제 실패";
+          setError(msg);
+          showToast("error", msg);
           return false;
         }
       },
