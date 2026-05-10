@@ -4,7 +4,9 @@ import { useState } from "react";
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
 import { SubjectDetailPanel } from "./SubjectDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
+import SubjectAddDetailModal from "@/components/molecules/SubjectAddDetailModal";
 import { showSuccess } from "@/lib/toast";
+import { SUBJECT_DEFAULT_COLOR } from "@/lib/subjectColors";
 
 interface SubjectsPageLayoutProps {
   subjects: Subject[];
@@ -26,8 +28,9 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
   const canManage = props.canManage ?? true;
   const [query, setQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
+  const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
+  const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
-  const DEFAULT_COLOR = "#3b82f6";
   const filtered = subjects.filter((s) => s.name.includes(query));
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
@@ -45,7 +48,7 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
       s.name.toLowerCase().includes(trimmed.toLowerCase()),
     );
     if (matched.length === 0) {
-      await props.onAddSubject(trimmed, DEFAULT_COLOR);
+      await props.onAddSubject(trimmed, SUBJECT_DEFAULT_COLOR);
       showSuccess(`'${trimmed}' 과목을 추가했습니다.`);
     } else {
       handleSelect(matched[0].id);
@@ -56,6 +59,12 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
       );
     }
     setQuery("");
+  };
+
+  const handleAddDetail = async (name: string, color: string) => {
+    await props.onAddSubject(name, color);
+    // 상세등록 모달 경로의 성공 토스트. handleAdd(0건)와 동일한 메시지 유지.
+    showSuccess(`'${name}' 과목을 추가했습니다.`);
   };
 
   return (
@@ -70,8 +79,18 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
         }`}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">과목 목록</h2>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => setIsAddDetailOpen(true)}
+              className="text-[11px] text-[var(--color-text-secondary)] hover:text-accent transition-colors"
+              aria-label="과목 상세 등록"
+            >
+              + 상세 등록
+            </button>
+          )}
         </div>
 
         {/* Search + Add (canManage 시에만 추가 버튼/엔터) */}
@@ -103,7 +122,7 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
                 >
                   <div
                     className="w-9 h-9 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: subject.color ?? DEFAULT_COLOR }}
+                    style={{ backgroundColor: subject.color ?? SUBJECT_DEFAULT_COLOR }}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{subject.name}</p>
@@ -144,6 +163,16 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
           과목을 선택하세요
         </div>
       )}
+
+      <SubjectAddDetailModal
+        isOpen={isAddDetailOpen}
+        onClose={() => {
+          setIsAddDetailOpen(false);
+          setAddDetailPrefillName("");
+        }}
+        onSubmit={handleAddDetail}
+        defaultName={addDetailPrefillName}
+      />
     </div>
   );
 }
