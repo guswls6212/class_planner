@@ -8,7 +8,11 @@ import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
 import { getClassPlannerData } from "../../lib/localStorageCrud";
 import { getKoMessage } from "../../lib/errors/messages.ko";
-import { ACADEMY_NAME_MAX_LENGTH, validateAcademyName } from "../../lib/validation/profileSchemas";
+import {
+  ACADEMY_NAME_MAX_LENGTH,
+  SHARE_TOKEN_LABEL_MAX_LENGTH,
+  validateAcademyName,
+} from "../../lib/validation/profileSchemas";
 import { Button } from "../../components/atoms/Button";
 import { TeacherStatusPill } from "../../components/atoms/TeacherStatusPill";
 import type { TeacherWithStatus } from "../api/teachers/route";
@@ -835,8 +839,9 @@ export default function SettingsPage() {
               <input
                 type="text"
                 value={shareLabel}
-                onChange={(e) => setShareLabel(e.target.value)}
+                onChange={(e) => setShareLabel(e.target.value.slice(0, SHARE_TOKEN_LABEL_MAX_LENGTH))}
                 placeholder="예: 학부모 공유용"
+                maxLength={SHARE_TOKEN_LABEL_MAX_LENGTH}
                 className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
