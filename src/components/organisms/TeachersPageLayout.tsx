@@ -87,7 +87,9 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
     name: string,
     profile: { email?: string; phone?: string },
   ) => {
-    await props.onAddTeacher(name, getNextColor(), profile);
+    const success = await props.onAddTeacher(name, getNextColor(), profile);
+    // 상세등록 모달 경로의 성공 토스트. handleAdd(0건)와 동일한 메시지 유지.
+    if (success) showSuccess(`'${name}' 강사를 추가했습니다.`);
   };
 
   const handleSelect = (id: string) => {
