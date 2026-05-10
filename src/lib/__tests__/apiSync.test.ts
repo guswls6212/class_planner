@@ -27,6 +27,7 @@ import { showToast } from "../toast";
 
 vi.mock("../toast", () => ({
   showToast: vi.fn(),
+  showError: vi.fn(),
 }));
 
 describe("apiSync", () => {
@@ -70,7 +71,7 @@ describe("apiSync", () => {
     });
 
     it("syncStudentUpdate가 PUT /api/students/:id를 호출한다", () => {
-      syncStudentUpdate("user-1", "s-1", { name: "Updated" });
+      syncStudentUpdate("user-1", "s-1", { name: "수정" });
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining("/api/students/s-1?userId=user-1"),
         expect.objectContaining({ method: "PUT" })
