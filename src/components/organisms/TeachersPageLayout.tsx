@@ -6,6 +6,7 @@ import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import TeacherAddDetailModal from "@/components/molecules/TeacherAddDetailModal";
+import { showSuccess, showActionToast } from "@/lib/toast";
 
 interface TeachersPageLayoutProps {
   teachers: Teacher[];
@@ -60,15 +61,6 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const getNextColor = () =>
     DEFAULT_TEACHER_COLORS[teachers.length % DEFAULT_TEACHER_COLORS.length];
 
-  const handleAdd = async (trimmed: string) => {
-    const isDuplicate = teachers.some(
-      (t) => t.name.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (isDuplicate) return;
-    const success = await props.onAddTeacher(trimmed, getNextColor());
-    if (success) setQuery("");
-  };
-
   const handleAddDetail = async (
     name: string,
     profile: { email?: string; phone?: string },
@@ -79,6 +71,33 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const handleSelect = (id: string) => {
     onSelectTeacher(id);
     setShowDetail(true);
+  };
+
+  const handleAdd = (trimmed: string) => {
+    // UAT 2026-05-10: 검색 + Enter 시 사용자 피드백 (학생/과목 페이지 동일 패턴).
+    // client 단순 이름 비교 제거 — 동명이인(같은 이름 다른 이메일/전화) 등록 허용.
+    // 진짜 중복(이름+이메일+전화 모두 일치)은 server idempotent 처리.
+    const matched = teachers.filter((t) =>
+      t.name.toLowerCase().includes(trimmed.toLowerCase()),
+    );
+    if (matched.length === 0) {
+      showActionToast({
+        message: `'${trimmed}' 강사가 없습니다. 새로 추가할까요?`,
+        actionLabel: "새로 추가",
+        onAction: async () => {
+          const success = await props.onAddTeacher(trimmed, getNextColor());
+          if (success) showSuccess(`'${trimmed}' 강사를 추가했습니다.`);
+        },
+      });
+    } else {
+      handleSelect(matched[0].id);
+      showSuccess(
+        matched.length === 1
+          ? `'${matched[0].name}' 강사를 선택했습니다.`
+          : `'${trimmed}'와(과) 일치하는 강사 ${matched.length}명 중 첫 번째를 선택했습니다.`,
+      );
+    }
+    setQuery("");
   };
 
   const teacherWeeklyCount = (teacher: Teacher) =>

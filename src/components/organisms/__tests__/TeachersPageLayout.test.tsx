@@ -2,6 +2,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import TeachersPageLayout from "../TeachersPageLayout";
 
+// Mock toast — 검색 0건 시 showActionToast의 onAction을 자동 실행해
+// 기존 테스트(onAddTeacher 호출 expect)와 호환.
+vi.mock("@/lib/toast", () => ({
+  showSuccess: vi.fn(),
+  showActionToast: vi.fn((opts: { onAction: () => void }) => {
+    opts.onAction();
+    return "mock-toast-id";
+  }),
+}));
+
 const mockTeachers = [
   { id: "1", name: "김선생", color: "#6366f1" },
   { id: "2", name: "이선생", color: "#0891b2" },
