@@ -1,16 +1,11 @@
 "use client";
 
-import { Mail, Phone, User, FileText } from "lucide-react";
-import type { TeacherRole } from "@/lib/planner";
+import { Mail, Phone, FileText, Palette } from "lucide-react";
 import {
   NAME_MAX_LENGTH,
   formatKoreanPhone,
 } from "@/lib/validation/profileSchemas";
-
-const ROLE_LABELS: Record<Exclude<TeacherRole, "owner">, string> = {
-  admin: "관리자",
-  member: "강사",
-};
+import { TeacherColorPicker } from "./TeacherColorPicker";
 
 export interface TeacherEditFormProps {
   canManage: boolean;
@@ -18,13 +13,14 @@ export interface TeacherEditFormProps {
   editName: string;
   editEmail: string;
   editPhone: string;
-  editRole: TeacherRole | null;
   editNotes: string;
+  /** 색상 (canManage 시에만 변경 가능). 저장 버튼 클릭 시 commit. */
+  editColor: string;
+  onColorChange: (c: string) => void;
   error?: string;
   onNameChange: (v: string) => void;
   onEmailChange: (v: string) => void;
   onPhoneChange: (v: string) => void;
-  onRoleChange: (v: TeacherRole | null) => void;
   onNotesChange: (v: string) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -35,13 +31,13 @@ export function TeacherEditForm({
   editName,
   editEmail,
   editPhone,
-  editRole,
   editNotes,
+  editColor,
+  onColorChange,
   error,
   onNameChange,
   onEmailChange,
   onPhoneChange,
-  onRoleChange,
   onNotesChange,
   onSave,
   onCancel,
@@ -93,38 +89,7 @@ export function TeacherEditForm({
           />
         </div>
       </div>
-      {/* Role pills — owner/admin only */}
-      {canManage && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
-            <User size={11} strokeWidth={1.5} />
-            역할
-          </label>
-          <div className="flex gap-2">
-            {(["admin", "member"] as Exclude<TeacherRole, "owner">[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => onRoleChange(editRole === r ? null : r)}
-                aria-pressed={editRole === r}
-                className={[
-                  "px-3 py-1 rounded-full text-[12px] transition-all border",
-                  editRole === r
-                    ? "border-[var(--color-accent)] bg-[rgba(167,139,250,0.15)] text-[var(--color-text-primary)] font-medium"
-                    : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]",
-                ].join(" ")}
-              >
-                {ROLE_LABELS[r]}
-              </button>
-            ))}
-          </div>
-          {editRole === "owner" && (
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              원장 역할은 시스템이 부여합니다.
-            </p>
-          )}
-        </div>
-      )}
+      {/* 역할 변경은 Settings → 멤버 흐름이 SSOT (ADR-015). detail에서 제거. */}
       {/* Notes */}
       <div className="flex flex-col gap-1">
         <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
@@ -139,6 +104,20 @@ export function TeacherEditForm({
           className="border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent resize-none"
         />
       </div>
+      {/* 색상 — canManage 시에만 변경 가능. 저장 버튼 클릭 시 commit (autosave 제거, ADR-015). */}
+      {canManage && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+            <Palette size={11} strokeWidth={1.5} />
+            색상
+          </label>
+          <TeacherColorPicker
+            selectedColor={editColor}
+            canManage={canManage}
+            onColorChange={onColorChange}
+          />
+        </div>
+      )}
       {error && (
         <div
           className="rounded-md border border-red-500/40 bg-red-500/[0.08] px-3 py-2 text-xs text-red-400"

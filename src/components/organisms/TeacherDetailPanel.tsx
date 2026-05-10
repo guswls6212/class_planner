@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, TeacherRole } from "@/lib/planner";
 import { TeacherEditForm } from "@/components/molecules/TeacherEditForm";
@@ -10,7 +10,6 @@ import {
   isValidKoreanPhone,
 } from "@/lib/validation/profileSchemas";
 import { TeacherScheduleList } from "@/components/molecules/TeacherScheduleList";
-import { TeacherColorPicker } from "@/components/molecules/TeacherColorPicker";
 import { TeacherSubjectPills } from "@/components/molecules/TeacherSubjectPills";
 
 interface TeacherDetailPanelProps {
@@ -56,7 +55,6 @@ export function TeacherDetailPanel({
   const [editColor, setEditColor] = useState(teacher.color);
   const [editEmail, setEditEmail] = useState(teacher.email ?? "");
   const [editPhone, setEditPhone] = useState(teacher.phone ?? "");
-  const [editRole, setEditRole] = useState<TeacherRole | null>(teacher.role ?? null);
   const [editNotes, setEditNotes] = useState(teacher.notes ?? "");
   const [editErr, setEditErr] = useState("");
 
@@ -65,7 +63,6 @@ export function TeacherDetailPanel({
     setEditColor(teacher.color);
     setEditEmail(teacher.email ?? "");
     setEditPhone(teacher.phone ?? "");
-    setEditRole(teacher.role ?? null);
     setEditNotes(teacher.notes ?? "");
     setEditErr("");
     setIsEditing(false);
@@ -101,11 +98,13 @@ export function TeacherDetailPanel({
         setEditErr(`강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
         return;
       }
+      // 색상도 저장 버튼 클릭 시 함께 commit (autosave 제거, ADR-015).
+      // role은 detail에서 변경 불가 — settings 멤버 흐름이 SSOT.
       result = await onUpdate(teacher.id, {
         name,
+        color: editColor,
         email: editEmail || null,
         phone: editPhone || null,
-        role: editRole,
         notes: editNotes || null,
       });
     } else {
@@ -122,25 +121,6 @@ export function TeacherDetailPanel({
     setEditErr("");
     setIsEditing(false);
   };
-
-  const colorSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleColorClick = useCallback(
-    (c: string) => {
-      setEditColor(c);
-      if (colorSyncTimerRef.current) clearTimeout(colorSyncTimerRef.current);
-      colorSyncTimerRef.current = setTimeout(() => {
-        onUpdate(teacher.id, { color: c });
-      }, 400);
-    },
-    [teacher.id, onUpdate]
-  );
-
-  useEffect(() => {
-    return () => {
-      if (colorSyncTimerRef.current) clearTimeout(colorSyncTimerRef.current);
-    };
-  }, []);
 
   const initial = teacher.name.charAt(0).toUpperCase();
 
@@ -253,20 +233,20 @@ export function TeacherDetailPanel({
             editName={editName}
             editEmail={editEmail}
             editPhone={editPhone}
-            editRole={editRole}
             editNotes={editNotes}
+            editColor={editColor}
+            onColorChange={setEditColor}
             error={editErr}
             onNameChange={setEditName}
             onEmailChange={setEditEmail}
             onPhoneChange={setEditPhone}
-            onRoleChange={setEditRole}
             onNotesChange={setEditNotes}
             onSave={handleSave}
             onCancel={() => {
               setEditName(teacher.name);
+              setEditColor(teacher.color);
               setEditEmail(teacher.email ?? "");
               setEditPhone(teacher.phone ?? "");
-              setEditRole(teacher.role ?? null);
               setEditNotes(teacher.notes ?? "");
               setEditErr("");
               setIsEditing(false);
@@ -295,17 +275,7 @@ export function TeacherDetailPanel({
         />
       </div>
 
-      {/* 색상 section — always visible; interactive only for owners/admins */}
-      <div className="border-t border-[var(--color-border)] pt-4 mt-1">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
-          색상
-        </h3>
-        <TeacherColorPicker
-          selectedColor={editColor}
-          canManage={canManage}
-          onColorChange={handleColorClick}
-        />
-      </div>
+      {/* 색상 섹션은 편집 폼 안으로 통합됨 (메모 다음, 저장 버튼 위) — autosave 제거 */}
     </div>
   );
 }
