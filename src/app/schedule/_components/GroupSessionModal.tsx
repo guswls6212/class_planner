@@ -224,12 +224,21 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         )}
         {groupModalData.studentIds.map((studentId) => {
           const student = students.find((s) => s.id === studentId);
-          return student ? (
+          if (!student) return null;
+          const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
+          const showSubtitle =
+            selectedStudentDupNames.has(student.name) &&
+            dupSubtitle !== "프로필 미입력 · 동명이인" &&
+            dupSubtitle !== "프로필 미입력";
+          return (
             <span
               key={studentId}
               className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent-hover)]/15 border border-[var(--color-accent-hover)]/30 px-2.5 py-1 text-[12px] font-medium text-[var(--color-accent-hover)]"
             >
-              {student.name}
+              <span>{student.name}</span>
+              {showSubtitle && (
+                <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
+              )}
               <button
                 type="button"
                 className="flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-[var(--color-accent-hover)]/20 transition-colors"
@@ -239,7 +248,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 <X size={10} strokeWidth={2.5} />
               </button>
             </span>
-          ) : null;
+          );
         })}
       </div>
 
@@ -499,9 +508,14 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   // ── Step 2: 확인 ──────────────────────────────────────────────────────
   const selectedSubject = subjects.find((s) => s.id === groupModalData.subjectId);
   const selectedTeacher = teachers.find((t) => t.id === groupModalData.teacherId);
-  const selectedStudentNames = groupModalData.studentIds
-    .map((id) => students.find((s) => s.id === id)?.name)
-    .filter(Boolean);
+  // ADR-015: selected 학생 객체 array (id 기반 key + 동명이인 부제용 식별 필드 포함).
+  const selectedStudents = groupModalData.studentIds
+    .map((id) => students.find((s) => s.id === id))
+    .filter((s): s is StudentOption => Boolean(s));
+  const selectedStudentDupNames = useMemo(
+    () => buildDuplicateNameSet(selectedStudents),
+    [selectedStudents],
+  );
 
   const step2Content = (
     <div className="flex flex-col gap-3">
@@ -530,11 +544,24 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">학생</span>
             <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
-              {selectedStudentNames.map((name) => (
-                <span key={name} className="rounded-full bg-[var(--color-accent-hover)]/10 border border-[var(--color-accent-hover)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-hover)]">
-                  {name}
-                </span>
-              ))}
+              {selectedStudents.map((student) => {
+                const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
+                const showSubtitle =
+                  selectedStudentDupNames.has(student.name) &&
+                  dupSubtitle !== "프로필 미입력 · 동명이인" &&
+                  dupSubtitle !== "프로필 미입력";
+                return (
+                  <span
+                    key={student.id}
+                    className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-hover)]/10 border border-[var(--color-accent-hover)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-hover)]"
+                  >
+                    <span>{student.name}</span>
+                    {showSubtitle && (
+                      <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">

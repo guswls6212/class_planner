@@ -32,7 +32,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-2", name: "이영희" },
       ]);
@@ -48,7 +48,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-3", name: "박민수" },
       ]);
@@ -68,7 +68,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(3);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-2", name: "이영희" },
         { id: "student-3", name: "박민수" },
@@ -105,7 +105,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result).toEqual([{ id: "student-1", name: "김철수" }]);
+      expect(result).toMatchObject([{ id: "student-1", name: "김철수" }]);
     });
 
     it("tempEnrollments의 id가 빈 문자열이어서는 안 된다 - 핵심 테스트", () => {
@@ -139,7 +139,7 @@ describe("scheduleSelectors", () => {
       );
 
       // 올바른 id로는 매칭되어야 함
-      expect(result).toEqual([{ id: "student-3", name: "박민수" }]);
+      expect(result).toMatchObject([{ id: "student-3", name: "박민수" }]);
     });
 
     it("학생을 찾을 수 없는 enrollment는 null로 처리되어야 한다", () => {

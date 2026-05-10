@@ -111,6 +111,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     () => buildDuplicateNameSet(editSearchResults),
     [editSearchResults],
   );
+  // 선택된 학생 chip의 동명이인 부제 — selected list 내에서 중복 검사.
+  const selectedStudentDupNames = useMemo(
+    () => buildDuplicateNameSet(selectedStudents),
+    [selectedStudents],
+  );
 
   const currentSubject = subjects.find((s) => s.id === tempSubjectId);
 
@@ -336,22 +341,32 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             {selectedStudents.length === 0 && (
               <span className="text-[12px] text-[var(--color-text-muted)]">선택된 학생 없음</span>
             )}
-            {selectedStudents.map((student) => (
-              <span
-                key={student.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 px-2.5 py-1 text-[12px] font-medium text-[var(--color-primary-light,#a5b4fc)]"
-              >
-                {student.name}
-                <button
-                  type="button"
-                  className="flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-white/20 transition-colors"
-                  onClick={() => onRemoveStudent(student.id)}
-                  aria-label={`${student.name} 제거`}
+            {selectedStudents.map((student) => {
+              const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
+              const showSubtitle =
+                selectedStudentDupNames.has(student.name) &&
+                dupSubtitle !== "프로필 미입력 · 동명이인" &&
+                dupSubtitle !== "프로필 미입력";
+              return (
+                <span
+                  key={student.id}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 px-2.5 py-1 text-[12px] font-medium text-[var(--color-primary-light,#a5b4fc)]"
                 >
-                  <X size={9} strokeWidth={3} />
-                </button>
-              </span>
-            ))}
+                  <span>{student.name}</span>
+                  {showSubtitle && (
+                    <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
+                  )}
+                  <button
+                    type="button"
+                    className="flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-white/20 transition-colors"
+                    onClick={() => onRemoveStudent(student.id)}
+                    aria-label={`${student.name} 제거`}
+                  >
+                    <X size={9} strokeWidth={3} />
+                  </button>
+                </span>
+              );
+            })}
           </div>
           <div className="flex gap-2">
             <input
