@@ -33,19 +33,22 @@ export function TeacherContactDisplay({ email, phone, role, notes }: TeacherCont
         </dt>
         <dd className="text-[var(--color-text-primary)]">{phone || "—"}</dd>
       </div>
-      <div className="flex items-center gap-2">
-        <dt className="w-14 flex-shrink-0 text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+      <div className="flex items-start gap-2">
+        <dt className="w-14 flex-shrink-0 text-[11px] text-[var(--color-text-muted)] flex items-center gap-1 pt-0.5">
           <User size={11} strokeWidth={1.5} />
           역할
         </dt>
-        <dd>
+        <dd className="flex flex-col gap-1">
           {role ? (
-            <span className="inline-flex px-2 py-0.5 rounded-full text-[12px] border border-[var(--color-accent)] bg-[rgba(167,139,250,0.12)] text-[var(--color-text-primary)]">
+            <span className="inline-flex w-fit px-2 py-0.5 rounded-full text-[12px] border border-[var(--color-accent)] bg-[rgba(167,139,250,0.12)] text-[var(--color-text-primary)]">
               {ROLE_LABELS[role]}
             </span>
           ) : (
             <span className="text-[var(--color-text-muted)]">—</span>
           )}
+          <span className="text-[10px] text-[var(--color-text-muted)]">
+            역할 변경: Settings → 멤버
+          </span>
         </dd>
       </div>
       {notes && (

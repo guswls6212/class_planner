@@ -1,13 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
-import type { Teacher } from "@/lib/planner";
 import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
+import { filterTeachersForPicker, isAdminRole, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
+import { buildDuplicateNameSet, formatTeacherDuplicateLabel } from "@/lib/duplicateLabel";
+
+/**
+ * Picker용 강사 데이터 (ADR-015). role/email/phone은 동명이인 부제 + admin 필터에 사용.
+ * 호출부(`schedule/page.tsx` 등)는 본 타입 모양으로 projection 전달.
+ */
+export interface TeacherPickerOption {
+  id: string;
+  name: string;
+  color: string;
+  role?: TeacherRoleLike;
+  email?: string | null;
+  phone?: string | null;
+}
 
 interface TeacherPillPickerProps {
-  teachers: Teacher[];
+  teachers: TeacherPickerOption[];
   selectedTeacherId?: string | null;
   onSelect: (teacherId: string | null) => void;
   className?: string;
@@ -69,7 +83,15 @@ export default function TeacherPillPicker({
     }
   };
 
-  if (teachers.length === 0 && !showInlineCreate) {
+  // ADR-015: admin/owner 강사는 picker에서 제외, 단 selectedTeacherId가 admin이면 예외 보존.
+  const visibleTeachers = useMemo(
+    () => filterTeachersForPicker(teachers, selectedTeacherId ?? null),
+    [teachers, selectedTeacherId],
+  );
+  // 동명이인 부제 — 같은 이름이 visible pool에 2명+이면 이메일/전화로 식별.
+  const duplicateNames = useMemo(() => buildDuplicateNameSet(visibleTeachers), [visibleTeachers]);
+
+  if (visibleTeachers.length === 0 && !showInlineCreate) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <span className="text-[12px] text-[var(--color-text-muted)]">강사 없음</span>
@@ -87,8 +109,12 @@ export default function TeacherPillPicker({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap gap-2">
-        {teachers.map((teacher) => {
+        {visibleTeachers.map((teacher) => {
           const isActive = selectedTeacherId === teacher.id;
+          const dupLabel = formatTeacherDuplicateLabel(teacher, duplicateNames);
+          const adminTag = isAdminRole(teacher.role) ? "관리자" : "";
+          // 부제: 동명이인 식별(우선) → admin 예외 hint
+          const subtitle = dupLabel || adminTag;
           return (
             <button
               key={teacher.id}
@@ -116,7 +142,10 @@ export default function TeacherPillPicker({
                 // teacher.color is a runtime value — inline style required
                 style={{ backgroundColor: teacher.color }}
               />
-              {teacher.name}
+              <span>{teacher.name}</span>
+              {subtitle && (
+                <span className="text-[10px] text-[var(--color-text-muted)]">· {subtitle}</span>
+              )}
             </button>
           );
         })}

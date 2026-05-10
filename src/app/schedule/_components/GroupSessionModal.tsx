@@ -1,19 +1,34 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, X, ChevronRight, ChevronLeft } from "lucide-react";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import { buildDuplicateNameSet, formatStudentDuplicateLabel } from "../../../lib/duplicateLabel";
 import {
   NAME_MAX_LENGTH,
   SUBJECT_NAME_MAX_LENGTH,
 } from "../../../lib/validation/profileSchemas";
 
 type SubjectOption = { id: string; name: string; color?: string };
-type StudentOption = { id: string; name: string };
-type TeacherOption = { id: string; name: string; color: string };
+type StudentOption = {
+  id: string;
+  name: string;
+  gender?: string | null;
+  birthDate?: string | null;
+  grade?: string | null;
+  school?: string | null;
+};
+type TeacherOption = {
+  id: string;
+  name: string;
+  color: string;
+  role?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
 
 interface GroupSessionModalProps {
   isOpen: boolean;
@@ -133,6 +148,11 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
 
   const selectableStudents = filteredStudentsForModal.filter(
     (st) => !groupModalData.studentIds.includes(st.id)
+  );
+  // ADR-015: 동명이인 학생 부제 — 같은 이름이 list에 2명+이면 식별 정보 노출.
+  const studentDupNames = useMemo(
+    () => buildDuplicateNameSet(filteredStudentsForModal),
+    [filteredStudentsForModal],
   );
   const studentExistsExact = students.some(
     (s) => s.name.toLowerCase() === studentInputValue.toLowerCase()
@@ -259,19 +279,26 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         // max-h-60 overflow-y-auto 가 있어 중첩 스크롤로 사용자가 학생
         // 리스트를 스크롤 못 하던 버그. 모달 외곽이 max-h-[55vh] 로 cap.
         <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
-          {selectableStudents.map((student) => (
-            <button
-              key={student.id}
-              type="button"
-              className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
-              onClick={() => addStudent(student.id)}
-            >
-              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/15 text-[10px] font-bold text-[var(--color-accent-hover)]">
-                {student.name[0]}
-              </span>
-              {student.name}
-            </button>
-          ))}
+          {selectableStudents.map((student) => {
+            const dupSubtitle = formatStudentDuplicateLabel(student, studentDupNames);
+            const showSubtitle = studentDupNames.has(student.name) && dupSubtitle !== "프로필 미입력 · 동명이인" && dupSubtitle !== "프로필 미입력";
+            return (
+              <button
+                key={student.id}
+                type="button"
+                className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
+                onClick={() => addStudent(student.id)}
+              >
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/15 text-[10px] font-bold text-[var(--color-accent-hover)]">
+                  {student.name[0]}
+                </span>
+                <span>{student.name}</span>
+                {showSubtitle && (
+                  <span className="text-[11px] text-[var(--color-text-muted)]">· {dupSubtitle}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       ) : (
         studentInputValue && (
