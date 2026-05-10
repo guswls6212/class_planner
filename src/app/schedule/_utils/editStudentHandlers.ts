@@ -36,7 +36,7 @@ export function buildEditStudentAdd(params: {
   return (studentId?: string) => {
     logger.debug("handleEditStudentAdd 호출", { studentId });
 
-    const inputValue = getEditStudentInputValue();
+    const inputValue = getEditStudentInputValue() ?? "";
     const trimmedInput = inputValue.trim();
 
     const targetStudentId =
