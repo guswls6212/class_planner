@@ -154,6 +154,15 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
     () => buildDuplicateNameSet(filteredStudentsForModal),
     [filteredStudentsForModal],
   );
+  // 선택된 학생 (step 1 pills + step 3 confirm chips 공통 데이터 + dupSet).
+  // step 1보다 위에 정의해야 temporal dead zone 회피.
+  const selectedStudents = groupModalData.studentIds
+    .map((id) => students.find((s) => s.id === id))
+    .filter((s): s is StudentOption => Boolean(s));
+  const selectedStudentDupNames = useMemo(
+    () => buildDuplicateNameSet(selectedStudents),
+    [selectedStudents],
+  );
   const studentExistsExact = students.some(
     (s) => s.name.toLowerCase() === studentInputValue.toLowerCase()
   );
@@ -508,14 +517,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   // ── Step 2: 확인 ──────────────────────────────────────────────────────
   const selectedSubject = subjects.find((s) => s.id === groupModalData.subjectId);
   const selectedTeacher = teachers.find((t) => t.id === groupModalData.teacherId);
-  // ADR-015: selected 학생 객체 array (id 기반 key + 동명이인 부제용 식별 필드 포함).
-  const selectedStudents = groupModalData.studentIds
-    .map((id) => students.find((s) => s.id === id))
-    .filter((s): s is StudentOption => Boolean(s));
-  const selectedStudentDupNames = useMemo(
-    () => buildDuplicateNameSet(selectedStudents),
-    [selectedStudents],
-  );
+  // selectedStudents + selectedStudentDupNames는 위(step 1 pills 위치)에서 정의됨 — 재사용.
 
   const step2Content = (
     <div className="flex flex-col gap-3">
