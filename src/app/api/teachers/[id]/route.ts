@@ -1,9 +1,10 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { requireRole, requireOwnTeacher, pickAllowedFields } from "@/lib/auth/permissions";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { validateTeacherInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // Fields any owner/admin can update
@@ -83,10 +84,25 @@ export async function PATCH(
       }
     }
 
-    // Build updates object with only the requested allowed fields
+    // Phase 4: server-side validation (UI/sync 우회 방지)
+    const v = validateTeacherInput(
+      {
+        name: body.name as string | undefined,
+        email: body.email as string | null | undefined,
+        phone: body.phone as string | null | undefined,
+      },
+      { partial: true },
+    );
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+
+    // Build updates object with only the requested allowed fields (검증된 값 우선)
     const updates: Record<string, unknown> = {};
     for (const field of requestedFields) {
-      updates[field] = body[field];
+      if (field === "name" && v.data.name !== undefined) {
+        updates[field] = v.data.name;
+      } else {
+        updates[field] = body[field];
+      }
     }
 
     // Build before snapshot (only changed fields)
@@ -183,6 +199,14 @@ export async function PUT(
       }
     }
     // owner/admin: body unchanged
+
+    // Phase 4: server-side validation (UI/sync 우회 방지)
+    const v = validateTeacherInput(
+      { name: body.name, email: body.email, phone: body.phone },
+      { partial: true },
+    );
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    if (v.data.name !== undefined) body.name = v.data.name;
 
     const updated = await getTeacherService().updateTeacher(
       id,

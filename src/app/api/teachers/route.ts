@@ -1,10 +1,11 @@
 import { getTeacherService } from "@/lib/server/teacherServiceFactory";
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { isPaginatedRequest, parsePaginationParams } from "@/lib/pagination";
+import { validateTeacherInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
@@ -154,17 +155,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, color, userId: bodyUserId, email, phone, role, notes } = body;
+    const { id, color, userId: bodyUserId, email, phone, role, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
-    if (!name || !color) {
+    if (!color) {
       return NextResponse.json(
-        { success: false, error: "Name and color are required" },
+        { success: false, error: "Color is required" },
         { status: 400 }
       );
     }
-
     if (!userId) {
       return NextResponse.json(
         { success: false, error: "User ID is required" },
@@ -172,12 +172,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const v = validateTeacherInput({ name: body.name, email, phone });
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
     // Local-first: client UUID 수용. 응답 data.id가 보낸 id와 다르면 클라가 reconcile.
     const newTeacher = await getTeacherService().addTeacher(
       {
         ...(id && typeof id === "string" && { id }),
-        name,
+        name: v.data.name!,
         color,
         userId: bodyUserId ?? null,
         email: email ?? null,

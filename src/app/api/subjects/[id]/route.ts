@@ -2,7 +2,8 @@ import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateSubjectInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getSubjectService() {
@@ -64,16 +65,9 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, color } = body;
+    const { color } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-
-    if (!name) {
-      return NextResponse.json(
-        { success: false, error: "Name is required" },
-        { status: 400 }
-      );
-    }
 
     if (!userId) {
       return NextResponse.json(
@@ -82,10 +76,13 @@ export async function PUT(
       );
     }
 
+    const v = validateSubjectInput(body);
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedSubject = await getSubjectService().updateSubject(
       id,
-      { name, color },
+      { name: v.data.name!, color },
       academyId
     );
 

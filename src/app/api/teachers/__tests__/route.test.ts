@@ -420,7 +420,8 @@ describe("/api/teachers API Routes", () => {
     });
 
     it("name 또는 color 누락 시 400을 반환해야 한다", async () => {
-      const request = new NextRequest(
+      // color 누락 (직접 NextResponse string 응답 유지)
+      const reqColorMissing = new NextRequest(
         "http://localhost:3000/api/teachers?userId=test-user",
         {
           method: "POST",
@@ -428,13 +429,26 @@ describe("/api/teachers API Routes", () => {
           headers: { "Content-Type": "application/json" },
         }
       );
+      const resColor = await POST(reqColorMissing);
+      const dataColor = await resColor.json();
+      expect(resColor.status).toBe(400);
+      expect(dataColor.success).toBe(false);
+      expect(dataColor.error).toBe("Color is required");
 
-      const response = await POST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.success).toBe(false);
-      expect(data.error).toBe("Name and color are required");
+      // name 누락 (Phase 4 SSOT helper → AppError → 객체 형식 응답)
+      const reqNameMissing = new NextRequest(
+        "http://localhost:3000/api/teachers?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({ color: "#ffffff" }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      const resName = await POST(reqNameMissing);
+      const dataName = await resName.json();
+      expect(resName.status).toBe(400);
+      expect(dataName.success).toBe(false);
+      expect(dataName.error.code).toBe("TEACHER_NAME_REQUIRED");
     });
 
     it("중복 강사 시 409를 반환해야 한다", async () => {
