@@ -135,6 +135,8 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
     options: { gender?: string; birthDate?: string },
   ) => {
     props.onAddStudent(name, options);
+    // 상세등록 모달 경로의 성공 토스트. handleAdd(0건)와 동일한 메시지 유지.
+    showSuccess(`'${name}' 학생을 추가했습니다.`);
   };
 
   const handleSelect = (id: string) => {
