@@ -15,6 +15,17 @@ export const NAME_MAX_LENGTH = 6;
 export const SCHOOL_MAX_LENGTH = 30;
 export const SUBJECT_NAME_MAX_LENGTH = 12;
 export const ACADEMY_NAME_MAX_LENGTH = 30;
+// Phase 5 — 확장 entity 길이/enum 정책
+export const SESSION_DESCRIPTION_MAX_LENGTH = 500;
+export const SESSION_NOTE_MAX_LENGTH = 1000;
+export const TEMPLATE_NAME_MAX_LENGTH = 100;
+export const TEMPLATE_DESCRIPTION_MAX_LENGTH = 300;
+export const SNAPSHOT_DESCRIPTION_MAX_LENGTH = 200;
+export const SHARE_TOKEN_LABEL_MAX_LENGTH = 100;
+export const SHARE_TOKEN_EXPIRES_MIN_DAYS = 1;
+export const SHARE_TOKEN_EXPIRES_MAX_DAYS = 365;
+export const USER_SETTINGS_THEME_OPTIONS = ["light", "dark"] as const;
+export const USER_SETTINGS_LANGUAGE_OPTIONS = ["ko", "en"] as const;
 
 export const GRADE_OPTIONS = [
   "초1",
@@ -348,7 +359,10 @@ export function validateSubjectInput(
     return { ok: false, code: ErrorCodes.SUBJECT_NAME_REQUIRED };
   }
 
-  // color hex format 검증은 Phase 5 (확장 entity 통합 시)
+  if (data.color !== undefined) {
+    const r = validateColorHex(data.color);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
   return { ok: true, data };
 }
 
@@ -365,4 +379,139 @@ export function validateStudentBirthDate(
     return { ok: false, code: ErrorCodes.STUDENT_BIRTHDATE_OUT_OF_RANGE };
   }
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 5 — 확장 entity helper. session memo / template / snapshot /
+// share-token / user-settings + color hex / weekday range.
+// 모든 4 layer (UI/sync/server) 공통 호출.
+// ─────────────────────────────────────────────────────────────────────────
+
+// 3자 short form(#fff) + 6자 long form(#ffffff) 둘 다 허용 — CSS 표준.
+const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+export function validateColorHex(value: string): FieldValidationResult {
+  if (!HEX_COLOR_REGEX.test(value)) {
+    return { ok: false, code: ErrorCodes.COLOR_HEX_INVALID };
+  }
+  return { ok: true };
+}
+
+export function validateWeekday(value: number): FieldValidationResult {
+  if (!Number.isInteger(value) || value < 0 || value > 6) {
+    return { ok: false, code: ErrorCodes.SESSION_WEEKDAY_INVALID };
+  }
+  return { ok: true };
+}
+
+export interface SessionMemoFields {
+  publicDescription?: string | null;
+  internalNote?: string | null;
+}
+
+export function validateSessionMemoFields(input: SessionMemoFields): FieldValidationResult {
+  if (input.publicDescription !== undefined && input.publicDescription !== null) {
+    if (input.publicDescription.length > SESSION_DESCRIPTION_MAX_LENGTH) {
+      return { ok: false, code: ErrorCodes.SESSION_DESCRIPTION_TOO_LONG };
+    }
+  }
+  if (input.internalNote !== undefined && input.internalNote !== null) {
+    if (input.internalNote.length > SESSION_NOTE_MAX_LENGTH) {
+      return { ok: false, code: ErrorCodes.SESSION_NOTE_TOO_LONG };
+    }
+  }
+  return { ok: true };
+}
+
+export interface TemplateInputData {
+  name?: string;
+  description?: string | null;
+}
+
+export function validateTemplateInput(
+  input: TemplateInputData,
+  opts: ObjectValidationOpts = {},
+): ObjectValidationResult<TemplateInputData> {
+  const partial = opts.partial ?? false;
+  const data: TemplateInputData = { ...input };
+
+  if (data.name !== undefined) {
+    const trimmed = data.name.trim();
+    if (trimmed.length === 0) return { ok: false, code: ErrorCodes.TEMPLATE_NAME_REQUIRED };
+    if (trimmed.length > TEMPLATE_NAME_MAX_LENGTH) {
+      return { ok: false, code: ErrorCodes.TEMPLATE_NAME_TOO_LONG };
+    }
+    data.name = trimmed;
+  } else if (!partial) {
+    return { ok: false, code: ErrorCodes.TEMPLATE_NAME_REQUIRED };
+  }
+
+  if (data.description !== undefined && data.description !== null) {
+    if (data.description.length > TEMPLATE_DESCRIPTION_MAX_LENGTH) {
+      return { ok: false, code: ErrorCodes.TEMPLATE_DESCRIPTION_TOO_LONG };
+    }
+  }
+
+  return { ok: true, data };
+}
+
+export function validateSnapshotDescription(
+  value: string | null | undefined,
+): FieldValidationResult {
+  if (value === null || value === undefined) return { ok: true };
+  if (value.length > SNAPSHOT_DESCRIPTION_MAX_LENGTH) {
+    return { ok: false, code: ErrorCodes.SNAPSHOT_DESCRIPTION_TOO_LONG };
+  }
+  return { ok: true };
+}
+
+export function validateShareTokenLabel(
+  value: string | null | undefined,
+): FieldValidationResult {
+  if (value === null || value === undefined) return { ok: true };
+  if (value.length > SHARE_TOKEN_LABEL_MAX_LENGTH) {
+    return { ok: false, code: ErrorCodes.SHARE_TOKEN_LABEL_TOO_LONG };
+  }
+  return { ok: true };
+}
+
+export function validateExpiresInDays(value: unknown): FieldValidationResult {
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    return { ok: false, code: ErrorCodes.SHARE_TOKEN_EXPIRES_INVALID };
+  }
+  if (value < SHARE_TOKEN_EXPIRES_MIN_DAYS || value > SHARE_TOKEN_EXPIRES_MAX_DAYS) {
+    return { ok: false, code: ErrorCodes.SHARE_TOKEN_EXPIRES_INVALID };
+  }
+  return { ok: true };
+}
+
+export interface UserSettingsInputData {
+  theme?: string;
+  language?: string;
+  timezone?: string;
+}
+
+const IANA_TIMEZONE_REGEX = /^[A-Za-z][A-Za-z0-9+\-_/]+$/;
+
+export function validateUserSettingsInput(
+  input: UserSettingsInputData,
+): ObjectValidationResult<UserSettingsInputData> {
+  const data: UserSettingsInputData = { ...input };
+
+  if (data.theme !== undefined) {
+    if (!(USER_SETTINGS_THEME_OPTIONS as readonly string[]).includes(data.theme)) {
+      return { ok: false, code: ErrorCodes.USER_SETTINGS_THEME_INVALID };
+    }
+  }
+  if (data.language !== undefined) {
+    if (!(USER_SETTINGS_LANGUAGE_OPTIONS as readonly string[]).includes(data.language)) {
+      return { ok: false, code: ErrorCodes.USER_SETTINGS_LANGUAGE_INVALID };
+    }
+  }
+  if (data.timezone !== undefined) {
+    if (data.timezone.length === 0 || !IANA_TIMEZONE_REGEX.test(data.timezone)) {
+      return { ok: false, code: ErrorCodes.USER_SETTINGS_TIMEZONE_INVALID };
+    }
+  }
+
+  return { ok: true, data };
 }
