@@ -7,6 +7,10 @@ import { TeacherDetailPanel } from "./TeacherDetailPanel";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import TeacherAddDetailModal from "@/components/molecules/TeacherAddDetailModal";
 import { showSuccess, showToast } from "@/lib/toast";
+import {
+  buildDuplicateNameSet,
+  formatTeacherDuplicateLabel,
+} from "@/lib/duplicateLabel";
 
 const showInfo = (message: string) => showToast("info", message);
 
@@ -53,22 +57,13 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const filtered = teachers.filter((t) => t.name.includes(query));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
-  // UAT 2026-05-10: 동명이인 식별 위해 같은 이름이 2명 이상이면 리스트 항목에
-  // 이메일/전화를 subtitle로 표시. 일반은 "주간 N회" 표시 유지.
-  const duplicateTeacherNames = (() => {
-    const counts = new Map<string, number>();
-    for (const t of teachers) counts.set(t.name, (counts.get(t.name) ?? 0) + 1);
-    return new Set(
-      Array.from(counts.entries()).filter(([, n]) => n > 1).map(([name]) => name),
-    );
-  })();
+  // 동명이인 부제 SSOT는 lib/duplicateLabel (ADR-015). 동명이인 + 식별 정보 없으면
+  // "주간 N회 · 동명이인", 그 외는 "주간 N회" fallback.
+  const duplicateTeacherNames = buildDuplicateNameSet(teachers);
   const formatTeacherSubtitle = (t: Teacher): string => {
-    const isDup = duplicateTeacherNames.has(t.name);
-    const identity: string[] = [];
-    if (t.email) identity.push(t.email);
-    if (t.phone) identity.push(t.phone);
-    if (isDup && identity.length > 0) return identity.join(" · ");
-    if (isDup) return `주간 ${teacherWeeklyCount(t)}회 · 동명이인`;
+    const dupLabel = formatTeacherDuplicateLabel(t, duplicateTeacherNames);
+    if (dupLabel) return dupLabel;
+    if (duplicateTeacherNames.has(t.name)) return `주간 ${teacherWeeklyCount(t)}회 · 동명이인`;
     return `주간 ${teacherWeeklyCount(t)}회`;
   };
 
