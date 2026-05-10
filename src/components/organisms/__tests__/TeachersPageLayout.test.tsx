@@ -90,10 +90,7 @@ describe("TeachersPageLayout", () => {
     expect(screen.getByText("주간 수업")).toBeInTheDocument();
   });
 
-  it("에러 메시지가 표시된다", () => {
-    render(<TeachersPageLayout {...baseProps} errorMessage="테스트 에러" />);
-    expect(screen.getByText("테스트 에러")).toBeInTheDocument();
-  });
+  // errorMessage 배너 제거됨 (ADR-014 D3) — 토스트가 SSOT, 인라인 배너 표시 안 함.
 
   it("한글 IME 조합 중 Enter는 onAddTeacher를 호출하지 않는다 (회귀)", async () => {
     render(<TeachersPageLayout {...baseProps} />);
