@@ -121,7 +121,7 @@ describe("/api/students API Routes", () => {
 
       expect(response.status).toBe(400);
       expect(data.success).toBe(false);
-      expect(data.error).toBe("Name is required");
+      expect(data.error.code).toBe("STUDENT_NAME_REQUIRED");
     });
 
     it("member role은 POST에 403을 반환해야 한다", async () => {

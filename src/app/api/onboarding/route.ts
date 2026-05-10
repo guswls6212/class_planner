@@ -9,6 +9,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateAcademyName } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
@@ -53,7 +54,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { academyName, role } = body as { academyName?: string; role?: string };
 
-    if (!academyName || academyName.trim().length < 2) {
+    // Phase 4: server-side validation — max 길이/required는 SSOT helper가 강제.
+    // 추가 onboarding 자체 정책: min 2자 (식별성).
+    const v = validateAcademyName(academyName ?? "");
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    if (v.value.length < 2) {
       return NextResponse.json(
         { success: false, error: "학원명은 2글자 이상 입력해주세요." },
         { status: 400 }
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { data: academy, error: academyError } = await client
       .from("academies")
       .insert({
-        name: academyName.trim(),
+        name: v.value,
         created_by: userId,
       })
       .select("id")
@@ -100,7 +105,7 @@ export async function POST(request: NextRequest) {
     logger.info("온보딩 완료 - 신규 academy 생성", {
       userId,
       academyId: academy.id,
-      academyName: academyName.trim(),
+      academyName: v.value,
     });
 
     const response = NextResponse.json(

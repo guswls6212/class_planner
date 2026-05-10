@@ -2,7 +2,8 @@ import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateStudentInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export function getStudentService() {
@@ -64,19 +65,8 @@ export async function PUT(
     }
 
     const body = await request.json();
-    // 학생 프로필 전체 필드 — UAT 2026-05-09 S-2.4 fix. 이전엔 name만 받아
-    // gender/birthDate/grade/school/phone 모두 drop → 새로고침 시 server fetch가
-    // 빈 값으로 덮어써 사용자 입력이 사라지는 결함.
-    const { name, gender, birthDate, grade, school, phone } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
-
-    if (!name) {
-      return NextResponse.json(
-        { success: false, error: "Name is required" },
-        { status: 400 }
-      );
-    }
 
     if (!userId) {
       return NextResponse.json(
@@ -85,10 +75,23 @@ export async function PUT(
       );
     }
 
+    // Phase 4: 학생 프로필 전체 필드 검증 — UAT 2026-05-09 S-2.4 fix. 이전엔 name만
+    // 받아 gender/birthDate/grade/school/phone 모두 drop. 이제 모든 필드 검증 후 저장.
+    const v = validateStudentInput(body);
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    const safe = v.data;
+
     const { academyId } = await requireRole(userId, ["owner", "admin"]);
     const updatedStudent = await getStudentService().updateStudent(
       id,
-      { name, gender, birthDate, grade, school, phone },
+      {
+        name: safe.name!,
+        gender: safe.gender,
+        birthDate: safe.birthDate,
+        grade: safe.grade,
+        school: safe.school,
+        phone: safe.phone,
+      },
       academyId
     );
 

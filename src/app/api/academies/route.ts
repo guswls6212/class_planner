@@ -1,7 +1,8 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateAcademyName } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(request: NextRequest) {
@@ -19,14 +20,15 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const { name } = body as { name?: string };
-    if (!name?.trim()) {
-      return NextResponse.json({ success: false, error: "학원 이름을 입력해주세요." }, { status: 400 });
-    }
+
+    // Phase 4: server-side validation (UI/sync 우회 방지)
+    const v = validateAcademyName(name ?? "");
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
 
     const client = getServiceRoleClient();
     const { error } = await client
       .from("academies")
-      .update({ name: name.trim() })
+      .update({ name: v.value })
       .eq("id", academyId);
 
     if (error) throw error;
