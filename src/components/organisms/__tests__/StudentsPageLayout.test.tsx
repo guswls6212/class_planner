@@ -73,14 +73,8 @@ describe("StudentsPageLayout Component", () => {
     expect(screen.getByText(/학생을 추가해주세요/)).toBeInTheDocument();
   });
 
-  it("에러 메시지가 표시되어야 한다", () => {
-    const errorMessage = "이미 존재하는 학생 이름입니다.";
-    const errorProps = { ...mockProps, errorMessage };
-
-    render(<StudentsPageLayout {...errorProps} />);
-
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
-  });
+  // errorMessage 배너 제거됨 (ADR-014 D3) — 토스트가 SSOT, 인라인 배너 표시 안 함.
+  // 토스트 발화는 useStudentManagementLocal hook의 책임 (별도 단위 테스트).
 
   it("학생 추가 버튼이 렌더링되어야 한다", () => {
     render(<StudentsPageLayout {...mockProps} />);

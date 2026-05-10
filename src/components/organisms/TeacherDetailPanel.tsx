@@ -25,7 +25,7 @@ interface TeacherDetailPanelProps {
     phone?: string | null;
     role?: TeacherRole | null;
     notes?: string | null;
-  }) => void;
+  }) => Promise<boolean> | void;
   onAddSubject: (teacherId: string, subjectId: string) => void;
   onRemoveSubject: (teacherId: string, subjectId: string) => void;
   onDelete: (id: string) => void;
@@ -80,7 +80,7 @@ export function TeacherDetailPanel({
       .filter(Boolean)
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail)) {
       setEditErr("올바른 이메일 형식이 아닙니다.");
       return;
@@ -90,6 +90,7 @@ export function TeacherDetailPanel({
       return;
     }
 
+    let result: boolean | void;
     if (canManage) {
       const name = editName.trim();
       if (!name) {
@@ -100,7 +101,7 @@ export function TeacherDetailPanel({
         setEditErr(`강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
         return;
       }
-      onUpdate(teacher.id, {
+      result = await onUpdate(teacher.id, {
         name,
         email: editEmail || null,
         phone: editPhone || null,
@@ -109,12 +110,15 @@ export function TeacherDetailPanel({
       });
     } else {
       // canEditOwn path: only email/phone/notes
-      onUpdate(teacher.id, {
+      result = await onUpdate(teacher.id, {
         email: editEmail || null,
         phone: editPhone || null,
         notes: editNotes || null,
       });
     }
+    // 실패(예: 이름 동명이인 차단)면 편집 모드 유지 — 사용자가 다시 입력 가능.
+    // 토스트는 hook이 SSOT (ADR-014 D3).
+    if (result === false) return;
     setEditErr("");
     setIsEditing(false);
   };

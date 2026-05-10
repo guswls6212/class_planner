@@ -7,6 +7,7 @@ import {
   getStudentBirthDateRange,
   isBirthDateInRange,
 } from "@/lib/validation/profileSchemas";
+import { Select } from "@/components/atoms/Select";
 
 interface StudentAddDetailModalProps {
   isOpen: boolean;
@@ -144,16 +145,15 @@ export default function StudentAddDetailModal({
                 권장
               </span>
             </label>
-            <select
+            <Select
               id="student-add-gender"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">선택 안 함</option>
               <option value="male">남</option>
               <option value="female">여</option>
-            </select>
+            </Select>
           </div>
 
           <div>
