@@ -1,11 +1,20 @@
 import type { Enrollment, Session, Student } from "../../../lib/planner";
 
+export interface SelectedStudentOption {
+  id: string;
+  name: string;
+  gender?: string | null;
+  birthDate?: string | null;
+  grade?: string | null;
+  school?: string | null;
+}
+
 export const buildSelectedStudents = (
   enrollmentIds: string[] | undefined,
   enrollments: Enrollment[],
   tempEnrollments: Enrollment[],
   students: Student[]
-): { id: string; name: string }[] => {
+): SelectedStudentOption[] => {
   if (!enrollmentIds || enrollmentIds.length === 0) return [];
   const allEnrollments = [...enrollments, ...tempEnrollments];
   return (
@@ -14,9 +23,18 @@ export const buildSelectedStudents = (
         const enrollment = allEnrollments.find((e) => e.id === enrollmentId);
         if (!enrollment) return null;
         const student = students.find((s) => s.id === enrollment.studentId);
-        return student ? { id: student.id, name: student.name } : null;
+        return student
+          ? {
+              id: student.id,
+              name: student.name,
+              gender: student.gender ?? null,
+              birthDate: student.birthDate ?? null,
+              grade: student.grade ?? null,
+              school: student.school ?? null,
+            }
+          : null;
       })
-      .filter(Boolean) as { id: string; name: string }[]
+      .filter(Boolean) as SelectedStudentOption[]
   );
 };
 
