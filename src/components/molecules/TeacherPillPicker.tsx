@@ -77,7 +77,9 @@ export default function TeacherPillPicker({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    // IME composing 가드 (UAT 2026-05-10): 한글 마지막 음절이 composing 중일 때 Enter
+    // 누르면 그 음절이 한 번 더 input에 들어가 "김민철" → "김민철철" 회귀 발생.
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       e.preventDefault();
       handleCreate();
     }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import {
   NAME_MAX_LENGTH,
+  GRADE_OPTIONS,
   getStudentBirthDateRange,
   isBirthDateInRange,
 } from "@/lib/validation/profileSchemas";
@@ -14,7 +15,7 @@ interface StudentAddDetailModalProps {
   onClose: () => void;
   onSubmit: (
     name: string,
-    options: { gender?: string; birthDate?: string },
+    options: { gender?: string; birthDate?: string; grade?: string },
   ) => void;
   existingNames: string[];
   /** 모달 열릴 때 이름 prefill (검색창 + Enter로 동명이인 등록 진입 시 사용). */
@@ -40,6 +41,7 @@ export default function StudentAddDetailModal({
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [grade, setGrade] = useState("");
   const [errMsg, setErrMsg] = useState("");
   const [birthRange] = useState(() => getStudentBirthDateRange());
 
@@ -51,6 +53,7 @@ export default function StudentAddDetailModal({
       setName((defaultName ?? "").slice(0, NAME_MAX_LENGTH));
       setGender("");
       setBirthDate("");
+      setGrade("");
       setErrMsg("");
     }
   }, [isOpen, defaultName]);
@@ -77,10 +80,12 @@ export default function StudentAddDetailModal({
     onSubmit(trimmed, {
       gender: gender || undefined,
       birthDate: birthDate || undefined,
+      grade: grade || undefined,
     });
     setName("");
     setGender("");
     setBirthDate("");
+    setGrade("");
     setErrMsg("");
     onClose();
   };
@@ -137,6 +142,30 @@ export default function StudentAddDetailModal({
 
           <div>
             <label
+              htmlFor="student-add-grade"
+              className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              학년{" "}
+              <span className="ml-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                권장
+              </span>
+            </label>
+            <Select
+              id="student-add-grade"
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+            >
+              <option value="">선택 안 함</option>
+              {GRADE_OPTIONS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label
               htmlFor="student-add-gender"
               className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]"
             >
@@ -178,8 +207,8 @@ export default function StudentAddDetailModal({
           </div>
 
           <p className="text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
-            <span aria-hidden="true">ⓘ </span>성별/생년월일은 동명이인 식별과 정확한 데이터 동기화에
-            사용됩니다. 비워두고 나중에 채워도 됩니다.
+            <span aria-hidden="true">ⓘ </span>학년은 학생 목록 카드 앞 amber chip으로 노출됩니다. 성별·생년월일은 동명이인 식별과
+            데이터 동기화에 사용됩니다. 비워두고 나중에 채워도 됩니다.
           </p>
 
           {errMsg && (

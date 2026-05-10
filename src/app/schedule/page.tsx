@@ -1043,18 +1043,36 @@ function SchedulePageContent(): JSX.Element {
     const trimmedValue = studentInputValue.trim();
     if (!trimmedValue) return;
 
-    // 정확한 이름으로 기존 학생 찾기
+    // 정확한 이름으로 기존 학생 찾기 (동명이인은 첫 번째만 발견)
     const student = students.find(
       (s) => s.name.toLowerCase() === trimmedValue.toLowerCase()
     );
-    if (student && !groupModalData.studentIds.includes(student.id)) {
+    if (student) {
+      if (groupModalData.studentIds.includes(student.id)) {
+        // UAT 2026-05-10: 이미 추가된 학생 — silent failure 회귀 방지.
+        // 동명이인이 더 있으면 아래 list에서 선택해야 한다고 안내.
+        const otherDups = students.filter(
+          (s) =>
+            s.id !== student.id &&
+            s.name.toLowerCase() === trimmedValue.toLowerCase(),
+        );
+        if (otherDups.length > 0) {
+          showToast(
+            "info",
+            `'${trimmedValue}' 학생이 이미 추가되어 있습니다. 동명이인이 ${otherDups.length}명 더 있어요 — 아래 목록에서 직접 선택해주세요.`,
+          );
+        } else {
+          showToast("info", `'${trimmedValue}' 학생이 이미 추가되어 있습니다.`);
+        }
+        return;
+      }
       // 🆕 최대 14명 제한 확인
       if (groupModalData.studentIds.length >= 14) {
         showToast("warning", "최대 14명까지 추가할 수 있습니다.");
         return;
       }
       addStudent(student.id);
-    } else if (!student) {
+    } else {
       // 일치하는 학생 없으면 신규 생성 플로우로 위임
       handleCreateStudentFromInput();
     }

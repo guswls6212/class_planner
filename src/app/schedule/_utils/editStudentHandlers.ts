@@ -36,17 +36,22 @@ export function buildEditStudentAdd(params: {
   return (studentId?: string) => {
     logger.debug("handleEditStudentAdd 호출", { studentId });
 
-    const inputValue = getEditStudentInputValue();
+    const inputValue = getEditStudentInputValue() ?? "";
+    const trimmedInput = inputValue.trim();
 
     const targetStudentId =
       studentId ||
-      students.find((s) => s.name.toLowerCase() === inputValue.toLowerCase())
+      students.find((s) => s.name.toLowerCase() === trimmedInput.toLowerCase())
         ?.id;
 
     logger.debug("찾은 학생 ID", { targetStudentId });
 
     if (!targetStudentId) {
+      // UAT 2026-05-10: silent failure 회귀 방지 — 검색 결과 없으면 토스트 안내.
       logger.warn("학생을 찾을 수 없음", { inputValue });
+      if (trimmedInput) {
+        showToast("info", `'${trimmedInput}' 학생을 찾을 수 없습니다. 학생 페이지에서 먼저 등록해주세요.`);
+      }
       return;
     }
 
@@ -58,7 +63,25 @@ export function buildEditStudentAdd(params: {
     );
 
     if (isAlreadyAdded) {
+      // UAT 2026-05-10: 이미 추가된 학생 silent failure 회귀 방지.
+      // 동명이인이 더 있으면 list에서 직접 선택해야 함을 안내.
       logger.warn("이미 추가된 학생", { studentId: targetStudentId });
+      const matchingName = students.find((s) => s.id === targetStudentId)?.name;
+      const otherDups = matchingName
+        ? students.filter(
+            (s) =>
+              s.id !== targetStudentId &&
+              s.name.toLowerCase() === matchingName.toLowerCase(),
+          )
+        : [];
+      if (otherDups.length > 0 && matchingName) {
+        showToast(
+          "info",
+          `'${matchingName}' 학생이 이미 추가되어 있습니다. 동명이인이 ${otherDups.length}명 더 있어요 — 아래 목록에서 직접 선택해주세요.`,
+        );
+      } else if (matchingName) {
+        showToast("info", `'${matchingName}' 학생이 이미 추가되어 있습니다.`);
+      }
       setEditStudentInputValue("");
       return;
     }

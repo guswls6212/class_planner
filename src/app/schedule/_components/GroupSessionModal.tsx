@@ -377,7 +377,8 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
                 value={subjectInputValue}
                 onChange={(e) => setSubjectInputValue(e.target.value.slice(0, SUBJECT_NAME_MAX_LENGTH))}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  // IME composing 가드 — 한글 마지막 음절 누적 회귀 방지 (UAT 2026-05-10)
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                     e.preventDefault();
                     handleCreateSubjectInline();
                   }
