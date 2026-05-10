@@ -52,12 +52,9 @@ export default function TeacherAddDetailModal({
       setErrMsg(`강사 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
-    if (
-      existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())
-    ) {
-      setErrMsg("이미 존재하는 강사 이름입니다.");
-      return;
-    }
+    // UAT 2026-05-10: client-side 단순 이름 중복 check 제거 — 동명이인 강사
+    // (같은 이름, 다른 이메일/전화) 등록 허용. 진짜 중복은 server idempotent 처리
+    // (TeacherApplicationService.addTeacher: 이름+이메일+전화 모두 일치 시).
     const trimmedEmail = email.trim();
     if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       setErrMsg("올바른 이메일 형식이 아닙니다.");

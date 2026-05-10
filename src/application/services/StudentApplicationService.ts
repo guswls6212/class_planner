@@ -3,6 +3,29 @@ import { StudentRepository } from "@/infrastructure/interfaces";
 import { AppError } from "@/lib/errors/AppError";
 import { logger } from "../../lib/logger";
 
+/**
+ * 학생 중복 판정 (UAT 2026-05-10 정책):
+ * 이름 + 성별 + 생년월일 모두 일치 시에만 동일인.
+ * 한 필드라도 다르면 동명이인으로 간주 (빈 값 ≠ 채워진 값).
+ *
+ * - undefined/null/빈 문자열 정규화 후 strict 비교
+ * - 이름은 trim + 정규화 (NFC normalize)
+ */
+function normalizeIdentity(v: string | null | undefined): string {
+  return (v ?? "").trim();
+}
+function isStudentDuplicate(
+  existing: { name: string; gender?: string | null; birthDate?: string | null },
+  candidate: { name?: string; gender?: string | null; birthDate?: string | null },
+): boolean {
+  return (
+    normalizeIdentity(existing.name).toLowerCase() ===
+      normalizeIdentity(candidate.name).toLowerCase() &&
+    normalizeIdentity(existing.gender) === normalizeIdentity(candidate.gender) &&
+    normalizeIdentity(existing.birthDate) === normalizeIdentity(candidate.birthDate)
+  );
+}
+
 export class StudentApplicationServiceImpl {
   constructor(private studentRepository: StudentRepository) {}
 
@@ -26,17 +49,15 @@ export class StudentApplicationServiceImpl {
     academyId: string
   ): Promise<Student> {
     try {
-      // Idempotent get-or-create: 같은 academy의 같은 이름 학생이 이미 있으면 그
-      // row 반환. client UUID 명시 여부와 무관 — students table에 (academy_id, name)
-      // UNIQUE 제약은 없지만 client localStorage가 server와 sync 안 된 상태에서
-      // 같은 이름 추가 시 서버 측에 중복 row가 생기는 잠재 issue 차단.
-      // teacher idempotent (PR #299) 동일 패턴.
+      // 중복 정책 (UAT 2026-05-10): 이름+성별+생년월일 모두 일치 시에만 중복.
+      // 한 필드라도 다르면 동명이인으로 등록 허용. 빈 값(undefined/null/"")은 동등.
+      // Idempotent get-or-create: 동일 entity면 기존 row 반환 (이전 'name only' 동작 유지 — 한 필드라도 다르면 새로 INSERT).
       const existingStudents = await this.studentRepository.getAll(academyId);
-      const dup = existingStudents.find(
-        (student) => student.name === studentData.name,
+      const dup = existingStudents.find((student) =>
+        isStudentDuplicate(student, studentData),
       );
       if (dup) {
-        logger.info("addStudent: name duplicate → returning existing", {
+        logger.info("addStudent: full identity duplicate → returning existing", {
           requestedId: studentData.id ?? null,
           existingId: dup.id.value,
           name: studentData.name,
@@ -69,16 +90,19 @@ export class StudentApplicationServiceImpl {
         throw new AppError("STUDENT_NOT_FOUND", { statusHint: 404 });
       }
 
-      if (studentData.name !== undefined) {
-        const existingStudents = await this.studentRepository.getAll(academyId);
-        const isDuplicate = existingStudents.some(
-          (student) =>
-            student.name === studentData.name && student.id.value !== id
-        );
-
-        if (isDuplicate) {
-          throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
-        }
+      // 중복 검사 — 변경 후 식별 필드 조합이 다른 학생과 충돌하는지 확인.
+      // 식별 필드(name, gender, birthDate)가 변경되거나 누락된 경우만 검사.
+      const merged = {
+        name: studentData.name ?? existingStudent.name,
+        gender: studentData.gender ?? existingStudent.gender,
+        birthDate: studentData.birthDate ?? existingStudent.birthDate,
+      };
+      const existingStudents = await this.studentRepository.getAll(academyId);
+      const isDuplicate = existingStudents.some(
+        (student) => student.id.value !== id && isStudentDuplicate(student, merged),
+      );
+      if (isDuplicate) {
+        throw new AppError("STUDENT_NAME_DUPLICATE", { statusHint: 409 });
       }
 
       return await this.studentRepository.update(id, studentData, academyId);

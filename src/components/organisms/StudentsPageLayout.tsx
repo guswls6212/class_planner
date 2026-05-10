@@ -9,6 +9,7 @@ import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
 import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
+import { showSuccess, showActionToast } from "@/lib/toast";
 
 interface StudentsPageLayoutProps {
   students: Student[];
@@ -85,7 +86,28 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const showCodeSkeleton = codeUiCapable && !accessCodesReady;
 
   const handleAdd = (trimmed: string) => {
-    props.onAddStudent(trimmed);
+    // UAT 2026-05-10: 검색 + Enter 시 사용자 피드백 추가.
+    // 결과 0건 → CTA 토스트("새로 추가" 버튼)로 사용자 명시 액션.
+    // 결과 1건+ → 첫 결과 자동 select + 일반 토스트.
+    const matched = students.filter((s) => s.name.includes(trimmed));
+    if (matched.length === 0) {
+      showActionToast({
+        message: `'${trimmed}' 학생이 없습니다. 새로 추가할까요?`,
+        actionLabel: "새로 추가",
+        onAction: () => {
+          props.onAddStudent(trimmed);
+          showSuccess(`'${trimmed}' 학생을 추가했습니다.`);
+        },
+      });
+    } else {
+      onSelectStudent(matched[0].id);
+      setShowDetail(true);
+      showSuccess(
+        matched.length === 1
+          ? `'${matched[0].name}' 학생을 선택했습니다.`
+          : `'${trimmed}'와(과) 일치하는 학생 ${matched.length}명 중 첫 번째를 선택했습니다.`,
+      );
+    }
     setQuery("");
   };
 

@@ -53,10 +53,9 @@ export default function StudentAddDetailModal({
       setErrMsg(`학생 이름은 최대 ${NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`);
       return;
     }
-    if (existingNames.includes(trimmed)) {
-      setErrMsg("이미 존재하는 학생 이름입니다.");
-      return;
-    }
+    // UAT 2026-05-10: client-side 단순 이름 중복 check 제거 — 동명이인(같은 이름,
+    // 다른 성별/생년월일)은 등록 허용. 진짜 중복(이름+성별+생년월일 모두 일치)은
+    // server가 idempotent로 처리 (StudentApplicationService.addStudent의 정책 일관).
     if (birthDate && !isBirthDateInRange(birthDate, birthRange)) {
       setErrMsg("학생 생년월일은 만 4~25세 범위여야 합니다.");
       return;
