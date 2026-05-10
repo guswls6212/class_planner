@@ -67,7 +67,9 @@ describe("StudentAddDetailModal", () => {
     expect(nameInput.value.length).toBeLessThanOrEqual(6);
   });
 
-  it("중복 이름으로 추가 → 에러 메시지", () => {
+  it("동명이인 등록 허용 — UAT 2026-05-10 정책 (이름+성별+생년월일 모두 일치 시에만 server에서 차단)", () => {
+    // client-side 단순 이름 중복 check 제거됨. existingNames는 더 이상 차단 사유 X.
+    // 진짜 중복(이름+성별+생년월일 모두 일치)은 server idempotent 처리.
     const onSubmit = vi.fn();
     render(
       <StudentAddDetailModal
@@ -78,10 +80,15 @@ describe("StudentAddDetailModal", () => {
     );
 
     fireEvent.change(screen.getByLabelText(/이름/), { target: { value: "김민준" } });
+    fireEvent.change(screen.getByLabelText(/성별/), { target: { value: "male" } });
+    fireEvent.change(screen.getByLabelText(/생년월일/), { target: { value: "2010-03-15" } });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/이미 존재하는 학생/);
-    expect(onSubmit).not.toHaveBeenCalled();
+    // client는 통과시키고 server에 위임
+    expect(onSubmit).toHaveBeenCalledWith("김민준", {
+      gender: "male",
+      birthDate: "2010-03-15",
+    });
   });
 
   it("취소 버튼 → onClose 호출", () => {

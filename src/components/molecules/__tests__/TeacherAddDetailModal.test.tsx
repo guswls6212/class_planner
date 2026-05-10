@@ -65,7 +65,9 @@ describe("TeacherAddDetailModal", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("중복 이름 (대소문자 무관) → 에러 메시지", () => {
+  it("동명이인 등록 허용 — UAT 2026-05-10 정책 (이름+이메일+전화 모두 일치 시에만 server 차단)", () => {
+    // client-side 단순 이름 중복 check 제거됨. 진짜 중복(이름+이메일+전화 모두 일치)은
+    // server idempotent 처리. 같은 이름이라도 다른 이메일/전화면 등록 허용.
     const onSubmit = vi.fn();
     render(
       <TeacherAddDetailModal
@@ -78,8 +80,10 @@ describe("TeacherAddDetailModal", () => {
     fireEvent.change(screen.getByLabelText(/이름/), { target: { value: "park" } });
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/이미 존재하는 강사/);
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith("park", {
+      email: undefined,
+      phone: undefined,
+    });
   });
 
   it("권장 라벨이 이메일/전화에 시각화된다", () => {
