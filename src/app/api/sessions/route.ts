@@ -2,7 +2,11 @@ import { ServiceFactory } from "@/application/services/ServiceFactory";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import {
+  validateSessionMemoFields,
+  validateWeekday,
+} from "@/lib/validation/profileSchemas";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -85,6 +89,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Phase 6: server-side validation — weekday range + memo 길이
+    const wd = validateWeekday(Number(weekday));
+    if (!wd.ok) throw new AppError(wd.code, { statusHint: 400 });
+    const memo = validateSessionMemoFields({
+      publicDescription: public_description,
+      internalNote: internal_note,
+    });
+    if (!memo.ok) throw new AppError(memo.code, { statusHint: 400 });
+
     const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
 
     // public_description은 owner/admin만 편집 가능
@@ -151,6 +164,15 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Phase 6: server-side validation — weekday range + memo 길이
+    const wd = validateWeekday(Number(weekday));
+    if (!wd.ok) throw new AppError(wd.code, { statusHint: 400 });
+    const memo = validateSessionMemoFields({
+      publicDescription: public_description,
+      internalNote: internal_note,
+    });
+    if (!memo.ok) throw new AppError(memo.code, { statusHint: 400 });
 
     const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
 

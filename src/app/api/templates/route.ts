@@ -1,7 +1,8 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateTemplateInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 function canManage(role: string): boolean {
@@ -58,15 +59,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { name, description, templateData } = body as {
-      name?: string;
-      description?: string;
+    const { templateData } = body as {
       templateData?: unknown;
     };
 
-    if (!name?.trim()) {
-      return NextResponse.json({ success: false, error: "name is required" }, { status: 400 });
-    }
+    // Phase 6: server-side validation (name required, length 강제)
+    const v = validateTemplateInput({ name: body.name, description: body.description });
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    const safeName = v.data.name!;
+    const safeDescription = v.data.description;
 
     const client = getServiceRoleClient();
 
@@ -101,8 +102,8 @@ export async function POST(request: NextRequest) {
       .from("templates")
       .insert({
         academy_id: academyId,
-        name: name.trim(),
-        description: description ?? null,
+        name: safeName,
+        description: safeDescription ?? null,
         template_data: templateData ?? { version: "1.0", sessions: [] },
         slot_index: slotIndex,
         created_by: userId,
