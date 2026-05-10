@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { showError } from "@/lib/toast";
+import { Select } from "@/components/atoms/Select";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "관리자",
@@ -207,17 +208,16 @@ export default function InviteModal({
                   </p>
                 ) : (
                   <>
-                    <select
+                    <Select
                       value={selectedTeacherId}
                       onChange={(e) => setSelectedTeacherId(e.target.value)}
-                      className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
                     >
                       {teachers.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {selectedTeacherId && !selectedTeacherEmail && (
                       <div className="mt-2 rounded-lg bg-yellow-900/20 border border-yellow-700/50 px-3 py-2">
                         <p className="text-xs text-yellow-400">이 강사의 이메일이 등록되지 않았습니다.</p>

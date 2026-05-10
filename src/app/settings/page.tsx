@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { Select } from "@/components/atoms/Select";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
@@ -849,31 +850,29 @@ export default function SettingsPage() {
             {localStudents.length > 0 && (
               <div className="mb-4">
                 <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">학생 필터 (선택)</label>
-                <select
+                <Select
                   value={shareStudentId}
                   onChange={(e) => setShareStudentId(e.target.value)}
-                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="">전체 학생</option>
                   {localStudents.map((s) => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
             <div className="mb-5">
               <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">만료 기간</label>
-              <select
+              <Select
                 value={shareExpiresInDays}
                 onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value={7}>7일</option>
                 <option value={30}>30일</option>
                 <option value={90}>90일</option>
                 <option value={365}>1년</option>
-              </select>
+              </Select>
             </div>
 
             <div className="flex gap-3">

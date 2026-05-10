@@ -6,6 +6,7 @@ import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { Select } from "@/components/atoms/Select";
 import { showToast } from "@/lib/toast";
 import {
   GENDER_LABEL,
@@ -313,10 +314,11 @@ export function StudentDetailPanel({
             {/* 학년 — 12개 + 미취학/재수/기타 */}
             <div className="flex items-center gap-2">
               <label className="w-20 flex-shrink-0 text-[11px] text-[var(--color-text-muted)]">학년</label>
-              <select
+              <Select
+                size="sm"
+                className="flex-1"
                 value={editFields.grade}
                 onChange={(e) => setEditFields((f) => ({ ...f, grade: e.target.value }))}
-                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="">선택 안 함</option>
                 {GRADE_OPTIONS.map((g) => (
@@ -324,7 +326,7 @@ export function StudentDetailPanel({
                     {g}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             {/* 학교 */}
             <div className="flex items-center gap-2">
@@ -360,15 +362,16 @@ export function StudentDetailPanel({
                   권장
                 </span>
               </label>
-              <select
+              <Select
+                size="sm"
+                className="flex-1"
                 value={editFields.gender}
                 onChange={(e) => setEditFields((f) => ({ ...f, gender: e.target.value }))}
-                className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="">선택 안 함</option>
                 <option value="male">남</option>
                 <option value="female">여</option>
-              </select>
+              </Select>
             </div>
             {/* 생년월일 — 만 4~25세 범위 + 권장 라벨 */}
             <div className="flex items-center gap-2">

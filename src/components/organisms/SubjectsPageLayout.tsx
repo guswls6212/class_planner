@@ -133,11 +133,7 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
           )}
         </ul>
 
-        {props.errorMessage && (
-          <div className="px-3 py-2 bg-red-50 text-red-600 text-[11px]">
-            {props.errorMessage}
-          </div>
-        )}
+        {/* errorMessage 배너 제거 — 토스트가 SSOT (ADR-014 D3) */}
       </div>
 
       {/* Detail Panel */}

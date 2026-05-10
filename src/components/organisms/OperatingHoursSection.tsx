@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Select } from "@/components/atoms/Select";
 import {
   readStoredRange,
   resolveTimeRange,
@@ -166,34 +167,34 @@ export default function OperatingHoursSection({
                   <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
                     시작 시각
                   </label>
-                  <select
+                  <Select
+                    size="sm"
                     value={startHour}
                     onChange={(e) => handleStartChange(Number(e.target.value))}
-                    className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
                   >
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>
                         {h.toString().padStart(2, "0")}:00
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <span className="text-[var(--color-text-muted)] pb-1.5">—</span>
                 <div className="flex-1">
                   <label className="block text-[11px] text-[var(--color-text-muted)] mb-1">
                     종료 시각 (해당 시 30분까지 표시)
                   </label>
-                  <select
+                  <Select
+                    size="sm"
                     value={endHour}
                     onChange={(e) => handleEndChange(Number(e.target.value))}
-                    className="w-full rounded border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent)]"
                   >
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>
                         {h.toString().padStart(2, "0")}:30
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               </div>
               {isInvalidRange && (

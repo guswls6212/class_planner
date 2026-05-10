@@ -266,12 +266,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           />
         )}
 
-        {props.errorMessage && (
-          <div className="px-3 py-2 bg-red-50 text-red-600 text-[11px] flex items-center justify-between">
-            <span>{props.errorMessage}</span>
-            <button onClick={props.onClearError} className="ml-2 underline">닫기</button>
-          </div>
-        )}
+        {/* errorMessage 배너 제거 — 토스트가 SSOT (ADR-014 D3) */}
       </div>
 
       {/* Detail Panel */}

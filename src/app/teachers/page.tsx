@@ -26,15 +26,15 @@ const TeachersPage = () => {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
 
   const handleUpdate = useCallback(
-    (id: string, updates: {
+    async (id: string, updates: {
       name?: string;
       color?: string;
       email?: string | null;
       phone?: string | null;
       role?: TeacherRole | null;
       notes?: string | null;
-    }) => {
-      updateTeacher(id, updates);
+    }): Promise<boolean> => {
+      return await updateTeacher(id, updates);
     },
     [updateTeacher]
   );
