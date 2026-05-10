@@ -81,7 +81,7 @@ function StudentsPageContent() {
   // 학생 추가 핸들러
   const handleAddStudent = async (
     name: string,
-    options?: { gender?: string; birthDate?: string },
+    options?: { gender?: string; birthDate?: string; grade?: string },
   ) => {
     try {
       const success = await addStudent(name, options);
