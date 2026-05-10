@@ -10,9 +10,15 @@
  */
 
 import { logger } from "./logger";
-import { showToast } from "./toast";
+import { showToast, showError } from "./toast";
 import { enqueueOutbox } from "./syncOutbox";
 import { deleteSessionFromLocal } from "./localStorageCrud";
+import { getKoMessage } from "./errors/messages.ko";
+import {
+  validateStudentInput,
+  validateSubjectInput,
+  validateTeacherInput,
+} from "./validation/profileSchemas";
 import type { Session } from "../lib/planner";
 
 /**
@@ -397,18 +403,26 @@ export function syncStudentCreate(
   data: { id?: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
+  // Phase 3: 송신 직전 검증 — UI 우회(devtools 등) 방지. 실패 시 toast + return.
+  const v = validateStudentInput(data);
+  if (!v.ok) {
+    logger.warn("syncStudentCreate: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safe = v.data;
   const url = `/api/students?userId=${encodeURIComponent(userId)}`;
   // Local-first: client UUID 포함 그대로 전송. server는 받은 id를 INSERT에 사용
   // → 후속 PUT /api/students/{id} 시 id 매칭 보장 (이전엔 server가 자체 id 발급
   // 하여 client localStorage와 불일치 → ghost 누적, PUT 404 무한 루프).
   const body = {
     ...(data.id && { id: data.id }),
-    name: data.name,
-    gender: data.gender,
-    birthDate: data.birthDate,
-    grade: data.grade,
-    school: data.school,
-    phone: data.phone,
+    name: safe.name,
+    gender: safe.gender,
+    birthDate: safe.birthDate,
+    grade: safe.grade,
+    school: safe.school,
+    phone: safe.phone,
   };
   const makeRequest = () =>
     fetch(url, {
@@ -441,12 +455,19 @@ export async function syncStudentCreateAsync(
   data: { id: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): Promise<{ id: string } | null> {
   if (!userId) return null;
+  const v = validateStudentInput(data);
+  if (!v.ok) {
+    logger.warn("syncStudentCreateAsync: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return null;
+  }
+  const safeBody = { ...data, ...v.data };
   const url = `/api/students?userId=${encodeURIComponent(userId)}`;
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(safeBody),
     });
     if (!res.ok) {
       syncStudentCreate(userId, data);
@@ -471,12 +492,19 @@ export function syncStudentUpdate(
   data: { name?: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string }
 ): void {
   if (!userId) return;
+  const v = validateStudentInput(data, { partial: true });
+  if (!v.ok) {
+    logger.warn("syncStudentUpdate: validation failed", { code: v.code, id });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safe = v.data;
   const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
   const body = {
-    name: data.name,
-    gender: data.gender,
-    birthDate: data.birthDate,
-    grade: data.grade,
+    name: safe.name,
+    gender: safe.gender,
+    birthDate: safe.birthDate,
+    grade: safe.grade,
     school: data.school,
     phone: data.phone,
   };
@@ -514,11 +542,18 @@ export function syncSubjectCreate(
   data: { id?: string; name: string; color: string }
 ): void {
   if (!userId) return;
+  const v = validateSubjectInput(data);
+  if (!v.ok) {
+    logger.warn("syncSubjectCreate: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safe = v.data;
   const url = `/api/subjects?userId=${encodeURIComponent(userId)}`;
   // Local-first: client UUID 포함 그대로 전송. id mismatch ghost 방지.
   const body = {
     ...(data.id && { id: data.id }),
-    name: data.name,
+    name: safe.name,
     color: data.color,
   };
   const makeRequest = () =>
@@ -545,12 +580,19 @@ export async function syncSubjectCreateAsync(
   data: { id: string; name: string; color: string }
 ): Promise<{ id: string } | null> {
   if (!userId) return null;
+  const v = validateSubjectInput(data);
+  if (!v.ok) {
+    logger.warn("syncSubjectCreateAsync: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return null;
+  }
+  const safeBody = { ...data, ...v.data };
   const url = `/api/subjects?userId=${encodeURIComponent(userId)}`;
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(safeBody),
     });
     if (!res.ok) {
       syncSubjectCreate(userId, data);
@@ -575,19 +617,26 @@ export function syncSubjectUpdate(
   data: { name?: string; color?: string }
 ): void {
   if (!userId) return;
+  const v = validateSubjectInput(data, { partial: true });
+  if (!v.ok) {
+    logger.warn("syncSubjectUpdate: validation failed", { code: v.code, id });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safeBody = { ...data, ...v.data };
   const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
     fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(safeBody),
     });
   fireAndForget(makeRequest, "subject:update", 0, {
     id: `subject:update:${id}`,
     userId,
     method: "PUT",
     url,
-    body: data,
+    body: safeBody,
   });
 }
 
@@ -855,15 +904,22 @@ export function syncTeacherCreate(
   }
 ): void {
   if (!userId) return;
+  const v = validateTeacherInput({ name: data.name, email: data.email, phone: data.phone });
+  if (!v.ok) {
+    logger.warn("syncTeacherCreate: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safe = v.data;
   const url = `/api/teachers?userId=${encodeURIComponent(userId)}`;
   // Local-first: client UUID 포함 그대로 전송. id mismatch ghost 방지.
   const body = {
     ...(data.id && { id: data.id }),
-    name: data.name,
+    name: safe.name,
     color: data.color,
     userId: data.userId,
-    email: data.email,
-    phone: data.phone,
+    email: safe.email ?? data.email,
+    phone: safe.phone ?? data.phone,
     role: data.role,
     notes: data.notes,
   };
@@ -900,12 +956,19 @@ export async function syncTeacherCreateAsync(
   }
 ): Promise<{ id: string } | null> {
   if (!userId) return null;
+  const v = validateTeacherInput({ name: data.name, email: data.email, phone: data.phone });
+  if (!v.ok) {
+    logger.warn("syncTeacherCreateAsync: validation failed", { code: v.code });
+    showError(getKoMessage(v.code));
+    return null;
+  }
+  const safeBody = { ...data, name: v.data.name ?? data.name };
   const url = `/api/teachers?userId=${encodeURIComponent(userId)}`;
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(safeBody),
     });
     if (!res.ok) {
       syncTeacherCreate(userId, data);
@@ -938,19 +1001,29 @@ export function syncTeacherUpdate(
   }
 ): void {
   if (!userId) return;
+  const v = validateTeacherInput(
+    { name: data.name, email: data.email, phone: data.phone },
+    { partial: true },
+  );
+  if (!v.ok) {
+    logger.warn("syncTeacherUpdate: validation failed", { code: v.code, id });
+    showError(getKoMessage(v.code));
+    return;
+  }
+  const safeBody = { ...data, ...(v.data.name !== undefined && { name: v.data.name }) };
   const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
   const makeRequest = () =>
     fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(safeBody),
     });
   fireAndForget(makeRequest, "teacher:update", 0, {
     id: `teacher:update:${id}`,
     userId,
     method: "PUT",
     url,
-    body: data,
+    body: safeBody,
   });
 }
 

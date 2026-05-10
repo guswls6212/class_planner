@@ -223,6 +223,135 @@ export function validatePhoneNumber(value: string): FieldValidationResult {
   return { ok: true };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 객체 검증 helper — entity 입력 객체 전체를 한 번에 검증.
+// client sync 송신 직전, server route 진입, domain entity 생성자가 동일 호출.
+// partial=true면 PATCH 의미론 (변경된 필드만 검증, name 등 필수 필드 undefined 허용).
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface StudentInputData {
+  name?: string;
+  school?: string;
+  gender?: string;
+  grade?: string;
+  phone?: string;
+  birthDate?: string;
+}
+
+export interface TeacherInputData {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface SubjectInputData {
+  name?: string;
+  color?: string;
+}
+
+export type ObjectValidationResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; code: ErrorCode };
+
+interface ObjectValidationOpts {
+  /** true면 name 등 필수 필드가 undefined일 때 통과 (PATCH 의미론). */
+  partial?: boolean;
+  today?: Date;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(value: string): boolean {
+  if (value.trim().length === 0) return true;
+  return EMAIL_REGEX.test(value);
+}
+
+export function validateStudentInput(
+  input: StudentInputData,
+  opts: ObjectValidationOpts = {},
+): ObjectValidationResult<StudentInputData> {
+  const partial = opts.partial ?? false;
+  const data: StudentInputData = { ...input };
+
+  if (data.name !== undefined) {
+    const r = validateStudentName(data.name);
+    if (!r.ok) return { ok: false, code: r.code };
+    data.name = r.value;
+  } else if (!partial) {
+    return { ok: false, code: ErrorCodes.STUDENT_NAME_REQUIRED };
+  }
+
+  if (data.school !== undefined) {
+    const r = validateStudentSchool(data.school);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+  if (data.gender !== undefined) {
+    const r = validateStudentGender(data.gender);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+  if (data.grade !== undefined) {
+    const r = validateStudentGrade(data.grade);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+  if (data.phone !== undefined) {
+    const r = validatePhoneNumber(data.phone);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+  if (data.birthDate !== undefined) {
+    const r = validateStudentBirthDate(data.birthDate, opts.today);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+
+  return { ok: true, data };
+}
+
+export function validateTeacherInput(
+  input: TeacherInputData,
+  opts: ObjectValidationOpts = {},
+): ObjectValidationResult<TeacherInputData> {
+  const partial = opts.partial ?? false;
+  const data: TeacherInputData = { ...input };
+
+  if (data.name !== undefined) {
+    const r = validateTeacherName(data.name);
+    if (!r.ok) return { ok: false, code: r.code };
+    data.name = r.value;
+  } else if (!partial) {
+    return { ok: false, code: ErrorCodes.TEACHER_NAME_REQUIRED };
+  }
+
+  if (data.email !== undefined && data.email !== null) {
+    if (!isValidEmail(data.email)) {
+      return { ok: false, code: ErrorCodes.TEACHER_EMAIL_INVALID };
+    }
+  }
+
+  if (data.phone !== undefined && data.phone !== null) {
+    const r = validatePhoneNumber(data.phone);
+    if (!r.ok) return { ok: false, code: r.code };
+  }
+
+  return { ok: true, data };
+}
+
+export function validateSubjectInput(
+  input: SubjectInputData,
+  opts: ObjectValidationOpts = {},
+): ObjectValidationResult<SubjectInputData> {
+  const partial = opts.partial ?? false;
+  const data: SubjectInputData = { ...input };
+
+  if (data.name !== undefined) {
+    const r = validateSubjectName(data.name);
+    if (!r.ok) return { ok: false, code: r.code };
+    data.name = r.value;
+  } else if (!partial) {
+    return { ok: false, code: ErrorCodes.SUBJECT_NAME_REQUIRED };
+  }
+
+  // color hex format 검증은 Phase 5 (확장 entity 통합 시)
+  return { ok: true, data };
+}
+
 /**
  * 학생 생년월일 — 빈 값 통과(권장 필드). 입력 시 만 4~25세 범위.
  */
