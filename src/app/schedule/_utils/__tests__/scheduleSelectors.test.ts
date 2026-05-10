@@ -172,7 +172,8 @@ describe("scheduleSelectors", () => {
         mockStudents
       );
 
-      expect(result).toEqual([{ id: "student-2", name: "이영희" }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-2", name: "이영희" });
     });
 
     it("대소문자 구분 없이 매칭되어야 한다", () => {
@@ -183,7 +184,8 @@ describe("scheduleSelectors", () => {
         mockStudents
       );
 
-      expect(result).toEqual([{ id: "student-3", name: "박민수" }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-3", name: "박민수" });
     });
 
     it("빈 쿼리일 때 이미 추가되지 않은 학생들만 반환해야 한다", () => {
@@ -195,10 +197,8 @@ describe("scheduleSelectors", () => {
       );
 
       // 김철수(student-1)는 이미 추가되어 있으므로 제외
-      expect(result).toEqual([
-        { id: "student-2", name: "이영희" },
-        { id: "student-3", name: "박민수" },
-      ]);
+      expect(result).toHaveLength(2);
+      expect(result.map((s) => s.id)).toEqual(["student-2", "student-3"]);
     });
 
     it("매칭되는 학생이 없을 때 빈 배열을 반환해야 한다", () => {

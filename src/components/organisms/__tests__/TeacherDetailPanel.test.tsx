@@ -107,7 +107,9 @@ describe("TeacherDetailPanel", () => {
     expect(screen.getByText("취소")).toBeInTheDocument();
   });
 
-  it("저장 버튼 클릭 시 onUpdate가 모든 필드를 포함하여 호출된다", () => {
+  it("저장 버튼 클릭 시 onUpdate가 모든 필드(이름·이메일·전화·메모·색상)를 포함하여 호출된다", () => {
+    // ADR-015: 색상은 폼 안에 통합돼 저장 버튼 클릭 시 함께 commit.
+    // role은 detail에서 변경 불가 (settings membership flow가 SSOT) — onUpdate에 포함 X.
     render(<TeacherDetailPanel {...baseProps} />);
     fireEvent.click(screen.getByLabelText("편집"));
     const nameInput = screen.getByDisplayValue("김선생");
@@ -115,9 +117,9 @@ describe("TeacherDetailPanel", () => {
     fireEvent.click(screen.getByText("저장"));
     expect(baseProps.onUpdate).toHaveBeenCalledWith("1", {
       name: "박선생",
+      color: "#6366f1",
       email: "kim@example.com",
       phone: "010-1234-5678",
-      role: "admin",
       notes: "메모 내용",
     });
   });
@@ -140,32 +142,17 @@ describe("TeacherDetailPanel", () => {
     expect(screen.getByText("담당 수업이 없습니다.")).toBeInTheDocument();
   });
 
-  it("색상 팔레트 클릭 시 onUpdate가 400ms 후 color만 호출된다", () => {
-    vi.useFakeTimers();
+  it("색상 swatch 클릭은 preview만 — onUpdate는 저장 버튼 클릭 시 commit (ADR-015)", () => {
     render(<TeacherDetailPanel {...baseProps} />);
+    fireEvent.click(screen.getByLabelText("편집"));
     const colorButtons = screen.getAllByLabelText(/#[0-9a-fA-F]{6}/);
     fireEvent.click(colorButtons[0]);
+    // autosave 제거됨 — swatch 클릭만으로는 onUpdate 호출 X
     expect(baseProps.onUpdate).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(400);
+    fireEvent.click(screen.getByText("저장"));
     expect(baseProps.onUpdate).toHaveBeenCalledWith(
       "1",
-      expect.objectContaining({ color: expect.any(String) })
+      expect.objectContaining({ color: expect.any(String) }),
     );
-    vi.useRealTimers();
-  });
-
-  it("색상 버튼 연속 클릭 시 onUpdate는 400ms 후 한 번만 호출된다", () => {
-    vi.useFakeTimers();
-    const onUpdate = vi.fn();
-    render(<TeacherDetailPanel {...baseProps} onUpdate={onUpdate} />);
-    const colorButtons = screen.getAllByLabelText(/#[0-9a-fA-F]{6}/);
-    fireEvent.click(colorButtons[0]);
-    fireEvent.click(colorButtons[1]);
-    fireEvent.click(colorButtons[2]);
-    vi.advanceTimersByTime(300);
-    expect(onUpdate).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(200);
-    expect(onUpdate).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
   });
 });
