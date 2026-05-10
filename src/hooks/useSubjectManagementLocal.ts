@@ -229,7 +229,8 @@ export const useSubjectManagementLocal =
               });
             }
 
-            showToast("success", `${name.trim()} 과목이 추가됐습니다`);
+            // Toast는 호출부(SubjectsPageLayout.handleAdd)가 0건/1건+ 분기에 맞춰 발화한다.
+            // hook에서 또 띄우면 중복 토스트 발생 (UAT 2026-05-10 보고).
 
             logger.info("useSubjectManagementLocal - 과목 추가 성공", {
               name,
