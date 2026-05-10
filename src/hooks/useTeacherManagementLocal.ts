@@ -211,7 +211,9 @@ export const useTeacherManagementLocal =
             color,
           });
 
-          const result = addTeacherToLocal(name, color, userId);
+          // UAT 2026-05-10: profile(email/phone) 누락 시 localStorageCrud가 빈 값
+          // 비교로 동명이인을 차단하던 회귀. profile을 그대로 전달해 식별 필드 일관성 유지.
+          const result = addTeacherToLocal(name, color, userId, profile);
 
           if (result.success && result.data) {
             loadTeachersFromLocal();

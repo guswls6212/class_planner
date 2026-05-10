@@ -71,7 +71,7 @@ describe("useTeacherManagementLocal", () => {
     });
 
     expect(ret).toBe(true);
-    expect(addTeacherToLocal).toHaveBeenCalledWith("이현진", "#f59e0b", undefined);
+    expect(addTeacherToLocal).toHaveBeenCalledWith("이현진", "#f59e0b", undefined, undefined);
     await waitFor(() => expect(result.current.teachers).toHaveLength(1));
   });
 
