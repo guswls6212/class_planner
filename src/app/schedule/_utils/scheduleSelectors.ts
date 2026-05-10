@@ -20,12 +20,21 @@ export const buildSelectedStudents = (
   );
 };
 
+export interface EditableStudentOption {
+  id: string;
+  name: string;
+  gender?: string | null;
+  birthDate?: string | null;
+  grade?: string | null;
+  school?: string | null;
+}
+
 export const filterEditableStudents = (
   query: string,
   editModalData: Session | null,
   enrollments: Enrollment[],
   students: Student[]
-): { id: string; name: string }[] => {
+): EditableStudentOption[] => {
   if (!editModalData) return [];
   const q = query.toLowerCase();
   return students
@@ -36,7 +45,14 @@ export const filterEditableStudents = (
         return enrollment?.studentId === student.id;
       })
     )
-    .map((s) => ({ id: s.id, name: s.name }));
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      gender: s.gender ?? null,
+      birthDate: s.birthDate ?? null,
+      grade: s.grade ?? null,
+      school: s.school ?? null,
+    }));
 };
 
 export const removeStudentFromEnrollmentIds = (

@@ -1,15 +1,30 @@
 "use client";
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { Trash2, X, ChevronDown } from "lucide-react";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
+import { buildDuplicateNameSet, formatStudentDuplicateLabel } from "../../../lib/duplicateLabel";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
 import { NAME_MAX_LENGTH } from "../../../lib/validation/profileSchemas";
 
-type StudentOption = { id: string; name: string };
+type StudentOption = {
+  id: string;
+  name: string;
+  gender?: string | null;
+  birthDate?: string | null;
+  grade?: string | null;
+  school?: string | null;
+};
 type SubjectOption = { id: string; name: string; color?: string };
-type TeacherOption = { id: string; name: string; color: string };
+type TeacherOption = {
+  id: string;
+  name: string;
+  color: string;
+  role?: string | null;
+  email?: string | null;
+  phone?: string | null;
+};
 
 interface EditSessionModalProps {
   isOpen: boolean;
@@ -90,6 +105,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const colorInputRef = useRef<HTMLInputElement>(null);
   const swatchPanelRef = useRef<HTMLDivElement>(null);
+
+  // ADR-015: 동명이인 학생 부제 — 같은 이름이 검색 결과에 2명+이면 식별 정보 노출.
+  const studentDupNames = useMemo(
+    () => buildDuplicateNameSet(editSearchResults),
+    [editSearchResults],
+  );
 
   const currentSubject = subjects.find((s) => s.id === tempSubjectId);
 
@@ -357,19 +378,29 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               {editSearchResults.length === 0 ? (
                 <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">검색 결과가 없습니다</div>
               ) : (
-                editSearchResults.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
-                    onClick={() => onSelectSearchStudent(student.id)}
-                  >
-                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/15 text-[10px] font-bold text-[#a5b4fc]">
-                      {student.name[0]}
-                    </span>
-                    {student.name}
-                  </button>
-                ))
+                editSearchResults.map((student) => {
+                  const dupSubtitle = formatStudentDuplicateLabel(student, studentDupNames);
+                  const showSubtitle =
+                    studentDupNames.has(student.name) &&
+                    dupSubtitle !== "프로필 미입력 · 동명이인" &&
+                    dupSubtitle !== "프로필 미입력";
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      onClick={() => onSelectSearchStudent(student.id)}
+                    >
+                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/15 text-[10px] font-bold text-[#a5b4fc]">
+                        {student.name[0]}
+                      </span>
+                      <span>{student.name}</span>
+                      {showSubtitle && (
+                        <span className="text-[11px] text-[var(--color-text-muted)]">· {dupSubtitle}</span>
+                      )}
+                    </button>
+                  );
+                })
               )}
             </div>
           )}

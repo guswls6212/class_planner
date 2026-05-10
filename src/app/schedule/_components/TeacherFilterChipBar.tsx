@@ -1,9 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { filterTeachersForPicker, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
+import { buildDuplicateNameSet, formatTeacherDuplicateLabel } from "@/lib/duplicateLabel";
 
 interface TeacherFilterChipBarProps {
-  teachers: { id: string; name: string; color: string }[];
+  teachers: {
+    id: string;
+    name: string;
+    color: string;
+    role?: TeacherRoleLike;
+    email?: string | null;
+    phone?: string | null;
+  }[];
   selectedTeacherIds: string[];
   onToggleTeacher: (id: string) => void;
   onClearFilter: () => void;
@@ -23,23 +32,33 @@ export default function TeacherFilterChipBar({
 
   const isActiveOnly = variant === "active-only";
 
+  // ADR-015: admin/owner 강사는 chip bar 기본 제외, 단 selected는 보존(legacy filter 안정성).
+  const visibleTeachers = useMemo(
+    () => filterTeachersForPicker(teachers, selectedTeacherIds),
+    [teachers, selectedTeacherIds],
+  );
+  const duplicateNames = useMemo(
+    () => buildDuplicateNameSet(visibleTeachers),
+    [visibleTeachers],
+  );
+
   const displayedTeachers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (isActiveOnly) {
-      return teachers.filter(
+      return visibleTeachers.filter(
         (t) =>
           selectedTeacherIds.includes(t.id) ||
           (q && t.name.toLowerCase().includes(q)),
       );
     }
-    return teachers.filter((t) =>
+    return visibleTeachers.filter((t) =>
       q ? t.name.toLowerCase().includes(q) : true,
     );
-  }, [teachers, selectedTeacherIds, searchQuery, isActiveOnly]);
+  }, [visibleTeachers, selectedTeacherIds, searchQuery, isActiveOnly]);
 
   const hasFilter = selectedTeacherIds.length > 0;
   const hiddenCount = isActiveOnly
-    ? teachers.length - displayedTeachers.length
+    ? visibleTeachers.length - displayedTeachers.length
     : 0;
 
   return (
@@ -69,6 +88,7 @@ export default function TeacherFilterChipBar({
 
       {displayedTeachers.map((teacher) => {
         const isSelected = selectedTeacherIds.includes(teacher.id);
+        const dupLabel = formatTeacherDuplicateLabel(teacher, duplicateNames);
         return (
           <button
             key={teacher.id}
@@ -85,7 +105,12 @@ export default function TeacherFilterChipBar({
               className="w-[5px] h-[5px] rounded-full flex-shrink-0"
               style={{ backgroundColor: teacher.color }}
             />
-            {teacher.name}
+            <span>{teacher.name}</span>
+            {dupLabel && (
+              <span className={`text-[10px] ${isSelected ? "text-white/80" : "text-[var(--color-text-muted)]"}`}>
+                · {dupLabel}
+              </span>
+            )}
           </button>
         );
       })}

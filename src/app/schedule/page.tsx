@@ -2177,7 +2177,7 @@ function SchedulePageContent(): JSX.Element {
         filteredStudentsForModal={filteredStudentsForModal}
         addStudent={addStudent}
         subjects={subjects}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1", role: t.role, email: t.email, phone: t.phone }))}
         students={students}
         weekdays={weekdays}
         handleStartTimeChange={handleStartTimeChange}
@@ -2292,7 +2292,7 @@ function SchedulePageContent(): JSX.Element {
           // 2. 서버 fire-and-forget sync (API는 name 필수)
           syncSubjectUpdate(userId, subjectId, { name: subject.name, color: newColor });
         }}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1" }))}
+        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1", role: t.role, email: t.email, phone: t.phone }))}
         tempSubjectId={tempSubjectId}
         onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
         tempTeacherId={
