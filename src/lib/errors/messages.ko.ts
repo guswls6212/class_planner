@@ -5,6 +5,14 @@ import {
   NAME_MAX_LENGTH,
   SCHOOL_MAX_LENGTH,
   SUBJECT_NAME_MAX_LENGTH,
+  SESSION_DESCRIPTION_MAX_LENGTH,
+  SESSION_NOTE_MAX_LENGTH,
+  TEMPLATE_NAME_MAX_LENGTH,
+  TEMPLATE_DESCRIPTION_MAX_LENGTH,
+  SNAPSHOT_DESCRIPTION_MAX_LENGTH,
+  SHARE_TOKEN_LABEL_MAX_LENGTH,
+  SHARE_TOKEN_EXPIRES_MIN_DAYS,
+  SHARE_TOKEN_EXPIRES_MAX_DAYS,
 } from "../validation/profileSchemas";
 
 const messages: Record<ErrorCode, string> = {
@@ -39,6 +47,26 @@ const messages: Record<ErrorCode, string> = {
   SESSION_NOT_FOUND: "존재하지 않는 수업입니다.",
   SESSION_TIME_INVALID: "종료 시간은 시작 시간보다 늦어야 합니다.",
   SESSION_DURATION_EXCEEDED: "세션 시간은 최대 8시간까지 설정할 수 있습니다.",
+  SESSION_DESCRIPTION_TOO_LONG: `수업 설명은 최대 ${SESSION_DESCRIPTION_MAX_LENGTH}자까지 입력할 수 있습니다.`,
+  SESSION_NOTE_TOO_LONG: `수업 메모는 최대 ${SESSION_NOTE_MAX_LENGTH}자까지 입력할 수 있습니다.`,
+  SESSION_WEEKDAY_INVALID: "요일은 0(일)~6(토) 사이의 정수여야 합니다.",
+
+  // Template
+  TEMPLATE_NAME_REQUIRED: "템플릿 이름을 입력해주세요.",
+  TEMPLATE_NAME_TOO_LONG: `템플릿 이름은 최대 ${TEMPLATE_NAME_MAX_LENGTH}자까지 입력할 수 있습니다.`,
+  TEMPLATE_DESCRIPTION_TOO_LONG: `템플릿 설명은 최대 ${TEMPLATE_DESCRIPTION_MAX_LENGTH}자까지 입력할 수 있습니다.`,
+
+  // ShareToken
+  SHARE_TOKEN_LABEL_TOO_LONG: `공유 라벨은 최대 ${SHARE_TOKEN_LABEL_MAX_LENGTH}자까지 입력할 수 있습니다.`,
+  SHARE_TOKEN_EXPIRES_INVALID: `만료 일수는 ${SHARE_TOKEN_EXPIRES_MIN_DAYS}~${SHARE_TOKEN_EXPIRES_MAX_DAYS} 사이의 정수여야 합니다.`,
+
+  // UserSettings
+  USER_SETTINGS_THEME_INVALID: "테마는 light 또는 dark만 선택할 수 있습니다.",
+  USER_SETTINGS_LANGUAGE_INVALID: "언어는 ko 또는 en만 선택할 수 있습니다.",
+  USER_SETTINGS_TIMEZONE_INVALID: "유효한 IANA timezone 형식이 아닙니다. (예: Asia/Seoul)",
+
+  // Color
+  COLOR_HEX_INVALID: "색상은 #RRGGBB 16진수 형식이어야 합니다.",
 
   // Invite
   INVITE_TOKEN_EXPIRED: "만료된 초대 링크입니다.",
@@ -49,6 +77,7 @@ const messages: Record<ErrorCode, string> = {
   // Snapshot
   SNAPSHOT_TYPE_INVALID: "유효하지 않은 백업 종류입니다.",
   SNAPSHOT_PAYLOAD_REQUIRED: "백업할 데이터가 필요합니다.",
+  SNAPSHOT_DESCRIPTION_TOO_LONG: `백업 설명은 최대 ${SNAPSHOT_DESCRIPTION_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   SNAPSHOT_INSERT_FAILED: "백업 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
   SNAPSHOT_LIST_FAILED: "백업 목록 조회에 실패했습니다.",
   SNAPSHOT_PERMISSION_DENIED: "백업 생성 권한이 없습니다.",

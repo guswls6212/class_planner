@@ -31,6 +31,6 @@ describe("ErrorCodes", () => {
   });
 
   it("에러 코드 개수가 정확해야 한다", () => {
-    expect(Object.keys(ErrorCodes).length).toBe(35);
+    expect(Object.keys(ErrorCodes).length).toBe(48);
   });
 });
