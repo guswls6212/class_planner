@@ -203,6 +203,14 @@ export const useTeacherManagementLocal =
           notes?: string | null;
         }
       ): Promise<boolean> => {
+        // Client validation — server (≥ 2글자) 와 일치. invalid 시 sync retry 회피.
+        const trimmedName = name?.trim() ?? "";
+        if (trimmedName.length < 2) {
+          const msg = "강사 이름은 2글자 이상이어야 합니다.";
+          setError(msg);
+          showToast("error", msg);
+          return false;
+        }
         try {
           setError(null);
 
