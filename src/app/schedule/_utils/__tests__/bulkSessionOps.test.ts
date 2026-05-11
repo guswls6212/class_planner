@@ -29,6 +29,8 @@ vi.mock("@/lib/localStorageCrud", () => ({
     mockData.lastModified = next.lastModified;
     return true;
   },
+  // pendingDeletes 모듈이 module-init 시점에 호출 — mock 누락 시 CI fail.
+  getStorageKey: () => "classPlannerData:test",
 }));
 
 const makeSession = (id: string, weekday = 0): Session =>

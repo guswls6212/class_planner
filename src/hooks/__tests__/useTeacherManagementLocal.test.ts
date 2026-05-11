@@ -7,6 +7,8 @@ vi.mock("../../lib/localStorageCrud", () => ({
   updateTeacherInLocal: vi.fn(() => ({ success: false })),
   deleteTeacherFromLocal: vi.fn(() => ({ success: false })),
   getTeacherFromLocal: vi.fn(() => null),
+  // pendingDeletes 모듈이 module-init 시점에 호출 — mock 누락 시 CI fail.
+  getStorageKey: vi.fn(() => "classPlannerData:test"),
   // Required by deleteTeacher's snapshot+undo pattern (PR γ extension)
   getClassPlannerData: vi.fn(() => ({
     students: [],
