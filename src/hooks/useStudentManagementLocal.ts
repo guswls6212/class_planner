@@ -221,6 +221,15 @@ export const useStudentManagementLocal =
           showToast("error", PERMISSION_DENIED_MESSAGE);
           return false;
         }
+        // Client validation — server (≥ 2글자) 와 일치. invalid 시 localStorage 저장
+        // 차단해 sync 10 retry 실패 + outbox 누적 회귀 방지 (omni-radar 2026-05-11 추적).
+        const trimmed = name?.trim() ?? "";
+        if (trimmed.length < 2) {
+          const msg = "학생 이름은 2글자 이상이어야 합니다.";
+          setError(msg);
+          showToast("error", msg);
+          return false;
+        }
         try {
           setLoading(true);
           setError(null);

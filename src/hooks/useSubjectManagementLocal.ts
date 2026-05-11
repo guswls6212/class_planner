@@ -196,6 +196,14 @@ export const useSubjectManagementLocal =
           showToast("error", PERMISSION_DENIED_MESSAGE);
           return false;
         }
+        // Client validation — server (≥ 2글자) 와 일치. invalid 시 sync retry 회피.
+        const trimmedName = name?.trim() ?? "";
+        if (trimmedName.length < 2) {
+          const msg = "과목 이름은 2글자 이상이어야 합니다.";
+          setError(msg);
+          showToast("error", msg);
+          return false;
+        }
         try {
           setError(null);
 
