@@ -18,6 +18,8 @@ export interface TeacherPickerOption {
   role?: TeacherRoleLike;
   email?: string | null;
   phone?: string | null;
+  /** 담당 과목 ID 목록 — subjectId prop이 주어지면 그룹화 정렬에 사용. */
+  subjectIds?: string[];
 }
 
 interface TeacherPillPickerProps {
@@ -33,6 +35,13 @@ interface TeacherPillPickerProps {
   onCreate?: () => Promise<boolean>;
   creating?: boolean;
   createError?: string;
+  /**
+   * 현재 수업의 과목 ID. 있으면 강사를 "이 과목 담당" / "기타" 두 그룹으로
+   * 분리해 담당 강사를 우선 노출. 미설정 (또는 담당 0명) 시 단일 list 그대로.
+   */
+  subjectId?: string | null;
+  /** 현재 과목 이름 — 그룹 라벨에 표시 ("고등수학 담당"). */
+  subjectName?: string;
 }
 
 export default function TeacherPillPicker({
@@ -46,6 +55,8 @@ export default function TeacherPillPicker({
   onCreate,
   creating = false,
   createError = "",
+  subjectId = null,
+  subjectName,
 }: TeacherPillPickerProps) {
   const [expanding, setExpanding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +101,22 @@ export default function TeacherPillPicker({
     () => filterTeachersForPicker(teachers, selectedTeacherId ?? null),
     [teachers, selectedTeacherId],
   );
+
+  // 과목 기반 그룹화 — subjectId 있으면 항상 두 그룹으로 분리.
+  // 담당 0명이어도 그룹 라벨 유지 — 사용자가 "이 과목 담당 강사 미설정" 인지
+  // → 강사 페이지에서 담당 등록 유도. graceful fallback로 부담 X.
+  const { primary, secondary, grouped } = useMemo(() => {
+    if (!subjectId) {
+      return { primary: visibleTeachers, secondary: [], grouped: false };
+    }
+    const primary = visibleTeachers.filter((t) =>
+      (t.subjectIds ?? []).includes(subjectId),
+    );
+    const secondary = visibleTeachers.filter(
+      (t) => !(t.subjectIds ?? []).includes(subjectId),
+    );
+    return { primary, secondary, grouped: true };
+  }, [visibleTeachers, subjectId]);
   // 이메일/전화는 TeacherChip 내부 호버 툴팁이 담당 — 동명이인 인라인 부제 더 이상 필요 없음.
 
   if (visibleTeachers.length === 0 && !showInlineCreate) {
@@ -107,33 +134,70 @@ export default function TeacherPillPicker({
     );
   }
 
+  const renderChip = (teacher: TeacherPickerOption) => {
+    const isActive = selectedTeacherId === teacher.id;
+    const adminTag = isAdminRole(teacher.role) ? "관리자" : undefined;
+    return (
+      <TeacherChip
+        key={teacher.id}
+        teacher={teacher}
+        selected={isActive}
+        onClick={() => onSelect(isActive ? null : teacher.id)}
+        contextTag={adminTag}
+      />
+    );
+  };
+
+  const inlineCreateBtn = showInlineCreate && !expanding ? (
+    <button
+      type="button"
+      onClick={() => setExpanding(true)}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] border border-dashed border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-overlay-light)] transition-colors"
+    >
+      ＋ 새 강사
+    </button>
+  ) : null;
+
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex flex-wrap gap-2">
-        {visibleTeachers.map((teacher) => {
-          const isActive = selectedTeacherId === teacher.id;
-          const adminTag = isAdminRole(teacher.role) ? "관리자" : undefined;
-          return (
-            <TeacherChip
-              key={teacher.id}
-              teacher={teacher}
-              selected={isActive}
-              onClick={() => onSelect(isActive ? null : teacher.id)}
-              contextTag={adminTag}
-            />
-          );
-        })}
-
-        {showInlineCreate && !expanding && (
-          <button
-            type="button"
-            onClick={() => setExpanding(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] border border-dashed border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-overlay-light)] transition-colors"
-          >
-            ＋ 새 강사
-          </button>
-        )}
-      </div>
+      {grouped ? (
+        <>
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              {subjectName ? `${subjectName} 담당` : "이 과목 담당"}
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-[rgba(245,158,11,0.18)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--amber-400,#fbbf24)]">
+                {primary.length}명
+              </span>
+            </p>
+            {primary.length === 0 ? (
+              <p className="text-[11px] text-[var(--color-text-muted)] py-1.5">
+                아직 담당 강사가 없어요. <Link href="/teachers" target="_blank" className="text-[var(--color-accent)] hover:underline">강사 페이지</Link>에서 설정할 수 있어요.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">{primary.map(renderChip)}</div>
+            )}
+          </div>
+          {secondary.length > 0 && (
+            <div className="mt-1">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                기타 강사
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {secondary.map(renderChip)}
+                {inlineCreateBtn}
+              </div>
+            </div>
+          )}
+          {secondary.length === 0 && inlineCreateBtn && (
+            <div className="flex flex-wrap gap-2">{inlineCreateBtn}</div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {primary.map(renderChip)}
+          {inlineCreateBtn}
+        </div>
+      )}
 
       {showInlineCreate && expanding && (
         <div className="flex flex-col gap-1.5">

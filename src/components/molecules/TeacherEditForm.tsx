@@ -5,7 +5,8 @@ import {
   NAME_MAX_LENGTH,
   formatKoreanPhone,
 } from "@/lib/validation/profileSchemas";
-import { TeacherColorPicker } from "./TeacherColorPicker";
+import { ColorPicker } from "./ColorPicker";
+import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 
 export interface TeacherEditFormProps {
   canManage: boolean;
@@ -111,10 +112,10 @@ export function TeacherEditForm({
             <Palette size={11} strokeWidth={1.5} />
             색상
           </label>
-          <TeacherColorPicker
-            selectedColor={editColor}
-            canManage={canManage}
-            onColorChange={onColorChange}
+          <ColorPicker
+            value={editColor}
+            onChange={onColorChange}
+            palette={DEFAULT_TEACHER_COLORS}
           />
         </div>
       )}

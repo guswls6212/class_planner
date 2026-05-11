@@ -46,6 +46,7 @@ type TeacherOption = {
   role?: string | null;
   email?: string | null;
   phone?: string | null;
+  subjectIds?: string[];
 };
 
 interface EditSessionModalProps {
@@ -468,6 +469,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             teachers={teachers}
             selectedTeacherId={tempTeacherId || null}
             onSelect={(id) => onTeacherChange(id ?? null)}
+            subjectId={tempSubjectId || null}
+            subjectName={currentSubject?.name}
           />
         </div>
 

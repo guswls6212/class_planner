@@ -70,23 +70,31 @@ describe("TeacherDetailPanel", () => {
     expect(screen.getByText(/수 14:00/)).toBeInTheDocument();
   });
 
-  it("모든 아카데미 과목이 과목 칩으로 렌더된다", () => {
+  it("view 모드(default)에서는 담당으로 등록된 과목만 표시된다", () => {
     render(<TeacherDetailPanel {...baseProps} />);
+    // sub1(수학)은 담당이라 표시. sub2(영어)는 미배정이라 숨김.
+    expect(screen.getAllByText("수학").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("영어")).not.toBeInTheDocument();
+  });
+
+  it("편집 모드 진입 시 모든 아카데미 과목이 토글 가능 칩으로 렌더된다", () => {
+    render(<TeacherDetailPanel {...baseProps} />);
+    fireEvent.click(screen.getByLabelText("편집"));
     expect(screen.getAllByText("수학").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("영어")).toBeInTheDocument();
   });
 
-  it("미배정 과목 칩 클릭 시 onAddSubject가 호출된다", () => {
+  it("편집 모드에서 미배정 과목 칩 클릭 시 onAddSubject가 호출된다", () => {
     render(<TeacherDetailPanel {...baseProps} />);
+    fireEvent.click(screen.getByLabelText("편집"));
     const englishChip = screen.getByRole("button", { name: /영어/ });
     fireEvent.click(englishChip);
     expect(baseProps.onAddSubject).toHaveBeenCalledWith("1", "sub2");
   });
 
-  it("배정된 과목 칩 클릭 시 onRemoveSubject가 호출된다", () => {
+  it("편집 모드에서 배정된 과목 칩 클릭 시 onRemoveSubject가 호출된다", () => {
     render(<TeacherDetailPanel {...baseProps} />);
-    // sub1(수학)은 teacher.subjectIds에 포함됨 — 과목 칩 영역에서 찾음
-    // 담당 과목 section의 수학 버튼 (aria-pressed=true)
+    fireEvent.click(screen.getByLabelText("편집"));
     const mathChips = screen.getAllByRole("button", { name: /수학/ });
     const assignedChip = mathChips.find(
       (btn) => btn.getAttribute("aria-pressed") === "true"

@@ -51,6 +51,7 @@ type TeacherOption = {
   role?: string | null;
   email?: string | null;
   phone?: string | null;
+  subjectIds?: string[];
 };
 
 interface GroupSessionModalProps {
@@ -460,6 +461,8 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           onCreate={onCreateTeacher}
           creating={teacherCreating}
           createError={teacherCreateError}
+          subjectId={groupModalData.subjectId || null}
+          subjectName={subjects.find((s) => s.id === groupModalData.subjectId)?.name}
         />
       </div>
 

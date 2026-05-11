@@ -31,6 +31,8 @@ import {
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import { useMyRole } from "./useMyRole";
+import { validateSubjectInput } from "../lib/validation/profileSchemas";
+import { getKoMessage } from "../lib/errors/messages.ko";
 
 const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
 
@@ -273,6 +275,18 @@ export const useSubjectManagementLocal =
           showToast("error", PERMISSION_DENIED_MESSAGE);
           return false;
         }
+
+        // 4-layer validation의 UI/sync layer — server sync 와 동일한 정책으로
+        // 사전 검증해 invalid color hex 등이 localStorage 에 저장 + "수정됐습니다"
+        // 토스트 후에 sync 단계에서 별도 error 토스트가 따라붙는 모순 차단.
+        const v = validateSubjectInput(updates, { partial: true });
+        if (!v.ok) {
+          const msg = getKoMessage(v.code);
+          setError(msg);
+          showToast("error", msg);
+          return false;
+        }
+
         try {
           setError(null);
 
@@ -281,8 +295,8 @@ export const useSubjectManagementLocal =
             updates,
           });
 
-          // localStorage에 즉시 수정
-          const result = updateSubjectInLocal(id, updates);
+          // localStorage에 즉시 수정 (검증 통과한 v.data 사용)
+          const result = updateSubjectInLocal(id, v.data);
 
           if (result.success && result.data) {
             // UI 즉시 업데이트
