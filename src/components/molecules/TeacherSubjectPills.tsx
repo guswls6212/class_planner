@@ -1,6 +1,7 @@
 "use client";
 
 import type { Subject } from "@/lib/planner";
+import { EmptyState } from "@/components/atoms/EmptyState";
 
 export interface TeacherSubjectPillsProps {
   subjects: Subject[];
@@ -25,11 +26,7 @@ export function TeacherSubjectPills({
   onRemove,
 }: TeacherSubjectPillsProps) {
   if (subjects.length === 0) {
-    return (
-      <p className="text-[11px] text-[var(--color-text-muted)]">
-        과목을 먼저 등록해주세요.
-      </p>
-    );
+    return <EmptyState>과목을 먼저 등록해주세요.</EmptyState>;
   }
 
   const isEdit = mode === "edit" && canManage;
@@ -40,12 +37,9 @@ export function TeacherSubjectPills({
 
   if (!isEdit && visibleSubjects.length === 0) {
     return (
-      <p
-        className="text-[11px] text-[var(--color-text-muted)]"
-        data-testid="teacher-subjects-empty"
-      >
+      <EmptyState data-testid="teacher-subjects-empty">
         등록된 담당 과목이 없습니다. 편집 버튼을 눌러 추가해주세요.
-      </p>
+      </EmptyState>
     );
   }
 

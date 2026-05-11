@@ -2,6 +2,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { Trash2, X, ChevronDown, Calendar, Clock } from "lucide-react";
 import { IconButton } from "@/components/atoms/IconButton";
+import { EmptyState } from "@/components/atoms/EmptyState";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
@@ -458,9 +459,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           {!editStudentInputValue?.trim() &&
             editSearchResults.length === 0 &&
             selectedStudents.length > 0 && (
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 text-center text-[12px] text-[var(--color-text-muted)]">
-                더 추가할 학생이 없습니다
-              </div>
+              <EmptyState>더 추가할 학생이 없습니다</EmptyState>
             )}
         </div>
 

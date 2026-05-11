@@ -12,6 +12,7 @@ import {
 import { TeacherScheduleList } from "@/components/molecules/TeacherScheduleList";
 import { TeacherSubjectPills } from "@/components/molecules/TeacherSubjectPills";
 import { IconButton } from "@/components/atoms/IconButton";
+import { SectionHeader } from "@/components/atoms/SectionHeader";
 
 interface TeacherDetailPanelProps {
   teacher: Teacher;
@@ -190,9 +191,7 @@ export function TeacherDetailPanel({
 
       {/* 담당 과목 section */}
       <div className="border-t border-[var(--color-border)] pt-4 mt-1 mb-4">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
-          담당 과목
-        </h3>
+        <SectionHeader className="mb-3">담당 과목</SectionHeader>
         <TeacherSubjectPills
           subjects={subjects}
           assignedSubjectIds={teacher.subjectIds ?? []}
@@ -221,9 +220,7 @@ export function TeacherDetailPanel({
 
       {/* 연락처 · 역할 section */}
       <div className="border-t border-[var(--color-border)] pt-4 mt-1 mb-4">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
-          연락처 · 역할
-        </h3>
+        <SectionHeader className="mb-3">연락처 · 역할</SectionHeader>
         {isEditing && (canManage || canEditOwn) ? (
           <TeacherEditForm
             canManage={canManage}
@@ -262,9 +259,7 @@ export function TeacherDetailPanel({
 
       {/* 수업 일정 section */}
       <div className="border-t border-[var(--color-border)] pt-4 mt-1 mb-4">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-3">
-          수업 일정
-        </h3>
+        <SectionHeader className="mb-3">수업 일정</SectionHeader>
         <TeacherScheduleList
           sessions={teacherSessions}
           enrollments={enrollments}
