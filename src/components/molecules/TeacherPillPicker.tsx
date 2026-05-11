@@ -88,12 +88,9 @@ export default function TeacherPillPicker({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // IME composing 가드 (UAT 2026-05-10): 한글 마지막 음절이 composing 중일 때 Enter
-    // 누르면 그 음절이 한 번 더 input에 들어가 "김민철" → "김민철철" 회귀 발생.
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      handleCreate();
-    }
+    // class-planner Enter no-op 정책 — 새 강사 생성은 의식적 "생성" 버튼 클릭만.
+    // 단 Escape는 닫음 (별도 useEffect에서 처리).
+    if (e.key === "Enter") e.preventDefault();
   };
 
   // ADR-015: admin/owner 강사는 picker에서 제외, 단 selectedTeacherId가 admin이면 예외 보존.

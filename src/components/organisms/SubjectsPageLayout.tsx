@@ -31,7 +31,9 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
   const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
   const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
-  const filtered = subjects.filter((s) => s.name.includes(query));
+  // 검색은 대소문자 무관 — 중복 검사 (lowercase 일치) 정책과 일관.
+  const q = query.toLowerCase();
+  const filtered = subjects.filter((s) => s.name.toLowerCase().includes(q));
   const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
   const handleSelect = (id: string) => {

@@ -66,7 +66,9 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
   const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
-  const filtered = students.filter((s) => s.name.includes(query));
+  // 검색은 대소문자 무관 — 중복 검사 (lowercase 일치) 정책과 일관.
+  const q = query.toLowerCase();
+  const filtered = students.filter((s) => s.name.toLowerCase().includes(q));
   const selectedStudent = students.find((s) => s.id === selectedStudentId);
 
   // 동명이인 부제 SSOT는 lib/duplicateLabel (ADR-015) — schedule 모달 picker도 동일 helper 사용.

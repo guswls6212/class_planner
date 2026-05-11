@@ -54,7 +54,9 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
   const [isAddDetailOpen, setIsAddDetailOpen] = useState(false);
   const [addDetailPrefillName, setAddDetailPrefillName] = useState("");
 
-  const filtered = teachers.filter((t) => t.name.includes(query));
+  // 검색은 대소문자 무관 — 중복 검사 (lowercase 일치) 정책과 일관.
+  const q = query.toLowerCase();
+  const filtered = teachers.filter((t) => t.name.toLowerCase().includes(q));
   const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId);
 
   // 동명이인 부제 SSOT는 lib/duplicateLabel (ADR-015). 동명이인 + 식별 정보 없으면

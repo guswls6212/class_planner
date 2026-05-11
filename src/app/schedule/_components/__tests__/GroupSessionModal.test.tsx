@@ -32,7 +32,7 @@ describe("GroupSessionModal - state updates", () => {
     return { get: () => current, set: setGroupModalData };
   }
 
-  it("updates subjectId, weekday and room via setGroupModalData on change", () => {
+  it("updates subjectId, weekday via setGroupModalData on change (강의실 UI 제거됨)", () => {
     const initial: GroupSessionData = {
       studentIds: ["stu-1"],
       subjectId: "",
@@ -40,12 +40,11 @@ describe("GroupSessionModal - state updates", () => {
       startTime: "10:00",
       endTime: "11:00",
       yPosition: 1,
-      room: "",
     };
 
     const controller = createStateController(initial);
 
-    const { getByRole, getByLabelText } = render(
+    const { getByRole } = render(
       <GroupSessionModal
         isOpen={true}
         groupModalData={controller.get()}
@@ -72,27 +71,19 @@ describe("GroupSessionModal - state updates", () => {
       />
     );
 
-    // Step 0 → 1 이동 (studentIds가 이미 있으므로 다음 버튼 활성화)
     fireEvent.click(screen.getByRole("button", { name: /다음/ }));
 
-    // 과목 선택 변경 (접근성 이름으로 조회)
     const subjectSelect = getByRole("combobox", {
       name: /과목/,
     }) as HTMLSelectElement;
     fireEvent.change(subjectSelect, { target: { value: "sub-1" } });
     expect(controller.get().subjectId).toBe("sub-1");
 
-    // 요일 변경 (접근성 이름으로 조회)
     const weekdaySelect = getByRole("combobox", {
       name: /요일/,
     }) as HTMLSelectElement;
     fireEvent.change(weekdaySelect, { target: { value: "2" } });
     expect(controller.get().weekday).toBe(2);
-
-    // 강의실 입력 변경 (teacher 없으므로 modal-room id)
-    const roomInput = getByLabelText("강의실") as HTMLInputElement;
-    fireEvent.change(roomInput, { target: { value: "A-101" } });
-    expect(controller.get().room).toBe("A-101");
   });
 });
 
