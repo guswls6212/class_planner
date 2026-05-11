@@ -455,13 +455,18 @@ describe("apiSync", () => {
         json: () => Promise.resolve({}),
       });
       syncSessionCreate("user-1", { id: "s1" } as any);
-      await new Promise((r) => setTimeout(r, 10));
-      expect(getLastFailureContext()).toBe("session:create");
+      // fire-and-forget fetch resolve + onSyncFailure state update 대기.
+      // setTimeout(10ms) 고정은 CI fresh 환경(Ubuntu)에서 timing-dependent flaky.
+      // vi.waitFor로 retry pattern — 최대 500ms까지 polling.
+      await vi.waitFor(() => {
+        expect(getLastFailureContext()).toBe("session:create");
+      }, { timeout: 500, interval: 10 });
       // 다음 호출 성공
       mockFetch.mockResolvedValueOnce({ ok: true });
       syncStudentCreate("user-1", { id: "stu-1", name: "A" } as any);
-      await new Promise((r) => setTimeout(r, 10));
-      expect(getLastFailureContext()).toBeNull();
+      await vi.waitFor(() => {
+        expect(getLastFailureContext()).toBeNull();
+      }, { timeout: 500, interval: 10 });
     });
   });
 });
