@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   syncEnrollmentCreateAsync,
   syncSessionDelete,
+  syncSessionUpdate,
 } from "../lib/apiSync";
 import {
   addEnrollmentToLocal,
@@ -462,9 +463,18 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         await import("../app/schedule/_utils/bulkSessionOps");
       const { showBulkUndoToast } = await import("../lib/toast");
 
-      const { deleted, notFound } = bulkDeleteSessionsFromLocal(ids);
+      const { deleted, notFound, reflowed } = bulkDeleteSessionsFromLocal(ids);
       if (deleted.length === 0) return;
       loadDataFromLocal();
+
+      // Lane reflow로 yPosition 변경된 sessions를 서버에도 sync — 새로고침 시
+      // localStorage / server 불일치 회피 (사용자 보고 2026-05-11).
+      const userIdForReflow = localStorage.getItem("supabase_user_id");
+      if (userIdForReflow && reflowed.length > 0) {
+        for (const s of reflowed) {
+          syncSessionUpdate(userIdForReflow, s.id, { yPosition: s.yPosition });
+        }
+      }
 
       const userId = localStorage.getItem("supabase_user_id");
       // bulk delete TTL은 7초(durationMs와 동일). pendingDeletes에 모든 deleted id를

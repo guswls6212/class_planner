@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bulkDeleteSessionsFromLocal,
+  reassignLanesByWeekday,
   restoreBulkDeletedSessions,
 } from "../bulkSessionOps";
 import type { Session } from "@/lib/planner";
@@ -101,5 +102,139 @@ describe("restoreBulkDeletedSessions", () => {
     const before = mockData.sessions.length;
     restoreBulkDeletedSessions([]);
     expect(mockData.sessions.length).toBe(before);
+  });
+});
+
+// ── Lane reflow tests (사용자 보고 2026-05-11) ─────────────────────────────
+const makeSessionLane = (
+  id: string,
+  weekday: number,
+  yPosition: number,
+  startsAt: string,
+  endsAt: string,
+): Session =>
+  ({
+    id,
+    weekday,
+    yPosition,
+    startsAt,
+    endsAt,
+    enrollmentIds: [],
+    weekStartDate: "2026-05-04",
+  }) as Session;
+
+describe("reassignLanesByWeekday", () => {
+  it("lane 1,3,4 (gap at 2) → 1,2,3 압축", () => {
+    const sessions = [
+      makeSessionLane("a", 0, 1, "12:00", "13:00"),
+      makeSessionLane("b", 0, 3, "12:00", "13:00"),
+      makeSessionLane("c", 0, 4, "12:00", "13:00"),
+    ];
+    const { sessions: result, reflowed } = reassignLanesByWeekday(
+      sessions,
+      new Set([0]),
+    );
+    const byId = new Map(result.map((s) => [s.id, s]));
+    expect(byId.get("a")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(2);
+    expect(byId.get("c")?.yPosition).toBe(3);
+    expect(reflowed.map((s) => s.id).sort()).toEqual(["b", "c"]);
+  });
+
+  it("시간 overlap 없으면 lane 1로 압축", () => {
+    const sessions = [
+      makeSessionLane("a", 0, 3, "09:00", "10:00"),
+      makeSessionLane("b", 0, 4, "11:00", "12:00"),
+    ];
+    const { sessions: result, reflowed } = reassignLanesByWeekday(
+      sessions,
+      new Set([0]),
+    );
+    const byId = new Map(result.map((s) => [s.id, s]));
+    // 두 세션 시간 overlap 없음 → 둘 다 lane 1
+    expect(byId.get("a")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(1);
+    expect(reflowed.length).toBe(2);
+  });
+
+  it("영향 안 받은 weekday 세션은 그대로", () => {
+    const sessions = [
+      makeSessionLane("a", 0, 3, "12:00", "13:00"),
+      makeSessionLane("b", 1, 3, "12:00", "13:00"), // weekday 1 — affected에 없음
+    ];
+    const { sessions: result, reflowed } = reassignLanesByWeekday(
+      sessions,
+      new Set([0]),
+    );
+    const byId = new Map(result.map((s) => [s.id, s]));
+    expect(byId.get("a")?.yPosition).toBe(1); // reflow
+    expect(byId.get("b")?.yPosition).toBe(3); // 그대로
+    expect(reflowed.map((s) => s.id)).toEqual(["a"]);
+  });
+
+  it("affectedWeekdays 빈 set — no-op", () => {
+    const sessions = [makeSessionLane("a", 0, 3, "12:00", "13:00")];
+    const { sessions: result, reflowed } = reassignLanesByWeekday(
+      sessions,
+      new Set(),
+    );
+    expect(result).toBe(sessions); // 동일 reference
+    expect(reflowed).toEqual([]);
+  });
+
+  it("기존 yPosition 우선순위 존중 — 작은 값이 먼저 lane 할당", () => {
+    // yPosition asc로 정렬 → b(yPosition=1)가 먼저 lane 1, a(yPosition=2)가 lane 2
+    const sessions = [
+      makeSessionLane("a", 0, 2, "12:00", "13:00"),
+      makeSessionLane("b", 0, 1, "12:00", "13:00"),
+    ];
+    const { sessions: result } = reassignLanesByWeekday(sessions, new Set([0]));
+    const byId = new Map(result.map((s) => [s.id, s]));
+    expect(byId.get("b")?.yPosition).toBe(1);
+    expect(byId.get("a")?.yPosition).toBe(2);
+  });
+});
+
+describe("bulkDeleteSessionsFromLocal — lane reflow integration", () => {
+  it("4개 lane 중 가운데 3개 삭제 → 남은 1개 lane 1로 압축 (사용자 시나리오)", () => {
+    mockData.sessions = [
+      makeSessionLane("s1", 0, 1, "12:00", "13:00"),
+      makeSessionLane("s2", 0, 2, "12:00", "13:00"),
+      makeSessionLane("s3", 0, 3, "12:00", "13:00"),
+      makeSessionLane("s4", 0, 4, "12:00", "13:00"),
+    ];
+    const result = bulkDeleteSessionsFromLocal(["s1", "s2", "s4"]);
+    expect(result.deleted.map((s) => s.id).sort()).toEqual(["s1", "s2", "s4"]);
+    expect(mockData.sessions.length).toBe(1);
+    expect(mockData.sessions[0].id).toBe("s3");
+    // s3는 lane 3 → lane 1로 압축됨
+    expect(mockData.sessions[0].yPosition).toBe(1);
+    expect(result.reflowed.map((s) => s.id)).toEqual(["s3"]);
+  });
+
+  it("삭제로 lane 빔 없으면 reflow 0 (lane 1 → lane 1)", () => {
+    mockData.sessions = [
+      makeSessionLane("s1", 0, 1, "12:00", "13:00"),
+      makeSessionLane("s2", 0, 2, "12:00", "13:00"),
+    ];
+    const result = bulkDeleteSessionsFromLocal(["s2"]);
+    // s1은 이미 lane 1 → 변경 없음
+    expect(result.reflowed).toEqual([]);
+    expect(mockData.sessions[0].yPosition).toBe(1);
+  });
+
+  it("다른 weekday session은 reflow 영향 안 받음", () => {
+    mockData.sessions = [
+      makeSessionLane("s1", 0, 1, "12:00", "13:00"),
+      makeSessionLane("s2", 0, 2, "12:00", "13:00"),
+      makeSessionLane("s3", 1, 3, "12:00", "13:00"), // weekday 1
+    ];
+    const result = bulkDeleteSessionsFromLocal(["s1"]);
+    // weekday 0만 영향 → s2가 lane 2 → lane 1로 압축
+    // s3 (weekday 1)는 그대로 lane 3
+    const byId = new Map(mockData.sessions.map((s) => [s.id, s]));
+    expect(byId.get("s2")?.yPosition).toBe(1);
+    expect(byId.get("s3")?.yPosition).toBe(3);
+    expect(result.reflowed.map((s) => s.id)).toEqual(["s2"]);
   });
 });
