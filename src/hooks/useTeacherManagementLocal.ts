@@ -25,6 +25,8 @@ import {
   updateTeacherInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { validateTeacherName } from "../lib/validation/profileSchemas";
+import { getKoMessage } from "../lib/errors/messages.ko";
 import {
   PENDING_DELETE_TTL_MS,
   addPendingDelete,
@@ -203,10 +205,11 @@ export const useTeacherManagementLocal =
           notes?: string | null;
         }
       ): Promise<boolean> => {
-        // Client validation — server (≥ 2글자) 와 일치. invalid 시 sync retry 회피.
-        const trimmedName = name?.trim() ?? "";
-        if (trimmedName.length < 2) {
-          const msg = "강사 이름은 2글자 이상이어야 합니다.";
+        // Client validation — required/min/max 모두 SSOT(profileSchemas) 호출로
+        // 통일. invalid 시 sync retry 회피.
+        const nameValidation = validateTeacherName(name ?? "");
+        if (!nameValidation.ok) {
+          const msg = getKoMessage(nameValidation.code);
           setError(msg);
           showToast("error", msg);
           return false;

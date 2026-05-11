@@ -31,7 +31,7 @@ import {
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import { useMyRole } from "./useMyRole";
-import { validateSubjectInput } from "../lib/validation/profileSchemas";
+import { validateSubjectInput, validateSubjectName } from "../lib/validation/profileSchemas";
 import { getKoMessage } from "../lib/errors/messages.ko";
 
 const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
@@ -196,10 +196,11 @@ export const useSubjectManagementLocal =
           showToast("error", PERMISSION_DENIED_MESSAGE);
           return false;
         }
-        // Client validation — server (≥ 2글자) 와 일치. invalid 시 sync retry 회피.
-        const trimmedName = name?.trim() ?? "";
-        if (trimmedName.length < 2) {
-          const msg = "과목 이름은 2글자 이상이어야 합니다.";
+        // Client validation — required/min/max 모두 SSOT(profileSchemas) 호출로
+        // 통일. invalid 시 sync retry 회피.
+        const nameValidation = validateSubjectName(name ?? "");
+        if (!nameValidation.ok) {
+          const msg = getKoMessage(nameValidation.code);
           setError(msg);
           showToast("error", msg);
           return false;
