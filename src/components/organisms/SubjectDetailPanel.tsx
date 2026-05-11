@@ -5,6 +5,7 @@ import { Pencil, Trash2, ArrowLeft, Users, Calendar, Palette } from "lucide-reac
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
 import { ColorPicker } from "@/components/molecules/ColorPicker";
 import { DEFAULT_SUBJECT_COLORS } from "@/lib/subjectColors";
+import { IconButton } from "@/components/atoms/IconButton";
 
 interface SubjectDetailPanelProps {
   subject: Subject;
@@ -70,21 +71,17 @@ export function SubjectDetailPanel({
           <p className="text-[11px] text-[var(--color-text-muted)]">{enrolledStudents.length}명 등록</p>
         </div>
         {canManage && (
-          <div className="flex gap-1">
-            <button
-              onClick={() => setIsEditing((v) => !v)}
-              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-              aria-label="편집"
-            >
+          <div className="flex gap-1.5">
+            <IconButton aria-label="편집" onClick={() => setIsEditing((v) => !v)}>
               <Pencil size={16} strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => onDelete(subject.id)}
-              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+            </IconButton>
+            <IconButton
               aria-label="삭제"
+              variant="danger"
+              onClick={() => onDelete(subject.id)}
             >
               <Trash2 size={16} strokeWidth={1.5} />
-            </button>
+            </IconButton>
           </div>
         )}
       </div>

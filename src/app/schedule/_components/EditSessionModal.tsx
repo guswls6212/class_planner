@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { Trash2, X, ChevronDown, Calendar, Clock } from "lucide-react";
+import { IconButton } from "@/components/atoms/IconButton";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
@@ -229,16 +230,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // ── 색상 선택 패널 ──────────────────────────────────────────────
   const colorPanel = onSubjectColorChange && tempSubjectId ? (
     <div className="relative" ref={swatchPanelRef}>
-      {/* 색상 트리거 — 휴지통/X와 동일 8x8 icon-button. dot만으로 의미 전달.
-          subject color tint 배경 + border 로 상태 표시. */}
-      <button
-        type="button"
+      {/* 색상 트리거 — IconButton (tinted variant, subject color). */}
+      <IconButton
+        variant="tinted"
+        tintColor={previewColor}
         onClick={() => setShowSwatches((v) => !v)}
-        className="flex items-center justify-center w-8 h-8 rounded-lg transition-[filter] hover:brightness-110"
-        style={{
-          background: hexToRgba(previewColor, 0.15),
-          border: `1px solid ${hexToRgba(previewColor, 0.30)}`,
-        }}
         aria-label="과목 색상 변경"
         title="색상 선택"
       >
@@ -246,7 +242,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-1 ring-white/20"
           style={{ backgroundColor: previewColor }}
         />
-      </button>
+      </IconButton>
 
       {/* 스와치 패널 (드롭다운) */}
       {showSwatches && (
@@ -366,24 +362,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {colorPanel}
-            <button
-              type="button"
-              onClick={onDelete}
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-[rgba(239,68,68,0.15)] border border-[rgba(239,68,68,0.3)] text-[#f87171] hover:bg-[rgba(239,68,68,0.25)] transition-colors"
+            <IconButton
               aria-label="수업 삭제"
+              variant="danger"
+              onClick={onDelete}
             >
               <Trash2 size={14} strokeWidth={2} />
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-[var(--color-text-muted)] transition-colors"
-              aria-label="닫기"
-            >
+            </IconButton>
+            <IconButton aria-label="닫기" onClick={handleCancel}>
               <X size={15} strokeWidth={2} />
-            </button>
+            </IconButton>
           </div>
         </div>
       </div>
