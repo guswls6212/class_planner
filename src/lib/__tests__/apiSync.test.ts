@@ -448,10 +448,12 @@ describe("apiSync", () => {
     });
 
     it("성공 후 null로 reset", async () => {
-      // 첫 실패
+      // 첫 실패 — 400(4xx) fast-fail 사용 (5xx는 1초 retry 스케줄 → test 끝난 후
+      // setTimeout callback이 reset된 mockFetch 호출하면서 'undefined.then' TypeError
+      // 발생, dev CI 노이즈 원인. apiSync.ts:345-348의 4xx fast-fail로 retry 없음).
       mockFetch.mockResolvedValueOnce({
         ok: false,
-        status: 500,
+        status: 400,
         json: () => Promise.resolve({}),
       });
       syncSessionCreate("user-1", { id: "s1" } as any);
