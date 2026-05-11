@@ -1232,6 +1232,79 @@ describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () 
     expect(screen.getByText("김요섭")).toBeInTheDocument();
     expect(screen.queryByText("학생 없음")).not.toBeInTheDocument();
   });
+
+  // 학생수 배지 동적 회피 — 우상단 absolute 배지가 가려질 수 있는 케이스에서
+  // 시간 라인 옆 inline으로 자동 이동. (PR #351-#352 후속)
+  describe("동적 회피 — overflowsTop / hasLaneOverflowChip / hasConflict", () => {
+    it("overflowsTop=true && totalStudentCount>=2 → 시간 라인 inline 배지 (잘림 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          overflowsTop={true}
+        />
+      );
+      // 배지는 여전히 1개만 (inline 모드라도 aria-label은 동일)
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // inline 모드: 시간 라인 안에 위치 (시간 텍스트 옆 형제 element)
+      // 우상단 absolute 배지(rounded-md)와 달리 rounded-sm 작은 캡슐
+      expect(badge.className).toContain("rounded-sm");
+      expect(badge.className).not.toContain("absolute");
+    });
+
+    it("hasLaneOverflowChip=true && totalStudentCount>=2 → 시간 라인 inline (lane overflow +N 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          hasLaneOverflowChip={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // overflowsTop과 동일한 inline 처리
+      expect(badge.className).toContain("rounded-sm");
+      expect(badge.className).not.toContain("absolute");
+    });
+
+    it("hasConflict=true && !overflowsTop → 우상단 배지 right:[18px] 오프셋 (⚠ 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          hasConflict={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // 우상단 absolute 모드 유지 + right 오프셋
+      expect(badge.className).toContain("absolute");
+      expect(badge.className).toContain("right-[18px]");
+    });
+
+    it("기본(아무 회피 조건 X) → 우상단 absolute right:1 기본 위치", () => {
+      render(<SessionBlock {...baseProps} session={session3} />);
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge.className).toContain("absolute");
+      expect(badge.className).toContain("right-1");
+      expect(badge.className).not.toContain("right-[18px]");
+    });
+
+    it("overflowsTop + hasConflict 동시 → inline 우선 (잘림이 더 critical)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          overflowsTop={true}
+          hasConflict={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge.className).toContain("rounded-sm"); // inline
+      expect(badge.className).not.toContain("absolute");
+    });
+  });
 });
 
 // ===================================================================
