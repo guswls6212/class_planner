@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Trash2, X, ChevronDown } from "lucide-react";
+import { Trash2, X, ChevronDown, Calendar, Clock } from "lucide-react";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
@@ -207,31 +207,45 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     return `rgba(${r},${g},${b},${alpha})`;
   };
 
+  // 시간 차이 → "8시간", "1시간 30분", "30분" 등. invalid (start ≥ end) 시 빈 문자열.
+  const formatDuration = (start: string, end: string): string => {
+    if (!start || !end) return "";
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = end.split(":").map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return "";
+    const diff = eh * 60 + em - (sh * 60 + sm);
+    if (diff <= 0) return "";
+    const hours = Math.floor(diff / 60);
+    const mins = diff % 60;
+    if (hours === 0) return `${mins}분`;
+    if (mins === 0) return `${hours}시간`;
+    return `${hours}시간 ${mins}분`;
+  };
+  const duration = formatDuration(startTime, endTime);
+
   const fieldClass =
     "w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors";
 
   // ── 색상 선택 패널 ──────────────────────────────────────────────
   const colorPanel = onSubjectColorChange && tempSubjectId ? (
     <div className="relative" ref={swatchPanelRef}>
-      {/* 색상 트리거 — subject color tinted chip (variant C: 색 사용 압축). */}
+      {/* 색상 트리거 — 휴지통/X와 동일 8x8 icon-button. dot만으로 의미 전달.
+          subject color tint 배경 + border 로 상태 표시. */}
       <button
         type="button"
         onClick={() => setShowSwatches((v) => !v)}
-        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-[filter] hover:brightness-110"
+        className="flex items-center justify-center w-8 h-8 rounded-lg transition-[filter] hover:brightness-110"
         style={{
-          background: hexToRgba(previewColor, 0.12),
-          color: previewColor,
-          border: `1px solid ${hexToRgba(previewColor, 0.28)}`,
+          background: hexToRgba(previewColor, 0.15),
+          border: `1px solid ${hexToRgba(previewColor, 0.30)}`,
         }}
         aria-label="과목 색상 변경"
         title="색상 선택"
       >
         <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-1 ring-white/20"
           style={{ backgroundColor: previewColor }}
         />
-        <span>색</span>
-        <ChevronDown size={9} strokeWidth={2.5} />
       </button>
 
       {/* 스와치 패널 (드롭다운) */}
@@ -329,10 +343,26 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             <p className="text-[12px] truncate text-[var(--color-text-muted)] mt-0.5">
               {studentNames}
             </p>
-            <div className="inline-flex items-center gap-1.5 mt-2 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-white/5 text-[var(--color-text-primary)] border border-[var(--color-border)]">
-              <span className="text-[var(--color-text-muted)]">{weekdays[weekday]}</span>
-              <span aria-hidden="true" className="text-[var(--color-text-muted)] opacity-50">·</span>
-              <span>{startTime}–{endTime}</span>
+            {/* 시간 영역 — F variant: two-section card (요일 + 시간 + duration).
+                좌측 amber tint = 요일 라벨, 우측 neutral = 시간 + duration 부가. */}
+            <div className="inline-flex items-center mt-2 rounded-xl border border-[var(--color-border)] bg-white/[0.04] overflow-hidden">
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(245,158,11,0.12)] border-r border-[var(--color-border)]">
+                <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
+                <span className="text-[13px] font-bold text-[#fbbf24]">
+                  {weekdays[weekday]}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+                <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
+                <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums">
+                  {startTime} – {endTime}
+                </span>
+                {duration && (
+                  <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5">
+                    · {duration}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
