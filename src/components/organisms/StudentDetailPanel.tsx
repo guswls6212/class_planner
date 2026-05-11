@@ -7,6 +7,7 @@ import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { Select } from "@/components/atoms/Select";
+import { IconButton } from "@/components/atoms/IconButton";
 import { showToast } from "@/lib/toast";
 import {
   GENDER_LABEL,
@@ -144,21 +145,17 @@ export function StudentDetailPanel({
           </p>
         </div>
         {canManage && (
-          <div className="flex gap-1">
-            <button
-              onClick={() => setIsEditing((v) => !v)}
-              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-              aria-label="편집"
-            >
+          <div className="flex gap-1.5">
+            <IconButton aria-label="편집" onClick={() => setIsEditing((v) => !v)}>
               <Pencil size={16} strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => onDelete(student.id)}
-              className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+            </IconButton>
+            <IconButton
               aria-label="삭제"
+              variant="danger"
+              onClick={() => onDelete(student.id)}
             >
               <Trash2 size={16} strokeWidth={1.5} />
-            </button>
+            </IconButton>
           </div>
         )}
       </div>

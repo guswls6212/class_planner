@@ -1173,7 +1173,7 @@ describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () 
     expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
   });
 
-  it("selectedStudentIds=[] (비필터 모드) → 뱃지 미표시", () => {
+  it("selectedStudentIds=[] (비필터 모드) → 학생 수 뱃지 항시 표시 (Variant A)", () => {
     render(
       <SessionBlock
         {...baseProps}
@@ -1181,10 +1181,10 @@ describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () 
         selectedStudentIds={[]}
       />
     );
-    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
   });
 
-  it("selectedStudentIds=undefined → 뱃지 미표시", () => {
+  it("selectedStudentIds=undefined → 학생 수 뱃지 항시 표시 (Variant A)", () => {
     render(
       <SessionBlock
         {...baseProps}
@@ -1192,7 +1192,7 @@ describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () 
         selectedStudentIds={undefined}
       />
     );
-    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
   });
 
   it("비매칭 세션 (선택한 학생이 미포함) → 뱃지 미표시", () => {

@@ -11,6 +11,7 @@ import {
 } from "@/lib/validation/profileSchemas";
 import { TeacherScheduleList } from "@/components/molecules/TeacherScheduleList";
 import { TeacherSubjectPills } from "@/components/molecules/TeacherSubjectPills";
+import { IconButton } from "@/components/atoms/IconButton";
 
 interface TeacherDetailPanelProps {
   teacher: Teacher;
@@ -152,22 +153,18 @@ export function TeacherDetailPanel({
           </p>
         </div>
         {(canManage || canEditOwn) && (
-          <div className="flex gap-1">
-            <button
-              onClick={() => setIsEditing((v) => !v)}
-              className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-              aria-label="편집"
-            >
+          <div className="flex gap-1.5">
+            <IconButton aria-label="편집" onClick={() => setIsEditing((v) => !v)}>
               <Pencil size={16} strokeWidth={1.5} />
-            </button>
+            </IconButton>
             {canManage && (
-              <button
-                onClick={() => onDelete(teacher.id)}
-                className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
+              <IconButton
                 aria-label="삭제"
+                variant="danger"
+                onClick={() => onDelete(teacher.id)}
               >
                 <Trash2 size={16} strokeWidth={1.5} />
-              </button>
+              </IconButton>
             )}
           </div>
         )}
