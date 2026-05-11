@@ -55,20 +55,16 @@ export default function OnboardingPage() {
     })();
   }, [authLoading, session, router]);
 
-  const trimmed = academyName.trim();
   const nameValidation = validateAcademyName(academyName);
-  // onboarding 자체 정책: min 2자 (학원명이 너무 짧으면 식별 어려움)
-  const isValid = nameValidation.ok && trimmed.length >= 2;
+  // SSOT: validateAcademyName이 required/min(NAME_MIN_LENGTH=2)/max 모두 체크.
+  // 별도 inline check 불필요 (PR #360 centralization 후속).
+  const isValid = nameValidation.ok;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
     if (!nameValidation.ok) {
       setError(getKoMessage(nameValidation.code));
-      return;
-    }
-    if (trimmed.length < 2) {
-      setError("학원명은 2글자 이상 입력해주세요.");
       return;
     }
 
@@ -115,8 +111,8 @@ export default function OnboardingPage() {
     );
   }
 
-  const showInputError =
-    academyName.length > 0 && academyName.trim().length < 2;
+  // 사용자가 입력을 시작했지만 유효하지 않은 경우 (빈 상태에선 표시 X).
+  const showInputError = academyName.length > 0 && !nameValidation.ok;
 
   return (
     <div className="onboarding-bg min-h-screen flex items-center justify-center px-4 py-12">

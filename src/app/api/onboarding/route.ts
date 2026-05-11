@@ -54,16 +54,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { academyName, role } = body as { academyName?: string; role?: string };
 
-    // Phase 4: server-side validation — max 길이/required는 SSOT helper가 강제.
-    // 추가 onboarding 자체 정책: min 2자 (식별성).
+    // Phase 4: server-side validation — required/min(NAME_MIN_LENGTH=2)/max
+    // 모두 SSOT helper(validateAcademyName)가 강제. PR #360 centralization 이후
+    // 추가 inline check 불필요. ACADEMY_NAME_TOO_SHORT/REQUIRED/TOO_LONG 모두
+    // AppError로 변환되어 client에 ko 메시지 노출.
     const v = validateAcademyName(academyName ?? "");
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
-    if (v.value.length < 2) {
-      return NextResponse.json(
-        { success: false, error: "학원명은 2글자 이상 입력해주세요." },
-        { status: 400 }
-      );
-    }
 
     const validRoles = ["owner", "admin", "member"];
     const selectedRole = validRoles.includes(role ?? "") ? role! : "owner";
