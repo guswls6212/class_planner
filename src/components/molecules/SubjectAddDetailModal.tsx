@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Palette } from "lucide-react";
-import { useModalA11y } from "@/hooks/useModalA11y";
 import { SUBJECT_NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import { DEFAULT_SUBJECT_COLORS, SUBJECT_DEFAULT_COLOR } from "@/lib/subjectColors";
 import { ColorPicker } from "./ColorPicker";
+import { Modal } from "@/components/atoms/Modal";
 
 interface SubjectAddDetailModalProps {
   isOpen: boolean;
@@ -33,8 +33,6 @@ export default function SubjectAddDetailModal({
   const [color, setColor] = useState(SUBJECT_DEFAULT_COLOR);
   const [errMsg, setErrMsg] = useState("");
 
-  const { containerRef } = useModalA11y({ isOpen, onClose });
-
   useEffect(() => {
     if (isOpen) {
       setName((defaultName ?? "").slice(0, SUBJECT_NAME_MAX_LENGTH));
@@ -42,8 +40,6 @@ export default function SubjectAddDetailModal({
       setErrMsg("");
     }
   }, [isOpen, defaultName]);
-
-  if (!isOpen) return null;
 
   const handleSubmit = () => {
     const trimmed = name.trim();
@@ -69,24 +65,19 @@ export default function SubjectAddDetailModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabelledBy="subject-add-detail-title"
+      maxWidth="max-w-[420px]"
+      bodyClassName="p-6"
     >
-      <div
-        className="relative w-full max-w-[420px] rounded-2xl border border-white/[0.08] bg-[var(--color-bg-primary)] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="subject-add-detail-title"
-        onClick={(e) => e.stopPropagation()}
-        ref={containerRef}
+      <h2
+        id="subject-add-detail-title"
+        className="mb-4 text-lg font-bold tracking-tight text-[var(--color-text-primary)]"
       >
-        <h2
-          id="subject-add-detail-title"
-          className="mb-4 text-lg font-bold tracking-tight text-[var(--color-text-primary)]"
-        >
-          과목 추가
-        </h2>
+        과목 추가
+      </h2>
 
         <div className="space-y-4">
           <div>
@@ -156,7 +147,6 @@ export default function SubjectAddDetailModal({
             추가
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }
