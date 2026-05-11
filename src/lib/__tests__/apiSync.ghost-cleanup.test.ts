@@ -14,6 +14,8 @@ const deleteSessionFromLocalMock = vi.fn((_id: string) => ({
 }));
 vi.mock("../localStorageCrud", () => ({
   deleteSessionFromLocal: (id: string) => deleteSessionFromLocalMock(id),
+  // pendingDeletes 모듈이 module-init 시점에 호출 — mock 누락 시 CI fail.
+  getStorageKey: () => "classPlannerData:test",
 }));
 
 import {

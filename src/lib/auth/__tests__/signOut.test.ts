@@ -13,6 +13,8 @@ vi.mock('@/utils/supabaseClient', () => ({
 vi.mock('@/lib/localStorageCrud', () => ({
   clearUserClassPlannerData: mockClearUserData,
   clearActiveAcademy: mockClearActiveAcademy,
+  // pendingDeletes 모듈이 module-init 시점에 호출 — mock 누락 시 CI fail.
+  getStorageKey: () => 'classPlannerData:test',
 }))
 
 // Replace window.location once at module level so jsdom allows it
