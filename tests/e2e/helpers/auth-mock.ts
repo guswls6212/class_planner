@@ -171,10 +171,29 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
   // 이전 시도에서 active_academy:{uid} localStorage + active_academy_id cookie 추가했더니
   // settings/teachers 페이지 진입이 깨짐 (이전 cycle 통과한 시나리오까지 fail).
   // 단순화: setup script가 academy + owner role만 부여하면 server가 알아서 처리.
+  //
+  // useMyRole sessionStorage cache pre-seed (PR #357 후속):
+  // production 사용자의 first-paint race 회피용 cache가 e2e 환경에선 매 spec
+  // fresh sessionStorage라 무용 → useMyRole의 /api/members fetch async 동안
+  // canManage=false → TemplateMenuV2 등 conditional UI 안 렌더 → 15s timeout
+  // (templates-apply-delete.spec.ts 회귀 원인). owner 역할로 pre-seed해서 첫
+  // render부터 canManage=true로 hydrate.
   await page.addInitScript(
     ({ ref, uid, session }) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("supabase_user_id", uid);
+      sessionStorage.setItem(
+        `useMyRole_v1_${uid}`,
+        JSON.stringify({
+          role: "owner",
+          canManage: true,
+          academies: [],
+          linkedTeacherId: null,
+          linkedTeacherName: null,
+          linkedTeacherColor: null,
+          adminCount: 1,
+        }),
+      );
     },
     { ref: projectRef, uid: userId, session: sessionPayload },
   );
