@@ -493,20 +493,6 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         )}
       </div>
 
-      {/* Room (always shown) */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="modal-room" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          강의실
-        </label>
-        <input
-          id="modal-room"
-          type="text"
-          className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-          placeholder="강의실 (선택사항)"
-          value={groupModalData.room || ""}
-          onChange={(e) => setGroupModalData((prev) => ({ ...prev, room: e.target.value }))}
-        />
-      </div>
     </div>
   );
 
@@ -563,12 +549,6 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
               {groupModalData.startTime} — {groupModalData.endTime}
             </span>
           </div>
-          {groupModalData.room && (
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">강의실</span>
-              <span className="text-[13px] text-[var(--color-text-primary)]">{groupModalData.room}</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

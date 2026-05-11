@@ -5,8 +5,11 @@ export function buildGroupTimeChangeHandlers(
   validateTimeRange: (startTime: string, endTime: string) => boolean,
   setGroupModalData: (
     updater: GroupSessionData | ((prev: GroupSessionData) => GroupSessionData)
-  ) => void
+  ) => void,
+  setGroupTimeError: (msg: string) => void,
 ) {
+  const TIME_INVALID_MSG = "종료 시간은 시작 시간보다 늦어야 합니다.";
+
   const handleStartTimeChange = (newStartTime: string) => {
     setGroupModalData((prev) => {
       const currentEndTime = prev.endTime;
@@ -15,7 +18,10 @@ export function buildGroupTimeChangeHandlers(
         currentEndTime &&
         !validateTimeRange(newStartTime, currentEndTime)
       ) {
-        logger.warn("시작 시간이 종료 시간보다 늦습니다. 시간을 확인해주세요.");
+        logger.warn("시작 시간이 종료 시간보다 늦습니다.");
+        setGroupTimeError(TIME_INVALID_MSG);
+      } else {
+        setGroupTimeError("");
       }
       return { ...prev, startTime: newStartTime };
     });
@@ -29,7 +35,10 @@ export function buildGroupTimeChangeHandlers(
         currentStartTime &&
         !validateTimeRange(currentStartTime, newEndTime)
       ) {
-        logger.warn("종료 시간이 시작 시간보다 빠릅니다. 시간을 확인해주세요.");
+        logger.warn("종료 시간이 시작 시간보다 빠릅니다.");
+        setGroupTimeError(TIME_INVALID_MSG);
+      } else {
+        setGroupTimeError("");
       }
       return { ...prev, endTime: newEndTime };
     });

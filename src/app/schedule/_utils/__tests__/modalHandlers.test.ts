@@ -9,10 +9,12 @@ describe("buildGroupTimeChangeHandlers", () => {
   it("handleStartTimeChange가 setGroupModalData를 호출한다", () => {
     const validateTimeRange = vi.fn().mockReturnValue(true);
     const setGroupModalData = vi.fn();
+    const setGroupTimeError = vi.fn();
 
     const { handleStartTimeChange } = buildGroupTimeChangeHandlers(
       validateTimeRange,
-      setGroupModalData
+      setGroupModalData,
+      setGroupTimeError,
     );
 
     handleStartTimeChange("10:00");
@@ -29,15 +31,18 @@ describe("buildGroupTimeChangeHandlers", () => {
       yPosition: 1,
     });
     expect(result.startTime).toBe("10:00");
+    expect(setGroupTimeError).toHaveBeenCalledWith("");
   });
 
   it("handleEndTimeChange가 setGroupModalData를 호출한다", () => {
     const validateTimeRange = vi.fn().mockReturnValue(true);
     const setGroupModalData = vi.fn();
+    const setGroupTimeError = vi.fn();
 
     const { handleEndTimeChange } = buildGroupTimeChangeHandlers(
       validateTimeRange,
-      setGroupModalData
+      setGroupModalData,
+      setGroupTimeError,
     );
 
     handleEndTimeChange("12:00");
@@ -53,16 +58,19 @@ describe("buildGroupTimeChangeHandlers", () => {
       yPosition: 1,
     });
     expect(result.endTime).toBe("12:00");
+    expect(setGroupTimeError).toHaveBeenCalledWith("");
   });
 
-  it("유효하지 않은 시간 범위에서 경고를 출력한다", () => {
+  it("유효하지 않은 시간 범위에서 setGroupTimeError 를 설정한다", () => {
     const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     const validateTimeRange = vi.fn().mockReturnValue(false);
     const setGroupModalData = vi.fn();
+    const setGroupTimeError = vi.fn();
 
     const { handleStartTimeChange } = buildGroupTimeChangeHandlers(
       validateTimeRange,
-      setGroupModalData
+      setGroupModalData,
+      setGroupTimeError,
     );
 
     handleStartTimeChange("15:00");
@@ -77,6 +85,9 @@ describe("buildGroupTimeChangeHandlers", () => {
     });
 
     expect(warnSpy).toHaveBeenCalled();
+    expect(setGroupTimeError).toHaveBeenCalledWith(
+      "종료 시간은 시작 시간보다 늦어야 합니다.",
+    );
     warnSpy.mockRestore();
   });
 });

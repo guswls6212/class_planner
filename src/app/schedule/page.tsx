@@ -1200,9 +1200,10 @@ function SchedulePageContent(): JSX.Element {
   );
 
   // 🆕 그룹 모달 시간 변경 핸들러 (헬퍼 적용)
+  // setGroupTimeError 전달 — invalid 시 즉시 error state 설정 → canProceedStep1 차단.
   const { handleStartTimeChange, handleEndTimeChange } = useMemo(
-    () => buildGroupTimeChangeHandlers(validateTimeRange, setGroupModalData),
-    [validateTimeRange, setGroupModalData]
+    () => buildGroupTimeChangeHandlers(validateTimeRange, setGroupModalData, setGroupTimeError),
+    [validateTimeRange, setGroupModalData, setGroupTimeError]
   );
 
   // 🆕 UI 상태 훅
