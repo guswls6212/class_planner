@@ -169,6 +169,7 @@ describe("scheduleSelectors", () => {
         "이",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
@@ -181,6 +182,7 @@ describe("scheduleSelectors", () => {
         "박",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
@@ -193,6 +195,7 @@ describe("scheduleSelectors", () => {
         "",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
@@ -206,9 +209,40 @@ describe("scheduleSelectors", () => {
         "존재하지않는학생",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
+      expect(result).toEqual([]);
+    });
+
+    // tempEnrollments(이번 모달 세션에서 신규 추가한 enrollment)에 있는 학생도
+    // dropdown에서 제외되어야 함 — buildSelectedStudents와 비대칭으로 인한 버그 가드.
+    it("tempEnrollments에 있는 학생도 dropdown에서 제외되어야 한다", () => {
+      const result = filterEditableStudents(
+        "",
+        mockEditModalDataWithTemp,
+        mockEnrollments,
+        mockTempEnrollments,
+        mockStudents
+      );
+
+      // 김철수(student-1, enrollments), 박민수(student-3, tempEnrollments) 둘 다 추가됨
+      // → 이영희(student-2)만 dropdown에 남아야 함
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-2", name: "이영희" });
+    });
+
+    it("tempEnrollments에 있는 학생을 쿼리로 검색해도 제외되어야 한다", () => {
+      const result = filterEditableStudents(
+        "박",
+        mockEditModalDataWithTemp,
+        mockEnrollments,
+        mockTempEnrollments,
+        mockStudents
+      );
+
+      // 박민수는 tempEnrollments에 있으므로 검색 결과에서도 제외
       expect(result).toEqual([]);
     });
   });
@@ -223,4 +257,15 @@ const mockEditModalData = {
   weekStartDate: "",
   room: "A101",
   enrollmentIds: ["enrollment-1"],
+};
+
+// enrollments(영구) + tempEnrollments(임시) 모두 참조하는 케이스용 mock
+const mockEditModalDataWithTemp = {
+  id: "session-2",
+  startsAt: "09:00",
+  endsAt: "10:00",
+  weekday: 0,
+  weekStartDate: "",
+  room: "A101",
+  enrollmentIds: ["enrollment-1", "temp-enrollment-1"],
 };

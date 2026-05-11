@@ -466,6 +466,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isCopyMode={isCopyMode}
           overflowsTop={overflowsTop}
           overflowsBottom={overflowsBottom}
+          hasLaneOverflowChip={isOverflow && yPosition === effectiveLanes}
           selected={selectedSessionIds?.has(session.id) ?? false}
           onSelectToggle={
             onSessionSelectToggle

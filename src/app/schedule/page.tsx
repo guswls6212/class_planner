@@ -2319,6 +2319,7 @@ function SchedulePageContent(): JSX.Element {
           editStudentInputValue,
           editModalData,
           enrollments,
+          tempEnrollments,
           students
         )}
         onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}

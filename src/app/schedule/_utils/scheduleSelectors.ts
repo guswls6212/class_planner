@@ -51,15 +51,17 @@ export const filterEditableStudents = (
   query: string,
   editModalData: Session | null,
   enrollments: Enrollment[],
+  tempEnrollments: Enrollment[],
   students: Student[]
 ): EditableStudentOption[] => {
   if (!editModalData) return [];
   const q = query.toLowerCase();
+  const allEnrollments = [...enrollments, ...tempEnrollments];
   return students
     .filter((student) =>
       student.name.toLowerCase().includes(q) &&
       !editModalData.enrollmentIds?.some((enrollmentId) => {
-        const enrollment = enrollments.find((e) => e.id === enrollmentId);
+        const enrollment = allEnrollments.find((e) => e.id === enrollmentId);
         return enrollment?.studentId === student.id;
       })
     )

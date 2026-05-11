@@ -50,6 +50,12 @@ interface SessionBlockProps {
   overflowsTop?: boolean;
   /** 시간 범위 upper bound를 넘어 아래쪽으로 잘린 세션 — 하단에 그라데이션 cap 표시 */
   overflowsBottom?: boolean;
+  /**
+   * 같은 row에 lane overflow `+N` chip(TimeTableRow가 z-index:115로 그림)이 표시되고
+   * 이 세션이 마지막 visible lane(yPosition===effectiveLanes)에 있어 chip과 우상단이
+   * 시각 충돌하는 경우 true. 학생수 배지를 시간 라인 inline으로 자동 이동.
+   */
+  hasLaneOverflowChip?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
@@ -104,6 +110,7 @@ function SessionBlock({
   isCopyMode = false,
   overflowsTop = false,
   overflowsBottom = false,
+  hasLaneOverflowChip = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
@@ -398,18 +405,27 @@ function SessionBlock({
       : getImprovedStudentDisplayText(studentNames);
 
   const totalStudentCount = useMemo(() => {
-    if (!isStudentModeActive || !selectedStudentIds?.length) return 0;
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
       return enrollment ? [enrollment.studentId] : [];
     });
-    // 게이트: 선택된 학생이 이 세션에 없으면 표시 안 함 (비매칭 dim 블록)
-    const hasSelectedInSession = allStudentIds.some((id) =>
-      selectedStudentIds.includes(id),
-    );
-    if (!hasSelectedInSession) return 0;
+    // 학생 필터 활성 + 비매칭 세션은 dim 처리되므로 배지도 숨김(0 반환).
+    // 평소(필터 비활성)에는 전체 학생 수 노출 — Variant A 항시 표시.
+    if (isStudentModeActive && selectedStudentIds?.length) {
+      const hasSelectedInSession = allStudentIds.some((id) =>
+        selectedStudentIds.includes(id),
+      );
+      if (!hasSelectedInSession) return 0;
+    }
     return allStudentIds.length;
   }, [isStudentModeActive, selectedStudentIds, session.enrollmentIds, enrollments]);
+
+  // 동적 회피 — 우상단 배지가 가려질 수 있는 두 케이스에서 시간 라인 옆 inline으로 이동:
+  //   1) overflowsTop: 잘려서 visible 영역 밖
+  //   2) hasLaneOverflowChip: TimeTableRow의 +N chip(z-index:115)과 같은 좌표
+  // hasConflict ⚠는 같은 button 내부 z-layer라 right 오프셋만으로 분리 가능.
+  const showStudentBadgeInline =
+    (overflowsTop || hasLaneOverflowChip) && totalStudentCount >= 2;
 
   return (
     <div
@@ -503,8 +519,24 @@ function SessionBlock({
           <div className="font-semibold truncate text-[13px] leading-tight">
             {primaryLabel}
           </div>
-          <div className="text-[10px] opacity-75 truncate leading-tight [font-feature-settings:'tnum']">
-            {session.startsAt}-{session.endsAt}
+          <div
+            className={[
+              "text-[10px] opacity-75 leading-tight [font-feature-settings:'tnum']",
+              showStudentBadgeInline ? "flex items-center gap-1.5" : "truncate",
+            ].join(" ")}
+          >
+            <span className={showStudentBadgeInline ? "truncate" : undefined}>
+              {session.startsAt}-{session.endsAt}
+            </span>
+            {showStudentBadgeInline && (
+              <span
+                aria-label={`총 ${totalStudentCount}명`}
+                className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-sm session-overlay-pill backdrop-blur-sm px-1 py-px text-[9px] font-semibold text-white"
+              >
+                <Users className="h-2 w-2" strokeWidth={2.5} aria-hidden="true" />
+                {totalStudentCount}
+              </span>
+            )}
           </div>
           {secondaryLabel && (
             <div className="text-[10px] opacity-[0.85] truncate leading-tight">
@@ -514,9 +546,12 @@ function SessionBlock({
         </div>
       </button>
 
-      {totalStudentCount >= 2 && (
+      {totalStudentCount >= 2 && !showStudentBadgeInline && (
         <span
-          className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-md session-overlay-pill backdrop-blur-sm px-1 py-px text-[10px] font-semibold text-white pointer-events-none"
+          className={[
+            "absolute top-1 inline-flex items-center gap-0.5 rounded-md session-overlay-pill backdrop-blur-sm px-1 py-px text-[10px] font-semibold text-white pointer-events-none",
+            hasConflict ? "right-[18px]" : "right-1",
+          ].join(" ")}
           aria-label={`총 ${totalStudentCount}명`}
         >
           <Users className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />
