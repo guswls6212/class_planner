@@ -26,6 +26,50 @@ export interface CurrentMemberData {
   adminCount: number;
 }
 
+// sessionStorage cache — tab session 내에서 useMyRole 결과 재사용.
+// 첫 render: fetch async로 isLoading=true → canManage=false flash (TemplateMenuV2
+// 등 conditional UI 일시 숨김 → e2e timeout 또는 사용자 paint flash). Cache hit
+// 시 즉시 hydrate로 race 제거. background fetch는 항상 실행해 stale 갱신.
+// tab 종료 시 자동 폐기(sessionStorage) — multi-user/권한 변경 stale 위험 최소.
+const CACHE_KEY_PREFIX = "useMyRole_v1_";
+
+interface CachedRoleSnapshot {
+  role: "owner" | "admin" | "member" | null;
+  canManage: boolean;
+  linkedTeacherId: string | null;
+  linkedTeacherName: string | null;
+  linkedTeacherColor: string | null;
+  adminCount: number;
+  academies: AcademyMembership[];
+}
+
+function loadRoleCache(userId: string): CachedRoleSnapshot | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_KEY_PREFIX}${userId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CachedRoleSnapshot>;
+    // 최소 schema 검증 — 손상된 cache는 무시
+    if (typeof parsed.canManage !== "boolean") return null;
+    if (!Array.isArray(parsed.academies)) return null;
+    return parsed as CachedRoleSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function saveRoleCache(userId: string, data: CachedRoleSnapshot): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(
+      `${CACHE_KEY_PREFIX}${userId}`,
+      JSON.stringify(data),
+    );
+  } catch {
+    // sessionStorage full/denied — non-blocking
+  }
+}
+
 /**
  * Returns the current user's role in the academy and linked teacher info.
  * Fetched from /api/members?userId={userId}.
@@ -83,6 +127,17 @@ export function useMyRole(): CurrentMemberData {
         }
 
         const userId = session.user.id;
+
+        // Cache hit: 즉시 hydrate로 first-paint race 제거 (e2e flaky + UX flash).
+        // background fetch는 그대로 진행해 stale 갱신.
+        const cached = loadRoleCache(userId);
+        if (cached && !cancelled) {
+          setData({
+            ...cached,
+            isLoading: false,
+          });
+        }
+
         const res = await fetch(`/api/members?userId=${userId}`);
         if (!res.ok || cancelled) return;
 
@@ -105,29 +160,31 @@ export function useMyRole(): CurrentMemberData {
         ).length;
 
         if (!me) {
-          setData({
+          const freshSnapshot: CachedRoleSnapshot = {
             role: null,
-            isLoading: false,
             canManage: false,
-            academies: [],
+            academies: cached?.academies ?? [],
             linkedTeacherId: null,
             linkedTeacherName: null,
             linkedTeacherColor: null,
             adminCount,
-          });
+          };
+          saveRoleCache(userId, freshSnapshot);
+          setData({ ...freshSnapshot, isLoading: false });
           return;
         }
 
-        setData({
+        const freshSnapshot: CachedRoleSnapshot = {
           role: me.role,
-          isLoading: false,
           canManage: me.role === "owner" || me.role === "admin",
-          academies: [],
+          academies: cached?.academies ?? [],
           linkedTeacherId: me.linkedTeacherId,
           linkedTeacherName: me.linkedTeacherName,
           linkedTeacherColor: me.linkedTeacherColor,
           adminCount,
-        });
+        };
+        saveRoleCache(userId, freshSnapshot);
+        setData({ ...freshSnapshot, isLoading: false });
 
         // Sync role to a server-readable cookie so the Next.js middleware
         // can enforce route-level RBAC. Fire-and-forget — failure here is
@@ -150,7 +207,20 @@ export function useMyRole(): CurrentMemberData {
               academies: AcademyMembership[];
             };
             if (!cancelled) {
-              setData((prev) => ({ ...prev, academies: list ?? [] }));
+              setData((prev) => {
+                const next = { ...prev, academies: list ?? [] };
+                // academies는 cache에도 저장 — 다음 tab session 시작 시 즉시 hydrate.
+                saveRoleCache(userId, {
+                  role: next.role,
+                  canManage: next.canManage,
+                  academies: next.academies,
+                  linkedTeacherId: next.linkedTeacherId,
+                  linkedTeacherName: next.linkedTeacherName,
+                  linkedTeacherColor: next.linkedTeacherColor,
+                  adminCount: next.adminCount,
+                });
+                return next;
+              });
 
               const { getActiveAcademyId, setActiveAcademyId } = await import(
                 "@/lib/localStorageCrud"

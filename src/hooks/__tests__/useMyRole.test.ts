@@ -316,4 +316,132 @@ describe("useMyRole", () => {
       expect(result.current.adminCount).toBe(0);
     });
   });
+
+  // sessionStorage cache — fetch async race로 first-paint flash 방지.
+  // 이 cache는 e2e 환경의 useMyRole timeout flaky도 회복.
+  describe("sessionStorage cache — first-paint race 회복", () => {
+    beforeEach(() => {
+      sessionStorage.clear();
+    });
+
+    it("cache hit이면 fetch 응답 전에도 즉시 canManage 반영", async () => {
+      mockUseAuth.mockReturnValue({
+        session: SESSION_OWNER,
+        user: SESSION_OWNER.user,
+        loading: false,
+      });
+
+      // sessionStorage에 cache 사전 주입 (이전 tab session의 결과 simulating)
+      sessionStorage.setItem(
+        "useMyRole_v1_user-owner",
+        JSON.stringify({
+          role: "owner",
+          canManage: true,
+          academies: [],
+          linkedTeacherId: null,
+          linkedTeacherName: null,
+          linkedTeacherColor: null,
+          adminCount: 1,
+        }),
+      );
+
+      // fetch는 pending — cache hit으로 즉시 hydrate 검증
+      mockFetch.mockImplementation(
+        () => new Promise(() => {}), // never resolves
+      );
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.canManage).toBe(true);
+      expect(result.current.role).toBe("owner");
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it("fetch 응답 후 sessionStorage cache 업데이트", async () => {
+      mockUseAuth.mockReturnValue({
+        session: SESSION_OWNER,
+        user: SESSION_OWNER.user,
+        loading: false,
+      });
+      mockMembersAndEmptyAcademies([MEMBER_OWNER]);
+
+      renderHook(() => useMyRole());
+
+      await act(async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      });
+
+      const cached = sessionStorage.getItem("useMyRole_v1_user-owner");
+      expect(cached).not.toBeNull();
+      const parsed = JSON.parse(cached!);
+      expect(parsed.canManage).toBe(true);
+      expect(parsed.role).toBe("owner");
+      expect(parsed.adminCount).toBe(1);
+    });
+
+    it("다른 userId의 cache는 격리됨 — user-owner는 cache miss", async () => {
+      // user-admin cache pre-set
+      sessionStorage.setItem(
+        "useMyRole_v1_user-admin",
+        JSON.stringify({
+          role: "admin",
+          canManage: true,
+          academies: [],
+          linkedTeacherId: null,
+          linkedTeacherName: null,
+          linkedTeacherColor: null,
+          adminCount: 1,
+        }),
+      );
+
+      // user-owner로 로그인 — fetch pending
+      mockUseAuth.mockReturnValue({
+        session: SESSION_OWNER,
+        user: SESSION_OWNER.user,
+        loading: false,
+      });
+      mockFetch.mockImplementation(() => new Promise(() => {}));
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // user-owner는 cache 없음 → 초기 pessimistic (isLoading=true, canManage=false)
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.canManage).toBe(false);
+    });
+
+    it("손상된 cache (canManage 필드 누락)는 무시 + pessimistic 시작", async () => {
+      sessionStorage.setItem(
+        "useMyRole_v1_user-owner",
+        JSON.stringify({ role: "owner" }), // canManage 누락
+      );
+
+      mockUseAuth.mockReturnValue({
+        session: SESSION_OWNER,
+        user: SESSION_OWNER.user,
+        loading: false,
+      });
+      mockFetch.mockImplementation(() => new Promise(() => {}));
+
+      const { result } = renderHook(() => useMyRole());
+
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // 손상된 cache 무시 → pessimistic
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.canManage).toBe(false);
+    });
+  });
 });
