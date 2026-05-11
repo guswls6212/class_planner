@@ -158,6 +158,16 @@ describe("profileSchemas", () => {
       expect(validateStudentName("")).toEqual({ ok: false, code: "STUDENT_NAME_REQUIRED" });
       expect(validateStudentName("   ")).toEqual({ ok: false, code: "STUDENT_NAME_REQUIRED" });
     });
+    it("1글자 → STUDENT_NAME_TOO_SHORT (NAME_MIN_LENGTH=2)", () => {
+      expect(validateStudentName("일")).toEqual({
+        ok: false,
+        code: "STUDENT_NAME_TOO_SHORT",
+      });
+      expect(validateStudentName("  일  ")).toEqual({
+        ok: false,
+        code: "STUDENT_NAME_TOO_SHORT",
+      });
+    });
     it("길이 초과 → STUDENT_NAME_TOO_LONG", () => {
       expect(validateStudentName("일이삼사오육칠")).toEqual({
         ok: false,
@@ -175,6 +185,12 @@ describe("profileSchemas", () => {
     it("빈 입력 → TEACHER_NAME_REQUIRED", () => {
       expect(validateTeacherName("")).toEqual({ ok: false, code: "TEACHER_NAME_REQUIRED" });
     });
+    it("1글자 → TEACHER_NAME_TOO_SHORT", () => {
+      expect(validateTeacherName("김")).toEqual({
+        ok: false,
+        code: "TEACHER_NAME_TOO_SHORT",
+      });
+    });
     it("길이 초과 → TEACHER_NAME_TOO_LONG", () => {
       expect(validateTeacherName("일이삼사오육칠")).toEqual({
         ok: false,
@@ -189,6 +205,12 @@ describe("profileSchemas", () => {
   describe("validateSubjectName", () => {
     it("빈 입력 → SUBJECT_NAME_REQUIRED", () => {
       expect(validateSubjectName("")).toEqual({ ok: false, code: "SUBJECT_NAME_REQUIRED" });
+    });
+    it("1글자 → SUBJECT_NAME_TOO_SHORT", () => {
+      expect(validateSubjectName("국")).toEqual({
+        ok: false,
+        code: "SUBJECT_NAME_TOO_SHORT",
+      });
     });
     it("12자 초과 → SUBJECT_NAME_TOO_LONG", () => {
       expect(validateSubjectName("일이삼사오육칠팔구십일이삼")).toEqual({

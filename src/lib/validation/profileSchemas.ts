@@ -11,6 +11,7 @@
 
 import { ErrorCodes, type ErrorCode } from "../errors/codes";
 
+export const NAME_MIN_LENGTH = 2;
 export const NAME_MAX_LENGTH = 6;
 export const SCHOOL_MAX_LENGTH = 30;
 export const SUBJECT_NAME_MAX_LENGTH = 12;
@@ -151,13 +152,16 @@ export type FieldValidationResult = { ok: true } | { ok: false; code: ErrorCode 
 
 interface NameValidationOptions {
   required: ErrorCode;
+  tooShort: ErrorCode;
   tooLong: ErrorCode;
+  minLength: number;
   maxLength: number;
 }
 
 function validateNameField(value: string, opts: NameValidationOptions): NameValidationResult {
   const trimmed = value.trim();
   if (trimmed.length === 0) return { ok: false, code: opts.required };
+  if (trimmed.length < opts.minLength) return { ok: false, code: opts.tooShort };
   if (trimmed.length > opts.maxLength) return { ok: false, code: opts.tooLong };
   return { ok: true, value: trimmed };
 }
@@ -165,7 +169,9 @@ function validateNameField(value: string, opts: NameValidationOptions): NameVali
 export function validateStudentName(value: string): NameValidationResult {
   return validateNameField(value, {
     required: ErrorCodes.STUDENT_NAME_REQUIRED,
+    tooShort: ErrorCodes.STUDENT_NAME_TOO_SHORT,
     tooLong: ErrorCodes.STUDENT_NAME_TOO_LONG,
+    minLength: NAME_MIN_LENGTH,
     maxLength: NAME_MAX_LENGTH,
   });
 }
@@ -173,7 +179,9 @@ export function validateStudentName(value: string): NameValidationResult {
 export function validateTeacherName(value: string): NameValidationResult {
   return validateNameField(value, {
     required: ErrorCodes.TEACHER_NAME_REQUIRED,
+    tooShort: ErrorCodes.TEACHER_NAME_TOO_SHORT,
     tooLong: ErrorCodes.TEACHER_NAME_TOO_LONG,
+    minLength: NAME_MIN_LENGTH,
     maxLength: NAME_MAX_LENGTH,
   });
 }
@@ -181,7 +189,9 @@ export function validateTeacherName(value: string): NameValidationResult {
 export function validateSubjectName(value: string): NameValidationResult {
   return validateNameField(value, {
     required: ErrorCodes.SUBJECT_NAME_REQUIRED,
+    tooShort: ErrorCodes.SUBJECT_NAME_TOO_SHORT,
     tooLong: ErrorCodes.SUBJECT_NAME_TOO_LONG,
+    minLength: NAME_MIN_LENGTH,
     maxLength: SUBJECT_NAME_MAX_LENGTH,
   });
 }
@@ -189,7 +199,9 @@ export function validateSubjectName(value: string): NameValidationResult {
 export function validateAcademyName(value: string): NameValidationResult {
   return validateNameField(value, {
     required: ErrorCodes.ACADEMY_NAME_REQUIRED,
+    tooShort: ErrorCodes.ACADEMY_NAME_TOO_SHORT,
     tooLong: ErrorCodes.ACADEMY_NAME_TOO_LONG,
+    minLength: NAME_MIN_LENGTH,
     maxLength: ACADEMY_NAME_MAX_LENGTH,
   });
 }

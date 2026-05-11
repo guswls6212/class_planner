@@ -21,6 +21,8 @@ import {
   updateStudentInLocal,
 } from "../lib/localStorageCrud";
 import { logger } from "../lib/logger";
+import { validateStudentName } from "../lib/validation/profileSchemas";
+import { getKoMessage } from "../lib/errors/messages.ko";
 import {
   PENDING_DELETE_TTL_MS,
   addPendingDelete,
@@ -221,11 +223,12 @@ export const useStudentManagementLocal =
           showToast("error", PERMISSION_DENIED_MESSAGE);
           return false;
         }
-        // Client validation — server (≥ 2글자) 와 일치. invalid 시 localStorage 저장
-        // 차단해 sync 10 retry 실패 + outbox 누적 회귀 방지 (omni-radar 2026-05-11 추적).
-        const trimmed = name?.trim() ?? "";
-        if (trimmed.length < 2) {
-          const msg = "학생 이름은 2글자 이상이어야 합니다.";
+        // Client validation — required/min/max 모두 SSOT(profileSchemas) 호출로
+        // 통일. invalid 시 localStorage 저장 차단해 sync 10 retry 실패 + outbox
+        // 누적 회귀 방지 (omni-radar 2026-05-11 추적).
+        const nameValidation = validateStudentName(name ?? "");
+        if (!nameValidation.ok) {
+          const msg = getKoMessage(nameValidation.code);
           setError(msg);
           showToast("error", msg);
           return false;
