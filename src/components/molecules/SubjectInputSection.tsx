@@ -84,9 +84,6 @@ const SubjectInputSection: React.FC<SubjectInputSectionProps> = ({
           value={subjectName}
           onChange={handleInputChange}
           maxLength={SUBJECT_NAME_MAX_LENGTH}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAddSubject();
-          }}
         />
       </div>
       <div className="shrink-0">

@@ -6,7 +6,30 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
-import { buildDuplicateNameSet, formatStudentDuplicateLabel } from "../../../lib/duplicateLabel";
+import { StudentChip } from "../../../components/molecules/StudentChip";
+import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
+
+/**
+ * 학년 배지가 별도 노출되는 row variant 전용 부제 — 동명이인이면 성별·생년월일,
+ * 그 외엔 학교. helper 를 별도 export 로 두지 않는 이유: Turbopack 이 dynamic
+ * import chain 안의 helper 모듈을 별도 청크로 분리해 RSC stream 시점에 미로드
+ * 상태가 발생하던 사고 (검증 시 발견). 호출부 내 inline 으로 chunk 분리 회피.
+ */
+function formatStudentSubtitleExceptGrade(
+  s: StudentOption,
+  dupSet: Set<string>,
+): string {
+  const isDup = dupSet.has(s.name);
+  if (isDup) {
+    const identity: string[] = [];
+    if (s.gender === "male") identity.push("남");
+    else if (s.gender === "female") identity.push("여");
+    if (s.birthDate) identity.push(s.birthDate);
+    if (identity.length > 0) return identity.join(" · ");
+  }
+  if (s.school) return s.school;
+  return "";
+}
 import {
   NAME_MAX_LENGTH,
   SUBJECT_NAME_MAX_LENGTH,
@@ -154,15 +177,12 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
     () => buildDuplicateNameSet(filteredStudentsForModal),
     [filteredStudentsForModal],
   );
-  // 선택된 학생 (step 1 pills + step 3 confirm chips 공통 데이터 + dupSet).
+  // 선택된 학생 (step 1 pills + step 3 confirm chips 공통 데이터).
   // step 1보다 위에 정의해야 temporal dead zone 회피.
+  // 동명이인 식별은 StudentChip 내부 호버 툴팁이 담당 — selected 칩에서는 학년+이름만 본문 노출.
   const selectedStudents = groupModalData.studentIds
     .map((id) => students.find((s) => s.id === id))
     .filter((s): s is StudentOption => Boolean(s));
-  const selectedStudentDupNames = useMemo(
-    () => buildDuplicateNameSet(selectedStudents),
-    [selectedStudents],
-  );
   const studentExistsExact = students.some(
     (s) => s.name.toLowerCase() === studentInputValue.toLowerCase()
   );
@@ -234,29 +254,15 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         {groupModalData.studentIds.map((studentId) => {
           const student = students.find((s) => s.id === studentId);
           if (!student) return null;
-          const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
-          const showSubtitle =
-            selectedStudentDupNames.has(student.name) &&
-            dupSubtitle !== "프로필 미입력 · 동명이인" &&
-            dupSubtitle !== "프로필 미입력";
+          // 컴팩트 영역 — 학년 배지 + 이름. 부가정보(성별/생년월일/학교)는 호버 툴팁.
+          // 동명이인 식별 정보도 툴팁(StudentChip 내부)으로 위임 — 본문은 학년+이름으로 단순.
           return (
-            <span
+            <StudentChip
               key={studentId}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-accent-hover)]/15 border border-[var(--color-accent-hover)]/30 px-2.5 py-1 text-[12px] font-medium text-[var(--color-accent-hover)]"
-            >
-              <span>{student.name}</span>
-              {showSubtitle && (
-                <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
-              )}
-              <button
-                type="button"
-                className="flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-[var(--color-accent-hover)]/20 transition-colors"
-                onClick={() => removeStudent(studentId)}
-                aria-label={`${student.name} 제거`}
-              >
-                <X size={10} strokeWidth={2.5} />
-              </button>
-            </span>
+              student={student}
+              variant="compact"
+              onRemove={() => removeStudent(studentId)}
+            />
           );
         })}
       </div>
@@ -276,16 +282,10 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         <button
           type="button"
           className="flex-shrink-0 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
-          onClick={
-            canManage && selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
-              ? onCreateStudent
-              : addStudentFromInput
-          }
-          disabled={!studentInputValue.trim() || studentCreating}
+          onClick={addStudentFromInput}
+          disabled={!studentInputValue.trim()}
         >
-          {canManage && selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
-            ? "새로 추가"
-            : "추가"}
+          추가
         </button>
       </div>
 
@@ -296,25 +296,18 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         // 단일 스크롤 컨테이너 (모달 step content)에 위임 — 이전엔 여기에도
         // max-h-60 overflow-y-auto 가 있어 중첩 스크롤로 사용자가 학생
         // 리스트를 스크롤 못 하던 버그. 모달 외곽이 max-h-[55vh] 로 cap.
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg divide-y divide-[var(--color-border)]">
           {selectableStudents.map((student) => {
-            const dupSubtitle = formatStudentDuplicateLabel(student, studentDupNames);
-            const showSubtitle = studentDupNames.has(student.name) && dupSubtitle !== "프로필 미입력 · 동명이인" && dupSubtitle !== "프로필 미입력";
+            // 공간 충분 영역 — 학년 배지 + 이름 + 부가정보 인라인 노출.
+            const subtitle = formatStudentSubtitleExceptGrade(student, studentDupNames);
             return (
-              <button
+              <StudentChip
                 key={student.id}
-                type="button"
-                className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
+                student={student}
+                variant="row"
+                metaRight={subtitle || undefined}
                 onClick={() => addStudent(student.id)}
-              >
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-hover)]/15 text-[10px] font-bold text-[var(--color-accent-hover)]">
-                  {student.name[0]}
-                </span>
-                <span>{student.name}</span>
-                {showSubtitle && (
-                  <span className="text-[11px] text-[var(--color-text-muted)]">· {dupSubtitle}</span>
-                )}
-              </button>
+              />
             );
           })}
         </div>
@@ -546,24 +539,13 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">학생</span>
             <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
-              {selectedStudents.map((student) => {
-                const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
-                const showSubtitle =
-                  selectedStudentDupNames.has(student.name) &&
-                  dupSubtitle !== "프로필 미입력 · 동명이인" &&
-                  dupSubtitle !== "프로필 미입력";
-                return (
-                  <span
-                    key={student.id}
-                    className="inline-flex items-center gap-1 rounded-full bg-[var(--color-accent-hover)]/10 border border-[var(--color-accent-hover)]/20 px-2 py-0.5 text-[11px] font-medium text-[var(--color-accent-hover)]"
-                  >
-                    <span>{student.name}</span>
-                    {showSubtitle && (
-                      <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
-                    )}
-                  </span>
-                );
-              })}
+              {selectedStudents.map((student) => (
+                <StudentChip
+                  key={student.id}
+                  student={student}
+                  variant="compact"
+                />
+              ))}
             </div>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">

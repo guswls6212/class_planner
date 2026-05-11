@@ -84,12 +84,15 @@ describe("SubjectsPageLayout", () => {
     });
   });
 
-  it("과목 추가 — Enter 키 입력 시 onAddSubject가 호출된다", async () => {
+  it("과목 추가 — Enter 키는 onAddSubject 호출 X, 추가 버튼 클릭만 호출한다 (C 패턴)", async () => {
     render(<SubjectsPageLayout {...mockProps} />);
     const input = screen.getByPlaceholderText("과목 이름으로 검색");
 
     fireEvent.change(input, { target: { value: "영어" } });
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(mockProps.onAddSubject).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "과목 추가" }));
 
     await waitFor(() => {
       expect(mockProps.onAddSubject).toHaveBeenCalledWith("영어", "#3b82f6");

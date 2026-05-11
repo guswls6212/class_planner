@@ -2,10 +2,12 @@
 
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { GradeBadge } from "@/components/atoms/GradeBadge";
 
 interface SidebarStudent {
   id: string;
   name: string;
+  grade?: string | null;
 }
 interface SidebarSubject {
   id: string;
@@ -124,9 +126,11 @@ export default function PrimarySidebar({
           }
         >
           {filteredStudents.map((s) => (
-            <Row
+            <StudentRow
               key={s.id}
               label={s.name}
+              grade={s.grade ?? undefined}
+              studentId={s.id}
               selected={selectedStudentIds.includes(s.id)}
               onToggle={() => onToggleStudent(s.id)}
             />
@@ -278,6 +282,46 @@ function Row({ label, dot, selected, onToggle }: RowProps) {
             aria-hidden="true"
           />
         )}
+        <span className="truncate">{label}</span>
+      </button>
+    </li>
+  );
+}
+
+interface StudentRowProps {
+  label: string;
+  grade?: string;
+  studentId: string;
+  selected: boolean;
+  onToggle: () => void;
+}
+
+/**
+ * 학생 전용 row — 학년 배지 + 이름. 사이드바 폭이 좁아 호버 툴팁은 보류
+ * (StudentFilterChipBar / 모달 칩과 달리 사이드바는 폭 200px 컴팩트 영역).
+ */
+function StudentRow({ label, grade, studentId, selected, onToggle }: StudentRowProps) {
+  return (
+    <li>
+      <button
+        onClick={onToggle}
+        className={`w-full text-left px-2 py-1 rounded text-sm flex items-center gap-2 transition-colors ${
+          selected
+            ? "bg-[var(--color-accent)]/15 text-[var(--color-accent)] font-medium"
+            : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
+        }`}
+        aria-pressed={selected}
+      >
+        <span
+          className={`w-3.5 h-3.5 rounded border-[1.5px] inline-flex items-center justify-center flex-shrink-0 ${
+            selected
+              ? "bg-[var(--color-accent)] border-[var(--color-accent)]"
+              : "border-[var(--color-border)]"
+          }`}
+        >
+          {selected && <span className="block text-[8px] text-white">✓</span>}
+        </span>
+        <GradeBadge grade={grade} testIdSuffix={studentId} />
         <span className="truncate">{label}</span>
       </button>
     </li>

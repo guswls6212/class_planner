@@ -915,11 +915,36 @@ function SchedulePageContent(): JSX.Element {
     ]
   );
 
-  // 🆕 학생 추가 핸들러 최적화
+  // 🆕 학생 추가 핸들러 최적화 (Enter 등 — 기존 학생 매칭만)
   const handleEditStudentAddClick = useMemo(
     () => buildEditStudentAddClick(handleEditStudentAdd),
     [handleEditStudentAdd]
   );
+
+  // EditSessionModal "+ 새 학생으로 추가" CTA — GroupSessionModal과 동일하게
+  // createStudent → 신규 학생 도메인 생성 → 그 ID로 enroll. 매칭 실패 토스트는
+  // 핸들러 분리(이건 CTA 전용)이므로 Enter 흐름에는 영향 없음.
+  const handleEditCreateStudentAndAdd = async () => {
+    const trimmed = editStudentInputValue.trim();
+    if (!trimmed) return;
+    try {
+      const success = await createStudent(trimmed);
+      if (success) {
+        const data = getClassPlannerData();
+        const newStudent = data.students.find(
+          (s) => s.name.trim() === trimmed,
+        );
+        if (newStudent) handleEditStudentAdd(newStudent.id);
+      } else {
+        showToast(
+          "info",
+          "이미 존재하는 이름입니다. 위 검색 결과에서 선택해주세요.",
+        );
+      }
+    } catch {
+      showToast("error", "학생 생성에 실패했습니다.");
+    }
+  };
 
   // 🆕 학생 추가 함수 (최대 14명 제한)
   const addStudent = (studentId: string) => {
@@ -1073,18 +1098,19 @@ function SchedulePageContent(): JSX.Element {
       }
       addStudent(student.id);
     } else {
-      // 일치하는 학생 없으면 신규 생성 플로우로 위임
-      handleCreateStudentFromInput();
+      // 일치 없음 — 토스트 안내. 신규 생성은 dropdown의 CTA 버튼만 담당
+      // (Enter는 매칭만, 신규는 의식적 버튼 클릭으로 통일 — 오타 자동 등록 방지).
+      showToast(
+        "info",
+        `'${trimmedValue}' 학생을 찾을 수 없습니다. 아래 '+ 새 학생으로 추가' 버튼을 눌러주세요.`,
+      );
     }
   };
 
-  // 🆕 입력창 키보드 이벤트 처리
-  const handleStudentInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      addStudentFromInput();
-      // 입력 초기화는 addStudent/handleCreateStudentFromInput 성공 시에만 수행
-    }
+  // C 패턴 — Enter 는 추가 호출 X (의식적 버튼 클릭 또는 dropdown 클릭만).
+  // GroupSessionModal 학생 검색 input. 동명이인 식별/오타 자동 등록 회피.
+  const handleStudentInputKeyDown = (_e: React.KeyboardEvent) => {
+    // no-op
   };
 
   // 🆕 입력값 변경 시 에러 초기화
@@ -2282,15 +2308,12 @@ function SchedulePageContent(): JSX.Element {
           logger.debug("학생 입력값 변경", { value });
           setEditStudentInputValue(value);
         }}
-        onEditStudentInputKeyDown={(e) => {
-          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            logger.debug("Enter 키로 학생 추가 시도");
-            handleEditStudentAdd();
-            setEditStudentInputValue("");
-          }
+        onEditStudentInputKeyDown={() => {
+          // C 패턴 — Enter no-op. 추가는 dropdown row 클릭 또는 CTA 버튼만.
+          // 이전 동작(Enter 자동 매칭 추가)은 동명이인 케이스에서 잘못된 학생
+          // 자동 선택 위험 → 의식적 클릭으로 통일.
         }}
-        onAddStudentClick={handleEditStudentAddClick}
+        onAddStudentClick={handleEditCreateStudentAndAdd}
         editSearchResults={filterEditableStudents(
           editStudentInputValue,
           editModalData,

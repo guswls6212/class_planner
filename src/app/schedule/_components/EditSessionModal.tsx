@@ -4,8 +4,30 @@ import { Trash2, X, ChevronDown } from "lucide-react";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
-import { buildDuplicateNameSet, formatStudentDuplicateLabel } from "../../../lib/duplicateLabel";
+import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
 import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import { StudentChip } from "../../../components/molecules/StudentChip";
+
+/**
+ * 학년 배지가 별도 노출되는 row variant 전용 부제 — GroupSessionModal 동일 패턴.
+ * helper 를 별도 export 로 두지 않는 이유: Turbopack 이 dynamic import chain 의
+ * helper 모듈을 분리한 청크가 RSC stream 시점에 미로드 상태인 사고 회피.
+ */
+function formatStudentSubtitleExceptGrade(
+  s: StudentOption,
+  dupSet: Set<string>,
+): string {
+  const isDup = dupSet.has(s.name);
+  if (isDup) {
+    const identity: string[] = [];
+    if (s.gender === "male") identity.push("남");
+    else if (s.gender === "female") identity.push("여");
+    if (s.birthDate) identity.push(s.birthDate);
+    if (identity.length > 0) return identity.join(" · ");
+  }
+  if (s.school) return s.school;
+  return "";
+}
 import { NAME_MAX_LENGTH } from "../../../lib/validation/profileSchemas";
 
 type StudentOption = {
@@ -107,14 +129,10 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const swatchPanelRef = useRef<HTMLDivElement>(null);
 
   // ADR-015: 동명이인 학생 부제 — 같은 이름이 검색 결과에 2명+이면 식별 정보 노출.
+  // 검색 결과(row variant)는 부가정보 인라인, 선택 칩(compact)은 호버 툴팁이 식별 담당.
   const studentDupNames = useMemo(
     () => buildDuplicateNameSet(editSearchResults),
     [editSearchResults],
-  );
-  // 선택된 학생 chip의 동명이인 부제 — selected list 내에서 중복 검사.
-  const selectedStudentDupNames = useMemo(
-    () => buildDuplicateNameSet(selectedStudents),
-    [selectedStudents],
   );
 
   const currentSubject = subjects.find((s) => s.id === tempSubjectId);
@@ -194,19 +212,25 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // ── 색상 선택 패널 ──────────────────────────────────────────────
   const colorPanel = onSubjectColorChange && tempSubjectId ? (
     <div className="relative" ref={swatchPanelRef}>
-      {/* 팔레트 버튼 (현재 색 미리보기 dot) */}
+      {/* 색상 트리거 — subject color tinted chip (variant C: 색 사용 압축). */}
       <button
         type="button"
         onClick={() => setShowSwatches((v) => !v)}
-        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-white/10 transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-[filter] hover:brightness-110"
+        style={{
+          background: hexToRgba(previewColor, 0.12),
+          color: previewColor,
+          border: `1px solid ${hexToRgba(previewColor, 0.28)}`,
+        }}
         aria-label="과목 색상 변경"
         title="색상 선택"
       >
         <span
-          className="w-4 h-4 rounded-full ring-2 ring-white/30 flex-shrink-0"
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: previewColor }}
         />
-        <ChevronDown size={11} strokeWidth={2.5} style={{ color: previewColor, opacity: 0.8 }} />
+        <span>색</span>
+        <ChevronDown size={9} strokeWidth={2.5} />
       </button>
 
       {/* 스와치 패널 (드롭다운) */}
@@ -277,36 +301,37 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // ── Form content ────────────────────────────────────────────────
   const formContent = (
     <div className="flex flex-col">
-      {/* Colored Header */}
+      {/* Header — variant C: Top Accent Band + Glass.
+          subject color는 상단 4px 띠 + colorPanel chip 두 군데로 압축.
+          본문 텍스트는 neutral 으로 유지해 redundancy 제거. */}
       <div
         className="relative px-5 pt-5 pb-4"
         style={{
-          background: `linear-gradient(135deg, ${hexToRgba(previewColor, 0.35)}, ${hexToRgba(previewColor, 0.15)})`,
-          borderBottom: `1px solid ${hexToRgba(previewColor, 0.3)}`,
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), var(--color-bg-secondary)",
+          borderBottom: "1px solid var(--color-border)",
         }}
       >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 right-0 top-0 h-1"
+          style={{
+            backgroundColor: previewColor,
+            boxShadow: `0 1px 12px ${hexToRgba(previewColor, 0.45)}`,
+          }}
+        />
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-2 ring-white/20"
-                style={{ backgroundColor: previewColor }}
-              />
-              <span
-                className="text-[18px] font-extrabold leading-tight truncate"
-                style={{ color: previewColor }}
-              >
-                {currentSubject?.name ?? "과목 미선택"}
-              </span>
+            <div className="text-[18px] font-bold leading-tight truncate text-[var(--color-text-primary)]">
+              {currentSubject?.name ?? "과목 미선택"}
             </div>
-            <p className="text-[12px] truncate" style={{ color: hexToRgba(previewColor, 0.8) }}>
+            <p className="text-[12px] truncate text-[var(--color-text-muted)] mt-0.5">
               {studentNames}
             </p>
-            <div
-              className="inline-flex items-center gap-1 mt-2 rounded-full px-2.5 py-1 text-[11px] font-semibold"
-              style={{ background: hexToRgba(previewColor, 0.2), color: previewColor, border: `1px solid ${hexToRgba(previewColor, 0.3)}` }}
-            >
-              {weekdays[weekday]} {startTime}–{endTime}
+            <div className="inline-flex items-center gap-1.5 mt-2 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-white/5 text-[var(--color-text-primary)] border border-[var(--color-border)]">
+              <span className="text-[var(--color-text-muted)]">{weekdays[weekday]}</span>
+              <span aria-hidden="true" className="text-[var(--color-text-muted)] opacity-50">·</span>
+              <span>{startTime}–{endTime}</span>
             </div>
           </div>
 
@@ -334,91 +359,88 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
       {/* Form body */}
       <div className="px-5 py-4 flex flex-col gap-4 max-h-[55vh] overflow-y-auto">
-        {/* Students */}
+        {/* Students — variant D: Combobox + pinned-open dropdown.
+            검색 안 해도 미선택 학생 리스트가 항상 보임. 검색어 시 즉시 필터.
+            검색 결과 0 + 검색어 있을 때만 "+ 새 학생으로 추가" CTA 노출. */}
         <div className="flex flex-col gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">학생</span>
-          <div className="min-h-[40px] flex flex-wrap gap-1.5 items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2">
-            {selectedStudents.length === 0 && (
-              <span className="text-[12px] text-[var(--color-text-muted)]">선택된 학생 없음</span>
-            )}
-            {selectedStudents.map((student) => {
-              const dupSubtitle = formatStudentDuplicateLabel(student, selectedStudentDupNames);
-              const showSubtitle =
-                selectedStudentDupNames.has(student.name) &&
-                dupSubtitle !== "프로필 미입력 · 동명이인" &&
-                dupSubtitle !== "프로필 미입력";
-              return (
-                <span
-                  key={student.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 px-2.5 py-1 text-[12px] font-medium text-[var(--color-primary-light,#a5b4fc)]"
-                >
-                  <span>{student.name}</span>
-                  {showSubtitle && (
-                    <span className="text-[10px] opacity-75">· {dupSubtitle}</span>
-                  )}
-                  <button
-                    type="button"
-                    className="flex items-center justify-center w-3.5 h-3.5 rounded-full hover:bg-white/20 transition-colors"
-                    onClick={() => onRemoveStudent(student.id)}
-                    aria-label={`${student.name} 제거`}
-                  >
-                    <X size={9} strokeWidth={3} />
-                  </button>
-                </span>
-              );
-            })}
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">학생</span>
+            <span className="text-[10.5px] text-[var(--color-text-muted)]">
+              선택 <span className="text-[var(--color-text-primary)] font-semibold">{selectedStudents.length}</span>
+            </span>
           </div>
-          <div className="flex gap-2">
+
+          {/* Combobox trigger — chip + 검색 input */}
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-2 flex flex-wrap items-center gap-1.5 focus-within:border-[var(--color-accent-hover)]/50 transition-colors min-h-[44px]">
+            {selectedStudents.length === 0 && !editStudentInputValue && (
+              <span className="text-[12px] text-[var(--color-text-muted)] px-1">선택된 학생 없음</span>
+            )}
+            {selectedStudents.map((student) => (
+              <StudentChip
+                key={student.id}
+                student={student}
+                variant="compact"
+                onRemove={() => onRemoveStudent(student.id)}
+              />
+            ))}
             <input
               id="edit-modal-students"
               type="text"
-              placeholder="학생 이름 검색..."
-              className={`${fieldClass} flex-1`}
+              placeholder={selectedStudents.length === 0 ? "학생 검색 또는 새 이름 입력…" : "검색…"}
+              className="flex-1 min-w-[100px] bg-transparent border-0 outline-none px-1 py-1 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
               value={editStudentInputValue}
               onChange={(e) => onEditStudentInputChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
               onKeyDown={onEditStudentInputKeyDown}
               maxLength={NAME_MAX_LENGTH}
             />
+          </div>
+
+          {/* "+ 새 학생으로 추가" CTA — 검색어 있고 매칭 결과 없을 때만 */}
+          {editStudentInputValue?.trim() && editSearchResults.length === 0 && (
             <button
               type="button"
-              className="flex-shrink-0 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
               onClick={onAddStudentClick}
-              disabled={!editStudentInputValue?.trim()}
+              className="self-start rounded-xl bg-[var(--color-primary)] px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 transition-opacity"
             >
-              추가
+              ＋ &lsquo;{editStudentInputValue}&rsquo; 새 학생으로 추가
             </button>
-          </div>
-          {editStudentInputValue?.trim() && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
-              {editSearchResults.length === 0 ? (
-                <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">검색 결과가 없습니다</div>
-              ) : (
-                editSearchResults.map((student) => {
-                  const dupSubtitle = formatStudentDuplicateLabel(student, studentDupNames);
-                  const showSubtitle =
-                    studentDupNames.has(student.name) &&
-                    dupSubtitle !== "프로필 미입력 · 동명이인" &&
-                    dupSubtitle !== "프로필 미입력";
+          )}
+
+          {/* Pinned-open dropdown — 미선택 학생 리스트 (검색어 있으면 필터된 결과).
+              overscroll-contain: nested scroll trap 회피. mouse wheel 이 outer
+              form body 로 전파되지 않고 dropdown 안에서만 동작. */}
+          {editSearchResults.length > 0 && (
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-lg max-h-[260px] overflow-y-auto overscroll-contain">
+              <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] sticky top-0 bg-[var(--color-bg-primary)] z-10 border-b border-[var(--color-border)]">
+                {editStudentInputValue?.trim()
+                  ? `검색 결과 (${editSearchResults.length})`
+                  : `선택 가능 (${editSearchResults.length})`}
+              </div>
+              <div className="divide-y divide-[var(--color-border)]">
+                {editSearchResults.map((student) => {
+                  const subtitle = formatStudentSubtitleExceptGrade(student, studentDupNames);
                   return (
-                    <button
+                    <StudentChip
                       key={student.id}
-                      type="button"
-                      className="flex w-full items-center gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left text-[13px] text-[var(--color-text-primary)] last:border-b-0 hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      student={student}
+                      variant="row"
+                      metaRight={subtitle || undefined}
                       onClick={() => onSelectSearchStudent(student.id)}
-                    >
-                      <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)]/15 text-[10px] font-bold text-[#a5b4fc]">
-                        {student.name[0]}
-                      </span>
-                      <span>{student.name}</span>
-                      {showSubtitle && (
-                        <span className="text-[11px] text-[var(--color-text-muted)]">· {dupSubtitle}</span>
-                      )}
-                    </button>
+                    />
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
           )}
+
+          {/* "더 추가할 학생 없음" — 미선택 0 + 검색어 X + 이미 1명+ 선택됨 */}
+          {!editStudentInputValue?.trim() &&
+            editSearchResults.length === 0 &&
+            selectedStudents.length > 0 && (
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3 text-center text-[12px] text-[var(--color-text-muted)]">
+                더 추가할 학생이 없습니다
+              </div>
+            )}
         </div>
 
         {/* Subject */}
@@ -506,8 +528,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         <button
           type="button"
           onClick={handleSave}
-          className="rounded-xl px-6 py-2 text-[13px] font-semibold text-[var(--color-bg-primary)] hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: previewColor }}
+          className="rounded-xl bg-[var(--color-primary)] px-6 py-2 text-[13px] font-semibold text-white hover:opacity-90 transition-opacity"
         >
           저장
         </button>

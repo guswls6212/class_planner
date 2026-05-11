@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import { filterTeachersForPicker, isAdminRole, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
-import { buildDuplicateNameSet, formatTeacherDuplicateLabel } from "@/lib/duplicateLabel";
+import { TeacherChip } from "@/components/molecules/TeacherChip";
 
 /**
  * Picker용 강사 데이터 (ADR-015). role/email/phone은 동명이인 부제 + admin 필터에 사용.
@@ -90,8 +90,7 @@ export default function TeacherPillPicker({
     () => filterTeachersForPicker(teachers, selectedTeacherId ?? null),
     [teachers, selectedTeacherId],
   );
-  // 동명이인 부제 — 같은 이름이 visible pool에 2명+이면 이메일/전화로 식별.
-  const duplicateNames = useMemo(() => buildDuplicateNameSet(visibleTeachers), [visibleTeachers]);
+  // 이메일/전화는 TeacherChip 내부 호버 툴팁이 담당 — 동명이인 인라인 부제 더 이상 필요 없음.
 
   if (visibleTeachers.length === 0 && !showInlineCreate) {
     return (
@@ -113,42 +112,15 @@ export default function TeacherPillPicker({
       <div className="flex flex-wrap gap-2">
         {visibleTeachers.map((teacher) => {
           const isActive = selectedTeacherId === teacher.id;
-          const dupLabel = formatTeacherDuplicateLabel(teacher, duplicateNames);
-          const adminTag = isAdminRole(teacher.role) ? "관리자" : "";
-          // 부제: 동명이인 식별(우선) → admin 예외 hint
-          const subtitle = dupLabel || adminTag;
+          const adminTag = isAdminRole(teacher.role) ? "관리자" : undefined;
           return (
-            <button
+            <TeacherChip
               key={teacher.id}
-              type="button"
+              teacher={teacher}
+              selected={isActive}
               onClick={() => onSelect(isActive ? null : teacher.id)}
-              aria-pressed={isActive}
-              className={[
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] transition-all duration-150",
-                isActive
-                  ? "border border-[#a78bfa] text-[var(--color-text-primary)] font-medium"
-                  : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]",
-              ].join(" ")}
-              style={
-                isActive
-                  ? {
-                      // Dynamic rgba values can't be expressed as static Tailwind classes
-                      background: "rgba(167,139,250,0.18)",
-                      boxShadow: "0 0 0 3px rgba(167,139,250,0.08)",
-                    }
-                  : { background: "var(--color-bg-secondary)" }
-              }
-            >
-              <span
-                className="w-[7px] h-[7px] rounded-full flex-shrink-0"
-                // teacher.color is a runtime value — inline style required
-                style={{ backgroundColor: teacher.color }}
-              />
-              <span>{teacher.name}</span>
-              {subtitle && (
-                <span className="text-[10px] text-[var(--color-text-muted)]">· {subtitle}</span>
-              )}
-            </button>
+              contextTag={adminTag}
+            />
           );
         })}
 

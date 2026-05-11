@@ -118,10 +118,9 @@ describe("EditSessionModal", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it("입력값이 없으면 추가 버튼이 비활성화된다", () => {
+  it("입력값이 없으면 새 학생 추가 CTA 가 보이지 않는다", () => {
     render(<EditSessionModal {...defaultProps} editStudentInputValue="" />);
-    const addBtn = screen.getByText("추가");
-    expect(addBtn).toBeDisabled();
+    expect(screen.queryByText(/새 학생으로 추가/)).not.toBeInTheDocument();
   });
 
   it("입력값이 있으면 검색 결과 영역을 표시한다", () => {
