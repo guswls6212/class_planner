@@ -116,6 +116,16 @@ let gaveUp = false;
  * 모달이 전체 리스트를 보여주므로 토스트는 representative 한 개로 충분.
  */
 let lastFailureContext: string | null = null;
+/**
+ * fireAndForget이 5xx/network 오류 시 스케줄한 retry setTimeout id 추적.
+ * test isolation 보장 — __resetSyncStateForTests에서 일괄 clearTimeout.
+ * production에선 retry 정상 동작 (set add/delete만 추가, 동작 무영향).
+ *
+ * 도입 배경: 2026-05-11 dev CI에서 'TypeError: Cannot read properties of
+ * undefined (reading 'then')' 반복 발생. 5xx mock test 종료 후 1초 retry
+ * callback이 vi.restoreAllMocks 거친 mockFetch() 호출 → undefined.then().
+ */
+const pendingRetryTimers = new Set<ReturnType<typeof setTimeout>>();
 
 // ===== 사용자 노출용 sync 상태 (헤더 indicator 등 영구 visible UI) =====
 
@@ -282,6 +292,10 @@ export function __resetSyncStateForTests(): void {
     clearTimeout(pendingGhostTimer);
     pendingGhostTimer = null;
   }
+  // pending retry setTimeout 정리 — test 끝난 후 callback이 reset된 mockFetch
+  // 호출하면서 'undefined.then' TypeError 발생하는 leak 방지 (2026-05-11 dev CI).
+  for (const t of pendingRetryTimers) clearTimeout(t);
+  pendingRetryTimers.clear();
   recentCreatesById.clear();
 }
 
@@ -350,10 +364,11 @@ function fireAndForget(
         onSyncFailure(context);
         if (attempt < 9) {
           const delay = calcDelay(attempt);
-          setTimeout(
-            () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost),
-            delay,
-          );
+          const timerId = setTimeout(() => {
+            pendingRetryTimers.delete(timerId);
+            fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost);
+          }, delay);
+          pendingRetryTimers.add(timerId);
         } else {
           onSyncGiveUp(context);
           // 5xx만 outbox 보관 (4xx는 위에서 fast-fail 처리됨)
@@ -376,10 +391,11 @@ function fireAndForget(
       onSyncFailure(context);
       if (attempt < 9) {
         const delay = calcDelay(attempt);
-        setTimeout(
-          () => fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost),
-          delay,
-        );
+        const timerId = setTimeout(() => {
+          pendingRetryTimers.delete(timerId);
+          fireAndForget(makeRequest, context, attempt + 1, outboxMeta, onGhost);
+        }, delay);
+        pendingRetryTimers.add(timerId);
       } else {
         onSyncGiveUp(context);
         // 네트워크 오류 — 보관 (다음 페이지 진입 시 재시도)
