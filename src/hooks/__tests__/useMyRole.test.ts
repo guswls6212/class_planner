@@ -75,6 +75,10 @@ const SESSION_MEMBER_USER = { user: { id: "user-member" } };
 describe("useMyRole", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // sessionStorage cache는 우리 hook이 useMyRole_v1_<userId>로 저장 — test 간
+    // leak 시 후속 test가 우연한 cache hit으로 expectation 어긋남(PR #357 회귀).
+    // 매 test마다 fresh 보장.
+    sessionStorage.clear();
   });
 
   it("세션 없을 때(익명 사용자) role=null, canManage=true를 반환한다 — Anonymous-First", async () => {
