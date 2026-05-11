@@ -365,6 +365,34 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         const result = deleteSessionFromLocal(id);
 
         if (result.success) {
+          // 2.5) Lane reflow — 단일 delete도 bulk와 동일하게 yPosition 자동 압축.
+          // PR #352에서 bulkDeleteSessionsFromLocal에만 reflow 추가 → 비대칭. 같은
+          // 패턴 적용. 영향받은 weekday만 reassign 후 변경된 sessions를 server sync.
+          const { reassignLanesByWeekday } = await import(
+            "../app/schedule/_utils/bulkSessionOps"
+          );
+          const dataAfter = getClassPlannerData();
+          const { sessions: reflowedSessions, reflowed } =
+            reassignLanesByWeekday(
+              dataAfter.sessions,
+              new Set([sessionBefore.weekday]),
+            );
+          if (reflowed.length > 0) {
+            dataAfter.sessions = reflowedSessions;
+            setClassPlannerData(dataAfter);
+            const userIdForReflow = localStorage.getItem("supabase_user_id");
+            if (userIdForReflow) {
+              for (const s of reflowed) {
+                void syncSessionUpdateAsync(userIdForReflow, s.id, {
+                  weekday: s.weekday,
+                  startsAt: s.startsAt,
+                  endsAt: s.endsAt,
+                  yPosition: s.yPosition,
+                });
+              }
+            }
+          }
+
           // UI 즉시 업데이트
           loadDataFromLocal();
 
