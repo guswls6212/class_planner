@@ -8,6 +8,7 @@
  */
 
 import type { Session } from "@/lib/planner";
+import { timeToMinutes } from "@/lib/planner";
 import {
   getClassPlannerData,
   setClassPlannerData,
@@ -19,6 +20,87 @@ export interface BulkDeleteResult {
   deleted: Session[];
   /** 찾을 수 없어 건너뛴 id */
   notFound: string[];
+  /** Lane reflow로 yPosition이 변경된 sessions — 호출자가 server sync 필요 */
+  reflowed: Session[];
+}
+
+export interface LaneReassignResult {
+  sessions: Session[];
+  /** yPosition이 실제로 변경된 sessions */
+  reflowed: Session[];
+}
+
+/**
+ * 영향받은 weekday의 sessions에 대해 yPosition을 1부터 압축 재할당.
+ *
+ * 알고리즘:
+ *   1. 같은 weekday sessions를 (기존 yPosition asc, startsAt asc) 순으로 정렬
+ *   2. 각 session에 가장 낮은 free lane (시간 overlap 없는 lane) 할당
+ *
+ * 효과: 삭제로 생긴 lane 빈 공간 압축 (예: lane 1, 3, 4 → 1, 2, 3).
+ * 사용자가 의도한 lane 우선순위(작은 yPosition 우선)는 정렬에서 존중.
+ *
+ * delete-vs-move 비대칭 회수: computeBulkMoveTargets는 이동 시 lane 자동 재배치를
+ * "client layout이 처리" 하지만 delete 후엔 lane 압축이 없어 4개 → 3개 됐을 때
+ * yPosition=4 그대로 → effectiveLanes 4 또는 lane 중간 빔 (사용자 보고 2026-05-11).
+ */
+export function reassignLanesByWeekday(
+  sessions: Session[],
+  affectedWeekdays: Set<number>,
+): LaneReassignResult {
+  if (affectedWeekdays.size === 0) {
+    return { sessions, reflowed: [] };
+  }
+
+  const reflowed: Session[] = [];
+  const byWeekday = new Map<number, Session[]>();
+  const others: Session[] = [];
+
+  for (const s of sessions) {
+    if (affectedWeekdays.has(s.weekday)) {
+      const arr = byWeekday.get(s.weekday) ?? [];
+      arr.push(s);
+      byWeekday.set(s.weekday, arr);
+    } else {
+      others.push(s);
+    }
+  }
+
+  const compactedSessions: Session[] = [...others];
+
+  for (const daySessions of byWeekday.values()) {
+    const sorted = [...daySessions].sort((a, b) => {
+      const dy = (a.yPosition ?? 1) - (b.yPosition ?? 1);
+      if (dy !== 0) return dy;
+      return timeToMinutes(a.startsAt) - timeToMinutes(b.startsAt);
+    });
+
+    // laneEnds[i] = lane i를 점유한 마지막 세션의 종료 분
+    const laneEnds: number[] = [];
+
+    for (const s of sorted) {
+      const startMin = timeToMinutes(s.startsAt);
+      const endMin = timeToMinutes(s.endsAt);
+
+      // 가장 낮은 free lane (laneEnds[i] <= startMin이면 free)
+      let lane = 0;
+      while (lane < laneEnds.length && laneEnds[lane] > startMin) {
+        lane++;
+      }
+      laneEnds[lane] = endMin;
+
+      const newYPosition = lane + 1;
+      if (newYPosition !== (s.yPosition ?? 1)) {
+        const updated = { ...s, yPosition: newYPosition };
+        compactedSessions.push(updated);
+        reflowed.push(updated);
+      } else {
+        compactedSessions.push(s);
+      }
+    }
+  }
+
+  return { sessions: compactedSessions, reflowed };
 }
 
 /**
@@ -39,7 +121,17 @@ export function bulkDeleteSessionsFromLocal(
     else notFound.push(id);
   }
 
-  data.sessions = data.sessions.filter((s) => !idSet.has(s.id));
+  const remaining = data.sessions.filter((s) => !idSet.has(s.id));
+
+  // 영향받은 weekday만 reflow — 삭제로 인해 lane 공간이 생긴 weekday.
+  // 예: 같은 시간 lane 1,2,3,4 중 lane 2 삭제 시 lane 3,4가 lane 2,3으로 압축.
+  const affectedWeekdays = new Set(deleted.map((s) => s.weekday));
+  const { sessions: reflowedSessions, reflowed } = reassignLanesByWeekday(
+    remaining,
+    affectedWeekdays,
+  );
+
+  data.sessions = reflowedSessions;
   data.lastModified = new Date().toISOString();
   setClassPlannerData(data);
 
@@ -47,9 +139,10 @@ export function bulkDeleteSessionsFromLocal(
     requested: ids.length,
     deleted: deleted.length,
     notFound: notFound.length,
+    reflowed: reflowed.length,
   });
 
-  return { deleted, notFound };
+  return { deleted, notFound, reflowed };
 }
 
 /**
