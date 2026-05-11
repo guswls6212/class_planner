@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   syncEnrollmentCreateAsync,
   syncSessionDelete,
-  syncSessionUpdate,
+  syncSessionUpdateAsync,
 } from "../lib/apiSync";
 import {
   addEnrollmentToLocal,
@@ -469,10 +469,21 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
 
       // Lane reflow로 yPosition 변경된 sessions를 서버에도 sync — 새로고침 시
       // localStorage / server 불일치 회피 (사용자 보고 2026-05-11).
+      //
+      // ⚠️ /api/sessions/[id] 일반 endpoint는 enrollmentIds/subjectId/weekday/
+      // startsAt/endsAt 모두 required — partial yPosition만 보내면 400 "Required
+      // fields missing" 후 onSyncFailure("session:update") → "수업 위치 변경
+      // 동기화 실패" 토스트. /position endpoint는 weekday/time/endTime/yPosition
+      // 4개만 받으므로 그쪽으로 fire-and-forget(void) sync. (PR #352 후속 2026-05-11)
       const userIdForReflow = localStorage.getItem("supabase_user_id");
       if (userIdForReflow && reflowed.length > 0) {
         for (const s of reflowed) {
-          syncSessionUpdate(userIdForReflow, s.id, { yPosition: s.yPosition });
+          void syncSessionUpdateAsync(userIdForReflow, s.id, {
+            weekday: s.weekday,
+            startsAt: s.startsAt,
+            endsAt: s.endsAt,
+            yPosition: s.yPosition,
+          });
         }
       }
 
