@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
 import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
+import { GradeBadge } from "@/components/atoms/GradeBadge";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { showSuccess, showToast } from "@/lib/toast";
 import {
@@ -193,14 +194,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        {student.grade && (
-                          <span
-                            className="inline-flex flex-shrink-0 items-center rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400"
-                            data-testid={`student-grade-chip-${student.id}`}
-                          >
-                            {student.grade}
-                          </span>
-                        )}
+                        <GradeBadge grade={student.grade} testIdSuffix={student.id} />
                         <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                           {student.name}
                         </p>

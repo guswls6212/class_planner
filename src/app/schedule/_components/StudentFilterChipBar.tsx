@@ -2,9 +2,16 @@
 
 import { useMemo, useState } from "react";
 import type { DragEvent } from "react";
+import { GradeBadge } from "@/components/atoms/GradeBadge";
+
+interface StudentFilterChipBarStudent {
+  id: string;
+  name: string;
+  grade?: string | null;
+}
 
 interface StudentFilterChipBarProps {
-  students: { id: string; name: string }[];
+  students: StudentFilterChipBarStudent[];
   selectedStudentIds: string[];
   onToggleStudent: (id: string) => void;
   onClearFilter: () => void;
@@ -83,13 +90,14 @@ export default function StudentFilterChipBar({
             onDragEnd={onDragEnd}
             onClick={() => onToggleStudent(student.id)}
             aria-pressed={isSelected}
-            className={`px-2.5 py-1 rounded-full text-sm transition-colors cursor-grab active:cursor-grabbing ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm transition-colors cursor-grab active:cursor-grabbing ${
               isSelected
                 ? "bg-accent text-white font-medium shadow-sm"
                 : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
             }`}
           >
-            {student.name}
+            <GradeBadge grade={student.grade} testIdSuffix={student.id} />
+            <span>{student.name}</span>
           </button>
         );
       })}

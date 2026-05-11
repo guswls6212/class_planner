@@ -96,12 +96,15 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("학생 추가 — Enter 키 입력 시 onAddStudent가 호출된다", async () => {
+  it("학생 추가 — Enter 키는 onAddStudent 호출 X, 추가 버튼 클릭만 호출한다 (C 패턴)", async () => {
     render(<StudentsPageLayout {...mockProps} />);
     const input = screen.getByPlaceholderText("학생 이름으로 검색");
 
     fireEvent.change(input, { target: { value: "최지수" } });
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(mockProps.onAddStudent).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "학생 추가" }));
 
     await waitFor(() => {
       expect(mockProps.onAddStudent).toHaveBeenCalledWith("최지수");

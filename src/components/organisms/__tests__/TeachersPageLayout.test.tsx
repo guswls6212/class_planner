@@ -92,14 +92,14 @@ describe("TeachersPageLayout", () => {
 
   // errorMessage 배너 제거됨 (ADR-014 D3) — 토스트가 SSOT, 인라인 배너 표시 안 함.
 
-  it("한글 IME 조합 중 Enter는 onAddTeacher를 호출하지 않는다 (회귀)", async () => {
+  it("Enter 키는 onAddTeacher 호출 X (C 패턴 — 추가는 버튼 클릭만)", async () => {
     render(<TeachersPageLayout {...baseProps} />);
     const input = screen.getByPlaceholderText("강사 이름으로 검색");
     fireEvent.change(input, { target: { value: "이강사" } });
-    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    fireEvent.keyDown(input, { key: "Enter" });
     await new Promise((r) => setTimeout(r, 0));
     expect(baseProps.onAddTeacher).not.toHaveBeenCalled();
-    fireEvent.keyDown(input, { key: "Enter", isComposing: false });
+    fireEvent.click(screen.getByRole("button", { name: "강사 추가" }));
     await waitFor(() => {
       expect(baseProps.onAddTeacher).toHaveBeenCalledTimes(1);
       expect(baseProps.onAddTeacher).toHaveBeenCalledWith("이강사", expect.any(String));

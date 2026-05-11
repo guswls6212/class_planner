@@ -30,10 +30,12 @@ describe("TeacherFilterChipBar", () => {
     expect(onToggle).toHaveBeenCalledWith("tch1");
   });
 
-  it("선택된 강사 칩에 활성 스타일", () => {
+  it("선택된 강사 칩에 활성 시각 + aria-pressed=true", () => {
     render(<TeacherFilterChipBar {...defaultProps} selectedTeacherIds={["tch1"]} />);
     const chip = screen.getByText("김선생").closest("button")!;
-    expect(chip.className).toContain("bg-accent");
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    // TeacherChip 마이그레이션 (PR feat/student-teacher-chip-redesign): violet ring border 로 강조 변경.
+    expect(chip.className).toMatch(/border-\[#a78bfa\]/);
   });
 
   it("필터 활성화 시 '전체 해제' 버튼 표시", () => {

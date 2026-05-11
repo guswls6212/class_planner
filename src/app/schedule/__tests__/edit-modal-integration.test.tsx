@@ -93,42 +93,49 @@ describe("EditSessionModal Integration Tests", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText("학생 이름 검색...");
+    const input = screen.getByPlaceholderText(/학생 검색|검색…/);
     fireEvent.change(input, { target: { value: "이영희" } });
 
     expect(onEditStudentInputChange).toHaveBeenCalledWith("이영희");
   });
 
-  it("학생 추가 버튼을 클릭할 때 onAddStudentClick이 호출되어야 한다", () => {
+  it("검색어 + 매칭 결과 0 시 새 학생 추가 CTA 클릭이 onAddStudentClick을 호출한다", () => {
     const onAddStudentClick = vi.fn();
     render(
       <EditSessionModal
         {...defaultProps}
         editStudentInputValue="이영희"
+        editSearchResults={[]}
         onAddStudentClick={onAddStudentClick}
       />
     );
 
-    const addButton = screen.getByRole("button", { name: /추가/i });
-    fireEvent.click(addButton);
+    const ctaButton = screen.getByRole("button", { name: /새 학생으로 추가/ });
+    fireEvent.click(ctaButton);
 
     expect(onAddStudentClick).toHaveBeenCalled();
   });
 
-  it("학생 입력창이 비어있을 때 추가 버튼이 비활성화되어야 한다", () => {
+  it("학생 입력창이 비어있을 때 새 학생 추가 CTA 가 보이지 않는다", () => {
     render(<EditSessionModal {...defaultProps} editStudentInputValue="" />);
 
-    const addButton = screen.getByRole("button", { name: /추가/i });
-    expect(addButton).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /새 학생으로 추가/ }),
+    ).not.toBeInTheDocument();
   });
 
-  it("학생 입력창에 값이 있을 때 추가 버튼이 활성화되어야 한다", () => {
+  it("검색어가 있고 매칭 결과 0 시 새 학생 추가 CTA 가 표시된다", () => {
     render(
-      <EditSessionModal {...defaultProps} editStudentInputValue="이영희" />
+      <EditSessionModal
+        {...defaultProps}
+        editStudentInputValue="이영희"
+        editSearchResults={[]}
+      />
     );
 
-    const addButton = screen.getByRole("button", { name: /추가/i });
-    expect(addButton).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /새 학생으로 추가/ }),
+    ).toBeInTheDocument();
   });
 
   it("Enter 키를 눌렀을 때 onEditStudentInputKeyDown이 호출되어야 한다", () => {
@@ -140,7 +147,7 @@ describe("EditSessionModal Integration Tests", () => {
       />
     );
 
-    const input = screen.getByPlaceholderText("학생 이름 검색...");
+    const input = screen.getByPlaceholderText(/학생 검색|검색…/);
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(onEditStudentInputKeyDown).toHaveBeenCalledWith(

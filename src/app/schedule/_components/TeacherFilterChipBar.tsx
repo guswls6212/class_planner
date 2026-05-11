@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { filterTeachersForPicker, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
-import { buildDuplicateNameSet, formatTeacherDuplicateLabel } from "@/lib/duplicateLabel";
+import { TeacherChip } from "@/components/molecules/TeacherChip";
 
 interface TeacherFilterChipBarProps {
   teachers: {
@@ -37,10 +37,7 @@ export default function TeacherFilterChipBar({
     () => filterTeachersForPicker(teachers, selectedTeacherIds),
     [teachers, selectedTeacherIds],
   );
-  const duplicateNames = useMemo(
-    () => buildDuplicateNameSet(visibleTeachers),
-    [visibleTeachers],
-  );
+  // 동명이인 부제는 TeacherChip 내부 호버 툴팁이 담당 — 인라인 부제 더 이상 필요 없음.
 
   const displayedTeachers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -88,30 +85,13 @@ export default function TeacherFilterChipBar({
 
       {displayedTeachers.map((teacher) => {
         const isSelected = selectedTeacherIds.includes(teacher.id);
-        const dupLabel = formatTeacherDuplicateLabel(teacher, duplicateNames);
         return (
-          <button
+          <TeacherChip
             key={teacher.id}
-            type="button"
+            teacher={teacher}
+            selected={isSelected}
             onClick={() => onToggleTeacher(teacher.id)}
-            aria-pressed={isSelected}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm transition-colors ${
-              isSelected
-                ? "bg-accent text-white font-medium shadow-sm"
-                : "border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-            }`}
-          >
-            <span
-              className="w-[5px] h-[5px] rounded-full flex-shrink-0"
-              style={{ backgroundColor: teacher.color }}
-            />
-            <span>{teacher.name}</span>
-            {dupLabel && (
-              <span className={`text-[10px] ${isSelected ? "text-white/80" : "text-[var(--color-text-muted)]"}`}>
-                · {dupLabel}
-              </span>
-            )}
-          </button>
+          />
         );
       })}
 

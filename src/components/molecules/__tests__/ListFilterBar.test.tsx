@@ -27,18 +27,18 @@ describe("ListFilterBar", () => {
     expect(onAdd).not.toHaveBeenCalled();
   });
 
-  it("canAdd=true에서 엔터를 누르면 trimmed 값으로 onAdd가 호출된다", () => {
+  it("Enter 키는 onAdd 를 호출하지 않는다 (C 패턴 — 추가는 버튼 클릭만)", () => {
     const onAdd = vi.fn();
     render(
       <ListFilterBar
-        value="  홍길동  "
+        value="홍길동"
         onChange={() => {}}
         canAdd={true}
         onAdd={onAdd}
       />,
     );
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Enter" });
-    expect(onAdd).toHaveBeenCalledWith("홍길동");
+    expect(onAdd).not.toHaveBeenCalled();
   });
 
   it("canAdd=true에서 추가 버튼 클릭 시 onAdd가 호출된다", () => {

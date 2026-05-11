@@ -48,9 +48,13 @@ export function buildEditStudentAdd(params: {
 
     if (!targetStudentId) {
       // UAT 2026-05-10: silent failure 회귀 방지 — 검색 결과 없으면 토스트 안내.
+      // 메시지 패턴 통일 — GroupSessionModal과 동일 ("아래 '+ 새 학생으로 추가' 버튼").
       logger.warn("학생을 찾을 수 없음", { inputValue });
       if (trimmedInput) {
-        showToast("info", `'${trimmedInput}' 학생을 찾을 수 없습니다. 학생 페이지에서 먼저 등록해주세요.`);
+        showToast(
+          "info",
+          `'${trimmedInput}' 학생을 찾을 수 없습니다. 아래 '+ 새 학생으로 추가' 버튼을 눌러주세요.`,
+        );
       }
       return;
     }
