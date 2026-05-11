@@ -456,17 +456,17 @@ describe("apiSync", () => {
       });
       syncSessionCreate("user-1", { id: "s1" } as any);
       // fire-and-forget fetch resolve + onSyncFailure state update 대기.
-      // setTimeout(10ms) 고정은 CI fresh 환경(Ubuntu)에서 timing-dependent flaky.
-      // vi.waitFor로 retry pattern — 최대 500ms까지 polling.
+      // PR #365 500ms도 CI fresh(Ubuntu)에서 520ms 도달 fail. 2000ms로 확대 —
+      // promise chain + setTimeout(1초 retry) 영향 흡수.
       await vi.waitFor(() => {
         expect(getLastFailureContext()).toBe("session:create");
-      }, { timeout: 500, interval: 10 });
+      }, { timeout: 2000, interval: 20 });
       // 다음 호출 성공
       mockFetch.mockResolvedValueOnce({ ok: true });
       syncStudentCreate("user-1", { id: "stu-1", name: "A" } as any);
       await vi.waitFor(() => {
         expect(getLastFailureContext()).toBeNull();
-      }, { timeout: 500, interval: 10 });
+      }, { timeout: 2000, interval: 20 });
     });
   });
 });
