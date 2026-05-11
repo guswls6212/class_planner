@@ -33,7 +33,7 @@ describe("SubjectAddDetailModal", () => {
 
     fireEvent.change(screen.getByLabelText(/이름/), { target: { value: "영어" } });
     const targetColor = DEFAULT_SUBJECT_COLORS[3];
-    fireEvent.click(screen.getByTestId(`subject-color-swatch-${targetColor}`));
+    fireEvent.click(screen.getByTestId(`color-swatch-${targetColor}`));
     fireEvent.click(screen.getByRole("button", { name: "추가" }));
 
     expect(onSubmit).toHaveBeenCalledWith("영어", targetColor);

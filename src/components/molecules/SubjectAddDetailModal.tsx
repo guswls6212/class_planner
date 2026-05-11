@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Palette } from "lucide-react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import { SUBJECT_NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import { DEFAULT_SUBJECT_COLORS, SUBJECT_DEFAULT_COLOR } from "@/lib/subjectColors";
+import { ColorPicker } from "./ColorPicker";
 
 interface SubjectAddDetailModalProps {
   isOpen: boolean;
@@ -112,45 +114,15 @@ export default function SubjectAddDetailModal({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)]">
+            <label className="mb-1.5 block text-xs font-medium text-[var(--color-text-secondary)] flex items-center gap-1">
+              <Palette size={11} strokeWidth={1.5} />
               색상
             </label>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="색상 팔레트">
-              {DEFAULT_SUBJECT_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  role="radio"
-                  aria-checked={color === c}
-                  aria-label={`색상 ${c}`}
-                  onClick={() => setColor(c)}
-                  className={`h-7 w-7 rounded-full transition-transform ${
-                    color === c
-                      ? "scale-110 ring-2 ring-offset-2 ring-offset-[var(--color-bg-primary)] ring-white"
-                      : "hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: c }}
-                  data-testid={`subject-color-swatch-${c}`}
-                />
-              ))}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="h-8 w-10 cursor-pointer rounded border border-[var(--color-border)] bg-transparent"
-                aria-label="색상 직접 선택"
-              />
-              <input
-                type="text"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="#3B82F6"
-                className="flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-xs font-mono text-[var(--color-text-primary)] focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-                aria-label="색상 hex 입력"
-              />
-            </div>
+            <ColorPicker
+              value={color}
+              onChange={setColor}
+              palette={DEFAULT_SUBJECT_COLORS}
+            />
           </div>
 
           <p className="text-[11px] leading-relaxed text-[var(--color-text-secondary)]">

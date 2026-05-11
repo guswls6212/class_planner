@@ -200,6 +200,7 @@ export function TeacherDetailPanel({
           subjects={subjects}
           assignedSubjectIds={teacher.subjectIds ?? []}
           canManage={canManage}
+          mode={isEditing ? "edit" : "view"}
           onAdd={(subjectId) => onAddSubject(teacher.id, subjectId)}
           onRemove={(subjectId) => onRemoveSubject(teacher.id, subjectId)}
         />
