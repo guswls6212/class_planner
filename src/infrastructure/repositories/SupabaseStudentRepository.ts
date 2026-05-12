@@ -9,6 +9,7 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "../../lib/pagination";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseStudentRepository implements StudentRepository {
   private createServiceRoleClient() {
@@ -56,7 +57,11 @@ export class SupabaseStudentRepository implements StudentRepository {
         return [];
       }
 
-      return (data ?? []).map((row) => this.rowToStudent(row));
+      return mapRowsSafely(
+        data ?? [],
+        (row) => this.rowToStudent(row),
+        { entity: "학생", idField: "id" }
+      );
     } catch (error) {
       logger.error("학생 데이터 조회 중 오류:", undefined, error as Error);
       return [];
@@ -102,7 +107,11 @@ export class SupabaseStudentRepository implements StudentRepository {
       const rows = data ?? [];
       const hasMore = rows.length > limit;
       const itemRows = hasMore ? rows.slice(0, limit) : rows;
-      const items = itemRows.map((row) => this.rowToStudent(row));
+      const items = mapRowsSafely(
+        itemRows,
+        (row) => this.rowToStudent(row),
+        { entity: "학생", idField: "id" }
+      );
 
       let nextCursor: string | null = null;
       if (hasMore && itemRows.length > 0) {

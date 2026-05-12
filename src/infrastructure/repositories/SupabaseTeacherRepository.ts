@@ -10,6 +10,7 @@ import {
   type PaginationOptions,
   type PaginationResult,
 } from "../../lib/pagination";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseTeacherRepository implements TeacherRepository {
   private createServiceRoleClient() {
@@ -62,11 +63,15 @@ export class SupabaseTeacherRepository implements TeacherRepository {
         return [];
       }
 
-      return (data ?? []).map((row) => {
-        const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
-        const subjectIds = links.map((link) => link.subject_id);
-        return this.rowToTeacher(row, subjectIds);
-      });
+      return mapRowsSafely(
+        data ?? [],
+        (row) => {
+          const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
+          const subjectIds = links.map((link) => link.subject_id);
+          return this.rowToTeacher(row, subjectIds);
+        },
+        { entity: "강사", idField: "id" }
+      );
     } catch (error) {
       logger.error("강사 데이터 조회 중 오류:", undefined, error as Error);
       return [];
@@ -111,11 +116,15 @@ export class SupabaseTeacherRepository implements TeacherRepository {
       const rows = data ?? [];
       const hasMore = rows.length > limit;
       const itemRows = hasMore ? rows.slice(0, limit) : rows;
-      const items = itemRows.map((row) => {
-        const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
-        const subjectIds = links.map((link) => link.subject_id);
-        return this.rowToTeacher(row, subjectIds);
-      });
+      const items = mapRowsSafely(
+        itemRows,
+        (row) => {
+          const links = (row.teacher_subjects as Array<{ subject_id: string }> | null) ?? [];
+          const subjectIds = links.map((link) => link.subject_id);
+          return this.rowToTeacher(row, subjectIds);
+        },
+        { entity: "강사", idField: "id" }
+      );
 
       let nextCursor: string | null = null;
       if (hasMore && itemRows.length > 0) {
