@@ -1,0 +1,25 @@
+-- 044_drop_sessions_enrollment_ids.sql
+--
+-- sessions.enrollment_ids 비정규화 캐시 컬럼 제거.
+--
+-- 배경:
+--   030_add_sessions_enrollment_ids.sql이 도입한 UUID[] 컬럼. local-first 구조
+--   에서 빠른 read를 위한 비정규화 캐시로 의도됐으나, 실제로는 코드가 한 번도
+--   write 경로에 연결되지 않아 모든 academy의 모든 row에서 빈 배열 상태.
+--
+--   서버 GET /api/sessions는 SupabaseSessionRepository.getAll()에서
+--   session_enrollments(enrollment_id, enrollments(subject_id)) JOIN으로
+--   enrollmentIds를 합성해 응답하므로 클라이언트 노출 데이터에는 영향 없음.
+--   클라이언트 코드 전체 grep 결과 snake_case enrollment_ids 사용처는 본
+--   migration 외 0건. camelCase enrollmentIds는 Session 도메인 객체의 필드로
+--   서버 응답 기준 (session_enrollments JOIN 결과).
+--
+--   dead 컬럼을 유지하면 (a) 무결성 의도 혼동, (b) 향후 비정규화 재도입 시 같은
+--   이름 재사용 충돌이 발생. 본 마이그레이션으로 제거.
+--
+-- 검증:
+--   1) DROP 후 sessions 응답에 enrollmentIds가 그대로 채워짐 (JOIN 경로)
+--   2) 기존 테스트 (api/sessions, useDisplaySessions, SupabaseSessionRepository)
+--      모두 통과
+
+ALTER TABLE public.sessions DROP COLUMN IF EXISTS enrollment_ids;

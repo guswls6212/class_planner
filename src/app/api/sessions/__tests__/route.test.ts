@@ -109,7 +109,7 @@ describe("/api/sessions API Routes", () => {
             subjectId: "sub-1",
             startsAt: "09:00",
             endsAt: "10:00",
-            enrollmentIds: [],
+            enrollmentIds: ["e-1"],
             weekday: 0,
             // weekStartDate 없음
           }),
@@ -122,6 +122,55 @@ describe("/api/sessions API Routes", () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toContain("weekStartDate");
+    });
+
+    it("enrollmentIds 빈 배열은 400을 반환한다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: [],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("enrollmentIds");
+    });
+
+    it("PUT enrollmentIds 빈 배열은 400을 반환한다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions/sess-1?userId=test-user",
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            enrollmentIds: [],
+            subjectId: "sub-1",
+            weekday: 0,
+            startsAt: "09:00",
+            endsAt: "10:00",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await idPUT(request, {
+        params: Promise.resolve({ id: "sess-1" }),
+      } as any);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain("enrollmentIds");
     });
 
     it("member role은 POST에 403을 반환해야 한다", async () => {
@@ -137,7 +186,7 @@ describe("/api/sessions API Routes", () => {
             subjectId: "sub-1",
             startsAt: "09:00",
             endsAt: "10:00",
-            enrollmentIds: [],
+            enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
           }),
@@ -161,7 +210,7 @@ describe("/api/sessions API Routes", () => {
             subjectId: "sub-1",
             startsAt: "09:00",
             endsAt: "10:00",
-            enrollmentIds: [],
+            enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
             teacherId,
@@ -187,7 +236,7 @@ describe("/api/sessions API Routes", () => {
             subjectId: "sub-1",
             startsAt: "09:00",
             endsAt: "10:00",
-            enrollmentIds: [],
+            enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
           }),
@@ -287,7 +336,7 @@ describe("/api/sessions API Routes", () => {
       subjectId: "sub-1",
       startsAt: "09:00",
       endsAt: "10:00",
-      enrollmentIds: [],
+      enrollmentIds: ["e-1"],
       weekday: 0,
       weekStartDate: "2026-04-27",
     };

@@ -96,6 +96,7 @@ export async function PUT(
 
     if (
       !enrollmentIds ||
+      !Array.isArray(enrollmentIds) ||
       !subjectId ||
       weekday === undefined ||
       !resolvedStart ||
@@ -103,6 +104,15 @@ export async function PUT(
     ) {
       return NextResponse.json(
         { success: false, error: "Required fields are missing" },
+        { status: 400 }
+      );
+    }
+
+    // 빈 배열 거부 — session_enrollments 전부 DELETE만 일어나서 dangling이 되는
+    // 경로 차단 (2026-05-12 테스트학원 사고).
+    if (enrollmentIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "enrollmentIds must be non-empty" },
         { status: 400 }
       );
     }

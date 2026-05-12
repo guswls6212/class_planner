@@ -75,6 +75,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 빈 배열 거부: enrollmentIds=[] 로 들어오면 sessions row만 만들어지고
+    // session_enrollments는 비어버려 useDisplaySessions가 영원히 필터링하는
+    // dangling state가 됨 (2026-05-12 테스트학원 사고).
+    if (enrollmentIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "enrollmentIds must be non-empty" },
+        { status: 400 }
+      );
+    }
+
     if (!weekStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
       return NextResponse.json(
         { success: false, error: "weekStartDate (YYYY-MM-DD) is required" },
@@ -154,6 +164,13 @@ export async function PUT(request: NextRequest) {
     ) {
       return NextResponse.json(
         { success: false, error: "Missing required fields for session" },
+        { status: 400 }
+      );
+    }
+
+    if (enrollmentIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "enrollmentIds must be non-empty" },
         { status: 400 }
       );
     }
