@@ -324,6 +324,8 @@ function SchedulePageContent(): JSX.Element {
     startTime?: string;
     endTime?: string;
     weekday?: number;
+    /** YYYY-MM-DD. 다른 주로 세션 이동 시 forward. 미지정이면 기존 weekStartDate 유지. */
+    weekStartDate?: string;
     room?: string;
     yPosition?: number;
     subjectId?: string;
@@ -540,6 +542,7 @@ function SchedulePageContent(): JSX.Element {
         const changed = repositioned.find((s) => s.id === sessionId);
         if (changed) {
           const hasTeacherId = "teacherId" in (sessionData as object);
+          const hasWeekStartDate = sessionData.weekStartDate !== undefined;
           void syncSessionUpdate(userId, sessionId, {
             weekday: changed.weekday,
             startsAt: changed.startsAt,
@@ -551,6 +554,8 @@ function SchedulePageContent(): JSX.Element {
             ...(hasTeacherId && {
               teacherId: (sessionData as SessionUpdateInput).teacherId,
             }),
+            // weekStartDate: 사용자가 다른 주 날짜로 이동 시 forward (PATCH /api/sessions/[id] body로).
+            ...(hasWeekStartDate && { weekStartDate: sessionData.weekStartDate }),
           });
         }
       }
@@ -2381,6 +2386,11 @@ function SchedulePageContent(): JSX.Element {
           setTempSubjectId,
           setTempEnrollments,
           onSaveComplete: () => setTempTeacherId(undefined),
+          // 다른 주 날짜로 이동 시 시간표 자동 navigate (PR #378, 사용자 결정 ii)
+          onMoveToWeek: (weekStartDate: string) => {
+            // weekStartDate (YYYY-MM-DD KST) → 그 주 월요일 Date 객체
+            setSelectedDate(new Date(`${weekStartDate}T12:00:00+09:00`));
+          },
         })}
       />
 

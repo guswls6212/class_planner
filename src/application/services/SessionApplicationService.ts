@@ -43,6 +43,8 @@ export class SessionApplicationServiceImpl {
       endsAt: string;
       enrollmentIds: string[];
       weekday: number;
+      /** YYYY-MM-DD (KST). 다른 주로 세션 이동 시 forward. 미지정 시 기존 값 유지. */
+      weekStartDate?: string;
       room?: string;
       teacherId?: string | null;
       public_description?: string | null;

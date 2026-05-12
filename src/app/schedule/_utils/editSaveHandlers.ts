@@ -60,11 +60,15 @@ export function buildEditOnSave(params: {
       subjectId: string;
       teacherId?: string | null;
       weekday: number;
+      /** YYYY-MM-DD. 다른 주로 세션 이동 시 forward. 미지정이면 기존 주 유지. */
+      weekStartDate?: string;
       startTime: string;
       endTime: string;
       room: string;
     }
   ) => Promise<void>;
+  /** 다른 주로 이동 후 시간표 navigate. weekStartDate 받음. */
+  onMoveToWeek?: (weekStartDate: string) => void;
   validateAndToastEdit: (start: string, end: string) => boolean;
   setShowEditModal: (open: boolean) => void;
   setTempSubjectId: (id: string) => void;
@@ -90,9 +94,10 @@ export function buildEditOnSave(params: {
     setTempSubjectId,
     setTempEnrollments,
     onSaveComplete,
+    onMoveToWeek,
   } = params;
 
-  return async (weekday: number) => {
+  return async (weekday: number, newWeekStartDate?: string) => {
     if (!editModalData) return;
 
     const startTime = editModalTimeData.startTime;
@@ -161,12 +166,20 @@ export function buildEditOnSave(params: {
         resolvedTeacherId
       );
 
-      await updateSession(editModalData.id, sessionData);
+      // 다른 주로 이동 시 sessionData에 weekStartDate forward + 시간표 navigate.
+      const sessionDataWithWeek = newWeekStartDate
+        ? { ...sessionData, weekStartDate: newWeekStartDate }
+        : sessionData;
+      await updateSession(editModalData.id, sessionDataWithWeek);
 
       // 상태 초기화
       setShowEditModal(false);
       setTempSubjectId("");
       setTempEnrollments([]);
+
+      // 다른 주로 이동했으면 시간표 자동 navigate (사용자 결정 ii — 2026-05-12)
+      if (newWeekStartDate) onMoveToWeek?.(newWeekStartDate);
+
       onSaveComplete?.();
       logger.debug("세션 업데이트 완료");
     } catch (error) {

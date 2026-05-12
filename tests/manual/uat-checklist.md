@@ -2095,7 +2095,7 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
-## 18. EditSessionModal 재설계 + V1 validation (P0: 4 / 8) [후속 PR]
+## 18. EditSessionModal 재설계 + V1 validation (P0: 5 / 9) [후속 PR]
 
 > SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md).
 > 영향: `EditSessionModal.tsx` 헤더 chip + body flex column + V1-disabled validation + handleSave 학생 0명 가드.
@@ -2186,6 +2186,20 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 - `‹` `›`로 다른 달 navigation
 - 5월 20일 클릭 → weekday=2(수)로 변경 + popover 닫힘 + chip label 갱신 (`5월 13일 (수)` — 이번 주의 수요일)
 - schedule 저장 시 그 weekday로 세션 이동 (주간 반복 paradigm 유지)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.9 다른 주 날짜로 세션 이동 + 시간표 자동 navigate [P0]
+**Pre:** 임의 세션 모달 open. (예: 5/13 수요일 11:00 수업)
+**Steps:**
+1. 헤더 날짜 chip 클릭 → 월별 캘린더 popover open
+2. **다른 주의 날짜 클릭** (예: 5/20 수요일 또는 5/22 금요일)
+3. chip label 즉시 갱신 확인 (예: `5월 20일 (수)` 또는 `5월 22일 (금)`)
+4. 저장 클릭
+**Expected:**
+- 저장 후 시간표가 **선택한 주(5/18~5/24)로 자동 navigate** — 그 주의 그 요일/시간에 세션 표시
+- 원래 주(5/11~5/17)에서는 그 세션 사라짐
+- 캘린더 popover 하단 안내: "다른 날짜 클릭 → 그 날짜로 이동" ("주간 반복" 표현 없음)
+- API: `PATCH /api/sessions/[id]` body에 `weekStartDate: "2026-05-18"` 포함
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-18.6 색 선택 + 모바일 BottomSheet 회귀 0 [P2]
@@ -2305,3 +2319,4 @@ Issue 등록 형식:
 - 2026-05-12: **§17 알림 히스토리 + InfoTrigger fix 신설** (PR #372) — 7개 시나리오 (S-17.1~17.7), P0 3개 (배지 카운트 / 패널 open + 필터·그룹 / 항목 클릭 read). 영향: `lib/notificationCenter.ts` ring buffer + `useNotificationCenter` hook + `NotificationBell` (atom) + `NotificationItem` / `NotificationDropdown` (molecules) + `lib/toast.ts` capture 통합 + `Sidebar`/`TopBar` layout-level wire + `InfoTrigger` 동심원 2겹→1겹 fix. localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous`). 회귀 가드: 22 unit + 9 RTL. spec SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC). 총 P0: 33 → 36.
 - 2026-05-12 (2): **§18 EditSessionModal 재설계 + V1 validation 신설** — 6개 시나리오, P0 3개 (학생 0명 저장 차단 / 요일 chip popover / 시간 chip popover). 영향: `EditSessionModal.tsx` 헤더 read-only 카드 → chip + popover (요일/시간), body weekday/time select 제거, footer V1-disabled validation + helper text, handleSave 학생 0명 가드. 기존 picker(`TeacherPillPicker`/`StudentChip`/colorPanel) 100% 보존. 회귀 가드: 45 RTL passed (10 기존 갱신 + 5 신규 validation). spec SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md) (14 AC). 총 P0: 36 → 39.
 - 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
+- 2026-05-12 (4): **§18 보강 — 다른 주 날짜로 세션 이동 + 시간표 자동 navigate** (사용자 발견: paradigm 재해석). 잘못된 paradigm 가정 fix — schedule은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"**. 데이터 모델(`planner.ts`)이 이미 둘 다 보존. 변경: API/Service/Repo chain 모두 `weekStartDate` forward + EditSessionModal `selectedWeekStart` state + onSave `(weekday, weekStartDate?)` 시그니처 + schedule page `setSelectedDate` navigate. footer 안내 "주간 반복" → "그 날짜로 이동". S-18.9(P0) 추가, AC-20~22 추가. P0: 40 → 41. 회귀 가드 236 tests pass.

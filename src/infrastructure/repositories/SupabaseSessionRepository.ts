@@ -191,6 +191,8 @@ export class SupabaseSessionRepository implements SessionRepository {
 
       const updates: Record<string, unknown> = {};
       if (sessionData.weekday !== undefined) updates.weekday = sessionData.weekday;
+      // weekStartDate: 다른 주로 세션 이동 시 forward. 미지정이면 컬럼 미변경.
+      if (sessionData.weekStartDate !== undefined) updates.week_start_date = sessionData.weekStartDate;
       if (sessionData.startsAt !== undefined) updates.starts_at = sessionData.startsAt;
       if (sessionData.endsAt !== undefined) updates.ends_at = sessionData.endsAt;
       if (sessionData.room !== undefined) updates.room = sessionData.room;
