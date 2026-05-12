@@ -267,7 +267,12 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, session]);
+    // session 객체 reference 흔들림(Supabase의 getSession + onAuthStateChange
+    // 'INITIAL_SESSION' + TOKEN_REFRESHED가 같은 user에 대해 setSession을 여러 번
+    // 호출)으로 useEffect 재실행 → /api/members 등 3회 호출되던 사고 회피.
+    // user.id 변화(다른 user 로그인) 또는 session null↔valid 전이만 trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, session?.user?.id ?? null]);
 
   return (
     <MemberContext.Provider value={data}>{children}</MemberContext.Provider>
