@@ -37,7 +37,10 @@
 | AC-16 | 헤더 weekday chip 라벨: `weekStartDate` prop 있으면 **"X월 Y일 (요일)"** 형식. 없으면 fallback으로 "요일"만. |
 | AC-17 | weekday chip 클릭 → **V3 month calendar popover** (`weekStartDate` 있을 때). 7-row × 7-col grid + 이전/다음 달 navigation. weekStartDate 없으면 fallback 7-grid. |
 | AC-18 | calendar 시각: **선택된 날짜만** 진한 amber(주중 1개), **오늘**은 amber ring (옅게). 같은 weekday 다른 날짜는 강조 X. |
-| AC-19 | calendar의 임의 날짜 클릭 → 그 날의 weekday만 추출해 `setWeekday(weekday)`. schedule paradigm(주간 반복) 보존 — 다른 주/달 날짜 선택해도 weekday만 적용. |
+| AC-19 | ~~calendar의 임의 날짜 클릭 → 그 날의 weekday만 추출해 `setWeekday(weekday)`. schedule paradigm(주간 반복) 보존~~ → **AC-20으로 교체** (2026-05-12 paradigm 재해석). |
+| AC-20 | calendar의 임의 날짜 클릭 → `weekday` + `weekStartDate` **둘 다** state 갱신. 다른 주의 날짜 선택 시 그 주의 월요일(YYYY-MM-DD)이 `selectedWeekStart`로. paradigm은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"** — 데이터 모델(`planner.ts:47-50`)이 이미 둘 다 보존. |
+| AC-21 | `onSave(weekday, weekStartDate?)` 시그니처. 다른 주로 이동 시 부모는 (a) `syncSessionUpdate` payload에 `weekStartDate` forward, (b) `setSelectedDate(new Date(weekStartDate))`로 시간표 자동 navigate(사용자 결정 ii). |
+| AC-22 | API/Application/Repository chain 모두 `weekStartDate` forward — `PATCH /api/sessions/[id]` body, `SessionApplicationService.updateSession`, `SupabaseSessionRepository.update`(SQL `week_start_date` column). 미지정 시 기존 값 유지. |
 
 ## 3. 변경 파일
 

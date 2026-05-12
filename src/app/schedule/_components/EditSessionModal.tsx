@@ -76,7 +76,12 @@ interface EditSessionModalProps {
   timeError: string;
   onDelete: () => Promise<void> | void;
   onCancel: () => void;
-  onSave: (weekday: number) => Promise<void> | void;
+  /**
+   * @param weekday — 변경된 요일 (월=0 ~ 일=6)
+   * @param weekStartDate — 변경된 주 월요일 (YYYY-MM-DD). 미지정이면 부모는 기존 주 유지.
+   *   사용자가 캘린더에서 다른 주의 날짜를 선택했을 때 그 주의 월요일이 전달된다.
+   */
+  onSave: (weekday: number, weekStartDate?: string) => Promise<void> | void;
   onSubjectColorChange?: (subjectId: string, newColor: string) => void;
   /**
    * 현재 주 시작 날짜 (YYYY-MM-DD, 월요일). 헤더 chip에 "5월 15일 (목)" 식 표시 + 캘린더 popover의
@@ -117,6 +122,18 @@ function formatChipLabel(
   if (!week) return weekdaysLabels[weekday] ?? "";
   const d = addDays(week, weekday);
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekdaysLabels[weekday]})`;
+}
+
+/** 임의 Date → 그 주 월요일의 YYYY-MM-DD (KST). class-planner의 getWeekStartDate와 동일 로직. */
+function dateToWeekStart(d: Date): string {
+  const weekday = getWeekdayFromDate(d); // 월=0
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - weekday);
+  // YYYY-MM-DD format (UTC-safe — local date를 사용)
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const day = String(monday.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 const DEFAULT_COLOR = "#6366f1";
@@ -188,6 +205,10 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // 요일 선택 — controlled. defaultWeekday는 모달이 열릴 때만 반영.
   const [weekday, setWeekday] = useState<number>(defaultWeekday);
 
+  // 주 시작 날짜 — 캘린더에서 다른 주 날짜 선택 시 그 주의 월요일로 갱신.
+  // 모달이 열릴 때 weekStartDate prop으로 초기화. 저장 시 부모의 onSave로 forward.
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | undefined>(weekStartDate);
+
   // 모달이 열릴 때만 원본/프리뷰 초기화
   useEffect(() => {
     if (isOpen) {
@@ -196,6 +217,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
       setPreviewColor(c);
       setShowSwatches(false);
       setWeekday(defaultWeekday);
+      setSelectedWeekStart(weekStartDate); // 모달 열 때 부모 prop으로 reset
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -232,15 +254,29 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     onCancel();
   }, [originalColor, onCancel]);
 
-  // 저장: 학생 0명 가드 + 색상 변경 시 persist + onSave 호출
-  // 학생 0명 → onSave 호출 X (이전 사고: 0명 저장 → 빈 enrollmentIds로 세션 자동 삭제)
+  // 저장: 학생 0명 가드 + 색상 변경 시 persist + onSave 호출.
+  // 학생 0명 → onSave 호출 X (이전 사고: 0명 저장 → 빈 enrollmentIds로 세션 자동 삭제).
+  // weekStartDate가 모달 열림 시점과 다르면(= 사용자가 다른 주 날짜 클릭) 부모로 forward
+  // → 부모에서 새 주로 세션 이동 + 시간표 자동 navigate.
   const handleSave = useCallback(() => {
     if (selectedStudents.length === 0) return;
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
-    onSave(weekday);
-  }, [selectedStudents.length, previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave, weekday]);
+    const movedToOtherWeek =
+      selectedWeekStart !== undefined && selectedWeekStart !== weekStartDate;
+    onSave(weekday, movedToOtherWeek ? selectedWeekStart : undefined);
+  }, [
+    selectedStudents.length,
+    previewColor,
+    originalColor,
+    tempSubjectId,
+    onSubjectColorChange,
+    onSave,
+    weekday,
+    selectedWeekStart,
+    weekStartDate,
+  ]);
 
   const studentNames = selectedStudents.map((s) => s.name).join(" · ") || "학생 없음";
 
@@ -276,8 +312,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // ── 캘린더 (V3 month) ─────────────────────────────────────────────
-  const weekStartObj = useMemo(() => parseWeekStart(weekStartDate), [weekStartDate]);
-  // 선택된 날짜 = 이번 주의 weekday 위치 (다른 주는 시각 강조 X)
+  // selectedWeekStart 사용 — 사용자가 캘린더에서 다른 주 날짜 선택하면 그 주의 월요일.
+  const weekStartObj = useMemo(() => parseWeekStart(selectedWeekStart), [selectedWeekStart]);
+  // 선택된 날짜 = 그 주의 weekday 위치
   const selectedDate = useMemo(
     () => (weekStartObj ? addDays(weekStartObj, weekday) : null),
     [weekStartObj, weekday],
@@ -442,7 +479,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               >
                 <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
                 <span className="text-[13px] font-bold text-[#fbbf24] whitespace-nowrap">
-                  {formatChipLabel(weekStartDate, weekday, weekdays)}
+                  {formatChipLabel(selectedWeekStart, weekday, weekdays)}
                 </span>
                 <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
               </button>
@@ -557,7 +594,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                                 key={idx}
                                 type="button"
                                 onClick={() => {
+                                  // 클릭한 날짜 = 그 주 월요일 + weekday 둘 다 갱신.
+                                  // 같은 주 다른 요일 → weekStartDate 동일.
+                                  // 다른 주 클릭 → weekStartDate가 그 주 월요일로 변경 (저장 시 부모가 새 주로 세션 이동 + 시간표 자동 navigate).
                                   setWeekday(getWeekdayFromDate(cell.date!));
+                                  setSelectedWeekStart(dateToWeekStart(cell.date!));
                                   setOpenPopover(null);
                                 }}
                                 className={`h-8 rounded text-[12px] transition-colors ${cls}`}
@@ -569,7 +610,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         })()}
                       </div>
                       <div className="mt-2 text-[10px] text-[var(--color-text-muted)] text-center">
-                        다른 날짜 클릭 → 그 요일로 적용 (주간 반복)
+                        다른 날짜 클릭 → 그 날짜로 이동 (저장 시 시간표가 그 주로 이동)
                       </div>
                     </>
                   ) : (

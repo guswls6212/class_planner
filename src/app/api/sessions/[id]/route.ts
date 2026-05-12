@@ -81,6 +81,7 @@ export async function PUT(
       enrollmentIds,
       subjectId,
       weekday,
+      weekStartDate,
       startTime,
       endTime,
       startsAt: startsAtBody,
@@ -125,6 +126,8 @@ export async function PUT(
       startsAt: resolvedStart,
       endsAt: resolvedEnd,
       room,
+      // weekStartDate: 다른 주로 이동 시 forward. 미지정 시 기존 값 유지.
+      ...(weekStartDate !== undefined && { weekStartDate }),
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
       ...(public_description !== undefined && { public_description }),
       ...(internal_note !== undefined && { internal_note }),
