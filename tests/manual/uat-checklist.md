@@ -2095,6 +2095,113 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
+## 18. EditSessionModal 재설계 + V1 validation (P0: 4 / 8) [후속 PR]
+
+> SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md).
+> 영향: `EditSessionModal.tsx` 헤더 chip + body flex column + V1-disabled validation + handleSave 학생 0명 가드.
+
+### S-18.1 학생 0명 + 저장 → 세션 삭제 사고 방지 [P0]
+**Pre:** 시간표 진입, 임의 세션 클릭 → 모달 open
+**Steps:**
+1. 모달의 학생 chip 영역에서 모든 학생 chip의 X 클릭으로 선택 0명 만들기
+2. 저장 버튼 시각 상태 확인
+3. (불가능해도 강제 click 시도)
+**Expected:**
+- 저장 버튼 disabled 상태 (회색, cursor-not-allowed)
+- 좌측 helper text "⚠ 학생 1명 이상 선택 필요" (amber)
+- 강제 클릭 시도해도 `onSave` 호출되지 않음 + 세션 그대로 (사고 방지)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.2 헤더 요일 chip 클릭 → popover로 요일 변경 [P0]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. 헤더의 요일 chip (`목` 같은 라벨 + 캘린더 아이콘) 클릭
+2. popover에 7-grid weekday 버튼 노출
+3. 다른 요일(예: `금`) 클릭
+**Expected:**
+- popover open (amber border + 약간 진한 bg)
+- 7-grid에서 현재 weekday는 amber bg(active state)
+- 다른 요일 클릭 → chip 라벨 즉시 갱신 + popover 자동 닫힘
+- 저장 시 새 weekday로 세션 이동
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.3 헤더 시간 chip 클릭 → popover로 시간 변경 [P0]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. 헤더의 시간 chip (`11:00 – 12:00 · 1시간` 같은 라벨) 클릭
+2. popover에 시작/종료 time input 노출
+3. 시작 시간을 10:00으로 변경
+4. (선택) 시작이 종료보다 늦은 경우 시뮬 — 종료 = 09:00
+**Expected:**
+- popover open
+- 시작 input 변경 즉시 chip 라벨 갱신 (`10:00 – 12:00`)
+- 시작 > 종료 시 popover 내부에 빨간 timeError 메시지
+- popover 외부 클릭 시 닫힘
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.4 body 요일/시간 select 제거 확인 [P1]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. body 스크롤 — 학생/과목/강사 영역만 보임
+2. 기존 "요일", "수업 시간" select가 body에 없는지 확인
+**Expected:**
+- 헤더 chip이 SSOT — body에 weekday select 없음
+- 시간 input도 body에 없음 (헤더 popover에만)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.5 강사 그룹화 + 학생 검색 회귀 0 [P1]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. 강사 영역에 "{과목명} 담당" / "기타 강사" 두 그룹 표시 확인
+2. 학생 검색 input에 "김" 입력
+3. 검색 결과 list에서 학생 클릭 → chip으로 이동
+**Expected:**
+- TeacherPillPicker 동작 그대로 (담당/기타 그룹화 + 색 dot)
+- 학생 검색 + filtered list + 선택 chip 패턴 그대로
+- 동명이인 부제(ADR-015) 그대로
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.7 body 순서: 과목 → 강사 → 학생 [P1]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. body 영역에서 위→아래로 필드 순서 확인
+**Expected:**
+- 1) 과목 select (맨 위, `*` 필수)
+- 2) 강사 (TeacherPillPicker — 담당/기타 그룹)
+- 3) 학생 picker (가장 큰 비중, 검색 + chips + dropdown)
+- 학생이 마지막에 있어 위 두 메타가 스크롤 시에도 잘 보임
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.8 헤더 chip "X월 Y일 (요일)" + V3 month calendar [P0]
+**Pre:** 임의 세션 모달 open. (schedule page가 weekStartDate prop 전달 → 현재 주 기준 날짜 표시)
+**Steps:**
+1. 헤더 요일 chip의 label이 `5월 15일 (목)` 같은 형식인지 확인
+2. chip 클릭 → 월별 캘린더 popover open
+3. 캘린더 상단에 `2026년 5월` + 이전/다음 달(`‹` `›`) 버튼
+4. 선택된 weekday의 이번 주 날짜 1개만 진한 amber, 오늘은 amber ring
+5. 다른 날짜(예: 5월 20일 수) 클릭
+**Expected:**
+- chip label에 월/일/요일 모두 표시 (weekStartDate prop 전달 시)
+- popover에 표준 month grid (7요일 header + 6 weeks × 7 col cells)
+- `‹` `›`로 다른 달 navigation
+- 5월 20일 클릭 → weekday=2(수)로 변경 + popover 닫힘 + chip label 갱신 (`5월 13일 (수)` — 이번 주의 수요일)
+- schedule 저장 시 그 weekday로 세션 이동 (주간 반복 paradigm 유지)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.6 색 선택 + 모바일 BottomSheet 회귀 0 [P2]
+**Pre:** 모바일 viewport(375×667), 임의 세션 모달 open
+**Steps:**
+1. BottomSheet로 wrap된 모달 확인
+2. 헤더 우측 색 dot 버튼 → swatch popover 동작
+3. 헤더 요일/시간 chip + popover 동작 (모바일에서도)
+**Expected:**
+- BottomSheet 안에서 헤더/body/footer 자연 layout
+- 색 패널 그대로 (12개 swatch + 직접 색상 선택)
+- chip popover가 BottomSheet 안에서 정상 위치
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
 ## Edge Cases (P0: 0 / 10)
 
 ### E-1. 학생 0명 + 수업 추가 시도 [P2]
@@ -2196,3 +2303,5 @@ Issue 등록 형식:
 - 2026-05-07 (6): `bash scripts/uat-new.sh release` 모드 지원 — Hybrid C 채택 시 스크립트가 legacy `core|extended|full` 만 받아 `release` 입력 시 ERROR 발생. 사용자 지적: \"release 랑 full 같은 거면 하나만 두는게 좋지않아?\" → 정확. `release` 하나로 통일 (의미상 시점 기준이 더 정확). legacy `core|extended|full` 입력 시 deprecated WARN 출력 후 `release` 자동 alias. md 의 `bash scripts/uat-new.sh core (또는 extended / full)` → `release` 단일로 갱신, branch 이름 예시 `chore/uat-...-core` → `-release` 갱신.
 - 2026-05-07 (7): **UAT fresh-start default** — 사용자 비판: "옵션으로 한 이유? 옵션없이 전부 신규사용자로 만들게 하면 되지않나?" → 정확. `naming-consolidation` 메모리 또 위반할 뻔. 매 UAT 사이클 fresh-start 가 default — `uat:teardown` 자체가 academy 까지 cleanup (이전엔 academy 보존). `cleanupUatUserData` 신규 함수 (fresh-start) + 기존 `cleanupAcademyScopedDataForUser` (scope only — seed 멱등 재시드용) 책임 분리. `setup-uat-test-user.ts` 단순화 — user 만 생성 (academy 부분 제거). `uat-seed.ts` 강화 — academy 없으면 자동 생성. UAT 문서 §0 매 사이클 (`uat:teardown` 단계 추가) / §5 인증 셋업 (setup user 만 + 매 사이클 흐름 옵션 a/b) / S-1.5 Pre (재현 방법 명시) 갱신. 신규/기존 user 분기는 매 사이클 단일 user reset 으로 자연 진행 (사이클 안에 신규→기존 전환). invite 시나리오 (S-10.6/10.7) 검증 시점에 별도 user (`UAT_TEST_INVITEE_EMAIL`) 추가 future work.
 - 2026-05-12: **§17 알림 히스토리 + InfoTrigger fix 신설** (PR #372) — 7개 시나리오 (S-17.1~17.7), P0 3개 (배지 카운트 / 패널 open + 필터·그룹 / 항목 클릭 read). 영향: `lib/notificationCenter.ts` ring buffer + `useNotificationCenter` hook + `NotificationBell` (atom) + `NotificationItem` / `NotificationDropdown` (molecules) + `lib/toast.ts` capture 통합 + `Sidebar`/`TopBar` layout-level wire + `InfoTrigger` 동심원 2겹→1겹 fix. localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous`). 회귀 가드: 22 unit + 9 RTL. spec SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC). 총 P0: 33 → 36.
+- 2026-05-12 (2): **§18 EditSessionModal 재설계 + V1 validation 신설** — 6개 시나리오, P0 3개 (학생 0명 저장 차단 / 요일 chip popover / 시간 chip popover). 영향: `EditSessionModal.tsx` 헤더 read-only 카드 → chip + popover (요일/시간), body weekday/time select 제거, footer V1-disabled validation + helper text, handleSave 학생 0명 가드. 기존 picker(`TeacherPillPicker`/`StudentChip`/colorPanel) 100% 보존. 회귀 가드: 45 RTL passed (10 기존 갱신 + 5 신규 validation). spec SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md) (14 AC). 총 P0: 36 → 39.
+- 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.

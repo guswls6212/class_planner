@@ -234,10 +234,11 @@ describe("EditSessionModal Integration Tests", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it("시간 에러가 있을 때 에러 메시지가 표시되어야 한다", () => {
+  it("시간 chip 클릭 후 popover에 에러 메시지가 표시되어야 한다 (Variant C 채택, 2026-05-12)", () => {
     const timeError = "시간이 올바르지 않습니다.";
     render(<EditSessionModal {...defaultProps} timeError={timeError} />);
 
+    fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
     expect(screen.getByText(timeError)).toBeInTheDocument();
   });
 
@@ -270,20 +271,57 @@ describe("EditSessionModal Integration Tests", () => {
     expect(subjectSelect).toBeInTheDocument();
   });
 
-  it("요일 선택 드롭다운이 올바르게 렌더링되어야 한다", () => {
+  it("요일 chip 클릭 시 popover에 weekday 버튼들이 렌더링되어야 한다 (Variant C)", () => {
     render(<EditSessionModal {...defaultProps} />);
 
-    const weekdaySelect = screen.getByDisplayValue("월");
-    expect(weekdaySelect).toBeInTheDocument();
+    // 헤더 weekday chip 클릭 → popover open
+    fireEvent.click(screen.getByRole("button", { name: /요일:/ }));
+    // popover 안 weekday 버튼은 role+name으로 chip과 구분 (chip name="요일: 월, ...")
+    expect(screen.getByRole("button", { name: "월" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "금" })).toBeInTheDocument();
   });
 
-  it("시작 시간과 종료 시간 입력이 올바르게 렌더링되어야 한다", () => {
+  it("시간 chip 클릭 시 popover에 시작/종료 시간 input이 렌더링되어야 한다 (Variant C)", () => {
     render(<EditSessionModal {...defaultProps} />);
 
+    // 헤더 시간 chip 클릭 → popover open
+    fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
     const startTimeInput = screen.getByDisplayValue("09:00");
     const endTimeInput = screen.getByDisplayValue("10:00");
 
     expect(startTimeInput).toBeInTheDocument();
     expect(endTimeInput).toBeInTheDocument();
+  });
+
+  // ── V1-disabled validation (2026-05-12) ──────────────────────────
+  it("학생 0명이면 저장 버튼이 disabled 상태가 된다", () => {
+    render(<EditSessionModal {...defaultProps} selectedStudents={[]} />);
+    const saveButton = screen.getByRole("button", { name: "저장" });
+    expect(saveButton).toBeDisabled();
+  });
+
+  it("학생 0명이면 helper text 'X명 이상 선택 필요'가 footer에 표시된다", () => {
+    render(<EditSessionModal {...defaultProps} selectedStudents={[]} />);
+    expect(screen.getByText(/학생 1명 이상 선택 필요/)).toBeInTheDocument();
+  });
+
+  it("학생 0명이면 저장 클릭에도 onSave 호출되지 않는다 (사고 방지)", () => {
+    const onSave = vi.fn();
+    render(
+      <EditSessionModal {...defaultProps} selectedStudents={[]} onSave={onSave} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("학생 1명 이상이면 저장 버튼이 enabled 상태가 된다", () => {
+    render(<EditSessionModal {...defaultProps} />);
+    const saveButton = screen.getByRole("button", { name: "저장" });
+    expect(saveButton).not.toBeDisabled();
+  });
+
+  it("학생 1명 이상이면 helper text가 표시되지 않는다", () => {
+    render(<EditSessionModal {...defaultProps} />);
+    expect(screen.queryByText(/학생 1명 이상 선택 필요/)).not.toBeInTheDocument();
   });
 });
