@@ -2,6 +2,7 @@ import type { EnrollmentRepository } from "@/infrastructure/interfaces";
 import { Enrollment } from "@/shared/types/DomainTypes";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseEnrollmentRepository implements EnrollmentRepository {
   private createServiceRoleClient() {
@@ -48,7 +49,11 @@ export class SupabaseEnrollmentRepository implements EnrollmentRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) => this.rowToEnrollment(row));
+      return mapRowsSafely(
+        (data ?? []) as Array<Record<string, unknown>>,
+        (row) => this.rowToEnrollment(row),
+        { entity: "등록", idField: "id" }
+      );
     } catch (error) {
       logger.error("수강신청 데이터 조회 중 오류:", undefined, error as Error);
       return [];
@@ -78,7 +83,11 @@ export class SupabaseEnrollmentRepository implements EnrollmentRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) => this.rowToEnrollment(row));
+      return mapRowsSafely(
+        (data ?? []) as Array<Record<string, unknown>>,
+        (row) => this.rowToEnrollment(row),
+        { entity: "등록", idField: "id" }
+      );
     } catch (error) {
       logger.error("학생별 수강신청 조회 중 오류:", undefined, error as Error);
       return [];
