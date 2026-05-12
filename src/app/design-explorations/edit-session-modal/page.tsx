@@ -97,20 +97,46 @@ const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
 // Popovers (chip 클릭 시 floating)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function WeekdayPopover({ value, onChange, onClose }: { value: number; onChange: (n: number) => void; onClose: () => void }) {
+// 캘린더 variant 4종 — 사용자가 본인 브라우저로 직접 비교 후 선택.
+// 모두 weekday(월=0~일=6)를 반환. 다른 주/달의 날짜 선택해도 weekday만 추출.
+type CalendarVariant = "v1-grid" | "v2-week" | "v3-month" | "v4-two-week";
+
+// mock 기준 날짜 — 2026년 5월 11일(월요일)이 이번 주 시작
+const MOCK_WEEK_START = new Date(2026, 4, 11); // month=4 → 5월
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(d.getDate() + n);
+  return r;
+}
+
+function getWeekdayFromDate(d: Date): number {
+  // JS getDay(): 일=0, 월=1, …, 토=6 → 우리 컨벤션 월=0, …, 일=6
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function formatDateShort(d: Date): string {
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+function formatDateChip(weekday: number): string {
+  const d = addDays(MOCK_WEEK_START, weekday);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[weekday]})`;
+}
+
+// ──── Variant 1: 7-grid (기존, 가장 단순) ────────────────────────────
+function CalendarV1Grid({ value, onChange, onClose }: { value: number; onChange: (n: number) => void; onClose: () => void }) {
   return (
     <div className="absolute top-full mt-2 left-0 z-20 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-3 w-[280px]">
-      <div className="text-[11px] text-slate-400 mb-2">요일 선택</div>
+      <div className="text-[11px] text-slate-400 mb-2">요일 선택 (V1: 7-grid, 가장 단순)</div>
       <div className="grid grid-cols-7 gap-1">
         {WEEKDAYS.map((label, idx) => {
           const active = idx === value;
           return (
             <button
               key={idx}
-              onClick={() => {
-                onChange(idx);
-                onClose();
-              }}
+              onClick={() => { onChange(idx); onClose(); }}
               className={`h-9 rounded text-sm font-medium ${
                 active ? "bg-amber-500 text-slate-900" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
               }`}
@@ -120,9 +146,178 @@ function WeekdayPopover({ value, onChange, onClose }: { value: number; onChange:
           );
         })}
       </div>
-      <div className="mt-3 text-[10px] text-slate-500">(실제: 작은 캘린더 — 현재 주의 7일 chip)</div>
     </div>
   );
+}
+
+// ──── Variant 2: 이번 주 (요일 + 날짜 표시) ────────────────────────
+function CalendarV2Week({ value, onChange, onClose }: { value: number; onChange: (n: number) => void; onClose: () => void }) {
+  const today = new Date(2026, 4, 12); // mock today = 5월 12일 (화)
+  const isToday = (d: Date) => d.toDateString() === today.toDateString();
+  return (
+    <div className="absolute top-full mt-2 left-0 z-20 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-3 w-[320px]">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[11px] text-slate-400">이번 주 (V2: 요일 + 날짜)</div>
+        <div className="text-[10px] text-slate-500">2026.05.11 — 17</div>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {WEEKDAYS.map((label, idx) => {
+          const d = addDays(MOCK_WEEK_START, idx);
+          const active = idx === value;
+          const todayMark = isToday(d);
+          return (
+            <button
+              key={idx}
+              onClick={() => { onChange(idx); onClose(); }}
+              className={`h-14 rounded flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                active
+                  ? "bg-amber-500 text-slate-900"
+                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+              }`}
+            >
+              <span className="text-[10px] opacity-80">{label}</span>
+              <span className={`text-base font-bold ${todayMark && !active ? "text-amber-300" : ""}`}>
+                {d.getDate()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-2 text-[10px] text-slate-500">오늘은 amber 강조</div>
+    </div>
+  );
+}
+
+// ──── Variant 3: 1달 캘린더 (월 navigation) ───────────────────────
+function CalendarV3Month({ value, onChange, onClose }: { value: number; onChange: (n: number) => void; onClose: () => void }) {
+  const [viewMonth, setViewMonth] = useState(new Date(2026, 4, 1)); // 5월
+  const today = new Date(2026, 4, 12); // mock today = 5월 12일 (화)
+
+  // 선택된 날짜 = mock 이번 주의 weekday 위치 (이번 주 외 다른 주는 무관)
+  const selectedDate = addDays(MOCK_WEEK_START, value);
+
+  const isToday = (d: Date) => d.toDateString() === today.toDateString();
+  const isSelected = (d: Date) => d.toDateString() === selectedDate.toDateString();
+
+  // 1일이 무슨 요일인지
+  const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+  const firstWeekday = getWeekdayFromDate(firstDay); // 우리 컨벤션 (월=0)
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+
+  // grid cells — 앞 padding + 1~daysInMonth + 뒤 padding (총 42셀 = 6 rows × 7 cols)
+  const cells: { date: Date | null; label: number | null }[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, label: null });
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push({ date: new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day), label: day });
+  }
+  while (cells.length < 42) cells.push({ date: null, label: null });
+
+  const navMonth = (delta: number) => {
+    setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1));
+  };
+
+  return (
+    <div className="absolute top-full mt-2 left-0 z-20 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-3 w-[320px]">
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={() => navMonth(-1)} className="w-6 h-6 rounded text-slate-400 hover:bg-slate-800">‹</button>
+        <div className="text-sm font-medium text-slate-200">
+          {viewMonth.getFullYear()}년 {viewMonth.getMonth() + 1}월
+        </div>
+        <button onClick={() => navMonth(1)} className="w-6 h-6 rounded text-slate-400 hover:bg-slate-800">›</button>
+      </div>
+      <div className="text-[10px] text-slate-500 mb-1 text-center">V3: 1달 캘린더 (다른 달 navigation 가능)</div>
+      <div className="grid grid-cols-7 gap-0.5 mb-1">
+        {WEEKDAYS.map((label) => (
+          <div key={label} className="text-[10px] text-slate-500 text-center py-1">{label}</div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {cells.map((cell, idx) => {
+          if (!cell.date) return <div key={idx} className="h-8" />;
+          const selected = isSelected(cell.date);
+          const todayMark = isToday(cell.date);
+          let cls = "text-slate-300 hover:bg-slate-800";
+          if (selected) {
+            cls = "bg-amber-500 text-slate-900 font-bold"; // 선택된 날짜 = 진한 amber
+          } else if (todayMark) {
+            cls = "ring-1 ring-amber-400 text-amber-300 hover:bg-slate-800"; // 오늘 = ring으로 옅게 구분
+          }
+          return (
+            <button
+              key={idx}
+              onClick={() => {
+                onChange(getWeekdayFromDate(cell.date!));
+                onClose();
+              }}
+              className={`h-8 rounded text-xs transition-colors ${cls}`}
+            >
+              {cell.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-2 text-[10px] text-slate-500">
+        선택된 날짜 = 진한 amber · 오늘 = amber ring · 다른 날짜 클릭 시 그 weekday로 적용
+      </div>
+    </div>
+  );
+}
+
+// ──── Variant 4: 2주 (이번주 + 다음주) ──────────────────────────────
+function CalendarV4TwoWeek({ value, onChange, onClose }: { value: number; onChange: (n: number) => void; onClose: () => void }) {
+  const today = new Date(2026, 4, 12);
+  const isToday = (d: Date) => d.toDateString() === today.toDateString();
+  return (
+    <div className="absolute top-full mt-2 left-0 z-20 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-3 w-[320px]">
+      <div className="text-[11px] text-slate-400 mb-2">2주 (V4: 이번주 + 다음주)</div>
+      {[0, 1].map((row) => {
+        const weekStart = addDays(MOCK_WEEK_START, row * 7);
+        return (
+          <div key={row} className="mb-1.5">
+            <div className="text-[10px] text-slate-500 mb-0.5">
+              {row === 0 ? "이번 주" : "다음 주"} · {formatDateShort(weekStart)} —{" "}
+              {formatDateShort(addDays(weekStart, 6))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {WEEKDAYS.map((label, idx) => {
+                const d = addDays(weekStart, idx);
+                const active = idx === value;
+                const todayMark = isToday(d);
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => { onChange(idx); onClose(); }}
+                    className={`h-12 rounded flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                      active
+                        ? "bg-amber-500 text-slate-900"
+                        : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    }`}
+                  >
+                    <span className="text-[9px] opacity-80">{label}</span>
+                    <span className={`text-sm font-bold ${todayMark && !active ? "text-amber-300" : ""}`}>
+                      {d.getDate()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeekdayPopover({ value, onChange, onClose, variant }: {
+  value: number;
+  onChange: (n: number) => void;
+  onClose: () => void;
+  variant: CalendarVariant;
+}) {
+  if (variant === "v2-week") return <CalendarV2Week value={value} onChange={onChange} onClose={onClose} />;
+  if (variant === "v3-month") return <CalendarV3Month value={value} onChange={onChange} onClose={onClose} />;
+  if (variant === "v4-two-week") return <CalendarV4TwoWeek value={value} onChange={onChange} onClose={onClose} />;
+  return <CalendarV1Grid value={value} onChange={onChange} onClose={onClose} />;
 }
 
 function TimePopover({ start, end, onChange, onClose }: { start: string; end: string; onChange: (s: string, e: string) => void; onClose: () => void }) {
@@ -523,6 +718,7 @@ function ModalMockup({
   showInlineErrors,
   setShowInlineErrors,
   setToastMessage,
+  calendarVariant,
 }: {
   variant: Variant;
   validation: ValidationMode;
@@ -532,6 +728,7 @@ function ModalMockup({
   showInlineErrors: boolean;
   setShowInlineErrors: (b: boolean) => void;
   setToastMessage: (msg: string | null) => void;
+  calendarVariant: CalendarVariant;
 }) {
   const [openPopover, setOpenPopover] = useState<"weekday" | "time" | "subject" | null>(null);
 
@@ -563,11 +760,12 @@ function ModalMockup({
   const modalWidth = viewport === "mobile" ? "w-[360px]" : "w-[480px]";
 
   // Header chips per variant
+  // 헤더 chip label — "5월 15일 (목)" 식 (mock week 기준)
   const weekdayChip = (
     <div className="relative inline-block">
       <Chip
         icon={<CalendarIcon size={14} />}
-        label={WEEKDAYS[state.weekday]}
+        label={formatDateChip(state.weekday)}
         onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
         active={openPopover === "weekday"}
       />
@@ -576,6 +774,7 @@ function ModalMockup({
           value={state.weekday}
           onChange={(n) => setState((s) => ({ ...s, weekday: n }))}
           onClose={() => setOpenPopover(null)}
+          variant={calendarVariant}
         />
       )}
     </div>
@@ -775,10 +974,11 @@ function toggleSet<T>(s: Set<T>, x: T): Set<T> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function EditSessionModalExplorationPage() {
-  const [variant, setVariant] = useState<Variant>("A");
+  const [variant, setVariant] = useState<Variant>("C");
   const [validation, setValidation] = useState<ValidationMode>("V1-disabled");
   const [viewport, setViewport] = useState<Viewport>("desktop");
   const [studentMode, setStudentMode] = useState<"none" | "one" | "three">("one");
+  const [calendarVariant, setCalendarVariant] = useState<CalendarVariant>("v3-month");
 
   const [showInlineErrors, setShowInlineErrors] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -883,10 +1083,35 @@ export default function EditSessionModalExplorationPage() {
             ))}
           </div>
         </div>
+
+        {/* Calendar variant 토글 — 헤더 날짜 chip 클릭 popover 4가지 */}
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-400">캘린더:</span>
+          {([
+            { key: "v1-grid", label: "V1 · 7-grid", desc: "단순 요일만 (현재 mockup)" },
+            { key: "v2-week", label: "V2 · 이번주", desc: "이번 주 7일 + 날짜 + 오늘 강조" },
+            { key: "v3-month", label: "V3 · 1달", desc: "월별 grid + 이전/다음 달 navigation" },
+            { key: "v4-two-week", label: "V4 · 2주", desc: "이번주 + 다음주 2 row" },
+          ] as { key: CalendarVariant; label: string; desc: string }[]).map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setCalendarVariant(c.key)}
+              className={`px-2 py-0.5 rounded text-xs ${
+                calendarVariant === c.key ? "bg-amber-500/20 text-amber-200 border border-amber-500/50" : "bg-slate-800 text-slate-400 border border-slate-700"
+              }`}
+              title={c.desc}
+            >
+              {c.label}
+            </button>
+          ))}
+          <span className="text-[10px] text-slate-500 ml-2">헤더 날짜 chip 클릭 → popover 형태 비교</span>
+        </div>
+
         <div className="mt-2 text-[11px] text-slate-500">
           <strong className="text-amber-300">{variant}</strong> · {VARIANT_NAMES[variant]}
           {" · "}
           <strong className="text-amber-300">{validation}</strong> · {VALIDATION_DESCRIPTIONS[validation]}
+          {" · 캘린더: "}<strong className="text-amber-300">{calendarVariant}</strong>
         </div>
       </div>
 
@@ -901,6 +1126,7 @@ export default function EditSessionModalExplorationPage() {
           showInlineErrors={showInlineErrors}
           setShowInlineErrors={setShowInlineErrors}
           setToastMessage={setToastMessage}
+          calendarVariant={calendarVariant}
         />
 
         {toastMessage && (
