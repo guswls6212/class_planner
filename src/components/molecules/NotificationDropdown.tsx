@@ -4,7 +4,10 @@ import { Bell, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotificationCenter } from "@/hooks/useNotificationCenter";
 import type { NotificationEntry, NotificationLevel } from "@/lib/notificationCenter";
-import { NotificationBell } from "@/components/atoms/NotificationBell";
+import {
+  NotificationBell,
+  type NotificationBellSize,
+} from "@/components/atoms/NotificationBell";
 import { NotificationItem } from "@/components/molecules/NotificationItem";
 
 type Filter = "all" | NotificationLevel;
@@ -42,11 +45,17 @@ function groupByDay(entries: NotificationEntry[], now: number): { label: string;
 }
 
 interface NotificationDropdownProps {
-  /** 모바일 TopBar에서 호출 시 컴팩트 사이즈 + 위치 조정. */
+  /** 모바일 TopBar에서 호출 시 컴팩트 사이즈 + 패널 anchor를 하단으로. */
   compact?: boolean;
+  /**
+   * Sidebar에서 trigger 사이즈 override. compact가 true면 무시(`sm` 강제).
+   * - "md": Sidebar expanded — 학원 이름 옆 inline
+   * - "nav": Sidebar collapsed — nav menu item과 동일 크기
+   */
+  size?: NotificationBellSize;
 }
 
-export function NotificationDropdown({ compact }: NotificationDropdownProps) {
+export function NotificationDropdown({ compact, size }: NotificationDropdownProps) {
   const { entries, unreadCount, markRead, markAllRead, dismiss } =
     useNotificationCenter();
   const [open, setOpen] = useState(false);
@@ -106,7 +115,7 @@ export function NotificationDropdown({ compact }: NotificationDropdownProps) {
         pulse={unreadCount > 0}
         onClick={() => setOpen((v) => !v)}
         active={open}
-        compact={compact}
+        size={compact ? "sm" : (size ?? "md")}
       />
 
       {open && (

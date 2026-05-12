@@ -12,6 +12,7 @@ src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
 src/app/design-explorations/_mock/MockGrid.tsx
 src/app/design-explorations/_mock/data.ts
+src/app/design-explorations/notification-bell-position/page.tsx
 src/app/design-explorations/notifications/page.tsx
 src/app/design-explorations/option-c/page.tsx
 src/app/design-explorations/p4-a/page.tsx
