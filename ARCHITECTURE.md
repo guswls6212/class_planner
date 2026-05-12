@@ -93,11 +93,11 @@ List endpoint 공통 helper: `src/lib/pagination.ts` SSOT.
   - `TeacherAddDetailModal` — `/teachers` 헤더 "+ 상세 등록" 진입점. 이름 필수 + 이메일/전화번호 권장 입력 + 이메일 형식 검증 (PR #289). settings의 `TeacherAddModal`(invite/share)과 별개.
   - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)
   - `NotificationItem` — 알림 히스토리 단일 항목 row. level 아이콘(AlertCircle/AlertTriangle/CheckCircle2/Info) + 메시지 + chip + relative time + hover X dismiss. (PR #372)
-  - `NotificationDropdown` — `NotificationBell` trigger + 패널 통합. 필터 chip / 오늘·어제·이전 그룹 / 헤더 요약 / 풋터 카운트 / outside-click·ESC 닫기. Sidebar(데스크톱) + TopBar(모바일) 둘 다에서 layout-level 마운트. spec SSOT: [`docs/notification-history-spec.md`](docs/notification-history-spec.md). (PR #372)
+  - `NotificationDropdown` — `NotificationBell` trigger + 패널 통합. 필터 chip / 오늘·어제·이전 그룹 / 헤더 요약 / 풋터 카운트 / outside-click·ESC 닫기. Sidebar academy 영역에 inline(Expanded) / stack(Collapsed nav size) 배치 + TopBar에 compact 배치. `size` prop으로 NotificationBell 사이즈 forward. spec SSOT: [`docs/notification-history-spec.md`](docs/notification-history-spec.md). (PR #372 + 후속 PR 위치 조정)
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
   - `TeacherStatusPill` — 강사 초대/공유 상태 6-state 표시 pill (active/invite_pending/invite_expired/share_only/none, K-1)
   - `InfoTrigger` — 통일된 정보 아이콘 버튼. lucide Info SVG의 자체 원만 사용 (button border 제거 — 동심원 2겹 회피, PR #372). `size="sm"` (24×24, icon 14) / `size="md"` (32×32, icon 18). HelpTooltip·ScheduleActionBar에서 사용.
-  - `NotificationBell` — 헤더 알림 트리거. unread 배지(에러+경고 unread 수) + `motion-safe:animate-ping` pulse + compact mode (TopBar). NotificationDropdown trigger로만 사용 (atom 단독 X). (PR #372)
+  - `NotificationBell` — 알림 트리거 atom. unread 배지(에러+경고 unread 수) + `motion-safe:animate-ping` pulse. `size` prop: `"sm"` (TopBar w-8 h-8 icon 16) / `"md"` (Sidebar expanded inline w-9 h-9 icon 18) / `"nav"` (Sidebar collapsed nav-style w-10 h-10 icon 22 strokeWidth 1.5). NotificationDropdown trigger로만 사용. (PR #372, size prop 확장은 후속 PR — academy 영역 inline 배치 시 nav size로 nav menu와 동등)
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃
   - `TimeTableGrid` — 주간 시간표 CSS Grid. `baseDate?: Date` prop으로 주 날짜 배열 계산. 헤더 Stacked Circle(요일명+날짜, 오늘 amber 배지). `nowLinePx` 계산 후 오늘 `TimeTableRow`에 전달. (J-2, PR#97)
   - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.

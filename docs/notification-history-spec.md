@@ -98,24 +98,38 @@ function showVariant(variant: ToastVariant, message: string) {
 `showUndoToast`, `showActionToast`, `showBulkUndoToast` 등도 동일하게 push. Undo가 발생하면 그 항목은 ring buffer에서도 retract (혹은 메시지 prefix `[취소됨]`로 마킹 — 선택, 단순함 우선 retract).
 
 ### 4.3 component 트리 — layout-level 배치
-종 아이콘은 모든 페이지 (`/schedule`, `/students`, `/subjects`, `/teachers`, `/settings`)에서 동일 위치에 보여야 함 (사용자 결정 2026-05-12). 따라서 schedule 페이지의 `ScheduleActionBar`가 아닌 **layout-level 공통 헤더에 배치**.
+종 아이콘은 모든 페이지 (`/schedule`, `/students`, `/subjects`, `/teachers`, `/settings`)에서 동일 위치에 보여야 함 (사용자 결정 2026-05-12). 실제 layout 구조 파악 결과:
+- `app/layout.tsx`는 minimal (`RootProviders` 만) — 공통 헤더 없음
+- `AppShell` (organism)이 `<Sidebar />` (데스크톱 md+) / `<TopBar />` (모바일 md-) 분기
+- 데스크톱엔 우상단 헤더 영역 자체가 없음 → 각 페이지가 자기 헤더 따로 그림
+
+→ **Sidebar academy 영역과 TopBar에 NotificationDropdown 배치** (layout-level). schedule 페이지의 ScheduleActionBar는 i 버튼·share 버튼만.
 
 ```
-src/app/layout.tsx (또는 그 안의 공통 헤더 component)
-└─ NotificationBell + dropdown anchor
-   ├─ unread count from useNotificationCenter
-   └─ on click → opens
-       NotificationDropdown
-       ├─ header (제목 + 요약 + "모두 읽음" + X)
-       ├─ filter chips (전체/에러/경고/성공/정보)
-       ├─ groups ("오늘"/"어제"/"이전")
-       │   └─ NotificationItem × N
-       └─ footer ("총 N건 · 24h · 최대 50")
+AppShell (organism)
+├─ Sidebar (데스크톱 md+ block)
+│   └─ Academy area wrapper:
+│       ├─ Expanded (w-52): [학원 박스 flex-1] [NotificationDropdown size="md"]
+│       └─ Collapsed (w-14): [학원 이니셜] / [NotificationDropdown size="nav"] (stack)
+│   └─ nav items (시간표/학생/과목/강사/설정)
+└─ TopBar (모바일 md- block)
+    └─ [NotificationDropdown compact] [도움말 ?] [로그인/아바타]
+
+NotificationDropdown (molecule)
+├─ trigger: NotificationBell (atom)
+│   size="sm" (TopBar compact) / "md" (Sidebar expanded) / "nav" (Sidebar collapsed)
+│   sm: w-8 h-8 icon 16 / md: w-9 h-9 icon 18 / nav: w-10 h-10 icon 22 strokeWidth 1.5
+└─ panel: 헤더(제목+요약+"모두 읽음"+X) + filter chips + 오늘/어제/이전 groups + 풋터
+   compact=false (Sidebar): panel anchor = `left-full top-0 ml-2` (sidebar 오른쪽으로 펼침)
+   compact=true (TopBar): panel anchor = `right-0 top-full mt-2` (topbar 아래로 펼침)
 ```
 
-구현 시 검토 사항:
-- `src/app/layout.tsx`가 인증/원장모드/익명 분기에 따라 헤더를 분기하는지 확인 → 분기 안에 NotificationBell 통일 배치
-- 로그인 페이지(`/login`)나 admin 별도 layout(`src/app/admin/layout.tsx`)에는 종 노출 불필요 — 해당 layout 별도 처리
+#### 익명 사용자 처리
+Anonymous-First 정책상 학원 박스는 익명에 미렌더. NotificationDropdown은 익명도 토스트 받을 수 있으므로 렌더 유지. Expanded 시 학원 박스 부재 → wrapper `justify-end`로 종을 우측 정렬해 어색한 좌측 단독 배치 회피.
+
+#### 검토 사항
+- 로그인 페이지(`/login`)는 `AppShell` `SHELL_EXCLUDED`에 포함되어 Sidebar/TopBar 둘 다 미렌더 — 종 자동 노출 X. 추가 처리 불필요.
+- `app/admin/layout.tsx`는 별도 layout — 운영자 admin 도구 컨텍스트에선 종 미노출이 정합 (관리자 logs 별도 spec).
 
 ### 4.4 i 아이콘 수정
 `atoms/InfoTrigger.tsx` 의 button className에서 `rounded-full border border-[var(--color-text-muted)]`를 제거. lucide `<Info>` SVG가 자체 원을 가지므로 button은 padding + hover만 담당. icon size 11→16 (한 겹이면 더 작게 보임).
@@ -209,6 +223,7 @@ src/app/layout.tsx (또는 그 안의 공통 헤더 component)
 - ~~Supabase 저장 여부~~ → **Phase 1은 localStorage only**. Phase 3 sketch는 [`docs/future-work/notification-history.md`](./future-work/notification-history.md) 참조.
 - ~~배지 카운트 범위~~ → **에러+경고 unread만** (success/info 제외).
 - ~~unread → read 트리거~~ → **항목 클릭 + "모두 읽음" 버튼 + dismiss(X)**. 패널 open 자체로는 read 처리 X.
+- ~~Sidebar 안 정확한 종 위치~~ → **Variant A (학원 박스 옆 inline)** 채택. Expanded는 학원 박스 옆, Collapsed는 학원 이니셜 아래 stack(nav size). 초기 PR #372에서 nav 안 (강사 ↔ 설정 사이)에 배치했던 것을 본 PR에서 academy 영역으로 이동.
 
 ## 10. Out of Scope (Phase 2/3 후보)
 
