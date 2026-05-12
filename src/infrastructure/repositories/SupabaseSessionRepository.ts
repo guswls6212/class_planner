@@ -2,6 +2,7 @@ import type { SessionRepository } from "@/infrastructure/interfaces";
 import { Session } from "@/shared/types/DomainTypes";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseSessionRepository implements SessionRepository {
   private createServiceRoleClient() {
@@ -77,7 +78,11 @@ export class SupabaseSessionRepository implements SessionRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) => this.rowToSession(row));
+      return mapRowsSafely(
+        data ?? [],
+        (row: any) => this.rowToSession(row),
+        { entity: "세션", idField: "id" }
+      );
     } catch (error) {
       logger.error("세션 데이터 조회 중 오류:", undefined, error as Error);
       return [];
