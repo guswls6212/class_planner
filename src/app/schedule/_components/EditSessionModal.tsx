@@ -427,20 +427,21 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 기존 read-only 카드를 클릭 가능 chip + popover로 교체. body의 요일/시간
                 select 제거 (헤더가 SSOT). 한 번에 하나의 popover만 열림. */}
             <div className="inline-flex items-center mt-2 gap-1.5 relative" ref={popoverRef}>
-              {/* Weekday chip — chip label은 weekStartDate 있으면 "X월 Y일 (요일)" 형식. */}
+              {/* Weekday chip — chip label은 weekStartDate 있으면 "X월 Y일 (요일)" 형식.
+                  whitespace-nowrap으로 wrap 방지 (modal max-w-lg + 우상단 3 button과 함께 한 줄 확정). */}
               <button
                 type="button"
                 onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
                 aria-label={`요일: ${weekdays[weekday]}, 클릭해서 변경`}
                 aria-expanded={openPopover === "weekday"}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
                   openPopover === "weekday"
                     ? "border-[#fbbf24] bg-[rgba(245,158,11,0.18)]"
                     : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
                 }`}
               >
                 <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
-                <span className="text-[13px] font-bold text-[#fbbf24]">
+                <span className="text-[13px] font-bold text-[#fbbf24] whitespace-nowrap">
                   {formatChipLabel(weekStartDate, weekday, weekdays)}
                 </span>
                 <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
@@ -452,18 +453,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 onClick={() => setOpenPopover(openPopover === "time" ? null : "time")}
                 aria-label={`수업 시간: ${startTime}부터 ${endTime}까지, 클릭해서 변경`}
                 aria-expanded={openPopover === "time"}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
                   openPopover === "time"
                     ? "border-[var(--color-accent-hover)] bg-white/[0.08]"
                     : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
                 }`}
               >
                 <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
-                <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums">
+                <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums whitespace-nowrap">
                   {startTime} – {endTime}
                 </span>
                 {duration && (
-                  <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5">· {duration}</span>
+                  <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5 whitespace-nowrap">· {duration}</span>
                 )}
                 <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
               </button>
@@ -823,7 +824,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   return (
     <div className="modal-backdrop">
       <div
-        className="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-full max-w-md"
+        className="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-full max-w-lg"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-session-modal-title"
