@@ -197,14 +197,24 @@ export function Sidebar() {
         expanded ? "w-52 items-start" : "w-14 items-center"
       }`}
     >
-      {/* Academy Switcher (replaces the old "CP" logo).
-          Anonymous mode (anonymous-first 정책): 학원 개념 자체가 무의미하므로
-          switcher 영역을 미렌더. 사용자가 학원 만들고 싶으면 로그인 메뉴로 자연 유도. */}
-      {isLoggedIn && (
-      <div
-        className={`relative mb-4 ${expanded ? "w-full px-2" : ""}`}
-        ref={switcherRef}
-      >
+      {/* Academy Switcher + NotificationDropdown wrapper.
+          Anonymous mode (anonymous-first 정책): 학원 박스는 미렌더 — 익명에겐 학원
+          개념 자체가 무의미. 알림 종은 익명도 토스트 받을 수 있으므로 렌더.
+          Expanded: 학원 박스 + 종 inline (학원이 flex-1로 거의 전 너비 차지).
+          Collapsed: 학원 이니셜 위, 종 아래 stack (종은 nav size로 nav menu와 동등). */}
+      <div className={`mb-4 ${expanded ? "w-full px-2" : ""}`}>
+        <div
+          className={
+            expanded
+              ? `flex items-center gap-1.5 ${isLoggedIn ? "" : "justify-end"}`
+              : "flex flex-col items-center gap-1"
+          }
+        >
+          {isLoggedIn && (
+          <div
+            className={`relative ${expanded ? "flex-1 min-w-0" : ""}`}
+            ref={switcherRef}
+          >
         <button
           type="button"
           onClick={() => setShowSwitcher((v) => !v)}
@@ -304,8 +314,11 @@ export function Sidebar() {
             </div>
           </div>
         )}
+          </div>
+          )}
+          <NotificationDropdown size={expanded ? "md" : "nav"} />
+        </div>
       </div>
-      )}
 
       <div className={`flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
         {visibleTopItems.map((item) => (
@@ -316,11 +329,6 @@ export function Sidebar() {
             expanded={expanded}
           />
         ))}
-
-        {/* 알림 히스토리 — nav 끝부분에 위치. 모든 페이지에서 동일 접근. */}
-        <div className={expanded ? "px-1 my-0.5" : "flex justify-center my-0.5"}>
-          <NotificationDropdown />
-        </div>
 
         {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 (강사 nav 바로 아래) */}
         <SidebarLink
