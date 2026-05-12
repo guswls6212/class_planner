@@ -1,8 +1,9 @@
 # design-explorations 라우트 production 노출 가드
 
-> **Status:** Pending (별도 PR 권장)
-> **Trigger:** production 배포 전, SEO/번들 사이즈 우려 발생 시, 또는 사용자가 우연히 mockup URL 접근 보고 시
-> **Owner:** TBD
+> **Status:** ✅ Implemented (2026-05-12) — middleware 404 차단 + matcher 추가. 7 unit tests 통과.
+> **Trigger:** production 배포 전, SEO/번들 사이즈 우려 발생 시, 또는 사용자가 우연히 mockup URL 접근 보고 시 → 충족.
+> **Implementation:** `src/middleware.ts` — `NODE_ENV === "production"` + pathname.startsWith `/design-explorations` 시 `NextResponse(null, { status: 404 })`. matcher에 `/design-explorations/:path*` 추가.
+> **번들 크기 추가 fix:** 별도 후속 작업 (현재는 라우트만 차단, mockup 코드는 prod 번들에 여전히 포함). 우려 명확화 시 webpack `IgnorePlugin` 또는 `pageExtensions` 트릭으로 진행.
 > **Created:** 2026-05-12
 
 ## 1. Problem

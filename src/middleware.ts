@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * 온보딩 가드 + 역할 기반 라우트 가드 Middleware.
+ * 온보딩 가드 + 역할 기반 라우트 가드 + design-explorations production 차단 Middleware.
  *
  * 1. 로그인한 사용자가 데이터 페이지 접근 시 onboarded 쿠키를 확인한다.
  *    쿠키가 없으면 /onboarding으로 리디렉트한다.
  * 2. user_role 쿠키가 'member'면 admin-only 페이지 접근을 차단하고
  *    /schedule?toast=permission_denied 로 보낸다.
+ * 3. production 환경에서 /design-explorations/* 접근 시 404 응답 — dev/mockup
+ *    라우트가 검색 인덱싱·사용자 우연 접근에 노출되지 않도록 차단.
+ *    상세: docs/future-work/design-explorations-production-guard.md
  *
  * 비로그인 사용자는 Anonymous-First 정책에 따라 그대로 통과시킨다.
  *
@@ -17,6 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const GUARDED_PATHS = ["/students", "/subjects", "/teachers", "/schedule", "/teacher-schedule"];
 const ADMIN_ONLY_PATHS = ["/students", "/subjects", "/teachers"];
+const DESIGN_EXPLORATIONS_PREFIX = "/design-explorations";
 
 function isGuardedPath(pathname: string): boolean {
   return GUARDED_PATHS.some(
@@ -39,6 +43,15 @@ function hasSupabaseSession(request: NextRequest): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Production에서 design-explorations mockup 라우트 차단 (404)
+  // dev/test 환경(NODE_ENV !== "production")은 통과 → 사용자 본인 브라우저에서 검토 가능
+  if (
+    process.env.NODE_ENV === "production" &&
+    pathname.startsWith(DESIGN_EXPLORATIONS_PREFIX)
+  ) {
+    return new NextResponse(null, { status: 404 });
+  }
 
   if (!isGuardedPath(pathname)) {
     return NextResponse.next();
@@ -72,5 +85,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/students/:path*", "/subjects/:path*", "/teachers/:path*", "/schedule/:path*", "/teacher-schedule/:path*"],
+  matcher: [
+    "/students/:path*",
+    "/subjects/:path*",
+    "/teachers/:path*",
+    "/schedule/:path*",
+    "/teacher-schedule/:path*",
+    "/design-explorations/:path*",
+  ],
 };
