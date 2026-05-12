@@ -1974,6 +1974,127 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
+## 17. 알림 히스토리 + InfoTrigger fix (P0: 3 / 7) [PR #372]
+
+> SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC + Edge cases).
+> 영향 컴포넌트: `lib/notificationCenter.ts` / `useNotificationCenter` / `NotificationBell` / `NotificationItem` / `NotificationDropdown` / `lib/toast.ts` capture / `Sidebar` + `TopBar` layout-level wire / `InfoTrigger` fix.
+> localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous` 고정).
+
+### S-17.1 토스트 발생 → 사이드바 종 배지 unread 카운트 증가 [P0]
+**Pre:** `/schedule` 진입 + 알림 history 비어있음
+**Steps:**
+1. 브라우저 콘솔에서 토스트 강제 발생:
+   ```js
+   const t = await import('/_next/static/chunks/app/_components/RootProviders.js').catch(() => null);
+   // 또는 직접 storage 주입 (검증 목적):
+   localStorage.setItem(
+     `class_planner_${localStorage.getItem('supabase_user_id') || 'anonymous'}_notification_history`,
+     JSON.stringify([
+       { id: 'e1', level: 'error', message: '테스트 에러', createdAt: Date.now(), read: false },
+       { id: 'w1', level: 'warning', message: '테스트 경고', createdAt: Date.now(), read: false },
+       { id: 's1', level: 'success', message: '테스트 성공', createdAt: Date.now(), read: false },
+     ])
+   );
+   window.dispatchEvent(new CustomEvent('class-planner:notification-center:change'));
+   ```
+2. 사이드바 종 아이콘 관찰
+**Expected:**
+- 종 우상단 빨간 배지에 **"2"** (에러+경고만, success 제외)
+- 배지 `motion-safe:animate-ping` pulse 애니메이션 (감속 모드 OS 설정 시엔 정적)
+- `aria-label="알림 2개"` (DevTools → Accessibility 탭에서 확인)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.2 종 클릭 → 패널 open + 필터/그룹 표시 [P0]
+**Pre:** S-17.1 상태 (mock 데이터 있음)
+**Steps:**
+1. 사이드바 종 클릭
+2. 패널이 사이드바 오른쪽 옆으로 펼쳐지는지 확인
+3. 필터 chip [전체 / 에러 / 경고 / 성공 / 정보] 클릭
+4. "에러" chip 클릭 → 에러 항목만 표시
+**Expected:**
+- 패널 width 420px, max-height 480px, 사이드바 오른쪽 + top 정렬로 펼침
+- 패널 헤더: 좌측 "알림" + "에러 1 · 경고 1" 요약 / 우측 "모두 읽음" + X
+- 필터 chip bar — "전체"가 default active (amber border)
+- 시간 그룹 헤더 "오늘" (uppercase, tracking-wide)
+- 항목 row: level 아이콘(`AlertCircle`/`AlertTriangle`/`CheckCircle2`/`Info`) + 메시지 + chip + relative time
+- 에러/경고 항목: 좌측 amber 세로 bar + bold + "NEW" 라벨
+- success/info 항목: muted gray + NEW 없음
+- 풋터: "총 N건 · 24시간 이내 · 최대 50개 보관"
+- 필터 "에러" 클릭 시 에러 항목만 + 빈 그룹 안 보임
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.3 항목 클릭 read → 배지 카운트 감소 [P0]
+**Pre:** S-17.2 상태 (패널 열려있음, error/warning 2건 NEW)
+**Steps:**
+1. 에러 항목 row 클릭
+2. 사이드바 종 배지 관찰
+3. 패널 헤더 요약 관찰
+**Expected:**
+- 클릭한 항목: amber bar 사라짐, "NEW" 라벨 사라짐, 본문 색 muted gray로 변환, bold 풀림
+- 사이드바 종 배지: 2 → **1**
+- 패널 헤더 요약: "에러 1 · 경고 1" → **"경고 1"** (에러 사라짐)
+- `aria-label="알림 1개"`로 변경
+- localStorage 검증: `JSON.parse(localStorage.getItem('class_planner_..._notification_history'))[0].read === true`
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.4 "모두 읽음" 클릭 → 전체 read [P1]
+**Pre:** S-17.1 상태 (mock 2건+ unread)
+**Steps:**
+1. 종 클릭 → 패널 open
+2. 헤더 우측 "모두 읽음" 클릭
+**Expected:**
+- 모든 NEW 라벨 + amber bar 사라짐
+- 배지 자체 사라짐 (unread=0)
+- 패널은 그대로 열려있음
+- 헤더 요약 영역 사라짐 (에러+경고 unread 0이므로)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.5 항목 hover → X 클릭 dismiss [P1]
+**Pre:** S-17.1 상태
+**Steps:**
+1. 종 클릭 → 패널 open
+2. 임의 항목 row에 마우스 hover
+3. 우측에 노출되는 X 버튼 클릭
+4. dismiss된 항목이 사라지는지 확인
+**Expected:**
+- hover 전: X 버튼 opacity 0 (보이지 않음)
+- hover 시: X 버튼 opacity 100 (즉시 노출)
+- X 클릭 시:
+  - 해당 row 패널에서 즉시 제거
+  - 해당 항목이 error/warning이었으면 배지 카운트 -1
+  - localStorage에서도 entry 제거 (`getNotifications()` 호출 시 1건 감소)
+- 패널은 그대로 열려있음
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.6 InfoTrigger 동심원 2겹 → 1겹 fix 확인 [P1]
+**Pre:** `/schedule` 진입
+**Steps:**
+1. 우상단 헤더 "i" 아이콘 (PDF 가이드 트리거) 시각 관찰
+2. (옵션) DevTools Inspector로 button class 확인
+**Expected:**
+- "i" 아이콘이 **1겹의 원** (lucide Info SVG 자체 원만)
+- button className에 `rounded-full border ...` 없음 → 외곽 원 자체 없음
+- icon size 14 (sm) / 18 (md) — 이전 11/14에서 커짐
+- hover 시 bg subtle highlight (`hover:bg-[var(--color-overlay-light)]`)
+- 클릭 → PdfGuideModal 열림 (기존 동작 회귀 없음)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-17.7 모바일 viewport (375×667) TopBar 종 + 패널 [P2]
+**Pre:** DevTools Device Mode 375×667, `/schedule` 진입 + S-17.1 mock 주입
+**Steps:**
+1. TopBar 우측 종 아이콘 표시 확인
+2. 종 클릭 → 패널 열림
+3. 패널 위치 + width 확인
+**Expected:**
+- TopBar 종이 도움말 "?" 앞에 위치 (compact mode = w-8 h-8)
+- 종 클릭 → 패널이 TopBar 아래 (`top-full mt-2 right-0`)로 펼침
+- 패널 width = `calc(100vw - 32px)` 최대 420px → 모바일에서 거의 전체 너비
+- 사이드바는 안 보임 (md:hidden)
+- 항목 클릭/필터/dismiss 모두 데스크톱과 동일 동작
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
 ## Edge Cases (P0: 0 / 10)
 
 ### E-1. 학생 0명 + 수업 추가 시도 [P2]
@@ -2074,3 +2195,4 @@ Issue 등록 형식:
 - 2026-05-07 (5): **Hybrid C 모델 채택** — 매 PR 60분 UAT 가 1인 환경 부담 + 무용지물 → 자동 e2e + Claude AI 검증 (Playwright MCP / computer-use) 으로 분산. 사용자 직접 검증은 두 모드만: **Smoke** (10-15분, 매 PR 직전, 사본 X, 핵심 5 시나리오) + **Release UAT** (150분, 분기 1회, 사본 commit). Core/Extended/Full 3-모드 → Smoke/Release 2-모드. 그린라이트 기준 분리 (main 머지: Smoke + 자동 검증 / Release: P0 33 전체). §0 매 사이클 흐름 두 모드 분기 + §3 결과 기록 두 모드 분기. 사용자 결정 사유: \"AI 가 더 빠른데 사용자가 직접 하는 의미?\" 에 대한 답 — 자동화 가능 영역은 모두 자동, 사용자 직접은 시각/UX 직감 영역만.
 - 2026-05-07 (6): `bash scripts/uat-new.sh release` 모드 지원 — Hybrid C 채택 시 스크립트가 legacy `core|extended|full` 만 받아 `release` 입력 시 ERROR 발생. 사용자 지적: \"release 랑 full 같은 거면 하나만 두는게 좋지않아?\" → 정확. `release` 하나로 통일 (의미상 시점 기준이 더 정확). legacy `core|extended|full` 입력 시 deprecated WARN 출력 후 `release` 자동 alias. md 의 `bash scripts/uat-new.sh core (또는 extended / full)` → `release` 단일로 갱신, branch 이름 예시 `chore/uat-...-core` → `-release` 갱신.
 - 2026-05-07 (7): **UAT fresh-start default** — 사용자 비판: "옵션으로 한 이유? 옵션없이 전부 신규사용자로 만들게 하면 되지않나?" → 정확. `naming-consolidation` 메모리 또 위반할 뻔. 매 UAT 사이클 fresh-start 가 default — `uat:teardown` 자체가 academy 까지 cleanup (이전엔 academy 보존). `cleanupUatUserData` 신규 함수 (fresh-start) + 기존 `cleanupAcademyScopedDataForUser` (scope only — seed 멱등 재시드용) 책임 분리. `setup-uat-test-user.ts` 단순화 — user 만 생성 (academy 부분 제거). `uat-seed.ts` 강화 — academy 없으면 자동 생성. UAT 문서 §0 매 사이클 (`uat:teardown` 단계 추가) / §5 인증 셋업 (setup user 만 + 매 사이클 흐름 옵션 a/b) / S-1.5 Pre (재현 방법 명시) 갱신. 신규/기존 user 분기는 매 사이클 단일 user reset 으로 자연 진행 (사이클 안에 신규→기존 전환). invite 시나리오 (S-10.6/10.7) 검증 시점에 별도 user (`UAT_TEST_INVITEE_EMAIL`) 추가 future work.
+- 2026-05-12: **§17 알림 히스토리 + InfoTrigger fix 신설** (PR #372) — 7개 시나리오 (S-17.1~17.7), P0 3개 (배지 카운트 / 패널 open + 필터·그룹 / 항목 클릭 read). 영향: `lib/notificationCenter.ts` ring buffer + `useNotificationCenter` hook + `NotificationBell` (atom) + `NotificationItem` / `NotificationDropdown` (molecules) + `lib/toast.ts` capture 통합 + `Sidebar`/`TopBar` layout-level wire + `InfoTrigger` 동심원 2겹→1겹 fix. localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous`). 회귀 가드: 22 unit + 9 RTL. spec SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC). 총 P0: 33 → 36.

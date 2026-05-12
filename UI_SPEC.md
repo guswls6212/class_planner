@@ -363,6 +363,8 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `Input` | `Input.tsx` | `type`, `value`, `onChange`, `placeholder` | 공통 텍스트 입력 |
 | `Label` | `Label.tsx` | `htmlFor`, `children` | 폼 레이블 |
 | `SegmentedButton` | `SegmentedButton.tsx` | `options: Option<T>[]` (`label`, `value`, optional `mobileLabel`), `value: T`, `onChange` | 3-N개 탭/모드 선택 atom. `mobileLabel` 옵션 — `<640px`에서 짧은 라벨로 자동 swap (`<span hidden sm:inline>{label}</span>` + `<span sm:hidden>{mobileLabel}</span>` 패턴, useMediaQuery 회피로 hydration mismatch 방지). PR #238 atoms로 이동. 사용처: `/share/{token}` 일/주/월, `/schedule` 뷰 전환 |
+| `InfoTrigger` | `InfoTrigger.tsx` | `label`, `onClick`, `size: sm\|md` | 정보 아이콘 버튼. lucide Info SVG 자체 원만 사용 (button border 제거 — 동심원 2겹 회피, PR #372). `sm`(24×24, icon 14) / `md`(32×32, icon 18) |
+| `NotificationBell` | `NotificationBell.tsx` | `unread`, `pulse?`, `onClick`, `active?`, `compact?` | 헤더 알림 트리거. unread 배지(에러+경고만) + `motion-safe:animate-ping` pulse. NotificationDropdown 안에서만 사용. (PR #372) |
 | `StudentListItem` | `StudentListItem.tsx` | `student`, `isSelected`, `onClick`, `onDelete` | 학생 목록 단일 아이템. 선택/삭제 기능 |
 | `SubjectListItem` | `SubjectListItem.tsx` | `subject`, `isSelected`, `onSelect`, `onDelete`, `onEdit` | 과목 목록 단일 아이템. 색상 도트 + 편집/삭제 |
 | `SyncStatusDot` | `SyncStatusDot.tsx` | `userId?: string \| null` | Sync 상태 시각화 점. ScheduleHeader 옆에 렌더. userId 있으면 활성 (sync 진행/성공/실패), null이면 회색 유휴. PR #237 이후 모바일에서 라벨도 함께 표시 (이전 `hidden sm:block` 제거) |
@@ -374,6 +376,8 @@ OnboardingPage (src/app/onboarding/page.tsx)
 |----------|------|-----------|------|
 | `ConfirmModal` | `ConfirmModal.tsx` | `isOpen`, `title`, `message`, `onConfirm`, `onCancel` | 삭제 확인 등 이진 선택 모달 |
 | `DataConflictModal` | `DataConflictModal.tsx` | `localData`, `serverData`, `onSelectServer`, `onSelectLocal`, `isMigrating?`, `migrationError?` | 로그인 시 로컬/서버 데이터 충돌 해결 모달. 데스크탑: 사이드바이사이드 카드 + 라디오. 모바일: 탭. 섹션(학생/과목/수업) 접기/펼치기 |
+| `NotificationDropdown` | `NotificationDropdown.tsx` | `compact?` | 알림 히스토리 패널. `NotificationBell` trigger + 헤더 요약 + 필터 chip(전체/에러/경고/성공/정보) + 시간 그룹(오늘/어제/이전) + `NotificationItem` 리스트 + 풋터 카운트. outside-click·ESC 닫기. Sidebar(데스크톱) + TopBar(모바일 `compact`) 둘 다에서 layout-level 마운트. spec SSOT: [`docs/notification-history-spec.md`](docs/notification-history-spec.md). (PR #372) |
+| `NotificationItem` | `NotificationItem.tsx` | `entry`, `now`, `onMarkRead`, `onDismiss` | 알림 히스토리 단일 항목. level 아이콘(AlertCircle/AlertTriangle/CheckCircle2/Info) + 메시지 + chip + relative time. unread + error/warning만 좌측 amber bar + NEW + bold. hover 시 우측 X. (PR #372) |
 | `DropZone` | `DropZone.tsx` | `onDrop`, `weekday`, `time` | 시간표 셀의 드롭 수신 영역 |
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
 | `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
