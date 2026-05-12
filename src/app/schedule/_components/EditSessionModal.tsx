@@ -78,6 +78,45 @@ interface EditSessionModalProps {
   onCancel: () => void;
   onSave: (weekday: number) => Promise<void> | void;
   onSubjectColorChange?: (subjectId: string, newColor: string) => void;
+  /**
+   * 현재 주 시작 날짜 (YYYY-MM-DD, 월요일). 헤더 chip에 "5월 15일 (목)" 식 표시 + 캘린더 popover의
+   * 선택 날짜 강조에 사용. 미지정 시 캘린더는 weekday-only (이전 동작 호환).
+   */
+  weekStartDate?: string;
+}
+
+// ── 캘린더 helper (Variant V3: 1달 캘린더) ──────────────────────────
+function parseWeekStart(weekStartDate: string | undefined): Date | null {
+  if (!weekStartDate) return null;
+  try {
+    // KST 기준 정오로 anchor — timezone 경계 회피
+    return new Date(`${weekStartDate}T12:00:00+09:00`);
+  } catch {
+    return null;
+  }
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(d.getDate() + n);
+  return r;
+}
+
+/** JS getDay()(일=0) → class-planner weekday (월=0, …, 일=6). */
+function getWeekdayFromDate(d: Date): number {
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function formatChipLabel(
+  weekStartDate: string | undefined,
+  weekday: number,
+  weekdaysLabels: string[],
+): string {
+  const week = parseWeekStart(weekStartDate);
+  if (!week) return weekdaysLabels[weekday] ?? "";
+  const d = addDays(week, weekday);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekdaysLabels[weekday]})`;
 }
 
 const DEFAULT_COLOR = "#6366f1";
@@ -125,6 +164,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   onCancel,
   onSave,
   onSubjectColorChange,
+  weekStartDate,
 }) => {
   const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -234,6 +274,25 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // 한 번에 하나만 열림. chip 클릭 toggle, 다른 chip 클릭 시 자동 close.
   const [openPopover, setOpenPopover] = useState<"weekday" | "time" | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // ── 캘린더 (V3 month) ─────────────────────────────────────────────
+  const weekStartObj = useMemo(() => parseWeekStart(weekStartDate), [weekStartDate]);
+  // 선택된 날짜 = 이번 주의 weekday 위치 (다른 주는 시각 강조 X)
+  const selectedDate = useMemo(
+    () => (weekStartObj ? addDays(weekStartObj, weekday) : null),
+    [weekStartObj, weekday],
+  );
+  // viewMonth — 캘린더가 보여줄 달. open 때마다 selected의 달로 초기화.
+  const [viewMonth, setViewMonth] = useState<Date>(() =>
+    selectedDate ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1) : new Date(),
+  );
+  // popover open 또는 weekday 변경 시 viewMonth를 selected 달로 sync
+  useEffect(() => {
+    if (openPopover === "weekday" && selectedDate) {
+      setViewMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPopover]);
 
   // popover 외부 클릭 시 닫기
   useEffect(() => {
@@ -368,7 +427,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 기존 read-only 카드를 클릭 가능 chip + popover로 교체. body의 요일/시간
                 select 제거 (헤더가 SSOT). 한 번에 하나의 popover만 열림. */}
             <div className="inline-flex items-center mt-2 gap-1.5 relative" ref={popoverRef}>
-              {/* Weekday chip */}
+              {/* Weekday chip — chip label은 weekStartDate 있으면 "X월 Y일 (요일)" 형식. */}
               <button
                 type="button"
                 onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
@@ -381,7 +440,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 }`}
               >
                 <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
-                <span className="text-[13px] font-bold text-[#fbbf24]">{weekdays[weekday]}</span>
+                <span className="text-[13px] font-bold text-[#fbbf24]">
+                  {formatChipLabel(weekStartDate, weekday, weekdays)}
+                </span>
                 <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
               </button>
 
@@ -407,37 +468,139 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
               </button>
 
-              {/* Weekday popover */}
+              {/* Weekday popover — V3 month calendar (사용자 결정 2026-05-12).
+                  weekStartDate prop이 있으면 month grid. 없으면 fallback으로 7-grid. */}
               {openPopover === "weekday" && (
                 <div
                   className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
-                  style={{ minWidth: 240 }}
+                  style={{ minWidth: weekStartObj ? 280 : 240 }}
                 >
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
-                    요일 선택
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {weekdays.map((label, idx) => {
-                      const isActive = idx === weekday;
-                      return (
+                  {weekStartObj ? (
+                    <>
+                      {/* Month navigation header */}
+                      <div className="flex items-center justify-between mb-2">
                         <button
-                          key={idx}
                           type="button"
-                          onClick={() => {
-                            setWeekday(idx);
-                            setOpenPopover(null);
-                          }}
-                          className={`h-9 rounded-lg text-[13px] font-semibold transition-colors ${
-                            isActive
-                              ? "bg-[#fbbf24] text-[var(--color-admin-ink)]"
-                              : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]"
-                          }`}
+                          onClick={() =>
+                            setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))
+                          }
+                          aria-label="이전 달"
+                          className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
                         >
-                          {label}
+                          ‹
                         </button>
-                      );
-                    })}
-                  </div>
+                        <div className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+                          {viewMonth.getFullYear()}년 {viewMonth.getMonth() + 1}월
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))
+                          }
+                          aria-label="다음 달"
+                          className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                        >
+                          ›
+                        </button>
+                      </div>
+
+                      {/* Weekday header */}
+                      <div className="grid grid-cols-7 gap-0.5 mb-1">
+                        {weekdays.map((label) => (
+                          <div
+                            key={label}
+                            className="text-[10px] text-[var(--color-text-muted)] text-center py-1"
+                          >
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Month grid cells */}
+                      <div className="grid grid-cols-7 gap-0.5">
+                        {(() => {
+                          const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+                          const firstWeekday = getWeekdayFromDate(firstDay);
+                          const daysInMonth = new Date(
+                            viewMonth.getFullYear(),
+                            viewMonth.getMonth() + 1,
+                            0,
+                          ).getDate();
+                          const cells: { date: Date | null; label: number | null }[] = [];
+                          for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, label: null });
+                          for (let day = 1; day <= daysInMonth; day++) {
+                            cells.push({
+                              date: new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day),
+                              label: day,
+                            });
+                          }
+                          while (cells.length < 42) cells.push({ date: null, label: null });
+
+                          const today = new Date();
+                          const todayString = today.toDateString();
+                          const selectedString = selectedDate?.toDateString();
+
+                          return cells.map((cell, idx) => {
+                            if (!cell.date) return <div key={idx} className="h-8" />;
+                            const isToday = cell.date.toDateString() === todayString;
+                            const isSelected =
+                              selectedString && cell.date.toDateString() === selectedString;
+                            let cls = "text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]";
+                            if (isSelected) {
+                              cls = "bg-[#fbbf24] text-[var(--color-admin-ink)] font-bold";
+                            } else if (isToday) {
+                              cls = "ring-1 ring-[#fbbf24] text-[#fbbf24] hover:bg-[var(--color-overlay-light)]";
+                            }
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setWeekday(getWeekdayFromDate(cell.date!));
+                                  setOpenPopover(null);
+                                }}
+                                className={`h-8 rounded text-[12px] transition-colors ${cls}`}
+                              >
+                                {cell.label}
+                              </button>
+                            );
+                          });
+                        })()}
+                      </div>
+                      <div className="mt-2 text-[10px] text-[var(--color-text-muted)] text-center">
+                        다른 날짜 클릭 → 그 요일로 적용 (주간 반복)
+                      </div>
+                    </>
+                  ) : (
+                    // Fallback — weekStartDate prop 없을 때 기존 7-grid
+                    <>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                        요일 선택
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {weekdays.map((label, idx) => {
+                          const isActive = idx === weekday;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setWeekday(idx);
+                                setOpenPopover(null);
+                              }}
+                              className={`h-9 rounded-lg text-[13px] font-semibold transition-colors ${
+                                isActive
+                                  ? "bg-[#fbbf24] text-[var(--color-admin-ink)]"
+                                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -491,8 +654,39 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         </div>
       </div>
 
-      {/* Form body */}
+      {/* Form body — 과목 → 강사 → 학생 순 (Variant C 채택, 2026-05-12).
+          학생 picker가 본문 비중 가장 큼 → 마지막에 배치해 위 두 필수 메타가 항상 위에 보임. */}
       <div className="px-5 py-4 flex flex-col gap-4 max-h-[55vh] overflow-y-auto">
+        {/* Subject */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="edit-modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            과목 <span className="text-[var(--color-danger)]">*</span>
+          </label>
+          <select
+            id="edit-modal-subject"
+            className={fieldClass}
+            value={tempSubjectId}
+            onChange={(e) => onSubjectChange(e.target.value)}
+          >
+            <option value="">과목 선택</option>
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Teacher (always shown, pills) */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
+          <TeacherPillPicker
+            teachers={teachers}
+            selectedTeacherId={tempTeacherId || null}
+            onSelect={(id) => onTeacherChange(id ?? null)}
+            subjectId={tempSubjectId || null}
+            subjectName={currentSubject?.name}
+          />
+        </div>
+
         {/* Students — variant D: Combobox + pinned-open dropdown.
             검색 안 해도 미선택 학생 리스트가 항상 보임. 검색어 시 즉시 필터.
             검색 결과 0 + 검색어 있을 때만 "+ 새 학생으로 추가" CTA 노출. */}
@@ -573,36 +767,6 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             selectedStudents.length > 0 && (
               <EmptyState>더 추가할 학생이 없습니다</EmptyState>
             )}
-        </div>
-
-        {/* Subject */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="edit-modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            과목 <span className="text-[var(--color-danger)]">*</span>
-          </label>
-          <select
-            id="edit-modal-subject"
-            className={fieldClass}
-            value={tempSubjectId}
-            onChange={(e) => onSubjectChange(e.target.value)}
-          >
-            <option value="">과목 선택</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Teacher (always shown, pills) */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
-          <TeacherPillPicker
-            teachers={teachers}
-            selectedTeacherId={tempTeacherId || null}
-            onSelect={(id) => onTeacherChange(id ?? null)}
-            subjectId={tempSubjectId || null}
-            subjectName={currentSubject?.name}
-          />
         </div>
 
         {/* 요일/시간 select 제거 — 헤더 chip이 SSOT (2026-05-12 Variant C 채택).

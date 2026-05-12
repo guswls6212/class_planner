@@ -33,6 +33,11 @@
 | AC-12 | 색 선택 panel (헤더 우측 colorPanel) 그대로 유지 — `IconButton variant="tinted"` + `PRESET_COLORS` 12색 swatch + 직접 색상 선택 fallback. |
 | AC-13 | 동명이인 부제 — `StudentChip`의 `metaRight` + 부제 helper(`formatStudentSubtitleExceptGrade`) 그대로 (ADR-015). |
 | AC-14 | 모바일 viewport(`!isDesktop`)에서 `BottomSheet`로 wrap되는 흐름 유지. 헤더 chip + popover도 모바일에서 동작. |
+| AC-15 | body 순서: **과목 → 강사 → 학생** (Variant C 결정). 학생 picker가 본문 비중 가장 크므로 마지막. 위 두 필수 메타가 항상 위에 보임. |
+| AC-16 | 헤더 weekday chip 라벨: `weekStartDate` prop 있으면 **"X월 Y일 (요일)"** 형식. 없으면 fallback으로 "요일"만. |
+| AC-17 | weekday chip 클릭 → **V3 month calendar popover** (`weekStartDate` 있을 때). 7-row × 7-col grid + 이전/다음 달 navigation. weekStartDate 없으면 fallback 7-grid. |
+| AC-18 | calendar 시각: **선택된 날짜만** 진한 amber(주중 1개), **오늘**은 amber ring (옅게). 같은 weekday 다른 날짜는 강조 X. |
+| AC-19 | calendar의 임의 날짜 클릭 → 그 날의 weekday만 추출해 `setWeekday(weekday)`. schedule paradigm(주간 반복) 보존 — 다른 주/달 날짜 선택해도 weekday만 적용. |
 
 ## 3. 변경 파일
 

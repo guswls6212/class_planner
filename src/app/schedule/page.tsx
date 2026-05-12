@@ -2346,6 +2346,7 @@ function SchedulePageContent(): JSX.Element {
         onTeacherChange={(teacherId) => setTempTeacherId(teacherId)}
         weekdays={weekdays}
         defaultWeekday={editModalData?.weekday ?? 0}
+        weekStartDate={currentWeekStart}
         startTime={editModalTimeData.startTime}
         endTime={editModalTimeData.endTime}
         onStartTimeChange={handleEditStartTimeChange}

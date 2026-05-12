@@ -2095,7 +2095,7 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
-## 18. EditSessionModal 재설계 + V1 validation (P0: 3 / 6) [후속 PR]
+## 18. EditSessionModal 재설계 + V1 validation (P0: 4 / 8) [후속 PR]
 
 > SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md).
 > 영향: `EditSessionModal.tsx` 헤더 chip + body flex column + V1-disabled validation + handleSave 학생 0명 가드.
@@ -2159,6 +2159,33 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 - TeacherPillPicker 동작 그대로 (담당/기타 그룹화 + 색 dot)
 - 학생 검색 + filtered list + 선택 chip 패턴 그대로
 - 동명이인 부제(ADR-015) 그대로
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.7 body 순서: 과목 → 강사 → 학생 [P1]
+**Pre:** 임의 세션 모달 open
+**Steps:**
+1. body 영역에서 위→아래로 필드 순서 확인
+**Expected:**
+- 1) 과목 select (맨 위, `*` 필수)
+- 2) 강사 (TeacherPillPicker — 담당/기타 그룹)
+- 3) 학생 picker (가장 큰 비중, 검색 + chips + dropdown)
+- 학생이 마지막에 있어 위 두 메타가 스크롤 시에도 잘 보임
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-18.8 헤더 chip "X월 Y일 (요일)" + V3 month calendar [P0]
+**Pre:** 임의 세션 모달 open. (schedule page가 weekStartDate prop 전달 → 현재 주 기준 날짜 표시)
+**Steps:**
+1. 헤더 요일 chip의 label이 `5월 15일 (목)` 같은 형식인지 확인
+2. chip 클릭 → 월별 캘린더 popover open
+3. 캘린더 상단에 `2026년 5월` + 이전/다음 달(`‹` `›`) 버튼
+4. 선택된 weekday의 이번 주 날짜 1개만 진한 amber, 오늘은 amber ring
+5. 다른 날짜(예: 5월 20일 수) 클릭
+**Expected:**
+- chip label에 월/일/요일 모두 표시 (weekStartDate prop 전달 시)
+- popover에 표준 month grid (7요일 header + 6 weeks × 7 col cells)
+- `‹` `›`로 다른 달 navigation
+- 5월 20일 클릭 → weekday=2(수)로 변경 + popover 닫힘 + chip label 갱신 (`5월 13일 (수)` — 이번 주의 수요일)
+- schedule 저장 시 그 weekday로 세션 이동 (주간 반복 paradigm 유지)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-18.6 색 선택 + 모바일 BottomSheet 회귀 0 [P2]
@@ -2277,3 +2304,4 @@ Issue 등록 형식:
 - 2026-05-07 (7): **UAT fresh-start default** — 사용자 비판: "옵션으로 한 이유? 옵션없이 전부 신규사용자로 만들게 하면 되지않나?" → 정확. `naming-consolidation` 메모리 또 위반할 뻔. 매 UAT 사이클 fresh-start 가 default — `uat:teardown` 자체가 academy 까지 cleanup (이전엔 academy 보존). `cleanupUatUserData` 신규 함수 (fresh-start) + 기존 `cleanupAcademyScopedDataForUser` (scope only — seed 멱등 재시드용) 책임 분리. `setup-uat-test-user.ts` 단순화 — user 만 생성 (academy 부분 제거). `uat-seed.ts` 강화 — academy 없으면 자동 생성. UAT 문서 §0 매 사이클 (`uat:teardown` 단계 추가) / §5 인증 셋업 (setup user 만 + 매 사이클 흐름 옵션 a/b) / S-1.5 Pre (재현 방법 명시) 갱신. 신규/기존 user 분기는 매 사이클 단일 user reset 으로 자연 진행 (사이클 안에 신규→기존 전환). invite 시나리오 (S-10.6/10.7) 검증 시점에 별도 user (`UAT_TEST_INVITEE_EMAIL`) 추가 future work.
 - 2026-05-12: **§17 알림 히스토리 + InfoTrigger fix 신설** (PR #372) — 7개 시나리오 (S-17.1~17.7), P0 3개 (배지 카운트 / 패널 open + 필터·그룹 / 항목 클릭 read). 영향: `lib/notificationCenter.ts` ring buffer + `useNotificationCenter` hook + `NotificationBell` (atom) + `NotificationItem` / `NotificationDropdown` (molecules) + `lib/toast.ts` capture 통합 + `Sidebar`/`TopBar` layout-level wire + `InfoTrigger` 동심원 2겹→1겹 fix. localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous`). 회귀 가드: 22 unit + 9 RTL. spec SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC). 총 P0: 33 → 36.
 - 2026-05-12 (2): **§18 EditSessionModal 재설계 + V1 validation 신설** — 6개 시나리오, P0 3개 (학생 0명 저장 차단 / 요일 chip popover / 시간 chip popover). 영향: `EditSessionModal.tsx` 헤더 read-only 카드 → chip + popover (요일/시간), body weekday/time select 제거, footer V1-disabled validation + helper text, handleSave 학생 0명 가드. 기존 picker(`TeacherPillPicker`/`StudentChip`/colorPanel) 100% 보존. 회귀 가드: 45 RTL passed (10 기존 갱신 + 5 신규 validation). spec SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md) (14 AC). 총 P0: 36 → 39.
+- 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
