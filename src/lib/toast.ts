@@ -2,6 +2,11 @@
  * 전역 toast 래퍼.
  * sonner import는 이 파일에서만 허용 — 코드베이스 전체는 이 래퍼를 경유한다.
  * import { showError } from '@/lib/toast'
+ *
+ * 모든 wrapper는 notificationCenter ring buffer에도 자동 push — 사용자가 4초 뒤
+ * 사라진 토스트를 알림 히스토리(헤더 종 아이콘)에서 재조회 가능.
+ * undo/action 토스트도 push되며, action retract(undo 실행 시 ring buffer 제거)는
+ * Phase 2에서 검토 (현재는 모든 발생을 보존 — 운영자가 어떤 작업이 일어났는지 추적 가능).
  */
 import { createElement } from "react";
 import { toast } from "sonner";
@@ -11,6 +16,7 @@ import {
 } from "../components/atoms/ToastContent";
 import { UndoToastContent } from "../components/atoms/UndoToastContent";
 import { ActionToastContent } from "../components/atoms/ActionToastContent";
+import { pushNotificationForCurrentUser } from "./notificationCenter";
 
 const DEFAULT_DURATION_MS = 4000;
 
@@ -19,6 +25,7 @@ function showVariant(variant: ToastVariant, message: string) {
     () => createElement(ToastContent, { message, variant }),
     { duration: DEFAULT_DURATION_MS },
   );
+  pushNotificationForCurrentUser(variant, message);
 }
 
 export function showToast(
@@ -56,6 +63,8 @@ export function showUndoToast(opts: {
       }),
     { duration },
   );
+  // undo 토스트는 "info" level로 기록 — 실제 액션 추적이 목적이지 사용자 attention 필요 X
+  pushNotificationForCurrentUser("info", opts.message);
 }
 
 /**
@@ -96,7 +105,7 @@ export function showActionToast(opts: {
   durationMs?: number;
 }): string | number {
   const duration = opts.durationMs ?? 10000;
-  return toast.custom(
+  const id = toast.custom(
     (toastId) =>
       createElement(ActionToastContent, {
         message: opts.message,
@@ -107,4 +116,6 @@ export function showActionToast(opts: {
       }),
     { duration },
   );
+  pushNotificationForCurrentUser(opts.variant ?? "info", opts.message);
+  return id;
 }

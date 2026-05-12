@@ -66,6 +66,8 @@ migration/backups/
 
 # Local scratch — orphaned worktrees, screenshots, throwaway artifacts
 .scratch/
+screenshots/
+tmp/
 
 # Supabase CLI temp files
 supabase/.temp/
