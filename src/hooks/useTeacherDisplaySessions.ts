@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { Enrollment, Session } from "../lib/planner";
-import { logger } from "../lib/logger";
+import { warnInvalidSession } from "./_sessionValidationLogger";
 import type { DisplaySessions } from "../types/scheduleTypes";
 
 /**
@@ -20,7 +20,7 @@ export const useTeacherDisplaySessions = (
         session.weekday === undefined ||
         session.weekday === null
       ) {
-        logger.warn("불완전한 세션 필터링됨 (필수 속성 누락)", {
+        warnInvalidSession("missing-fields", {
           sessionId: session.id,
         });
         return false;
@@ -31,7 +31,7 @@ export const useTeacherDisplaySessions = (
         !Array.isArray(session.enrollmentIds) ||
         session.enrollmentIds.length === 0
       ) {
-        logger.warn("불완전한 세션 필터링됨 (enrollmentIds 누락)", {
+        warnInvalidSession("missing-enrollment-ids", {
           sessionId: session.id,
         });
         return false;
@@ -42,7 +42,7 @@ export const useTeacherDisplaySessions = (
       );
 
       if (validEnrollments.length === 0) {
-        logger.warn("불완전한 세션 필터링됨 (유효한 enrollment 없음)", {
+        warnInvalidSession("no-valid-enrollment", {
           sessionId: session.id,
         });
         return false;
@@ -53,7 +53,6 @@ export const useTeacherDisplaySessions = (
 
     const validSessions = sessions.filter(isValidSession);
 
-    // teacherId로 필터링 (null이면 전체)
     const filtered = teacherId
       ? validSessions.filter((s) => s.teacherId === teacherId)
       : validSessions;

@@ -35,7 +35,7 @@ vi.mock("../../../../../application/services/ServiceFactory", () => ({
           subjectId: "subject-1",
           startsAt: "09:00",
           endsAt: "10:00",
-          enrollmentIds: [],
+          enrollmentIds: ["e-1"],
           weekday: 0,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -124,7 +124,7 @@ describe("Sessions ID API Routes", () => {
           subjectId: "subject-1",
           startsAt: "09:00",
           endsAt: "10:00",
-          enrollmentIds: [],
+          enrollmentIds: ["e-1"],
           weekday: 0,
         }),
       }
@@ -147,7 +147,7 @@ describe("Sessions ID API Routes", () => {
           subjectId: "subject-1",
           startsAt: "09:00",
           endsAt: "10:00",
-          enrollmentIds: [],
+          enrollmentIds: ["e-1"],
           weekday: 0,
         }),
       }
@@ -174,7 +174,7 @@ describe("Sessions ID API Routes", () => {
           subjectId: "subject-1",
           startsAt: "09:00",
           endsAt: "10:00",
-          enrollmentIds: [],
+          enrollmentIds: ["e-1"],
           weekday: 0,
         }),
       }
