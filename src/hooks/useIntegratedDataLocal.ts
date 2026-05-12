@@ -5,7 +5,7 @@
  * debounce로 서버와 동기화하는 초고속 통합 데이터 관리 훅입니다.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   syncEnrollmentCreateAsync,
   syncSessionDelete,
@@ -25,7 +25,6 @@ import {
   addPendingDelete,
   getActivePendingDeletes,
   getExpiredPendingDeletes,
-  getPendingDeleteIds,
   isPendingDelete,
   removePendingDelete,
 } from "../lib/pendingDeletes";
@@ -199,106 +198,18 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     };
   }, [loadDataFromLocal]);
 
-  // ===== 멤버 부트스트랩 동기화 =====
-  // 새 기기/브라우저에서 처음 로그인한 사용자(특히 member 역할)는
-  // localStorage가 비어 있으므로 시간표가 텅 비어 보인다. 본인 학원에 이미
-  // 등록된 학생/과목을 1회 서버에서 가져와 localStorage에 채워 둔다.
-  // owner/admin 사용자에게는 동작이 동일하지만, 평소 로컬 우선 흐름에서
-  // 데이터가 이미 있으므로 비용은 0.
-  const bootstrapAttempted = useRef(false);
-
-  useEffect(() => {
-    if (bootstrapAttempted.current) return;
-    if (typeof window === "undefined") return;
-
-    const userId = localStorage.getItem("supabase_user_id");
-    if (!userId) return;
-
-    const localData = getClassPlannerData();
-    const studentsEmpty = !localData.students || localData.students.length === 0;
-    const subjectsEmpty = !localData.subjects || localData.subjects.length === 0;
-    if (!studentsEmpty && !subjectsEmpty) return;
-
-    bootstrapAttempted.current = true;
-
-    Promise.allSettled([
-      fetch(`/api/students?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
-      fetch(`/api/subjects?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
-      fetch(`/api/teachers?userId=${encodeURIComponent(userId)}`).then((r) => r.json()),
-    ])
-      .then(([studentsRes, subjectsRes, teachersRes]) => {
-        const updates: Partial<IntegratedData> = {};
-
-        if (
-          studentsEmpty &&
-          studentsRes.status === "fulfilled" &&
-          studentsRes.value?.success &&
-          Array.isArray(studentsRes.value.data) &&
-          studentsRes.value.data.length > 0
-        ) {
-          // pendingDeletes 필터 — 5초 deferred-commit 진행 중인 학생은 부트스트랩에서 제외
-          const pendingStudentDeleteIds = getPendingDeleteIds("student");
-          const fetched = studentsRes.value.data as Student[];
-          updates.students =
-            pendingStudentDeleteIds.size > 0
-              ? fetched.filter((s) => !pendingStudentDeleteIds.has(s.id))
-              : fetched;
-        }
-        if (
-          subjectsEmpty &&
-          subjectsRes.status === "fulfilled" &&
-          subjectsRes.value?.success &&
-          Array.isArray(subjectsRes.value.data) &&
-          subjectsRes.value.data.length > 0
-        ) {
-          // pendingDeletes 필터 — students와 동일
-          const pendingSubjectDeleteIds = getPendingDeleteIds("subject");
-          const fetched = subjectsRes.value.data as Subject[];
-          updates.subjects =
-            pendingSubjectDeleteIds.size > 0
-              ? fetched.filter((s) => !pendingSubjectDeleteIds.has(s.id))
-              : fetched;
-        }
-        // teachers는 보너스 — admin-only 페이지가 막혀도 강사 컬러/이름이
-        // 시간표 색상 모드에 필요하다.
-        if (
-          teachersRes.status === "fulfilled" &&
-          teachersRes.value?.success &&
-          Array.isArray(teachersRes.value.data) &&
-          teachersRes.value.data.length > 0 &&
-          (!localData.teachers || localData.teachers.length === 0)
-        ) {
-          // pendingDeletes 필터 — 학생/과목과 동일
-          const pendingTeacherDeleteIds = getPendingDeleteIds("teacher");
-          const fetched = teachersRes.value.data as Teacher[];
-          updates.teachers =
-            pendingTeacherDeleteIds.size > 0
-              ? fetched.filter((t) => !pendingTeacherDeleteIds.has(t.id))
-              : fetched;
-        }
-
-        if (Object.keys(updates).length === 0) {
-          logger.debug("useIntegratedDataLocal - 부트스트랩: 가져온 데이터 없음");
-          return;
-        }
-
-        const result = updateClassPlannerData(updates);
-        if (result.success) {
-          logger.info("useIntegratedDataLocal - 부트스트랩 동기화 완료", {
-            studentCount: updates.students?.length ?? 0,
-            subjectCount: updates.subjects?.length ?? 0,
-            teacherCount: updates.teachers?.length ?? 0,
-          });
-          loadDataFromLocal();
-        }
-      })
-      .catch((err) => {
-        // fire-and-forget — 부트스트랩 실패는 UI를 막지 않는다.
-        logger.warn("useIntegratedDataLocal - 부트스트랩 실패 (무시)", {
-          message: err instanceof Error ? err.message : String(err),
-        });
-      });
-  }, [loadDataFromLocal]);
+  // ===== 멤버 부트스트랩 동기화 (제거됨 — 중복 fetch 해결) =====
+  // 이전엔 본 hook이 mount될 때 localStorage가 비어 있으면 /api/students,
+  // /api/subjects, /api/teachers를 fetch해 localStorage에 채웠다. 하지만 동일
+  // endpoint를 useGlobalDataInitialization이 RootProviders에서 1회 mount되어
+  // 이미 fetch + hydration 처리하므로 같은 page mount마다 2-3회 중복 호출 발생.
+  // useGlobalDataInitialization이 isInitializing 동안 children mount를 막아주므로
+  // 본 hook이 mount될 때 localStorage는 이미 server data로 hydrate된 상태.
+  // 따라서 별도 부트스트랩 흐름 불필요 → 완전 제거.
+  //
+  // 만약 useGlobalDataInitialization 흐름에서 fetch가 실패하더라도(allFetchesOk=false),
+  // 사용자는 settings의 "데이터 수동 동기화"로 복구 가능 — 이전 부트스트랩의 fail-soft
+  // 동작과 동등.
 
   // ===== 전체 데이터 업데이트 =====
 

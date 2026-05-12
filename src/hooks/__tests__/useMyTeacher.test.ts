@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
@@ -15,12 +16,21 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 import { useMyTeacher } from "../useMyTeacher";
+import { MemberProvider } from "@/contexts/MemberContext";
+
+// useMyTeacher → useMyRole → MemberContext.useMemberContext.
+// MemberProvider 안에서만 실제 fetch + state hydration. wrapper 필수.
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(MemberProvider, null, children);
+const renderUseMyTeacher = () => renderHook(() => useMyTeacher(), { wrapper });
 
 // -------------------------------------------------------------------------
 
 describe("useMyTeacher", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 이전 test에서 cache 남으면 fetch 우회 → expectation 어긋남. fresh 보장.
+    sessionStorage.clear();
   });
 
   it("연결된 강사가 있으면 teacherId/Name/Color를 반환한다", async () => {
@@ -44,9 +54,11 @@ describe("useMyTeacher", () => {
       }),
     });
 
-    const { result } = renderHook(() => useMyTeacher());
+    const { result } = renderUseMyTeacher();
 
     await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -78,9 +90,11 @@ describe("useMyTeacher", () => {
       }),
     });
 
-    const { result } = renderHook(() => useMyTeacher());
+    const { result } = renderUseMyTeacher();
 
     await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -93,7 +107,7 @@ describe("useMyTeacher", () => {
   it("로딩 중에는 isLoading=true이다", () => {
     mockUseAuth.mockReturnValue({ session: null, user: null, loading: true }); // still loading
 
-    const { result } = renderHook(() => useMyTeacher());
+    const { result } = renderUseMyTeacher();
 
     expect(result.current.isLoading).toBe(true);
   });

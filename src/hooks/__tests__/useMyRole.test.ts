@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
@@ -41,6 +42,16 @@ function mockMembersAndEmptyAcademies(members: unknown[]) {
 }
 
 import { useMyRole } from "../useMyRole";
+import { MemberProvider } from "@/contexts/MemberContext";
+
+// useMyRole은 MemberContext에서 re-export (PR — MemberContext 도입).
+// 모든 fetch + cache 로직은 MemberProvider 안에 있으므로 renderHook은 wrapper로
+// Provider를 감싸야 useMyRole이 실제 fetch 동작을 한다. wrapper 없이 호출하면
+// SSR/no-provider fallback (DEFAULT_LOADING_DATA)이 반환됨.
+const wrapper = ({ children }: { children: React.ReactNode }) =>
+  React.createElement(MemberProvider, null, children);
+
+const renderUseMyRole = () => renderHook(() => useMyRole(), { wrapper });
 
 // -------------------------------------------------------------------------
 
@@ -86,7 +97,7 @@ describe("useMyRole", () => {
     // sessions, students, and subjects. canManage must be true after load.
     mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -101,7 +112,7 @@ describe("useMyRole", () => {
     mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER]);
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -119,7 +130,7 @@ describe("useMyRole", () => {
     mockUseAuth.mockReturnValue({ session: SESSION_ADMIN, user: SESSION_ADMIN.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_ADMIN]);
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -138,7 +149,7 @@ describe("useMyRole", () => {
     mockUseAuth.mockReturnValue({ session: SESSION_MEMBER_USER, user: SESSION_MEMBER_USER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_MEMBER]);
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -158,7 +169,7 @@ describe("useMyRole", () => {
     mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
     mockFetch.mockResolvedValue({ ok: false });
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -175,7 +186,7 @@ describe("useMyRole", () => {
   it("초기 isLoading=true이며 canManage=false(보수적 기본값)이다", () => {
     mockUseAuth.mockReturnValue({ session: null, user: null, loading: true }); // still loading
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     expect(result.current.isLoading).toBe(true);
     expect(result.current.canManage).toBe(false);
@@ -185,7 +196,7 @@ describe("useMyRole", () => {
     mockUseAuth.mockReturnValue({ session: SESSION_MEMBER_USER, user: SESSION_MEMBER_USER.user, loading: false });
     mockMembersAndEmptyAcademies([MEMBER_OWNER]); // user-member not in list
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -227,7 +238,7 @@ describe("useMyRole", () => {
     getItemMock.mockReturnValue(null); // Active academy not yet set
     setItemSpy.mockClear();
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     // Need a macrotask wait — the hook does a dynamic `await import("@/lib/localStorageCrud")`
     // after the academies fetch resolves; microtask-only flushes (Promise.resolve loops)
@@ -258,7 +269,7 @@ describe("useMyRole", () => {
       return Promise.resolve({ ok: true });
     });
 
-    const { result } = renderHook(() => useMyRole());
+    const { result } = renderUseMyRole();
 
     await act(async () => {
       await Promise.resolve();
@@ -277,7 +288,7 @@ describe("useMyRole", () => {
       mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
       mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_MEMBER]);
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
@@ -293,7 +304,7 @@ describe("useMyRole", () => {
       mockUseAuth.mockReturnValue({ session: SESSION_OWNER, user: SESSION_OWNER.user, loading: false });
       mockMembersAndEmptyAcademies([MEMBER_OWNER, MEMBER_ADMIN, MEMBER_MEMBER]);
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
@@ -308,7 +319,7 @@ describe("useMyRole", () => {
     it("익명 사용자(세션 없음)이면 adminCount=0", async () => {
       mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
@@ -354,7 +365,7 @@ describe("useMyRole", () => {
         () => new Promise(() => {}), // never resolves
       );
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
@@ -374,7 +385,7 @@ describe("useMyRole", () => {
       });
       mockMembersAndEmptyAcademies([MEMBER_OWNER]);
 
-      renderHook(() => useMyRole());
+      renderUseMyRole();
 
       await act(async () => {
         await new Promise<void>((resolve) => setTimeout(resolve, 100));
@@ -411,7 +422,7 @@ describe("useMyRole", () => {
       });
       mockFetch.mockImplementation(() => new Promise(() => {}));
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
@@ -436,7 +447,7 @@ describe("useMyRole", () => {
       });
       mockFetch.mockImplementation(() => new Promise(() => {}));
 
-      const { result } = renderHook(() => useMyRole());
+      const { result } = renderUseMyRole();
 
       await act(async () => {
         await Promise.resolve();
