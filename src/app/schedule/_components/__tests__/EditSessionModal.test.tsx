@@ -75,17 +75,22 @@ describe("EditSessionModal", () => {
     expect(optionNames).toContain("영어");
   });
 
-  it("요일 선택 옵션을 렌더링한다", () => {
+  it("요일 chip 클릭 시 popover에 7개 weekday 버튼이 렌더링된다 (Variant C 채택, 2026-05-12)", () => {
     render(<EditSessionModal {...defaultProps} />);
-    const weekdaySelect = screen.getByRole("combobox", { name: /요일/ });
-    expect(within(weekdaySelect).getByText("월")).toBeInTheDocument();
-    expect(within(weekdaySelect).getByText("일")).toBeInTheDocument();
+    const weekdayChip = screen.getByRole("button", { name: /요일:/ });
+    fireEvent.click(weekdayChip);
+    // popover의 weekday 버튼들 — role+name으로 chip 자체와 구분 (chip name은 "요일: 월, ...")
+    expect(screen.getByRole("button", { name: "월" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "일" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "수" })).toBeInTheDocument();
   });
 
-  it("시간 에러가 있으면 에러 메시지를 표시한다", () => {
+  it("시간 chip 클릭 + timeError 있으면 popover 안에 에러 메시지를 표시한다", () => {
     render(
       <EditSessionModal {...defaultProps} timeError="종료 시간이 시작 시간보다 빠릅니다" />
     );
+    // 헤더 시간 chip 클릭으로 popover open
+    fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
     expect(screen.getByRole("alert")).toHaveTextContent("종료 시간이 시작 시간보다 빠릅니다");
   });
 
@@ -173,19 +178,21 @@ describe("EditSessionModal", () => {
       expect(onCancel).toHaveBeenCalled();
     });
 
-    it("요일 select는 label과 연결되어야 한다", () => {
+    it("요일 chip은 aria-label로 현재 요일을 표시한다 (Variant C 채택, 2026-05-12)", () => {
       render(<EditSessionModal {...defaultProps} />);
-      const weekdaySelect = screen.getByLabelText(/요일/);
-      expect(weekdaySelect).toBeInTheDocument();
+      // 헤더 chip — aria-label에 weekdays[defaultWeekday] 포함
+      expect(screen.getByRole("button", { name: /요일:/ })).toBeInTheDocument();
     });
 
-    it("시작 시간 input은 aria-label과 연결되어야 한다", () => {
+    it("시간 chip 클릭 후 시작 시간 input이 aria-label과 연결된다", () => {
       render(<EditSessionModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
       expect(screen.getByLabelText("시작 시간")).toBeInTheDocument();
     });
 
-    it("종료 시간 input은 aria-label과 연결되어야 한다", () => {
+    it("시간 chip 클릭 후 종료 시간 input이 aria-label과 연결된다", () => {
       render(<EditSessionModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
       expect(screen.getByLabelText("종료 시간")).toBeInTheDocument();
     });
   });

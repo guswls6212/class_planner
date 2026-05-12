@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Trash2, X, ChevronDown, Calendar, Clock } from "lucide-react";
+import { Trash2, X, ChevronDown, Calendar, Clock, AlertCircle } from "lucide-react";
 import { IconButton } from "@/components/atoms/IconButton";
 import { EmptyState } from "@/components/atoms/EmptyState";
 import { useModalA11y } from "../../../hooks/useModalA11y";
@@ -192,13 +192,15 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     onCancel();
   }, [originalColor, onCancel]);
 
-  // 저장: 색상이 바뀐 경우에만 persist 후 onSave 호출
+  // 저장: 학생 0명 가드 + 색상 변경 시 persist + onSave 호출
+  // 학생 0명 → onSave 호출 X (이전 사고: 0명 저장 → 빈 enrollmentIds로 세션 자동 삭제)
   const handleSave = useCallback(() => {
+    if (selectedStudents.length === 0) return;
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
     onSave(weekday);
-  }, [previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave, weekday]);
+  }, [selectedStudents.length, previewColor, originalColor, tempSubjectId, onSubjectColorChange, onSave, weekday]);
 
   const studentNames = selectedStudents.map((s) => s.name).join(" · ") || "학생 없음";
 
@@ -227,6 +229,28 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
   const fieldClass =
     "w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors";
+
+  // ── 헤더 chip popover state ────────────────────────────────────────
+  // 한 번에 하나만 열림. chip 클릭 toggle, 다른 chip 클릭 시 자동 close.
+  const [openPopover, setOpenPopover] = useState<"weekday" | "time" | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // popover 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!openPopover) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenPopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [openPopover]);
+
+  // ── Validation ─────────────────────────────────────────────────────
+  // 학생 0명 시 저장 차단 — 기존 사고(0명 저장 → 세션 자동 삭제) 방지.
+  const studentCount = selectedStudents.length;
+  const isSaveDisabled = studentCount === 0;
 
   // ── 색상 선택 패널 ──────────────────────────────────────────────
   const colorPanel = onSubjectColorChange && tempSubjectId ? (
@@ -340,26 +364,114 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             <p className="text-[12px] truncate text-[var(--color-text-muted)] mt-0.5">
               {studentNames}
             </p>
-            {/* 시간 영역 — F variant: two-section card (요일 + 시간 + duration).
-                좌측 amber tint = 요일 라벨, 우측 neutral = 시간 + duration 부가. */}
-            <div className="inline-flex items-center mt-2 rounded-xl border border-[var(--color-border)] bg-white/[0.04] overflow-hidden">
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[rgba(245,158,11,0.12)] border-r border-[var(--color-border)]">
+            {/* 헤더 chip — 요일/시간 inline edit (Variant C 채택, 2026-05-12).
+                기존 read-only 카드를 클릭 가능 chip + popover로 교체. body의 요일/시간
+                select 제거 (헤더가 SSOT). 한 번에 하나의 popover만 열림. */}
+            <div className="inline-flex items-center mt-2 gap-1.5 relative" ref={popoverRef}>
+              {/* Weekday chip */}
+              <button
+                type="button"
+                onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
+                aria-label={`요일: ${weekdays[weekday]}, 클릭해서 변경`}
+                aria-expanded={openPopover === "weekday"}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                  openPopover === "weekday"
+                    ? "border-[#fbbf24] bg-[rgba(245,158,11,0.18)]"
+                    : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
+                }`}
+              >
                 <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
-                <span className="text-[13px] font-bold text-[#fbbf24]">
-                  {weekdays[weekday]}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+                <span className="text-[13px] font-bold text-[#fbbf24]">{weekdays[weekday]}</span>
+                <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
+              </button>
+
+              {/* Time chip */}
+              <button
+                type="button"
+                onClick={() => setOpenPopover(openPopover === "time" ? null : "time")}
+                aria-label={`수업 시간: ${startTime}부터 ${endTime}까지, 클릭해서 변경`}
+                aria-expanded={openPopover === "time"}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                  openPopover === "time"
+                    ? "border-[var(--color-accent-hover)] bg-white/[0.08]"
+                    : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
+                }`}
+              >
                 <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
                 <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums">
                   {startTime} – {endTime}
                 </span>
                 {duration && (
-                  <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5">
-                    · {duration}
-                  </span>
+                  <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5">· {duration}</span>
                 )}
-              </div>
+                <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
+              </button>
+
+              {/* Weekday popover */}
+              {openPopover === "weekday" && (
+                <div
+                  className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+                  style={{ minWidth: 240 }}
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                    요일 선택
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {weekdays.map((label, idx) => {
+                      const isActive = idx === weekday;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setWeekday(idx);
+                            setOpenPopover(null);
+                          }}
+                          className={`h-9 rounded-lg text-[13px] font-semibold transition-colors ${
+                            isActive
+                              ? "bg-[#fbbf24] text-[var(--color-admin-ink)]"
+                              : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Time popover — controlled inputs(부모로 즉시 위임), timeError도 함께 표시 */}
+              {openPopover === "time" && (
+                <div
+                  className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+                  style={{ minWidth: 280 }}
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                    수업 시간
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      aria-label="시작 시간"
+                      className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                      value={startTime}
+                      onChange={(e) => onStartTimeChange(e.target.value)}
+                    />
+                    <span className="text-[var(--color-text-muted)]">—</span>
+                    <input
+                      type="time"
+                      aria-label="종료 시간"
+                      className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                      value={endTime}
+                      onChange={(e) => onEndTimeChange(e.target.value)}
+                    />
+                  </div>
+                  {timeError && (
+                    <p className="mt-2 text-[11px] text-[var(--color-danger)]" role="alert">{timeError}</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -493,67 +605,43 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           />
         </div>
 
-        {/* Weekday + Time */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="edit-modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              요일 <span className="text-[var(--color-danger)]">*</span>
-            </label>
-            <select
-              id="edit-modal-weekday"
-              className={fieldClass}
-              value={weekday}
-              onChange={(e) => setWeekday(Number(e.target.value))}
-            >
-              {weekdays.map((w, idx) => <option key={idx} value={idx}>{w}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              수업 시간 <span className="text-[var(--color-danger)]">*</span>
-            </span>
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2">
-              <input
-                id="edit-modal-start-time"
-                type="time"
-                aria-label="시작 시간"
-                className="flex-1 bg-transparent text-[14px] font-semibold text-[var(--color-text-primary)] outline-none"
-                value={startTime}
-                onChange={(e) => onStartTimeChange(e.target.value)}
-              />
-              <span className="text-[var(--color-text-muted)] text-[12px]">—</span>
-              <input
-                id="edit-modal-end-time"
-                type="time"
-                aria-label="종료 시간"
-                className="flex-1 bg-transparent text-[14px] font-semibold text-[var(--color-text-primary)] outline-none"
-                value={endTime}
-                onChange={(e) => onEndTimeChange(e.target.value)}
-              />
-            </div>
-            {timeError && (
-              <p className="text-[11px] text-[var(--color-danger)]" role="alert">{timeError}</p>
-            )}
-          </div>
-        </div>
+        {/* 요일/시간 select 제거 — 헤더 chip이 SSOT (2026-05-12 Variant C 채택).
+            기존 weekday/time select는 헤더 chip + popover로 이전됨. */}
       </div>
 
-      {/* Footer */}
-      <div className="px-5 pb-5 pt-3 border-t border-[var(--color-border)] flex items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={handleCancel}
-          className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
-        >
-          취소
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-xl bg-[var(--color-primary)] px-6 py-2 text-[13px] font-semibold text-white hover:opacity-90 transition-opacity"
-        >
-          저장
-        </button>
+      {/* Footer — V1-disabled validation: 학생 0명 시 저장 차단 + 좌측 helper text.
+          이전 사고(0명 저장 → 세션 자동 삭제) 방지. handleSave에도 가드 이중 방어. */}
+      <div className="px-5 pb-5 pt-3 border-t border-[var(--color-border)] flex items-center justify-between gap-2">
+        <div className="text-[11px] text-[var(--color-text-muted)] min-h-[18px]">
+          {isSaveDisabled && (
+            <span className="inline-flex items-center gap-1.5 text-[#fbbf24]">
+              <AlertCircle size={12} strokeWidth={2} />
+              학생 1명 이상 선택 필요
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="rounded-xl border border-[var(--color-border)] px-4 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaveDisabled}
+            aria-disabled={isSaveDisabled}
+            className={`rounded-xl px-6 py-2 text-[13px] font-semibold transition-opacity ${
+              isSaveDisabled
+                ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed"
+                : "bg-[var(--color-primary)] text-white hover:opacity-90"
+            }`}
+          >
+            저장
+          </button>
+        </div>
       </div>
     </div>
   );
