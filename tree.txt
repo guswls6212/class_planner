@@ -12,6 +12,7 @@ src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
 src/app/design-explorations/_mock/MockGrid.tsx
 src/app/design-explorations/_mock/data.ts
+src/app/design-explorations/notifications/page.tsx
 src/app/design-explorations/option-c/page.tsx
 src/app/design-explorations/p4-a/page.tsx
 src/app/design-explorations/p4-b/page.tsx
@@ -225,6 +226,7 @@ src/components/atoms/InfoTrigger.tsx
 src/components/atoms/Input.stories.tsx
 src/components/atoms/Input.tsx
 src/components/atoms/Label.tsx
+src/components/atoms/NotificationBell.tsx
 src/components/atoms/SegmentedButton.stories.tsx
 src/components/atoms/SegmentedButton.tsx
 src/components/atoms/SelectionBar.tsx
@@ -278,6 +280,8 @@ src/components/molecules/InviteModal.tsx
 src/components/molecules/ListFilterBar.tsx
 src/components/molecules/MemberListItem.tsx
 src/components/molecules/MonthDayCell.tsx
+src/components/molecules/NotificationDropdown.tsx
+src/components/molecules/NotificationItem.tsx
 src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/ParentCodeStickyBar.tsx
 src/components/molecules/PdfExportRangeModal.tsx
@@ -326,6 +330,7 @@ src/components/molecules/__tests__/InviteModal.test.tsx
 src/components/molecules/__tests__/ListFilterBar.test.tsx
 src/components/molecules/__tests__/MemberListItem.test.tsx
 src/components/molecules/__tests__/MonthDayCell.test.tsx
+src/components/molecules/__tests__/NotificationDropdown.test.tsx
 src/components/molecules/__tests__/PDFDownloadButton.test.tsx
 src/components/molecules/__tests__/ParentCodeStickyBar.test.tsx
 src/components/molecules/__tests__/PdfExportRangeModal.test.tsx
@@ -460,6 +465,7 @@ src/hooks/useModalA11y.ts
 src/hooks/useMyPlan.ts
 src/hooks/useMyRole.ts
 src/hooks/useMyTeacher.ts
+src/hooks/useNotificationCenter.ts
 src/hooks/useNowMinute.ts
 src/hooks/useOutboxFlush.ts
 src/hooks/usePerformanceMonitoring.ts
@@ -513,6 +519,7 @@ src/lib/__tests__/localStorageCrud.test.ts
 src/lib/__tests__/logger.browser.test.ts
 src/lib/__tests__/logger.test.ts
 src/lib/__tests__/migrateLocalSessions.test.ts
+src/lib/__tests__/notificationCenter.test.ts
 src/lib/__tests__/planner-real-scenarios.test.ts
 src/lib/__tests__/planner.test.ts
 src/lib/__tests__/rateLimit.test.ts
@@ -563,6 +570,7 @@ src/lib/formatExpiry.ts
 src/lib/localStorageCrud.ts
 src/lib/logger.ts
 src/lib/migrateLocalSessions.ts
+src/lib/notificationCenter.ts
 src/lib/pagination.ts
 src/lib/pdf/PdfGridLayout.ts
 src/lib/pdf/PdfHeader.ts

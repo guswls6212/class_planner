@@ -1,4 +1,8 @@
-# 알림 히스토리 (Notification History)
+# 알림 히스토리 — Phase 3 sketch (Deferred)
+
+> **Status (2026-05-12):** 본 문서는 server-side(Supabase) 기반 설계 스케치 — **Phase 3에서 academy member 알림 공유 user story 명확화 시** 참조할 자료. 현재 진행 중인 Phase 1은 localStorage 기반이며 SSOT는 [`../notification-history-spec.md`](../notification-history-spec.md).
+>
+> Phase 1(localStorage) → Phase 2(server-side logs) → Phase 3(Supabase 양방향 sync) 단계별 분리 결정. 본 문서의 DB 스키마/retention cron 등은 Phase 3 도입 시 출발점.
 
 ## 배경
 

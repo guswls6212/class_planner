@@ -18,6 +18,7 @@ import { signOut } from "@/lib/auth/signOut";
 import { useMyRole } from "@/hooks/useMyRole";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationDropdown } from "../molecules/NotificationDropdown";
 
 interface SidebarItem {
   href: string;
@@ -315,6 +316,11 @@ export function Sidebar() {
             expanded={expanded}
           />
         ))}
+
+        {/* 알림 히스토리 — nav 끝부분에 위치. 모든 페이지에서 동일 접근. */}
+        <div className={expanded ? "px-1 my-0.5" : "flex justify-center my-0.5"}>
+          <NotificationDropdown />
+        </div>
 
         {/* 미로그인: 로그인 아이콘, 로그인: 설정 아이콘 (강사 nav 바로 아래) */}
         <SidebarLink

@@ -7,6 +7,7 @@ import { LogIn } from "lucide-react";
 import { supabase } from "@/utils/supabaseClient";
 import { signOut } from "@/lib/auth/signOut";
 import { useHelpDrawer } from "@/contexts/HelpDrawerContext";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 function TopBarAccountSection() {
   const [email, setEmail] = useState<string | null | undefined>(undefined); // undefined = loading
@@ -62,6 +63,7 @@ export function TopBar() {
         CLASS PLANNER
       </span>
       <div className="flex items-center gap-1">
+        <NotificationDropdown compact />
         <button
           type="button"
           onClick={open}
