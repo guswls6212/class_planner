@@ -132,6 +132,29 @@ export const repositionSessions = (
   const isMovingToHigherLane =
     sourceYPosForChain !== undefined && targetYPosition > sourceYPosForChain;
 
+  // Bug fix (omni-radar 2026-05-13): sourceYPos 가 다른 시간 겹침 세션으로 점유되어
+  // 있으면 그쪽으로 chain redirect 시 그 세션과 다시 충돌 → chain 이 anchor 까지
+  // 도달해 anchor 위에 stack (lane 2개에 같은 yPosition). 사용자 보고: 5번 12:00 세션을
+  // 1번/2번 사이로 drag → 1번이 5번 뒤에 같은 lane 으로 겹침.
+  // → sourceYPos 에 시간 겹침 세션 있으면 단순 propagate+1 chain 으로 fallback.
+  const sourceYPosOccupiedByConflict =
+    isMovingToHigherLane &&
+    sourceYPosForChain !== undefined &&
+    sessions.some(
+      (s) =>
+        s.id !== movingSessionId &&
+        s.weekday === targetWeekday &&
+        (s.yPosition ?? 1) === sourceYPosForChain &&
+        isTimeOverlapping(
+          s.startsAt,
+          s.endsAt,
+          targetStartTime,
+          targetEndTime,
+        ),
+    );
+  const canRedirectToSourceYPos =
+    isMovingToHigherLane && !sourceYPosOccupiedByConflict;
+
   // 초기 충돌 확인
   let hasCollisions = checkCollisionsAtYPosition(
     targetDaySessions,
@@ -191,8 +214,10 @@ export const repositionSessions = (
       // isMovingToHigherLane: 같은 요일 내 더 높은 레인으로 이동 시
       // 충돌 세션을 yPos+1(아래)로 미는 대신 소스 빈 자리(sourceYPos)로 이동.
       // 이렇게 해야 compaction 후에도 이동 세션이 targetYPos에 정착.
+      // 단, sourceYPos 가 이미 다른 시간 겹침 세션으로 점유되어 있으면 그쪽으로
+      // 보내봤자 또 충돌 → chain anchor 침범 (omni-radar 2026-05-13).
       const nextYPosition =
-        isMovingToHigherLane && sourceYPosForChain !== undefined
+        canRedirectToSourceYPos && sourceYPosForChain !== undefined
           ? sourceYPosForChain
           : propagateYPosition + 1;
 
