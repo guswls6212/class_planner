@@ -32,6 +32,7 @@ import { useTemplates } from "../../hooks/useTemplates";
 import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateTypes";
 import { buildTemplateDataPure } from "./_utils/buildTemplateData";
 import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
+import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
@@ -800,6 +801,16 @@ function SchedulePageContent(): JSX.Element {
     yPosition: 1, // 🆕 기본값 1
   });
   const [groupTimeError, setGroupTimeError] = useState<string>(""); // 시간 입력 에러 메시지
+
+  // students id 교체 (temp → reconciled) 시 modal selected studentIds 의 stale id 자동 제거.
+  // 상세 reason 은 sanitizeStudentIds 헤더 — omni-radar 2026-05-13 사고.
+  useEffect(() => {
+    setGroupModalData((prev) => {
+      const next = sanitizeStudentIds(prev.studentIds, students);
+      if (next === prev.studentIds) return prev;
+      return { ...prev, studentIds: next };
+    });
+  }, [students]);
 
   // 세션 삭제 확인 모달 상태
   // (deleteConfirmSessionId state 제거됨 — 세션 삭제는 즉시 + undo 토스트로 처리)
