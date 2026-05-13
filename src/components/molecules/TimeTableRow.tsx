@@ -430,11 +430,13 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         });
       })}
 
-      {/* LaneInsertSlot — drag 중인 target weekday 에만 lane 경계 별 droppable 노출.
-          Variant E (Edge Hover Slot). cell 과 boundary 겹쳐도 dnd-kit closestCenter 가
-          가까운 droppable 선택 — slot center 가 정확히 lane boundary 라서 사용자가
-          boundary 근처 hover 시 우선 매칭. */}
+      {/* LaneInsertSlot — drag 중인 target weekday 에 lane 경계 별 droppable.
+          Cmd/Ctrl 복사 모드일 땐 mount 안 함 — 복사는 "그 자리에" 의미라 boundary
+          insert 비활성. Variant E (Edge Hover Slot). cell 과 boundary 겹쳐도 dnd-kit
+          collision detection (pointerWithin → closestCenter) 이 cursor 좌표에 따라
+          자연 분기 (slot 16px hit area, 나머지 cell). */}
       {isDraggingToThis &&
+        !isCopyMode &&
         timeSlots30Min.map((timeString, timeIndex) =>
           Array.from({ length: effectiveLanes + 1 }, (_, slotIdx) => {
             const insertBeforeYPos = slotIdx + 1;

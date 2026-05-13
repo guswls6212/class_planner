@@ -31,15 +31,22 @@ export default function LaneInsertSlot({
       data-lane-insert-slot
       data-insert-before-ypos={insertBeforeYPos}
       style={style}
-      className={
-        isOver
-          ? "rounded-md border-2 border-dashed border-amber-400/80 bg-amber-300/15 transition-all duration-150"
-          : "transition-opacity duration-150"
-      }
+      className="relative"
     >
+      {/* 항상 보이는 약한 hint — drag 중 lane 경계 위치 인지. drag 안 할 땐 mount 안 됨. */}
+      <div
+        className={
+          isOver
+            ? "absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] rounded bg-amber-400 transition-all duration-100"
+            : "absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] rounded bg-amber-400/30 transition-all duration-100"
+        }
+      />
+      {/* isOver 시 강조 overlay — pointer-events-none 으로 hit area 비침범. */}
       {isOver && (
-        <div className="flex items-center justify-center h-full text-[10px] font-medium text-amber-300/90 select-none">
-          여기에 끼우기
+        <div className="absolute -inset-x-12 inset-y-0 rounded-md border-2 border-dashed border-amber-400/80 bg-amber-300/20 flex items-center justify-center pointer-events-none">
+          <span className="text-[11px] font-semibold text-amber-300 select-none whitespace-nowrap">
+            여기 끼우기
+          </span>
         </div>
       )}
     </div>
