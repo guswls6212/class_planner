@@ -8,6 +8,7 @@ import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { sessionMatchesFilters } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
+import LaneInsertSlot from "./LaneInsertSlot";
 import SessionBlock from "./SessionBlock";
 import HiddenSessionsPopover from "./HiddenSessionsPopover";
 
@@ -428,6 +429,34 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           );
         });
       })}
+
+      {/* LaneInsertSlot — drag 중인 target weekday 에만 lane 경계 별 droppable 노출.
+          Variant E (Edge Hover Slot). cell 과 boundary 겹쳐도 dnd-kit closestCenter 가
+          가까운 droppable 선택 — slot center 가 정확히 lane boundary 라서 사용자가
+          boundary 근처 hover 시 우선 매칭. */}
+      {isDraggingToThis &&
+        timeSlots30Min.map((timeString, timeIndex) =>
+          Array.from({ length: effectiveLanes + 1 }, (_, slotIdx) => {
+            const insertBeforeYPos = slotIdx + 1;
+            const SLOT_HIT_WIDTH = 16;
+            return (
+              <LaneInsertSlot
+                key={`insert-${timeString}-${insertBeforeYPos}`}
+                weekday={weekday}
+                time={timeString}
+                insertBeforeYPos={insertBeforeYPos}
+                style={{
+                  position: "absolute",
+                  top: `${timeIndex * SLOT_HEIGHT_PX}px`,
+                  left: `${slotIdx * laneWidth - SLOT_HIT_WIDTH / 2 + DRAG_HOVER_PAD}px`,
+                  width: `${SLOT_HIT_WIDTH}px`,
+                  height: `${SLOT_HEIGHT_PX}px`,
+                  zIndex: 3,
+                }}
+              />
+            );
+          }),
+        )}
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition, overflowsTop, overflowsBottom }) => (

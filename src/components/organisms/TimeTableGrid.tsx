@@ -65,6 +65,18 @@ interface TimeTableGridProps {
     time: string,
     yPosition: number
   ) => void;
+  /**
+   * 사용자가 LaneInsertSlot (lane 사이 droppable) 에 drop 했을 때 호출. 명시적 lane
+   * 삽입 — 같은 시간 lane ≥ insertBeforeYPos 모두 +1 shift + movingSession 그 자리
+   * 차지. 미전달 시 insertBefore drop 은 일반 yPos drop 으로 fallback (즉 lane
+   * insertBeforeYPos 에 drop 한 것처럼 처리). Variant E (Edge Hover Slot).
+   */
+  onSessionInsertBefore?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    insertBeforeYPos: number,
+  ) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -112,6 +124,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       onDrop,
       onSessionDrop,
       onSessionCopy,
+      onSessionInsertBefore,
       onEmptySpaceClick,
       className = "",
       style = {},
@@ -539,11 +552,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const handleDndDragOver = useCallback(
       ({ over }: DragOverEvent) => {
         if (!over) { dragController.leaveTarget(); return; }
-        // over.id format: "weekday|time|yPosition" ("|" 구분 — time에 ":" 포함)
+        // over.id format:
+        //   "weekday|time|yPosition"            (TimeTableCell — lane occupy)
+        //   "weekday|time|insertBefore:N"       (LaneInsertSlot — Variant E)
         const parts = (over.id as string).split("|");
         if (parts.length < 3) return;
-        const [wd, time, yPos] = parts;
-        dragController.hoverTarget(Number(wd), time, Number(yPos));
+        const [wd, time, third] = parts;
+        if (third.startsWith("insertBefore:")) {
+          const insertBeforeYPos = Number(third.slice("insertBefore:".length));
+          dragController.hoverTarget(Number(wd), time, insertBeforeYPos, "insertBefore");
+        } else {
+          dragController.hoverTarget(Number(wd), time, Number(third), "lane");
+        }
       },
       [dragController],
     );
@@ -557,12 +577,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           const sessionId = active.id as string;
           const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
-            const [wd, time, yPos] = parts;
+            const [wd, time, third] = parts;
+            const isInsertBefore = third.startsWith("insertBefore:");
+            const yPos = isInsertBefore
+              ? Number(third.slice("insertBefore:".length))
+              : Number(third);
             // Ctrl/Meta + drag → 복사 (onSessionCopy가 있을 때만, 없으면 이동 fallback)
             if (isCopy && onSessionCopy) {
-              onSessionCopy(sessionId, Number(wd), time, Number(yPos));
+              // 복사 시엔 insertBefore 도 일반 lane copy 로 fallback (복사 + 명시적 shift
+              // 조합은 향후 별도 디자인). 사용자 의도 = "그 자리에 lane 1개로 복사".
+              onSessionCopy(sessionId, Number(wd), time, yPos);
+            } else if (isInsertBefore && onSessionInsertBefore) {
+              onSessionInsertBefore(sessionId, Number(wd), time, yPos);
             } else if (onSessionDrop) {
-              onSessionDrop(sessionId, Number(wd), time, Number(yPos));
+              onSessionDrop(sessionId, Number(wd), time, yPos);
             }
           }
           dragController.completeDrop();
@@ -582,7 +610,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           }
         });
       },
-      [dragController, onSessionDrop, onSessionCopy, getSavedScrollPosition],
+      [dragController, onSessionDrop, onSessionCopy, onSessionInsertBefore, getSavedScrollPosition],
     );
 
     return (
