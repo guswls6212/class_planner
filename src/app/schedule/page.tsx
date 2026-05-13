@@ -33,6 +33,7 @@ import type { TemplateData, ScheduleTemplate } from "@/shared/types/templateType
 import { buildTemplateDataPure } from "./_utils/buildTemplateData";
 import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
 import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
+import { sanitizeTempEnrollments } from "./_utils/sanitizeTempEnrollments";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
@@ -868,6 +869,26 @@ function SchedulePageContent(): JSX.Element {
 
   // 강사 선택 상태 (편집 모달용; undefined = 변경 없음, null = 제거, "uuid" = 할당)
   const [tempTeacherId, setTempTeacherId] = useState<string | null | undefined>(undefined);
+
+  // EditSessionModal 의 tempEnrollments 도 GroupSessionModal 의 studentIds 와 동일한
+  // local-first reconciliation 함정 (omni-radar 2026-05-13). students 변경 시 stale
+  // studentId 를 가진 tempEnrollment 를 제거하고 editModalData.enrollmentIds 에서도
+  // 동기 정리. 상세 reason 은 sanitizeTempEnrollments 헤더.
+  useEffect(() => {
+    const { kept, removedIds } = sanitizeTempEnrollments(tempEnrollments, students);
+    if (removedIds.size === 0) return;
+    setTempEnrollments(kept);
+    setEditModalData((prev) =>
+      prev
+        ? {
+            ...prev,
+            enrollmentIds: (prev.enrollmentIds ?? []).filter(
+              (id) => !removedIds.has(id),
+            ),
+          }
+        : prev,
+    );
+  }, [students, tempEnrollments, setTempEnrollments, setEditModalData]);
 
   // 🆕 수업 편집 모달 시간 변경 핸들러 (헬퍼 적용)
   const { handleEditStartTimeChange, handleEditEndTimeChange } = useMemo(
