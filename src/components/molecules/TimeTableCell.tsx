@@ -102,34 +102,34 @@ export default function TimeTableCell({
     >
       {insertMode && (
         <>
-          {/* left half — insertBefore:yPosition (이 lane 앞으로) */}
+          {/* hit area — left half (this lane 앞으로) / right half (this lane 뒤로).
+              cursor 위치로 의도 분기. overlay 와 분리해 한쪽 isOver 면 cell 전체에
+              overlay 노출 + 해당 boundary 강조선만 다르게. */}
           <div
             ref={leftHalfDrop.setNodeRef}
             data-insert-half="left"
             style={{ position: "absolute", inset: 0, right: "50%" }}
-          >
-            {leftHalfDrop.isOver && (
-              <div className="absolute inset-y-0 -left-3 right-1 rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center pointer-events-none">
-                <span className="text-[11px] font-bold text-amber-200 select-none whitespace-nowrap">
-                  여기 끼우기
-                </span>
-              </div>
-            )}
-          </div>
-          {/* right half — insertBefore:yPosition+1 (이 lane 뒤로) */}
+          />
           <div
             ref={rightHalfDrop.setNodeRef}
             data-insert-half="right"
             style={{ position: "absolute", inset: 0, left: "50%" }}
-          >
-            {rightHalfDrop.isOver && (
-              <div className="absolute inset-y-0 left-1 -right-3 rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center pointer-events-none">
-                <span className="text-[11px] font-bold text-amber-200 select-none whitespace-nowrap">
-                  여기 끼우기
-                </span>
-              </div>
-            )}
-          </div>
+          />
+          {/* overlay — cell 전체. 사용자 요청 (2026-05-14): 수업블록 크기만큼 dashed.
+              boundary 강조선으로 left/right 의도 시각 분리. */}
+          {(leftHalfDrop.isOver || rightHalfDrop.isOver) && (
+            <div className="absolute inset-0 rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center pointer-events-none">
+              <span className="text-[12px] font-bold text-amber-200 select-none whitespace-nowrap">
+                여기 삽입
+              </span>
+              {leftHalfDrop.isOver && (
+                <div className="absolute inset-y-0 left-0 w-1 bg-amber-400 rounded-l-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
+              )}
+              {rightHalfDrop.isOver && (
+                <div className="absolute inset-y-0 right-0 w-1 bg-amber-400 rounded-r-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
