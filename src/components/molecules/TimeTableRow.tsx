@@ -73,6 +73,9 @@ interface TimeTableRowProps {
   isAnyDragging?: boolean;
   /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
   isCopyMode?: boolean;
+  /** drag 시작 시점 copy mode (latched). LaneInsertSlot mount 조건에 사용 —
+   *  drag 도중 Cmd 풀어도 lane insert 비활성 유지 (T10b 회귀 가드). */
+  dragStartedAsCopy?: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isMobile?: boolean;
@@ -123,6 +126,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   selectedTeacherIds,
   isAnyDragging = false,
   isCopyMode = false,
+  dragStartedAsCopy = false,
   teachers = [],
   colorBy = "subject",
   isMobile = false,
@@ -432,15 +436,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
       {/* LaneInsertSlot — drag 중인 target weekday 에 lane 경계 별 droppable.
           Cmd/Ctrl 복사 모드일 땐 mount 안 함 — 복사는 "그 자리에" 의미라 boundary
-          insert 비활성. Variant E (Edge Hover Slot). cell 과 boundary 겹쳐도 dnd-kit
-          collision detection (pointerWithin → closestCenter) 이 cursor 좌표에 따라
-          자연 분기 (slot 16px hit area, 나머지 cell). */}
+          insert 비활성. dragStartedAsCopy (시작 시점 latch) 기준이라 drag 도중 Cmd
+          풀어도 LaneInsertSlot 안 켜짐 — T10b 회귀 가드. Variant E (Edge Hover Slot).
+          cell 과 boundary 겹쳐도 dnd-kit collision detection (pointerWithin →
+          closestCenter) 이 cursor 좌표에 따라 자연 분기. */}
       {isDraggingToThis &&
-        !isCopyMode &&
+        !dragStartedAsCopy &&
         timeSlots30Min.map((timeString, timeIndex) =>
           Array.from({ length: effectiveLanes + 1 }, (_, slotIdx) => {
             const insertBeforeYPos = slotIdx + 1;
-            const SLOT_HIT_WIDTH = 16;
+            const SLOT_HIT_WIDTH = 24;
             return (
               <LaneInsertSlot
                 key={`insert-${timeString}-${insertBeforeYPos}`}

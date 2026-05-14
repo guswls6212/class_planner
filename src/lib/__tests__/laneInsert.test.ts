@@ -136,4 +136,40 @@ describe("insertSessionAtLane — Variant E (Edge Hover Slot)", () => {
     const result = insertSessionAtLane(base, 1, "10:00", "11:00", 1, "nope");
     expect(result).toBe(base);
   });
+
+  it("같은 요일에서 lane 3 → lane 6 (rightmost 뒤) 이동 시 source 빈 lane 압축 (omni-radar 2026-05-14)", () => {
+    // 사용자 보고: 5번이 lane 3 인 상태 (1, 2, 5, 3, 4) 에서 5번을 4번 (lane 5) 뒤로
+    // 이동. insertBeforeYPos = 6. 단순 shift 만으론 lane 3 빈 자리 + 5번 yPos 6 (
+    // effectiveLanes=5 밖) 으로 hidden. compaction 적용 시 5번 lane 5 로 압축.
+    const base: Session[] = [
+      session("s1", 1, 1, "10:00", "11:00"), // 1번
+      session("s2", 1, 2, "10:00", "11:00"), // 2번
+      session("s5", 1, 3, "10:00", "11:00"), // 5번 (이동 대상)
+      session("s3", 1, 4, "10:00", "11:00"), // 3번
+      session("s4", 1, 5, "10:00", "11:00"), // 4번
+    ];
+    const result = insertSessionAtLane(base, 1, "10:00", "11:00", 6, "s5");
+
+    const byLane = result
+      .filter((s) => s.weekday === 1)
+      .sort((a, b) => (a.yPosition ?? 0) - (b.yPosition ?? 0))
+      .map((s) => `${s.id}@${s.yPosition}`);
+    // 5번이 마지막 lane 으로, 빈 자리 압축 — 사용자 expected: 1, 2, 3, 4, 5번 순.
+    expect(byLane).toEqual(["s1@1", "s2@2", "s3@3", "s4@4", "s5@5"]);
+  });
+
+  it("같은 요일에서 lane 1 → lane 5 (rightmost 끝) 이동 — 모두 compaction", () => {
+    const base: Session[] = [
+      session("a", 1, 1, "10:00", "11:00"),
+      session("b", 1, 2, "10:00", "11:00"),
+      session("c", 1, 3, "10:00", "11:00"),
+      session("d", 1, 4, "10:00", "11:00"),
+    ];
+    const result = insertSessionAtLane(base, 1, "10:00", "11:00", 5, "a");
+    const byLane = result
+      .filter((s) => s.weekday === 1)
+      .sort((a, b) => (a.yPosition ?? 0) - (b.yPosition ?? 0))
+      .map((s) => `${s.id}@${s.yPosition}`);
+    expect(byLane).toEqual(["b@1", "c@2", "d@3", "a@4"]);
+  });
 });

@@ -463,6 +463,10 @@ export function computeRequiredLanes(sessions: Session[]): number {
 /**
  * 드래그 중인 세션의 현재 목표 위치를 기반으로 드롭 후의 레이아웃을 미리 계산.
  * 드래그가 없으면 입력 Map을 그대로 반환.
+ *
+ * targetMode === "insertBefore" 일 때 (Variant E — LaneInsertSlot hover) drop
+ * 핸들러와 동일한 명시적 lane shift+insert 시뮬레이션 — 사용자가 보는 preview 와
+ * 실제 drop 결과 일치 보장. 그 외엔 기존 collision-based reposition.
  */
 export function computeTentativeLayout(
   sessionsMap: Map<number, Session[]>,
@@ -472,7 +476,10 @@ export function computeTentativeLayout(
   targetWeekday: number | null,
   targetStartTime: string | null,
   targetYPosition: number | null,
-  options?: { excludeDraggedFromResult?: boolean },
+  options?: {
+    excludeDraggedFromResult?: boolean;
+    targetMode?: "lane" | "insertBefore";
+  },
 ): Map<number, Session[]> {
   if (
     !dragged ||
@@ -492,16 +499,29 @@ export function computeTentativeLayout(
   const newEndTime = `${hh}:${mm}`;
 
   const allSessions = Array.from(sessionsMap.values()).flat();
-  const tentative = repositionSessions(
-    allSessions,
-    enrollments,
-    subjects,
-    targetWeekday,
-    targetStartTime,
-    newEndTime,
-    targetYPosition,
-    dragged.id,
-  );
+  // dynamic import 회피 — 같은 lib/ 내 다른 파일이라 직접 import 가능하지만
+  // circular dependency 우려 (laneInsert → this file 의 isTimeOverlapping 사용).
+  // 그래서 inline 동일 알고리즘. 추후 helper 공유는 별도 리팩터.
+  const tentative =
+    options?.targetMode === "insertBefore"
+      ? insertSessionAtLanePreview(
+          allSessions,
+          targetWeekday,
+          targetStartTime,
+          newEndTime,
+          targetYPosition,
+          dragged.id,
+        )
+      : repositionSessions(
+          allSessions,
+          enrollments,
+          subjects,
+          targetWeekday,
+          targetStartTime,
+          newEndTime,
+          targetYPosition,
+          dragged.id,
+        );
 
   const result = new Map<number, Session[]>();
   for (const s of tentative) {
@@ -512,4 +532,60 @@ export function computeTentativeLayout(
     result.get(s.weekday)!.push(s);
   }
   return result;
+}
+
+/**
+ * Variant E preview helper — `insertSessionAtLane` 와 동일 의미. circular import
+ * 회피 위해 동일 algorithm inline. drop handler 와 preview 의 결과가 같도록.
+ */
+function insertSessionAtLanePreview(
+  sessions: Session[],
+  targetWeekday: number,
+  startsAt: string,
+  endsAt: string,
+  insertBeforeYPos: number,
+  movingId: string,
+): Session[] {
+  const moving = sessions.find((s) => s.id === movingId);
+  if (!moving) return sessions;
+  const sourceWeekday = moving.weekday;
+  const isCross = sourceWeekday !== targetWeekday;
+
+  const shifted = sessions.map((s) => {
+    if (s.id === movingId) return s;
+    if (
+      s.weekday === targetWeekday &&
+      (s.yPosition ?? 1) >= insertBeforeYPos &&
+      isTimeOverlapping(s.startsAt, s.endsAt, startsAt, endsAt)
+    ) {
+      return { ...s, yPosition: (s.yPosition ?? 1) + 1 };
+    }
+    return s;
+  });
+
+  const placed = shifted.map((s) =>
+    s.id === movingId
+      ? {
+          ...s,
+          weekday: targetWeekday,
+          startsAt,
+          endsAt,
+          yPosition: insertBeforeYPos,
+        }
+      : s,
+  );
+
+  const compactDay = (arr: Session[], wd: number): Session[] => {
+    const ys = Array.from(
+      new Set(arr.filter((s) => s.weekday === wd).map((s) => s.yPosition ?? 1)),
+    ).sort((a, b) => a - b);
+    const m = new Map<number, number>();
+    ys.forEach((y, i) => m.set(y, i + 1));
+    return arr.map((s) =>
+      s.weekday === wd ? { ...s, yPosition: m.get(s.yPosition ?? 1) ?? 1 } : s,
+    );
+  };
+
+  const targetCompact = compactDay(placed, targetWeekday);
+  return isCross ? compactDay(targetCompact, sourceWeekday) : targetCompact;
 }

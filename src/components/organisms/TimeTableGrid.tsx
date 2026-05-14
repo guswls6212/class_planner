@@ -420,7 +420,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 드래그 세션을 포함한 결과를 반환 — TimeTableRow에서 SessionBlock 렌더 시 skip하고
     // 대신 DragGhost를 렌더한다. 이렇게 해야 weekdayMaxLanes 계산에 ghost lane이 반영된다.
     // Bug5 fix: dragController 객체(매 렌더마다 새 참조)가 아닌 primitive 값으로 deps 지정.
-    const { draggedSession, targetWeekday, targetTime, targetYPosition } = dragController;
+    const { draggedSession, targetWeekday, targetTime, targetYPosition, targetMode } = dragController;
     const sessionsForRender = useMemo(
       () =>
         computeTentativeLayout(
@@ -431,8 +431,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           targetWeekday,
           targetTime,
           targetYPosition,
+          { targetMode: targetMode ?? "lane" },
         ),
-      [sessions, enrollments, subjects, draggedSession, targetWeekday, targetTime, targetYPosition],
+      [sessions, enrollments, subjects, draggedSession, targetWeekday, targetTime, targetYPosition, targetMode],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
@@ -533,6 +534,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 라이브 갱신(DragOverlayCard "복사" 라벨 즉시 반응)을 위해 유지하되, 라우팅
     // 결정은 ref로 한다 — drag 도중 blur가 발생해도 시작 시점 의도가 보존됨.
     const dragStartCopyModeRef = useRef(false);
+    // drag 시작 시점 copy mode 의 reactive 버전 — LaneInsertSlot mount 조건 (Variant
+    // E) 에 사용. 시각용 (DragOverlayCard 의 copy 표식 등) 은 그대로 dragController.
+    // isCopyMode (window keydown 따라 즉시 갱신) 를 쓰지만, "복사 모드일 땐 lane
+    // insert 비활성" 의 routing 의도는 시작 시점 latch 가 일관성 (T10b 회귀 가드).
+    const [dragStartedAsCopy, setDragStartedAsCopy] = useState(false);
 
     const handleDndDragStart = useCallback(
       ({ active, activatorEvent }: DragStartEvent) => {
@@ -544,6 +550,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           (ev as PointerEvent).ctrlKey === true ||
           (ev as PointerEvent).metaKey === true;
         dragStartCopyModeRef.current = isCopyAtStart; // ← 라우팅용 latch
+        setDragStartedAsCopy(isCopyAtStart); // ← LaneInsertSlot 등 reactive 자식용
         dragController.setCopyModeOverride(isCopyAtStart); // ← 시각 동기화
       },
       [sessionById, dragController],
@@ -598,6 +605,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           dragController.cancelDrag();
         }
         dragStartCopyModeRef.current = false; // 다음 drag를 위해 reset
+        setDragStartedAsCopy(false);
         // 드래그 후 스크롤 위치 복원
         requestAnimationFrame(() => {
           const element = gridRef.current;
@@ -733,6 +741,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 selectedTeacherIds={selectedTeacherIds}
                 isAnyDragging={dragController.isAnyDragging() || isStudentDragging}
                 isCopyMode={dragController.isCopyMode && Boolean(onSessionCopy)}
+                dragStartedAsCopy={dragStartedAsCopy && Boolean(onSessionCopy)}
                 teachers={teachers}
                 colorBy={colorBy}
                 isMobile={isMobile}
