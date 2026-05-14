@@ -7,10 +7,18 @@ type DragSource =
   | { kind: "session"; session: Session }
   | { kind: "student"; studentId: string };
 
+type DragTargetMode = "lane" | "insertBefore";
+
 type DragTarget = {
   weekday: number;
   time: string;
   yPosition: number;
+  /**
+   * "lane": yPosition 자체에 drop (기존 동작 — 빈 lane occupy 또는 같은 lane 재배치)
+   * "insertBefore": yPosition 앞에 새 lane 명시적 삽입 (Variant E — Edge Hover Slot).
+   *   같은 시간 겹침 lane ≥ yPosition 모두 +1 shift.
+   */
+  mode: DragTargetMode;
 };
 
 type DragState =
@@ -55,6 +63,8 @@ export interface DragControllerResult {
   targetWeekday: number | null;
   targetTime: string | null;
   targetYPosition: number | null;
+  /** "lane" (기본) 또는 "insertBefore" (lane 사이 drop slot, Variant E). null = hover 없음. */
+  targetMode: DragTargetMode | null;
   /**
    * Ctrl(Win/Linux) 또는 Meta/Cmd(macOS) 키 보유 중 → drop 시점에 read하여
    * "복사" vs "이동" 분기. window-level keydown/keyup로 추적되어 drag 도중
@@ -69,7 +79,12 @@ export interface DragControllerResult {
 
   startSessionDrag: (session: Session) => void;
   startStudentDrag: (studentId: string) => void;
-  hoverTarget: (weekday: number, time: string, yPosition: number) => void;
+  hoverTarget: (
+    weekday: number,
+    time: string,
+    yPosition: number,
+    mode?: DragTargetMode,
+  ) => void;
   leaveTarget: () => void;
   completeDrop: () => void;
   cancelDrag: () => void;
@@ -116,9 +131,17 @@ export function useDragController(): DragControllerResult {
     dispatch({ type: "START_STUDENT", studentId });
   }, []);
 
-  const hoverTarget = useCallback((weekday: number, time: string, yPosition: number) => {
-    dispatch({ type: "HOVER", target: { weekday, time, yPosition } });
-  }, []);
+  const hoverTarget = useCallback(
+    (
+      weekday: number,
+      time: string,
+      yPosition: number,
+      mode: DragTargetMode = "lane",
+    ) => {
+      dispatch({ type: "HOVER", target: { weekday, time, yPosition, mode } });
+    },
+    [],
+  );
 
   const leaveTarget = useCallback(() => dispatch({ type: "LEAVE" }), []);
   const completeDrop = useCallback(() => dispatch({ type: "COMPLETE" }), []);
@@ -147,6 +170,7 @@ export function useDragController(): DragControllerResult {
     targetWeekday: target?.weekday ?? null,
     targetTime: target?.time ?? null,
     targetYPosition: target?.yPosition ?? null,
+    targetMode: target?.mode ?? null,
     isCopyMode,
     isDraggingSession,
     isAnyDragging,

@@ -36,6 +36,13 @@ type Props = {
     time: string,
     yPosition: number
   ) => void;
+  /** Variant E (Edge Hover Slot) — lane 사이 droppable 에 drop 시 호출. */
+  onSessionInsertBefore?: (
+    sessionId: string,
+    weekday: number,
+    time: string,
+    insertBeforeYPos: number,
+  ) => void;
   onEmptySpaceClick: (
     weekday: number,
     time: string,
@@ -76,6 +83,7 @@ export default function ScheduleGridSection({
   onDrop,
   onSessionDrop,
   onSessionCopy,
+  onSessionInsertBefore,
   onEmptySpaceClick,
   selectedStudentIds,
   selectedSubjectIds,
@@ -105,6 +113,7 @@ export default function ScheduleGridSection({
         onDrop={onDrop}
         onSessionDrop={onSessionDrop}
         onSessionCopy={onSessionCopy}
+        onSessionInsertBefore={onSessionInsertBefore}
         onEmptySpaceClick={onEmptySpaceClick}
         selectedStudentIds={selectedStudentIds}
         selectedSubjectIds={selectedSubjectIds}

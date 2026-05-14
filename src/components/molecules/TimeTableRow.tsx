@@ -8,6 +8,7 @@ import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { sessionMatchesFilters } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
+import LaneInsertSlot from "./LaneInsertSlot";
 import SessionBlock from "./SessionBlock";
 import HiddenSessionsPopover from "./HiddenSessionsPopover";
 
@@ -72,6 +73,9 @@ interface TimeTableRowProps {
   isAnyDragging?: boolean;
   /** Ctrl/Meta+drag 복사 모드 — SessionBlock에 전달해 원본 opacity 유지 */
   isCopyMode?: boolean;
+  /** drag 시작 시점 copy mode (latched). LaneInsertSlot mount 조건에 사용 —
+   *  drag 도중 Cmd 풀어도 lane insert 비활성 유지 (T10b 회귀 가드). */
+  dragStartedAsCopy?: boolean;
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isMobile?: boolean;
@@ -122,6 +126,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   selectedTeacherIds,
   isAnyDragging = false,
   isCopyMode = false,
+  dragStartedAsCopy = false,
   teachers = [],
   colorBy = "subject",
   isMobile = false,
@@ -428,6 +433,37 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           );
         });
       })}
+
+      {/* LaneInsertSlot — drag 중인 target weekday 에 lane 경계 별 droppable.
+          Cmd/Ctrl 복사 모드일 땐 mount 안 함 — 복사는 "그 자리에" 의미라 boundary
+          insert 비활성. dragStartedAsCopy (시작 시점 latch) 기준이라 drag 도중 Cmd
+          풀어도 LaneInsertSlot 안 켜짐 — T10b 회귀 가드. Variant E (Edge Hover Slot).
+          cell 과 boundary 겹쳐도 dnd-kit collision detection (pointerWithin →
+          closestCenter) 이 cursor 좌표에 따라 자연 분기. */}
+      {isDraggingToThis &&
+        !dragStartedAsCopy &&
+        timeSlots30Min.map((timeString, timeIndex) =>
+          Array.from({ length: effectiveLanes + 1 }, (_, slotIdx) => {
+            const insertBeforeYPos = slotIdx + 1;
+            const SLOT_HIT_WIDTH = 24;
+            return (
+              <LaneInsertSlot
+                key={`insert-${timeString}-${insertBeforeYPos}`}
+                weekday={weekday}
+                time={timeString}
+                insertBeforeYPos={insertBeforeYPos}
+                style={{
+                  position: "absolute",
+                  top: `${timeIndex * SLOT_HEIGHT_PX}px`,
+                  left: `${slotIdx * laneWidth - SLOT_HIT_WIDTH / 2 + DRAG_HOVER_PAD}px`,
+                  width: `${SLOT_HIT_WIDTH}px`,
+                  height: `${SLOT_HEIGHT_PX}px`,
+                  zIndex: 3,
+                }}
+              />
+            );
+          }),
+        )}
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition, overflowsTop, overflowsBottom }) => (
