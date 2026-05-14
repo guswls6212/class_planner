@@ -64,12 +64,18 @@ export default function TimeTableCell({
     disabled: insertMode,
   });
   // insertMode 시 left/right half 분할 — cell 가운데 hover 만으로도 가까운 boundary insert.
+  // id 는 cell 좌표 + half 명시로 unique. parse 측에서 leftHalf→insertBefore:yPos,
+  // rightHalf→insertBefore:yPos+1 매핑. 같은 insertBeforeYPos 가 인접 cell 두 곳
+  // (이 cell 의 right half + 다음 cell 의 left half) 에서 같은 droppable id 로
+  // 등록되면 dnd-kit collision detection 가 한 곳만 인식해 cursor 위치와 overlay
+  // 표시 mismatch 회귀 (사용자 보고 2026-05-14: rightmost lane drop hint 가 다음
+  // lane 으로 표시).
   const leftHalfDrop = useDroppable({
-    id: `${weekday}|${time}|insertBefore:${yPosition}`,
+    id: `${weekday}|${time}|${yPosition}|leftHalf`,
     disabled: !insertMode,
   });
   const rightHalfDrop = useDroppable({
-    id: `${weekday}|${time}|insertBefore:${yPosition + 1}`,
+    id: `${weekday}|${time}|${yPosition}|rightHalf`,
     disabled: !insertMode,
   });
 
@@ -127,26 +133,22 @@ export default function TimeTableCell({
             data-insert-half="right"
             style={{ position: "absolute", inset: 0, left: "50%" }}
           />
-          {/* overlay — cell 30분 slot 이 아닌 SessionBlock 전체 크기로 펼침.
-              사용자 요청 (2026-05-14): 수업블록 크기만큼 dashed. 점유된 session
-              정보 (occupiedSessionTop/Height) 가 있으면 그 size, 없으면 (빈 시간대)
-              cell 자체 크기. boundary 강조선으로 left/right 의도 시각 분리. */}
-          {(leftHalfDrop.isOver || rightHalfDrop.isOver) && (
+          {/* overlay — SessionBlock 점유 cell 만 dashed (사용자 요청 2026-05-14:
+              빈 시간대 cell 엔 overlay 안 떠도 됨). 점유된 cell 은 SessionBlock 전체
+              크기로 펼침 (cell 의 overflow visible 기본값 활용). */}
+          {(leftHalfDrop.isOver || rightHalfDrop.isOver) &&
+            occupiedSessionTop != null &&
+            occupiedSessionHeight != null &&
+            cellTop != null && (
             <div
-              style={
-                occupiedSessionTop != null &&
-                occupiedSessionHeight != null &&
-                cellTop != null
-                  ? {
-                      position: "absolute",
-                      top: `${occupiedSessionTop - cellTop}px`,
-                      left: 0,
-                      right: 0,
-                      height: `${occupiedSessionHeight}px`,
-                      zIndex: 4,
-                    }
-                  : { position: "absolute", inset: 0, zIndex: 4 }
-              }
+              style={{
+                position: "absolute",
+                top: `${occupiedSessionTop - cellTop}px`,
+                left: 0,
+                right: 0,
+                height: `${occupiedSessionHeight}px`,
+                zIndex: 4,
+              }}
               className="rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center pointer-events-none"
             >
               <span className="text-[12px] font-bold text-amber-200 select-none whitespace-nowrap">
