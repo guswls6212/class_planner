@@ -442,7 +442,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               onDrop={onDrop}
               onEmptySpaceClick={onEmptySpaceClick}
               isReadOnly={false}
-              insertMode={isDraggingToThis && !dragStartedAsCopy}
+              insertMode={
+                isDraggingToThis &&
+                !dragStartedAsCopy &&
+                (selectedSessionIds?.size ?? 0) <= 1
+              }
               occupiedSessionTop={occupy?.top}
               occupiedSessionHeight={occupy?.height}
               cellTop={cellAbsTop}
