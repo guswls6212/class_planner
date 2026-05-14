@@ -8,7 +8,6 @@ import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { sessionMatchesFilters } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
-import LaneInsertSlot from "./LaneInsertSlot";
 import SessionBlock from "./SessionBlock";
 import HiddenSessionsPopover from "./HiddenSessionsPopover";
 
@@ -315,6 +314,22 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes, isFilterActive]);
 
+  // cell 별 점유 SessionBlock 정보 — drag 중 insertMode overlay 가 cell 30분 slot
+  // 이 아닌 SessionBlock 전체 크기로 펼치기 위함 (사용자 보고 2026-05-14).
+  // key: `${timeIndex}-${yPosition}`, value: { top, height } in TimeTableRow absolute px.
+  const cellSessionMap = React.useMemo(() => {
+    const map = new Map<string, { top: number; height: number }>();
+    for (const ls of laidOutSessions) {
+      const lane = ls.yPosition;
+      const startTimeIdx = Math.max(0, Math.floor(ls.top / SLOT_HEIGHT_PX));
+      const endTimeIdx = Math.ceil((ls.top + ls.height) / SLOT_HEIGHT_PX);
+      for (let ti = startTimeIdx; ti < endTimeIdx; ti++) {
+        map.set(`${ti}-${lane}`, { top: ls.top, height: ls.height });
+      }
+    }
+    return map;
+  }, [laidOutSessions]);
+
   return (
     <div
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
@@ -408,10 +423,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         />
       )}
 
-      {/* Drop cells — timeSlots × effectiveLanes */}
+      {/* Drop cells — timeSlots × effectiveLanes.
+          drag 중 (insertMode=true) 일 땐 cell 을 left/right half 두 insertBefore
+          droppable 로 분할 — cursor 가 cell 어디에 hover 하든 가까운 boundary insert.
+          Variant E (Edge Hover Slot) — cell split. dragStartedAsCopy (시작 시점 latch)
+          기준이라 drag 도중 Cmd 풀어도 insertMode 유지 안 됨 (T10b 회귀 가드). */}
       {timeSlots30Min.map((timeString, timeIndex) => {
         return Array.from({ length: effectiveLanes }, (_, laneIdx) => {
           const yPosition = laneIdx + 1;
+          const cellAbsTop = timeIndex * SLOT_HEIGHT_PX;
+          const occupy = cellSessionMap.get(`${timeIndex}-${yPosition}`);
           return (
             <TimeTableCell
               key={`${timeString}-${yPosition}`}
@@ -421,9 +442,17 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               onDrop={onDrop}
               onEmptySpaceClick={onEmptySpaceClick}
               isReadOnly={false}
+              insertMode={
+                isDraggingToThis &&
+                !dragStartedAsCopy &&
+                (selectedSessionIds?.size ?? 0) <= 1
+              }
+              occupiedSessionTop={occupy?.top}
+              occupiedSessionHeight={occupy?.height}
+              cellTop={cellAbsTop}
               style={{
                 position: "absolute",
-                top: `${timeIndex * SLOT_HEIGHT_PX}px`,
+                top: `${cellAbsTop}px`,
                 left: `${laneIdx * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0)}px`,
                 width: `${laneWidth}px`,
                 height: `${SLOT_HEIGHT_PX}px`,
@@ -433,37 +462,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           );
         });
       })}
-
-      {/* LaneInsertSlot — drag 중인 target weekday 에 lane 경계 별 droppable.
-          Cmd/Ctrl 복사 모드일 땐 mount 안 함 — 복사는 "그 자리에" 의미라 boundary
-          insert 비활성. dragStartedAsCopy (시작 시점 latch) 기준이라 drag 도중 Cmd
-          풀어도 LaneInsertSlot 안 켜짐 — T10b 회귀 가드. Variant E (Edge Hover Slot).
-          cell 과 boundary 겹쳐도 dnd-kit collision detection (pointerWithin →
-          closestCenter) 이 cursor 좌표에 따라 자연 분기. */}
-      {isDraggingToThis &&
-        !dragStartedAsCopy &&
-        timeSlots30Min.map((timeString, timeIndex) =>
-          Array.from({ length: effectiveLanes + 1 }, (_, slotIdx) => {
-            const insertBeforeYPos = slotIdx + 1;
-            const SLOT_HIT_WIDTH = 24;
-            return (
-              <LaneInsertSlot
-                key={`insert-${timeString}-${insertBeforeYPos}`}
-                weekday={weekday}
-                time={timeString}
-                insertBeforeYPos={insertBeforeYPos}
-                style={{
-                  position: "absolute",
-                  top: `${timeIndex * SLOT_HEIGHT_PX}px`,
-                  left: `${slotIdx * laneWidth - SLOT_HIT_WIDTH / 2 + DRAG_HOVER_PAD}px`,
-                  width: `${SLOT_HIT_WIDTH}px`,
-                  height: `${SLOT_HEIGHT_PX}px`,
-                  zIndex: 3,
-                }}
-              />
-            );
-          }),
-        )}
 
       {/* Session blocks (absolutely positioned, visible sessions only) */}
       {laidOutSessions.map(({ session, left, width: sWidth, top, height, yPosition, overflowsTop, overflowsBottom }) => (

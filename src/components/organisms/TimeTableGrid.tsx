@@ -559,17 +559,20 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     const handleDndDragOver = useCallback(
       ({ over }: DragOverEvent) => {
         if (!over) { dragController.leaveTarget(); return; }
-        // over.id format:
-        //   "weekday|time|yPosition"            (TimeTableCell — lane occupy)
-        //   "weekday|time|insertBefore:N"       (LaneInsertSlot — Variant E)
+        // over.id formats:
+        //   "weekday|time|yPosition"           (TimeTableCell — lane occupy / non-insertMode)
+        //   "weekday|time|yPos|leftHalf"       (cell split — insertBefore:yPos)
+        //   "weekday|time|yPos|rightHalf"      (cell split — insertBefore:yPos+1)
         const parts = (over.id as string).split("|");
         if (parts.length < 3) return;
-        const [wd, time, third] = parts;
-        if (third.startsWith("insertBefore:")) {
-          const insertBeforeYPos = Number(third.slice("insertBefore:".length));
-          dragController.hoverTarget(Number(wd), time, insertBeforeYPos, "insertBefore");
+        const [wd, time, yPosStr, half] = parts;
+        const yPos = Number(yPosStr);
+        if (half === "leftHalf") {
+          dragController.hoverTarget(Number(wd), time, yPos, "insertBefore");
+        } else if (half === "rightHalf") {
+          dragController.hoverTarget(Number(wd), time, yPos + 1, "insertBefore");
         } else {
-          dragController.hoverTarget(Number(wd), time, Number(third), "lane");
+          dragController.hoverTarget(Number(wd), time, yPos, "lane");
         }
       },
       [dragController],
@@ -584,11 +587,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
           const sessionId = active.id as string;
           const parts = (over.id as string).split("|");
           if (parts.length >= 3) {
-            const [wd, time, third] = parts;
-            const isInsertBefore = third.startsWith("insertBefore:");
-            const yPos = isInsertBefore
-              ? Number(third.slice("insertBefore:".length))
-              : Number(third);
+            const [wd, time, yPosStr, half] = parts;
+            const baseYPos = Number(yPosStr);
+            const isInsertBefore = half === "leftHalf" || half === "rightHalf";
+            const yPos = half === "rightHalf" ? baseYPos + 1 : baseYPos;
             // Ctrl/Meta + drag → 복사 (onSessionCopy가 있을 때만, 없으면 이동 fallback)
             if (isCopy && onSessionCopy) {
               // 복사 시엔 insertBefore 도 일반 lane copy 로 fallback (복사 + 명시적 shift
