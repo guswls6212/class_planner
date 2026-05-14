@@ -314,6 +314,22 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes, isFilterActive]);
 
+  // cell 별 점유 SessionBlock 정보 — drag 중 insertMode overlay 가 cell 30분 slot
+  // 이 아닌 SessionBlock 전체 크기로 펼치기 위함 (사용자 보고 2026-05-14).
+  // key: `${timeIndex}-${yPosition}`, value: { top, height } in TimeTableRow absolute px.
+  const cellSessionMap = React.useMemo(() => {
+    const map = new Map<string, { top: number; height: number }>();
+    for (const ls of laidOutSessions) {
+      const lane = ls.yPosition;
+      const startTimeIdx = Math.max(0, Math.floor(ls.top / SLOT_HEIGHT_PX));
+      const endTimeIdx = Math.ceil((ls.top + ls.height) / SLOT_HEIGHT_PX);
+      for (let ti = startTimeIdx; ti < endTimeIdx; ti++) {
+        map.set(`${ti}-${lane}`, { top: ls.top, height: ls.height });
+      }
+    }
+    return map;
+  }, [laidOutSessions]);
+
   return (
     <div
       className={`relative bg-[var(--color-bg-primary)] border-r border-[var(--color-border-grid)] ${className}`}
@@ -415,6 +431,8 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
       {timeSlots30Min.map((timeString, timeIndex) => {
         return Array.from({ length: effectiveLanes }, (_, laneIdx) => {
           const yPosition = laneIdx + 1;
+          const cellAbsTop = timeIndex * SLOT_HEIGHT_PX;
+          const occupy = cellSessionMap.get(`${timeIndex}-${yPosition}`);
           return (
             <TimeTableCell
               key={`${timeString}-${yPosition}`}
@@ -425,9 +443,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
               onEmptySpaceClick={onEmptySpaceClick}
               isReadOnly={false}
               insertMode={isDraggingToThis && !dragStartedAsCopy}
+              occupiedSessionTop={occupy?.top}
+              occupiedSessionHeight={occupy?.height}
+              cellTop={cellAbsTop}
               style={{
                 position: "absolute",
-                top: `${timeIndex * SLOT_HEIGHT_PX}px`,
+                top: `${cellAbsTop}px`,
                 left: `${laneIdx * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0)}px`,
                 width: `${laneWidth}px`,
                 height: `${SLOT_HEIGHT_PX}px`,
