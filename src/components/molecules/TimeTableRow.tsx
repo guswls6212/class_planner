@@ -39,20 +39,26 @@ export function coordsToDropTarget(
 
 // Drag preview state (same shape as TimeTableGrid)
 //
-// targetMode SSOT (drag-ghost / lane-highlight / Edge Hover Slot 시각 동기화):
-//   - "lane"          : drop 후 lane occupy. lane-highlight = 해당 lane 박스.
-//   - "insertBefore"  : lane 사이 insert (Variant E). lane-highlight = lane 경계
-//                       수직선. ghost = (insertBeforeYPos) lane 박스. Edge Slot
-//                       amber boundary line 과 동일 픽셀 anchor.
-//   - null            : drag 미진행/hover 없음.
-// 자세히는 class-planner/docs/dnd-visual-feedback.md.
+// SSOT (drag-ghost / lane-highlight / amber overlay 3 종 시각 피드백 통일):
+//   - drag-ghost     : laidOutSessions.find(ds.id) 좌표 (post-shift, compactYPositions 후)
+//   - lane-highlight : 위 ghost 좌표 derive (fallback: targetYPosition raw)
+//   - amber overlay  : 위 ghost 좌표 derive + targetHalf glow line (Variant E insertBefore)
+// 세 시각 피드백 모두 ghost 좌표 single source 로 derive → 항상 같은 lane 가리킨다.
+// 상세 / RC: class-planner/docs/dnd-visual-feedback.md.
+//
+// targetMode:
+//   - "lane"         : drop 후 lane occupy. lane-highlight 박스만, amber overlay 없음.
+//   - "insertBefore" : lane 사이 insert (Variant E). amber overlay 표시 + targetHalf glow.
+//   - null           : hover 없음.
+// targetHalf: insertBefore 시 cell 의 어느 절반에 cursor 가 있는지 ("left" / "right").
 interface DragPreviewState {
   draggedSession: Session | null;
   targetWeekday: number | null;
   targetTime: string | null;
   targetYPosition: number | null;
-  // optional: legacy 호출자 (mode 미인지) 호환. undefined → "lane" mode default.
+  // optional: legacy 호출자 호환. undefined → "lane" default.
   targetMode?: "lane" | "insertBefore" | null;
+  targetHalf?: "left" | "right" | null;
 }
 
 interface TimeTableRowProps {
@@ -89,6 +95,12 @@ interface TimeTableRowProps {
   colorBy?: ColorByMode;
   isMobile?: boolean;
   dragPreview?: DragPreviewState;
+  /**
+   * drag 시작 시점의 이 weekday 의 lane 수 (TimeTableGrid 가 latch). drag 중 cell 수가
+   * 줄어드는 케이스 (lane shift 후 source weekday 의 lane 줄어듦) 방지 — effectiveLanes
+   * = max(frozenLanes, required). drag 중에만 유효, drag 끝나면 null.
+   */
+  frozenLanes?: number | null;
   /** 선택된 세션 id Set — SessionBlock의 selected 시각 표시 결정 */
   selectedSessionIds?: Set<string>;
   /** modifier(Shift/Ctrl/Meta) + click 시 호출 */
@@ -140,6 +152,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   colorBy = "subject",
   isMobile = false,
   dragPreview,
+  frozenLanes,
   isToday = false,
   nowLinePx = null,
   nowTimeStr,
@@ -213,7 +226,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
 
   // D-hybrid: overflow only when not actively dragging
   const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
-  const effectiveLanes = isExpanded ? rawMaxYPosition : (isOverflow ? 3 : rawMaxYPosition);
+  // drag 중에는 시작 시점 lane 수를 floor 로 — cell 수 줄어듦 차단 (mount/unmount flicker
+  // 방지). 늘어남은 허용 (insertBefore 시 +1). dnd-visual-feedback.md § 5 (transient flicker).
+  const effectiveLanes = isDragging && frozenLanes != null
+    ? Math.max(frozenLanes, rawMaxYPosition)
+    : (isExpanded ? rawMaxYPosition : (isOverflow ? 3 : rawMaxYPosition));
 
   // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
   // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
@@ -324,21 +341,15 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes, isFilterActive]);
 
-  // cell 별 점유 SessionBlock 정보 — drag 중 insertMode overlay 가 cell 30분 slot
-  // 이 아닌 SessionBlock 전체 크기로 펼치기 위함 (사용자 보고 2026-05-14).
-  // key: `${timeIndex}-${yPosition}`, value: { top, height } in TimeTableRow absolute px.
-  const cellSessionMap = React.useMemo(() => {
-    const map = new Map<string, { top: number; height: number }>();
-    for (const ls of laidOutSessions) {
-      const lane = ls.yPosition;
-      const startTimeIdx = Math.max(0, Math.floor(ls.top / SLOT_HEIGHT_PX));
-      const endTimeIdx = Math.ceil((ls.top + ls.height) / SLOT_HEIGHT_PX);
-      for (let ti = startTimeIdx; ti < endTimeIdx; ti++) {
-        map.set(`${ti}-${lane}`, { top: ls.top, height: ls.height });
-      }
-    }
-    return map;
-  }, [laidOutSessions]);
+  // ghost layout (드래그 중 movingSession 의 laidOut 위치) — lane-highlight + amber
+  // overlay 가 같은 source 에서 좌표 derive. compactYPositions artifact (lane 1 출발
+  // + insertBefore=2 시 ghost yPos 가 1 로 compact) 도 자동 반영. dnd-visual-feedback.md
+  // § 1 RC 분석 참조.
+  const ghostLayout = React.useMemo(() => {
+    const dsId = dragPreview?.draggedSession?.id;
+    if (!dsId) return null;
+    return laidOutSessions.find(({ session }) => session.id === dsId) ?? null;
+  }, [laidOutSessions, dragPreview?.draggedSession?.id]);
 
   return (
     <div
@@ -417,37 +428,23 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         ))
       )}
 
-      {/* 드래그 중 타겟 레인 하이라이트 — targetMode 에 따라 시각 분기.
-            "lane"          : column 박스 (drop 후 점유할 lane 강조)
-            "insertBefore"  : lane 경계 수직선 (lane 사이 insert 의도, Variant E)
-          ghost left edge + Edge Hover Slot amber boundary line 과 동일 픽셀 anchor 되어
-          3 종 시각 피드백이 같은 SSOT 를 가리킨다. dnd-visual-feedback.md 참조. */}
+      {/* 드래그 중 타겟 레인 하이라이트 — 항상 column 박스 (사용자 직관 "어느 lane 으로
+          드롭하는지"). 좌표는 ghost layout (laidOutSessions) 에서 derive — compactYPositions
+          artifact (lane 1 출발 + insertBefore=2 시 ghost yPos=1 로 compact 되는 케이스) 도
+          자동 반영. ghost 미존재 시 raw targetYPosition fallback. amber overlay 도 같은
+          좌표 derive → 3 종 시각 피드백 항상 같은 lane. dnd-visual-feedback.md § 5 참조. */}
       {isDragging && dragPreview?.targetWeekday === weekday && dragPreview?.targetYPosition != null && (() => {
-        const baseLeft = (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0);
-        if (dragPreview.targetMode === "insertBefore") {
-          return (
-            <div
-              data-testid="lane-highlight"
-              data-mode="insertBefore"
-              className="absolute top-0 bottom-0 pointer-events-none"
-              style={{
-                left: baseLeft - 1.5,
-                width: 3,
-                background: "rgba(99,179,237,0.55)",
-                boxShadow: "0 0 6px 1px rgba(99,179,237,0.45)",
-                zIndex: 95,
-              }}
-            />
-          );
-        }
+        const left = ghostLayout
+          ? ghostLayout.left
+          : (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0);
+        const width = ghostLayout ? ghostLayout.width : Math.round(laneWidth);
         return (
           <div
             data-testid="lane-highlight"
-            data-mode="lane"
             className="absolute top-0 bottom-0 pointer-events-none"
             style={{
-              left: baseLeft,
-              width: laneWidth,
+              left,
+              width,
               background: "rgba(99,179,237,0.10)",
               borderLeft: "1.5px solid rgba(99,179,237,0.35)",
               borderRight: "1.5px solid rgba(99,179,237,0.35)",
@@ -466,7 +463,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         return Array.from({ length: effectiveLanes }, (_, laneIdx) => {
           const yPosition = laneIdx + 1;
           const cellAbsTop = timeIndex * SLOT_HEIGHT_PX;
-          const occupy = cellSessionMap.get(`${timeIndex}-${yPosition}`);
           return (
             <TimeTableCell
               key={`${timeString}-${yPosition}`}
@@ -481,9 +477,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
                 !dragStartedAsCopy &&
                 (selectedSessionIds?.size ?? 0) <= 1
               }
-              occupiedSessionTop={occupy?.top}
-              occupiedSessionHeight={occupy?.height}
-              cellTop={cellAbsTop}
               style={{
                 position: "absolute",
                 top: `${cellAbsTop}px`,
@@ -590,6 +583,45 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             }}
             data-testid="drag-source"
           />
+        );
+      })()}
+
+      {/* amber overlay ("여기 삽입") — Variant E insertBefore mode 시 ghost 좌표
+          (laidOutSessions) 에 그려진다. cell 의 isOver 가 아닌 dragController.targetMode
+          + targetHalf 기반 — 3 시각 피드백 SSOT 통일 (dnd-visual-feedback.md § 3, 5).
+          targetHalf 로 left/right boundary glow 분기. multi-select / Cmd+copy 시 미렌더
+          (T10b 회귀 가드, cell 의 insertMode 와 동일 조건). */}
+      {(() => {
+        if (dragPreview?.targetWeekday !== weekday) return null;
+        if (dragPreview?.targetMode !== "insertBefore") return null;
+        if (dragStartedAsCopy) return null;
+        if ((selectedSessionIds?.size ?? 0) > 1) return null;
+        if (!ghostLayout) return null;
+        return (
+          <div
+            data-testid="amber-overlay"
+            data-target-half={dragPreview.targetHalf ?? undefined}
+            style={{
+              position: "absolute",
+              left: ghostLayout.left,
+              top: ghostLayout.top,
+              width: ghostLayout.width,
+              height: ghostLayout.height,
+              zIndex: 4,
+              pointerEvents: "none",
+            }}
+            className="rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center"
+          >
+            <span className="text-[12px] font-bold text-amber-200 select-none whitespace-nowrap">
+              여기 삽입
+            </span>
+            {dragPreview.targetHalf === "left" && (
+              <div className="absolute inset-y-0 left-0 w-1 bg-amber-400 rounded-l-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
+            )}
+            {dragPreview.targetHalf === "right" && (
+              <div className="absolute inset-y-0 right-0 w-1 bg-amber-400 rounded-r-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
+            )}
+          </div>
         );
       })()}
 

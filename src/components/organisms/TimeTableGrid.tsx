@@ -420,7 +420,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // 드래그 세션을 포함한 결과를 반환 — TimeTableRow에서 SessionBlock 렌더 시 skip하고
     // 대신 DragGhost를 렌더한다. 이렇게 해야 weekdayMaxLanes 계산에 ghost lane이 반영된다.
     // Bug5 fix: dragController 객체(매 렌더마다 새 참조)가 아닌 primitive 값으로 deps 지정.
-    const { draggedSession, targetWeekday, targetTime, targetYPosition, targetMode } = dragController;
+    const { draggedSession, targetWeekday, targetTime, targetYPosition, targetMode, targetHalf } = dragController;
     const sessionsForRender = useMemo(
       () =>
         computeTentativeLayout(
@@ -438,8 +438,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
 
     // dragPreview SSOT — 매 render 새 객체로 전달하면 TimeTableRow(7개) 의
     // dragPreview-의존 useEffect/useMemo 가 매번 재실행되므로 primitive deps 로 stable 화.
-    // targetMode 까지 같이 전달해서 drag-ghost / lane-highlight / Edge Hover Slot 3 종 시각
-    // 피드백이 같은 SSOT 를 본다 (dnd-visual-feedback.md 참조).
+    // targetMode + targetHalf 까지 같이 전달해서 drag-ghost / lane-highlight / amber overlay
+    // 3 종 시각 피드백이 같은 SSOT 를 본다 (dnd-visual-feedback.md 참조).
     const dragPreviewProp = useMemo(
       () => ({
         draggedSession,
@@ -447,8 +447,9 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         targetTime,
         targetYPosition,
         targetMode,
+        targetHalf,
       }),
-      [draggedSession, targetWeekday, targetTime, targetYPosition, targetMode],
+      [draggedSession, targetWeekday, targetTime, targetYPosition, targetMode, targetHalf],
     );
 
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
@@ -555,6 +556,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
     // insert 비활성" 의 routing 의도는 시작 시점 latch 가 일관성 (T10b 회귀 가드).
     const [dragStartedAsCopy, setDragStartedAsCopy] = useState(false);
 
+    // drag 시작 시점의 weekday 별 lane 수 latch — drag 중 cell mount/unmount flicker
+    // 방지. effectiveLanes = max(frozen, required) 로 줄어듦 차단, 늘어남만 허용.
+    // dnd-visual-feedback.md § 5 (1-frame flicker 완화) 참조.
+    const [frozenLaneCountsPerWeekday, setFrozenLaneCountsPerWeekday] = useState<number[] | null>(null);
+
     const handleDndDragStart = useCallback(
       ({ active, activatorEvent }: DragStartEvent) => {
         const session = sessionById.get(active.id as string);
@@ -567,8 +573,13 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         dragStartCopyModeRef.current = isCopyAtStart; // ← 라우팅용 latch
         setDragStartedAsCopy(isCopyAtStart); // ← LaneInsertSlot 등 reactive 자식용
         dragController.setCopyModeOverride(isCopyAtStart); // ← 시각 동기화
+        // weekday 별 현재 lane 수 latch — drag 중 cell 수 줄어듦 차단 (flicker 방지)
+        const startLanes = Array.from({ length: 7 }, (_, wd) =>
+          computeRequiredLanes(sessions?.get(wd) || []),
+        );
+        setFrozenLaneCountsPerWeekday(startLanes);
       },
-      [sessionById, dragController],
+      [sessionById, dragController, sessions],
     );
 
     const handleDndDragOver = useCallback(
@@ -582,12 +593,18 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         if (parts.length < 3) return;
         const [wd, time, yPosStr, half] = parts;
         const yPos = Number(yPosStr);
+        const wdNum = Number(wd);
+        // NaN 가드 — 비정상 over.id (빈 segment 등) 대응. dragController state 오염 방지.
+        if (!Number.isFinite(yPos) || !Number.isFinite(wdNum)) {
+          dragController.leaveTarget();
+          return;
+        }
         if (half === "leftHalf") {
-          dragController.hoverTarget(Number(wd), time, yPos, "insertBefore");
+          dragController.hoverTarget(wdNum, time, yPos, "insertBefore", "left");
         } else if (half === "rightHalf") {
-          dragController.hoverTarget(Number(wd), time, yPos + 1, "insertBefore");
+          dragController.hoverTarget(wdNum, time, yPos + 1, "insertBefore", "right");
         } else {
-          dragController.hoverTarget(Number(wd), time, yPos, "lane");
+          dragController.hoverTarget(wdNum, time, yPos, "lane");
         }
       },
       [dragController],
@@ -623,6 +640,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         }
         dragStartCopyModeRef.current = false; // 다음 drag를 위해 reset
         setDragStartedAsCopy(false);
+        setFrozenLaneCountsPerWeekday(null); // drag 종료 시 freeze 해제
         // 드래그 후 스크롤 위치 복원
         requestAnimationFrame(() => {
           const element = gridRef.current;
@@ -763,6 +781,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 colorBy={colorBy}
                 isMobile={isMobile}
                 dragPreview={dragPreviewProp}
+                frozenLanes={frozenLaneCountsPerWeekday?.[weekday] ?? null}
                 isExpanded={expandedWeekdays.has(weekday)}
                 onToggleExpand={() => toggleWeekdayExpand(weekday)}
                 isToday={isToday}

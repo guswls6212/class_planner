@@ -7,22 +7,20 @@ class-planner 시간표(`/schedule`)에서 수업 블록(SessionBlock)을 드래
 | # | 코드 식별자 | 렌더 위치 | 의미 |
 |---|---|---|---|
 | 1 | `data-testid="drag-ghost"` (DragGhost) | `TimeTableRow.tsx` § DragGhost block | 드래그 대상 블록의 **드롭 후 위치 미리보기**. 옮겨진 후 모습을 흐릿한 카드로 in-grid 렌더. |
-| 2 | `data-testid="lane-highlight"` | `TimeTableRow.tsx` § 타겟 레인 하이라이트 block | **현재 hover 중인 lane 강조**. `targetMode`에 따라 시각 분기 (§ 4 참조). |
-| 3 | `Edge Hover Slot` (Variant E) — `여기 삽입` amber overlay | `TimeTableCell.tsx` § insertMode overlay | **lane 사이 명시적 삽입 안내**. 노란 점선 박스 + boundary glow line. |
+| 2 | `data-testid="lane-highlight"` | `TimeTableRow.tsx` § 타겟 레인 하이라이트 block | **현재 hover 중인 lane 박스 강조**. 항상 column 박스 형태 (사용자 직관 "어느 lane 으로 드롭"). |
+| 3 | `data-testid="amber-overlay"` ("여기 삽입") | `TimeTableRow.tsx` § amber overlay block | **lane 사이 명시적 삽입 안내** (Variant E). 노란 점선 박스 + boundary glow line. `targetMode === "insertBefore"` 시에만. |
 
-## 2. 추가 시각 피드백 (cell hit-test / column-level 보조)
-
-3 SSOT 외 코드에 존재하는 시각 요소.
+## 2. 사용자 3 종 외 추가 시각 피드백
 
 | 식별자 | 위치 | 역할 |
 |---|---|---|
-| `DragOverlayCard` (dnd-kit `<DragOverlay>`) | `TimeTableGrid.tsx` 하단 | 마우스 cursor에 정확히 lock 되는 카드 (dnd-kit 표준). lane snap 없이 마우스 위치 그대로. |
+| `DragOverlayCard` (dnd-kit `<DragOverlay>`) | `TimeTableGrid.tsx` 하단 | 마우스 cursor 에 정확히 lock 되는 카드 (dnd-kit 표준). lane snap 없이 마우스 위치 그대로. |
 | `data-testid="drag-source"` | `TimeTableRow.tsx` § Source placeholder | 다른 weekday 로 이동 시 원래 자리에 페이드 박스. source location 식별. |
-| `data-testid="lane-boundary-N"` | `TimeTableRow.tsx` § 레인 경계선 | 정적 lane 경계 가이드 (얇은 vertical line). 드래그 중 일관성 보조. |
+| `data-testid="lane-boundary-N"` | `TimeTableRow.tsx` § 레인 경계선 | 정적 lane 경계 가이드 (얇은 vertical line). drag 중 일관성 보조. |
 | Column inner glow (boxShadow) | `TimeTableRow.tsx` § div root style | target weekday 컬럼 자체 강조 (1.5px inset border). |
 | `DRAG_HOVER_PAD` (column +20px 확장) | `TimeTableGrid.tsx weekdayWidths` | 드래그 중 target column 양옆 10px 패딩. drop 의도 명시성 ↑. |
 
-## 3. 데이터 흐름 (SSOT chain)
+## 3. 데이터 흐름 (SSOT chain — Non-negotiable)
 
 ```
 user drag
@@ -31,65 +29,110 @@ dnd-kit DndContext.onDragOver
     ↓
 TimeTableGrid.handleDndDragOver(over.id)
     ↓ parse "weekday|time|yPos|leftHalf?|rightHalf?"
-    ↓ leftHalf  → hoverTarget(wd, t, yPos,   "insertBefore")
-    ↓ rightHalf → hoverTarget(wd, t, yPos+1, "insertBefore")
+    ↓ NaN 가드 → invalid 시 leaveTarget()
+    ↓ leftHalf  → hoverTarget(wd, t, yPos,   "insertBefore", "left")
+    ↓ rightHalf → hoverTarget(wd, t, yPos+1, "insertBefore", "right")
     ↓ none      → hoverTarget(wd, t, yPos,   "lane")
 useDragController (state machine)
-    ↓ exposes: targetWeekday, targetTime, targetYPosition, targetMode
+    ↓ exposes: targetWeekday, targetTime, targetYPosition, targetMode, targetHalf
 TimeTableGrid:
-    ├─ sessionsForRender = computeTentativeLayout(..., { targetMode })   ← #1 drag-ghost 의 SSOT
-    └─ dragPreviewProp   = useMemo({ ..., targetMode })                    ← #2 lane-highlight 의 SSOT
+    ├─ sessionsForRender = computeTentativeLayout(..., { targetMode })   ← lane 시뮬레이션
+    ├─ dragPreviewProp   = useMemo({ ..., targetMode, targetHalf })       ← stable prop
+    └─ frozenLaneCountsPerWeekday (drag 시작 시 latch)                    ← cell flicker 방지
         ↓ prop drilling
 TimeTableRow:
-    ├─ drag-ghost       (yPos = laidOutSessions.find(ds).yPosition  ← sessionsForRender 기반)
-    └─ lane-highlight   (yPos = dragPreviewProp.targetYPosition, mode = dragPreviewProp.targetMode)
+    ├─ laidOutSessions  ← sessionsForRender 의 weekday 부분, lane / top / height 계산
+    ├─ ghostLayout     = laidOutSessions.find(ds.id)                       ← SSOT 좌표
+    ├─ effectiveLanes  = max(frozenLanes, computeRequiredLanes(...))      ← flicker 가드
+    ├─ drag-ghost      (left/top/width/height = ghostLayout)               ← #1
+    ├─ lane-highlight  (left/width = ghostLayout, fallback raw targetYPos) ← #2
+    └─ amber overlay   (left/top/width/height = ghostLayout, glow=half)    ← #3
 
 TimeTableCell:
-    └─ Edge Hover Slot  (leftHalfDrop.isOver / rightHalfDrop.isOver ← dnd-kit per-cell hit-test)
+    └─ leftHalfDrop / rightHalfDrop (useDroppable hit-test only — visual X)
 ```
 
-핵심: **3 SSOT 모두 dragController state(`targetWeekday/time/yPos/mode`) 와 `over.id` 의 같은 origin** 에서 파생. timing 불일치 없음.
+**Invariant**: 3 시각 피드백 모두 같은 `ghostLayout = laidOutSessions.find(ds.id)` 좌표 derive → 같은 frame 에 같은 픽셀로 갱신. compactYPositions artifact (lane 1 출발 + insertBefore=2 시 ghost yPos→1 compact) 도 자동 흡수.
 
-## 4. targetMode 분기 — lane-highlight 시각 분기
+## 4. lane-highlight — 항상 박스
 
-`dragPreview.targetMode === "insertBefore"` 일 때 lane-highlight 는 **lane 경계 vertical line** 으로 렌더. 그 외 (`"lane"` 또는 undefined) 엔 **column 박스** 로 렌더.
+`dragPreview.targetMode` 에 의한 시각 분기 **폐기** (이전 PR #390 의 vertical line 패턴 revert). lane-highlight 는 **항상 column 박스**:
 
-이유: `insertBefore` 의 의미는 "lane N 앞에 새 lane 삽입" 이지 "lane N 자체에 occupy" 가 아니다. column 박스로 표시하면 ghost 위치(post-shift lane N) 와 시각 충돌 (`drag-ghost` 박스가 후보 자리에 있는데 `lane-highlight` 박스가 같은 자리에 또 있는 시각 중복).
+- 색상 / 테두리는 mode 와 무관 (반투명 파란 박스 + border-left/right 1.5px).
+- 위치 / 너비는 `ghostLayout` 우선 (post-shift, compactYPositions 후의 movingSession lane). `ghostLayout === null` 시 raw `targetYPosition` fallback.
 
-vertical line 은 `(targetYPosition - 1) * laneWidth` 픽셀에 anchor — 이게 ghost 의 left edge + Edge Hover Slot amber boundary line 과 동일 픽셀이라 3 종이 같은 경계를 가리킨다 (§ 5).
+이유: vertical line 은 "lane 사이 boundary" 의미를 가지지만, 사용자는 박스 형태 (= "이 lane 으로 드롭") 가 더 직관적. amber overlay 도 같은 lane (ghost lane) 에 그려지므로 박스 형태로도 시각 일관 — 중복은 ghost zIndex 200 이 위에서 가림.
 
 ## 5. 좌표 anchor 규약 (Non-negotiable)
 
-`targetMode === "insertBefore"` 시 3 SSOT 의 anchor 픽셀은 **모두 `(targetYPosition - 1) * laneWidth + DRAG_HOVER_PAD`** 이어야 한다 (target weekday 기준).
+3 SSOT 의 anchor 픽셀은 **모두 `ghostLayout` (laidOutSessions ghost) 의 `left/top/width/height`** 이어야 한다.
 
-| SSOT | anchor pixel 식 | 결과 |
+| SSOT | 좌표 source | 비고 |
 |---|---|---|
-| #1 drag-ghost left edge | `(insertBeforeYPos - 1) * laneWidth + PAD` (compactDay 후 post-shift) | `boundary` |
-| #2 lane-highlight line 중심 | `(targetYPosition - 1) * laneWidth + PAD` (±1.5 boundary line width) | `boundary` |
-| #3 amber boundary line (leftHalf) | cell N(=targetYPosition) 의 left = `(N - 1) * laneWidth` | `boundary` |
-| #3 amber boundary line (rightHalf) | cell N 의 right = `N * laneWidth` = `(targetYPosition - 1) * laneWidth` (targetYPosition = N+1) | `boundary` |
+| #1 drag-ghost | `ghostLayout.left + 1`, `ghostLayout.top + 1`, `ghostLayout.width - 2`, `ghostLayout.height - 2` | border offset |
+| #2 lane-highlight | `ghostLayout.left`, `top:0`, `width: ghostLayout.width`, `bottom:0` | row 전체 높이 사용 (column 박스) |
+| #3 amber overlay | `ghostLayout.left`, `ghostLayout.top`, `ghostLayout.width`, `ghostLayout.height` | ghost 와 동일 |
 
-`insertSessionAtLanePreview` 와 drop handler 가 같은 algorithm 이라 ghost 위치 ≡ 실제 drop 결과 invariant (PR #389 § cell split 시작 이후 항구). 새로 추가되는 시각 피드백은 이 anchor 식에 맞춰야 한다.
+`ghostLayout === null` 시 (드래그 시작 직후 또는 cross-weekday 직전 transient) lane-highlight 만 raw `targetYPosition` fallback 으로 그려짐. amber 는 미렌더.
 
-## 6. 알려진 한계 / 향후 개선 후보
+## 6. amber overlay — Variant E "여기 삽입"
 
-- **Edge Hover Slot 의 amber 큰 박스(`bg-amber-300/25 border-dashed`)는 hover 중인 cell 위치(=cell N 의 lane 박스)에 그려진다.** rightHalf hover 시 ghost 박스(post-shift lane N+1) 와 amber 박스(lane N) 가 **인접한 다른 lane** 에 위치 — 두 박스의 boundary line 은 일치하지만 박스 자체는 시각 중복 아님.
-  - 사용자 의도가 "ghost 박스 == amber 박스 같은 lane" 이라면 amber overlay 를 cell 단위 → row 단위로 옮겨서 `dragPreview.targetYPosition` 기반 렌더로 통일해야 함. PR #389 의 cell-split SSOT 와 trade-off 가 있어 별도 결정 필요.
+표시 조건 (모두 만족 시):
+- `dragPreview.targetWeekday === weekday`
+- `dragPreview.targetMode === "insertBefore"`
+- `!dragStartedAsCopy` (Cmd/Ctrl 복사 모드 시 X — T10b 가드)
+- `selectedSessionIds.size <= 1` (multi-select 시 X — T10b 가드)
+- `ghostLayout` 존재
 
-- **DragOverlayCard (cursor-attached)** 는 항상 마우스 lock — lane snap 안 함. dnd-kit 표준 동작이며 이게 사용자에게 "내가 잡고 있는 것" 직관 제공. 이 카드와 in-grid drag-ghost 의 위치 차이는 의도된 디자인.
+위치: ghostLayout 좌표. boundary glow:
+- `targetHalf === "left"` → 박스의 왼쪽 edge 에 `w-1` amber glow line
+- `targetHalf === "right"` → 박스의 오른쪽 edge 에 `w-1` amber glow line
 
-- **multi-select / Ctrl+Cmd 복사 모드** 시 `insertMode = false` (T10b 회귀 가드, PR #88 #128 cycle). amber overlay 미표시, lane-highlight 는 항상 `"lane"` mode column 박스로 렌더.
+zIndex 4 (lane-highlight 95 보다 아래지만 ghost lane 에 SessionBlock 이 없으므로 충돌 X). ghost zIndex 200 이 위에서 살짝 가려도 ghost 반투명이라 amber border 비춰 보임.
 
-## 7. 변경 history
+## 7. effectiveLanes freeze (transient flicker 방지)
 
-- **PR #244** (2026-05): Variant E 도입 — cell split + amber `여기 삽입` overlay
-- **PR #389** (2026-05-13): cell-split unique droppable id (lane mismatch 회귀 가드)
-- **PR (이번)** (2026-05-15): `dragPreview` prop 에 `targetMode` 추가, lane-highlight 를 mode-aware 로 분기, 본 문서 신설. 3 SSOT 시각 동기화 정합성 명문화.
+drag 시작 시 TimeTableGrid 가 weekday 별 lane 수를 `frozenLaneCountsPerWeekday` state 에 latch. drag 중 `effectiveLanes = max(frozenLanes, computeRequiredLanes(...))` 로 줄어듦 차단.
 
-## 8. 테스트 회귀 가드
+이유: cell mount/unmount 시 dnd-kit `useDroppable` 재등록까지 1 frame 지연 → cell.isOver flicker → over 갱신 지연 → 3 시각 피드백 transient mismatch. lane 수 줄어듦을 막으면 cell 안정성 ↑.
 
-- 단위: `src/components/molecules/__tests__/TimeTableRow.test.tsx` § "드래그 중 레인 시각화 — 경계선 + 하이라이트"
-  - `targetMode=insertBefore` → `data-mode="insertBefore"` + `width: 3px`
-  - `targetMode=lane` → `data-mode="lane"` + `width != 3px`
-  - `targetMode undefined` → lane mode default (backward compat)
-- E2E (Playwright): `/schedule` 페이지에서 SessionBlock 드래그 → ghost / lane-highlight / amber boundary 픽셀 anchor 일치 — 수동 검증 (computer-use 권장).
+늘어남은 허용 (insertBefore 시 +1 등) — 새 cell mount 후 다음 frame 에 안정.
+
+## 8. NaN 가드
+
+`handleDndDragOver` 의 `over.id` parse 결과 `yPos` 또는 `weekday` 가 `!Number.isFinite()` 시 `leaveTarget()` 호출. 비정상 `over.id` (빈 segment, 잘못된 droppable id 등) 로 dragController state 오염 방지.
+
+## 9. 한계 / 트레이드오프
+
+**100% 동기 보장 X, ~98% 가능.** dnd-kit `useDroppable` 등록 + React reducer dispatch 가 같은 onDragOver event 에서 갱신되지만, 내부 subscriber 가 다른 task 로 batched 될 수 있어 1-frame transient flicker 가능. `effectiveLanes` freeze + ghost SSOT derive 로 사용자 인지 가능한 mismatch 는 사실상 제거.
+
+추가 SSOT 강화 후보 (별도 PR 대상):
+- dnd-kit 의 `over` ref 직접 read (internal API 의존 → 위험)
+- React 18 `flushSync` 로 강제 동기 update (perf hit 가능)
+- TimeTableRow / TimeTableGrid 분할 (~700-829 lines → 300 lines × 3) — 코드 가독성 ↑, 본 변경의 RC 진단 비용 ↓.
+
+## 10. 변경 history
+
+- **PR #244** (2026-05): Variant E 도입 — cell split + amber `여기 삽입` overlay.
+- **PR #389** (2026-05-13): cell-split unique droppable id (lane mismatch 회귀 가드).
+- **PR #390 (1차)** (2026-05-15): `dragPreview` 에 `targetMode` plumbing + lane-highlight mode 분기 (insertBefore → vertical line). docs § 4/5 신설.
+- **PR #390 (2차, 이 변경)** (2026-05-15): 사용자 본인 브라우저 검증 후 mismatch 재보고 (`compactYPositions` artifact = Case B). 통합 SSOT 로 전환:
+  - `lane-highlight` 박스 revert + `ghostLayout` 좌표 derive
+  - `amber overlay` TimeTableCell→TimeTableRow 이동 + ghost 좌표 derive
+  - `dragController` 에 `targetHalf` 추가 (left/right glow)
+  - `effectiveLanes` freeze (cell flicker 가드)
+  - NaN 가드 (`handleDndDragOver`)
+  - 이 문서 전면 재작성
+
+## 11. 테스트 회귀 가드
+
+`src/components/molecules/__tests__/TimeTableRow.test.tsx` § "드래그 중 레인 시각화":
+- `targetMode=insertBefore` → lane-highlight 박스 (width != 3px, data-mode 속성 없음)
+- `targetMode=lane` / undefined → lane-highlight 박스 (legacy backward compat)
+- `targetMode=insertBefore` + `targetHalf="left"` → amber-overlay 렌더 (data-target-half="left")
+- `targetMode=insertBefore` + `targetHalf="right"` → amber-overlay data-target-half="right"
+- `targetMode=lane` → amber-overlay 미렌더
+- multi-select → amber-overlay 미렌더 (T10b 가드)
+- `dragStartedAsCopy` → amber-overlay 미렌더 (T10b 가드)
+
+E2E (Playwright + computer-use): `/schedule` 에서 SessionBlock 드래그 → ghost / lane-highlight / amber overlay 픽셀 anchor 일치 + 마우스 따라 같이 움직임. 데이터 의존성 큼 — 사용자 본인 브라우저 검증 우선.
