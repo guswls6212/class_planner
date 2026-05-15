@@ -14,6 +14,7 @@ import React, {
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import type { ColorByMode } from "../../hooks/useColorBy";
 import { computeRequiredLanes, computeTentativeLayout } from "../../lib/sessionCollisionUtils";
+import { computeRowClusters } from "../../lib/sessionClusters";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useDragController } from "../../hooks/useDragController";
 import { useNowMinute } from "../../hooks/useNowMinute";
@@ -165,21 +166,28 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       return map;
     }, [sessions]);
 
-    // 요일별 overflow 펼침 상태 (controlled — column 폭 계산에 사용)
-    const [expandedWeekdays, setExpandedWeekdays] = useState<Set<number>>(new Set());
+    // row-level overflow 펼침 상태 — key = `${weekday}|${clusterKey}` (clusterKey = cluster.startMin).
+    // 한 weekday 안 여러 time-row (cluster) 별로 independent expand 가능. 사용자 보고 (2026-05-15
+    // Image 9): 같은 weekday 안 3 개 시간대 (10:00, 12:00, 15:00) 각각 5 개 sessions →
+    // 각 row 별 '+N'/'-' 버튼 따로 표시 + row 별 expand.
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-    const toggleWeekdayExpand = useCallback((weekday: number) => {
-      setExpandedWeekdays((prev) => {
-        const next = new Set(prev);
-        if (next.has(weekday)) next.delete(weekday);
-        else next.add(weekday);
-        return next;
-      });
-    }, []);
+    const toggleRowExpand = useCallback(
+      (weekday: number, clusterKey: string) => {
+        setExpandedRows((prev) => {
+          const next = new Set(prev);
+          const k = `${weekday}|${clusterKey}`;
+          if (next.has(k)) next.delete(k);
+          else next.add(k);
+          return next;
+        });
+      },
+      [],
+    );
 
     // 주(week) 데이터가 바뀌면 펼침 상태 초기화
     useEffect(() => {
-      setExpandedWeekdays(new Set());
+      setExpandedRows(new Set());
     }, [sessions]);
 
     const [scrollbarState, setScrollbarState] = useState({
@@ -467,17 +475,26 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
         return Array.from({ length: 7 }, (_, wd) => {
           const daySessions = baseMap?.get(wd) || [];
           const required = computeRequiredLanes(daySessions);
-          // 4+ 겹침 시:
-          //   - 드래그 중: 실제 required 사용 (드래그 중에는 overflow chip 없어 lanes = required)
-          //   - collapsed: 3 lanes 폭 (≥4 sessions이어도 column 폭을 3 lanes로 제한)
-          //   - expanded: required lanes 폭 (사용자가 +N 펼쳤으니 실제 폭 확보)
+          // 4+ 겹침 시 column 폭 결정:
+          //   - 드래그 중: required 사용 (cluster expand 무시, 모든 cluster collapsed treat
+          //     해도 drag 중에는 chip 미표시 → 실제 cluster 별 폭 의미 없음). frozen 가드는
+          //     별도 (cell mount/unmount flicker).
+          //   - 비-drag: cluster 별 effectiveLanes 의 max — 한 cluster 만 expand 해도 column
+          //     폭이 그 cluster lane 수로 늘어남. 다른 collapsed cluster 는 빈 공간 자연 발생.
+          //   - cluster.requiredLanes < 4: 항상 그대로 (overflow 아님).
+          //   - expandedRows.has(`${wd}|${c.key}`): 그 cluster expand → c.requiredLanes.
+          //   - 그 외: 3 lanes (collapsed).
           let lanes: number;
-          if (isDraggingAny || required < 4) {
-            lanes = required;
-          } else if (expandedWeekdays.has(wd)) {
+          if (isDraggingAny) {
             lanes = required;
           } else {
-            lanes = 3;
+            const clusters = computeRowClusters(daySessions);
+            const laneNeeds = clusters.map((c) =>
+              c.requiredLanes < 4 || expandedRows.has(`${wd}|${c.key}`)
+                ? c.requiredLanes
+                : 3,
+            );
+            lanes = Math.max(1, ...laneNeeds, 1);
           }
           const baseW = Math.max(1, lanes) * laneWidth;
           // target 요일에 좌우 여백 추가 (hover 중일 때만)
@@ -488,7 +505,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       },
       // Bug5 fix: primitive values 사용. dragController.isAnyDragging()은 함수 호출이므로
       // draggedSession null 여부로 대체 (drag 중이면 draggedSession !== null).
-      [sessions, sessionsForRender, draggedSession, targetWeekday, isStudentDragging, laneWidth, expandedWeekdays]
+      [sessions, sessionsForRender, draggedSession, targetWeekday, isStudentDragging, laneWidth, expandedRows]
     );
 
     const timeLabelColWidth = isMobile ? 40 : 56;
@@ -782,8 +799,8 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 isMobile={isMobile}
                 dragPreview={dragPreviewProp}
                 frozenLanes={frozenLaneCountsPerWeekday?.[weekday] ?? null}
-                isExpanded={expandedWeekdays.has(weekday)}
-                onToggleExpand={() => toggleWeekdayExpand(weekday)}
+                expandedRowKeys={expandedRows}
+                onToggleRowExpand={(clusterKey) => toggleRowExpand(weekday, clusterKey)}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}
