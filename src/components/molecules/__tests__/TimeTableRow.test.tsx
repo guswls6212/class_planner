@@ -615,6 +615,88 @@ describe("TimeTableRow Component", () => {
       fireEvent.click(screen.getByTestId("overflow-popover-expand-btn"));
       expect(onToggleExpand).toHaveBeenCalledOnce();
     });
+
+    // ── multi-cluster row-level expand (사용자 보고 Image #9 케이스) ──────────
+    // weekday 안 여러 time-row (시간 안 겹치는 cluster) 각각 4+ sessions 인 경우, row
+    // 별 independent '+N'/'−' 버튼. sessionClusters.ts § computeRowClusters 참조.
+
+    it("multi-cluster row: 시간 안 겹치는 2 row 각각 4 sessions → row 별 chip 2 개", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("a1", 1, "10:00", "11:00"),
+        makeSession("a2", 2, "10:00", "11:00"),
+        makeSession("a3", 3, "10:00", "11:00"),
+        makeSession("a4", 4, "10:00", "11:00"),
+        makeSession("b1", 1, "12:00", "13:00"),
+        makeSession("b2", 2, "12:00", "13:00"),
+        makeSession("b3", 3, "12:00", "13:00"),
+        makeSession("b4", 4, "12:00", "13:00"),
+      ]);
+      render(<TimeTableRow {...defaultProps} sessions={sessions} />);
+      // multi-cluster 에서는 chip testid 가 cluster key 포함 형식: `${weekday}-${startMin}`
+      // 10:00 = 600 min, 12:00 = 720 min
+      expect(screen.getByTestId("overflow-expand-btn-0-600")).toBeInTheDocument();
+      expect(screen.getByTestId("overflow-expand-btn-0-720")).toBeInTheDocument();
+      // 단일 cluster testid (overflow-expand-btn-0) 는 multi cluster 시 미렌더
+      expect(screen.queryByTestId("overflow-expand-btn-0")).not.toBeInTheDocument();
+    });
+
+    it("multi-cluster: row 1 만 expand (expandedRowKeys controlled) → row 2 는 collapsed 유지", () => {
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("a1", 1, "10:00", "11:00"),
+        makeSession("a2", 2, "10:00", "11:00"),
+        makeSession("a3", 3, "10:00", "11:00"),
+        makeSession("a4", 4, "10:00", "11:00"),
+        makeSession("b1", 1, "12:00", "13:00"),
+        makeSession("b2", 2, "12:00", "13:00"),
+        makeSession("b3", 3, "12:00", "13:00"),
+        makeSession("b4", 4, "12:00", "13:00"),
+      ]);
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          sessions={sessions}
+          expandedRowKeys={new Set(["0|600"])}
+        />,
+      );
+      // row 1 (cluster startMin=600) — 4 sessions 모두 보임
+      expect(screen.getByTestId("session-a1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-a4")).toBeInTheDocument();
+      // row 1 chip 은 "−" (expanded)
+      expect(screen.getByTestId("overflow-expand-btn-0-600").textContent).toBe("−");
+      // row 2 (cluster startMin=720) — collapsed: 3 sessions 만 + chip "+1"
+      expect(screen.getByTestId("session-b1")).toBeInTheDocument();
+      expect(screen.getByTestId("session-b3")).toBeInTheDocument();
+      expect(screen.queryByTestId("session-b4")).not.toBeInTheDocument();
+      expect(screen.getByTestId("overflow-expand-btn-0-720").textContent).toBe("+1");
+    });
+
+    it("multi-cluster: onToggleRowExpand 콜백은 클릭한 cluster 의 key 인자로 호출", () => {
+      const onToggleRowExpand = vi.fn();
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("a1", 1, "10:00", "11:00"),
+        makeSession("a2", 2, "10:00", "11:00"),
+        makeSession("a3", 3, "10:00", "11:00"),
+        makeSession("a4", 4, "10:00", "11:00"),
+        makeSession("b1", 1, "12:00", "13:00"),
+        makeSession("b2", 2, "12:00", "13:00"),
+        makeSession("b3", 3, "12:00", "13:00"),
+        makeSession("b4", 4, "12:00", "13:00"),
+      ]);
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          sessions={sessions}
+          expandedRowKeys={new Set(["0|600"])}
+          onToggleRowExpand={onToggleRowExpand}
+        />,
+      );
+      // row 1 chip "−" 클릭 → onToggleRowExpand("600") (cluster key)
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0-600"));
+      expect(onToggleRowExpand).toHaveBeenCalledWith("600");
+    });
   });
 
   // ===================================================================

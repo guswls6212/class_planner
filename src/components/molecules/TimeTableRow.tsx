@@ -6,6 +6,7 @@ import { resolveSessionTone } from "./SessionCard.utils";
 
 import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
+import { computeRowClusters } from "../../lib/sessionClusters";
 import { sessionMatchesFilters } from "./SessionBlock.utils";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
@@ -113,8 +114,22 @@ interface TimeTableRowProps {
   isToday?: boolean;
   nowLinePx?: number | null;
   nowTimeStr?: string;
-  // Controlled overflow expansion (부모가 column 폭까지 같이 관리할 때 사용)
+  /**
+   * Controlled row-level overflow expand state. key = `${weekday}|${clusterKey}` 형식.
+   * 한 weekday 안 여러 time-row (cluster) 별로 independent expand. clusterKey 는
+   * cluster.startMin 의 string (sessionClusters.ts § SessionCluster.key).
+   * 부모 (TimeTableGrid) 가 일관성 위해 controlled-only 로 운영.
+   */
+  expandedRowKeys?: Set<string>;
+  /** 특정 cluster 의 expand toggle. clusterKey 만 받음 (weekday 는 부모가 알고 있음). */
+  onToggleRowExpand?: (clusterKey: string) => void;
+  /**
+   * @deprecated weekday 전체 토글 — backward compat 용. 새 코드는 expandedRowKeys 사용.
+   * 단일 cluster (weekday 에 cluster 1 개) 시나리오에서만 등가. multi-cluster 면 모든
+   * cluster 일괄 expand/collapse.
+   */
   isExpanded?: boolean;
+  /** @deprecated weekday 전체 토글 콜백 — backward compat 용. */
   onToggleExpand?: () => void;
   /** 시간 라벨/세션 위치 계산 기준 시작 시각 (0-23). default 9. */
   startHour?: number;
@@ -156,8 +171,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   isToday = false,
   nowLinePx = null,
   nowTimeStr,
-  isExpanded: isExpandedProp,
-  onToggleExpand,
+  expandedRowKeys,
+  onToggleRowExpand,
+  isExpanded: legacyIsExpanded,
+  onToggleExpand: legacyOnToggleExpand,
   selectedSessionIds,
   onSessionSelectToggle,
   onSessionContextMenuCopy,
@@ -165,8 +182,14 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   startHour = 9,
   endHour = 23,
 }) => {
-  const [internalExpanded, setInternalExpanded] = React.useState(false);
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  // popover state — cluster key 기반 단일 변수 (한 번에 하나의 cluster popover 만 열림).
+  const [openPopoverClusterKey, setOpenPopoverClusterKey] = React.useState<string | null>(null);
+  // uncontrolled internal expand state — 부모가 expandedRowKeys/onToggleRowExpand 도 legacy
+  // isExpanded/onToggleExpand 도 안 줄 때 자체적으로 expand 토글. legacy uncontrolled
+  // 동작 호환용 (test sandbox 시나리오).
+  const [internalExpandedClusters, setInternalExpandedClusters] = React.useState<Set<string>>(
+    () => new Set(),
+  );
 
   // Bug4 fix: drag 시작 시 popover 닫기는 DraggableSessionCard 노드를 mid-drag 중 unmount해서
   // dnd-kit이 active draggable을 잃는다. 대신 drag가 종료(draggedSession → null)될 때 닫는다.
@@ -175,14 +198,10 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     const current = dragPreview?.draggedSession ?? null;
     if (prevDraggedRef.current !== null && current === null) {
       // drag 완료 후 popover 닫기 (drag 중에는 노드 유지)
-      setIsPopoverOpen(false);
+      setOpenPopoverClusterKey(null);
     }
     prevDraggedRef.current = current;
   }, [dragPreview?.draggedSession]);
-
-  // Controlled mode (isExpandedProp provided by parent) vs uncontrolled (internal state)
-  const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
-  const handleToggleExpand = onToggleExpand ?? (() => setInternalExpanded((p) => !p));
 
   // Convert time string to minutes helper
   const timeToMinutes = React.useCallback((time: string): number => {
@@ -209,12 +228,6 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     });
   }, [sessions, weekday, startHour, endHour, timeToMinutes]);
 
-  // Reset internal expanded state when weekday switches or session list changes.
-  // Controlled mode에서는 부모(TimeTableGrid)가 expandedWeekdays를 직접 관리한다.
-  React.useEffect(() => {
-    setInternalExpanded(false);
-  }, [weekday, weekdaySessions]);
-
   // Required lane count based on actual time overlaps (not stored yPosition max)
   const rawMaxYPosition = React.useMemo(() => {
     return computeRequiredLanes(weekdaySessions);
@@ -224,13 +237,133 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return Boolean(dragPreview?.draggedSession);
   }, [dragPreview]);
 
-  // D-hybrid: overflow only when not actively dragging
-  const isOverflow = !isDragging && rawMaxYPosition >= OVERFLOW_THRESHOLD;
-  // drag 중에는 시작 시점 lane 수를 floor 로 — cell 수 줄어듦 차단 (mount/unmount flicker
-  // 방지). 늘어남은 허용 (insertBefore 시 +1). dnd-visual-feedback.md § 5 (transient flicker).
-  const effectiveLanes = isDragging && frozenLanes != null
-    ? Math.max(frozenLanes, rawMaxYPosition)
-    : (isExpanded ? rawMaxYPosition : (isOverflow ? 3 : rawMaxYPosition));
+  // Cluster 별 overflow state — 같은 weekday 안 시간 겹침 없는 time-row 별 independent
+  // expand. sessionClusters.ts § computeRowClusters 참조. drag 중에는 cluster 인지 안 함
+  // (모든 cluster collapsed treat) — frozenLanes 가 cell mount/unmount flicker 가드 담당.
+  const clusters = React.useMemo(
+    () => computeRowClusters(weekdaySessions),
+    [weekdaySessions],
+  );
+
+  // backward-compat: legacy `isExpanded` (boolean) → 모든 cluster 일괄 expand/collapse.
+  // 새 코드는 `expandedRowKeys` 직접 전달. 둘 다 없으면 internal state 사용 (uncontrolled).
+  const effectiveExpandedKeys = React.useMemo<Set<string>>(() => {
+    if (legacyIsExpanded != null) {
+      return legacyIsExpanded
+        ? new Set(clusters.map((c) => `${weekday}|${c.key}`))
+        : new Set<string>();
+    }
+    if (expandedRowKeys != null) return expandedRowKeys;
+    return internalExpandedClusters;
+  }, [legacyIsExpanded, expandedRowKeys, clusters, weekday, internalExpandedClusters]);
+
+  // backward-compat: legacy `onToggleExpand` → cluster key 무시 그냥 호출.
+  // uncontrolled (부모 콜백 둘 다 없음): internal state 토글.
+  const effectiveOnToggleRowExpand = React.useCallback(
+    (clusterKey: string) => {
+      if (onToggleRowExpand) {
+        onToggleRowExpand(clusterKey);
+      } else if (legacyOnToggleExpand) {
+        legacyOnToggleExpand();
+      } else {
+        setInternalExpandedClusters((prev) => {
+          const next = new Set(prev);
+          const k = `${weekday}|${clusterKey}`;
+          if (next.has(k)) next.delete(k);
+          else next.add(k);
+          return next;
+        });
+      }
+    },
+    [onToggleRowExpand, legacyOnToggleExpand, weekday],
+  );
+
+  // weekday 또는 sessions 변경 시 internal expand state reset (legacy uncontrolled 동작).
+  React.useEffect(() => {
+    setInternalExpandedClusters(new Set());
+  }, [weekday, weekdaySessions]);
+
+  // filter keys / isFilterActive 를 cluster 계산용으로 미리 정의 (orderedSessions 와 동일).
+  // orderedSessions 자체는 본 정의 아래 — cluster 안에서는 cluster.sessions 만 filter sort.
+  const _studentIdsKey = selectedStudentIds ?? [];
+  const _subjectIdsKey = selectedSubjectIds ?? [];
+  const _teacherIdsKey = selectedTeacherIds ?? [];
+  const _isFilterActive =
+    _studentIdsKey.length > 0 ||
+    _subjectIdsKey.length > 0 ||
+    _teacherIdsKey.length > 0;
+
+  const clusterStates = React.useMemo(() => {
+    const sortByYPos = (a: Session, b: Session) => (a.yPosition ?? 1) - (b.yPosition ?? 1);
+    return clusters.map((c) => {
+      const isExpanded = effectiveExpandedKeys.has(`${weekday}|${c.key}`);
+      const isOverflow = !isDragging && c.requiredLanes >= OVERFLOW_THRESHOLD;
+      // cluster 안 sessions 의 정렬 — filter 활성 시 matching first (yPosition asc 보조),
+      // 미활성 시 단순 yPosition asc. 기존 weekday-level 정책을 cluster 별 재현 —
+      // matching session 이 visible 우선 보장.
+      let orderedInCluster: Session[];
+      if (_isFilterActive) {
+        const matching = c.sessions
+          .filter((s) =>
+            sessionMatchesFilters(s, enrollments, _studentIdsKey, _subjectIdsKey, _teacherIdsKey),
+          )
+          .sort(sortByYPos);
+        const nonMatching = c.sessions
+          .filter(
+            (s) =>
+              !sessionMatchesFilters(s, enrollments, _studentIdsKey, _subjectIdsKey, _teacherIdsKey),
+          )
+          .sort(sortByYPos);
+        orderedInCluster = [...matching, ...nonMatching];
+      } else {
+        orderedInCluster = [...c.sessions].sort(sortByYPos);
+      }
+      const visible = isOverflow && !isExpanded
+        ? (_isFilterActive
+            ? orderedInCluster.slice(0, 3)
+            : orderedInCluster.filter((s) => (s.yPosition ?? 1) <= 3))
+        : orderedInCluster;
+      const hidden = isOverflow && !isExpanded
+        ? (_isFilterActive
+            ? orderedInCluster.slice(3)
+            : orderedInCluster.filter((s) => (s.yPosition ?? 1) >= 4))
+        : [];
+      const visStartMin = Math.max(c.startMin, startHour * 60);
+      const chipTopPx = isOverflow
+        ? Math.max(4, ((visStartMin - startHour * 60) / 30) * SLOT_HEIGHT_PX)
+        : null;
+      return { cluster: c, isExpanded, isOverflow, visible, hidden, chipTopPx };
+    });
+  }, [clusters, effectiveExpandedKeys, weekday, isDragging, startHour, _isFilterActive, enrollments, _studentIdsKey, _subjectIdsKey, _teacherIdsKey]);
+
+  // session id → cluster state lookup (SessionBlock 의 hasLaneOverflowChip 계산용)
+  const sessionToClusterState = React.useMemo(() => {
+    const m = new Map<string, (typeof clusterStates)[number]>();
+    for (const st of clusterStates) {
+      for (const s of st.cluster.sessions) m.set(s.id, st);
+    }
+    return m;
+  }, [clusterStates]);
+
+  // effectiveLanes = column 폭 결정 (drag 중 frozenLanes vs cluster 별 max).
+  const effectiveLanes = React.useMemo(() => {
+    if (isDragging && frozenLanes != null) {
+      return Math.max(frozenLanes, rawMaxYPosition);
+    }
+    if (clusterStates.length === 0) return Math.max(1, rawMaxYPosition);
+    const clusterEffective = clusterStates.map((st) =>
+      st.isExpanded
+        ? st.cluster.requiredLanes
+        : Math.min(st.cluster.requiredLanes, 3),
+    );
+    return Math.max(1, ...clusterEffective);
+  }, [isDragging, frozenLanes, rawMaxYPosition, clusterStates]);
+
+  // 전체 weekday 차원의 overflow 존재 여부 (기존 호환 + drag-source placeholder 등에서 사용).
+  const isOverflow = React.useMemo(
+    () => clusterStates.some((st) => st.isOverflow),
+    [clusterStates],
+  );
 
   // 드래그 중 target 요일에 양쪽 padding 추가 — 세션 너비는 유지하고 좌우 20px 여백만 생성.
   // weekdayWidths가 이미 DRAG_HOVER_PAD * 2 만큼 넓어져 있으므로 baseWidth로 원래 너비 복원.
@@ -278,36 +411,16 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     return [...matching, ...nonMatching];
   }, [weekdaySessions, studentIdsKey, subjectIdsKey, teacherIdsKey, enrollments, isFilterActive]);
 
-  // Visible sessions:
-  //   - 필터 미활성: yPosition <= 3 기반 (startsAt 순서와 무관하게 yPosition SSOT 유지)
-  //   - 필터 활성: slice(0,3) — matching 세션이 앞으로 재정렬되어 있으므로 slice가 옳음
+  // Visible / hidden sessions: cluster 별로 분리 (clusterStates 의 visible/hidden flatten).
+  // filter 활성 시 cluster 안 sorting (matching first) 은 yPosition asc 만 적용 — filter
+  // sort 의 visual 영향은 별도 follow-up. cluster 별 chip 은 그 cluster 의 첫 hidden 위치.
+  //
+  // orderedSessions 는 SessionBlock 렌더 정렬용 (filter matching first) — 그대로 유지하되
+  // visible/hidden 결정은 cluster 단위. 즉 visible 인 sessions 만 orderedSessions 순서로 렌더.
   const visibleSessions = React.useMemo(() => {
-    if (!(isOverflow && !isExpanded)) return orderedSessions;
-    return isFilterActive
-      ? orderedSessions.slice(0, 3)
-      : orderedSessions.filter((s) => (s.yPosition || 1) <= 3);
-  }, [orderedSessions, isOverflow, isExpanded, isFilterActive]);
-
-  // Hidden sessions: visible 기준 반대
-  const hiddenSessions = React.useMemo(() => {
-    if (!(isOverflow && !isExpanded)) return [];
-    return isFilterActive
-      ? orderedSessions.slice(3)
-      : orderedSessions.filter((s) => (s.yPosition || 1) >= 4);
-  }, [orderedSessions, isOverflow, isExpanded, isFilterActive]);
-
-  // Position the +N chip near the first hidden session's start time (stable regardless of isExpanded).
-  const chipTopPx = React.useMemo(() => {
-    if (!isOverflow) return null;
-    const candidates = isFilterActive
-      ? orderedSessions.slice(3)
-      : orderedSessions.filter((s) => (s.yPosition || 1) >= 4);
-    if (candidates.length === 0) return null;
-    const first = candidates[0];
-    // first.startsAt이 lowerBound보다 작을 수 있다 (overflowsTop 세션) → clamp.
-    const visStartMin = Math.max(timeToMinutes(first.startsAt), startHour * 60);
-    return Math.max(4, ((visStartMin - startHour * 60) / 30) * SLOT_HEIGHT_PX);
-  }, [orderedSessions, isOverflow, isFilterActive, startHour, timeToMinutes]);
+    const visibleIds = new Set(clusterStates.flatMap((st) => st.visible.map((s) => s.id)));
+    return orderedSessions.filter((s) => visibleIds.has(s.id));
+  }, [orderedSessions, clusterStates]);
 
   // Compute per-session layout. 경계 초과 세션(startMin<lowerBound 또는
   // endMin>upperBound)은 보이는 영역으로 clamp 하고, overflowsTop/Bottom flag로
@@ -527,7 +640,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isCopyMode={isCopyMode}
           overflowsTop={overflowsTop}
           overflowsBottom={overflowsBottom}
-          hasLaneOverflowChip={isOverflow && yPosition === effectiveLanes}
+          hasLaneOverflowChip={(() => {
+            // cluster-aware: 그 session 의 cluster 가 overflow + collapsed + 이 session 이
+            // 마지막 visible lane (3) 인 경우만 chip 자리 비움.
+            const st = sessionToClusterState.get(session.id);
+            return Boolean(st?.isOverflow && !st.isExpanded && yPosition === 3);
+          })()}
           selected={selectedSessionIds?.has(session.id) ?? false}
           onSelectToggle={
             onSessionSelectToggle
@@ -687,50 +805,67 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         );
       })()}
 
-      {/* Overflow chip:
-            - 미펼침: "+N" 클릭 → popover 오픈 (직접 드래그 가능)
-            - 펼침:   "−"  클릭 → collapse (handleToggleExpand) */}
-      {isOverflow && chipTopPx !== null && (
-        <button
-          type="button"
-          className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isExpanded) {
-              handleToggleExpand();
-            } else {
-              setIsPopoverOpen((p) => !p);
+      {/* Overflow chip 들 — cluster 별 (각 time-row 별) 독립 표시.
+          - 미펼침 cluster: "+N" 클릭 → 그 cluster popover 오픈
+          - 펼침 cluster:   "−" 클릭 → 그 cluster collapse (onToggleRowExpand)
+          chip 위치 = cluster.startMin 기준 chipTopPx. 같은 weekday 안 여러 chip 가능. */}
+      {clusterStates
+        .filter((st) => st.isOverflow && st.chipTopPx !== null)
+        .map((st) => (
+          <button
+            key={`chip-${st.cluster.key}`}
+            type="button"
+            className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (st.isExpanded) {
+                effectiveOnToggleRowExpand(st.cluster.key);
+              } else {
+                setOpenPopoverClusterKey((prev) =>
+                  prev === st.cluster.key ? null : st.cluster.key,
+                );
+              }
+            }}
+            aria-label={
+              st.isExpanded ? "수업 접기" : `${st.hidden.length}개 수업 더 보기`
             }
-          }}
-          aria-label={isExpanded ? "수업 접기" : `${hiddenSessions.length}개 수업 더 보기`}
-          aria-expanded={isExpanded}
-          data-testid={`overflow-expand-btn-${weekday}`}
-          style={{
-            top: chipTopPx ?? 4,
-            right: 4,
-            zIndex: 115,
-            padding: "3px 6px",
-          }}
-        >
-          {isExpanded ? "−" : `+${hiddenSessions.length}`}
-        </button>
-      )}
+            aria-expanded={st.isExpanded}
+            data-testid={
+              clusterStates.length === 1
+                ? `overflow-expand-btn-${weekday}`
+                : `overflow-expand-btn-${weekday}-${st.cluster.key}`
+            }
+            style={{
+              top: st.chipTopPx ?? 4,
+              right: 4,
+              zIndex: 115,
+              padding: "3px 6px",
+            }}
+          >
+            {st.isExpanded ? "−" : `+${st.hidden.length}`}
+          </button>
+        ))}
 
-      {/* Overflow popover — 미펼침 상태에서 +N 칩 클릭 시 숨겨진 세션을 직접 드래그 */}
-      {isPopoverOpen && !isExpanded && hiddenSessions.length > 0 && chipTopPx !== null && (
-        <HiddenSessionsPopover
-          hiddenSessions={hiddenSessions}
-          subjects={subjects || []}
-          enrollments={enrollments}
-          students={students}
-          anchorTop={chipTopPx}
-          onClose={() => setIsPopoverOpen(false)}
-          onExpandAll={() => {
-            handleToggleExpand();
-            setIsPopoverOpen(false);
-          }}
-        />
-      )}
+      {/* Overflow popover — openPopoverClusterKey 가 가리키는 cluster 의 hidden sessions */}
+      {openPopoverClusterKey != null && (() => {
+        const st = clusterStates.find((s) => s.cluster.key === openPopoverClusterKey);
+        if (!st || !st.isOverflow || st.isExpanded || st.hidden.length === 0) return null;
+        if (st.chipTopPx === null) return null;
+        return (
+          <HiddenSessionsPopover
+            hiddenSessions={st.hidden}
+            subjects={subjects || []}
+            enrollments={enrollments}
+            students={students}
+            anchorTop={st.chipTopPx}
+            onClose={() => setOpenPopoverClusterKey(null)}
+            onExpandAll={() => {
+              effectiveOnToggleRowExpand(st.cluster.key);
+              setOpenPopoverClusterKey(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };
