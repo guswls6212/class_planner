@@ -436,6 +436,21 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [sessions, enrollments, subjects, draggedSession, targetWeekday, targetTime, targetYPosition, targetMode],
     );
 
+    // dragPreview SSOT — 매 render 새 객체로 전달하면 TimeTableRow(7개) 의
+    // dragPreview-의존 useEffect/useMemo 가 매번 재실행되므로 primitive deps 로 stable 화.
+    // targetMode 까지 같이 전달해서 drag-ghost / lane-highlight / Edge Hover Slot 3 종 시각
+    // 피드백이 같은 SSOT 를 본다 (dnd-visual-feedback.md 참조).
+    const dragPreviewProp = useMemo(
+      () => ({
+        draggedSession,
+        targetWeekday,
+        targetTime,
+        targetYPosition,
+        targetMode,
+      }),
+      [draggedSession, targetWeekday, targetTime, targetYPosition, targetMode],
+    );
+
     const laneWidth = isMobile ? LANE_WIDTH_PX_MOBILE : LANE_WIDTH_PX_DESKTOP;
 
     // 각 weekday column 너비 = max lanes × laneWidth.
@@ -747,12 +762,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 teachers={teachers}
                 colorBy={colorBy}
                 isMobile={isMobile}
-                dragPreview={{
-                  draggedSession: dragController.draggedSession,
-                  targetWeekday: dragController.targetWeekday,
-                  targetTime: dragController.targetTime,
-                  targetYPosition: dragController.targetYPosition,
-                }}
+                dragPreview={dragPreviewProp}
                 isExpanded={expandedWeekdays.has(weekday)}
                 onToggleExpand={() => toggleWeekdayExpand(weekday)}
                 isToday={isToday}

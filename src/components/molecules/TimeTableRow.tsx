@@ -38,11 +38,21 @@ export function coordsToDropTarget(
 }
 
 // Drag preview state (same shape as TimeTableGrid)
+//
+// targetMode SSOT (drag-ghost / lane-highlight / Edge Hover Slot 시각 동기화):
+//   - "lane"          : drop 후 lane occupy. lane-highlight = 해당 lane 박스.
+//   - "insertBefore"  : lane 사이 insert (Variant E). lane-highlight = lane 경계
+//                       수직선. ghost = (insertBeforeYPos) lane 박스. Edge Slot
+//                       amber boundary line 과 동일 픽셀 anchor.
+//   - null            : drag 미진행/hover 없음.
+// 자세히는 class-planner/docs/dnd-visual-feedback.md.
 interface DragPreviewState {
   draggedSession: Session | null;
   targetWeekday: number | null;
   targetTime: string | null;
   targetYPosition: number | null;
+  // optional: legacy 호출자 (mode 미인지) 호환. undefined → "lane" mode default.
+  targetMode?: "lane" | "insertBefore" | null;
 }
 
 interface TimeTableRowProps {
@@ -407,21 +417,45 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         ))
       )}
 
-      {/* 드래그 중 타겟 레인 하이라이트 — 현재 커서가 가리키는 lane 강조 */}
-      {isDragging && dragPreview?.targetWeekday === weekday && dragPreview?.targetYPosition != null && (
-        <div
-          data-testid="lane-highlight"
-          className="absolute top-0 bottom-0 pointer-events-none"
-          style={{
-            left: (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0),
-            width: laneWidth,
-            background: "rgba(99,179,237,0.10)",
-            borderLeft: "1.5px solid rgba(99,179,237,0.35)",
-            borderRight: "1.5px solid rgba(99,179,237,0.35)",
-            zIndex: 95,
-          }}
-        />
-      )}
+      {/* 드래그 중 타겟 레인 하이라이트 — targetMode 에 따라 시각 분기.
+            "lane"          : column 박스 (drop 후 점유할 lane 강조)
+            "insertBefore"  : lane 경계 수직선 (lane 사이 insert 의도, Variant E)
+          ghost left edge + Edge Hover Slot amber boundary line 과 동일 픽셀 anchor 되어
+          3 종 시각 피드백이 같은 SSOT 를 가리킨다. dnd-visual-feedback.md 참조. */}
+      {isDragging && dragPreview?.targetWeekday === weekday && dragPreview?.targetYPosition != null && (() => {
+        const baseLeft = (dragPreview.targetYPosition - 1) * laneWidth + (isDraggingToThis ? DRAG_HOVER_PAD : 0);
+        if (dragPreview.targetMode === "insertBefore") {
+          return (
+            <div
+              data-testid="lane-highlight"
+              data-mode="insertBefore"
+              className="absolute top-0 bottom-0 pointer-events-none"
+              style={{
+                left: baseLeft - 1.5,
+                width: 3,
+                background: "rgba(99,179,237,0.55)",
+                boxShadow: "0 0 6px 1px rgba(99,179,237,0.45)",
+                zIndex: 95,
+              }}
+            />
+          );
+        }
+        return (
+          <div
+            data-testid="lane-highlight"
+            data-mode="lane"
+            className="absolute top-0 bottom-0 pointer-events-none"
+            style={{
+              left: baseLeft,
+              width: laneWidth,
+              background: "rgba(99,179,237,0.10)",
+              borderLeft: "1.5px solid rgba(99,179,237,0.35)",
+              borderRight: "1.5px solid rgba(99,179,237,0.35)",
+              zIndex: 95,
+            }}
+          />
+        );
+      })()}
 
       {/* Drop cells — timeSlots × effectiveLanes.
           drag 중 (insertMode=true) 일 땐 cell 을 left/right half 두 insertBefore

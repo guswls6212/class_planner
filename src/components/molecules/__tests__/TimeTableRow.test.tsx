@@ -1136,11 +1136,16 @@ describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () =>
     return m;
   };
 
-  const dragPreviewAt = (targetWeekday: number | null, yPos: number | null) => ({
+  const dragPreviewAt = (
+    targetWeekday: number | null,
+    yPos: number | null,
+    mode: "lane" | "insertBefore" | null = "lane",
+  ) => ({
     draggedSession: makeS("s1", 1),
     targetWeekday,
     targetTime: "09:00",
     targetYPosition: yPos,
+    targetMode: mode,
   });
 
   const defaultProps = {
@@ -1210,5 +1215,56 @@ describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () =>
       />
     );
     expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
+  });
+
+  // ── mode-aware lane-highlight (Variant E 시각 동기화) ────────────────────
+  // dnd-visual-feedback.md 참조 — drag-ghost / lane-highlight / Edge Hover Slot
+  // 3 종 시각 피드백이 같은 SSOT(targetMode + targetYPosition) 를 본다.
+
+  it("targetMode=insertBefore → lane-highlight는 lane 경계 vertical line (width 3px)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2, "insertBefore")}
+      />
+    );
+    const el = screen.getByTestId("lane-highlight");
+    expect(el).toHaveAttribute("data-mode", "insertBefore");
+    expect(el).toHaveStyle({ width: "3px" });
+  });
+
+  it("targetMode=lane → lane-highlight는 column 박스 (width != 3px)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2, "lane")}
+      />
+    );
+    const el = screen.getByTestId("lane-highlight");
+    expect(el).toHaveAttribute("data-mode", "lane");
+    // width === laneWidth ≠ 3px
+    expect((el as HTMLElement).style.width).not.toBe("3px");
+  });
+
+  it("targetMode undefined (legacy / pre-Variant-E 호출) → lane mode default", () => {
+    // dragPreviewAt 의 default 인자가 "lane" 이라 legacy 호출자가 mode 누락해도
+    // 안전하게 column 박스로 fallback. backward-compat 가드.
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2)}
+      />
+    );
+    const el = screen.getByTestId("lane-highlight");
+    expect(el).toHaveAttribute("data-mode", "lane");
   });
 });
