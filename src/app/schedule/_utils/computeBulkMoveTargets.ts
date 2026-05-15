@@ -13,6 +13,17 @@
  *   ✅ 현재: 충돌 검사 제거. 일반 drop과 동일 정책 — lane 자동 재배치 client
  *      layout이 처리. 호출자가 _handleSessionDropBase로 모두 dispatch.
  *      음수 시간(자정 이전)만 outOfRange로 분류.
+ *
+ * yPosition 분배 정책 (2026-05-15 변경, Option D 폐기 — adr/014 참조):
+ *   ❌ 이전 (Option D, PR #208): 추종 sessions 모두 yPosition=1 강제. 시각 단서로
+ *      "같이 따라왔음" 표현. 그러나 사용자가 anchor를 group 가장 오른쪽에서 잡으면
+ *      candidates 순회 순서(sessions array = 학생 ID asc)가 그대로 lane 분배되어
+ *      그룹 시각 순서(yPosition asc) 깨짐 — 사용자 보고 (2026-05-15).
+ *   ✅ 현재 (Contiguous distribution): candidates 를 원래 yPosition asc 로 정렬 후
+ *      anchor 의 group 내 상대 위치 (anchorRelIdx) 기준으로 contiguous yPos 분배.
+ *      anchor 는 정확히 newYPosition, follower i 는 (newYPosition + (i - anchorRelIdx)).
+ *      clamp >= 1 (음수/0 방지). 위쪽 clamp 은 sequential repositionSessions 가
+ *      충돌 chain push 로 처리. 결과: 어느 수업을 잡든 group 시각 순서 보존.
  */
 
 import type { Session } from "@/lib/planner";
@@ -56,12 +67,19 @@ export function computeBulkMoveTargets(args: {
   const dWeekday = newWeekday - anchor.weekday;
   const dMinutes = timeToMinutes(newTime) - timeToMinutes(anchor.startsAt);
   const selectedSet = new Set(selectedIds);
-  const candidates = sessions.filter((s) => selectedSet.has(s.id));
+  // candidates 를 원래 yPosition asc 로 정렬 → group 의 시각 순서 (왼쪽 → 오른쪽 lane)
+  // 를 보존하면서 contiguous yPos 분배. anchor 가 group 안 어디에 있든 같은 결과.
+  const sortedCandidates = sessions
+    .filter((s) => selectedSet.has(s.id))
+    .sort((a, b) => (a.yPosition ?? 1) - (b.yPosition ?? 1));
+  const anchorRelIdx = sortedCandidates.findIndex((s) => s.id === anchorSessionId);
+  if (anchorRelIdx < 0) return { moves: [], outOfRange: 0 };
 
   const moves: BulkMoveTarget[] = [];
   let outOfRange = 0;
 
-  for (const s of candidates) {
+  for (let i = 0; i < sortedCandidates.length; i++) {
+    const s = sortedCandidates[i];
     const targetWeekday = Math.max(0, Math.min(6, s.weekday + dWeekday));
     const targetStartMin = timeToMinutes(s.startsAt) + dMinutes;
     const targetEndMin = timeToMinutes(s.endsAt) + dMinutes;
@@ -70,19 +88,20 @@ export function computeBulkMoveTargets(args: {
       outOfRange++;
       continue;
     }
-    // ⚠️ 정책 (2026-05-04, Option D 변형):
-    // - anchor (사용자가 직접 잡은 세션): drop 위치 newYPosition 정확히 보존
-    // - 추종 sessions (Shift+선택으로 같이 따라옴): yPosition=1 강제 (제일 왼쪽 lane)
-    //   → 사용자가 한 눈에 "같이 따라왔다"는 시각 단서로 인지 가능.
-    //   충돌 시엔 호출자(handleSessionDrop/Copy)의 sequential repositionSessionsUtil이
-    //   anchor 우선, 추종은 lane 1 시도 후 충돌이면 자동으로 다음 lane(2, 3, ...)으로
-    //   push 처리. 기존 sessions도 충돌 시 다른 lane으로 밀려남 (priority-based).
+    // contiguous yPos 분배: anchor=newYPosition, follower i = newYPosition + (i - anchorRelIdx).
+    // sortedCandidates 가 yPosition asc 라 group 시각 순서 보존. anchor 위치 무관.
+    // clamp >=1 (음수/0 방지) — 위쪽 clamp 은 sequential repositionSessionsUtil 의
+    // priority-based chain push 가 처리. 자세히: adr/014.
+    const yPos = s.id === anchorSessionId
+      ? newYPosition
+      : Math.max(1, newYPosition + (i - anchorRelIdx));
+
     moves.push({
       session: s,
       weekday: targetWeekday,
       startsAt: minutesToTime(targetStartMin),
       endsAt: minutesToTime(targetEndMin),
-      yPosition: s.id === anchorSessionId ? newYPosition : 1,
+      yPosition: yPos,
     });
   }
 

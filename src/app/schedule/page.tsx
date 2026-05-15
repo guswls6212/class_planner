@@ -100,6 +100,7 @@ import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
 import {
   applyBulkMoves,
   computeBulkMoveTargets,
+  type BulkMoveTarget,
 } from "./_utils/computeBulkMoveTargets";
 import {
   buildHandleDrop,
@@ -1407,7 +1408,17 @@ function SchedulePageContent(): JSX.Element {
         // 안 호출해서 같은 (weekday, time) 위치에 떨어지면 시각적 stack overlap 발생.
         // 단일 drop은 _handleSessionDropBase → updateSessionPosition 안에서 reposition
         // 하지만 bulk batch는 별도 처리 필요. 각 move 적용 후 sequential reposition.
-        for (const m of moves) {
+        //
+        // sequential reposition 호출 순서 결정성 (2026-05-15, adr/014 참조):
+        // anchor 먼저 + 추종 yPos asc — anchor 가 자기 lane 점유 후 추종이 contiguous
+        // yPos 시도. collision chain push 가 visual order 보존.
+        const orderedMoves: BulkMoveTarget[] = [
+          moves.find((m) => m.session.id === sessionId),
+          ...moves
+            .filter((m) => m.session.id !== sessionId)
+            .sort((a, b) => a.yPosition - b.yPosition),
+        ].filter((m): m is BulkMoveTarget => Boolean(m));
+        for (const m of orderedMoves) {
           updatedSessions = repositionSessionsUtil(
             updatedSessions,
             enrollments,
@@ -1490,6 +1501,15 @@ function SchedulePageContent(): JSX.Element {
         // addSession 내부의 `sessions` closure가 매 호출마다 같은 stale snapshot을
         // 잡아 updateData([...sessions, new])가 매번 같은 배열에 1개만 더해 N-1개가
         // 덮어써짐. 이제 모든 새 sessions/enrollments를 한 번에 만들고 updateData 1회.
+        // sequential reposition 호출 순서 결정성 (2026-05-15, adr/014 참조):
+        // anchor 먼저 + 추종 yPos asc — anchor 가 자기 lane 점유 후 추종이 contiguous
+        // yPos 로 chain push 안정.
+        const orderedMoves: BulkMoveTarget[] = [
+          moves.find((m) => m.session.id === sessionId),
+          ...moves
+            .filter((m) => m.session.id !== sessionId)
+            .sort((a, b) => a.yPosition - b.yPosition),
+        ].filter((m): m is BulkMoveTarget => Boolean(m));
         const newSessions: Session[] = [];
         const newEnrollmentsLocal: Array<{
           id: string;
@@ -1497,7 +1517,7 @@ function SchedulePageContent(): JSX.Element {
           subjectId: string;
         }> = [];
         const wkStart = getWeekStartDate(selectedDate);
-        for (const m of moves) {
+        for (const m of orderedMoves) {
           if (!m.session.subjectId) continue;
           const studentIds = (m.session.enrollmentIds ?? [])
             .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)

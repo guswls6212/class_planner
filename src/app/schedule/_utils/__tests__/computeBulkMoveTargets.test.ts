@@ -177,9 +177,13 @@ describe("computeBulkMoveTargets", () => {
     expect(byId.get("b")?.weekday).toBe(6); // clamp
   });
 
-  it("anchor의 yPosition은 newYPosition, 추종 sessions은 yPosition=1 강제 (Option D)", () => {
-    // 정책 (2026-05-04 사용자 제안): 추종 sessions은 lane 제일 왼쪽(1)에 배치 →
-    // 사용자가 한 눈에 \"같이 따라왔다\"고 인지 가능. 원래 yPosition은 무시.
+  // ── contiguous yPos 분배 정책 (2026-05-15 변경, Option D 폐기, adr/014) ──
+  // 추종 sessions 을 원래 yPosition asc 로 정렬 후 anchor 의 group 내 상대 위치
+  // 기준으로 contiguous yPos. anchor 가 group 어디에 있든 visual lane 순서 보존.
+
+  it("contiguous — anchor 가 그룹 왼쪽 끝 (anchorRelIdx=0)", () => {
+    // sortedByYPos = [a(yPos1, anchor), b(yPos3)], anchorRelIdx=0
+    // newYPosition=5 → a=5, b=5+(1-0)=6
     const sessions = [
       make("a", 0, "09:00", "10:00", 1),
       make("b", 1, "09:00", "10:00", 3),
@@ -193,8 +197,86 @@ describe("computeBulkMoveTargets", () => {
       selectedIds: ["a", "b"],
     });
     const byId = new Map(result.moves.map((m) => [m.session.id, m]));
-    expect(byId.get("a")?.yPosition).toBe(5); // anchor: 정확한 drop yPosition
-    expect(byId.get("b")?.yPosition).toBe(1); // 추종: lane 1 강제 (이전 3 → 1)
+    expect(byId.get("a")?.yPosition).toBe(5);
+    expect(byId.get("b")?.yPosition).toBe(6);
+  });
+
+  it("contiguous — anchor 가 그룹 오른쪽 끝 (사용자 보고 Case B 회귀 가드)", () => {
+    // 5 sessions lane 1~5. anchor=가장 오른쪽 (lane 5). drop newYPosition=5.
+    // sortedByYPos=[a,b,c,d,e], anchorRelIdx=4 (e)
+    //   a=5+(0-4)=1, b=5+(1-4)=2, c=5+(2-4)=3, d=5+(3-4)=4, e=5
+    // Group visual order (lane 1,2,3,4,5) 보존. PR #390 후 사용자 보고 Image 8/9.
+    const sessions = [
+      make("a", 0, "09:00", "10:00", 1),
+      make("b", 0, "09:00", "10:00", 2),
+      make("c", 0, "09:00", "10:00", 3),
+      make("d", 0, "09:00", "10:00", 4),
+      make("e", 0, "09:00", "10:00", 5),
+    ];
+    const result = computeBulkMoveTargets({
+      sessions,
+      anchorSessionId: "e",
+      newWeekday: 1,
+      newTime: "10:00",
+      newYPosition: 5,
+      selectedIds: ["a", "b", "c", "d", "e"],
+    });
+    const byId = new Map(result.moves.map((m) => [m.session.id, m]));
+    expect(byId.get("a")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(2);
+    expect(byId.get("c")?.yPosition).toBe(3);
+    expect(byId.get("d")?.yPosition).toBe(4);
+    expect(byId.get("e")?.yPosition).toBe(5);
+  });
+
+  it("contiguous — anchor 가 그룹 가운데 (anchorRelIdx=1)", () => {
+    // sortedByYPos=[a(yPos1), b(yPos2, anchor), c(yPos3)], anchorRelIdx=1
+    //   a=10+(0-1)=9, b=10 (anchor), c=10+(2-1)=11
+    const sessions = [
+      make("a", 0, "09:00", "10:00", 1),
+      make("b", 0, "09:00", "10:00", 2),
+      make("c", 0, "09:00", "10:00", 3),
+    ];
+    const result = computeBulkMoveTargets({
+      sessions,
+      anchorSessionId: "b",
+      newWeekday: 0,
+      newTime: "10:00",
+      newYPosition: 10,
+      selectedIds: ["a", "b", "c"],
+    });
+    const byId = new Map(result.moves.map((m) => [m.session.id, m]));
+    expect(byId.get("a")?.yPosition).toBe(9);
+    expect(byId.get("b")?.yPosition).toBe(10);
+    expect(byId.get("c")?.yPosition).toBe(11);
+  });
+
+  it("contiguous — clamp >=1 (anchor lane 5, drop lane 1 → followers 음수 → 1 clamp)", () => {
+    // 5 sessions, anchor=lane 5, drop newYPosition=1. follower 의 raw yPos:
+    //   a=1+(0-4)=-3, b=1+(1-4)=-2, c=1+(2-4)=-1, d=1+(3-4)=0 → 모두 clamp to 1.
+    // anchor=1. sequential repositionSessionsUtil 의 priority-based chain push
+    // 가 충돌 해소. 위쪽 clamp (e.g. > maxLanes) 는 reposition 책임.
+    const sessions = [
+      make("a", 0, "09:00", "10:00", 1),
+      make("b", 0, "09:00", "10:00", 2),
+      make("c", 0, "09:00", "10:00", 3),
+      make("d", 0, "09:00", "10:00", 4),
+      make("e", 0, "09:00", "10:00", 5),
+    ];
+    const result = computeBulkMoveTargets({
+      sessions,
+      anchorSessionId: "e",
+      newWeekday: 0,
+      newTime: "10:00",
+      newYPosition: 1,
+      selectedIds: ["a", "b", "c", "d", "e"],
+    });
+    const byId = new Map(result.moves.map((m) => [m.session.id, m]));
+    expect(byId.get("a")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(1);
+    expect(byId.get("c")?.yPosition).toBe(1);
+    expect(byId.get("d")?.yPosition).toBe(1);
+    expect(byId.get("e")?.yPosition).toBe(1);
   });
 
   it("빈 selectedIds — empty moves", () => {
