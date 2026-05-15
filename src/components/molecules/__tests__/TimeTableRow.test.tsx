@@ -1136,11 +1136,18 @@ describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () =>
     return m;
   };
 
-  const dragPreviewAt = (targetWeekday: number | null, yPos: number | null) => ({
+  const dragPreviewAt = (
+    targetWeekday: number | null,
+    yPos: number | null,
+    mode: "lane" | "insertBefore" | null = "lane",
+    half: "left" | "right" | null = null,
+  ) => ({
     draggedSession: makeS("s1", 1),
     targetWeekday,
     targetTime: "09:00",
     targetYPosition: yPos,
+    targetMode: mode,
+    targetHalf: half,
   });
 
   const defaultProps = {
@@ -1210,5 +1217,125 @@ describe("드래그 중 레인 시각화 — 경계선 + 하이라이트", () =>
       />
     );
     expect(screen.queryByTestId("lane-highlight")).not.toBeInTheDocument();
+  });
+
+  // ── 3 시각 피드백 SSOT 통일 (PR 후속) ────────────────────────────────
+  // dnd-visual-feedback.md 참조 — drag-ghost / lane-highlight / amber overlay 모두
+  // ghost 좌표 (laidOutSessions) derive. lane-highlight 는 항상 column 박스 (사용자
+  // 직관 "어느 lane 으로 드롭"). amber overlay 는 insertBefore mode 시 ghost 같은 lane.
+
+  it("targetMode=insertBefore → lane-highlight 박스 (vertical line 아님, width != 3px)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2, "insertBefore", "left")}
+      />
+    );
+    const el = screen.getByTestId("lane-highlight");
+    expect(el).toBeInTheDocument();
+    expect(el).not.toHaveAttribute("data-mode"); // mode 분기 제거됨
+    expect((el as HTMLElement).style.width).not.toBe("3px");
+  });
+
+  it("targetMode=lane → lane-highlight 박스 렌더", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2, "lane")}
+      />
+    );
+    const el = screen.getByTestId("lane-highlight");
+    expect(el).toBeInTheDocument();
+    expect((el as HTMLElement).style.width).not.toBe("3px");
+  });
+
+  it("targetMode undefined → lane-highlight 박스 (backward compat)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 2)}
+      />
+    );
+    expect(screen.getByTestId("lane-highlight")).toBeInTheDocument();
+  });
+
+  // ── amber overlay (Variant E "여기 삽입") — ghost 좌표 derive ───────────
+
+  it("targetMode=insertBefore + targetHalf=left → amber-overlay 렌더 (data-target-half=left)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 1, "insertBefore", "left")}
+      />
+    );
+    const amber = screen.getByTestId("amber-overlay");
+    expect(amber).toBeInTheDocument();
+    expect(amber).toHaveAttribute("data-target-half", "left");
+  });
+
+  it("targetMode=insertBefore + targetHalf=right → amber-overlay data-target-half=right", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 1, "insertBefore", "right")}
+      />
+    );
+    expect(screen.getByTestId("amber-overlay")).toHaveAttribute("data-target-half", "right");
+  });
+
+  it("targetMode=lane → amber-overlay 미렌더", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragPreview={dragPreviewAt(0, 1, "lane")}
+      />
+    );
+    expect(screen.queryByTestId("amber-overlay")).not.toBeInTheDocument();
+  });
+
+  it("multi-select (selectedSessionIds.size > 1) → amber-overlay 미렌더 (T10b 가드)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        selectedSessionIds={new Set(["s1", "s2"])}
+        dragPreview={dragPreviewAt(0, 1, "insertBefore", "left")}
+      />
+    );
+    expect(screen.queryByTestId("amber-overlay")).not.toBeInTheDocument();
+  });
+
+  it("dragStartedAsCopy → amber-overlay 미렌더 (T10b 가드)", () => {
+    render(
+      <TimeTableRow
+        {...defaultProps}
+        weekday={0}
+        sessions={twoSessionMap()}
+        isAnyDragging={true}
+        dragStartedAsCopy={true}
+        dragPreview={dragPreviewAt(0, 1, "insertBefore", "left")}
+      />
+    );
+    expect(screen.queryByTestId("amber-overlay")).not.toBeInTheDocument();
   });
 });

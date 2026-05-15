@@ -24,17 +24,12 @@ interface TimeTableCellProps {
    *
    * Cmd/Ctrl 복사 drag 시엔 호출부에서 false 유지 — 복사 의도는 lane reorder 와
    * 무관 (T10b 회귀 가드).
+   *
+   * NOTE: cell 은 hit-test droppable 만 담당. amber overlay ("여기 삽입") 의 시각
+   * 렌더는 TimeTableRow 가 ghost 좌표 (laidOutSessions) 기반으로 그린다.
+   * dnd-visual-feedback.md § 3 데이터 흐름 참조.
    */
   insertMode?: boolean;
-  /**
-   * 이 cell 의 (timeIndex, yPosition) 에 차지된 SessionBlock 의 top px (TimeTableRow
-   * absolute 기준). overlay 가 cell 30분 slot 이 아닌 SessionBlock 전체 크기로
-   * 펼쳐지도록 — 사용자 보고 "수업블록 크기만큼 dashed".
-   */
-  occupiedSessionTop?: number;
-  occupiedSessionHeight?: number;
-  /** 이 cell 의 absolute top (TimeTableRow 기준) — overlay 의 cell-relative offset 계산. */
-  cellTop?: number;
 }
 
 /**
@@ -54,9 +49,6 @@ export default function TimeTableCell({
   style,
   isReadOnly = false,
   insertMode = false,
-  occupiedSessionTop,
-  occupiedSessionHeight,
-  cellTop,
 }: TimeTableCellProps) {
   // 일반 lane occupy droppable — drag 안 할 때 (또는 복사 drag) 만 활성.
   const laneDrop = useDroppable({
@@ -121,8 +113,8 @@ export default function TimeTableCell({
       {insertMode && (
         <>
           {/* hit area — left half (this lane 앞으로) / right half (this lane 뒤로).
-              cursor 위치로 의도 분기. overlay 와 분리해 한쪽 isOver 면 cell 전체에
-              overlay 노출 + 해당 boundary 강조선만 다르게. */}
+              cursor 위치로 의도 분기. amber overlay 시각 렌더는 TimeTableRow 가
+              ghost 좌표 (laidOutSessions) 기반으로 그린다 — 본 cell 은 hit-test 만. */}
           <div
             ref={leftHalfDrop.setNodeRef}
             data-insert-half="left"
@@ -133,35 +125,6 @@ export default function TimeTableCell({
             data-insert-half="right"
             style={{ position: "absolute", inset: 0, left: "50%" }}
           />
-          {/* overlay — SessionBlock 점유 cell 만 dashed (사용자 요청 2026-05-14:
-              빈 시간대 cell 엔 overlay 안 떠도 됨). 점유된 cell 은 SessionBlock 전체
-              크기로 펼침 (cell 의 overflow visible 기본값 활용). */}
-          {(leftHalfDrop.isOver || rightHalfDrop.isOver) &&
-            occupiedSessionTop != null &&
-            occupiedSessionHeight != null &&
-            cellTop != null && (
-            <div
-              style={{
-                position: "absolute",
-                top: `${occupiedSessionTop - cellTop}px`,
-                left: 0,
-                right: 0,
-                height: `${occupiedSessionHeight}px`,
-                zIndex: 4,
-              }}
-              className="rounded-md border-2 border-dashed border-amber-400/90 bg-amber-300/25 flex items-center justify-center pointer-events-none"
-            >
-              <span className="text-[12px] font-bold text-amber-200 select-none whitespace-nowrap">
-                여기 삽입
-              </span>
-              {leftHalfDrop.isOver && (
-                <div className="absolute inset-y-0 left-0 w-1 bg-amber-400 rounded-l-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
-              )}
-              {rightHalfDrop.isOver && (
-                <div className="absolute inset-y-0 right-0 w-1 bg-amber-400 rounded-r-md shadow-[0_0_8px_2px_rgba(251,191,36,0.6)]" />
-              )}
-            </div>
-          )}
         </>
       )}
     </div>

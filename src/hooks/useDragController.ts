@@ -8,6 +8,7 @@ type DragSource =
   | { kind: "student"; studentId: string };
 
 type DragTargetMode = "lane" | "insertBefore";
+type DragTargetHalf = "left" | "right";
 
 type DragTarget = {
   weekday: number;
@@ -19,6 +20,12 @@ type DragTarget = {
    *   같은 시간 겹침 lane ≥ yPosition 모두 +1 shift.
    */
   mode: DragTargetMode;
+  /**
+   * mode === "insertBefore" 일 때만 의미. cell 의 어느 절반 위에 cursor 가 있는지.
+   * row 단위 amber overlay 가 boundary glow line (left/right edge) 을 렌더할 때 사용.
+   * cell-split hit-test (TimeTableCell) 결과를 dragController state 로 끌어올린 것.
+   */
+  half?: DragTargetHalf;
 };
 
 type DragState =
@@ -65,6 +72,8 @@ export interface DragControllerResult {
   targetYPosition: number | null;
   /** "lane" (기본) 또는 "insertBefore" (lane 사이 drop slot, Variant E). null = hover 없음. */
   targetMode: DragTargetMode | null;
+  /** insertBefore 모드 시 cell 의 어느 절반에 cursor 가 있는지 ("left" / "right"). 그 외 null. */
+  targetHalf: DragTargetHalf | null;
   /**
    * Ctrl(Win/Linux) 또는 Meta/Cmd(macOS) 키 보유 중 → drop 시점에 read하여
    * "복사" vs "이동" 분기. window-level keydown/keyup로 추적되어 drag 도중
@@ -84,6 +93,7 @@ export interface DragControllerResult {
     time: string,
     yPosition: number,
     mode?: DragTargetMode,
+    half?: DragTargetHalf,
   ) => void;
   leaveTarget: () => void;
   completeDrop: () => void;
@@ -137,8 +147,9 @@ export function useDragController(): DragControllerResult {
       time: string,
       yPosition: number,
       mode: DragTargetMode = "lane",
+      half?: DragTargetHalf,
     ) => {
-      dispatch({ type: "HOVER", target: { weekday, time, yPosition, mode } });
+      dispatch({ type: "HOVER", target: { weekday, time, yPosition, mode, half } });
     },
     [],
   );
@@ -171,6 +182,7 @@ export function useDragController(): DragControllerResult {
     targetTime: target?.time ?? null,
     targetYPosition: target?.yPosition ?? null,
     targetMode: target?.mode ?? null,
+    targetHalf: target?.half ?? null,
     isCopyMode,
     isDraggingSession,
     isAnyDragging,
