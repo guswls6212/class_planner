@@ -1,8 +1,23 @@
 # ADR 017 — 멀티선택 이동/복사 시 contiguous yPosition 분배 (Option D 폐기)
 
-- **Status**: Accepted (2026-05-15)
+- **Status**: Accepted (v1: 2026-05-15, v2: 2026-05-16 — group-shift 채택)
 - **Supersedes**: PR #208 (`beb54b3`, "Option D" — 추종 yPosition=1 강제)
-- **Related**: PR #390 (DnD 시각 피드백 SSOT 통일)
+- **Related**: PR #390 (DnD 시각 피드백 SSOT 통일), PR #391 (v1), PR #(이번) (v2)
+
+## v2 amendment (2026-05-16)
+
+v1 의 per-session contiguous 정책이 anchor 가 group **가운데/끝** + drop 위치가 작은 경우 follower 음수 clamp → 모두 lane 1 으로 모이고 sequential reposition 의 chain push 가 random order 로 풀어 visual order 깨짐 (사용자 보고 Image #14 — 5 sessions anchor=lane 3 drop lane 1 → 결과 `2,3,4,5,1` random).
+
+v2 정책 (**group-shift contiguous**):
+```typescript
+const groupStartLane = Math.max(1, newYPosition - anchorRelIdx);
+const yPos = groupStartLane + i;  // 모든 candidate (anchor 포함)
+```
+
+- 정상 case (anchor 가 group 왼쪽 끝 또는 drop 위치 충분히 큼): `groupStartLane = newYPosition - anchorRelIdx` → anchor.yPos === newYPosition. v1 과 동일 행동.
+- 음수 clamp case (anchor 안쪽 + drop 작음): `groupStartLane = 1` → group 전체가 lane 1 부터 contiguous. anchor 가 drop lane 과 다른 lane (= 1 + anchorRelIdx). 사용자 mental model 일부 변경 — drop lane 은 group의 시작점, anchor 는 group 안 상대 위치 유지.
+
+trade-off: anchor 가 drop lane 에 정확히 가지 않는 case 가 생기지만 visual order 항상 보존. 사용자 검증 (2026-05-16) 으로 후자 우선 확정.
 
 ## Context
 

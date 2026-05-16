@@ -272,11 +272,41 @@ describe("computeBulkMoveTargets", () => {
       selectedIds: ["a", "b", "c", "d", "e"],
     });
     const byId = new Map(result.moves.map((m) => [m.session.id, m]));
+    // ✅ group-shift 정책 (2026-05-16, ADR 017 v2): groupStartLane = max(1, 1-4) = 1.
+    // a=1, b=2, c=3, d=4, e=5 — visual order 보존. anchor(e) 가 drop lane (1) 과 다른 lane (5).
     expect(byId.get("a")?.yPosition).toBe(1);
-    expect(byId.get("b")?.yPosition).toBe(1);
-    expect(byId.get("c")?.yPosition).toBe(1);
-    expect(byId.get("d")?.yPosition).toBe(1);
-    expect(byId.get("e")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(2);
+    expect(byId.get("c")?.yPosition).toBe(3);
+    expect(byId.get("d")?.yPosition).toBe(4);
+    expect(byId.get("e")?.yPosition).toBe(5);
+  });
+
+  it("group-shift — anchor 가운데 (lane 3), drop lane 1 → group lane 1-5 (사용자 보고 2026-05-16 Image #14)", () => {
+    // 5 sessions, anchor=lane 3 (가운데). drop newYPosition=1. groupStartLane = max(1, 1-2) = 1.
+    // a=1, b=2, c=3 (anchor), d=4, e=5. visual order 보존.
+    // PR #391 (per-session contiguous) 에서는 a/b 음수 clamp → lane 1 충돌 → random order
+    // (Image #14: 4,2,1,5,3). 본 정책으로 5,4,3,2,1 visual 보존.
+    const sessions = [
+      make("a", 0, "09:00", "10:00", 1),
+      make("b", 0, "09:00", "10:00", 2),
+      make("c", 0, "09:00", "10:00", 3),
+      make("d", 0, "09:00", "10:00", 4),
+      make("e", 0, "09:00", "10:00", 5),
+    ];
+    const result = computeBulkMoveTargets({
+      sessions,
+      anchorSessionId: "c",
+      newWeekday: 0,
+      newTime: "10:00",
+      newYPosition: 1,
+      selectedIds: ["a", "b", "c", "d", "e"],
+    });
+    const byId = new Map(result.moves.map((m) => [m.session.id, m]));
+    expect(byId.get("a")?.yPosition).toBe(1);
+    expect(byId.get("b")?.yPosition).toBe(2);
+    expect(byId.get("c")?.yPosition).toBe(3);
+    expect(byId.get("d")?.yPosition).toBe(4);
+    expect(byId.get("e")?.yPosition).toBe(5);
   });
 
   it("빈 selectedIds — empty moves", () => {
