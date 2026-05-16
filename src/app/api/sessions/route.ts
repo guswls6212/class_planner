@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
       teacherId,
       public_description,
       internal_note,
+      yPosition, // ← lane 위치 (1-based). 누락 시 default 1.
+      // 사용자 보고 (2026-05-16): 멀티선택 복사 후 새로고침 시 모든 lane=1 stack —
+      // POST 가 yPosition 무시하여 DB default 만 저장한 회귀. addSession 경로에 전파.
     } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
         ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
         ...(public_description !== undefined && { public_description }),
         ...(internal_note !== undefined && { internal_note }),
+        ...(typeof yPosition === "number" && Number.isFinite(yPosition) && { yPosition }),
       },
       academyId
     );
@@ -150,7 +154,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId, public_description, internal_note } = body;
+    const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId, public_description, internal_note, yPosition } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -210,6 +214,9 @@ export async function PUT(request: NextRequest) {
       ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
       ...(public_description !== undefined && { public_description }),
       ...(internal_note !== undefined && { internal_note }),
+      // yPosition 전달 — PUT (full update) 도 lane 위치 변경 가능 (modal 편집 등).
+      // /position 엔드포인트는 drag 전용 — 일반 PUT 은 위치 안 건드리면 그대로 유지.
+      ...(typeof yPosition === "number" && Number.isFinite(yPosition) && { yPosition }),
     }, academyId);
     return NextResponse.json({ success: true, data: updatedSession });
   } catch (error) {
