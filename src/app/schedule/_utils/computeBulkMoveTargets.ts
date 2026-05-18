@@ -14,16 +14,19 @@
  *      layout이 처리. 호출자가 _handleSessionDropBase로 모두 dispatch.
  *      음수 시간(자정 이전)만 outOfRange로 분류.
  *
- * yPosition 분배 정책 (2026-05-15 변경, Option D 폐기 — adr/014 참조):
- *   ❌ 이전 (Option D, PR #208): 추종 sessions 모두 yPosition=1 강제. 시각 단서로
- *      "같이 따라왔음" 표현. 그러나 사용자가 anchor를 group 가장 오른쪽에서 잡으면
- *      candidates 순회 순서(sessions array = 학생 ID asc)가 그대로 lane 분배되어
- *      그룹 시각 순서(yPosition asc) 깨짐 — 사용자 보고 (2026-05-15).
- *   ✅ 현재 (Contiguous distribution): candidates 를 원래 yPosition asc 로 정렬 후
- *      anchor 의 group 내 상대 위치 (anchorRelIdx) 기준으로 contiguous yPos 분배.
- *      anchor 는 정확히 newYPosition, follower i 는 (newYPosition + (i - anchorRelIdx)).
- *      clamp >= 1 (음수/0 방지). 위쪽 clamp 은 sequential repositionSessions 가
- *      충돌 chain push 로 처리. 결과: 어느 수업을 잡든 group 시각 순서 보존.
+ * yPosition 분배 정책 (2026-05-18, group-shift contiguous — ADR 017 v2):
+ *   ❌ Option D (PR #208): 추종 모두 yPosition=1 강제. visual order 깨짐 (PR #391 폐기).
+ *   ❌ Per-session contiguous (PR #391, ADR 017 v1): anchor=newYPosition, follower i =
+ *      max(1, newYPosition + (i - anchorRelIdx)). 음수 clamp 발생 시 (anchor 가 group
+ *      안쪽 + drop 위치가 작음) follower 다수가 lane 1 로 모임 → sequential reposition
+ *      chain push 가 random order 로 풀어 visual order 깨짐 (사용자 보고 2026-05-16
+ *      Image #14: anchor=yPos 3 drop lane 1 → 결과 2,3,4,5,1 random).
+ *   ✅ Group-shift contiguous (현재): candidates 를 yPosition asc 로 정렬 후 group 전체
+ *      를 한 번에 lane shift. groupStartLane = max(1, newYPosition - anchorRelIdx),
+ *      각 sess i 의 yPos = groupStartLane + i. group 전체가 lane 1 부터 시작 가능 → 음수
+ *      clamp 시 anchor 가 drop lane 과 다를 수 있지만 (anchor 위치 = groupStartLane +
+ *      anchorRelIdx) visual order 보장. 정상 case 에서는 anchor.yPos === newYPosition
+ *      (v1 과 동일 행동). 위쪽 clamp 은 sequential repositionSessions chain push 에 위임.
  */
 
 import type { Session } from "@/lib/planner";
@@ -75,6 +78,18 @@ export function computeBulkMoveTargets(args: {
   const anchorRelIdx = sortedCandidates.findIndex((s) => s.id === anchorSessionId);
   if (anchorRelIdx < 0) return { moves: [], outOfRange: 0 };
 
+  // group-shift contiguous (ADR 017 v2, 2026-05-18): group 전체를 한 번에 lane shift.
+  // PR #391 의 per-session contiguous (anchor=newYPosition, follower i = max(1, ...)) 는
+  // anchor 가 group 안쪽 + drop 위치가 작은 case 에서 follower 음수 → lane 1 clamp 모이고
+  // sequential reposition chain push 가 random order 풀어 visual order 깨짐
+  // (사용자 보고 2026-05-16 Image #14).
+  //
+  // groupStartLane = max(1, newYPosition - anchorRelIdx). 각 sess i = groupStartLane + i.
+  // 정상 case (anchor 왼쪽 끝 또는 drop 충분히 큼): anchor.yPos === newYPosition (v1 동일).
+  // 음수 clamp case: group 전체 lane 1 부터 contiguous → anchor 가 drop lane 과 다를
+  // 수 있지만 visual order 항상 보존.
+  const groupStartLane = Math.max(1, newYPosition - anchorRelIdx);
+
   const moves: BulkMoveTarget[] = [];
   let outOfRange = 0;
 
@@ -88,13 +103,9 @@ export function computeBulkMoveTargets(args: {
       outOfRange++;
       continue;
     }
-    // contiguous yPos 분배: anchor=newYPosition, follower i = newYPosition + (i - anchorRelIdx).
-    // sortedCandidates 가 yPosition asc 라 group 시각 순서 보존. anchor 위치 무관.
-    // clamp >=1 (음수/0 방지) — 위쪽 clamp 은 sequential repositionSessionsUtil 의
-    // priority-based chain push 가 처리. 자세히: adr/014.
-    const yPos = s.id === anchorSessionId
-      ? newYPosition
-      : Math.max(1, newYPosition + (i - anchorRelIdx));
+    // 모든 sess (anchor 포함) 같은 공식: groupStartLane + i. group 전체 lane 1 부터
+    // contiguous. ADR 017 v2 참조.
+    const yPos = groupStartLane + i;
 
     moves.push({
       session: s,
