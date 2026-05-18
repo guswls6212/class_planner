@@ -71,13 +71,15 @@ async function globalSetup(): Promise<void> {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: `Bearer ${data.session.access_token}` } },
     });
-    const { data: membership } = await sbAuthed
+    // 2026-05-18 hotfix: setup script 와 동일하게 multiple row graceful. cleanup race
+    // 로 academy_members 누적된 환경에서 maybeSingle 이 fail 하지 않도록 limit(1) + first.
+    const { data: memberships } = await sbAuthed
       .from("academy_members")
       .select("academy_id")
       .eq("user_id", data.user.id)
       .eq("role", "owner")
-      .maybeSingle();
-    academyId = membership?.academy_id ?? null;
+      .limit(1);
+    academyId = memberships?.[0]?.academy_id ?? null;
   }
 
   // T0' instrumentation (PR-α): academyId null 이면 spec 시작 전 fail 로 즉시 표면화.
