@@ -26,6 +26,9 @@ export class SessionApplicationServiceImpl {
       teacherId?: string | null;
       public_description?: string | null;
       internal_note?: string | null;
+      /** lane 위치 (1-based). 미제공 시 Repository 가 default 1 (멀티선택 복사 후
+       *  새로고침 시 lane 1 stack 회귀 가드 — 사용자 보고 2026-05-16). */
+      yPosition?: number;
     },
     academyId: string
   ): Promise<Session> {
@@ -49,6 +52,8 @@ export class SessionApplicationServiceImpl {
       teacherId?: string | null;
       public_description?: string | null;
       internal_note?: string | null;
+      /** lane 위치 — modal 편집 등에서 변경 가능. drag 전용 /position 엔드포인트와 별개. */
+      yPosition?: number;
     },
     academyId?: string
   ): Promise<Session> {

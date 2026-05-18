@@ -251,6 +251,79 @@ describe("/api/sessions API Routes", () => {
     });
   });
 
+  describe("POST /api/sessions — yPosition (사용자 보고 2026-05-16 lane 1 stack 회귀)", () => {
+    // 회귀 사고: 멀티선택 복사 → 새로고침 → 모든 sessions lane 1 stack overlap.
+    // RC: POST destructure 가 yPosition 무시 → Repository default 1 만 저장.
+    // 본 test 는 그 회귀 방지.
+
+    it("yPosition 이 number 면 addSession 에 전달된다", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: ["e-1"],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+            yPosition: 5,
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      await POST(request);
+      expect(mockAddSession).toHaveBeenCalledWith(
+        expect.objectContaining({ yPosition: 5 }),
+        expect.any(String)
+      );
+    });
+
+    it("yPosition 이 없으면 addSession 호출에 yPosition 키가 없다 (Repository default 1)", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: ["e-1"],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      await POST(request);
+      const [sessionData] = mockAddSession.mock.calls[0];
+      expect(sessionData).not.toHaveProperty("yPosition");
+    });
+
+    it("yPosition 이 non-number 면 무시 (NaN / string 가드)", async () => {
+      const request = new NextRequest(
+        "http://localhost:3000/api/sessions?userId=test-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            subjectId: "sub-1",
+            startsAt: "09:00",
+            endsAt: "10:00",
+            enrollmentIds: ["e-1"],
+            weekday: 0,
+            weekStartDate: "2026-04-27",
+            yPosition: "invalid",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      await POST(request);
+      const [sessionData] = mockAddSession.mock.calls[0];
+      expect(sessionData).not.toHaveProperty("yPosition");
+    });
+  });
+
   describe("PUT /api/sessions/:id — teacherId (id route)", () => {
     const makeIdPutRequest = (body: object, userId = "owner-user") =>
       new NextRequest(`http://localhost:3000/api/sessions/sess-1?userId=${userId}`, {
