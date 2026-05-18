@@ -109,33 +109,49 @@ export async function seedSecondAcademy(opts?: {
   const primaryAcademyId = getAcademyId();
   const name = opts?.name ?? "E2E Test Academy 2";
 
+  // 멱등성 fix (2026-05-18, issue #398 RC): 이전 코드는 academies row 존재 시 early
+  // return — academy_members 미보장. 직전 clearSecondAcademies 가 academies DELETE
+  // silent fail 한 경우 orphan academy 잔존 → 다음 cycle seed 가 orphan 발견 → member
+  // 없이 return → /api/academies/mine 의 academy_members×academies INNER JOIN 에서
+  // 누락 → spec waitForResponse 15s timeout. 회복: academy_members UPSERT 보장.
   const { data: existing } = await sb
     .from("academies")
     .select("id, name")
     .eq("name", name)
     .eq("created_by", userId)
     .maybeSingle();
+
+  let academyId: string;
+  let academyName: string;
   if (existing && existing.id !== primaryAcademyId) {
-    return { id: existing.id, name: existing.name };
+    academyId = existing.id;
+    academyName = existing.name;
+  } else {
+    const { data: newAcademy, error: academyErr } = await sb
+      .from("academies")
+      .insert({ name, created_by: userId })
+      .select("id, name")
+      .single();
+    if (academyErr || !newAcademy) {
+      throw new Error(`[seedSecondAcademy] academies INSERT 실패: ${academyErr?.message}`);
+    }
+    academyId = newAcademy.id;
+    academyName = newAcademy.name;
   }
 
-  const { data: newAcademy, error: academyErr } = await sb
-    .from("academies")
-    .insert({ name, created_by: userId })
-    .select("id, name")
-    .single();
-  if (academyErr || !newAcademy) {
-    throw new Error(`[seedSecondAcademy] academies INSERT 실패: ${academyErr?.message}`);
-  }
-  const { error: memberErr } = await sb.from("academy_members").insert({
-    academy_id: newAcademy.id,
-    user_id: userId,
-    role: "admin",
-  });
+  // academy_members UPSERT — existing 분기에서도 항상 실행. PRIMARY KEY (academy_id,
+  // user_id) 충돌 시 ignoreDuplicates 로 graceful no-op. orphan academy 회복 보장.
+  const { error: memberErr } = await sb
+    .from("academy_members")
+    .upsert(
+      { academy_id: academyId, user_id: userId, role: "admin" },
+      { onConflict: "academy_id,user_id", ignoreDuplicates: true },
+    );
   if (memberErr) {
-    throw new Error(`[seedSecondAcademy] academy_members INSERT 실패: ${memberErr.message}`);
+    throw new Error(`[seedSecondAcademy] academy_members UPSERT 실패: ${memberErr.message}`);
   }
-  return { id: newAcademy.id, name: newAcademy.name };
+
+  return { id: academyId, name: academyName };
 }
 
 /**
@@ -146,16 +162,36 @@ export async function clearSecondAcademies(): Promise<void> {
   const userId = getUserId();
   const primaryAcademyId = getAcademyId();
 
+  // 2026-05-18 hotfix (issue #398): academy_members lookup 만 사용하면 academy_members
+  // 가 이미 정리됐지만 academies row 가 잔존한 orphan 케이스 미감지 → 다음 cycle seed
+  // 의 멱등 검사가 그 orphan 발견 + member 없이 return → spec 회귀. orphan academies
+  // 도 name 기반 lookup 으로 sweep.
   const { data: extras } = await sb
     .from("academy_members")
     .select("academy_id")
     .eq("user_id", userId)
     .neq("academy_id", primaryAcademyId);
+  const { data: orphans } = await sb
+    .from("academies")
+    .select("id")
+    .eq("created_by", userId)
+    .neq("id", primaryAcademyId);
 
-  for (const row of extras ?? []) {
-    const aid = row.academy_id as string;
+  const allIds = new Set<string>();
+  for (const r of extras ?? []) allIds.add(r.academy_id as string);
+  for (const r of orphans ?? []) allIds.add(r.id as string);
+
+  for (const aid of allIds) {
     await sb.from("academy_members").delete().eq("academy_id", aid);
-    await sb.from("academies").delete().eq("id", aid);
+    // audit_log RESTRICT FK 사전 정리 (future-proof — 현재 audit_log 비어있어도 미래
+    // 에 row 누적되면 academies DELETE silent fail 발생 가능).
+    await sb.from("audit_log").delete().eq("academy_id", aid);
+    const { error } = await sb.from("academies").delete().eq("id", aid);
+    if (error) {
+      throw new Error(
+        `[clearSecondAcademies] academies (${aid}) 삭제 실패: ${error.message}. RESTRICT FK 검토 필요.`,
+      );
+    }
   }
 }
 

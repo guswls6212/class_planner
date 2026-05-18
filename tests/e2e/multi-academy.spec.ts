@@ -51,14 +51,13 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
     await expect(page.getByText(/새 학원 만들기/)).toBeVisible({ timeout: 3000 });
   });
 
-  // RC 추적 (2026-05-18, issue #398): Fix 1 (auth-mock pre-seed) 적용했지만
-  // step 6 ("E2E Test Academy 2" visible) 여전히 fail — waitForResponse 15s 동안
-  // 두 번째 academy 가 포함된 /api/academies/mine 응답 안 옴. 즉 **API 응답 자체에**
-  // 두 번째 academy 누락. 진짜 RC 는 audit_log RESTRICT FK 정리 race 로 cleanup 이
-  // academies 못 지움 → 다음 cycle seed 가 orphan FK 또는 stale academy 와 충돌.
-  // audit_log FK 정리 hotfix 별도 PR 후 skip 해제. spec 자체 (try/finally + body
-  // 검증 waitForResponse + 10s visible timeout) 는 keep — 그 fix 후 활용.
-  test.skip("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
+  // RC 추적 완료 (2026-05-18, issue #398): seedSecondAcademy 의 멱등성 결함이 진짜
+  // RC. academies row 존재 시 early return — academy_members 검증/재삽입 안 함 →
+  // orphan academy 잔존 → /api/academies/mine INNER JOIN 에서 누락. fix:
+  //  - seedSecondAcademy 가 academy_members UPSERT 보장
+  //  - clearSecondAcademies 의 orphan academies sweep + audit_log 사전 정리
+  // skip 해제.
+  test("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
     await clearSecondAcademies();
     try {
       const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
