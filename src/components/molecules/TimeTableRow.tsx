@@ -121,8 +121,15 @@ interface TimeTableRowProps {
    * 부모 (TimeTableGrid) 가 일관성 위해 controlled-only 로 운영.
    */
   expandedRowKeys?: Set<string>;
-  /** 특정 cluster 의 expand toggle. clusterKey 만 받음 (weekday 는 부모가 알고 있음). */
+  /** 특정 cluster 의 expand toggle (개별 cluster — 외부 control 시나리오). clusterKey 인자. */
   onToggleRowExpand?: (clusterKey: string) => void;
+  /**
+   * weekday 의 모든 cluster 일괄 토글 (모두 expanded → 모두 collapse, 그 외 → 모두 expand).
+   * chip 클릭 시 본 callback 우선 호출 — 한 row chip 만 눌러도 같은 weekday 모든 cluster
+   * 일괄 expand (사용자 요구 2026-05-16, column 폭이 이미 max cluster 로 늘어났을 때 다른
+   * row 도 같이 expand 가 자연 UX).
+   */
+  onToggleAllRowsInWeekday?: () => void;
   /**
    * @deprecated weekday 전체 토글 — backward compat 용. 새 코드는 expandedRowKeys 사용.
    * 단일 cluster (weekday 에 cluster 1 개) 시나리오에서만 등가. multi-cluster 면 모든
@@ -173,6 +180,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   nowTimeStr,
   expandedRowKeys,
   onToggleRowExpand,
+  onToggleAllRowsInWeekday,
   isExpanded: legacyIsExpanded,
   onToggleExpand: legacyOnToggleExpand,
   selectedSessionIds,
@@ -818,7 +826,14 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             className="absolute cursor-pointer border-0 rounded-[6px] session-overlay-pill backdrop-blur-sm text-white text-[10px] font-bold leading-tight whitespace-nowrap"
             onClick={(e) => {
               e.stopPropagation();
-              if (st.isExpanded) {
+              // 사용자 요구 (2026-05-16): chip 클릭 시 같은 weekday 모든 cluster 일괄
+              // toggle. column 폭이 이미 max cluster lane 수 라 다른 row 도 같이 expand /
+              // collapse 가 자연 UX. onToggleAllRowsInWeekday 우선.
+              // legacy fallback (test sandbox / uncontrolled): expanded → 그 cluster
+              // collapse, collapsed → popover open (PR #390 이전 동작 호환).
+              if (onToggleAllRowsInWeekday) {
+                onToggleAllRowsInWeekday();
+              } else if (st.isExpanded) {
                 effectiveOnToggleRowExpand(st.cluster.key);
               } else {
                 setOpenPopoverClusterKey((prev) =>
@@ -860,7 +875,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
             anchorTop={st.chipTopPx}
             onClose={() => setOpenPopoverClusterKey(null)}
             onExpandAll={() => {
-              effectiveOnToggleRowExpand(st.cluster.key);
+              // popover 의 "모두 펼치기" 도 weekday 전체 일괄 (chip click 과 동일 의미).
+              if (onToggleAllRowsInWeekday) {
+                onToggleAllRowsInWeekday();
+              } else {
+                effectiveOnToggleRowExpand(st.cluster.key);
+              }
               setOpenPopoverClusterKey(null);
             }}
           />

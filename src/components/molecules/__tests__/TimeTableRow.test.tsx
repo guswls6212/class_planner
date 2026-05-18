@@ -672,7 +672,7 @@ describe("TimeTableRow Component", () => {
       expect(screen.getByTestId("overflow-expand-btn-0-720").textContent).toBe("+1");
     });
 
-    it("multi-cluster: onToggleRowExpand 콜백은 클릭한 cluster 의 key 인자로 호출", () => {
+    it("multi-cluster: onToggleRowExpand 콜백은 클릭한 cluster 의 key 인자로 호출 (legacy fallback)", () => {
       const onToggleRowExpand = vi.fn();
       const sessions = new Map<number, Session[]>();
       sessions.set(0, [
@@ -693,9 +693,38 @@ describe("TimeTableRow Component", () => {
           onToggleRowExpand={onToggleRowExpand}
         />,
       );
-      // row 1 chip "−" 클릭 → onToggleRowExpand("600") (cluster key)
+      // legacy fallback (onToggleAllRowsInWeekday 미정의 + expanded cluster): chip "−"
+      // 클릭 → effectiveOnToggleRowExpand("600") (cluster key).
       fireEvent.click(screen.getByTestId("overflow-expand-btn-0-600"));
       expect(onToggleRowExpand).toHaveBeenCalledWith("600");
+    });
+
+    it("multi-cluster: onToggleAllRowsInWeekday 우선 호출 — chip 클릭 시 모든 row 일괄 (2026-05-16)", () => {
+      const onToggleAllRowsInWeekday = vi.fn();
+      const onToggleRowExpand = vi.fn();
+      const sessions = new Map<number, Session[]>();
+      sessions.set(0, [
+        makeSession("a1", 1, "10:00", "11:00"),
+        makeSession("a2", 2, "10:00", "11:00"),
+        makeSession("a3", 3, "10:00", "11:00"),
+        makeSession("a4", 4, "10:00", "11:00"),
+        makeSession("b1", 1, "12:00", "13:00"),
+        makeSession("b2", 2, "12:00", "13:00"),
+        makeSession("b3", 3, "12:00", "13:00"),
+        makeSession("b4", 4, "12:00", "13:00"),
+      ]);
+      render(
+        <TimeTableRow
+          {...defaultProps}
+          sessions={sessions}
+          onToggleRowExpand={onToggleRowExpand}
+          onToggleAllRowsInWeekday={onToggleAllRowsInWeekday}
+        />,
+      );
+      // chip 클릭 → onToggleAllRowsInWeekday 호출. onToggleRowExpand 미호출.
+      fireEvent.click(screen.getByTestId("overflow-expand-btn-0-600"));
+      expect(onToggleAllRowsInWeekday).toHaveBeenCalledOnce();
+      expect(onToggleRowExpand).not.toHaveBeenCalled();
     });
   });
 

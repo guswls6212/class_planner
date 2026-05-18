@@ -185,6 +185,30 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       [],
     );
 
+    // 한 weekday 의 모든 cluster 일괄 토글 (사용자 요구 2026-05-16): 한 row chip 클릭 시
+    // 모든 cluster expand/collapse. 모두 expanded → 모두 collapse, 그 외 → 모두 expand.
+    // column 폭은 이미 max cluster lane 수로 늘어나 있으므로 다른 row 도 같이 expand 시
+    // sessions 모두 visible (사용자가 별도 chip 클릭 안 해도 됨).
+    const toggleAllRowsInWeekday = useCallback(
+      (weekday: number) => {
+        const daySessions = sessions?.get(weekday) || [];
+        const clustersInDay = computeRowClusters(daySessions);
+        if (clustersInDay.length === 0) return;
+        setExpandedRows((prev) => {
+          const keys = clustersInDay.map((c) => `${weekday}|${c.key}`);
+          const allExpanded = keys.every((k) => prev.has(k));
+          const next = new Set(prev);
+          if (allExpanded) {
+            for (const k of keys) next.delete(k);
+          } else {
+            for (const k of keys) next.add(k);
+          }
+          return next;
+        });
+      },
+      [sessions],
+    );
+
     // 주(week) 데이터가 바뀌면 펼침 상태 초기화
     useEffect(() => {
       setExpandedRows(new Set());
@@ -801,6 +825,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 frozenLanes={frozenLaneCountsPerWeekday?.[weekday] ?? null}
                 expandedRowKeys={expandedRows}
                 onToggleRowExpand={(clusterKey) => toggleRowExpand(weekday, clusterKey)}
+                onToggleAllRowsInWeekday={() => toggleAllRowsInWeekday(weekday)}
                 isToday={isToday}
                 nowLinePx={isToday ? nowLinePx : null}
                 nowTimeStr={isToday ? nowTimeStr : undefined}
