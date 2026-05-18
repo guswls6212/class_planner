@@ -119,16 +119,22 @@ async function main(): Promise<void> {
   // PR D — academy + owner role 자동 부여 (멱등)
   console.log("");
   console.log(`🏫 Academy 셋업: user ${userId.slice(0, 8)}...`);
-  const { data: existingMembership, error: memberSelectError } = await sbAdmin
+  // 2026-05-18 hotfix: `.maybeSingle()` 대신 `.limit(1)` — 이전 cleanup teardown 의
+  // academy_members DELETE 실패 (audit_log RESTRICT FK 등) 로 multiple owner rows 가
+  // 누적되면 maybeSingle 이 "multiple (or no) rows returned" error 로 fail → setup
+  // 전체 차단 → 모든 후속 PR 의 E2E job fail. multiple row 발견 시 첫 row 만 사용
+  // 하고 나머지는 graceful 무시 (cleanup race 영향 격리). 자세히: ci.yml E2E job log.
+  const { data: existingMemberships, error: memberSelectError } = await sbAdmin
     .from("academy_members")
     .select("academy_id")
     .eq("user_id", userId)
     .eq("role", "owner")
-    .maybeSingle();
+    .limit(1);
   if (memberSelectError) {
     console.error(`❌ academy_members 조회 실패: ${memberSelectError.message}`);
     process.exit(1);
   }
+  const existingMembership = existingMemberships?.[0] ?? null;
 
   let academyId: string;
   if (existingMembership) {
