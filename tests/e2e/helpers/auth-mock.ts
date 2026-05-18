@@ -179,15 +179,23 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
   // (templates-apply-delete.spec.ts 회귀 원인). owner 역할로 pre-seed해서 첫
   // render부터 canManage=true로 hydrate.
   await page.addInitScript(
-    ({ ref, uid, session }) => {
+    ({ ref, uid, session, academyId: acadId }) => {
       localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
       localStorage.setItem("supabase_user_id", uid);
+      // useMyRole cache pre-seed — academies 필드도 사전 시드. 이전엔 `[]` 였는데
+      // (PR #357) Sidebar 의 activeAcademy=undefined → aria-label="학원" → e2e
+      // locator `/E2E Test Academy/` fail (multi-academy.spec.ts:54 회귀, issue #398).
+      // globalSetup 의 academyId 를 그대로 시드 — first paint 부터 switcher 가
+      // "E2E Test Academy" 텍스트로 렌더. 두 번째 academy 는 MemberContext 의
+      // /api/academies/mine fetch 가 채움 (spec waitForResponse 로 대기).
       sessionStorage.setItem(
         `useMyRole_v1_${uid}`,
         JSON.stringify({
           role: "owner",
           canManage: true,
-          academies: [],
+          academies: acadId
+            ? [{ id: acadId, name: "E2E Test Academy", slug: null, role: "owner" }]
+            : [],
           linkedTeacherId: null,
           linkedTeacherName: null,
           linkedTeacherColor: null,
@@ -195,7 +203,7 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
         }),
       );
     },
-    { ref: projectRef, uid: userId, session: sessionPayload },
+    { ref: projectRef, uid: userId, session: sessionPayload, academyId },
   );
 
   return { userId, userEmail, projectRef, academyId };

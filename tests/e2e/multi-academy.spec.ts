@@ -51,34 +51,38 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
     await expect(page.getByText(/새 학원 만들기/)).toBeVisible({ timeout: 3000 });
   });
 
-  // TODO(2026-05-18): dev base e2e 회귀 — `seedSecondAcademy` 가 만든 두 번째 academy
-  // 가 switcher 메뉴에 안 보임. PR #393/#397 retry 모두 5 연속 fail 확인.
-  // memory `project_class_planner_e2e_regression_2026_05_11.md` 의 PR #355 시기 회귀
-  // cluster 와 동일 패턴 추정. line 77 의 다음 test 도 같은 시기 skip 처리됨.
-  // RC 후보: (a) seedSecondAcademy service role INSERT 실패, (b) GET /api/members 가
-  // 두 번째 academy 못 가져옴 (RLS 또는 캐시), (c) sidebar AcademySwitcher 컴포넌트가
-  // 새 academy 렌더 안 함. 추적 + fix 후 skip 해제.
-  test.skip("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
-    // PR K — service role로 두 번째 academy seed (멱등 + cleanup)
+  // RC 추적 완료 (2026-05-18, issue #398): auth-mock.ts pre-seed 가 academies=[] 로
+  // 박혀 Sidebar activeAcademy=undefined → aria-label="학원" → locator fail. Fix:
+  // auth-mock 의 sessionStorage pre-seed 에 academyId 사전 시드. spec 은 try/finally +
+  // waitForResponse 로 cleanup race + MemberContext fetch 대기 보장. skip 해제.
+  test("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
     await clearSecondAcademies();
-    const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
+    try {
+      const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
 
-    await page.goto("/schedule");
-    const switcherButton = page
-      .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
-      .first();
-    await expect(switcherButton).toBeVisible({ timeout: 10000 });
-    await switcherButton.click();
+      await page.goto("/schedule");
+      // MemberContext 의 /api/academies/mine fetch 가 두 번째 academy 를 받아오기 전엔
+      // sessionStorage pre-seed (첫 academy 만) 가 source-of-truth. 명시적 대기.
+      await page.waitForResponse(/\/api\/academies\/mine/);
 
-    // 메뉴에 두 academy 모두 visible
-    await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
-      timeout: 5000,
-    });
+      const switcherButton = page
+        .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
+        .first();
+      await expect(switcherButton).toBeVisible({ timeout: 10000 });
+      await switcherButton.click();
 
-    await clearSecondAcademies();
+      // 메뉴에 두 academy 모두 visible
+      await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
+        timeout: 5000,
+      });
+      await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
+        timeout: 5000,
+      });
+    } finally {
+      // assertion fail 시에도 cleanup 보장 (이전 회귀: 후속 spec 가 두 academy_members
+      // 잔존으로 cascade fail). try/finally 로 격리.
+      await clearSecondAcademies();
+    }
   });
 
   test.skip("multi-academy switch → reload → data scope 변경", async () => {
