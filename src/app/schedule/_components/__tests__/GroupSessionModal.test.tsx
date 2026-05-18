@@ -32,7 +32,7 @@ describe("GroupSessionModal - state updates", () => {
     return { get: () => current, set: setGroupModalData };
   }
 
-  it("updates subjectId, weekday via setGroupModalData on change (강의실 UI 제거됨)", () => {
+  it("updates subjectId, weekday via setGroupModalData on change (강의실 UI 제거됨, 요일은 chip+popover)", () => {
     const initial: GroupSessionData = {
       studentIds: ["stu-1"],
       subjectId: "",
@@ -44,7 +44,9 @@ describe("GroupSessionModal - state updates", () => {
 
     const controller = createStateController(initial);
 
-    const { getByRole } = render(
+    // weekStartDate prop 미지정 → 캘린더 popover 가 fallback 7-grid (요일 only) 로 렌더.
+    // 7-grid 의 weekday button 직접 클릭으로 weekday state 변경 검증.
+    const { getByRole, rerender } = render(
       <GroupSessionModal
         isOpen={true}
         groupModalData={controller.get()}
@@ -79,10 +81,16 @@ describe("GroupSessionModal - state updates", () => {
     fireEvent.change(subjectSelect, { target: { value: "sub-1" } });
     expect(controller.get().subjectId).toBe("sub-1");
 
-    const weekdaySelect = getByRole("combobox", {
-      name: /요일/,
-    }) as HTMLSelectElement;
-    fireEvent.change(weekdaySelect, { target: { value: "2" } });
+    // 1) weekday chip 클릭 → fallback popover 열림
+    const weekdayChip = getByRole("button", { name: /요일\/날짜/ });
+    fireEvent.click(weekdayChip);
+
+    // 2) popover 7-grid 안 "화" button 클릭 (initial weekdays = ["일","월","화","수","목","금","토"])
+    //    fallback popover 의 grid button 은 weekday label 텍스트만 노출.
+    const tueButton = screen.getAllByRole("button").find((b) => b.textContent === "화");
+    expect(tueButton).toBeDefined();
+    fireEvent.click(tueButton!);
+    // initial weekdays 배열에서 "화" = idx 2
     expect(controller.get().weekday).toBe(2);
   });
 });

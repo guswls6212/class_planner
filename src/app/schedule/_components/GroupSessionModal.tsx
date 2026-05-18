@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, X, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, X, ChevronRight, ChevronLeft, Calendar, Clock, ChevronDown } from "lucide-react";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
@@ -34,6 +34,68 @@ import {
   NAME_MAX_LENGTH,
   SUBJECT_NAME_MAX_LENGTH,
 } from "../../../lib/validation/profileSchemas";
+
+// ── 캘린더 helper (EditSessionModal V3 calendar 패턴 미러) ─────────────
+// 별도 모듈로 export 하지 않고 호출부 inline 으로 둠 — Turbopack 이 dynamic
+// import chain 의 helper 모듈을 분리한 청크가 RSC stream 시점에 미로드 상태인
+// 사고 회피 (2026-05-10 학습). EditSessionModal 과 동일 5개 함수 중복.
+function parseWeekStart(weekStartDate: string | undefined): Date | null {
+  if (!weekStartDate) return null;
+  try {
+    return new Date(`${weekStartDate}T12:00:00+09:00`);
+  } catch {
+    return null;
+  }
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(d.getDate() + n);
+  return r;
+}
+
+/** JS getDay()(일=0) → class-planner weekday (월=0, …, 일=6). */
+function getWeekdayFromDate(d: Date): number {
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function formatChipLabel(
+  weekStartDate: string | undefined,
+  weekday: number,
+  weekdaysLabels: string[],
+): string {
+  const week = parseWeekStart(weekStartDate);
+  if (!week) return weekdaysLabels[weekday] ?? "";
+  const d = addDays(week, weekday);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekdaysLabels[weekday]})`;
+}
+
+/** 임의 Date → 그 주 월요일의 YYYY-MM-DD (KST). class-planner의 getWeekStartDate와 동일 로직. */
+function dateToWeekStart(d: Date): string {
+  const weekday = getWeekdayFromDate(d);
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - weekday);
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const day = String(monday.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** 시간 차이 → "8시간", "1시간 30분", "30분" 등. invalid (start ≥ end) 시 빈 문자열. */
+function formatDuration(start: string, end: string): string {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return "";
+  const diff = eh * 60 + em - (sh * 60 + sm);
+  if (diff <= 0) return "";
+  const hours = Math.floor(diff / 60);
+  const mins = diff % 60;
+  if (hours === 0) return `${mins}분`;
+  if (mins === 0) return `${hours}시간`;
+  return `${hours}시간 ${mins}분`;
+}
 
 type SubjectOption = { id: string; name: string; color?: string };
 type StudentOption = {
@@ -92,6 +154,13 @@ interface GroupSessionModalProps {
   onCreateTeacher?: () => Promise<boolean>;
   teacherCreating?: boolean;
   teacherCreateError?: string;
+  /**
+   * 현재 주 시작 날짜 (YYYY-MM-DD KST 월요일). Step 1 의 요일/날짜 chip popover 가
+   * 1달 캘린더로 렌더되어 다른 주 날짜 선택 가능. 미지정 시 캘린더는 weekday-only
+   * fallback (이전 동작 호환). 사용자가 다른 주 날짜 선택 시 groupModalData.weekStartDate
+   * 에 그 주 월요일이 저장됨 — 부모 (addGroupSession) 가 forward 처리.
+   */
+  weekStartDate?: string;
 }
 
 const STEPS = ["학생", "과목 & 시간", "확인"];
@@ -130,10 +199,65 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   onCreateTeacher = async () => false,
   teacherCreating = false,
   teacherCreateError = "",
+  weekStartDate,
 }) => {
   const [step, setStep] = useState(0);
   const [subjectExpanding, setSubjectExpanding] = useState(false);
   const subjectInputRef = useRef<HTMLInputElement>(null);
+
+  // ── 헤더 chip popover state (EditSessionModal V3 calendar 패턴 미러) ──
+  // 한 번에 하나만 열림. chip 클릭 toggle, 다른 chip 클릭 시 자동 close.
+  // weekday/weekStartDate 는 groupModalData (부모 SSOT) 를 통해 read/write.
+  const [openPopover, setOpenPopover] = useState<"weekday" | "time" | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // 캘린더 — selectedWeekStart = groupModalData.weekStartDate (부모 SSOT).
+  const weekStartObj = useMemo(
+    () => parseWeekStart(groupModalData.weekStartDate),
+    [groupModalData.weekStartDate],
+  );
+  // 선택된 날짜 = 그 주의 weekday 위치
+  const selectedDate = useMemo(
+    () => (weekStartObj ? addDays(weekStartObj, groupModalData.weekday) : null),
+    [weekStartObj, groupModalData.weekday],
+  );
+  // viewMonth — 캘린더가 보여줄 달. open 때마다 selected 의 달로 sync.
+  const [viewMonth, setViewMonth] = useState<Date>(() =>
+    selectedDate ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1) : new Date(),
+  );
+  useEffect(() => {
+    if (openPopover === "weekday" && selectedDate) {
+      setViewMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPopover]);
+
+  // popover 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!openPopover) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenPopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [openPopover]);
+
+  // 모달 열림 시 popover 닫기 + 부모 weekStartDate prop 으로 강제 sync.
+  // 부모 buildOpenGroupModalHandler / buildHandleDrop 가 setGroupModalData 호출 시
+  // weekStartDate 를 currentWeekStart 로 미리 세팅하면 이 sync 는 reference identity 로 skip.
+  // 안전망 역할 — 사용자가 다른 주 선택 후 모달 닫고 재열 시 currentWeekStart 로 reset.
+  useEffect(() => {
+    if (!isOpen) return;
+    setOpenPopover(null);
+    if (weekStartDate !== undefined) {
+      setGroupModalData((prev) =>
+        prev.weekStartDate === weekStartDate ? prev : { ...prev, weekStartDate },
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Reset step when modal opens
   useEffect(() => {
@@ -429,21 +553,238 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         )}
       </div>
 
-      {/* Weekday */}
+      {/* 수업 일정 — 요일 chip + 시간 chip + popover (EditSessionModal V3 패턴 미러).
+          기존 weekday select + time input 두 섹션을 chip 묶음 1줄 + popover 로 통합.
+          chip 이 SSOT — popover 에서 변경 → groupModalData 즉시 갱신. */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="modal-weekday" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          요일 <span className="text-[var(--color-danger)]">*</span>
-        </label>
-        <select
-          id="modal-weekday"
-          className="w-full appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
-          value={groupModalData.weekday}
-          onChange={(e) => setGroupModalData((prev) => ({ ...prev, weekday: Number(e.target.value) }))}
-        >
-          {weekdays.map((w, idx) => (
-            <option key={idx} value={idx}>{w}</option>
-          ))}
-        </select>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          수업 일정 <span className="text-[var(--color-danger)]">*</span>
+        </span>
+        <div className="inline-flex items-center gap-1.5 relative flex-wrap" ref={popoverRef}>
+          {/* Weekday/date chip */}
+          <button
+            type="button"
+            onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
+            aria-label={`요일/날짜: ${formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}, 클릭해서 변경`}
+            aria-expanded={openPopover === "weekday"}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
+              openPopover === "weekday"
+                ? "border-[#fbbf24] bg-[rgba(245,158,11,0.18)]"
+                : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
+            }`}
+          >
+            <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
+            <span className="text-[13px] font-bold text-[#fbbf24] whitespace-nowrap">
+              {formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}
+            </span>
+            <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
+          </button>
+
+          {/* Time chip */}
+          <button
+            type="button"
+            onClick={() => setOpenPopover(openPopover === "time" ? null : "time")}
+            aria-label={`수업 시간: ${groupModalData.startTime || "미설정"}부터 ${groupModalData.endTime || "미설정"}까지, 클릭해서 변경`}
+            aria-expanded={openPopover === "time"}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
+              openPopover === "time"
+                ? "border-[var(--color-accent-hover)] bg-white/[0.08]"
+                : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
+            }`}
+          >
+            <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
+            <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums whitespace-nowrap">
+              {groupModalData.startTime || "--:--"} – {groupModalData.endTime || "--:--"}
+            </span>
+            {formatDuration(groupModalData.startTime, groupModalData.endTime) && (
+              <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5 whitespace-nowrap">
+                · {formatDuration(groupModalData.startTime, groupModalData.endTime)}
+              </span>
+            )}
+            <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
+          </button>
+
+          {/* Weekday popover — V3 month calendar (weekStartDate 있을 때) 또는 7-grid (fallback). */}
+          {openPopover === "weekday" && (
+            <div
+              className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+              style={{ minWidth: weekStartObj ? 280 : 240 }}
+            >
+              {weekStartObj ? (
+                <>
+                  {/* Month navigation header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))
+                      }
+                      aria-label="이전 달"
+                      className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      ‹
+                    </button>
+                    <div className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+                      {viewMonth.getFullYear()}년 {viewMonth.getMonth() + 1}월
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))
+                      }
+                      aria-label="다음 달"
+                      className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      ›
+                    </button>
+                  </div>
+
+                  {/* Weekday header */}
+                  <div className="grid grid-cols-7 gap-0.5 mb-1">
+                    {weekdays.map((label) => (
+                      <div
+                        key={label}
+                        className="text-[10px] text-[var(--color-text-muted)] text-center py-1"
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Month grid cells */}
+                  <div className="grid grid-cols-7 gap-0.5">
+                    {(() => {
+                      const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+                      const firstWeekday = getWeekdayFromDate(firstDay);
+                      const daysInMonth = new Date(
+                        viewMonth.getFullYear(),
+                        viewMonth.getMonth() + 1,
+                        0,
+                      ).getDate();
+                      const cells: { date: Date | null; label: number | null }[] = [];
+                      for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, label: null });
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        cells.push({
+                          date: new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day),
+                          label: day,
+                        });
+                      }
+                      while (cells.length < 42) cells.push({ date: null, label: null });
+
+                      const today = new Date();
+                      const todayString = today.toDateString();
+                      const selectedString = selectedDate?.toDateString();
+
+                      return cells.map((cell, idx) => {
+                        if (!cell.date) return <div key={idx} className="h-8" />;
+                        const isToday = cell.date.toDateString() === todayString;
+                        const isSelected =
+                          selectedString && cell.date.toDateString() === selectedString;
+                        let cls = "text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]";
+                        if (isSelected) {
+                          cls = "bg-[#fbbf24] text-[var(--color-admin-ink)] font-bold";
+                        } else if (isToday) {
+                          cls = "ring-1 ring-[#fbbf24] text-[#fbbf24] hover:bg-[var(--color-overlay-light)]";
+                        }
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              // 클릭한 날짜 = 그 주 월요일 + weekday 둘 다 갱신.
+                              // 다른 주 날짜 → weekStartDate 가 그 주 월요일로 변경.
+                              // 부모 addGroupSession 이 weekStartDate 받아 addSession 으로 forward
+                              // + setSelectedDate 로 시간표 자동 navigate (EditSessionModal onMoveToWeek 패턴).
+                              setGroupModalData((prev) => ({
+                                ...prev,
+                                weekday: getWeekdayFromDate(cell.date!),
+                                weekStartDate: dateToWeekStart(cell.date!),
+                              }));
+                              setOpenPopover(null);
+                            }}
+                            className={`h-8 rounded text-[12px] transition-colors ${cls}`}
+                          >
+                            {cell.label}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <div className="mt-2 text-[10px] text-[var(--color-text-muted)] text-center">
+                    다른 날짜 클릭 → 그 날짜로 등록 (저장 시 시간표가 그 주로 이동)
+                  </div>
+                </>
+              ) : (
+                // Fallback — weekStartDate prop 없을 때 기존 7-grid (이전 동작 호환).
+                <>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                    요일 선택
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {weekdays.map((label, idx) => {
+                      const isActive = idx === groupModalData.weekday;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setGroupModalData((prev) => ({ ...prev, weekday: idx }));
+                            setOpenPopover(null);
+                          }}
+                          className={`h-9 rounded-lg text-[13px] font-semibold transition-colors ${
+                            isActive
+                              ? "bg-[#fbbf24] text-[var(--color-admin-ink)]"
+                              : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Time popover — controlled inputs (handleStartTimeChange/handleEndTimeChange 부모로 위임), groupTimeError 표시 */}
+          {openPopover === "time" && (
+            <div
+              className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+              style={{ minWidth: 280 }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                수업 시간
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="modal-start-time"
+                  type="time"
+                  aria-label="시작 시간"
+                  className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                  value={groupModalData.startTime}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
+                />
+                <span className="text-[var(--color-text-muted)]">—</span>
+                <input
+                  id="modal-end-time"
+                  type="time"
+                  aria-label="종료 시간"
+                  className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                  value={groupModalData.endTime}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
+                />
+              </div>
+              {groupTimeError && (
+                <p className="mt-2 text-[11px] text-[var(--color-danger)]" role="alert">{groupTimeError}</p>
+              )}
+            </div>
+          )}
+        </div>
+        {/* popover 밖에서도 timeError 노출 — popover 닫힌 상태에서 시간 에러 인지 가능 */}
+        {groupTimeError && openPopover !== "time" && (
+          <p className="text-[11px] text-[var(--color-danger)]" role="alert">{groupTimeError}</p>
+        )}
       </div>
 
       {/* Teacher (always shown, pills) */}
@@ -464,33 +805,6 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           subjectId={groupModalData.subjectId || null}
           subjectName={subjects.find((s) => s.id === groupModalData.subjectId)?.name}
         />
-      </div>
-
-      {/* Time range */}
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          수업 시간 <span className="text-[var(--color-danger)]">*</span>
-        </span>
-        <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2">
-          <input
-            id="modal-start-time"
-            type="time"
-            className="flex-1 bg-transparent text-[14px] font-semibold text-[var(--color-text-primary)] outline-none"
-            value={groupModalData.startTime}
-            onChange={(e) => handleStartTimeChange(e.target.value)}
-          />
-          <span className="text-[var(--color-text-muted)] text-[12px] font-medium">—</span>
-          <input
-            id="modal-end-time"
-            type="time"
-            className="flex-1 bg-transparent text-[14px] font-semibold text-[var(--color-text-primary)] outline-none"
-            value={groupModalData.endTime}
-            onChange={(e) => handleEndTimeChange(e.target.value)}
-          />
-        </div>
-        {groupTimeError && (
-          <p className="text-[11px] text-[var(--color-danger)]" role="alert">{groupTimeError}</p>
-        )}
       </div>
 
     </div>
@@ -538,9 +852,9 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
             </div>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
-            <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">요일</span>
+            <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">일정</span>
             <span className="text-[13px] text-[var(--color-text-primary)] font-medium">
-              {weekdays[groupModalData.weekday]}
+              {formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}
             </span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">

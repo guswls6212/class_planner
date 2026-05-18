@@ -10,6 +10,12 @@ export interface GroupSessionData {
   endTime: string;
   room?: string;
   yPosition?: number; // 🆕 세션의 yPosition (1, 2, 3...)
+  /**
+   * 주 시작 날짜 (YYYY-MM-DD KST 월요일). 모달이 열릴 때 currentWeekStart로 초기화.
+   * 사용자가 캘린더에서 다른 주 날짜 선택 시 그 주의 월요일로 갱신. 미지정이면 추가 시점의
+   * 시간표 currentWeekStart 사용 (page.tsx의 addSession이 fallback).
+   */
+  weekStartDate?: string;
 }
 
 // 수업 편집 모달용 시간 데이터
