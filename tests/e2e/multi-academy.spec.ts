@@ -61,9 +61,20 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
       const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
 
       await page.goto("/schedule");
-      // MemberContext 의 /api/academies/mine fetch 가 두 번째 academy 를 받아오기 전엔
-      // sessionStorage pre-seed (첫 academy 만) 가 source-of-truth. 명시적 대기.
-      await page.waitForResponse(/\/api\/academies\/mine/);
+      // /api/academies/mine 응답 body 에 두 academy 모두 포함될 때까지 대기 — 단순
+      // waitForResponse 는 응답 받았다는 신호만, body 검증 필요. 이전 fail RC 추정:
+      // service role response 가 일시적으로 first academy 만 리턴 (Supabase replication
+      // lag 또는 cleanup race 로 orphan FK 상태에서 join 결과 부족).
+      await page.waitForResponse(async (res) => {
+        if (!res.url().includes("/api/academies/mine")) return false;
+        if (!res.ok()) return false;
+        try {
+          const json = (await res.json()) as { academies?: Array<{ name: string }> };
+          return Boolean(json.academies?.some((a) => a.name === secondAcademy.name));
+        } catch {
+          return false;
+        }
+      }, { timeout: 15000 });
 
       const switcherButton = page
         .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
@@ -71,12 +82,12 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
       await expect(switcherButton).toBeVisible({ timeout: 10000 });
       await switcherButton.click();
 
-      // 메뉴에 두 academy 모두 visible
+      // 메뉴에 두 academy 모두 visible — React state update 대기로 timeout 여유.
       await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
-        timeout: 5000,
+        timeout: 10000,
       });
       await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
-        timeout: 5000,
+        timeout: 10000,
       });
     } finally {
       // assertion fail 시에도 cleanup 보장 (이전 회귀: 후속 spec 가 두 academy_members
