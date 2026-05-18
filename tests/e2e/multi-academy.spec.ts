@@ -51,34 +51,52 @@ test.describe("multi-academy — 사이드바 academy switcher UI", () => {
     await expect(page.getByText(/새 학원 만들기/)).toBeVisible({ timeout: 3000 });
   });
 
-  // TODO(2026-05-18): dev base e2e 회귀 — `seedSecondAcademy` 가 만든 두 번째 academy
-  // 가 switcher 메뉴에 안 보임. PR #393/#397 retry 모두 5 연속 fail 확인.
-  // memory `project_class_planner_e2e_regression_2026_05_11.md` 의 PR #355 시기 회귀
-  // cluster 와 동일 패턴 추정. line 77 의 다음 test 도 같은 시기 skip 처리됨.
-  // RC 후보: (a) seedSecondAcademy service role INSERT 실패, (b) GET /api/members 가
-  // 두 번째 academy 못 가져옴 (RLS 또는 캐시), (c) sidebar AcademySwitcher 컴포넌트가
-  // 새 academy 렌더 안 함. 추적 + fix 후 skip 해제.
+  // RC 추적 (2026-05-18, issue #398): Fix 1 (auth-mock pre-seed) 적용했지만
+  // step 6 ("E2E Test Academy 2" visible) 여전히 fail — waitForResponse 15s 동안
+  // 두 번째 academy 가 포함된 /api/academies/mine 응답 안 옴. 즉 **API 응답 자체에**
+  // 두 번째 academy 누락. 진짜 RC 는 audit_log RESTRICT FK 정리 race 로 cleanup 이
+  // academies 못 지움 → 다음 cycle seed 가 orphan FK 또는 stale academy 와 충돌.
+  // audit_log FK 정리 hotfix 별도 PR 후 skip 해제. spec 자체 (try/finally + body
+  // 검증 waitForResponse + 10s visible timeout) 는 keep — 그 fix 후 활용.
   test.skip("두 번째 academy 생성 → switcher 메뉴에 두 academy 모두 표시", async ({ page }) => {
-    // PR K — service role로 두 번째 academy seed (멱등 + cleanup)
     await clearSecondAcademies();
-    const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
+    try {
+      const secondAcademy = await seedSecondAcademy({ name: "E2E Test Academy 2" });
 
-    await page.goto("/schedule");
-    const switcherButton = page
-      .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
-      .first();
-    await expect(switcherButton).toBeVisible({ timeout: 10000 });
-    await switcherButton.click();
+      await page.goto("/schedule");
+      // /api/academies/mine 응답 body 에 두 academy 모두 포함될 때까지 대기 — 단순
+      // waitForResponse 는 응답 받았다는 신호만, body 검증 필요. 이전 fail RC 추정:
+      // service role response 가 일시적으로 first academy 만 리턴 (Supabase replication
+      // lag 또는 cleanup race 로 orphan FK 상태에서 join 결과 부족).
+      await page.waitForResponse(async (res) => {
+        if (!res.url().includes("/api/academies/mine")) return false;
+        if (!res.ok()) return false;
+        try {
+          const json = (await res.json()) as { academies?: Array<{ name: string }> };
+          return Boolean(json.academies?.some((a) => a.name === secondAcademy.name));
+        } catch {
+          return false;
+        }
+      }, { timeout: 15000 });
 
-    // 메뉴에 두 academy 모두 visible
-    await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
-      timeout: 5000,
-    });
+      const switcherButton = page
+        .getByRole("button", { name: /E2E Test Academy(?! 2)/ })
+        .first();
+      await expect(switcherButton).toBeVisible({ timeout: 10000 });
+      await switcherButton.click();
 
-    await clearSecondAcademies();
+      // 메뉴에 두 academy 모두 visible — React state update 대기로 timeout 여유.
+      await expect(page.getByText("E2E Test Academy", { exact: true })).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(page.getByText(secondAcademy.name, { exact: true })).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      // assertion fail 시에도 cleanup 보장 (이전 회귀: 후속 spec 가 두 academy_members
+      // 잔존으로 cascade fail). try/finally 로 격리.
+      await clearSecondAcademies();
+    }
   });
 
   test.skip("multi-academy switch → reload → data scope 변경", async () => {
