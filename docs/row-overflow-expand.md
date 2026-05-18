@@ -79,14 +79,35 @@ const clusterStates = useMemo(() => clusters.map(c => {
 ```
 
 각 overflow cluster 에 chip 렌더 (배열):
-- collapsed `+N` chip — 클릭 시 그 cluster popover open
-- expanded `−` chip — 클릭 시 그 cluster collapse
+- collapsed `+N` chip — 클릭 시 **같은 weekday 모든 cluster 일괄 expand** (PR #399, 2026-05-16). column 폭이 이미 max cluster lane 수 라 다른 row 도 같이 expand 가 자연 UX.
+- expanded `−` chip — 클릭 시 **같은 weekday 모든 cluster 일괄 collapse**.
 
 Chip data-testid:
 - 단일 cluster (legacy 시나리오, weekday 안 cluster 1 개): `overflow-expand-btn-${weekday}`
 - multi-cluster (이번 변경): `overflow-expand-btn-${weekday}-${cluster.key}`
 
 자동 분기 — 기존 test 호환 + 새 multi-cluster 시 cluster key 명시.
+
+### Chip onClick 동작 (PR #399 추가)
+
+`TimeTableGrid.tsx` 에 `toggleAllRowsInWeekday(weekday)` callback:
+
+```typescript
+const toggleAllRowsInWeekday = useCallback((weekday: number) => {
+  const daySessions = sessions?.get(weekday) || [];
+  const clustersInDay = computeRowClusters(daySessions);
+  setExpandedRows((prev) => {
+    const keys = clustersInDay.map((c) => `${weekday}|${c.key}`);
+    const allExpanded = keys.every((k) => prev.has(k));
+    const next = new Set(prev);
+    if (allExpanded) for (const k of keys) next.delete(k);
+    else for (const k of keys) next.add(k);
+    return next;
+  });
+}, [sessions]);
+```
+
+모두 expanded → 모두 collapse, 그 외 → 모두 expand. `TimeTableRow` 의 chip onClick 이 `onToggleAllRowsInWeekday` 를 우선 호출. legacy fallback (test sandbox / uncontrolled) 은 그 cluster 만 토글 (PR #390 이전 동작 호환).
 
 ## 5. Popover — cluster key 기반 single open
 
@@ -134,7 +155,9 @@ TimeTableRow 가 legacy `isExpanded?: boolean` 과 `onToggleExpand?: () => void`
 
 ## 10. 변경 history
 
-- **PR #(이번)** (2026-05-15): row-level overflow expand 전환.
+- **PR #399** (2026-05-16): chip 클릭 시 같은 weekday 모든 cluster 일괄 expand. `TimeTableGrid.toggleAllRowsInWeekday` callback + `TimeTableRow.onToggleAllRowsInWeekday` prop. column 폭이 max cluster lane 수 로 늘어났을 때 다른 row 도 같이 expand 가 자연 UX (사용자 보고).
+
+- **PR #392** (2026-05-15): row-level overflow expand 전환.
   - `src/lib/sessionClusters.ts` 신규 — `computeRowClusters` sweep-line utility.
   - `TimeTableGrid.tsx`: `expandedWeekdays: Set<number>` → `expandedRows: Set<string>` (cluster key). `weekdayWidths` cluster-aware.
   - `TimeTableRow.tsx`: cluster 별 `visible/hidden/chipTopPx/isOverflow`. chip 배열 렌더 + popover cluster key 기반. legacy `isExpanded`/`onToggleExpand` backward compat.
