@@ -322,6 +322,9 @@ function SchedulePageContent(): JSX.Element {
     endTime: string;
     yPosition?: number;
     room?: string;
+    /** YYYY-MM-DD KST 월요일. 지정 시 현재 시간표 주(currentWeekStart) override —
+     *  GroupSessionModal 캘린더에서 다른 주 날짜로 등록 시 사용. 미지정이면 selectedDate 기반 fallback. */
+    weekStartDate?: string;
   };
 
   type SessionUpdateInput = {
@@ -390,6 +393,8 @@ function SchedulePageContent(): JSX.Element {
       }
 
       // 2단계: 세션 생성
+      // weekStartDate: sessionData.weekStartDate 가 있으면 우선 사용 (GroupSessionModal 캘린더에서
+      // 다른 주 날짜 선택한 경우). 미지정이면 현재 시간표 주(selectedDate 기반) — 이전 동작.
       const newSession = {
         id: crypto.randomUUID(),
         subjectId: sessionData.subjectId,
@@ -398,7 +403,7 @@ function SchedulePageContent(): JSX.Element {
         weekday: sessionData.weekday,
         startsAt: sessionData.startTime,
         endsAt: sessionData.endTime,
-        weekStartDate: getWeekStartDate(selectedDate),
+        weekStartDate: sessionData.weekStartDate ?? getWeekStartDate(selectedDate),
         room: sessionData.room || "",
         enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
         yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
@@ -1296,6 +1301,13 @@ function SchedulePageContent(): JSX.Element {
 
     try {
       logger.debug("addSession 함수 호출 중");
+      // 사용자가 캘린더에서 다른 주 날짜를 선택했으면 그 주 weekStartDate 를 addSession 에 forward.
+      // selectedDate 기반 fallback(getWeekStartDate(selectedDate)) 보다 우선. 동시에 setSelectedDate 로
+      // 시간표를 그 주로 navigate (EditSessionModal onMoveToWeek 패턴 미러). closure stale 회피 목적으로
+      // weekStartDate 를 addSession 에 explicit 전달.
+      const movedToOtherWeek =
+        data.weekStartDate !== undefined &&
+        data.weekStartDate !== currentWeekStart;
       await addSession({
         studentIds: data.studentIds,
         subjectId: data.subjectId,
@@ -1305,8 +1317,15 @@ function SchedulePageContent(): JSX.Element {
         endTime: data.endTime,
         room: data.room,
         yPosition: data.yPosition || 1, // 🆕 yPosition 추가
+        weekStartDate: data.weekStartDate,
       });
       logger.debug("addSession 함수 완료");
+
+      // 다른 주에 등록 시 시간표 navigate — addSession 완료 후 호출해야
+      // weekFilteredSessions 가 새 주 기준으로 새 session 을 즉시 보여줌.
+      if (movedToOtherWeek && data.weekStartDate) {
+        setSelectedDate(new Date(`${data.weekStartDate}T12:00:00+09:00`));
+      }
 
       logger.debug("모달 닫기 중");
       setShowGroupModal(false);
@@ -1318,15 +1337,17 @@ function SchedulePageContent(): JSX.Element {
     }
   };
 
-  // 🆕 그룹 수업 모달 열기
+  // 🆕 그룹 수업 모달 열기. getCurrentWeekStart 를 함수로 전달해 호출 시점의 currentWeekStart 를 read
+  // — 사용자가 시간표 주를 navigate 한 후 모달 열어도 항상 최신 주 기준 캘린더 popover 렌더.
   const openGroupModal = useMemo(
     () =>
       buildOpenGroupModalHandler(
         setGroupModalData,
         setShowGroupModal,
-        getNextHour
+        getNextHour,
+        () => currentWeekStart,
       ),
-    [setGroupModalData, setShowGroupModal, getNextHour]
+    [setGroupModalData, setShowGroupModal, getNextHour, currentWeekStart]
   );
 
   // 🆕 그룹 모달 시간 변경 핸들러 (헬퍼 적용)
@@ -1354,6 +1375,9 @@ function SchedulePageContent(): JSX.Element {
       setGroupModalData,
       setShowGroupModal,
       getNextHour,
+      // drop 으로 모달 열릴 때 현재 시간표 주를 캘린더 popover 초기값으로 — currentWeekStart 변경 시
+      // 새로 빌드되도록 deps 에 포함.
+      getCurrentWeekStart: () => currentWeekStart,
     });
   }, [
     students,
@@ -1362,6 +1386,7 @@ function SchedulePageContent(): JSX.Element {
     setGroupModalData,
     setShowGroupModal,
     getNextHour,
+    currentWeekStart,
   ]);
   // Gate: member role — drop opens modal which is blocked; skip entirely
   const handleDrop = useCallback(
@@ -2393,6 +2418,7 @@ function SchedulePageContent(): JSX.Element {
         onCreateTeacher={handleCreateTeacherFromInput}
         teacherCreating={teacherCreating}
         teacherCreateError={teacherCreateError}
+        weekStartDate={currentWeekStart}
       />
 
       {/* 출석 시트 */}
