@@ -13,7 +13,7 @@
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { currentWeekMondayKST } from "./helpers/seed-anonymous";
-import { injectRealSession } from "./helpers/auth-mock";
+import { gotoAuthenticated, injectRealSession } from "./helpers/auth-mock";
 import { seedRealTemplate, clearRealTemplates } from "./helpers/seed-academy-data";
 
 // PR C — 진짜 user id는 global-setup에서 결정. seedScheduleData는 그 id 기준으로 localStorage 작성.
@@ -133,7 +133,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     await seedScheduleData(page);
     await mockTemplatesApi(page, []);
 
-    await page.goto("/schedule");
+    await gotoAuthenticated(page, "/schedule");
     await page.getByRole("button", { name: /^템플릿/ }).first().click();
 
     await expect(page.getByText("이 주에 작업")).toBeVisible();
@@ -147,7 +147,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     await seedScheduleData(page);
     await mockTemplatesApi(page, []);
 
-    await page.goto("/schedule");
+    await gotoAuthenticated(page, "/schedule");
     await page.getByRole("button", { name: /^템플릿/ }).first().click();
 
     await expect(page.getByRole("button", { name: /템플릿 적용하기/ })).toBeDisabled();
@@ -168,7 +168,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     await seedScheduleData(page);
     // mock 제거 — 진짜 GET /api/templates 응답
 
-    await page.goto("/schedule");
+    await gotoAuthenticated(page, "/schedule");
     await page.waitForResponse((res) => res.url().includes("/api/templates") && res.ok());
 
     await page.getByRole("button", { name: /^템플릿/ }).first().click();
@@ -203,7 +203,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
     ]);
     // mock 제거 — 진짜 GET /api/templates
 
-    await page.goto("/schedule");
+    await gotoAuthenticated(page, "/schedule");
     await page.waitForResponse((res) => res.url().includes("/api/templates") && res.ok());
 
     await page.getByRole("button", { name: /^템플릿/ }).first().click();
@@ -249,7 +249,7 @@ test.describe("templates — TemplateMenuV2 메뉴 + apply + clear", () => {
 
     page.on("dialog", (dialog) => dialog.accept());
 
-    await page.goto("/schedule");
+    await gotoAuthenticated(page, "/schedule");
     await page.getByRole("button", { name: /^템플릿/ }).first().click();
     await page.getByRole("button", { name: /^시간표 비우기$/ }).click();
 

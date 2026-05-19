@@ -15,7 +15,7 @@
  * - 모달 → 생성 → POST 호출 검증
  */
 import { expect, test, type Route } from "@playwright/test";
-import { injectRealSession } from "./helpers/auth-mock";
+import { gotoAuthenticated, injectRealSession } from "./helpers/auth-mock";
 
 interface ShareTokenPostBody {
   label?: string;
@@ -31,7 +31,7 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
   test("settings 페이지에 '고급 공유 옵션' 섹션이 표시된다 (academy owner)", async ({
     page,
   }) => {
-    await page.goto("/settings");
+    await gotoAuthenticated(page, "/settings");
 
     // 아코디언 헤더 — role=button + text "고급 공유 옵션"
     await expect(page.getByRole("button", { name: /고급 공유 옵션/ })).toBeVisible({
@@ -40,7 +40,7 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
   });
 
   test("아코디언 열기 → '링크 만들기' 버튼 표시", async ({ page }) => {
-    await page.goto("/settings");
+    await gotoAuthenticated(page, "/settings");
 
     const accordionHeader = page.getByRole("button", { name: /고급 공유 옵션/ });
     await expect(accordionHeader).toBeVisible({ timeout: 10000 });
@@ -95,7 +95,7 @@ test.describe("share link — 고급 공유 옵션 아코디언 + token 발급",
       }
     });
 
-    await page.goto("/settings");
+    await gotoAuthenticated(page, "/settings");
 
     const accordionHeader = page.getByRole("button", { name: /고급 공유 옵션/ });
     await expect(accordionHeader).toBeVisible({ timeout: 10000 });
