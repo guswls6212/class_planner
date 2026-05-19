@@ -205,8 +205,13 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     await sessionBlock(page, "sess-b").hover(); // grip 활성화
     await plainDrag(page, sessionDragHandle(page, "sess-b"), target);
 
-    // localStorage에서 직접 검증 — 모든 N개가 batch 적용됐는지 확인
-    await page.waitForTimeout(800); // updateData + sync 완료 대기
+    // localStorage 에서 직접 검증 — 모든 3개 batch 적용 완료 (sess-b weekday 0→1) 까지 wait.
+    // 고정 800ms sleep 대신 실제 state 도달 검증으로 flaky 회피.
+    await expect
+      .poll(async () => (await readSessions(page)).find((s) => s.id === "sess-b")?.weekday, {
+        timeout: 5000,
+      })
+      .toBe(1);
     const sessions = await readSessions(page);
     expect(sessions).toHaveLength(3);
 
@@ -236,7 +241,10 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     const target = dropCell(page, 1, "11:00");
     await sessionBlock(page, "sess-a").hover();
     await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
-    await page.waitForTimeout(1000);
+    // copy commit 완료 (sessions.length === 4) 까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSessions(page)).length, { timeout: 5000 })
+      .toBe(4);
 
     const after = await readSessions(page);
     expect(after).toHaveLength(4); // +1 copy
@@ -262,7 +270,10 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     const target = dropCell(page, 1, "10:00");
     await sessionBlock(page, "sess-a").hover();
     await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
-    await page.waitForTimeout(1000);
+    // 2 copies commit 완료 (3 original + 2 copies = 5) 까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSessions(page)).length, { timeout: 5000 })
+      .toBe(5);
 
     const sessions = await readSessions(page);
     expect(sessions).toHaveLength(5); // 3 original + 2 copies
@@ -327,7 +338,13 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     const target = dropCell(page, 1, "10:00");
     await sessionBlock(page, "sess-a").hover();
     await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
-    await page.waitForTimeout(1200);
+    // 2 copies commit 완료 (newCopies.length === 2) 까지 wait — 조건 기반
+    await expect
+      .poll(async () => {
+        const all = await readSessions(page);
+        return all.filter((s) => !["sess-a", "sess-b", "sess-c"].includes(s.id)).length;
+      }, { timeout: 5000 })
+      .toBe(2);
 
     const sessions = await readSessions(page);
     const newCopies = sessions.filter(
@@ -404,7 +421,10 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
     const target = dropCell(page, 0, "11:00");
     await sessionBlock(page, "sess-a").hover();
     await modifierDrag(page, sessionDragHandle(page, "sess-a"), target, "Meta");
-    await page.waitForTimeout(1500);
+    // 3 copies commit 완료 (3 original + 3 copies = 6) 까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSessions(page)).length, { timeout: 5000 })
+      .toBe(6);
 
     const sessions = await readSessions(page);
     // 원본 3개 + 새 copy 3개 = 6개 (모든 시간이 음수 아님)
@@ -447,7 +467,10 @@ test.describe("Multi-select + drag — Desktop (Chromium)", () => {
       target,
       "Meta",
     );
-    await page.waitForTimeout(1000);
+    // copy commit 완료 (sessions.length === 4) 까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSessions(page)).length, { timeout: 5000 })
+      .toBe(4);
 
     const after = await readSessions(page);
     // 복사이므로 sessions 수 +1, 원본 sess-a 그대로
