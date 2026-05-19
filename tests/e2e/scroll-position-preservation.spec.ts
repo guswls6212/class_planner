@@ -1,9 +1,30 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   E2E_CONFIG,
   loadPageWithAuth,
   setupE2EAuth,
 } from "./config/e2e-config";
+
+/**
+ * localStorage 의 schedule_scroll_position 을 read. expect.poll 와 조합해
+ * "debounce 저장 완료될 때까지 wait" 같은 조건 기반 wait 에 사용.
+ * 고정 waitForTimeout 대신 실제 상태 도달 검증으로 flaky 회피.
+ */
+async function readSavedScrollPosition(
+  page: Page,
+): Promise<{ scrollLeft: number; scrollTop: number; timestamp: number } | null> {
+  return await page.evaluate(() => {
+    const saved = localStorage.getItem("schedule_scroll_position");
+    return saved ? JSON.parse(saved) : null;
+  });
+}
+
+/** 한 프레임 만큼 wait — React state → DOM commit cycle 1회. 짧은 stabilization 용. */
+async function waitOneFrame(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+}
 
 test.describe("스크롤 위치 보존 E2E 테스트", () => {
   test.beforeEach(async ({ page }) => {
@@ -37,17 +58,18 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       element.scrollLeft = 1800;
     });
 
-    // 스크롤 위치가 저장될 때까지 잠시 대기
-    await page.waitForTimeout(500);
+    // localStorage debounce 저장 완료될 때까지 wait — 고정 sleep 대신 실제 상태 검증
+    await expect
+      .poll(async () => (await readSavedScrollPosition(page))?.scrollLeft ?? -1, {
+        timeout: 3000,
+      })
+      .toBeGreaterThan(1000);
 
     // 2. 저장된 스크롤 위치 확인
-    const savedScrollPosition = await page.evaluate(() => {
-      const saved = localStorage.getItem("schedule_scroll_position");
-      return saved ? JSON.parse(saved) : null;
-    });
+    const savedScrollPosition = await readSavedScrollPosition(page);
 
     expect(savedScrollPosition).toBeTruthy();
-    expect(savedScrollPosition.scrollLeft).toBeGreaterThan(1000);
+    expect(savedScrollPosition!.scrollLeft).toBeGreaterThan(1000);
 
     // 3. 세션이 있는지 확인하고 드래그앤드롭 실행
     const sessionBlocks = page.locator('[data-testid*="session-block"]');
@@ -61,8 +83,13 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       // 드래그앤드롭 실행
       await firstSession.dragTo(targetDropZone);
 
-      // 드래그 완료 후 잠시 대기
-      await page.waitForTimeout(1000);
+      // drop 처리 완료 + scroll 위치 유지 검증 — 조건 기반 wait
+      // (이전 dragTo 의 비동기 후처리 동안 scroll 이 stable 한지 polling)
+      await expect
+        .poll(async () => await gridElement.evaluate((el) => el.scrollLeft), {
+          timeout: 3000,
+        })
+        .toBeGreaterThan(1500);
 
       // 4. 스크롤 위치가 유지되었는지 확인
       const currentScrollLeft = await gridElement.evaluate(
@@ -91,7 +118,12 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       element.scrollLeft = 2400;
     });
 
-    await page.waitForTimeout(500);
+    // debounce 저장 완료 후 reload — localStorage 에 scrollLeft 가 기록될 때까지 wait
+    await expect
+      .poll(async () => (await readSavedScrollPosition(page))?.scrollLeft ?? -1, {
+        timeout: 3000,
+      })
+      .toBeGreaterThan(2000);
 
     // 2. 페이지 새로고침
     await page.reload();
@@ -154,7 +186,8 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       element.scrollLeft = 1500;
     });
 
-    await page.waitForTimeout(300);
+    // scrollLeft setter 후 React state → DOM commit cycle 1프레임 wait
+    await waitOneFrame(page);
 
     // 2. 드래그 시작 전 스크롤 위치 기록
     const scrollBeforeDrag = await gridElement.evaluate(
@@ -172,8 +205,8 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       await firstSession.hover();
       await page.mouse.down();
 
-      // 드래그 중 스크롤 위치 확인
-      await page.waitForTimeout(100);
+      // 드래그 in-progress 상태에서 한 프레임 wait — 100ms 고정 sleep 대신 frame-based
+      await waitOneFrame(page);
       const scrollDuringDrag = await gridElement.evaluate(
         (element) => element.scrollLeft
       );
@@ -203,7 +236,12 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
       element.scrollLeft = 2000;
     });
 
-    await page.waitForTimeout(500);
+    // debounce 저장 완료될 때까지 wait — 다음 drag loop 가 stabilize 된 state 위에서 시작
+    await expect
+      .poll(async () => (await readSavedScrollPosition(page))?.scrollLeft ?? -1, {
+        timeout: 3000,
+      })
+      .toBeGreaterThanOrEqual(1800);
 
     // 2. 여러 번의 드래그앤드롭 실행
     const sessionBlocks = page.locator('[data-testid*="session-block"]');
@@ -217,7 +255,9 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
           .nth((i + 1) % 3);
 
         await session.dragTo(targetDropZone);
-        await page.waitForTimeout(500);
+        // drop 처리 사이에 1 프레임 wait — 다음 iteration 의 session locator 가 stale ref
+        // 잡지 않도록 React state commit 한 사이클 보장. 고정 500ms 대신 frame-based.
+        await waitOneFrame(page);
       }
 
       // 3. 최종 스크롤 위치 확인
@@ -274,8 +314,13 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
 
     const gridElement = page.locator('[data-testid="time-table-grid"]');
 
-    // 초기 로드 시 복원 확인 (더 긴 대기 시간)
-    await page.waitForTimeout(1000);
+    // 초기 로드 시 복원 또는 fallback 완료 — scrollLeft 가 stabilize 될 때까지 wait
+    // (복원 성공: 400, 실패: 0. 어느 쪽이든 React effect cycle 완료 후 측정)
+    await expect
+      .poll(async () => await gridElement.evaluate((el) => el.scrollLeft), {
+        timeout: 3000,
+      })
+      .toBeGreaterThanOrEqual(0);
 
     // 스크롤 위치가 복원되었는지 확인 (유연한 테스트)
     const initialPosition = await gridElement.evaluate((el) => ({
@@ -316,17 +361,18 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
     // E2E 환경에서는 세로 스크롤이 제한될 수 있으므로 0 이상이면 통과
     expect(afterUserScroll.scrollTop).toBeGreaterThanOrEqual(0);
 
-    // debounce 후 새로운 위치가 저장되었는지 확인
-    await page.waitForTimeout(500);
-    const savedData = await page.evaluate(() => {
-      const data = localStorage.getItem("schedule_scroll_position");
-      return data ? JSON.parse(data) : null;
-    });
+    // debounce 후 새로운 위치(100)가 저장될 때까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSavedScrollPosition(page))?.scrollLeft ?? -1, {
+        timeout: 3000,
+      })
+      .toBe(100);
+    const savedData = await readSavedScrollPosition(page);
 
     expect(savedData).toBeTruthy();
-    expect(savedData.scrollLeft).toBe(100);
+    expect(savedData!.scrollLeft).toBe(100);
     // E2E 환경에서는 세로 스크롤이 제한될 수 있으므로 0 이상이면 통과
-    expect(savedData.scrollTop).toBeGreaterThanOrEqual(0);
+    expect(savedData!.scrollTop).toBeGreaterThanOrEqual(0);
   });
 
   test("사용자가 맨 위로 스크롤할 때 원래 위치로 되돌아가지 않아야 한다", async ({
@@ -352,8 +398,12 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
 
     const gridElement = page.locator('[data-testid="time-table-grid"]');
 
-    // 초기 로드 시 복원 확인
-    await page.waitForTimeout(200);
+    // 초기 로드 시 scrollLeft 500 복원될 때까지 wait — 조건 기반
+    await expect
+      .poll(async () => await gridElement.evaluate((el) => el.scrollLeft), {
+        timeout: 3000,
+      })
+      .toBe(500);
     const initialPosition = await gridElement.evaluate((el) => ({
       scrollLeft: el.scrollLeft,
       scrollTop: el.scrollTop,
@@ -378,15 +428,16 @@ test.describe("스크롤 위치 보존 E2E 테스트", () => {
     expect(afterUserScroll.scrollLeft).toBe(0);
     expect(afterUserScroll.scrollTop).toBe(0);
 
-    // debounce 후 0,0 위치가 저장되었는지 확인
-    await page.waitForTimeout(500);
-    const savedData = await page.evaluate(() => {
-      const data = localStorage.getItem("schedule_scroll_position");
-      return data ? JSON.parse(data) : null;
-    });
+    // debounce 후 0,0 위치 저장될 때까지 wait — 조건 기반
+    await expect
+      .poll(async () => (await readSavedScrollPosition(page))?.scrollLeft ?? -1, {
+        timeout: 3000,
+      })
+      .toBe(0);
+    const savedData = await readSavedScrollPosition(page);
 
     expect(savedData).toBeTruthy();
-    expect(savedData.scrollLeft).toBe(0);
-    expect(savedData.scrollTop).toBe(0);
+    expect(savedData!.scrollLeft).toBe(0);
+    expect(savedData!.scrollTop).toBe(0);
   });
 });
