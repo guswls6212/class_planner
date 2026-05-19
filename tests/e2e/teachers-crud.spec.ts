@@ -13,7 +13,7 @@
  *   - POST /api/share-tokens?userId=...  (action=share)
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { injectRealSession } from "./helpers/auth-mock";
+import { gotoAuthenticated, injectRealSession } from "./helpers/auth-mock";
 
 interface TeacherPostBody {
   name?: string;
@@ -68,7 +68,9 @@ async function setupAuthedSettings(page: Page): Promise<void> {
 }
 
 async function openTeacherAddModal(page: Page): Promise<void> {
-  await page.goto("/settings");
+  // gotoAuthenticated — AuthGuard race 회피 (page.route GET fulfill 등록 후 page.goto 시
+  // ~10-20% 빈도로 /login redirect 발생하던 fail 가드. flaky audit 2026-05-19).
+  await gotoAuthenticated(page, "/settings");
   await page.getByRole("button", { name: /^강사 추가$/ }).first().click();
   await expect(page.getByRole("heading", { name: "강사 추가" })).toBeVisible();
 }

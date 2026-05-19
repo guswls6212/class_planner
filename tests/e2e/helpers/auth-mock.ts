@@ -216,3 +216,49 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
 export function resetRealSessionCache(): void {
   cachedRealSession = null;
 }
+
+/**
+ * 인증 페이지 진입 + AuthGuard race 회피.
+ *
+ * 사용 흐름:
+ *   await injectRealSession(page);
+ *   await page.route("**\/api\/...", mock); // GET fulfill 등록
+ *   await gotoAuthenticated(page, "/settings"); // /login redirect 자동 retry
+ *
+ * 배경 (flaky audit 2026-05-19, share-link/teachers-crud root cause):
+ * - injectRealSession 의 addInitScript localStorage seed (sb-{ref}-auth-token) 후
+ *   page.route 등록 → page.goto 흐름에서 ~10-20% 빈도로 AuthGuard 의 첫 mount
+ *   getSession() 이 null 반환 → /login redirect 발생. (PR #355 atoms SSOT v2 +
+ *   PR #356 name-min-length-v2 머지 후 표면화. PR #355/#356 admin override 임시방편)
+ * - 정확한 race source: SW(/api/* NetworkOnly, ADR-007) + page.route NetworkInterceptor
+ *   + Supabase SDK initialize 의 storage read 가 첫 paint 시점에 미동기. addInitScript
+ *   가 navigation 전 실행되지만 SW 가 cached HTML (이전 spec 의 /login) 반환 가능성.
+ * - 완전 root cause 직접 fix 는 SW + Playwright route + Supabase SDK 3 레이어 변경 필요.
+ *   본 helper 는 검증 + reload retry 로 spec 안정성 보강.
+ *
+ * 동작:
+ * 1. page.goto(path) — domcontentloaded 까지
+ * 2. URL 이 /login 이면 한 번 reload (addInitScript 재실행 → SDK 재 init → storage 인지 chance)
+ * 3. 그래도 /login 이면 throw — spec 자체 fail (재시도는 playwright retries 가 처리)
+ */
+export async function gotoAuthenticated(
+  page: Page,
+  path: string,
+  opts?: { reloadOnRedirect?: boolean },
+): Promise<void> {
+  const reloadOnRedirect = opts?.reloadOnRedirect ?? true;
+
+  await page.goto(path, { waitUntil: "domcontentloaded" });
+
+  if (page.url().endsWith("/login") && reloadOnRedirect) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+  }
+
+  if (page.url().endsWith("/login")) {
+    throw new Error(
+      `[gotoAuthenticated] /login redirect persisted after reload. ` +
+        `injectRealSession storage seed 가 인지되지 않음. ` +
+        `SW caching 또는 addInitScript timing 의심. path=${path}, url=${page.url()}`,
+    );
+  }
+}
