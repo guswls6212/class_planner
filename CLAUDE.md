@@ -87,6 +87,33 @@
 | API Routes | 90%+ | Vitest (Mock Supabase) |
 | E2E | 주요 시나리오 | Playwright |
 
+## Test Authoring Protocol (Non-negotiable)
+
+spec/test 파일 작성/수정 시 PreToolUse hook (`dev-pack/scripts/hooks/test-authoring-guide-hook.sh`)이 `docs/test-authoring-guide.md` 본문을 자동 inject — flaky 8 원칙(timing, race, state pollution, 외부 의존성, 비결정적 데이터, animation, network, 비동기 미처리) 가드.
+
+### 발동 조건 (Write/Edit 도구 호출 시 AND)
+- `tool_name ∈ {Write, Edit}`
+- `file_path` 매칭: `*.test.{ts,tsx}`, `*.spec.{ts,tsx}`, `tests/e2e/**`, `**/__tests__/**`
+- 경로에 `class-planner` 포함 (class-planner 한정)
+
+### 8 원칙 핵심 (상세는 SSOT)
+1. **명시적 대기** — `waitForTimeout` 금지. `expect.poll`, `waitForFunction`, `waitForResponse`, `expect(...).toBeVisible({timeout})`
+2. **테스트 격리** — `beforeEach` 깨끗한 상태 + globalTeardown 의존
+3. **고유 데이터** — `Date.now()`, `crypto.randomUUID()` prefix
+4. **안정 selector** — `data-testid` + `getByRole`. CSS class 의존 X
+5. **Retry 보수적** — `retries: CI ? 2 : 0` 유지
+6. **외부 의존성** — `seedAnonymous` / `injectRealSession` / `page.route` 의식적 선택
+7. **애니메이션** — opacity transition 후 visible 가정 X. `waitOneFrame` 또는 명시적 wait
+8. **비동기 await** — CUD `await` 의무 (ADR-012). fire-and-forget 은 `void` prefix + 주석 (PR #403 `no-floating-promises` warn)
+
+### SSOT
+- 가이드 본문: `docs/test-authoring-guide.md` (헬퍼 인벤토리 + 체크리스트 + 참고 PR/ADR 포함)
+- hook 스크립트: `dev-pack/scripts/hooks/test-authoring-guide-hook.sh`
+- 등록: `~/.claude/settings.json` § `hooks.PreToolUse` (`matcher: "Write|Edit"`)
+
+### Bypass (예외 상황만)
+non-test 파일이거나 가이드가 적용되지 않아야 할 의도적 케이스 → hook 매칭 자체에서 자동 통과 (filter 작동). 강제 우회 mechanism 없음 (Warning 모드라 차단 X — Claude 가 가이드 read 후 자유 의지로 진행).
+
 ## 개발 워크플로우
 
 ### 브랜치 플로우
