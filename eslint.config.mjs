@@ -100,6 +100,12 @@ const eslintConfig = [
       "prefer-const": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "no-useless-escape": "warn",
+      // ADR-012: fire-and-forget 은 명시적 `void` prefix 또는 fireAndForget() 헬퍼로만.
+      // 누락된 await 가 race window 의 root cause (PR #319/#320). PR review 단계에서 잡히도록
+      // type-aware lint 적용. Phase 1: warn 으로 도입 (37개 기존 위반은 backlog 으로). Phase 2:
+      // 위반 fix 완료 후 "error" 로 승격 (jsx-a11y warn→error 점진 패턴 미러). 신규 코드에는 review
+      // 시점에 즉시 인지 가능.
+      "@typescript-eslint/no-floating-promises": "warn",
     },
   },
   {
