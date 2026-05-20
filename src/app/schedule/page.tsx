@@ -1352,9 +1352,19 @@ function SchedulePageContent(): JSX.Element {
 
   // 🆕 그룹 모달 시간 변경 핸들러 (헬퍼 적용)
   // setGroupTimeError 전달 — invalid 시 즉시 error state 설정 → canProceedStep1 차단.
+  // validateDurationWithinLimit 도 전달 — picker change 시점에 8시간 초과 즉시 감지.
+  // 미전달 시 step 1→2 transition 만 통과시키고 step 3 submit 에서 silent fail
+  // (UAT 2026-05-20 사고). buildEditTimeChangeHandlers 와 패턴 통일.
   const { handleStartTimeChange, handleEndTimeChange } = useMemo(
-    () => buildGroupTimeChangeHandlers(validateTimeRange, setGroupModalData, setGroupTimeError),
-    [validateTimeRange, setGroupModalData, setGroupTimeError]
+    () =>
+      buildGroupTimeChangeHandlers(
+        validateTimeRange,
+        setGroupModalData,
+        setGroupTimeError,
+        validateDurationWithinLimit,
+        480,
+      ),
+    [validateTimeRange, validateDurationWithinLimit, setGroupModalData, setGroupTimeError]
   );
 
   // 🆕 UI 상태 훅
