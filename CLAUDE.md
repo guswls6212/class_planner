@@ -156,33 +156,49 @@ PORT=3001 npm run dev     # localhost:3001 (다른 worktree에서)
 
 ## UAT (수동 acceptance test)
 
-PR #240 (2026-05-05) 도입. e2e와 별도 — UAT는 사용자(개발자) **수동 시나리오 검증**, e2e는 **CI 자동 회귀 가드**.
+PR #240 (2026-05-05) 도입. e2e 와 별도 — UAT 는 사용자(개발자) **수동 시나리오 검증**, e2e 는 **CI 자동 회귀 가드**. 2026-05-20 부터 **3 계정 (owner/admin/member) + 학생·학부모 incognito view** 모델로 전환.
 
 ### 빠른 명령
 ```bash
-# 1회 셋업 (멱등 — 이미 있으면 skip)
+# 1회 셋업 (멱등 — 이미 있으면 skip): 3 계정 모두 생성
 npm run uat:setup
 
-# 시나리오별 데이터 시드
+# Phase 2 진입 — owner academy 시드 데이터 (학생/과목/강사/세션)
 npm run uat:seed
 
-# academy 단위 cleanup
-npm run uat:teardown
+# Phase 4/5 진입 — admin/member 자동 초대 + 수락 fast-path
+npm run uat:invite                              # default: admin + member 두 역할
+npm run uat:invite -- --role admin              # admin 만
+npm run uat:invite -- --role member             # member 만 (teacher "강사_uat" 자동 link)
+
+# 3 계정 모두 cleanup (academy/member/invite 정리, user 보존)
+npm run uat:teardown                            # default: all
+npm run uat:teardown -- --user owner            # 특정 역할만
 
 # 새 run 기록 시작 (template 복사 + 메타 자동 채움)
-bash scripts/uat-new.sh
+bash scripts/uat-new.sh release
 
-# 결과 요약 (자주 fail하는 시나리오 ranking)
+# 결과 요약 (자주 fail 하는 시나리오 ranking)
 bash scripts/uat-summary.sh
 ```
 
 ### 환경 (`.env.local`)
-- `UAT_TEST_USER_EMAIL`, `UAT_TEST_USER_PASSWORD` 필요 (E2E user와 별도 — 격리)
-- ID 환경변수는 선택 (email lookup으로 자동 발견)
+**3 계정 필요** (E2E user 와 별도, 격리):
+```bash
+UAT_TEST_OWNER_EMAIL=uat-owner@class-planner.test
+UAT_TEST_OWNER_PASSWORD=<강한-password>
+UAT_TEST_ADMIN_EMAIL=uat-admin@class-planner.test
+UAT_TEST_ADMIN_PASSWORD=<강한-password>
+UAT_TEST_MEMBER_EMAIL=uat-member@class-planner.test
+UAT_TEST_MEMBER_PASSWORD=<강한-password>
+```
+- legacy `UAT_TEST_USER_*` 도 인식 (owner 로 fallback, 1주일 후 deprecated)
+- `_ID` 환경변수는 선택 (email lookup 으로 자동 발견)
+- 학생/학부모 view 는 **계정 X** — incognito 창 + share-token / 6자리 access-code
 
 ### 시나리오 SSOT
-- `tests/manual/uat-checklist.md` — Core(P0 19개, 40분) / Extended(80분) / Full(120분) 모드 분기
-- 결과 누적: `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` (git commit으로 시계열 보존)
+- `tests/manual/uat-checklist.md` — **Smoke (10-15분, owner 1 계정) / Release (180분, 3 계정 + 10 Phase)** 모드 분기. P0 50개 (§1~§18 41개 + §19 관리자 3개 + §20 멤버 4개 + §21 학생/학부모 2개).
+- 결과 누적: `tests/manual/runs/<DATE>-<COMMIT>-<MODE>.md` (git commit 으로 시계열 보존)
 
 상세: `docs/development-guide.md` § 6 UAT 절차.
 

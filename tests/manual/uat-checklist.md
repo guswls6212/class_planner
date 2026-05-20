@@ -16,12 +16,23 @@
 
 #### 처음 1회만 (셋업)
 
-1. `.env.local` 에 두 줄 추가:
+1. `.env.local` 에 3 계정 + Supabase 키 추가:
    ```bash
-   UAT_TEST_USER_EMAIL=uat-test@class-planner.test
-   UAT_TEST_USER_PASSWORD=<강한-password>
+   # Supabase admin (기존)
+   NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+   # UAT 3 계정 — 다중 역할 검증용 (2026-05-20 도입, ADR-019 Academy Singularity 기준)
+   UAT_TEST_OWNER_EMAIL=uat-owner@class-planner.test
+   UAT_TEST_OWNER_PASSWORD=<강한-password>
+   UAT_TEST_ADMIN_EMAIL=uat-admin@class-planner.test
+   UAT_TEST_ADMIN_PASSWORD=<강한-password>
+   UAT_TEST_MEMBER_EMAIL=uat-member@class-planner.test
+   UAT_TEST_MEMBER_PASSWORD=<강한-password>
    ```
-2. `npm run uat:setup` — UAT 전용 user + academy 멱등 생성 (이미 있으면 skip).
+   > 학생/학부모 view 는 **계정 X** — incognito 창 + share-token / 6자리 access-code 로 검증 (§6 참조).
+   > legacy `UAT_TEST_USER_*` 도 인식 (owner 로 fallback, 1주일 alias 후 deprecated).
+2. `npm run uat:setup` — 3 계정 user 멱등 생성 (academy 는 매 사이클 fresh-start).
 3. `npm run dev` — `localhost:3000` 서버 띄움 (브라우저 열어둠).
 
 #### Smoke 모드 매 사이클 (10-15분, 매 PR 직전 — 사본 X)
@@ -37,9 +48,9 @@ PORT=3000 npm run dev   # http://localhost:3000
 # uat.clearAll();   ← 깨끗한 상태 보장
 ```
 
-§2 의 **Smoke 5개 시나리오** (S-1.1, S-2.1, S-5.6, S-12.1, S-14.1) 즉석 진행. fail 발견 시 GitHub Issue 등록 — 사본/commit 없음. Pass 면 main 머지 진행.
+§2 의 **Smoke 5개 시나리오** (S-1.1, S-2.1, S-5.6, S-12.1, S-14.1) 즉석 진행 — owner 1 계정만으로 충분. fail 발견 시 GitHub Issue 등록 — 사본/commit 없음. Pass 면 main 머지 진행.
 
-#### Release UAT 모드 매 사이클 (150분, 분기 1회 — 사본 commit + PR)
+#### Release UAT 모드 매 사이클 (180분, 분기 1회 — 사본 commit + PR)
 
 ```bash
 # ─ 사전: cwd 를 class-planner 로 이동 (이후 모든 명령 이 cwd 기준) ─
@@ -59,9 +70,10 @@ PORT=3000 npm run dev   # http://localhost:3000
 bash scripts/uat-new.sh release
 # → tests/manual/runs/<DATE>-<COMMIT>-release.md 생성됨
 
-# 4. UAT_TEST_USER fresh-start cleanup (이전 사이클 잔재 academy 까지 모두 삭제)
-#    → S-1.5 (첫 로그인 학원 자동 생성) 시나리오 매 사이클 자연 발동 보장
-npm run uat:teardown
+# 4. UAT 3 계정 fresh-start cleanup (이전 사이클 잔재 academy/member/invite 모두 삭제)
+#    → S-1.5 (첫 로그인 학원 자동 생성) + Phase 4/5 (admin/member 초대) 매 사이클 자연 발동 보장
+npm run uat:teardown                            # default: all 3 계정
+# (선택) npm run uat:teardown -- --user owner   # 특정 역할만 (admin|member|owner)
 ```
 
 > **cwd 주의** — 위 명령들은 cwd 가 `class-planner` 디렉토리일 때 동작. 다른 곳에서 실행하면 `cannot change to 'class-planner'` 또는 `scripts/uat-new.sh: No such file` 에러. 사전 `cd ~/lee_file/entrepreneur/project/dev-pack/class-planner` 필수.
@@ -75,10 +87,11 @@ npm run uat:teardown
 | 1. 새 branch cut | 터미널 | `git switch -c chore/uat-YYYY-MM-DD-<mode>` |
 | 2. dev 서버 시작 | 터미널 (다른 창, 같은 cwd) | `PORT=3000 npm run dev` |
 | 3. 사본 생성 (Release UAT 만) | 터미널 | `bash scripts/uat-new.sh release` |
-| 4. 사전 준비 (익명) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
-| 5. 인증 셋업 (인증 시나리오 시) | 터미널 | `npm run uat:seed` → 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 |
-| 6. §1~§16 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
-| 7. 인증 cleanup (인증 시나리오 끝) | 터미널 | `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제) |
+| 4. 사전 준비 (Phase 1 익명) | 브라우저 콘솔 | `uat.seed()` (익명 시드) 또는 `uat.clearAll()` (깨끗한 상태) |
+| 5. owner 진입 (Phase 2/3) | 터미널 + 브라우저 | `npm run uat:seed` → 브라우저에서 `UAT_TEST_OWNER_EMAIL` 로 password 로그인 |
+| 5a. admin/member 진입 (Phase 4/5) | 터미널 + 브라우저 | UI 로 직접 초대 (S-19/S-20) **또는** `npm run uat:invite` 후 브라우저 로그인 |
+| 6. §1~§21 + Edge | 브라우저 | 시나리오 진행, `[ ]` → `[x]` (Pass) / `[!]` (Fail + note) / `[~]` (Skip + 사유) 기록 |
+| 7. cleanup | 터미널 | `npm run uat:teardown` (3 계정 모두 academy/member/invite 정리, user 보존) |
 | 8. 결과 commit | 터미널 | `git add tests/manual/runs/<file>.md && git commit -m "chore(uat): <메모>"` |
 | 9. push + PR | 터미널 | `git push -u origin <branch>` + `gh pr create --base dev --title "chore(uat): <YYYY-MM-DD> <mode> run"` |
 | 10. (선택) 추세 확인 | 터미널 | `bash scripts/uat-summary.sh` |
@@ -171,62 +184,89 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 
 사용자 직접 검증은 위 자동화가 **못 잡는 시각 직감 + UX 위화감** 영역만.
 
-### 2.5 실행 순서 가이드 (Phase 기반 — 상태 토글 최소화)
+### 2.5 실행 순서 가이드 (10-Phase, 역할별 자연 흐름)
 
-> **카테고리(§1~§16) 는 lookup 용, Phase 는 실행 순서.** 두 축으로 사용.
+> **카테고리(§1~§21) 는 lookup 용, Phase 는 실행 순서.** 두 축으로 사용.
 >
-> 카테고리대로 위에서 아래 진행하면 state 토글이 잦음. §1은 2026-05-09에 §1.A(비로그인) → §1.B(transition) → §1.C(로그인) 그룹 구조로 재정렬됨. 다른 카테고리(§2~§16)는 7-Phase 흐름으로 묶어 진행하면 **상태 셋업 reset 1회씩**으로 끝남.
+> 단일 owner 만으로는 admin/member RBAC + invite 흐름 자체 검증 불가. 2026-05-20부터 **3 계정 (owner/admin/member) + 학생·학부모 incognito view** 모델로 전환. 카테고리대로 위에서 아래 진행하면 역할 토글이 잦음 → 10-Phase 흐름으로 묶으면 **계정/상태 셋업 1회씩**으로 끝남. 시나리오는 한 번씩만 등장 (이전 사이클에서 중복 setup 반복 회피).
 
-#### Phase 1 — 익명 모드 (비로그인, localStorage SSOT)
+#### Phase 1 — 익명 모드 (비로그인, localStorage SSOT) — 계정 X
 - **진입**: 콘솔 `uat.clearAll()` → 새로고침 → `uat.isAnonymous() === true`
-- **시나리오 묶음**: S-1.1, S-1.4, §2 (학생), §3 (과목), §4 (강사), §5 (시간표 + 뷰 모드), §6 (드래그), §13 (색상), S-16.1, S-16.2, S-16.3, S-12.1
-- **핵심 검증**: 서버 호출 0건 (Local-First 정책)
-- **끝 상태**: 익명 모드 + 학생/과목/강사/세션 입력된 상태 → Phase 2 충돌 시드로 활용
+- **시나리오 묶음**: S-1.1, S-1.4, S-2.1~2.8 학생 (P0 입력 위주), S-3.1~3.6 과목, S-4.1~4.10 강사, S-5.1~5.25 시간표 + 뷰 모드, §6 드래그/lane insert, §13 색상, S-16.1~16.3 (빈 주/도움말), S-12.1 새로고침
+- **핵심 검증**: 서버 호출 0건 (Local-First 정책). 이 Phase 끝 상태 = "학생 3 / 과목 2 / 강사 2 / 세션 다수 입력된 익명 데이터" → Phase 2 충돌 시드.
+- **소요**: 60분 (가장 큰 묶음)
 
-#### Phase 2 — 익명 → 로그인 전환 (충돌 발생)
-- **진입**: Phase 1 끝 상태 그대로 → UAT_TEST_USER 로그인 (`/login` → password) → 사전 시드된 서버 데이터와 충돌
-- **사전 셋업**: `npm run uat:seed` (인증 데이터 미리 박아둠 — 충돌 발동 보장)
-- **시나리오 묶음**: S-14.1~5 (DataConflictModal Layered Defense), S-14.7 (충돌 직전 자동 백업)
-- **끝 상태**: 인증 모드 (한 쪽 데이터 선택 후 머지 완료)
+#### Phase 2 — 익명 → 원장 로그인 전환 (충돌 발생 + 학원 생성)
+- **진입**: Phase 1 끝 상태 그대로 → `UAT_TEST_OWNER_EMAIL` 로 password 로그인
+- **사전 셋업 (인증 데이터 미리 박아둠)**: `npm run uat:seed` (충돌 발동 보장)
+- **시나리오 묶음**:
+  - **S-1.5 + S-1.5b 신규 user 케이스 (uat:teardown all 직후)**: owner 가 신규 상태일 때 첫 로그인 → /onboarding → 학원 자동 생성 (ADR-019 owner-강제). teardown 직후 시드 데이터 없이 진행.
+  - **S-14.1~5 DataConflictModal** (uat:seed 후 다시 시도): 익명 데이터 + 서버 시드 데이터 충돌 → Layered Defense 검증.
+  - **S-14.7 충돌 직전 자동 백업**: 머지 직후 백업 row 자동 생성.
+- **끝 상태**: owner 인증 모드 (academy 1 개, 시드 데이터 머지 완료)
+- **소요**: 15분
 
-> **신규 user 케이스 (S-1.5)**: 첫 로그인 시 충돌 X (서버 데이터 0) → 학원 자동 생성. 별도 user 또는 `npm run uat:teardown` 후 진행 (Phase 3 끝부분에 배치).
+#### Phase 3 — 원장 (owner) 권한 시나리오
+- **진입**: Phase 2 끝 상태 그대로 (owner 로그인 + academy)
+- **시나리오 묶음**: §7 템플릿 (S-7.1~7.10), §8 PDF (S-8.1~8.7), §9 공유링크 + 학부모 코드 발급 (S-9.1, S-9.3 — 비로그인 접근 검증은 Phase 6), §10.1/10.2 Academy 전환, S-12.2~12.3 새로고침 강사 정보 유지, S-14.6 데이터 이력 아코디언, S-14.8~14.16 백업/마이그레이션 검증, §15 출석부 owner 마킹, §17 알림 히스토리, §18 EditSessionModal
+- **핵심 검증**: API POST/PUT 발사 + 서버 sync 정확. owner = canManage=true.
+- **소요**: 35분
 
-#### Phase 3 — 인증 모드 (서버 sync)
-- **진입**: Phase 2 끝 상태 그대로
-- **시나리오 묶음**: §7 (템플릿), §8 (PDF), §9 (공유), §10 (다중 Academy), S-12.2, S-12.3, S-14.6, S-14.8~13 (데이터 이력), §15 (출석부), 마지막에 S-1.5 (신규 user 학원 생성 — `uat:teardown` 후)
-- **핵심 검증**: API POST/PUT 호출 발사 + 서버 sync 정확
+#### Phase 4 — 관리자 (admin) 권한 시나리오 — §19
+- **사전 셋업**: owner 가 admin 초대 — **UI 흐름 (S-19.1~19.4)** 직접 검증 의무. 빠른 진입은 `npm run uat:invite -- --role admin` 으로 가능 (단 invite UI 자체 검증은 별도).
+- **진입**: 로그아웃 → `UAT_TEST_ADMIN_EMAIL` 로 로그인 → owner 학원 자동 active
+- **시나리오 묶음**: §19 전체 (S-19.1~19.7 — invite 4-state + admin CUD + owner 강등 차단 + 멤버 추가/삭제)
+- **핵심 검증**: admin = canManage=true 이지만 owner 권한 (강등/삭제) 차단. invite_tokens INSERT 권한 + 이메일 mismatch 분기.
+- **소요**: 15분
 
-#### Phase 4 — 모바일 뷰포트
-- **진입**: 인증 모드 그대로 + DevTools `Cmd+Shift+M` (iPhone SE 375×667)
-- **시나리오 묶음**: §11 (모바일 7개), S-5.21 (일별 뷰 좌우 스와이프)
+#### Phase 5 — 멤버=강사 (member) 권한 시나리오 — §20
+- **사전 셋업**: owner 가 teacher 생성 후 member 초대 (UI 또는 `npm run uat:invite -- --role member`). teacher.user_id 가 member 와 link 되는 흐름이 핵심.
+- **진입**: 로그아웃 → `UAT_TEST_MEMBER_EMAIL` 로 로그인 → middleware 가 admin-only 라우트 차단 → `/teacher-schedule` 로 redirect
+- **시나리오 묶음**: §20 전체 (S-20.1~20.8 — invite 수락 + teacher link + /teacher-schedule view + RBAC 차단 + AttendanceSheet read-only + 본인 강사 session 의 public_description 만 PUT 허용)
+- **핵심 검증**: middleware route guard (user_role 쿠키), useMyRole.canManage=false, FAB/+ 새 강사/+ 새 학생 버튼 미렌더 (S-5.15), 데이터 이력 섹션 미렌더 (S-14.13).
+- **소요**: 15분
 
-#### Phase 5 — OAuth + 로그아웃/재인증
-- **진입**: 인증 모드. OAuth 시나리오는 본인 Google 계정 1회 (Extended/Full 만). Kakao는 미구현이라 제외.
-- **시나리오 묶음**: S-1.2 (Google OAuth), S-1.6 (로그인 → /login 접근), S-1.7 (로그아웃 → 재로그인), S-12.5 (API 401). (S-1.3 Kakao OAuth는 미구현 상태라 UAT 미포함)
+#### Phase 6 — 학생 / 학부모 view (incognito + access-code) — §21
+- **사전 셋업**: owner 로 다시 로그인 (또는 Phase 3 끝 상태 유지) → `/settings` 에서 share-link 1 개 + 학부모 6자리 access-code 발급 (S-9.1/9.3 에서 이미 발급된 코드 재사용)
+- **진입**: 같은 머신에서 **incognito 창** 열기 — 계정 사용 X
+- **시나리오 묶음**: §21 전체 (S-21.1~21.5 — share-link 직접 접근 + 학부모 코드 입력 + 5회 실패 lockout + 만료 코드 + 학생 본인 view)
+- **핵심 검증**: 학생/학부모 = 비로그인 → share-token 만으로 읽기 전용 view, IP rate limit + academy+IP lockout (5/1h)
+- **소요**: 10분
 
-#### Phase 6 — 오프라인 / Sync 회복
-- **진입**: 인증 모드 + DevTools Network → Offline
-- **시나리오 묶음**: S-12.4, S-12.6~9 (SyncQueueModal)
+#### Phase 7 — 모바일 뷰포트 (375×667)
+- **진입**: 임의 역할 로그인 (owner 권장) + DevTools `Cmd+Shift+M` (iPhone SE)
+- **시나리오 묶음**: §11 모바일 7개 (S-11.1~11.7), S-5.21 일별 뷰 좌우 스와이프, S-17.7 모바일 TopBar 종 패널, S-18.6 BottomSheet
+- **소요**: 10분
 
-#### Phase 7 — Edge Cases
+#### Phase 8 — OAuth + 로그아웃/재인증
+- **진입**: 임의 역할 로그아웃 상태. OAuth 시나리오는 본인 Google 계정 1회 (Release UAT 만). Kakao는 미구현 제외.
+- **시나리오 묶음**: S-1.2 (Google OAuth), S-1.6 (로그인 상태 + /login 접근), S-1.7 (로그아웃 → 재로그인), S-12.5 (API 401)
+- **소요**: 10분
+
+#### Phase 9 — 오프라인 / Sync 회복
+- **진입**: owner 인증 모드 + DevTools Network → Offline
+- **시나리오 묶음**: S-12.4 오프라인 모드, S-12.6~12.9 SyncQueueModal + outbox flush
+- **소요**: 10분
+
+#### Phase 10 — Edge Cases
 - **진입**: 시나리오마다 Pre 따로 (대부분 reset 필요)
 - **시나리오 묶음**: E-1 ~ E-10
+- **소요**: 10분
 
-#### Phase 8 — Cleanup
-- `npm run uat:teardown` (academy/user 보존, scope 데이터만 삭제)
+#### Phase 11 — Cleanup
+- `npm run uat:teardown` (3 계정 모두 fresh-start, user 보존)
 - 결과 commit + push + PR (§0 "매 UAT 사이클" 8~9 단계)
 
 #### 모드별 Phase 매핑
 
-| 모드 | 거치는 Phase | 비고 |
-|---|---|---|
-| **Core (60분)** | 1 → 2 → 3 → 6 (각 Phase 의 P0 만) | dev → main 머지 전 핵심 path |
-| **Extended (110분)** | Core + 4 + 5 (OAuth 본인 계정 1회) | PR 이 모바일/인증 영역 영향 시 |
-| **Full (150분)** | 1 → 2 → 3 → 4 → 5 → 6 → 7 (전체 + Edge) | 분기당 1회 + 큰 리팩터 후 |
+| 모드 | 거치는 Phase | 시간 | 비고 |
+|---|---|---|---|
+| **Smoke** | 1 → 2 (Phase별 핵심 5 시나리오만) | 10-15분 | dev→main 머지 직전, owner 1 계정만 |
+| **Release** | 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 | 180분 | 분기당 1회 + 큰 리팩터 후, 3 계정 전체 |
 
 #### 비유
 
-지하철 노선도 — 한 노선(Phase) 안에서는 같은 방향으로 진행, 환승(상태 토글)은 정해진 지점(Phase 경계)에서만. 시나리오 ID 는 **역 이름** (불변), Phase 는 **노선** (실행 순서).
+지하철 환승 — 한 노선(Phase) 안에서는 같은 역할/같은 방향으로 진행. 환승(역할 토글)은 정해진 환승역(Phase 경계)에서만. 시나리오 ID 는 역 이름 (불변), Phase 는 노선 (실행 순서), 역할은 진행 방향.
 
 ### 3. 결과 기록 규칙
 
@@ -289,62 +329,83 @@ uat.seed();
 
 > 인증 모드 시나리오 (S-1.5, S-2.1 API, S-7.x 등)는 §5 참조.
 
-### 5. UAT 전용 계정 (인증 시나리오용)
+### 5. UAT 전용 계정 (3 계정 모델, 2026-05-20 도입)
 
-#### 첫 1회 셋업
+#### 5.1 첫 1회 셋업
 
-`.env.local` 에 **두 줄만** 추가:
+`.env.local` 에 3 계정 + Supabase 키 추가:
 ```bash
-UAT_TEST_USER_EMAIL=uat-test@class-planner.test
-UAT_TEST_USER_PASSWORD=<강한 password>
+# Supabase admin (이미 있으면 skip)
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# UAT 3 계정 — role 별 명시 (env 이름이 role 인지 의미 명확화)
+UAT_TEST_OWNER_EMAIL=uat-owner@class-planner.test
+UAT_TEST_OWNER_PASSWORD=<강한-password>
+UAT_TEST_ADMIN_EMAIL=uat-admin@class-planner.test
+UAT_TEST_ADMIN_PASSWORD=<강한-password>
+UAT_TEST_MEMBER_EMAIL=uat-member@class-planner.test
+UAT_TEST_MEMBER_PASSWORD=<강한-password>
 ```
+
+| 계정 | 역할 (academy_members.role) | 검증 시나리오 |
+|---|---|---|
+| OWNER | owner (학원장) | S-1.5 첫 학원 생성, Phase 3 owner 권한 전체 |
+| ADMIN | admin (관리자) | Phase 4 §19 — invite 4-state + admin CUD + owner 강등 차단 |
+| MEMBER | member (멤버=강사 본인) | Phase 5 §20 — invite + teacher link + /teacher-schedule + RBAC 차단 |
+
+> **학생/학부모 view = 계정 X.** 별도 incognito 창 + share-link / 6자리 access-code 로 검증 (Phase 6 §21).
 
 그리고:
 ```bash
 npm run uat:setup
-# → user 만 멱등 생성 (academy 는 매 사이클 fresh-start 위해 셋업 X)
-# → 출력의 user_id 는 자동 lookup 되니 .env.local 에 적을 필요 없음
-#   (lookup 100ms 줄이려면 선택적으로 UAT_TEST_USER_ID 만 추가)
+# → 3 계정 user 멱등 생성 (이미 있으면 password 갱신)
+# → academy 는 매 사이클 fresh-start (S-1.5 매 사이클 발동 보장)
+# → 출력의 user_id 는 자동 lookup 되니 .env.local 에 적을 필요 없음 (선택적 UAT_TEST_{ROLE}_ID 가능)
 ```
 
-> **2026-05-07 변경** — 이전엔 setup 이 academy 도 만들었지만 매 사이클 academy 보존
-> 모델이 S-1.5 (첫 로그인 학원 자동 생성) 시나리오 재현 못 함. 사용자 결정으로
-> fresh-start default 로 전환 — setup 은 user 만, academy 는 매 사이클 재생성
-> (S-1.5 또는 uat:seed 가 자동 생성).
+> **2026-05-20 변경 — 단일 계정 → 3 계정 전환** — 단일 owner 만으론 RBAC 분기 + invite 4-state + member 가 보는 view 자체를 자연스럽게 검증 불가. ADR-019 Academy Singularity (owner 1+1) 하에 owner→admin/member 초대 흐름 자체가 핵심 회귀 path. legacy `UAT_TEST_USER_*` 환경변수는 OWNER 로 자동 fallback (1주일 alias 후 deprecated).
 
-#### 매 UAT 사이클 (인증 시나리오 진행 시)
+#### 5.2 매 UAT 사이클 (Phase 별 진입)
 
 ```bash
-# 1. fresh-start cleanup (이전 사이클 academy/scope 모두 삭제, user 보존)
-npm run uat:teardown
-# → S-1.5 매 사이클 자연 발동 보장
+# 0. fresh-start cleanup — 3 계정 모두 (academy/member/invite 정리, user 보존)
+npm run uat:teardown                            # default: all
+# (선택 — 특정 역할만 reset 필요할 때)
+npm run uat:teardown -- --user owner            # owner | admin | member
 
-# 2. 시나리오 진행 두 옵션:
-
-# (a) S-1.5 검증부터 — Phase 1 (익명) → Phase 2 (로그인 → S-1.5 발동 = 학원 자동 생성)
-#     → 인증 시나리오 (시드 데이터 없이 직접 입력)
-#     브라우저: UAT_TEST_USER_EMAIL 로 password 로그인 → /onboarding → 학원 생성
-
-# (b) S-1.5 skip + 시드로 빠른 진입 — academy + 학생/과목/강사/세션 자동 시드
+# Phase 2 진입 — owner academy + 시드 데이터 자동 생성 (S-1.5 skip 옵션)
 npm run uat:seed
-# → academy 없으면 자동 생성 + 시드 데이터 INSERT (멱등)
+# → owner academy 없으면 자동 생성 + 시드 INSERT (멱등)
 #   학생: 홍길동 / 김영수 / 박지수 — 과목: 수학(#FF0000) / 영어(#00FF00)
-#   강사: 김선생 / 이선생 — 세션: 월/수/금 09:00-10:00
+#   강사: 김선생 / 이선생 — 세션: 월/수/금 09:00-10:00, 김선생 배정
+# → S-1.5 매 사이클 직접 검증하고 싶으면 uat:seed 스킵 후 브라우저에서 owner 로 첫 로그인
 
-# 3. 끝나면 fresh-start cleanup (다음 사이클 위해)
-npm run uat:teardown
+# Phase 4/5 진입 — admin/member 자동 초대 + 수락 (UI 흐름 자체 검증은 §19/§20 시나리오 직접)
+npm run uat:invite                              # default: admin + member 두 역할
+npm run uat:invite -- --role admin              # admin 만
+npm run uat:invite -- --role member             # member 만 (teacher "강사_uat" 자동 생성 + link)
+
+# 끝나면 정리
+npm run uat:teardown                            # 3 계정 모두 reset
 ```
 
-> **OAuth 시나리오 (S-1.2)**: UAT user는 password auth로 진입. OAuth 흐름 자체 검증은 본인 Google 계정으로 별도 1회 (Extended/Full 모드만). Kakao OAuth는 미구현이라 UAT 제외.
+> **uat:invite vs UI 초대 — 둘 다 필요한 이유:**
+> - **UI 초대 (S-19.1, S-20.1)**: 초대 발급 + 4-state 페이지 + accept 자체의 회귀 가드. **이 흐름은 매 Release UAT 직접 검증 의무.**
+> - **uat:invite 스크립트**: 그 외 시나리오 (admin RBAC 권한 / member /teacher-schedule view) 빠른 진입용 alt path. invite UI 흐름과 독립.
 
-> **e2e 와 격리**: `UAT_TEST_USER_*` 와 `E2E_TEST_USER_*` 별도. 같은 Supabase 프로젝트지만 user_id 단위로 cleanup이 격리되어 있어 동시 실행 시에도 서로 데이터 안 건드림.
+> **OAuth 시나리오 (S-1.2)**: UAT 3 계정은 모두 password auth 로 진입. OAuth 흐름 자체 검증은 본인 Google 계정으로 별도 1회 (Release UAT 만). Kakao OAuth 는 미구현이라 UAT 제외.
+
+> **e2e 와 격리**: `UAT_TEST_*_EMAIL` 과 `E2E_TEST_USER_*` 별도. 같은 Supabase 프로젝트지만 user_id 단위로 cleanup 격리 → 동시 실행 시에도 서로 데이터 안 건드림.
 
 ### 6. 사전 준비 — 정리
 
-| 모드 | 정리 명령 |
+| 상황 | 정리 명령 |
 |---|---|
-| 익명 (콘솔) | `uat.clearAll()` |
-| 인증 (UAT user) | `npm run uat:teardown` |
+| 익명 모드 (Phase 1) | 브라우저 콘솔 `uat.clearAll()` |
+| 인증 모드 / 사이클 끝 | `npm run uat:teardown` (3 계정 fresh-start) |
+| 특정 역할만 | `npm run uat:teardown -- --user owner\|admin\|member` |
+| 학부모 view (incognito) | incognito 창 닫기 — 별도 정리 X (server side 는 owner cleanup 시 share-token 같이 삭제) |
 
 ---
 
@@ -651,13 +712,19 @@ console.log('새 호출 수:', after - before);  // ≥1
 - 시간표 모든 해당 세션의 색상도 즉시 변경 (colorBy=과목 모드)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-3.4 과목 삭제 [P1] [auto-friendly]
-**Pre:** 과목에 연결된 세션 있음
+### S-3.4 과목 삭제 — cascade 동작 [P1] [auto-friendly]
+**Pre:** 과목 1개 + 그 과목에 연결된 enrollment(들) + 그 enrollment 를 가진 session 1개 이상
 **Steps:**
-1. 과목 삭제
+1. 과목 우측 메뉴 → "삭제" → 토스트의 "되돌리기" 5초 카운트다운 확인
+2. 5초 대기 (commit 진행)
 **Expected:**
-- 해당 세션 처리 정책 확인 (앱이 제거하는지, "미지정"으로 표시하는지)
-- 데이터 일관성 유지
+- **의도:** 과목이 사라져도 시간표가 깨지지 않게 데이터 일관성 유지.
+- **실제 동작 (`useSubjectManagementLocal.deleteSubject`):**
+  - 즉시 localStorage 에서 **cascade 삭제** — subject + 그 subject 의 enrollments + 그 enrollments 만 가진 session 의 enrollmentIds 에서 제거 → enrollmentIds 비어진 session 자체 삭제
+  - 5초 deferred-commit (ADR-012) — toast 의 "되돌리기" 클릭 안 하면 5초 후 `DELETE /api/subjects/:id` 호출 (await), 성공 시 pendingDeletes 정리
+  - 되돌리기 클릭 → timer cancel + snapshot 복원 (subject/enrollment/session 모두 복원, server 호출 X)
+  - 실패 시 pendingDeletes 유지 → recovery hook 자동 재시도
+- "미지정" placeholder 로 남기는 동작 없음 — 항상 cascade 삭제.
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-3.5 과목 상세 등록 — hex 직접 입력 [P2] (PR #340)
@@ -730,13 +797,21 @@ console.log('새 호출 수:', after - before);  // ≥1
 - SessionCard에 "강사 미배정" 또는 빈 상태 표시
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-4.6 담당 과목 M:N 연결 [P1]
-**Pre:** 강사 1명 + 과목 2개
+### S-4.6 담당 과목 M:N 연결 — 강사-과목 그룹화 [P1]
+**Pre:** 강사 2명 (김선생, 이선생) + 과목 2개 (수학, 영어). 김선생 "수학" 담당, 이선생은 담당 없음.
 **Steps:**
-1. 강사 상세 → "담당 과목" 섹션 → 과목 2개 모두 체크
+1. 강사 상세 → "담당 과목" 섹션 → 김선생 row 에서 "수학" 체크
+2. 시간표 FAB → 모달 Step 2 진입
+3. 과목 select → "수학" 선택
+4. 강사 pill picker 의 그룹 라벨 + 표시 순서 확인
 **Expected:**
-- TeacherDetailPanel에 칩 형태로 2개 과목 표시
-- 시간표 수업 추가 시 강사 선택하면 해당 과목만 후보로 필터링 (정책 확인)
+- **의도:** 사용자가 과목을 먼저 선택하면 담당 강사를 우선 시각 인지 → 잘못된 강사 배정 사고 감소.
+- **실제 동작 (`TeacherPillPicker`, ADR-015):**
+  - TeacherDetailPanel 에 칩 형태로 담당 과목 표시 (M:N teacher_subjects 테이블)
+  - 모달 picker 에서 `subjectId` prop 전달 시 강사를 **"수학 담당" / "기타 강사" 두 그룹으로 분리 정렬** (필터링 아님 — 제한 없이 둘 다 선택 가능)
+  - 담당 0명 그룹이어도 라벨 유지 (사용자가 "이 과목 담당 강사 미설정" 인지 → 강사 페이지에서 등록 유도)
+  - admin/owner role 강사는 picker 에서 자체 제외 (ADR-015 — 단 selectedTeacherId 가 admin 이면 예외 보존)
+  - 동명이인은 TeacherChip hover 툴팁의 이메일/전화로 식별
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-4.7 주간 수업 카운트 [P2]
@@ -1118,13 +1193,17 @@ console.log('새 호출 수:', after - before);  // ≥1
 - 둘 다 시간표에 표시
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-6.6 드래그 충돌 처리 [P2]
-**Pre:** 09:00-10:00에 A세션, 10:00-11:00에 B세션
+### S-6.6 드래그 충돌 — lane 자동 분할 (modal 없음) [P2]
+**Pre:** 09:00-10:00에 A세션, 10:00-11:00에 B세션 (같은 weekday)
 **Steps:**
-1. A를 드래그해서 10:00 시작으로 이동
+1. A 의 SessionCard drag handle 잡고 10:00 시작 셀로 이동 → drop
 **Expected:**
-- B와 시간 겹침 → lane 자동 분할 또는 충돌 모달 표시
-- 데이터 일관성 유지 (둘 다 사라지지 않음)
+- **의도:** 같은 시간대 충돌 시 데이터 손실 없이 시각적으로 둘 다 표시.
+- **실제 동작 (`buildHandleSessionDrop` → `updateSessionPosition`):**
+  - **충돌 모달/차단 없음** — 그대로 위치 PUT 발사 (`PATCH /api/sessions/:id/position`)
+  - sessionClusters 렌더링이 같은 시간대를 yPosition 기준으로 lane 0, 1, 2... 자동 분할 → A 와 B 가 나란히 표시
+  - 같은 yPosition 으로 떨어지면 compaction 이 lane 재배분 (PR #388 lane insert edge slot 별도)
+  - 둘 다 살아남고 시간표에 가시 — 사용자가 의도치 않은 겹침을 즉시 인지하고 본인이 다시 드래그로 분리하는 모델
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-6.7 다중 선택 (Cmd+클릭) [P1]
@@ -1457,74 +1536,29 @@ open -na "Google Chrome" --args --incognito --new-window "http://localhost:3000/
 
 ---
 
-## 10. 다중 Academy + 권한 (P0: 0 / 7)
+## 10. 다중 Academy 전환 (P0: 0 / 2)
+
+> 이전의 §10.3~§10.7 (역할별 권한 + 초대 시나리오) 은 2026-05-20 부터 **§19 관리자**, **§20 멤버=강사** 로 분리 — 각 Phase 의 실제 진입 흐름과 함께 검증되도록 재배치. ADR-019 Academy Singularity (owner 1+1) 정책 하에 owner 본인 학원 1개 + invited 학원 1개 = 최대 2 학원.
 
 ### S-10.1 Academy 전환 [P1]
-**Pre:** 사용자가 academy 2개 멤버
+**Pre:** owner 가 admin/member 로 다른 academy 에 invited 상태 (즉, academy 2 개 멤버). Phase 4/5 진행 후에 자연 발생 또는 별도 owner 계정으로 sub-academy 만들고 본인 owner academy 에 invited.
 **Steps:**
-1. 사이드바 상단 학원명 클릭 → Academy Switcher
+1. 사이드바 상단 학원명 클릭 → Academy Switcher 펼침
 2. 다른 학원 선택
 **Expected:**
-- localStorage `active_academy_id_{userId}` 변경
-- 시간표/학생/과목 데이터가 해당 academy로 전환
+- localStorage `active_academy:{userId}` 키 변경 (이전 `active_academy_id_{userId}` 가 아닌 현재 키 — `localStorageCrud.ts` 의 `ACTIVE_ACADEMY_KEY_PREFIX` 참조)
+- 시간표/학생/과목 데이터가 해당 academy 로 전환 (`useGlobalDataInitialization` 의 `[academyVersion]` deps 재실행, PR #294)
+- Sidebar 가 `window.location.reload()` 로 우회 (cleaner state)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-10.2 Active Academy 쿠키 저장 [P1]
+### S-10.2 Active Academy 쿠키 저장 + 새로고침 복원 [P1]
 **Pre:** S-10.1 후
 **Steps:**
-1. 새로고침
+1. F5 새로고침
 **Expected:**
-- 마지막 선택한 academy로 자동 진입
-- Cookie `active_academy_id` 정확
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-10.3 Owner vs Admin vs Member 권한 [P1]
-**Pre:** 각 role별 사용자
-**Steps:**
-1. 각 role로 로그인 후 `/settings` 멤버 목록 확인
-**Expected:**
-- Owner/Admin: 멤버 추가/삭제 가능
-- Member: 자기 정보만 보기, 수정 권한 없음
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-10.4 Member RBAC 라우트 가드 [P1]
-**Pre:** member 역할 사용자
-**Steps:**
-1. `/students` 직접 URL 접근
-**Expected:**
-- middleware route guard → `/schedule` 또는 `/teacher-schedule`로 리다이렉트
-- "권한 없음" 메시지 또는 silent redirect
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-10.5 Member UI 필터링 [P2]
-**Pre:** member 역할
-**Steps:**
-1. ScheduleActionBar 확인
-**Expected:**
-- 공유/PDF/템플릿 버튼 숨김 또는 비활성화
-- 사이드바도 학생/과목 메뉴 숨김
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-10.6 초대 토큰 발송 (owner/admin만) [P1]
-**Pre:** owner 역할
-**Steps:**
-1. `/settings` → "강사 초대" → 이메일 입력 + 역할 선택
-2. "초대 발송"
-**Expected:**
-- 초대 토큰 생성 (7일 만료)
-- 토큰 URL 생성 + 복사
-**Result:** [ ] Pass [ ] Fail — note: ___
-
-### S-10.7 초대 수락 4-state [P1]
-**Pre:** S-10.6 토큰
-**Steps:**
-1. `/invite/{token}` 접근 — 4가지 상태별
-   - (a) 비로그인 → 로그인 유도
-   - (b) 로그인 + 이메일 일치 → 수락
-   - (c) 로그인 + 이메일 불일치 → 에러
-   - (d) 이미 멤버 → 안내
-**Expected:**
-- 각 상태 분기 정확
+- 마지막 선택한 academy 로 자동 진입 (server-side `active_academy_id` 쿠키 + localStorage 양쪽 확인)
+- Cookie `active_academy_id` 값이 선택한 academy UUID 와 일치 (`document.cookie.match(/active_academy_id=([^;]+)/)?.[1]`)
+- middleware 가 쿠키 기반으로 routing 결정 (없으면 /onboarding redirect)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -1987,14 +2021,18 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 - 인증: API 호출 발사 (POST /api/attendances 또는 유사)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-15.3 "전체 출석" 일괄 마킹 [P2]
-**Pre:** AttendanceSheet 열림 + 학생 5명 이상
+### S-15.3 "전체 출석" 일괄 마킹 — 기존 status 덮어쓰기 [P2]
+**Pre:** AttendanceSheet 열림 + 학생 5명 이상 — 일부는 이미 "지각" 또는 "결석" 마킹 상태
 **Steps:**
-1. "전체 출석" 버튼 클릭
+1. "전체 출석" 버튼 클릭 (확인 모달 없음)
 **Expected:**
-- `onMarkAllPresent` 호출 — 모든 학생 status="present" 일괄 set
-- 시각적으로 모든 행에 "출석" 표시
-- 이미 다른 status였던 학생도 present로 덮어쓰기 (정책 확인)
+- **의도:** 한 번에 정상 출석 처리 — 매 학생 개별 클릭 부담 제거.
+- **실제 동작 (`useAttendance.markAllPresent` → `POST /api/attendance/bulk` upsert):**
+  - 모든 학생 status="present" 로 **일괄 덮어쓰기** (이미 "지각"/"결석"/"사유" 였어도 모두 "present" 로 변환)
+  - 확인 모달 / undo 모달 없음 — 클릭 즉시 server upsert
+  - 시각적으로 모든 행에 "출석" highlight
+  - 덮어쓴 status 회복 방법: 해당 학생 row 의 status 버튼으로 다시 마킹 (UI 에서 직접)
+  - canManage=false (member 역할) 일 때 버튼 미렌더 (S-15.5)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-15.4 새로고침 후 출석 유지 [P1]
@@ -2307,6 +2345,280 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 
 ---
 
+## 19. 관리자 (admin) 권한 — Phase 4 (P0: 3 / 7)
+
+> **사전 셋업 (Phase 4 진입):**
+> - Phase 3 끝 상태 = owner 로 academy 1개 + 시드 데이터 보유.
+> - owner 로 `/settings` 진입 → "관리자 초대" 흐름 (S-19.1) 직접 검증 의무.
+> - 본 Phase 의 나머지 시나리오 (S-19.5~19.7) 진입은 위 흐름 끝나거나 `npm run uat:invite -- --role admin` 으로 빠르게 가능.
+> - 진입 후 즉시 admin 로그인 — middleware `user_role` 쿠키가 admin 으로 set 됨 → `/students` `/subjects` `/teachers` `/schedule` 모두 접근 가능 (단 owner 권한 사항 차단).
+
+### S-19.1 owner 가 admin 초대 발급 [P0]
+**Pre:** owner 인증 모드 + `/settings` 진입
+**Steps:**
+1. "관리자 초대" 섹션 펼침 → "초대 보내기" 클릭
+2. 모달에서 이메일 입력: `UAT_TEST_ADMIN_EMAIL` 값
+3. 역할 select → "admin"
+4. "초대 발송"
+**Expected:**
+- 초대 토큰 생성 — 7일 만료 + 토큰 URL `https://.../invite/{token}` 표시
+- 자동 클립보드 복사 + "복사됨" 피드백
+- `/api/invites` POST 200/201 (Network 탭 확인). request body: `{ role: "admin", email: "..." }` — teacherId 없음 (admin 초대는 teacher link 불필요, 020/033 migration 의 CHECK 제약 `role='admin' OR (role='member' AND teacher_id NOT NULL)` 통과)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.2 admin invite 수락 — 이메일 일치 (4-state b) [P0]
+**Pre:** S-19.1 토큰 보유
+**Steps:**
+1. owner 로그아웃 → `UAT_TEST_ADMIN_EMAIL` / password 로 로그인
+2. 같은 브라우저에서 `/invite/{token}` 직접 진입
+3. "수락" 클릭
+**Expected:**
+- 4-state 페이지가 **state-b (이메일 일치)** 분기 표시 — 학원명 + owner 이름 + "수락" CTA
+- 수락 성공 → `academy_members.role = "admin"` INSERT 확인
+- `set-cookie: cp_onboarded=1` 헤더 + `/schedule` 자동 라우팅
+- `invite_tokens.used_by = admin_user_id`, `used_at` 마크 (다시 같은 토큰 진입 시 state-d "이미 사용됨" 표시)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.3 admin invite 수락 — 이메일 불일치 (4-state c) [P1]
+**Pre:** owner 가 별도 초대 토큰 (S-19.1 동일 흐름) — 단 이메일을 `UAT_TEST_MEMBER_EMAIL` 으로 발급
+**Steps:**
+1. admin 계정으로 로그인된 상태에서 `/invite/{token}` 진입 (이메일이 member 용이라 mismatch)
+**Expected:**
+- 4-state 페이지가 **state-c (이메일 불일치)** 분기 표시 — "이 초대는 다른 이메일 주소 용입니다" 에러
+- `/api/invites/accept` 응답 `{ success: false, error: "이 초대는 다른 이메일 주소 용입니다." }` 401
+- 수락 버튼 disabled / 미렌더 (정확한 분기 UI 는 `/invite/[token]/page.tsx` 확인)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.4 admin invite 수락 — 만료 + 사용됨 (4-state a/d) [P1]
+**Pre:** S-19.2 후 (used_by 마크된 토큰) **또는** invite_tokens.expires_at 을 admin SQL 로 과거로 set
+**Steps:**
+1. (a) 비로그인 상태에서 used/expired 토큰 진입 → 4-state 페이지 "로그인 유도" + "이 초대는 만료/사용됨" 안내
+2. (d) admin 로그인 후 같은 토큰 재진입 → "이미 멤버" 또는 "사용된 초대" 안내
+**Expected:**
+- 만료: response error "만료된 초대 링크입니다."
+- 이미 사용됨: response error "이미 사용된 초대 링크입니다."
+- 각 분기에서 수락 버튼 없음 (재발급 안내만)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.5 admin 권한 — 학생/과목/강사 CUD [P0]
+**Pre:** admin 으로 로그인 + academy active
+**Steps:**
+1. `/students` 진입 → 학생 1명 추가 (예: "관리자추가테스트")
+2. `/subjects` → 과목 추가 (예: "관리자과목")
+3. `/teachers` → 강사 추가
+4. `/schedule` → FAB → 모달에서 수업 추가 + 템플릿 저장
+**Expected:**
+- 모든 CUD 성공 — `useMyRole.canManage = true` (owner 와 동일)
+- `requireRole(userId, ["owner", "admin"])` 통과 (POST /api/students, /api/subjects, /api/teachers, /api/sessions, /api/templates 모두 200/201)
+- ScheduleActionBar 의 PDF/공유/템플릿 버튼 모두 활성화
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.6 admin → admin 의 owner 강등 차단 [P0]
+**Pre:** admin 으로 `/settings` → 멤버 목록 진입
+**Steps:**
+1. owner 멤버 row 의 역할 select 클릭 시도
+2. 또는 DevTools Network 로 `PATCH /api/members/{ownerId}` body `{ role: "admin" }` 강제 전송
+**Expected:**
+- UI 에서 owner 의 role select 가 disabled (또는 select 자체 미렌더)
+- 직접 API 호출 시 server-side `if (targetRow.role === "owner") return 403 "owner는 강등할 수 없습니다."` (or similar)
+- owner role 변경 불가 정책 (ADR-019 Academy Singularity 일관)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-19.7 admin 의 member 추가/강등/삭제 [P1]
+**Pre:** Phase 5 이후 (member 가 academy 에 join 된 상태)
+**Steps:**
+1. admin 으로 `/settings` 멤버 목록
+2. member row → 역할 select → "admin" 으로 promote
+3. 다시 "member" 로 demote
+4. member row → 휴지통 → "삭제"
+**Expected:**
+- promote / demote / 삭제 모두 admin 권한으로 가능
+- `PATCH /api/members/{userId}` body `{ role: "admin"|"member" }` 200
+- `DELETE /api/members/{userId}` 200 → 사이드바의 멤버 목록에서 즉시 제거
+- member 였던 사용자가 본인 강사(teachers.user_id) 와 연결돼 있다면 teacher row 는 보존 + user_id 만 null 로 복귀 (정책 — owner 가 다시 다른 사용자에게 같은 강사 invite 가능)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
+## 20. 멤버=강사 (member) RBAC — Phase 5 (P0: 4 / 8)
+
+> **사전 셋업 (Phase 5 진입):**
+> - owner 또는 admin 으로 `/teachers` 진입 → 강사 "강사_uat" 생성 (또는 uat:invite 가 자동 생성).
+> - owner/admin 으로 `/settings` → "강사 초대 (member)" 흐름 — 발급 시 반드시 teacher_id 첨부 (033 migration CHECK 제약).
+> - 본 Phase 의 S-20.5~20.8 은 `npm run uat:invite -- --role member` 후 빠르게 진입 가능.
+
+### S-20.1 owner 가 member 초대 발급 — teacher_id 필수 [P0]
+**Pre:** owner 인증 모드 + `/teachers` 에 "강사_uat" 라는 미링크 강사 생성 (teachers.user_id IS NULL)
+**Steps:**
+1. owner 로 `/settings` → "강사 초대" 섹션
+2. teacher select 에서 "강사_uat" 선택
+3. 이메일 입력: `UAT_TEST_MEMBER_EMAIL`
+4. 역할 select → "member" (default)
+5. "초대 발송"
+**Expected:**
+- 초대 토큰 생성 — body 에 `role: "member", email: "...", teacherId: "<강사_uat의 id>"` 포함
+- `/api/invites` POST 200/201 — teacherId 미첨부 시 `INVITE_MEMBER_REQUIRES_TEACHER: member 초대에는 강사 연동이 필요합니다` 400 응답 확인 (DevTools 로 강제 시도)
+- 토큰 URL 표시 + 자동 클립보드 복사
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.2 member invite 수락 + teacher link [P0]
+**Pre:** S-20.1 토큰 보유
+**Steps:**
+1. owner 로그아웃 → `UAT_TEST_MEMBER_EMAIL` 로 로그인
+2. `/invite/{token}` 직접 진입 → "수락"
+**Expected:**
+- state-b (이메일 일치) → 수락 성공
+- `academy_members.role = "member"` INSERT
+- `teachers.user_id` 가 member user_id 로 UPDATE (이전 NULL → set). UNIQUE INDEX `uniq_teachers_academy_user` 위반 시 응답 409 `TEACHER_ALREADY_LINKED` (race condition)
+- 수락 후 middleware 가 member role 인지 → `/teacher-schedule` 로 redirect (학생/과목/강사 페이지 직접 접근 시도하면 차단)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.3 member RBAC — middleware route guard [P0]
+**Pre:** member 로 로그인 + active academy
+**Steps:**
+1. 주소창에 `/students` 직접 입력
+2. 주소창에 `/subjects` 직접 입력
+3. 주소창에 `/teachers` 직접 입력
+4. `/schedule` 직접 입력 → middleware 동작 확인
+**Expected:**
+- middleware (`src/middleware.ts`) 가 `user_role` 쿠키 검사 → member 면 admin-only path (`/students` `/subjects` `/teachers`) 차단 → `/teacher-schedule` 로 redirect
+- `/schedule` 은 차단 X (member 도 시간표 read-only 접근 가능) — 단 FAB/+ 새 학생/+ 새 강사 등 CUD UI 미렌더
+- 주의: middleware 는 UX 가이드일 뿐 보안 경계 X — 실제 API 권한은 `requireRole` 이 책임
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.4 member UI — canManage=false 가 차단하는 요소 일괄 [P0]
+**Pre:** member 로 `/schedule` 진입
+**Steps:**
+1. ScheduleActionBar 시각 확인
+2. FAB ("+") 시각 확인
+3. SessionCard 클릭 → EditSessionModal 진입 시도
+4. 모달 Step 2 의 과목 select 옆 "＋" + "＋ 새 강사" pill 시각 확인 (S-5.15 ref)
+5. 사이드바 메뉴 시각 확인
+**Expected:**
+- ScheduleActionBar 의 템플릿/PDF/공유 버튼 disabled 또는 미렌더
+- FAB 자체 미렌더 (canManage=false)
+- EditSessionModal 진입은 가능하지만 저장 버튼 disabled (학생 0명 가드 외 read-only)
+- "＋" 과목 추가 / "＋ 새 강사" pill 모두 미렌더 (S-5.15 동일 동작 검증)
+- 사이드바: 시간표 / 출석부 만 / 학생·과목·강사 메뉴 미렌더
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.5 member `/teacher-schedule` view — 본인 강사 세션만 [P0]
+**Pre:** member 로 로그인 + owner 가 미리 "강사_uat" 배정한 session 3개 + 다른 강사 ("김선생") 배정한 session 2개 보유
+**Steps:**
+1. `/teacher-schedule` 진입
+2. 시간표 + 세션 카드 시각 확인
+**Expected:**
+- 본인 (teachers.user_id = member_user_id) 강사 의 세션 3개만 표시
+- 다른 강사 세션 2개는 시간표에서 hidden (`/api/sessions?teacherId=<self>` 필터링)
+- 헤더에 "강사: 강사_uat" 표시
+- 본인 세션 카드의 `public_description` 필드 편집 가능 — 다른 강사 세션은 PUT 시도해도 server 가 `requireOwnTeacher` 로 403
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.6 member 의 public_description 자기 강사 한정 [P1]
+**Pre:** S-20.5 상태
+**Steps:**
+1. 본인 강사의 session card → public_description 영역에 "오늘 진도: 미적분 5단원" 입력
+2. 다른 강사의 session card 에 대해 DevTools 로 `PATCH /api/sessions/{id}` body `{ public_description: "..." }` 강제 전송
+**Expected:**
+- 본인 강사 session: 저장 성공, 시간표 refresh 시에도 유지, 학부모 share-link 로 보면 public_description 노출
+- 다른 강사 session 강제 PUT: 403 `requireOwnTeacher` 차단
+- public_description 외 필드 (weekday/시간/학생 등) 는 member 가 어떤 session 도 변경 불가
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.7 member 의 AttendanceSheet read-only [P1]
+**Pre:** S-20.5 본인 강사 session 의 출석 진입
+**Steps:**
+1. 본인 session card → 출석 아이콘 클릭 → AttendanceSheet 열림
+2. 임의 학생 status 버튼 클릭 시도
+3. "전체 출석" 버튼 시각 확인
+**Expected:**
+- canManage=false → 4-state 버튼 모두 disabled (cursor-not-allowed, opacity 70%) — `if (canManage) onMarkAttendance(...)` 가드
+- "전체 출석" 버튼 자체 미렌더
+- 기존 마킹 표시는 정상 노출 (read-only view)
+- S-15.5 와 동일 검증
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-20.8 member 의 데이터 이력 섹션 미렌더 [P2]
+**Pre:** member 로 `/settings` 진입 (member 도 settings 페이지 접근 가능)
+**Steps:**
+1. 페이지 스크롤
+**Expected:**
+- "데이터 이력" 섹션 자체 미렌더 — `useMyRole.canManage=false` gate, line 67 `if (!canManage) return null`
+- 강사 추가 모달 / 멤버 목록 / 학원 정보 변경 등 admin-only 섹션 미렌더
+- 본인 정보 (이메일 + role chip "member") 만 표시
+- S-14.13 동일 검증
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
+## 21. 학생 / 학부모 view (계정 X, incognito + access-code) — Phase 6 (P0: 2 / 5)
+
+> **사전 셋업 (Phase 6 진입):**
+> - Phase 3 끝부분에서 owner 가 `/settings` → 공유 링크 1개 (S-9.1) + 학부모 6자리 access-code (S-9.3) 미리 발급해둠.
+> - 학생/학부모 = **별도 계정 X**. 같은 머신에서 새 incognito 창 (Chrome 단축키: `Cmd+Shift+N`) 열어 계정 격리.
+> - owner academy 의 학생 1명 이상 + 그 학생 들어간 세션 1개 이상 필요 (uat:seed 가 자동 생성).
+
+### S-21.1 share-link 직접 접근 (비로그인) [P0]
+**Pre:** S-9.1 에서 발급한 share token URL 보유 (`https://localhost:3000/share/{token}`)
+**Steps:**
+1. **incognito 창** 새로 열기 (Cmd+Shift+N)
+2. 주소창에 share URL 붙여넣기
+**Expected:**
+- 시간표 읽기 전용 view (`/share/[token]/page.tsx` 렌더)
+- 학생명/과목명/강사명/시간 모두 정확 표시 (owner academy 의 시드 데이터)
+- 편집/삭제/FAB 버튼 모두 없음 — 사이드바 자체 미렌더 또는 단순 헤더만
+- 로그인 유도 없음 (anonymous 모드 share view 정책)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-21.2 학부모 6자리 access-code 입력 → share view 진입 [P0]
+**Pre:** owner 가 `/settings` → "학부모 접속 코드" 섹션에서 발급한 6자리 코드 보유 (S-9.3). academy slug 또는 UUID 도 알아둠.
+**Steps:**
+1. incognito 창에서 `/academy/{slug-or-uuid}` 진입 (예: `localhost:3000/academy/uat-test-academy`)
+2. 6자리 코드 입력 (혼동 문자 L 제외 — 0,1,L 안 나옴)
+3. "확인" 클릭
+**Expected:**
+- `/api/share/code` POST 200 → response `{ shareToken: "..." }`
+- `/share/{shareToken}` 으로 자동 redirect → S-21.1 와 같은 읽기 전용 view
+- access-code 자체는 학원 운영자가 입소문 / 카톡 단톡으로 학부모에게 배포하는 흐름 (URL 보호 없이 short code 만)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-21.3 잘못된 코드 5회 → academy+IP lockout 1시간 [P1]
+**Pre:** S-21.2 페이지 — `/academy/{slug}` 코드 입력 화면
+**Steps:**
+1. 잘못된 코드 6자리 입력 → "확인" — 1회
+2. 다른 잘못된 코드 4번 더 (총 5회)
+3. 6번째 시도 — 정답 코드 입력해도 lockout
+**Expected:**
+- 1~4번째: "잘못된 코드입니다" alert (실패 카운트 누적, `recordFailure`)
+- 5번째: 실패 응답 + lockout 발동 (`checkLockout` true)
+- 6번째 (정답이어도): `LOCKED` 응답 — "잠시 후 다시 시도하세요" (`MAX_FAILURES=5, LOCKOUT_MS=1h` `/api/share/code/route.ts` 14~16)
+- 1시간 후 lockout 자동 해제 (`resetFailures` 호출은 첫 성공 시점에만)
+- IP rate limit: 분당 10회 (별도 한도) — 5회 안에 lockout 발동되므로 보통 도달 X
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-21.4 만료된 share-token / 만료된 access-code [P2]
+**Pre:** S-9.5 와 동일 — owner 가 새 코드 발급하면 이전 코드 만료 (또는 admin SQL 로 share_tokens.expires_at 강제 과거)
+**Steps:**
+1. 이전 (만료된) 6자리 코드 또는 share-token URL 진입
+**Expected:**
+- access-code: `/api/share/code` 응답 `{ success: false, error: "만료된 코드입니다" }` 401
+- share-token: `/share/[token]/page.tsx` 가 "만료된 링크입니다" 에러 페이지 표시
+- 학부모에게 "원장에게 새 코드 발급 요청" 안내
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-21.5 student view — 본인 학부모 코드 입력 + 본인 세션만 표시 [P2]
+**Pre:** S-21.2 + 학원에 학생 ≥ 2명 (홍길동, 김영수). owner 가 학생별 별도 access-code 발급 옵션 사용 (`StudentDetailPanel` 의 "재발급" / `studentIds` filter).
+**Steps:**
+1. owner 로 `/students` → "홍길동" 상세 → "이 학생만 보이는 코드 발급"
+2. 발급된 코드를 incognito 창에서 입력
+**Expected:**
+- share-token URL response 의 시간표가 **홍길동이 enroll 된 세션만** 표시 (다른 학생만 등록된 session 은 hidden 또는 카드에서 "외 N명" 표시되더라도 학부모 입장에서 본인 자녀명만 강조)
+- 학원 전체 세션이 아니라 본인 자녀 관련 세션만 보이는 학부모용 view (privacy 보호)
+- 동작이 학원 전체 share 와 다른지 확인 (academy-wide share 면 모든 학생 표시, student-scoped share 면 본인 자녀 enroll 만)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+---
+
 ## Edge Cases (P0: 0 / 10)
 
 ### E-1. 학생 0명 + 수업 추가 시도 [P2]
@@ -2414,3 +2726,14 @@ Issue 등록 형식:
 - 2026-05-20: **§1 S-1.5 갱신 + S-1.5b 신설** (ADR-019 first-user owner-enforcement + academy singularity 1+1). 영향: `/onboarding/page.tsx` 역할 라디오 3개 제거 (owner/admin/member → owner 자동), amber Crown 안내 박스 추가, "원장으로 학원 만들기" CTA, "초대 받았어요" secondary link → `/invite/[token]` redirect. `/api/onboarding` body.role 무시 + hardcoded owner. Sidebar "+ 새 학원 만들기" tooltip "본인 학원 1개 제한 (ADR-019)". 정책 영구화: owner 1개 + invited 1개 = 최대 2학원, 학원 추가 기능 deferred. 총 §1 P0 2 / 6→7 (S-1.5b 신설).
 - 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
 - 2026-05-12 (4): **§18 보강 — 다른 주 날짜로 세션 이동 + 시간표 자동 navigate** (사용자 발견: paradigm 재해석). 잘못된 paradigm 가정 fix — schedule은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"**. 데이터 모델(`planner.ts`)이 이미 둘 다 보존. 변경: API/Service/Repo chain 모두 `weekStartDate` forward + EditSessionModal `selectedWeekStart` state + onSave `(weekday, weekStartDate?)` 시그니처 + schedule page `setSelectedDate` navigate. footer 안내 "주간 반복" → "그 날짜로 이동". S-18.9(P0) 추가, AC-20~22 추가. P0: 40 → 41. 회귀 가드 236 tests pass.
+- 2026-05-20 (2): **다중 역할 UAT 모델 도입 (3 계정) + 시나리오 전면 재구성** (사용자 발화 — "원장 계정 teardown 처럼 다른 계정들도 같이 초기화, 몇 개 계정 필요한지, 자연스러운 흐름 시나리오, 정책확인 표기 제거"):
+  - **3 계정 모델**: `UAT_TEST_OWNER_*` / `UAT_TEST_ADMIN_*` / `UAT_TEST_MEMBER_*`. legacy `UAT_TEST_USER_*` → owner alias (deprecated 1주일 후 제거). 학생/학부모 = 계정 X, incognito + share-token / 6자리 access-code 검증.
+  - **scripts 갱신**: `uat-cleanup-helper.ts` — `invites` → `invite_tokens` fix, `attendance` + `data_snapshots` 테이블 cleanup 추가, `cleanupMultipleUatUsers` batch helper 신설. `setup-uat-test-user.ts` 3 계정 멱등 생성. `uat-teardown.ts` `--user owner|admin|member|all` flag (default all). `uat-invite-seed.ts` 신규 — admin/member 자동 초대 + 수락 fast-path (UI 흐름 자체 검증은 §19/§20 직접 의무). `package.json` `uat:invite` 등록.
+  - **Phase 모델 7 → 10 phases**: P1 익명 → P2 owner 전환 (충돌) → P3 owner 권한 → P4 admin (§19) → P5 member=강사 (§20) → P6 학생/학부모 incognito (§21) → P7 모바일 → P8 OAuth → P9 오프라인 → P10 Edge.
+  - **신규 §19 관리자 권한** (S-19.1~19.7, P0 3): invite 발급 + 4-state 수락 (b 일치 / c 불일치 / a 만료 / d 사용됨) + admin CUD + owner 강등 차단 + member 추가/강등/삭제.
+  - **신규 §20 멤버=강사 RBAC** (S-20.1~20.8, P0 4): invite + teacher_id 필수 (033 migration CHECK) + teacher.user_id link + middleware route guard + canManage=false UI 일괄 (FAB 미렌더, "+ 새 강사" pill 미렌더 등) + /teacher-schedule 본인 강사 세션만 + public_description 본인 강사 한정 + AttendanceSheet read-only + 데이터 이력 미렌더.
+  - **신규 §21 학생/학부모 view** (S-21.1~21.5, P0 2): incognito share-link 직접 접근 + 6자리 access-code 입력 + 5회 실패 academy+IP lockout (1h) + 만료된 코드 + student-scoped share (본인 자녀 세션만).
+  - **§10 다중 Academy 권한 분리**: S-10.3~10.7 → §19/§20 으로 이동 (역할별 Phase 와 자연 결합). §10 은 Academy 전환 / 쿠키 저장 2개로 축소.
+  - **정책확인 4건 명시화** (사용자 요청 "어떻게 동작하는게 맞는건지 정확하게 기재"): S-3.4 과목 cascade 삭제 (deferred-commit + enrollment/session 동시 정리), S-4.6 teacher-subject 그룹화 (필터링 아님 — 두 그룹 정렬), S-6.6 드래그 충돌 (lane 자동 분할, modal 없음), S-15.3 "전체 출석" 일괄 덮어쓰기 (확인 모달 X, 기존 status 모두 present 로 upsert). 각 시나리오에 "의도" + "실제 동작 (소스 참조)" 두 줄 형식.
+  - **총 P0**: 41 → 50 (§19 +3, §20 +4, §21 +2, §10 −0 — S-10.3~10.7 이동만이라 카운트 무관).
+  - **회귀 가드**: scripts/ 11개 파일 type-check pass. cleanup helper invites→invite_tokens fix 가 잠재 사고 차단.
