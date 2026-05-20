@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { showError } from "@/lib/toast";
 import { Select } from "@/components/atoms/Select";
-import { ROLE_DESCRIPTORS } from "@/lib/rolePermissions";
+import { ROLE_DESCRIPTORS, ROLE_ICONS } from "@/lib/rolePermissions";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "관리자",
@@ -166,41 +166,57 @@ export default function InviteModal({
             <fieldset className="mb-3">
               <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
               <div className="flex gap-3">
-                {(["member", "admin"] as const).map((r) => (
-                  <label
-                    key={r}
-                    className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
-                      inviteRole === r
-                        ? "border-accent bg-accent/10"
-                        : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="inviteRole"
-                      value={r}
-                      checked={inviteRole === r}
-                      onChange={() => setInviteRole(r)}
-                      className="sr-only"
-                    />
-                    <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
-                    <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {ROLE_DESCRIPTORS[r].shortDescription}
-                    </div>
-                  </label>
-                ))}
+                {(["member", "admin"] as const).map((r) => {
+                  // 색·아이콘 SSOT — lib/rolePermissions.ts
+                  const colors = ROLE_DESCRIPTORS[r].colors;
+                  const Icon = ROLE_ICONS[r];
+                  const selected = inviteRole === r;
+                  return (
+                    <label
+                      key={r}
+                      data-testid={`invite-role-card-${r}`}
+                      className={`flex-1 p-3 border-2 rounded-lg cursor-pointer text-center transition-colors ${
+                        selected
+                          ? `${colors.border} ${colors.bg}`
+                          : "border-[var(--color-border)] hover:border-[var(--color-text-muted)]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="inviteRole"
+                        value={r}
+                        checked={selected}
+                        onChange={() => setInviteRole(r)}
+                        className="sr-only"
+                      />
+                      <div className={`flex items-center justify-center gap-1.5 font-medium text-sm ${selected ? colors.text : "text-[var(--color-text-primary)]"}`}>
+                        <Icon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />
+                        {ROLE_LABEL[r]}
+                      </div>
+                      <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+                        {ROLE_DESCRIPTORS[r].shortDescription}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
 
             {/* 선택한 역할의 권한 미리보기 (Variant F, ADR-019) — 사용자가 초대
-                전에 부여할 권한을 명확히 확인할 수 있도록. */}
+                전에 부여할 권한을 명확히 확인할 수 있도록. 색·아이콘 SSOT 사용. */}
             <div
               data-testid={`invite-role-preview-${inviteRole}`}
-              className="mb-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3"
+              className={`mb-5 rounded-lg border bg-[var(--color-bg-primary)] p-3 ${ROLE_DESCRIPTORS[inviteRole].colors.border}`}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
-                {ROLE_LABEL[inviteRole]} 권한 미리보기
-              </p>
+              <div className={`flex items-center gap-1.5 mb-2 ${ROLE_DESCRIPTORS[inviteRole].colors.text}`}>
+                {(() => {
+                  const Icon = ROLE_ICONS[inviteRole];
+                  return <Icon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden="true" />;
+                })()}
+                <p className="text-[11px] font-semibold uppercase tracking-wide">
+                  {ROLE_LABEL[inviteRole]} 권한 미리보기
+                </p>
+              </div>
               <ul className="space-y-1 text-[12px] text-[var(--color-text-secondary)]">
                 {ROLE_DESCRIPTORS[inviteRole].permissions.slice(0, 4).map((p, i) => (
                   <li key={i} className="flex items-start gap-1.5">

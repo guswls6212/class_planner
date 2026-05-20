@@ -1,45 +1,27 @@
 "use client";
 
-import { Crown, Shield, GraduationCap, Check, X } from "lucide-react";
-import { ROLE_DESCRIPTORS, ROLE_KEYS_ORDERED, type RoleKey } from "@/lib/rolePermissions";
+import { Check, X } from "lucide-react";
+import {
+  ROLE_DESCRIPTORS,
+  ROLE_ICONS,
+  ROLE_KEYS_ORDERED,
+} from "@/lib/rolePermissions";
 
 /**
  * RolePermissionCards — 팀 섹션 상단 3-role 권한 카드 (Variant F).
  *
  * 사용자가 owner/admin/member 가 각각 무엇을 할 수 있는지 한눈에 파악하도록.
  * 모바일에서는 1열 stack, 데스크탑은 3열 grid.
+ *
+ * 색·아이콘 SSOT: `ROLE_DESCRIPTORS[role].colors` + `ROLE_ICONS[role]` 사용.
+ * hardcoded 토큰 없음 — 정책 변경 시 `lib/rolePermissions.ts` 한 곳만 수정.
  */
-
-const ROLE_ICONS = {
-  owner: Crown,
-  admin: Shield,
-  member: GraduationCap,
-} as const;
-
-const ROLE_COLORS: Record<RoleKey, { text: string; border: string; gradient: string }> = {
-  owner: {
-    text: "text-amber-300",
-    border: "border-amber-400/30",
-    gradient: "from-amber-500/15 to-amber-500/[0.04]",
-  },
-  admin: {
-    text: "text-blue-300",
-    border: "border-blue-400/25",
-    gradient: "from-blue-500/12 to-blue-500/[0.03]",
-  },
-  member: {
-    text: "text-emerald-300",
-    border: "border-emerald-400/25",
-    gradient: "from-emerald-500/12 to-emerald-500/[0.03]",
-  },
-};
-
 export function RolePermissionCards() {
   return (
     <div data-testid="role-permission-cards" className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
       {ROLE_KEYS_ORDERED.map((roleKey) => {
         const descriptor = ROLE_DESCRIPTORS[roleKey];
-        const colors = ROLE_COLORS[roleKey];
+        const colors = descriptor.colors;
         const Icon = ROLE_ICONS[roleKey];
         // 카드에는 핵심 3개만 표시 — 전체는 InviteModal / tooltip 에서.
         const previewPermissions = descriptor.permissions.slice(0, 3);
