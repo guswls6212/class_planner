@@ -107,8 +107,37 @@ const MemberContext = createContext<CurrentMemberData | null>(null);
  */
 export function MemberProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<CurrentMemberData>(DEFAULT_LOADING_DATA);
+  // class-planner:academy-changed 이벤트 등으로 강제 재fetch trigger.
+  // 첫 onboarding 직후 academy_members INSERT 와 첫 fetch 간 read-after-write race
+  // 가 발생해 me=null → canManage:false 영속화되던 사고 회피 (S-1.5 사고, 2026-05-20).
+  // 새로고침 시에만 해결되던 증상 (FAB 사라짐 / 모달 안 열림 / 빈칸 클릭 무반응)
+  // → academy-changed 이벤트로 강제 재fetch + cache 무효화.
+  const [refetchToken, setRefetchToken] = useState(0);
 
   const { session, loading: authLoading } = useAuth();
+
+  // class-planner:academy-changed 이벤트 listen → cache 무효화 + refetchToken bump
+  // → 메인 useEffect 재실행. onboarding API success 직후 자연 발화 (page.tsx:97).
+  useEffect(() => {
+    const onAcademyChanged = () => {
+      const uid = session?.user?.id;
+      if (uid) {
+        try {
+          sessionStorage.removeItem(`${CACHE_KEY_PREFIX}${uid}`);
+        } catch {
+          // non-blocking
+        }
+      }
+      setRefetchToken((t) => t + 1);
+    };
+    window.addEventListener("class-planner:academy-changed", onAcademyChanged);
+    return () => {
+      window.removeEventListener(
+        "class-planner:academy-changed",
+        onAcademyChanged,
+      );
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -170,6 +199,14 @@ export function MemberProvider({ children }: { children: ReactNode }) {
         ).length;
 
         if (!me) {
+          // me=null 케이스는 두 경로:
+          //   (a) 사용자가 해당 학원의 멤버가 아님 (정상 — owner=true 권한 X)
+          //   (b) onboarding INSERT 직후 fetch가 read-after-write race로 응답에
+          //       me 누락 (S-1.5 사고)
+          // 둘을 fetch만으로 구분 불가하므로 cache에 영속화하지 않는다 (옵션 2).
+          // class-planner:academy-changed 이벤트로 자연 재fetch (옵션 1) +
+          // 이번 응답은 화면에 반영하되 cache는 skip → 다음 mount/이벤트 시 새로
+          // fetch해 정정 가능 (race 결과 stuck 차단).
           const freshSnapshot: CachedRoleSnapshot = {
             role: null,
             canManage: false,
@@ -179,7 +216,7 @@ export function MemberProvider({ children }: { children: ReactNode }) {
             linkedTeacherColor: null,
             adminCount,
           };
-          saveRoleCache(userId, freshSnapshot);
+          // saveRoleCache(userId, freshSnapshot); // 의도적 skip — race 결과 영속화 X
           setData({ ...freshSnapshot, isLoading: false });
           return;
         }
@@ -271,8 +308,9 @@ export function MemberProvider({ children }: { children: ReactNode }) {
     // 'INITIAL_SESSION' + TOKEN_REFRESHED가 같은 user에 대해 setSession을 여러 번
     // 호출)으로 useEffect 재실행 → /api/members 등 3회 호출되던 사고 회피.
     // user.id 변화(다른 user 로그인) 또는 session null↔valid 전이만 trigger.
+    // refetchToken 은 class-planner:academy-changed 이벤트에서 bump (S-1.5 race fix).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, session?.user?.id ?? null]);
+  }, [authLoading, session?.user?.id ?? null, refetchToken]);
 
   return (
     <MemberContext.Provider value={data}>{children}</MemberContext.Provider>

@@ -414,6 +414,9 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 - API `POST /api/onboarding` 호출 — body에 `role` 필드 없음 (client 측). server-side는 무조건 owner.
 - **anonymous → server 자동 마이그 (`upload-local` 경로) 트리거** (PR #294 fix). 충돌 모달은 server 비어있어 안 뜨는 게 정상. PR #295 후엔 마이그 직후 "시간표가 새로 갱신되었어요" 토스트 false positive 발화 안 함.
 
+**회귀 가드 — 첫 로그인 직후 /schedule 권한 race (PR #415, S-1.5 사고):**
+학원명 정한 직후 자동 라우팅된 `/students` → 사이드바에서 `/schedule` 이동 시 FAB(+) + 모달 + 빈칸 클릭 + 수업 클릭 모두 정상 동작 확인. 새로고침 없이도 즉시 사용 가능. 새로고침 시에만 해결되던 증상은 MemberContext 가 `class-planner:academy-changed` 이벤트를 listen 안 해서 me=null (read-after-write race) 가 cache에 영속화된 결과. 본 PR 에서 academy-changed listener 추가 + me=null cache write skip 으로 차단.
+
 **회귀 가드 — body.role 강제 owner (server-side 안전망):**
 DevTools Network 탭에서 `/api/onboarding` 요청 직접 수정해 `role: "admin"` 보내도 server-side에서 무시 → academy_members.role = "owner" 확인.
 ```js
