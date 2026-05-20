@@ -5,6 +5,7 @@ import {
   ROLE_DESCRIPTORS,
   ROLE_ICONS,
   ROLE_KEYS_ORDERED,
+  getRolePermissionsPreview,
 } from "@/lib/rolePermissions";
 
 /**
@@ -23,8 +24,9 @@ export function RolePermissionCards() {
         const descriptor = ROLE_DESCRIPTORS[roleKey];
         const colors = descriptor.colors;
         const Icon = ROLE_ICONS[roleKey];
-        // 카드에는 핵심 3개만 표시 — 전체는 InviteModal / tooltip 에서.
-        const previewPermissions = descriptor.permissions.slice(0, 3);
+        // 권한 미리보기 SSOT — InviteModal 등 모든 preview UI 와 동일 항목.
+        // 직접 slice 호출 금지 (lib/rolePermissions.ts §getRolePermissionsPreview).
+        const previewPermissions = getRolePermissionsPreview(roleKey);
 
         return (
           <div
