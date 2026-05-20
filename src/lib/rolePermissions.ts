@@ -1,14 +1,40 @@
 /**
- * 3-role 권한 데이터 SSOT — 사용자 친화 용어.
+ * 3-role 권한 데이터 SSOT — 사용자 친화 용어 + 색·아이콘 통합.
  *
  * 정책: ADR-019 (Academy Singularity + first-user owner-강제).
  *
  * 디자인 용어 정책: 화면에 노출되는 텍스트는 일반 사용자가 이해할 수 있는
  * 단어만 사용 — 개발자 약어 (CUD, RLS member_own, slug 등) 금지. 코드 식별자
  * (academyId 등) 는 본 파일 안에서만 사용하고 외부에는 한국어 라벨로 노출.
+ *
+ * 색·아이콘 SSOT (2026-05-20):
+ *   원장(owner) — amber + Crown
+ *   관리자(admin) — blue + Shield
+ *   강사(member) — emerald + GraduationCap
+ * 모든 컴포넌트 (RolePermissionCards / TeacherStatusPill / InviteModal /
+ * design-explorations) 는 본 파일의 `ROLE_DESCRIPTORS[role].colors` 와
+ * `ROLE_ICONS[role]` 만 사용. hardcoded 색·아이콘 금지.
  */
 
+import { Crown, Shield, GraduationCap, type LucideIcon } from "lucide-react";
+
 export type RoleKey = "owner" | "admin" | "member";
+
+/**
+ * 역할별 Tailwind 색 토큰. 컴포넌트는 본 객체의 클래스만 사용.
+ * - text: 텍스트/아이콘 색 (chip 라벨, 카드 제목 등)
+ * - bg: solid background 약 15% opacity (활성 chip · 아바타 배경)
+ * - border: 외곽선 (chip · 카드)
+ * - dot: dot indicator (높은 채도, 1.5px+)
+ * - gradient: 카드 gradient (from-X-500/15 to-X-500/[0.04])
+ */
+export interface RoleColors {
+  text: string;
+  bg: string;
+  border: string;
+  dot: string;
+  gradient: string;
+}
 
 export interface RoleDescriptor {
   key: RoleKey;
@@ -20,6 +46,8 @@ export interface RoleDescriptor {
   permissions: { ok: boolean; text: string }[];
   /** 어떻게 이 역할을 부여받는지 — onboarding 안내용 */
   joinPath: string;
+  /** 색 토큰 — Tailwind class names */
+  colors: RoleColors;
 }
 
 export const ROLE_DESCRIPTORS: Record<RoleKey, RoleDescriptor> = {
@@ -35,6 +63,13 @@ export const ROLE_DESCRIPTORS: Record<RoleKey, RoleDescriptor> = {
       { ok: true, text: "학부모 공유 링크 · 접속 코드 발급" },
     ],
     joinPath: "직접 학원을 만든 사람만 (계정당 1개)",
+    colors: {
+      text: "text-amber-300",
+      bg: "bg-amber-500/20",
+      border: "border-amber-400/30",
+      dot: "bg-amber-400",
+      gradient: "from-amber-500/15 to-amber-500/[0.04]",
+    },
   },
   admin: {
     key: "admin",
@@ -48,6 +83,13 @@ export const ROLE_DESCRIPTORS: Record<RoleKey, RoleDescriptor> = {
       { ok: false, text: "원장 · 관리자 역할 변경 불가" },
     ],
     joinPath: "원장의 초대로만",
+    colors: {
+      text: "text-blue-300",
+      bg: "bg-blue-500/20",
+      border: "border-blue-400/30",
+      dot: "bg-blue-400",
+      gradient: "from-blue-500/12 to-blue-500/[0.03]",
+    },
   },
   member: {
     key: "member",
@@ -61,7 +103,21 @@ export const ROLE_DESCRIPTORS: Record<RoleKey, RoleDescriptor> = {
       { ok: false, text: "초대 발송 불가" },
     ],
     joinPath: "원장 또는 관리자의 초대로만",
+    colors: {
+      text: "text-emerald-300",
+      bg: "bg-emerald-500/20",
+      border: "border-emerald-400/25",
+      dot: "bg-emerald-400",
+      gradient: "from-emerald-500/12 to-emerald-500/[0.03]",
+    },
   },
+};
+
+/** 역할별 lucide-react 아이콘 SSOT. 컴포넌트는 본 map 만 사용. */
+export const ROLE_ICONS: Record<RoleKey, LucideIcon> = {
+  owner: Crown,
+  admin: Shield,
+  member: GraduationCap,
 };
 
 export const ROLE_KEYS_ORDERED: RoleKey[] = ["owner", "admin", "member"];
