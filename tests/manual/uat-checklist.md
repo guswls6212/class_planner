@@ -753,7 +753,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 
 ---
 
-## 5. 시간표 — 수업 추가/편집/삭제 + 뷰 모드 (P0: 10 / 21) [Core 포함]
+## 5. 시간표 — 수업 추가/편집/삭제 + 뷰 모드 (P0: 12 / 25) [Core 포함]
 
 ### S-5.1 FAB 클릭 → 모달 열림 [P0] [auto-friendly]
 **Pre:** `/schedule`
@@ -980,6 +980,34 @@ console.log('새 호출 수:', after - before);  // ≥1
 4. "9-23시" (default) 로 돌리면 11:30-16:30 전체가 cap 없이 표시.
 - 검증: cap 시각이 자연스럽게 "범위 밖에도 이어짐"을 인지시키는가.
 
+### S-5.24 수업 추가 모달 — V3 chip+popover (요일/날짜 + 시간) [P0] (PR #396)
+**Pre:** 현재 주 (5/18~5/24) 시간표, 빈 셀 클릭 또는 FAB → GroupSessionModal open
+**Steps:**
+1. 모달 헤더에 **날짜 chip** + **시간 chip** 표시 확인 (편집 모달 V3 패턴 미러)
+2. 날짜 chip 클릭 → 월별 캘린더 popover open
+3. 다른 주의 날짜 클릭 (예: 5/27 화요일)
+4. chip label 즉시 갱신 (`5월 27일 (화)`)
+5. 시간 chip 클릭 → 시간 popover에서 14:00 선택
+6. 학생/과목/강사 선택 → "추가" 클릭
+**Expected:**
+- 저장 후 시간표가 선택한 주(5/25~5/31)로 자동 navigate
+- 새 세션이 그 주의 5/27 화요일 14:00에 표시
+- API: `POST /api/sessions` body에 `weekStartDate: "2026-05-25"` 포함
+- 모달 body의 weekday/time select 사라짐 (V3 헤더 chip만)
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-5.25 시간표 row-level overflow expand — +N/− chip [P0] (PR #392/#399)
+**Pre:** 같은 weekday 같은 시간대에 4개 이상 겹치는 세션 (예: 월 14:00 4건)
+**Steps:**
+1. 14:00 행에서 "+1" chip 클릭
+2. 그 row 전체(같은 weekday의 모든 cluster)가 동시에 expand 확인
+3. "−" chip 클릭으로 다시 접기
+**Expected:**
+- 단일 시간대 expand가 아니라 그 weekday의 **모든 cluster 일괄 expand**
+- 다른 weekday의 cluster는 영향 없음
+- 같은 weekday 안에서 동일 시간대만 따로 expand 되는 잔재 0
+**Result:** [ ] Pass [ ] Fail — note: ___
+
 ### S-5.23 학생/과목/강사 AND 필터 dim 통일 [P1] (PR #284, 2026-05-08)
 **전제:** 학생 ≥ 2명, 과목 ≥ 2개, 강사 ≥ 2명, 세션 ≥ 4개 시드.
 
@@ -1003,7 +1031,7 @@ console.log('새 호출 수:', after - before);  // ≥1
 
 ---
 
-## 6. 시간표 — 드래그/충돌/멀티선택 (P0: 2 / 10)
+## 6. 시간표 — 드래그/충돌/멀티선택 (P0: 2 / 12)
 
 ### S-6.1 드래그로 시간 이동 [P0]
 **Pre:** 세션 1개 (월 09:00-10:00)
@@ -1094,6 +1122,31 @@ console.log('새 호출 수:', after - before);  // ≥1
 **Expected:**
 - drop 후 ghost(임시 placeholder)가 사라지고 정확한 위치에 SessionCard 1개만 표시
 - 잔상/중복 카드 없음
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-6.11 Lane insert — edge hover slot (Variant E) [P1] (PR #388)
+**Pre:** 같은 시간대 2개 lane (월 14:00 lane 0 = A, lane 1 = B)
+**Steps:**
+1. C 세션을 잡고 lane 0과 lane 1 사이 boundary로 hover
+2. 좌/우 edge dashed overlay + "여기 삽입" 텍스트 확인
+3. drop
+**Expected:**
+- A와 B 사이에 lane 새로 끼워짐 (C가 lane 1, 기존 B는 lane 2로 밀림)
+- compaction 후 yPosition contiguous 유지
+- 빈 시간대 hover 시에는 overlay 표시 안 됨 (cell unique id 보호)
+- Cmd-drag (복사 모드) + multi-select drag 시 lane insert slot 비활성
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-6.12 드래그 3 시각 피드백 SSOT 통일 [P1] (PR #389/#390)
+**Pre:** 세션 1개 드래그 시작
+**Steps:**
+1. 드래그 중 lane-highlight(현재 lane row) 확인
+2. drop target overlay (이동 모드 dashed / insert 모드 dashed + "여기 삽입") 확인
+3. drop preview (이동 후 SessionCard 위치) 확인
+**Expected:**
+- 3가지 시각 피드백이 mode (move / insert / cmd-copy) 별로 일관된 색/형태
+- compactYPositions artifact 없음 (lane 사이 빈 공간 0)
+- mode-aware lane-highlight — insert 모드에서는 lane row가 아닌 boundary 강조
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ---
@@ -2318,5 +2371,7 @@ Issue 등록 형식:
 - 2026-05-07 (7): **UAT fresh-start default** — 사용자 비판: "옵션으로 한 이유? 옵션없이 전부 신규사용자로 만들게 하면 되지않나?" → 정확. `naming-consolidation` 메모리 또 위반할 뻔. 매 UAT 사이클 fresh-start 가 default — `uat:teardown` 자체가 academy 까지 cleanup (이전엔 academy 보존). `cleanupUatUserData` 신규 함수 (fresh-start) + 기존 `cleanupAcademyScopedDataForUser` (scope only — seed 멱등 재시드용) 책임 분리. `setup-uat-test-user.ts` 단순화 — user 만 생성 (academy 부분 제거). `uat-seed.ts` 강화 — academy 없으면 자동 생성. UAT 문서 §0 매 사이클 (`uat:teardown` 단계 추가) / §5 인증 셋업 (setup user 만 + 매 사이클 흐름 옵션 a/b) / S-1.5 Pre (재현 방법 명시) 갱신. 신규/기존 user 분기는 매 사이클 단일 user reset 으로 자연 진행 (사이클 안에 신규→기존 전환). invite 시나리오 (S-10.6/10.7) 검증 시점에 별도 user (`UAT_TEST_INVITEE_EMAIL`) 추가 future work.
 - 2026-05-12: **§17 알림 히스토리 + InfoTrigger fix 신설** (PR #372) — 7개 시나리오 (S-17.1~17.7), P0 3개 (배지 카운트 / 패널 open + 필터·그룹 / 항목 클릭 read). 영향: `lib/notificationCenter.ts` ring buffer + `useNotificationCenter` hook + `NotificationBell` (atom) + `NotificationItem` / `NotificationDropdown` (molecules) + `lib/toast.ts` capture 통합 + `Sidebar`/`TopBar` layout-level wire + `InfoTrigger` 동심원 2겹→1겹 fix. localStorage 키: `class_planner_${userId}_notification_history` (anon은 `anonymous`). 회귀 가드: 22 unit + 9 RTL. spec SSOT: [`docs/notification-history-spec.md`](../../docs/notification-history-spec.md) (14 AC). 총 P0: 33 → 36.
 - 2026-05-12 (2): **§18 EditSessionModal 재설계 + V1 validation 신설** — 6개 시나리오, P0 3개 (학생 0명 저장 차단 / 요일 chip popover / 시간 chip popover). 영향: `EditSessionModal.tsx` 헤더 read-only 카드 → chip + popover (요일/시간), body weekday/time select 제거, footer V1-disabled validation + helper text, handleSave 학생 0명 가드. 기존 picker(`TeacherPillPicker`/`StudentChip`/colorPanel) 100% 보존. 회귀 가드: 45 RTL passed (10 기존 갱신 + 5 신규 validation). spec SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md) (14 AC). 총 P0: 36 → 39.
+- 2026-05-13: **§18 S-18.9 추가 + S-18.8 V3 month calendar** (PR #375/#378) — `EditSessionModal` 다른 주 날짜 이동 (weekday → weekStartDate + weekday paradigm, memory `feedback_no_paradigm_assumption`) + 헤더 chip "X월 Y일 (요일)" + V3 month calendar popover. 시간표 자동 navigate 검증. 총 P0: 39 → 41.
+- 2026-05-19: **§5/§6 누적 dev 변경 동기화** — S-5.24 (수업 추가 모달 V3 chip+popover, PR #396, P0), S-5.25 (row-level overflow expand +N/− chip, PR #392/#399, P0), S-6.11 (Lane insert edge hover slot, PR #388, P1), S-6.12 (드래그 3 시각 피드백 SSOT 통일, PR #389/#390, P1) 추가. §5 P0 10→12 / 21→25, §6 P0 2 / 10→12. 총 P0: 41 → 43. 영향: GroupSessionModal V3 패턴(EditSessionModal V3 미러), `sessionClusters.ts`, `lib/laneInsert.ts`, `useDragController` mode-aware lane-highlight, `LaneInsertSlot` molecule.
 - 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
 - 2026-05-12 (4): **§18 보강 — 다른 주 날짜로 세션 이동 + 시간표 자동 navigate** (사용자 발견: paradigm 재해석). 잘못된 paradigm 가정 fix — schedule은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"**. 데이터 모델(`planner.ts`)이 이미 둘 다 보존. 변경: API/Service/Repo chain 모두 `weekStartDate` forward + EditSessionModal `selectedWeekStart` state + onSave `(weekday, weekStartDate?)` 시그니처 + schedule page `setSelectedDate` navigate. footer 안내 "주간 반복" → "그 날짜로 이동". S-18.9(P0) 추가, AC-20~22 추가. P0: 40 → 41. 회귀 가드 236 tests pass.
