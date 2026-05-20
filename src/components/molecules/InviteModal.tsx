@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { Check, X } from "lucide-react";
 import { showError } from "@/lib/toast";
 import { Select } from "@/components/atoms/Select";
+import { ROLE_DESCRIPTORS } from "@/lib/rolePermissions";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "관리자",
@@ -161,7 +163,7 @@ export default function InviteModal({
           </div>
         ) : (
           <>
-            <fieldset className="mb-5">
+            <fieldset className="mb-3">
               <legend className="text-[13px] font-medium text-[var(--color-text-secondary)] mb-2">역할 선택</legend>
               <div className="flex gap-3">
                 {(["member", "admin"] as const).map((r) => (
@@ -183,12 +185,37 @@ export default function InviteModal({
                     />
                     <div className="font-medium text-sm text-[var(--color-text-primary)]">{ROLE_LABEL[r]}</div>
                     <div className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                      {r === "member" ? "시간표 조회" : "학생·수업 관리 + 초대"}
+                      {ROLE_DESCRIPTORS[r].shortDescription}
                     </div>
                   </label>
                 ))}
               </div>
             </fieldset>
+
+            {/* 선택한 역할의 권한 미리보기 (Variant F, ADR-019) — 사용자가 초대
+                전에 부여할 권한을 명확히 확인할 수 있도록. */}
+            <div
+              data-testid={`invite-role-preview-${inviteRole}`}
+              className="mb-5 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] p-3"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
+                {ROLE_LABEL[inviteRole]} 권한 미리보기
+              </p>
+              <ul className="space-y-1 text-[12px] text-[var(--color-text-secondary)]">
+                {ROLE_DESCRIPTORS[inviteRole].permissions.slice(0, 4).map((p, i) => (
+                  <li key={i} className="flex items-start gap-1.5">
+                    {p.ok ? (
+                      <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />
+                    ) : (
+                      <X size={12} className="text-[var(--color-text-muted)] mt-0.5 shrink-0" />
+                    )}
+                    <span className={p.ok ? "" : "line-through opacity-60"}>
+                      {p.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
             {/* Teacher dropdown — only visible for 'member' role */}
             {inviteRole === "member" && (

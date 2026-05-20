@@ -21,6 +21,7 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import type { Member } from "../../components/molecules/MemberListItem";
+import { RolePermissionCards } from "../../components/molecules/RolePermissionCards";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
 import OperatingHoursSection from "../../components/organisms/OperatingHoursSection";
 
@@ -620,7 +621,7 @@ export default function SettingsPage() {
                 </span>
               </h2>
               <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5">
-                강사를 초대해 시간표를 함께 편집하세요
+                팀 멤버를 초대해 학원 운영을 함께하세요
               </p>
             </div>
           </div>
@@ -630,11 +631,16 @@ export default function SettingsPage() {
               size="small"
               onClick={() => setAddTeacherOpen(true)}
               className="flex-shrink-0 gap-1.5"
+              data-testid="invite-member-cta"
             >
-              <Plus size={14} strokeWidth={2} /> 강사 추가
+              <Plus size={14} strokeWidth={2} /> 멤버 초대
             </Button>
           )}
         </div>
+
+        {/* 3-role 권한 카드 (Variant F, ADR-019) — 사용자가 owner/admin/member
+            가 각각 무엇을 할 수 있는지 한눈에 파악. 모바일은 1열 stack. */}
+        <RolePermissionCards />
 
         <div className="flex flex-col gap-2">
           {/* 원장(현재 사용자) — 항상 상단 */}
