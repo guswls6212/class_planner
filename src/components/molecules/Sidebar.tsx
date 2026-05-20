@@ -299,17 +299,19 @@ export function Sidebar() {
               </div>
             )}
             <div className="border-t border-slate-700 mt-1 pt-1">
-              {/* "새 학원 만들기" — 추후 업데이트 예정. 다중 학원 워크플로우(데이터 격리,
-                  학원별 권한, 결제 연동 등) 미완성 상태라 의도적으로 disabled. 활성화는
-                  다중 학원 spec 합의 후. UAT 시나리오에는 미포함. */}
+              {/* "새 학원 만들기" — ADR-019에 따라 의도적 미구현.
+                  정책 (ADR-019): owner 1개 + invited 1개 = 최대 2학원.
+                  학원 추가 기능(POST /api/academies)은 분원/멀티-브랜드 요구
+                  발생 시점에 도입 (정책 5 트리거). 그때 sidebar 활성화 + DB
+                  constraint + API check 함께. UAT 시나리오에는 미포함. */}
               <button
                 type="button"
                 disabled
                 aria-disabled="true"
-                title="추후 업데이트 예정"
+                title="본인 학원 1개 제한 (ADR-019)"
                 className="w-full px-3 py-2 text-left text-[11px] text-slate-500 cursor-not-allowed opacity-50 rounded-lg"
               >
-                + 새 학원 만들기 <span className="text-[10px] text-slate-600">(추후 업데이트)</span>
+                + 새 학원 만들기 <span className="text-[10px] text-slate-600">(1개 제한)</span>
               </button>
             </div>
           </div>
