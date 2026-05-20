@@ -94,10 +94,22 @@ List endpoint 공통 helper: `src/lib/pagination.ts` SSOT.
   - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)
   - `NotificationItem` — 알림 히스토리 단일 항목 row. level 아이콘(AlertCircle/AlertTriangle/CheckCircle2/Info) + 메시지 + chip + relative time + hover X dismiss. (PR #372)
   - `NotificationDropdown` — `NotificationBell` trigger + 패널 통합. 필터 chip / 오늘·어제·이전 그룹 / 헤더 요약 / 풋터 카운트 / outside-click·ESC 닫기. Sidebar academy 영역에 inline(Expanded) / stack(Collapsed nav size) 배치 + TopBar에 compact 배치. `size` prop으로 NotificationBell 사이즈 forward. spec SSOT: [`docs/notification-history-spec.md`](docs/notification-history-spec.md). (PR #372 + 후속 PR 위치 조정)
+  - `LaneInsertSlot` — 시간표 셀 좌/우 edge hover insert 슬롯 (Variant E lane-insert UX, PR #388). 드래그 중 다른 lane 사이 boundary droppable. dashed overlay + 강조선 + "여기 삽입" 텍스트. Cmd/Multi-drag 시 비활성화.
+  - `ColorPicker` — 6/8/9색 grid palette + selected state. SubjectAddDetailModal·TeacherAddDetailModal·SubjectDetailPanel에서 공유.
+  - `StudentChip` / `TeacherChip` — 선택된 학생/강사 chip representation. `TeacherChip`은 PR Q 단계의 `TeacherColorPicker` 교체본 (chip 패턴 통일).
+  - `SlotPickerModal` — 템플릿 슬롯 picker (save/apply 분기) — ADR-008 multi-slot UI.
+  - `SubjectAddDetailModal` — `/subjects` 헤더 "+ 상세 등록" 진입점 (PR #340, students/teachers와 패턴 통일).
 - **Atoms:** Button, Input, Label, AuthGuard, ErrorBoundary, ThemeToggle, SegmentedButton, StudentListItem, SubjectListItem
   - `TeacherStatusPill` — 강사 초대/공유 상태 6-state 표시 pill (active/invite_pending/invite_expired/share_only/none, K-1)
   - `InfoTrigger` — 통일된 정보 아이콘 버튼. lucide Info SVG의 자체 원만 사용 (button border 제거 — 동심원 2겹 회피, PR #372). `size="sm"` (24×24, icon 14) / `size="md"` (32×32, icon 18). HelpTooltip·ScheduleActionBar에서 사용.
   - `NotificationBell` — 알림 트리거 atom. unread 배지(에러+경고 unread 수) + `motion-safe:animate-ping` pulse. `size` prop: `"sm"` (TopBar w-8 h-8 icon 16) / `"md"` (Sidebar expanded inline w-9 h-9 icon 18) / `"nav"` (Sidebar collapsed nav-style w-10 h-10 icon 22 strokeWidth 1.5). NotificationDropdown trigger로만 사용. (PR #372, size prop 확장은 후속 PR — academy 영역 inline 배치 시 nav size로 nav menu와 동등)
+  - `Modal` — Headless 모달 primitive (focus trap + ESC + backdrop click). `modalFadeIn` 0.2s 키프레임 (Schedule edit/add 모달 회귀 가드: tests/e2e/modal-transition.spec.ts, PR #409).
+  - `DetailTooltip` — Detail panel용 정보 hint tooltip atom.
+  - `EmptyState` — 데이터 없음 상태 표시 (학생/강사/세션 list).
+  - `GradeBadge` — 학생 학년 표기 amber chip (PR #338 동명이인 분기 보강).
+  - `IconButton` — 아이콘 전용 버튼 primitive (kebab/X/edit 등 통일).
+  - `SectionHeader` — Detail panel 섹션 제목 + actions 슬롯.
+  - `Select` — 단일 선택 dropdown primitive (요일/시간 선택 등).
 - **Organisms:** Molecules 조합, 페이지 단위 레이아웃
   - `TimeTableGrid` — 주간 시간표 CSS Grid. `baseDate?: Date` prop으로 주 날짜 배열 계산. 헤더 Stacked Circle(요일명+날짜, 오늘 amber 배지). `nowLinePx` 계산 후 오늘 `TimeTableRow`에 전달. (J-2, PR#97)
   - `ScheduleDailyView` — 일별 수업 목록. 스와이프 제스처 지원.
@@ -260,9 +272,19 @@ src/lib/               # 핵심 유틸리티
 ├── resolveAcademyId.ts        # Academy ID 조회 (온보딩 체크)
 ├── adminGuard.ts              # ADMIN_EMAILS env 화이트리스트 검증 유틸리티
 ├── supabaseServiceRole.ts     # Service Role 클라이언트 (서버 전용)
-├── yPositionMigration.ts      # yPosition 마이그레이션 유틸리티
 ├── accessCode.ts              # 학부모 접속 코드 생성/검증 유틸리티 (6자 alphanumeric, K-4)
 ├── slug.ts                    # Academy slug 정규화/검증 유틸리티 (K-7)
+├── sessionClusters.ts         # 시간대별 cluster 계산 (row-level overflow expand, PR #392/399)
+├── laneInsert.ts              # Lane insert compaction + preview parity utils (ADR-017 v2, PR #388)
+├── pendingDeletes.ts          # 5초 deferred-commit pending delete 영속화 (ADR-012)
+├── duplicateLabel.ts          # 동명이인 식별 label 생성 (학년/이메일 등)
+├── teacherPickerFilter.ts     # 강사 picker dropdown 필터링 로직
+├── subjectColors.ts           # DEFAULT_SUBJECT_COLORS (9색 SSOT, PR #340)
+├── notificationCenter.ts      # 알림 history SSOT (push/dismiss/filter, PR #372)
+├── conflict/
+│   └── computeLossDiff.ts     # 데이터 충돌 시 로컬↔서버 차이 계산 (DataConflictModal)
+├── validation/
+│   └── profileSchemas.ts      # 학생/강사/과목/학원 이름 정책 (학생 6/강사 6/과목 12/학원 30, PR #326)
 ├── server/
 │   └── teacherServiceFactory.ts  # 서버사이드 강사 서비스 팩토리 (API Route 전용)
 └── auth/                      # 로그인 데이터 마이그레이션
@@ -275,12 +297,12 @@ src/hooks/             # 커스텀 React 훅
 ├── useStudentManagementLocal.ts   # 학생 관리 (Local-first)
 ├── useSubjectManagementLocal.ts   # 과목 관리 (Local-first)
 ├── useTeacherManagementLocal.ts   # 강사 관리 (Local-first, Phase 4)
-├── useIntegratedDataLocal.ts      # 통합 데이터 (Local-first)
+├── useIntegratedDataLocal.ts      # 통합 데이터 (Local-first) — PR #380 server fetch 제거 (Context 공유로 dedup)
 ├── useGlobalDataInitialization.ts # 앱 초기화 (익명/로그인 분기, 충돌 감지)
-├── useScheduleDragAndDrop.ts      # 드래그앤드롭
+├── useDragController.ts           # 드래그앤드롭 controller (dnd-kit + lane insert + visual feedback SSOT, PR #389-390)
 ├── useScheduleSessionManagement.ts # 세션 관리
 ├── useScheduleView.ts             # 뷰 모드 (daily/weekly/monthly) + 네비게이션 (W2)
-├── useDisplaySessions.ts          # 세션 표시 로직
+├── useDisplaySessions.ts          # 세션 표시 로직 + enrollmentIds 빈 배열 warn 폭주 차단 (PR #379)
 ├── useTeacherDisplaySessions.ts   # 강사별 세션 표시 (Phase 4)
 ├── useColorBy.ts                  # 색상 기준 토글 (subject/teacher, Phase 4)
 ├── useAttendance.ts               # 날짜별 출석 데이터 + 마킹 (W5)
@@ -291,14 +313,27 @@ src/hooks/             # 커스텀 React 훅
 ├── useSessionStatus.ts            # 세션 상태 계산 (Phase 4)
 ├── useLocal.ts                    # localStorage 기반 범용 훅
 ├── useStudentFilter (schedule/_hooks/) # 학생 멀티셀렉트 필터 (localStorage: ui:selectedStudentIds)
-├── useMyRole.ts                   # 현재 사용자 역할 조회. 초기값 canManage: false (Flash of Unauthorized UI 방지, K-5)
-├── useMyTeacher.ts                # 현재 로그인 사용자의 강사 프로필 조회
+├── useMyRole.ts                   # 현재 사용자 역할 조회. 초기값 canManage: false (Flash of Unauthorized UI 방지, K-5) — MemberContext 공유 (PR #380)
+├── useMyTeacher.ts                # 현재 로그인 사용자의 강사 프로필 조회 — MemberContext 공유 (PR #380)
+├── useNotificationCenter.ts       # `notificationCenter` SSOT subscribe + dispatch (PR #372)
+├── useScheduleLayout.ts           # 시간표 레이아웃 계산 (시간 범위, 셀 크기)
+├── useScheduleMeta.ts             # academies.schedule_updated_at 폴링 + lastViewed 비교 (W3+W5)
+├── useSessionSelection.ts         # 세션 multi-select 상태
+├── useNowMinute.ts                # 현재 시각 갱신 (now-line)
 ├── useTimeValidation.ts           # 시간 유효성 검사
+├── useTimeRange.ts                # 운영 시간 범위 훅 (학원 settings)
+├── useOutboxFlush.ts              # outbox enqueue/flush trigger
+├── useSyncStatus.ts               # 동기화 상태 (idle/syncing/error)
+├── useAccessCodes.ts              # 학부모 접속 코드 CRUD (K-4)
 ├── useUserTracking.ts             # 사용자 행동 추적
-└── usePerformanceMonitoring.ts    # 성능 모니터링
+├── usePerformanceMonitoring.ts    # 성능 모니터링
+└── _sessionValidationLogger.ts    # session 유효성 warn dedup logger (PR #379 로그 폭주 차단)
 
 src/contexts/          # React Context
-├── ThemeContext.tsx    # 테마 (Dark/Light)
+├── AuthContext.tsx       # Supabase Auth 단일 source (PR #313 — useAuth 훅)
+├── ThemeContext.tsx      # 테마 (Dark/Light)
+├── SidebarContext.tsx    # Sidebar Expand/Collapse 상태
+├── MemberContext.tsx     # 현재 사용자의 academy member role 공유 — useMyRole/useMyTeacher Context 단일화 (PR #380, 중복 fetch 차단)
 └── HelpDrawerContext.tsx  # 도움말 드로워 전역 상태 (isOpen/open/close) — P5-A
 
 src/middleware/         # API Route 미들웨어
@@ -350,6 +385,8 @@ invite_tokens      (id UUID PK, academy_id UUID FK, token TEXT UNIQUE, role TEXT
 students           (id UUID PK, academy_id UUID FK, name TEXT, gender TEXT)
 subjects           (id UUID PK, academy_id UUID FK, name TEXT, color TEXT)
 enrollments        (id UUID PK, student_id UUID FK, subject_id UUID FK)
+-- sessions: enrollment_ids JSONB 컬럼은 migration 030에서 추가됐다가 migration 044(PR #379)에서 drop.
+-- enrollment 관계는 session_enrollments(M:N) SSOT만 사용. (audit_log race 회피 + dedupe 단순화)
 sessions           (id UUID PK, academy_id UUID FK, weekday INT, starts_at TIME, ends_at TIME, room TEXT, y_position INT)
 session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
@@ -471,4 +508,16 @@ academies          (... slug TEXT UNIQUE NULL)  -- 기존 컬럼 + 추가분
 - 2026-05-04: Storybook 10 도입. `@storybook/nextjs-vite` framework, addons: addon-a11y + addon-docs. 첫 stories: SaveTemplateModal (5종 시나리오), ApplyTemplateModal (6종, 레거시 강사 없는 템플릿 호환 포함). `npm run storybook` (port 6006), `npm run build-storybook` 추가. Visual regression 도입 트리거 문서: `docs/future-work/visual-regression-trigger.md` (Stage 0~3, 임계치 컴포넌트 100+/디자이너 합류/hardcoded hex 20+/Tailwind config 분기 2회+ 등). Mac Studio M3 Ultra 도착(2026-05-07) 후 self-host visual regression(Lost Pixel/Reg-Suit) Stage 2 검토 가능.
 - 2026-05-04: UAT 수동 체크리스트 도입. `tests/manual/uat-checklist.md` — 13 카테고리 73 시나리오 + 10 edge case. Core(40분 P0)/Extended(80분 P0+P1)/Full(120분) 3-tier 실행 가이드. PR #211(템플릿 round-trip) 회귀 가드 cross-reference 포함 (S-7.1~7.8 + 자동 테스트 4개 매핑). Main 머지 전 본인이 1회 직접 실행 워크플로우 확립.
 - 2026-05-10: UAT 2026-05-10 후속 일괄 fix + 정책-스키마 일관성 (PR #338, #339, #340, ADR-014). Migration `043_drop_teachers_unique_name.sql` — `teachers_academy_id_name_key UNIQUE(academy_id, name)` 제약 제거 (동명이인 강사 등록 정책-스키마 일치, students/subjects와 일관성 회복). `useStudentManagementLocal` / `useSubjectManagementLocal` / `useTeacherManagementLocal` 추가 분기의 `showToast` 호출 제거 (토스트 중복 사고 종결, layout이 SSOT). `StudentsPageLayout` 학생 카드 amber 학년 chip(`student-grade-chip-{id}`) 노출 — 동명이인 분기에서 학년 누락 보완. `httpErrors.ts` `serializeCause` 신설 — Supabase PostgrestError 등 비-Error 객체에서 `code/message/details/hint` 추출 (`[object Object]` 직렬화 사고 종결). 신규 atom/molecule: `SubjectAddDetailModal` + `lib/subjectColors.ts` (`DEFAULT_SUBJECT_COLORS` 9색) — 학생/강사와 동일한 "+ 상세 등록" 패턴을 과목에도 도입.
+- 2026-05-13: drag-drop lane stack + Variant E lane insert UX (PR #387-#390). `LaneInsertSlot` molecule 신설 — 시간표 셀 좌/우 edge hover 시 dashed overlay + "여기 삽입" 텍스트 보여주는 droppable. cell half droppable id unique 화(빈 시간대 overlay hide). 3 시각 피드백 SSOT 통일 (lane-highlight, overlay, preview parity). `useDragController` hook 통합 (mode-aware lane-highlight + cmd-drag insert 비활성). `lib/laneInsert.ts` + compaction 알고리즘. `lib/sessionCollisionUtils.anchorStack.test.ts` — isMovingToHigherLane chain의 anchor stack 회귀 가드 (PR #387). `docs/dnd-visual-feedback.md` + design-explorations `/lane-insert` 4 variants.
+- 2026-05-13: 모달 stale studentId reconcile (PR #385/#386). `sanitizeStudentIds.ts` + `sanitizeTempEnrollments.ts` — students reconcile 후 stale id 자동 제거 (local-first id race + GroupSessionModal/EditSessionModal 양쪽 적용). memory `feedback_local_first_id_reconcile_state_sync` 영구화.
+- 2026-05-13: 다른 주로 세션 이동 (PR #378). `EditSessionModal` V3 month calendar + 날짜 chip label, weekday → weekStartDate + weekday 조합 (memory `feedback_no_paradigm_assumption` 영구화). `migrations 031: add week_start_date to sessions`. `useScheduleView` 시간표 자동 navigate.
+- 2026-05-14: Phase F perf — Context dedup (PR #380-#383). `MemberContext.tsx` 신설 + `useMyRole`/`useMyTeacher` Context 공유 (Sidebar+TopBar+Detail panel 중복 fetch 차단). `useIntegratedDataLocal` server fetch 제거. `MemberContext.useEffect` deps `user.id`로 좁힘 (중복 fetch 차단).
+- 2026-05-14: Repository row-level skip + invariant 보강 (PR #381-#382). `_helpers/mapRowsSafely.ts` — invariant 위반 row가 전체 빈 배열로 swallow 되던 함정 차단 (개별 row skip + warn). Student/Subject/Teacher/Enrollment/Session 5 repos 적용.
+- 2026-05-15: Row-level overflow expand (PR #392+#399+#397). `sessionClusters.ts` 시간대별 cluster 계산, `TimeTableRow`에 +N/− chip 클릭으로 weekday 모든 cluster 일괄 expand (Image #14 회귀 fix). `computeBulkMoveTargets` group-shift contiguous yPos 분배 (ADR-017 v2 — Option D 폐기 후 group-shift 분배 확정).
+- 2026-05-15: Notification history Phase 1 (PR #372 + 후속 PR #375). `notificationCenter` SSOT — push/subscribe/filter/dismiss. `useNotificationCenter` 훅. `NotificationBell` atom + `NotificationDropdown` molecule (Sidebar inline + TopBar compact). spec: `docs/notification-history-spec.md`. `InfoTrigger` 동심원 fix (button border 제거).
+- 2026-05-15: `middleware.ts` design-explorations 라우트 production 404 차단 (PR #374, mock 페이지 외부 노출 차단).
+- 2026-05-17: API session yPosition persist (PR #394). `/api/sessions` POST/PUT 에서 yPosition 누락 → 멀티선택 복사 후 lane 1 stack 회귀 fix. `SessionApplicationService` 전면 검증.
+- 2026-05-18: 수업 추가 모달 V3 chip+popover (PR #396). `GroupSessionModal` 요일/날짜 + 시간 chip+popover (EditSessionModal V3 패턴 미러). `GroupSessionData.weekStartDate?: string`, `SessionCreateInput.weekStartDate` 추가.
+- 2026-05-18: E2E multi-academy 안정화 + chip 일괄 expand (PR #399-#401). `seedSecondAcademy` 멱등성 + orphan sweep, multi-academy spec auth-mock pre-seed academyId.
+- 2026-05-19: Test harness — flaky 8 원칙 가드 자동화 (PR #403-#410). `eslint.config.mjs` `@typescript-eslint/no-floating-promises: warn` (Phase 1, fix는 future-work doc), `setupTests.ts` 글로벌 `afterEach(vi.clearAllMocks)` (P1-3 unit state pollution 가드), `tests/e2e/schedule-multi-select-drag` + `scroll-position-preservation` waitForTimeout 17곳 → expect.poll/waitOneFrame (P0). `docs/test-authoring-guide.md` SSOT + PreToolUse hook (`dev-pack/scripts/hooks/test-authoring-guide-hook.sh`)으로 spec 작성 시 8 원칙 가이드 auto-inject. `modal-transition.spec.ts` modalFadeIn 0.2s 회귀 가드 (P2). `share-link/teachers-crud/templates` 1주일 산발적 fail root cause fix → `gotoAuthenticated` helper (page.goto → /login redirect 감지 → reload 1회 → throw, PR #410). ADR-018 (postgres self-host 의식적 보류) + `docs/future-work/supabase-usage-tracking.md` (Phase 2 트리거 모니터 절차).
 - 2026-05-08: UAT 사고 fix + 점진적 보강 Phase 1·2 (PR #286-#290). Migration 안전망: `fullDataMigration`의 sessions POST에 `weekStartDate` fallback (PR #286), 통일 에러 응답 포맷(`{success:false, error:{code, message}}`)에 맞춘 폴백 + `extractErrorMessage` helper로 `[object Object]` 회귀 차단(PR #286), `upload-local` 자동 경로 throw 시 `toast.error` 표면화 + 앱 진입 보장(PR #287). Dedup 정책 변경: `findDuplicateStudent` graceful 매칭 — academy 단위 격리 가정으로 동명이인 0명+빈 메타 케이스에 이름 매칭 허용, 동명이인 다수일 때만 strict 비교 (PR #288). UI 점진적 보강: 학생/강사 등록 페이지 헤더 "+ 상세 등록" 진입점 + `StudentAddDetailModal`/`TeacherAddDetailModal` molecules 추가 (PR #289), 학생/강사 목록 행에 빈 메타 보강 hint(ⓘ 인디고 칩) 추가 (PR #290). 사용자 발화: 학생 추가 시점 메타 함께 입력 가능 + 등록 후에도 빈 메타 학생 발견형 인지.
