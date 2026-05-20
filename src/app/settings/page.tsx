@@ -626,10 +626,14 @@ export default function SettingsPage() {
             </div>
           </div>
           {canManage && (
+            // "+ 멤버 초대" → InviteModal (관리자/강사 둘 다 선택 가능, ADR-019 + Variant F).
+            // 이전엔 TeacherAddModal (강사 only) 만 열려 admin 초대 불가능했던 결함을
+            // PR #419 (Variant A) 에서 정정. TeacherAddModal 은 다른 진입점 (강사 페이지)
+            // 에서 여전히 사용.
             <Button
               variant="accent"
               size="small"
-              onClick={() => setAddTeacherOpen(true)}
+              onClick={() => setShowInviteModal(true)}
               className="flex-shrink-0 gap-1.5"
               data-testid="invite-member-cta"
             >

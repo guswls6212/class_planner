@@ -80,7 +80,15 @@ async function openTeacherAddModal(page: Page): Promise<void> {
 // PR C — Supabase password auth로 진짜 토큰 발급, AuthGuard 통과.
 // global-setup.ts가 e2e 시작 시 한 번 로그인하고 session.json 저장.
 // 본 spec은 injectRealSession으로 모든 page에 진짜 session 주입.
-test.describe("teachers CRUD — TeacherAddModal", () => {
+// PR #419: '+ 멤버 초대' CTA 가 TeacherAddModal → InviteModal 로 전환되어
+// TeacherAddModal 의 settings 진입점이 사라짐. 본 spec 의 모든 test 는
+// openTeacherAddModal helper 가 의존하던 진입점에 도달 불가.
+//
+// 강사 페이지(/teachers) 에 별도 진입점 신설 시 spec 부활 — describe.skip 해제
+// 후 helper 만 갱신 (모달 자체 동작 검증 로직은 그대로 유효).
+//
+// 회귀 가드는 unit (TeacherAddModal.test.tsx) 가 책임 — modal 자체 동작은 유지.
+test.describe.skip("teachers CRUD — TeacherAddModal (PR #419 — orphan, /teachers 진입점 신설 후 부활)", () => {
   test("강사 추가 버튼 클릭 시 모달이 열린다", async ({ page }) => {
     await setupAuthedSettings(page);
     await openTeacherAddModal(page);
