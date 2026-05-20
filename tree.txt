@@ -1,5 +1,4 @@
 migration/MIGRATION_GUIDE.md
-migration/backups/user_data_20260411-2300.json
 migration/migrations/000_migration_system_setup.sql
 migration/migrations/001_supabase_cross_browser_sync_setup.sql
 migration/migrations/002_user_management_tables.sql
@@ -138,6 +137,7 @@ src/app/design-explorations/edit-session-modal/page.tsx
 src/app/design-explorations/lane-insert/page.tsx
 src/app/design-explorations/notification-bell-position/page.tsx
 src/app/design-explorations/notifications/page.tsx
+src/app/design-explorations/onboarding-role/page.tsx
 src/app/design-explorations/option-c/page.tsx
 src/app/design-explorations/p4-a/page.tsx
 src/app/design-explorations/p4-b/page.tsx
@@ -155,6 +155,7 @@ src/app/layout.tsx
 src/app/login/__tests__/page.test.tsx
 src/app/login/page.tsx
 src/app/manifest.ts
+src/app/onboarding/__tests__/page.test.tsx
 src/app/onboarding/page.tsx
 src/app/page.tsx
 src/app/schedule/__tests__/edit-modal-integration.test.tsx

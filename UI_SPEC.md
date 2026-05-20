@@ -327,17 +327,22 @@ LoginPage (src/app/login/page.tsx, 309줄)
 - 미로그인 상태: "로그인" 버튼 → `/login`으로 이동
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
 
-### 2.8 온보딩 (`/onboarding`)
+### 2.8 온보딩 (`/onboarding`) — Variant E (ADR-019)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (PR #413, 2026-05-20):**
 ```
 OnboardingPage (src/app/onboarding/page.tsx)
   └── 카드형 중앙 정렬 UI (login과 동일 스타일)
         ├── "학원 정보 설정" 타이틀
         ├── 환영 메시지 (사용자 이름)
         ├── 학원명 입력 (필수, 2글자 이상, placeholder: "예: 해피수학학원")
-        ├── 역할 선택 (라디오: 원장/강사/직원)
-        └── "시작하기" 버튼 → /students 리디렉트
+        ├── amber Crown 안내 박스 (role="note"): "원장으로 등록됩니다 / 관리자·강사는 학원 생성 후 초대로 추가"
+        ├── "원장으로 학원 만들기" CTA → /students 리디렉트
+        └── secondary section ("초대 받았어요" toggle)
+              └── 클릭 시 invite 코드 input 열림
+                    ├── 초대 코드 input (URL 전체 또는 토큰 부분 모두 허용)
+                    ├── "초대 확인" → /invite/<token> redirect (URL 입력 시 path 마지막 segment 추출)
+                    └── "닫기" → 메인 폼 복귀
 ```
 
 **동작:**
@@ -345,6 +350,14 @@ OnboardingPage (src/app/onboarding/page.tsx)
 - 이미 온보딩 완료 사용자 → `/schedule` 리디렉트
 - 제출 성공 → `onboarded=1` 쿠키 설정 (서버) + `/students` 이동
 - Middleware(`src/middleware.ts`)가 `/students`, `/subjects`, `/schedule` 접근 시 쿠키 없는 로그인 사용자를 이 페이지로 가드
+
+**ADR-019 정책 (PR #413):**
+- **역할 라디오 제거** (이전 owner/admin/member 3-선택 → owner-less 유령 학원 위험 + 멤버 초대 RLS 차단 사용자 stuck)
+- **`/api/onboarding`**: client body 의 `role` 키 무시 + 무조건 `role: "owner"` 강제 (서버 안전망 — attacker 가 body 로 admin/member 보내도 owner INSERT)
+- **Academy Singularity (1+1)**: owner 1개 + invited(admin|member) 1개 = 최대 2학원. admin/member 는 초대 수락만으로 부여.
+- **학원 추가 기능 deferred**: `POST /api/academies` + sidebar "+ 새 학원" 의도적 미구현 (정책 5 트리거 도달 시 도입). Sidebar 의 "+ 새 학원 만들기" 는 disabled placeholder + tooltip "본인 학원 1개 제한 (ADR-019)".
+- design-explorations: `/design-explorations/onboarding-role` (5 variants — A/B/C/D/E 비교 + 권한 매트릭스 + 결정 표 영구 보존, production middleware 404 가드)
+- 회귀 가드: `src/app/onboarding/__tests__/page.test.tsx` (8 case), `src/app/api/onboarding/__tests__/route.test.ts` +3 (body.role={admin,member,absent} 모두 owner)
 
 ---
 

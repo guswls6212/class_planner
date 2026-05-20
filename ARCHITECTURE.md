@@ -374,6 +374,9 @@ src/utils/             # 클라이언트 유틸리티
 academies (id UUID PK, name TEXT, created_by UUID FK, created_at TIMESTAMPTZ, schedule_updated_at TIMESTAMPTZ)
 
 -- 학원 구성원 (운영자 ↔ 학원, role: owner/admin/member)
+-- ADR-019: 1인당 owner 1개 + invited(admin|member) 1개 = 최대 2학원.
+-- 첫 진입은 owner 강제 (POST /api/onboarding 서버-사이드 hardcoded), admin/member 는 초대 수락(/invite/[token]) 경로로만 부여.
+-- 정책 강제 layer: ADR + 코드 주석 + 자연 가드 (sidebar "+ 새 학원" disabled + onboarding owner-강제). DB constraint/API check 는 학원 추가 기능 도입 시 함께 (정책 5 트리거).
 academy_members (academy_id UUID FK, user_id UUID FK, role TEXT, invited_by UUID FK, joined_at TIMESTAMPTZ)
 
 -- 초대 토큰 (1회용 + 7일 만료)
@@ -519,5 +522,6 @@ academies          (... slug TEXT UNIQUE NULL)  -- 기존 컬럼 + 추가분
 - 2026-05-17: API session yPosition persist (PR #394). `/api/sessions` POST/PUT 에서 yPosition 누락 → 멀티선택 복사 후 lane 1 stack 회귀 fix. `SessionApplicationService` 전면 검증.
 - 2026-05-18: 수업 추가 모달 V3 chip+popover (PR #396). `GroupSessionModal` 요일/날짜 + 시간 chip+popover (EditSessionModal V3 패턴 미러). `GroupSessionData.weekStartDate?: string`, `SessionCreateInput.weekStartDate` 추가.
 - 2026-05-18: E2E multi-academy 안정화 + chip 일괄 expand (PR #399-#401). `seedSecondAcademy` 멱등성 + orphan sweep, multi-academy spec auth-mock pre-seed academyId.
+- 2026-05-20: ADR-019 first-user owner-강제 + Academy Singularity (PR #413). `/onboarding/page.tsx` 역할 라디오 3개 제거 → amber Crown 안내 + "원장으로 학원 만들기" + secondary "초대 받았어요" link (Variant E). `/api/onboarding` body.role 무시 + hardcoded owner. Sidebar "+ 새 학원" tooltip "본인 학원 1개 제한 (ADR-019)". 정책 영구화: owner 1 + invited 1 = 최대 2학원, 학원 추가 기능 deferred. design-explorations/onboarding-role 5 variants 영구 보존 (production middleware 404 가드).
 - 2026-05-19: Test harness — flaky 8 원칙 가드 자동화 (PR #403-#410). `eslint.config.mjs` `@typescript-eslint/no-floating-promises: warn` (Phase 1, fix는 future-work doc), `setupTests.ts` 글로벌 `afterEach(vi.clearAllMocks)` (P1-3 unit state pollution 가드), `tests/e2e/schedule-multi-select-drag` + `scroll-position-preservation` waitForTimeout 17곳 → expect.poll/waitOneFrame (P0). `docs/test-authoring-guide.md` SSOT + PreToolUse hook (`dev-pack/scripts/hooks/test-authoring-guide-hook.sh`)으로 spec 작성 시 8 원칙 가이드 auto-inject. `modal-transition.spec.ts` modalFadeIn 0.2s 회귀 가드 (P2). `share-link/teachers-crud/templates` 1주일 산발적 fail root cause fix → `gotoAuthenticated` helper (page.goto → /login redirect 감지 → reload 1회 → throw, PR #410). ADR-018 (postgres self-host 의식적 보류) + `docs/future-work/supabase-usage-tracking.md` (Phase 2 트리거 모니터 절차).
 - 2026-05-08: UAT 사고 fix + 점진적 보강 Phase 1·2 (PR #286-#290). Migration 안전망: `fullDataMigration`의 sessions POST에 `weekStartDate` fallback (PR #286), 통일 에러 응답 포맷(`{success:false, error:{code, message}}`)에 맞춘 폴백 + `extractErrorMessage` helper로 `[object Object]` 회귀 차단(PR #286), `upload-local` 자동 경로 throw 시 `toast.error` 표면화 + 앱 진입 보장(PR #287). Dedup 정책 변경: `findDuplicateStudent` graceful 매칭 — academy 단위 격리 가정으로 동명이인 0명+빈 메타 케이스에 이름 매칭 허용, 동명이인 다수일 때만 strict 비교 (PR #288). UI 점진적 보강: 학생/강사 등록 페이지 헤더 "+ 상세 등록" 진입점 + `StudentAddDetailModal`/`TeacherAddDetailModal` molecules 추가 (PR #289), 학생/강사 목록 행에 빈 메타 보강 hint(ⓘ 인디고 칩) 추가 (PR #290). 사용자 발화: 학생 추가 시점 메타 함께 입력 가능 + 등록 후에도 빈 메타 학생 발견형 인지.
