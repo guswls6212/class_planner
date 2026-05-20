@@ -71,7 +71,9 @@ async function openTeacherAddModal(page: Page): Promise<void> {
   // gotoAuthenticated — AuthGuard race 회피 (page.route GET fulfill 등록 후 page.goto 시
   // ~10-20% 빈도로 /login redirect 발생하던 fail 가드. flaky audit 2026-05-19).
   await gotoAuthenticated(page, "/settings");
-  await page.getByRole("button", { name: /^강사 추가$/ }).first().click();
+  // settings 팀 섹션 CTA 는 PR #417 부터 "멤버 초대" 라벨 (data-testid="invite-member-cta").
+  // 모달 자체 heading 은 TeacherAddModal 내부의 "강사 추가" 유지 — 모달 컴포넌트는 본 PR 손대지 않음.
+  await page.getByTestId("invite-member-cta").click();
   await expect(page.getByRole("heading", { name: "강사 추가" })).toBeVisible();
 }
 

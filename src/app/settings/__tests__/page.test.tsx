@@ -55,7 +55,7 @@ describe("Settings Page", () => {
     });
   });
 
-  it("강사 추가 버튼이 존재한다", async () => {
+  it("멤버 초대 버튼이 존재한다", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/api/members")) {
         return Promise.resolve({
@@ -76,7 +76,7 @@ describe("Settings Page", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("강사 추가")).toBeInTheDocument();
+      expect(screen.getByText(/멤버 초대/)).toBeInTheDocument();
     });
   });
 
