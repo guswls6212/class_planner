@@ -415,40 +415,65 @@ main push → Docker image build → ghcr.io push → Lightsail SSH deploy → h
 
 ## 6. UAT 절차 (수동 acceptance test)
 
-PR #240 (2026-05-05) 도입. e2e와 별도 유지 — UAT는 **사용자(개발자) 수동 시나리오 검증**, e2e는 **CI 자동 회귀 가드**.
+PR #240 (2026-05-05) 도입. 2026-05-20 부터 **3 계정 (owner/admin/member) + 10-Phase 흐름** 모델로 전환. e2e 와 별도 유지 — UAT 는 **사용자(개발자) 수동 시나리오 검증**, e2e 는 **CI 자동 회귀 가드**.
 
 ### 6.1 UAT vs e2e vs Smoke
 
-| 계층 | 도구 | 시간 | 모드 |
-|---|---|---|---|
-| **e2e** | Playwright Chromium | 5-10분 | 자동 (CI 매 PR) |
-| **수동 smoke (Core)** | UAT P0 19개 | 40분 | 수동 (dev→main 전) |
-| **UAT (Extended)** | UAT P0+P1 | 80분 | 수동 (주요 release 전) |
-| **UAT (Full)** | UAT 전체 73 시나리오 | 120분 | 수동 (분기 release) |
+| 계층 | 도구 | 시간 | 계정 | 모드 |
+|---|---|---|---|---|
+| **e2e** | Playwright Chromium | 5-10분 | E2E_TEST_USER | 자동 (CI 매 PR) |
+| **Smoke** | UAT P0 핵심 5개 (S-1.1/2.1/5.6/12.1/14.1) | 10-15분 | owner 1 계정 | 수동 (dev→main 전) |
+| **Release UAT** | UAT 전체 §1~§21 + Edge (P0 50개) | 180분 | 3 계정 + incognito | 수동 (분기 release / 큰 리팩터 후) |
 
-UAT 시나리오 SSOT: `tests/manual/uat-checklist.md` (Core/Extended/Full 모드 분기).
+UAT 시나리오 SSOT: `tests/manual/uat-checklist.md` (Smoke/Release 모드 + 10-Phase 가이드).
 
-### 6.2 UAT 환경 셋업 (멱등)
+### 6.2 UAT 환경 셋업 (멱등) — 3 계정
 
 ```bash
-# .env.local에 추가 (e2e와 별도 user — 격리)
-UAT_TEST_USER_EMAIL=info365001.uat.test@gmail.com
-UAT_TEST_USER_PASSWORD=<강한 password>
+# .env.local 에 추가 (e2e 와 별도 user — 격리)
+UAT_TEST_OWNER_EMAIL=uat-owner@class-planner.test
+UAT_TEST_OWNER_PASSWORD=<강한 password>
+UAT_TEST_ADMIN_EMAIL=uat-admin@class-planner.test
+UAT_TEST_ADMIN_PASSWORD=<강한 password>
+UAT_TEST_MEMBER_EMAIL=uat-member@class-planner.test
+UAT_TEST_MEMBER_PASSWORD=<강한 password>
 
-# 1회 셋업 (이미 있으면 skip)
+# 1회 셋업 — 3 계정 모두 멱등 생성 (이미 있으면 password 갱신)
 npm run uat:setup
 ```
 
-`E2E_TEST_USER_*` 와 별도 user. 같은 Supabase 프로젝트지만 **user_id 단위 격리** — UAT 데이터 cleanup이 e2e에 영향 없음.
+| 계정 | 역할 (academy_members.role) | 검증 시나리오 |
+|---|---|---|
+| OWNER | owner (학원장) | Phase 2 첫 학원 생성 + Phase 3 owner 권한 전체 |
+| ADMIN | admin (관리자) | Phase 4 §19 — invite 4-state + admin CUD + owner 강등 차단 |
+| MEMBER | member (멤버=강사 본인) | Phase 5 §20 — teacher_id link + /teacher-schedule + RBAC 차단 |
 
-### 6.3 시나리오별 데이터 시드 + cleanup
+> 학생 / 학부모 view = **계정 X**. 별도 incognito 창 + share-link / 6자리 access-code 로 검증 (Phase 6 §21).
+> legacy `UAT_TEST_USER_*` 도 인식 (OWNER 로 fallback, 1주일 alias 후 deprecated).
+
+`E2E_TEST_USER_*` 와 별도 user. 같은 Supabase 프로젝트지만 **user_id 단위 격리** — UAT 데이터 cleanup 이 e2e 에 영향 없음.
+
+### 6.3 매 사이클 명령
 
 ```bash
-npm run uat:seed       # academy + sample students/subjects/sessions seed
-npm run uat:teardown   # academy_members 단위 모든 데이터 삭제
+# 0. cleanup — 3 계정 모두 fresh-start (academy/member/invite 모두 정리, user 보존)
+npm run uat:teardown                            # default: all
+npm run uat:teardown -- --user owner            # 특정 역할만 (owner | admin | member)
+
+# Phase 2 진입 — owner academy + 시드 데이터 (학생/과목/강사/세션)
+npm run uat:seed
+
+# Phase 4/5 진입 — admin/member 자동 초대 + 수락 fast-path
+npm run uat:invite                              # default: admin + member 두 역할
+npm run uat:invite -- --role admin              # admin 만
+npm run uat:invite -- --role member             # member 만 (teacher "강사_uat" 자동 link)
 ```
 
-`scripts/setup-uat-test-user.ts` 가 email lookup으로 user_id 자동 발견 → 환경변수 minimum (EMAIL/PASSWORD 두 줄만 필수).
+> **uat:invite 와 UI 초대 (S-19.1, S-20.1) 둘 다 필요**:
+> - UI 초대: invite 발급 + 4-state 페이지 + accept 흐름 자체 검증 — **매 Release UAT 직접 실행 의무**.
+> - uat:invite 스크립트: 그 외 시나리오 (admin RBAC / member /teacher-schedule view) 빠른 진입용 alt path.
+
+`scripts/uat-cleanup-helper.ts` 가 email lookup 으로 user_id 자동 발견 → 환경변수 minimum (EMAIL/PASSWORD 만 필수).
 
 ### 6.4 console.uat 자동 inject
 

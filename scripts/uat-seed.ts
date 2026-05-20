@@ -1,5 +1,5 @@
 /**
- * UAT 인증 모드 시드 데이터 INSERT — UAT_TEST_USER의 academy에 직접 INSERT.
+ * UAT 인증 모드 시드 데이터 INSERT — owner academy 에 직접 INSERT.
  *
  * 실행:
  *   cd class-planner
@@ -8,12 +8,19 @@
  *
  * Prerequisites (.env.local):
  *   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   UAT_TEST_USER_EMAIL  (필수 — email 기반 자동 lookup)
- *   UAT_TEST_USER_ID, UAT_TEST_ACADEMY_ID  (선택 — 적어두면 lookup 생략)
+ *
+ *   # 신규 권장
+ *   UAT_TEST_OWNER_EMAIL=uat-owner@class-planner.test
+ *   UAT_TEST_OWNER_ID    (선택)
+ *   UAT_TEST_OWNER_ACADEMY_ID (선택)
+ *
+ *   # Legacy (deprecated, owner 로 인식)
+ *   UAT_TEST_USER_EMAIL=...
+ *   UAT_TEST_USER_ID, UAT_TEST_ACADEMY_ID
  *
  * 동작:
- * 1. UAT_TEST_USER_ID/ACADEMY_ID 없으면 email로 자동 lookup
- * 2. 같은 academy의 기존 시드 데이터 cleanup (uat-teardown.ts 와 동일 로직)
+ * 1. UAT_TEST_OWNER_ID/ACADEMY_ID 없으면 email 로 자동 lookup
+ * 2. 같은 academy 의 기존 시드 데이터 cleanup (멱등 재시드)
  * 3. 신규 INSERT:
  *    - subjects: 수학(#FF0000), 영어(#00FF00)
  *    - teachers: 김선생(#6366f1), 이선생(#0891b2)
@@ -25,7 +32,7 @@
  *   migration/migrations/016_create_academy_tables.sql (subjects/students/sessions/enrollments/session_enrollments)
  *   migration/migrations/024_add_teachers.sql (teachers + sessions.teacher_id)
  *
- * 멱등 — cleanup 후 재시드.
+ * 멱등 — cleanup 후 재시드. admin/member 시드는 별도 uat-invite-seed.ts 사용.
  */
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
@@ -64,15 +71,18 @@ function loadDotEnv(file: string): EnvFile {
 
 async function main(): Promise<void> {
   const envLocal = loadDotEnv(path.join(process.cwd(), ".env.local"));
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? envLocal.SUPABASE_SERVICE_ROLE_KEY;
-  const email = process.env.UAT_TEST_USER_EMAIL ?? envLocal.UAT_TEST_USER_EMAIL;
+  const get = (k: string): string | undefined =>
+    process.env[k] ?? envLocal[k] ?? undefined;
+
+  const url = get("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceKey = get("SUPABASE_SERVICE_ROLE_KEY");
+
+  // 신규 env 우선, legacy fallback
+  const email = get("UAT_TEST_OWNER_EMAIL") ?? get("UAT_TEST_USER_EMAIL");
   let userId: string | undefined =
-    process.env.UAT_TEST_USER_ID ?? envLocal.UAT_TEST_USER_ID;
+    get("UAT_TEST_OWNER_ID") ?? get("UAT_TEST_USER_ID");
   let academyId: string | undefined =
-    process.env.UAT_TEST_ACADEMY_ID ?? envLocal.UAT_TEST_ACADEMY_ID;
+    get("UAT_TEST_OWNER_ACADEMY_ID") ?? get("UAT_TEST_ACADEMY_ID");
 
   if (!url || !serviceKey) {
     console.error("❌ NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY 누락");
@@ -80,8 +90,8 @@ async function main(): Promise<void> {
   }
   if (!email && (!userId || !academyId)) {
     console.error(
-      "❌ UAT_TEST_USER_EMAIL 누락. .env.local에 추가 필요. " +
-        "(또는 UAT_TEST_USER_ID + UAT_TEST_ACADEMY_ID 둘 다 직접 지정)",
+      "❌ UAT_TEST_OWNER_EMAIL 누락. .env.local 에 추가 필요. " +
+        "(legacy UAT_TEST_USER_EMAIL fallback 도 인식)",
     );
     process.exit(1);
   }
@@ -92,21 +102,21 @@ async function main(): Promise<void> {
 
   // ID 미지정 시 email로 자동 lookup
   if (!userId) {
-    console.log(`🔍 email로 user 조회: ${email}`);
+    console.log(`🔍 owner email 로 user 조회: ${email}`);
     userId = (await findUserIdByEmail(sbAdmin, email!)) ?? undefined;
     if (!userId) {
       console.error(
-        `❌ user 없음 (email=${email}). npm run uat:setup 먼저 실행하세요.`,
+        `❌ owner user 없음 (email=${email}). npm run uat:setup 먼저 실행하세요.`,
       );
       process.exit(1);
     }
   }
   if (!academyId) {
     academyId = (await findAcademyIdForOwner(sbAdmin, userId)) ?? undefined;
-    // academy 없으면 자동 생성 (uat-teardown 후 fresh-start 가정 — sucrose 2026-05-07)
+    // academy 없으면 자동 생성 (uat-teardown 후 fresh-start 가정)
     // S-1.5 시나리오 거치지 않고 seed 만 호출하는 케이스 대응
     if (!academyId) {
-      console.log("ℹ️  user 에게 academy 없음 — 새로 생성 (UAT Test Academy)");
+      console.log("ℹ️  owner 에게 academy 없음 — 새로 생성 (UAT Test Academy)");
       const { data: newAcademy, error: academyErr } = await sbAdmin
         .from("academies")
         .insert({ name: "UAT Test Academy", created_by: userId })
@@ -199,7 +209,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // 6. sessions: 월/수/금 09:00-10:00 + 김선생 + 수학 (teacher_id, 014에서 추가)
+  // 6. sessions: 월/수/금 09:00-10:00 + 김선생 + 수학 (teacher_id, 024에서 추가)
   console.log("📅 sessions INSERT (월/수/금 09:00-10:00)");
   const { data: sessions, error: sessionsError } = await sbAdmin
     .from("sessions")
@@ -249,7 +259,7 @@ async function main(): Promise<void> {
   }
 
   console.log("");
-  console.log("✅ UAT 시드 완료:");
+  console.log("✅ UAT 시드 완료 (owner academy):");
   console.log(`   - subjects: 2 (수학 #FF0000, 영어 #00FF00)`);
   console.log(`   - teachers: 2 (김선생 #6366f1, 이선생 #0891b2)`);
   console.log(`   - students: 3 (홍길동, 김영수, 박지수)`);
@@ -258,9 +268,10 @@ async function main(): Promise<void> {
   console.log("");
   console.log("📝 다음:");
   console.log(
-    "  - 브라우저에서 UAT_TEST_USER_EMAIL로 password 로그인 → /schedule 진입",
+    "  - 브라우저에서 UAT_TEST_OWNER_EMAIL 로 password 로그인 → /schedule 진입",
   );
   console.log("  - 시드 데이터 표시 확인 후 시나리오 진행");
+  console.log("  - admin/member 빠른 진입 필요 시: npm run uat:invite");
   console.log("  - 끝나면 npm run uat:teardown");
 }
 

@@ -36,6 +36,7 @@
     "build-storybook": "storybook build",
     "uat:setup": "npx tsx scripts/setup-uat-test-user.ts",
     "uat:seed": "npx tsx scripts/uat-seed.ts",
+    "uat:invite": "npx tsx scripts/uat-invite-seed.ts",
     "uat:teardown": "npx tsx scripts/uat-teardown.ts"
   },
   "dependencies": {
