@@ -348,7 +348,7 @@ npm run uat:teardown
 
 ---
 
-## 1. Auth & 학원 셋업 (P0: 2 / 6) [40분 Core 포함]
+## 1. Auth & 학원 셋업 (P0: 2 / 7) [40분 Core 포함]
 
 > **순서 정책 (2026-05-09 갱신)** — 비로그인/로그인 state 토글이 잦으면 매번
 > `npm run uat:teardown`/재로그인 비효율. **비로그인 그룹 → transition → 로그인
@@ -400,17 +400,46 @@ uat.countAPIcalls('/api/sessions') === 0;  // → true (서버 호출 0건)
 
 ### §1.B Transition (비로그인 → 로그인)
 
-### S-1.5 첫 로그인 — 학원 자동 생성 [P0]
+### S-1.5 첫 로그인 — 학원 자동 생성 (원장 강제) [P0] ⚠️ ADR-019
 **Pre:** S-1.4 직후 (anonymous에 데이터 있음) + 신규 사용자 (academy_members row 없음). 재현 방법 — `npm run uat:teardown` 으로 UAT_TEST_USER 의 academy 까지 cleanup → 그 user 로 로그인 시 신규 사용자 상태. 또는 별도 신규 OAuth 계정 사용.
 **Steps:**
 1. OAuth 로그인 후 `/onboarding` 진입
-2. 학원명 입력 (2자 이상)
-3. "학원 생성" 클릭
+2. **역할 라디오가 표시되지 않는 것 확인** (ADR-019 — 원장 자동, 이전 owner/admin/member 라디오 제거)
+3. **amber Crown 안내 박스 확인** ("원장으로 등록됩니다" + "직접 생성한 학원의 owner 권한을 받습니다")
+4. 학원명 입력 (2자 이상)
+5. "원장으로 학원 만들기" 클릭 (이전 "시작하기" → 변경)
 **Expected:**
 - **`/students` 라우팅** (학원 생성 직후 학생 등록 안내가 자연스러운 흐름이라는 설계 의도 — `docs/superpowers/plans/2026-04-14-onboarding-flow.md` 참조. 익명/재방문은 `/schedule`로 가지만 신규 학원 생성 직후만 `/students`로 의도적 분기)
-- 사이드바 상단에 학원명 + Academy Switcher 표시
-- API `/api/academies` POST 성공 (Network 확인)
+- 사이드바 상단에 학원명 + Academy Switcher 표시 + 본인 role = **owner** (Settings 멤버 목록에서 확인 가능)
+- API `POST /api/onboarding` 호출 — body에 `role` 필드 없음 (client 측). server-side는 무조건 owner.
 - **anonymous → server 자동 마이그 (`upload-local` 경로) 트리거** (PR #294 fix). 충돌 모달은 server 비어있어 안 뜨는 게 정상. PR #295 후엔 마이그 직후 "시간표가 새로 갱신되었어요" 토스트 false positive 발화 안 함.
+
+**회귀 가드 — body.role 강제 owner (server-side 안전망):**
+DevTools Network 탭에서 `/api/onboarding` 요청 직접 수정해 `role: "admin"` 보내도 server-side에서 무시 → academy_members.role = "owner" 확인.
+```js
+// /api/members 응답에서 본인 role 확인
+const userId = localStorage.getItem('supabase_user_id');
+fetch(`/api/members?userId=${userId}`).then(r=>r.json()).then(j=>{
+  const me = j.data?.find(m=>m.userId===userId);
+  console.log('my role:', me?.role); // → "owner"
+});
+```
+**Result:** [ ] Pass [ ] Fail — note: ___
+
+### S-1.5b 첫 로그인 — "초대 받았어요" escape hatch [P1] ⚠️ ADR-019
+**Pre:** S-1.5와 동일 (신규 사용자, 학원 없음)
+**Steps:**
+1. OAuth 로그인 후 `/onboarding` 진입
+2. 하단 "초대 받았어요 — 코드 입력하기 →" 클릭 (`data-testid="invite-toggle"`)
+3. 초대 코드 input 표시 확인 (`data-testid="invite-section"`)
+4. 임의 초대 코드 입력 (예: `test-token-123`) → "초대 확인" 클릭
+**Expected:**
+- `/invite/test-token-123` 로 router.push
+- 유효 초대 코드면 4-state 페이지 (state-a/b/c/d) 표시
+- 잘못된 코드면 invalid 페이지 표시
+- "닫기" 클릭 시 onboarding 메인 폼으로 복귀
+- 학원 URL 전체 입력 시 (예: `https://example.com/invite/abc`) token 추출(`abc`) 후 redirect
+**Result:** [ ] Pass [ ] Fail — note: ___
 
 **검증 방법** (DevTools 콘솔 — userId + activeAcademyId 둘 다 set 됐는지):
 ```js
@@ -2373,5 +2402,6 @@ Issue 등록 형식:
 - 2026-05-12 (2): **§18 EditSessionModal 재설계 + V1 validation 신설** — 6개 시나리오, P0 3개 (학생 0명 저장 차단 / 요일 chip popover / 시간 chip popover). 영향: `EditSessionModal.tsx` 헤더 read-only 카드 → chip + popover (요일/시간), body weekday/time select 제거, footer V1-disabled validation + helper text, handleSave 학생 0명 가드. 기존 picker(`TeacherPillPicker`/`StudentChip`/colorPanel) 100% 보존. 회귀 가드: 45 RTL passed (10 기존 갱신 + 5 신규 validation). spec SSOT: [`docs/edit-session-modal-redesign-spec.md`](../../docs/edit-session-modal-redesign-spec.md) (14 AC). 총 P0: 36 → 39.
 - 2026-05-13: **§18 S-18.9 추가 + S-18.8 V3 month calendar** (PR #375/#378) — `EditSessionModal` 다른 주 날짜 이동 (weekday → weekStartDate + weekday paradigm, memory `feedback_no_paradigm_assumption`) + 헤더 chip "X월 Y일 (요일)" + V3 month calendar popover. 시간표 자동 navigate 검증. 총 P0: 39 → 41.
 - 2026-05-19: **§5/§6 누적 dev 변경 동기화** — S-5.24 (수업 추가 모달 V3 chip+popover, PR #396, P0), S-5.25 (row-level overflow expand +N/− chip, PR #392/#399, P0), S-6.11 (Lane insert edge hover slot, PR #388, P1), S-6.12 (드래그 3 시각 피드백 SSOT 통일, PR #389/#390, P1) 추가. §5 P0 10→12 / 21→25, §6 P0 2 / 10→12. 총 P0: 41 → 43. 영향: GroupSessionModal V3 패턴(EditSessionModal V3 미러), `sessionClusters.ts`, `lib/laneInsert.ts`, `useDragController` mode-aware lane-highlight, `LaneInsertSlot` molecule.
+- 2026-05-20: **§1 S-1.5 갱신 + S-1.5b 신설** (ADR-019 first-user owner-enforcement + academy singularity 1+1). 영향: `/onboarding/page.tsx` 역할 라디오 3개 제거 (owner/admin/member → owner 자동), amber Crown 안내 박스 추가, "원장으로 학원 만들기" CTA, "초대 받았어요" secondary link → `/invite/[token]` redirect. `/api/onboarding` body.role 무시 + hardcoded owner. Sidebar "+ 새 학원 만들기" tooltip "본인 학원 1개 제한 (ADR-019)". 정책 영구화: owner 1개 + invited 1개 = 최대 2학원, 학원 추가 기능 deferred. 총 §1 P0 2 / 6→7 (S-1.5b 신설).
 - 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
 - 2026-05-12 (4): **§18 보강 — 다른 주 날짜로 세션 이동 + 시간표 자동 navigate** (사용자 발견: paradigm 재해석). 잘못된 paradigm 가정 fix — schedule은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"**. 데이터 모델(`planner.ts`)이 이미 둘 다 보존. 변경: API/Service/Repo chain 모두 `weekStartDate` forward + EditSessionModal `selectedWeekStart` state + onSave `(weekday, weekStartDate?)` 시그니처 + schedule page `setSelectedDate` navigate. footer 안내 "주간 반복" → "그 날짜로 이동". S-18.9(P0) 추가, AC-20~22 추가. P0: 40 → 41. 회귀 가드 236 tests pass.
