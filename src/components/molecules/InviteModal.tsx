@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import { showError } from "@/lib/toast";
 import { Select } from "@/components/atoms/Select";
-import { ROLE_DESCRIPTORS, ROLE_ICONS } from "@/lib/rolePermissions";
+import {
+  ROLE_DESCRIPTORS,
+  ROLE_ICONS,
+  getRolePermissionsPreview,
+} from "@/lib/rolePermissions";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "관리자",
@@ -218,7 +222,7 @@ export default function InviteModal({
                 </p>
               </div>
               <ul className="space-y-1 text-[12px] text-[var(--color-text-secondary)]">
-                {ROLE_DESCRIPTORS[inviteRole].permissions.slice(0, 4).map((p, i) => (
+                {getRolePermissionsPreview(inviteRole).map((p, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     {p.ok ? (
                       <Check size={12} className="text-emerald-400 mt-0.5 shrink-0" />

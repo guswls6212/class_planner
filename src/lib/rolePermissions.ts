@@ -123,6 +123,26 @@ export const ROLE_ICONS: Record<RoleKey, LucideIcon> = {
 export const ROLE_KEYS_ORDERED: RoleKey[] = ["owner", "admin", "member"];
 
 /**
+ * 권한 미리보기 시 표시할 항목 개수 (SSOT).
+ *
+ * 모든 미리보기 UI (RolePermissionCards / InviteModal 권한 미리보기 / 향후
+ * tooltip) 가 동일 개수 사용 → 사용자가 같은 역할의 권한을 어디서 보든
+ * 동일하게 인지. 카드별 N 차이는 "왜 페이지별로 다르지?" 혼란 유발 (사용자
+ * 발견 2026-05-21).
+ *
+ * permissions 전체(5개)는 detail view 또는 향후 "전체 보기" link 에서 노출.
+ */
+export const ROLE_PERMISSIONS_PREVIEW_COUNT = 4;
+
+/**
+ * 권한 미리보기 항목 반환 (SSOT helper).
+ * 모든 미리보기 UI 는 본 함수만 호출 — slice/take 직접 호출 금지.
+ */
+export function getRolePermissionsPreview(role: RoleKey): { ok: boolean; text: string }[] {
+  return ROLE_DESCRIPTORS[role].permissions.slice(0, ROLE_PERMISSIONS_PREVIEW_COUNT);
+}
+
+/**
  * 초대 가능한 role 목록 (현재 사용자 role 기준).
  * - owner: admin, member 모두 가능
  * - admin: member 만 가능 (다른 관리자 초대는 원장만)
