@@ -51,6 +51,10 @@ export type Session = {
   room?: string; // 강의실 (선택적)
   yPosition?: number; // 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
   teacherId?: string | null; // 담당 강사 ID (선택적, null = 강사 없음)
+  // migration 039 — sessions.public_description / internal_note column.
+  // public_description 은 학생/학부모 share view 에 노출. internal_note 는 운영자 전용.
+  publicDescription?: string | null;
+  internalNote?: string | null;
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입
