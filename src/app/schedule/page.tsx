@@ -44,6 +44,9 @@ import { DayChipBar } from "../../components/molecules/DayChipBar";
 import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
 import SegmentedButton from "../../components/atoms/SegmentedButton";
 import ColorByToggle from "../../components/molecules/ColorByToggle";
+import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
+import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
+import { findClosestMatchingWeek } from "./_utils/findClosestMatchingWeek";
 import type { ScheduleViewMode } from "../../hooks/useScheduleView";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useLocal } from "../../hooks/useLocal";
@@ -170,6 +173,18 @@ const ScheduleMonthlyView = dynamic(
   () => import("../../components/organisms/ScheduleMonthlyView"),
   { ssr: false, loading: () => null }
 );
+
+/**
+ * "YYYY-MM-DD" KST 월요일 → "M월 D일 — M월 D일" 표시 (banner용).
+ */
+function formatBannerWeekRange(mondayIso: string): string {
+  const monday = new Date(`${mondayIso}T12:00:00+09:00`);
+  if (isNaN(monday.getTime())) return mondayIso;
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
+  return `${fmt(monday)} — ${fmt(sunday)}`;
+}
 
 /**
  * 페이지 엔트리 컴포넌트
@@ -839,15 +854,238 @@ function SchedulePageContent(): JSX.Element {
     );
   }, []);
 
-  // Option C — 자동 colorBy: 단일 type 필터 활성 → 그 type 색, 혼합/없음 → subject
+  // ADR-020 R5: "학생" 모드 폐기. 단일 강사 필터만 자동 teacher 모드.
+  // 학생 chip 활성은 dim contrast 로만 표현 (colorBy 영향 X).
   const autoColorBy = useMemo(() => {
     const hasStudent = selectedStudentIds.length > 0;
     const hasTeacher = selectedTeacherIds.length > 0;
     const hasSubject = selectedSubjectIds.length > 0;
-    if (hasStudent && !hasTeacher && !hasSubject) return "student" as const;
     if (hasTeacher && !hasStudent && !hasSubject) return "teacher" as const;
     return "subject" as const;
   }, [selectedStudentIds, selectedTeacherIds, selectedSubjectIds]);
+
+  // ADR-020 보강 (UAT 2026-05-21): 필터 옵션 cascading.
+  // 활성/비활성 type 모두 narrowing — 현재 selected 의 AND 매칭 session 에 나타나는 entity 만 표시.
+  // selected 자기 자신은 자기 type 에 항상 등장 (chip 해제 가능).
+  // 로직 본체는 `_utils/cascadeFilterOptions.ts` — 단위 테스트 가능한 형태.
+  const cascadedFilterOptions = useMemo(
+    () =>
+      cascadeFilterOptions({
+        students,
+        subjects,
+        teachers,
+        sessions,
+        enrollments,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+      }),
+    [
+      students,
+      subjects,
+      teachers,
+      sessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+    ],
+  );
+
+  // ADR-020 보강 (UAT 2026-05-21): cross-week filter empty.
+  // 현재 주에 매칭 0 + 다른 주에 매칭 1+ 이면 inline banner 표시 (Variant C). weekly view 한정.
+  // 로직 본체는 `_utils/findClosestMatchingWeek.ts` — 단위 테스트 가능한 형태.
+  const closestMatchingWeek = useMemo(() => {
+    if (viewMode !== "weekly") return null;
+    return findClosestMatchingWeek({
+      sessions,
+      enrollments,
+      currentWeekStart,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+    });
+  }, [
+    viewMode,
+    sessions,
+    enrollments,
+    currentWeekStart,
+    selectedStudentIds,
+    selectedSubjectIds,
+    selectedTeacherIds,
+  ]);
+
+  // Auto-deselect: selected 가 cascading 매칭 set 에 없어졌으면 silent 해제.
+  // 사용자 결정: 토스트 없이 단순 정리 (Variant C 의 N/M badge 가 cascading 인지 신호 제공).
+  // 다른 chip 선택으로 인해 이전 selected 와 매칭 sessions 가 0 이 된 경우 모두 해제 → reset.
+  useEffect(() => {
+    // corrupted localStorage (object 등) 방어. useLocal 이 type 검증 X.
+    if (
+      !Array.isArray(selectedStudentIds) ||
+      !Array.isArray(selectedSubjectIds) ||
+      !Array.isArray(selectedTeacherIds)
+    ) {
+      return;
+    }
+    if (
+      selectedStudentIds.length === 0 &&
+      selectedSubjectIds.length === 0 &&
+      selectedTeacherIds.length === 0
+    ) {
+      return;
+    }
+    const matching = sessions.filter((s) =>
+      sessionMatchesFilters(
+        s,
+        enrollments,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+      ),
+    );
+    const enrollmentById = new Map(enrollments.map((e) => [e.id, e]));
+    const validStudents = new Set<string>();
+    const validSubjects = new Set<string>();
+    const validTeachers = new Set<string>();
+    for (const sess of matching) {
+      for (const eid of sess.enrollmentIds ?? []) {
+        const e = enrollmentById.get(eid);
+        if (e) {
+          validStudents.add(e.studentId);
+          validSubjects.add(e.subjectId);
+        }
+      }
+      if (sess.teacherId) validTeachers.add(sess.teacherId);
+    }
+    const nextStudents = selectedStudentIds.filter((id) => validStudents.has(id));
+    const nextSubjects = selectedSubjectIds.filter((id) => validSubjects.has(id));
+    const nextTeachers = selectedTeacherIds.filter((id) => validTeachers.has(id));
+    if (nextStudents.length !== selectedStudentIds.length) {
+      selectedStudentIds
+        .filter((id) => !validStudents.has(id))
+        .forEach((id) => toggleStudentFilter(id));
+    }
+    if (nextSubjects.length !== selectedSubjectIds.length) {
+      setSelectedSubjectIds(nextSubjects);
+    }
+    if (nextTeachers.length !== selectedTeacherIds.length) {
+      selectedTeacherIds
+        .filter((id) => !validTeachers.has(id))
+        .forEach((id) => toggleTeacherFilter(id));
+    }
+  }, [
+    sessions,
+    enrollments,
+    selectedStudentIds,
+    selectedSubjectIds,
+    selectedTeacherIds,
+    toggleStudentFilter,
+    toggleTeacherFilter,
+  ]);
+
+  // chip 추가 검증 — 새 chip 으로 인해 매칭 0 되면 추가 거부 + 토스트 (Edge 1, option b).
+  // 기존 selected 해제는 거부 없이 항상 허용.
+  const tryToggleStudent = useCallback(
+    (id: string) => {
+      if (selectedStudentIds.includes(id)) {
+        toggleStudentFilter(id);
+        return;
+      }
+      const nextStudents = [...selectedStudentIds, id];
+      const wouldMatch = sessions.some((s) =>
+        sessionMatchesFilters(
+          s,
+          enrollments,
+          nextStudents,
+          selectedSubjectIds,
+          selectedTeacherIds,
+        ),
+      );
+      if (!wouldMatch) {
+        const name = students.find((s) => s.id === id)?.name ?? "이 학생";
+        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+        return;
+      }
+      toggleStudentFilter(id);
+    },
+    [
+      students,
+      sessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+      toggleStudentFilter,
+    ],
+  );
+
+  const tryToggleSubject = useCallback(
+    (id: string) => {
+      if (selectedSubjectIds.includes(id)) {
+        toggleSubjectFilter(id);
+        return;
+      }
+      const nextSubjects = [...selectedSubjectIds, id];
+      const wouldMatch = sessions.some((s) =>
+        sessionMatchesFilters(
+          s,
+          enrollments,
+          selectedStudentIds,
+          nextSubjects,
+          selectedTeacherIds,
+        ),
+      );
+      if (!wouldMatch) {
+        const name = subjects.find((s) => s.id === id)?.name ?? "이 과목";
+        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+        return;
+      }
+      toggleSubjectFilter(id);
+    },
+    [
+      subjects,
+      sessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+      toggleSubjectFilter,
+    ],
+  );
+
+  const tryToggleTeacher = useCallback(
+    (id: string) => {
+      if (selectedTeacherIds.includes(id)) {
+        toggleTeacherFilter(id);
+        return;
+      }
+      const nextTeachers = [...selectedTeacherIds, id];
+      const wouldMatch = sessions.some((s) =>
+        sessionMatchesFilters(
+          s,
+          enrollments,
+          selectedStudentIds,
+          selectedSubjectIds,
+          nextTeachers,
+        ),
+      );
+      if (!wouldMatch) {
+        const name = teachers.find((t) => t.id === id)?.name ?? "이 강사";
+        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+        return;
+      }
+      toggleTeacherFilter(id);
+    },
+    [
+      teachers,
+      sessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+      toggleTeacherFilter,
+    ],
+  );
 
   useEffect(() => {
     if (!isP3) return;
@@ -2142,15 +2380,18 @@ function SchedulePageContent(): JSX.Element {
         <PrimarySidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          students={students}
+          students={cascadedFilterOptions.students}
+          totalStudents={students.length}
           selectedStudentIds={selectedStudentIds}
-          onToggleStudent={toggleStudentFilter}
-          subjects={subjects}
+          onToggleStudent={tryToggleStudent}
+          subjects={cascadedFilterOptions.subjects}
+          totalSubjects={subjects.length}
           selectedSubjectIds={selectedSubjectIds}
-          onToggleSubject={toggleSubjectFilter}
-          teachers={teachers}
+          onToggleSubject={tryToggleSubject}
+          teachers={cascadedFilterOptions.teachers}
+          totalTeachers={teachers.length}
           selectedTeacherIds={selectedTeacherIds}
-          onToggleTeacher={toggleTeacherFilter}
+          onToggleTeacher={tryToggleTeacher}
         />
       )}
     <div
@@ -2211,8 +2452,9 @@ function SchedulePageContent(): JSX.Element {
         </div>
       </div>
 
-      {/* default 모드 — 기존 chip bar 그대로. P3 모드는 floating toolbar의 통합 필터로 이동. */}
-      {!isP3 && colorBy === "student" && (
+      {/* default 모드 — 기존 chip bar 그대로. P3 모드는 floating toolbar의 통합 필터로 이동.
+       * ADR-020 R5: colorBy="student" 모드 폐기. backup UI 의 학생 chip bar 는 mode 무관 항상 표시. */}
+      {!isP3 && (
         <StudentFilterChipBar
           students={students}
           selectedStudentIds={selectedStudentIds}
@@ -2303,6 +2545,8 @@ function SchedulePageContent(): JSX.Element {
           selectedWeekday={selectedWeekday}
           colorBy={colorBy}
           selectedStudentIds={selectedStudentIds}
+          selectedSubjectIds={selectedSubjectIds}
+          selectedTeacherIds={selectedTeacherIds}
           onSessionClick={handleSessionClick}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
@@ -2317,6 +2561,8 @@ function SchedulePageContent(): JSX.Element {
           teachers={teachers}
           colorBy={colorBy}
           selectedStudentIds={selectedStudentIds}
+          selectedSubjectIds={selectedSubjectIds}
+          selectedTeacherIds={selectedTeacherIds}
           currentDate={selectedDate}
           onDayClick={(date) => {
             setSelectedDate(date);
@@ -2331,6 +2577,41 @@ function SchedulePageContent(): JSX.Element {
             onDelete={handleBulkDelete}
             onClear={sessionSelection.clear}
           />
+          {/* ADR-020 보강 (UAT 2026-05-21): cross-week filter empty banner (Variant C).
+            * 현재 주에 매칭 없고 다른 주에 있으면 표시. 클릭 시 가장 가까운 매칭 주로 navigate. */}
+          {closestMatchingWeek && (
+            <div
+              role="status"
+              data-testid="cross-week-filter-banner"
+              className="px-3 py-2 mb-2 rounded bg-[var(--color-bg-secondary)] border-l-2 border-[var(--color-accent)] text-xs"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-[var(--color-text-primary)] font-medium">
+                  현재 주에 필터 매칭 수업이 없어요
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedDate(
+                      new Date(
+                        `${closestMatchingWeek.weekStartDate}T12:00:00+09:00`,
+                      ),
+                    )
+                  }
+                  className="shrink-0 px-2 py-1 text-[10px] rounded bg-[var(--color-accent)] text-white font-bold hover:opacity-90"
+                >
+                  {closestMatchingWeek.isFuture ? "다음" : "지난"} 매칭 주로 →
+                </button>
+              </div>
+              <p className="text-[10px] text-[var(--color-text-muted)]">
+                가장 가까운 매칭:{" "}
+                <span className="text-[var(--color-text-secondary)] font-medium">
+                  {formatBannerWeekRange(closestMatchingWeek.weekStartDate)}
+                </span>{" "}
+                ({closestMatchingWeek.count}개 수업)
+              </p>
+            </div>
+          )}
           <ScheduleGridSection
             containerRef={timeTableRef}
             gridVersion={gridVersion}
@@ -2650,15 +2931,18 @@ function SchedulePageContent(): JSX.Element {
         onToday={goToToday}
         prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
         nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
-        students={students}
+        students={cascadedFilterOptions.students}
+        totalStudents={students.length}
         selectedStudentIds={selectedStudentIds}
-        onToggleStudent={toggleStudentFilter}
-        subjects={subjects}
+        onToggleStudent={tryToggleStudent}
+        subjects={cascadedFilterOptions.subjects}
+        totalSubjects={subjects.length}
         selectedSubjectIds={selectedSubjectIds}
-        onToggleSubject={toggleSubjectFilter}
-        teachers={teachers}
+        onToggleSubject={tryToggleSubject}
+        teachers={cascadedFilterOptions.teachers}
+        totalTeachers={teachers.length}
         selectedTeacherIds={selectedTeacherIds}
-        onToggleTeacher={toggleTeacherFilter}
+        onToggleTeacher={tryToggleTeacher}
         onClearAllFilters={() => {
           clearStudentFilter();
           clearTeacherFilter();

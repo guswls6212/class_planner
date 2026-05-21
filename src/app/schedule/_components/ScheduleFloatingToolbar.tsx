@@ -26,13 +26,17 @@ export interface ScheduleFloatingToolbarProps {
   nextAriaLabel?: string;
 
   // Filter (학생 + 과목 + 강사 통합)
+  // students/subjects/teachers 는 cascading 적용된 narrowed list. total* 은 cascading 이전 전체.
   students: FilterItem[];
+  totalStudents: number;
   selectedStudentIds: string[];
   onToggleStudent: (id: string) => void;
   subjects: FilterItem[];
+  totalSubjects: number;
   selectedSubjectIds: string[];
   onToggleSubject: (id: string) => void;
   teachers: FilterItem[];
+  totalTeachers: number;
   selectedTeacherIds: string[];
   onToggleTeacher: (id: string) => void;
   onClearAllFilters: () => void;
@@ -63,12 +67,15 @@ export default function ScheduleFloatingToolbar({
   prevAriaLabel = "이전",
   nextAriaLabel = "다음",
   students,
+  totalStudents,
   selectedStudentIds,
   onToggleStudent,
   subjects,
+  totalSubjects,
   selectedSubjectIds,
   onToggleSubject,
   teachers,
+  totalTeachers,
   selectedTeacherIds,
   onToggleTeacher,
   onClearAllFilters,
@@ -127,12 +134,15 @@ export default function ScheduleFloatingToolbar({
 
       <UnifiedFilterPopover
         students={students}
+        totalStudents={totalStudents}
         selectedStudentIds={selectedStudentIds}
         onToggleStudent={onToggleStudent}
         subjects={subjects}
+        totalSubjects={totalSubjects}
         selectedSubjectIds={selectedSubjectIds}
         onToggleSubject={onToggleSubject}
         teachers={teachers}
+        totalTeachers={totalTeachers}
         selectedTeacherIds={selectedTeacherIds}
         onToggleTeacher={onToggleTeacher}
         onClearAll={onClearAllFilters}
@@ -140,13 +150,19 @@ export default function ScheduleFloatingToolbar({
         colorBy={colorBy}
       />
 
-      <Divider />
-
-      <TimeRangeSelector
-        current={timeRange}
-        userId={userId}
-        dropdownDirection="up"
-      />
+      {/* ADR-020 보강 (UAT 2026-05-21, Variant A): time range 는 weekly view 전용.
+        * daily 는 시간 list 형태라 의미 적음, monthly 는 시간 단위 X 라 의미 없음.
+        * Hide on non-weekly 채택. */}
+      {viewMode === "weekly" && (
+        <>
+          <Divider />
+          <TimeRangeSelector
+            current={timeRange}
+            userId={userId}
+            dropdownDirection="up"
+          />
+        </>
+      )}
 
       <Divider />
 

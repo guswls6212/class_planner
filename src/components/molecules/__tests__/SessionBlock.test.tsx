@@ -851,7 +851,8 @@ describe("student mode dim/glow on session blocks", () => {
     colorBy: "student" as const,
   };
 
-  it("student mode + chip selected + session CONTAINS selected student → wrapper has box-shadow (glow)", () => {
+  it("student chip selected + session CONTAINS selected student → no dim (matched, ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로. dim/boxShadow 모두 없음.
     render(
       <SessionBlock
         {...baseGlowProps}
@@ -860,8 +861,8 @@ describe("student mode dim/glow on session blocks", () => {
       />
     );
     const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
-    // box-shadow should be set (glow ring)
-    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
   });
 
   it("student mode + chip selected + session does NOT contain selected student → wrapper has opacity 0.25 (dim)", () => {
@@ -925,7 +926,8 @@ describe("student mode dim/glow on session blocks", () => {
   });
 
   // 변경 3: 강사/과목 필터 dim 통일 — 학생과 동일 패턴.
-  it("teacher mode + chip selected + session.teacherId 매칭 → boxShadow glow", () => {
+  it("teacher mode + chip selected + session.teacherId 매칭 → no dim (ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로.
     const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
     render(
       <SessionBlock
@@ -937,7 +939,8 @@ describe("student mode dim/glow on session blocks", () => {
       />
     );
     const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
-    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
   });
 
   it("teacher mode + chip selected + session.teacherId 비매칭 → opacity 0.25 dim", () => {
@@ -956,7 +959,8 @@ describe("student mode dim/glow on session blocks", () => {
     expect(wrapper.style.boxShadow).toBe("");
   });
 
-  it("subject mode + chip selected + session에 subject 매칭 → boxShadow glow", () => {
+  it("subject mode + chip selected + session에 subject 매칭 → no dim (ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로.
     render(
       <SessionBlock
         {...baseGlowProps}
@@ -966,7 +970,8 @@ describe("student mode dim/glow on session blocks", () => {
       />
     );
     const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
-    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
   });
 
   it("subject mode + chip selected + 비매칭 → opacity 0.25 dim", () => {
@@ -982,7 +987,8 @@ describe("student mode dim/glow on session blocks", () => {
     expect(wrapper.style.opacity).toBe("0.25");
   });
 
-  it("3 entity 동시 활성 + 모두 매칭 → boxShadow glow (AND 결합)", () => {
+  it("3 entity 동시 활성 + 모두 매칭 → no dim (AND 결합, ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 다중 type 매칭도 본체 색 + opacity 1.0 그대로.
     const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
     render(
       <SessionBlock
@@ -996,7 +1002,8 @@ describe("student mode dim/glow on session blocks", () => {
       />
     );
     const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
-    expect(wrapper.style.boxShadow).toMatch(/rgba/);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
   });
 
   it("3 entity 동시 활성 + 강사만 비매칭 → opacity 0.25 dim (AND fail)", () => {

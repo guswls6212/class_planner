@@ -155,19 +155,22 @@ SchedulePage
 - 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
 - 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 3개 표시, 4+는 inline +N 칩 클릭 시 모든 세션 표시 (토글 가능)
 
-**StudentFilterChipBar (colorBy=student 시):**
-- 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 표시
+**StudentFilterChipBar (?layout=default 백출):**
+- 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 강조 (dim contrast)
 - 학생 칩을 SessionBlock에 드롭 → 해당 수업에 학생 추가(드래그앤드롭)
+- P3 default 에서는 `ScheduleFloatingToolbar` 의 `UnifiedFilterPopover` 로 통합 (chip bar 미렌더)
 
-**ColorBy 모드 동작 — 학생/과목/강사 통일된 dim/glow 패턴 (PR #284, 2026-05-08):**
-- 활성 필터 type 모두를 만족하는 세션 (AND 결합, `sessionMatchesFilters(session, enrollments, studentIds, subjectIds, teacherIds)`) → 매칭 세션은 lane reorder로 앞 lane 우선 배치 + outer glow ring (1.5px boxShadow, `pickRingHex`로 colorBy 우선 + fallback chain의 첫 selected entity 색).
+**ColorBy 모드 동작 — 필터-색 일치 (ADR-020 R5, 2026-05-21):**
+- session 본체 색 = `colorBy="teacher"` 면 강사 색, 그 외 ("subject" 또는 legacy "student") 는 과목 색. **고정** — 필터 chip 선택은 본체 색에 영향 X.
+- 활성 필터 type 모두를 만족하는 세션 (AND 결합, `sessionMatchesFilters(session, enrollments, studentIds, subjectIds, teacherIds)`) → 본체 색 그대로 유지 (opacity 1.0).
 - 비매칭 세션 → `opacity: 0.25` dim. 학생/과목/강사 모두 동일.
+- **Ring 표시 폐기** — ADR-020 R5 에서 ADR-003 Decision 2 의 "학생색 outer glow ring" 제거. dim contrast 만 사용. (`pickRingHex` 함수 삭제됨)
 - 강사 매칭은 `session.teacherId` 단일 필드 비교 (enrollment 통하지 않음).
-- `colorBy` 자동 전환: 단일 type 활성 → 그 type 색상; 혼합 또는 모두 빈 → "subject" fallback.
-- Student mode + 칩 미선택 → 과목 색상·라벨로 폴백 (`resolveSessionColor`의 `selectedStudentIds` 빈 배열 → 과목 색).
-- Student mode + 칩 선택 + 세션 총 인원 ≥ 2명 → 블록 우측 상단에 `Users 아이콘 + 총 N명` 뱃지 노출 (`aria-label="총 N명"`). 선택한 학생이 미포함된 dim 블록에는 뱃지 미표시.
+- `colorBy` 자동 전환: 단일 강사 필터 활성 → "teacher"; 그 외 → "subject" fallback. **"student" 모드 selector 제거** (ADR-020 D1).
+- Lane reorder: yPosition 기반 고정. 필터 영향 X (ADR-020 D2 — PR #284 의 weekday-wide reorder 정정). cluster 내부 visible 결정 시 매칭 우선만 유지 (overflow `+N` 처리).
+- 칩 선택 + 세션 총 인원 ≥ 2명 → 블록 우측 상단에 `Users 아이콘 + 총 N명` 뱃지 노출 (`aria-label="총 N명"`). 비매칭 dim 블록에는 뱃지 미표시.
 - `getGroupStudentNames` 시그니처: `selectedStudentIds?: string[]` — multi-select 시 매칭된 모든 학생명 반환.
-- 드래그 중 glow/dim 비활성 (포인터 인터랙션 우선)
+- 드래그 중 dim 비활성 (포인터 인터랙션 우선).
 - 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity).
 - 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달. Weekly는 `SessionBlock`이 자체적으로 `isAnyFilterActive` 체크.
 

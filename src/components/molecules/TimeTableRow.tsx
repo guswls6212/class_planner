@@ -393,31 +393,15 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   const laneWidth = baseWidth / Math.max(1, effectiveLanes);
   const totalHeight = timeSlots30Min.length * SLOT_HEIGHT_PX;
 
-  // 학생/과목/강사 필터 활성 시 매칭 sessions를 앞 lane에 우선 배치 (yPosition 불변).
-  // 3 entity AND 결합 — 활성 type 모두 만족하는 sessions만 매칭. dim 시각은 SessionBlock이 담당.
-  const studentIdsKey = selectedStudentIds ?? [];
-  const subjectIdsKey = selectedSubjectIds ?? [];
-  const teacherIdsKey = selectedTeacherIds ?? [];
-  const isStudentFilterActive = studentIdsKey.length > 0;
-  const isSubjectFilterActive = subjectIdsKey.length > 0;
-  const isTeacherFilterActive = teacherIdsKey.length > 0;
-  const isFilterActive = isStudentFilterActive || isSubjectFilterActive || isTeacherFilterActive;
+  // ADR-020 D2: weekday-wide matching-first 정렬 제거 — 같은 weekday 안 cluster 간 ordering
+  // 은 yPosition 만 따른다. cluster 안 매칭 우선 정렬은 clusterStates 에서 별도 처리.
+  // 이전 spec (PR #284): weekday 전체에 matching first / nonMatching last → 겹침 없는 session 도
+  // lane 이동 인지 유발 (UAT 2026-05-21).
   const sortByYPos = (a: Session, b: Session) => (a.yPosition || 1) - (b.yPosition || 1);
-  const orderedSessions = React.useMemo(() => {
-    if (!isFilterActive) return [...weekdaySessions].sort(sortByYPos);
-    const matching = weekdaySessions
-      .filter((s) =>
-        sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
-      )
-      .sort(sortByYPos);
-    const nonMatching = weekdaySessions
-      .filter(
-        (s) =>
-          !sessionMatchesFilters(s, enrollments, studentIdsKey, subjectIdsKey, teacherIdsKey),
-      )
-      .sort(sortByYPos);
-    return [...matching, ...nonMatching];
-  }, [weekdaySessions, studentIdsKey, subjectIdsKey, teacherIdsKey, enrollments, isFilterActive]);
+  const orderedSessions = React.useMemo(
+    () => [...weekdaySessions].sort(sortByYPos),
+    [weekdaySessions],
+  );
 
   // Visible / hidden sessions: cluster 별로 분리 (clusterStates 의 visible/hidden flatten).
   // filter 활성 시 cluster 안 sorting (matching first) 은 yPosition asc 만 적용 — filter
@@ -437,11 +421,11 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
     const lowerBound = startHour * 60;
     const upperBound = (endHour + 1) * 60;
     return visibleSessions.map((session) => {
-      // 필터 미활성: yPosition - 1 을 laneIdx로 사용 (yPosition이 SSOT).
-      // 필터 활성: orderedSessions 배열 index 기반 (matching 우선 시각 배치 유지).
-      const rawIdx = isFilterActive
-        ? visibleSessions.findIndex((s) => s.id === session.id)
-        : (session.yPosition || 1) - 1;
+      // ADR-020 D2: laneIdx 는 항상 yPosition 기반 (필터 영향 X).
+      // cluster 안 매칭 우선 visible 결정은 clusterStates 가 별도 처리.
+      // 이전 spec (PR #284) 의 "필터 활성 시 array index 기반" 은 겹침 없는 session 도
+      // lane 이동 인지 유발 (UAT 2026-05-21) → 정정.
+      const rawIdx = (session.yPosition || 1) - 1;
       const laneIdx = Math.min(Math.max(0, rawIdx), effectiveLanes - 1);
       const startMin = timeToMinutes(session.startsAt);
       const endMin = timeToMinutes(session.endsAt);
@@ -460,7 +444,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
         overflowsBottom: endMin > upperBound,
       };
     });
-  }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes, isFilterActive]);
+  }, [visibleSessions, timeToMinutes, laneWidth, startHour, endHour, isDraggingToThis, effectiveLanes]);
 
   // ghost layout (드래그 중 movingSession 의 laidOut 위치) — lane-highlight + amber
   // overlay 가 같은 source 에서 좌표 derive. compactYPositions artifact (lane 1 출발

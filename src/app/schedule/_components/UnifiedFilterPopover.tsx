@@ -16,15 +16,20 @@ interface FilterItem {
 }
 
 export interface UnifiedFilterPopoverProps {
+  /** cascading 적용된 narrowed list. 기존 selected + 매칭 session 의 entity 만 포함. */
   students: FilterItem[];
+  /** cascading 이전 전체 수 — section header 의 "관련 N / 전체 M" badge 에 사용 */
+  totalStudents: number;
   selectedStudentIds: string[];
   onToggleStudent: (id: string) => void;
 
   subjects: FilterItem[];
+  totalSubjects: number;
   selectedSubjectIds: string[];
   onToggleSubject: (id: string) => void;
 
   teachers: FilterItem[];
+  totalTeachers: number;
   selectedTeacherIds: string[];
   onToggleTeacher: (id: string) => void;
 
@@ -42,12 +47,15 @@ const COLOR_LABEL: Record<ColorByMode, string> = {
 
 export default function UnifiedFilterPopover({
   students,
+  totalStudents,
   selectedStudentIds,
   onToggleStudent,
   subjects,
+  totalSubjects,
   selectedSubjectIds,
   onToggleSubject,
   teachers,
+  totalTeachers,
   selectedTeacherIds,
   onToggleTeacher,
   onClearAll,
@@ -130,7 +138,11 @@ export default function UnifiedFilterPopover({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              <FilterSection title={`학생 (${students.length})`}>
+              <FilterSection
+                title="학생"
+                count={students.length}
+                total={totalStudents}
+              >
                 {filteredStudents.length === 0 ? (
                   <Empty />
                 ) : (
@@ -145,7 +157,11 @@ export default function UnifiedFilterPopover({
                 )}
               </FilterSection>
 
-              <FilterSection title={`과목 (${subjects.length})`}>
+              <FilterSection
+                title="과목"
+                count={subjects.length}
+                total={totalSubjects}
+              >
                 {filteredSubjects.length === 0 ? (
                   <Empty />
                 ) : (
@@ -161,7 +177,11 @@ export default function UnifiedFilterPopover({
                 )}
               </FilterSection>
 
-              <FilterSection title={`강사 (${teachers.length})`}>
+              <FilterSection
+                title="강사"
+                count={teachers.length}
+                total={totalTeachers}
+              >
                 {filteredTeachers.length === 0 ? (
                   <Empty />
                 ) : (
@@ -215,17 +235,37 @@ export default function UnifiedFilterPopover({
 
 function FilterSection({
   title,
+  count,
+  total,
   badge,
   children,
 }: {
   title: string;
+  /** cascading 적용된 visible 개수 — count < total 이면 narrowing 활성. */
+  count?: number;
+  /** cascading 이전 전체 개수 — Variant C "관련 N / 전체 M" 표시. */
+  total?: number;
   badge?: string;
   children: React.ReactNode;
 }) {
+  // ADR-020 보강 (Variant C): cascading narrowing 시 "관련 N / 전체 M" 인지 표시.
+  const isNarrowed = count !== undefined && total !== undefined && count < total;
   return (
     <div className="border-b border-[var(--color-border)] last:border-b-0">
       <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] flex items-center gap-1.5">
-        {title}
+        <span>{title}</span>
+        {count !== undefined && total !== undefined ? (
+          isNarrowed ? (
+            <span className="normal-case tracking-normal font-medium">
+              <span className="text-amber-400">{count}</span>
+              <span className="text-[var(--color-text-muted)]"> / {total}</span>
+            </span>
+          ) : (
+            <span className="normal-case tracking-normal font-medium text-[var(--color-text-muted)]">
+              ({total})
+            </span>
+          )
+        ) : null}
         {badge && (
           <span className="text-[8px] px-1 py-px rounded bg-amber-500/15 text-amber-400 normal-case tracking-normal font-medium">
             {badge}
