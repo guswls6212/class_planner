@@ -2,20 +2,30 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// PDFDownloadButton mock — dropdown 구조 시뮬레이션 (toggle + 가이드 항목)
 vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   default: ({
     viewLabel,
     onDownload,
+    onOpenGuide,
   }: {
     viewLabel?: string;
     onDownload: () => void;
+    onOpenGuide?: () => void;
     isDownloading: boolean;
     onDownloadStart: () => void;
     onDownloadEnd: () => void;
   }) => (
-    <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF 다운로드`}>
-      {viewLabel ?? "시간표"} PDF 다운로드
-    </button>
+    <div>
+      <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF`}>
+        PDF
+      </button>
+      {onOpenGuide && (
+        <button onClick={onOpenGuide} aria-label="PDF 인쇄 가이드">
+          인쇄 가이드
+        </button>
+      )}
+    </div>
   ),
 }));
 
@@ -54,7 +64,9 @@ describe("ScheduleActionBar", () => {
 
   it("PDF 다운로드 버튼을 렌더한다", () => {
     render(<ScheduleActionBar {...baseProps} />);
-    expect(screen.getByText("주간 시간표 PDF 다운로드")).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /주간 시간표 PDF/ }),
+    ).toBeInTheDocument();
   });
 
   it("userId가 null이면 공유 링크가 없다", () => {
@@ -86,18 +98,37 @@ describe("ScheduleActionBar", () => {
   it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
     const onOpenPdfDialog = vi.fn();
     render(<ScheduleActionBar {...baseProps} onOpenPdfDialog={onOpenPdfDialog} />);
-    fireEvent.click(screen.getByRole("button", { name: /PDF 다운로드/ }));
+    fireEvent.click(screen.getByRole("button", { name: /주간 시간표 PDF/ }));
     expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
   });
 
-  it("PDF 가이드 i 버튼이 렌더된다", () => {
+  it("PDF 가이드 버튼이 dropdown 안에 렌더된다 (P2 패턴)", () => {
     render(<ScheduleActionBar {...baseProps} />);
-    expect(screen.getByRole("button", { name: /PDF 출력 가이드/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /PDF 인쇄 가이드/ }),
+    ).toBeInTheDocument();
   });
 
-  it("PDF 가이드 i 버튼 클릭 시 가이드 모달이 열린다", () => {
+  it("PDF 가이드 버튼 클릭 시 가이드 모달이 열린다", () => {
     render(<ScheduleActionBar {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /PDF 출력 가이드/ }));
+    fireEvent.click(screen.getByRole("button", { name: /PDF 인쇄 가이드/ }));
     expect(screen.getByText("PDF 출력 가이드")).toBeInTheDocument();
+  });
+
+  it("viewMode='daily' → PDF dropdown 렌더 X (라벨 불일치 회피)", () => {
+    render(<ScheduleActionBar {...baseProps} viewMode="daily" />);
+    expect(
+      screen.queryByRole("button", { name: /주간 시간표 PDF/ }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /PDF 인쇄 가이드/ }),
+    ).toBeNull();
+  });
+
+  it("viewMode='monthly' → PDF dropdown 렌더 X", () => {
+    render(<ScheduleActionBar {...baseProps} viewMode="monthly" />);
+    expect(
+      screen.queryByRole("button", { name: /주간 시간표 PDF/ }),
+    ).toBeNull();
   });
 });

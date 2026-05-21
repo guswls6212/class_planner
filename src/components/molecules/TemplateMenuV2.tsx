@@ -21,7 +21,9 @@ export function TemplateMenuV2({ onApply, onClearWeek, onSave, onPreview, canMan
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 border border-[var(--color-accent)] text-[var(--color-text-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors text-sm"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-text-primary)] px-3 py-1.5 rounded-md transition-colors"
       >
         템플릿
         <ChevronDown size={14} strokeWidth={2} />
@@ -29,8 +31,8 @@ export function TemplateMenuV2({ onApply, onClearWeek, onSave, onPreview, canMan
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={close} />
-          <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-lg py-2">
+          <div className="fixed inset-0 z-[999]" onClick={close} />
+          <div className="absolute right-0 top-full mt-1 z-[1000] w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-lg shadow-2xl py-2">
             <div className="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-secondary)]">
               이 주에 작업
             </div>
