@@ -6,7 +6,7 @@ import type { Session } from "@/lib/planner";
  *
  * weekStartDate는 stable mock value로 — testing 시점 무관하게 fixture 결정성 유지.
  */
-type FullSession = Required<Omit<Session, "room">>;
+type FullSession = Required<Omit<Session, "room" | "publicDescription" | "internalNote">>;
 
 const FIXED_WEEK = "2026-05-04"; // KST 기준 월요일
 
