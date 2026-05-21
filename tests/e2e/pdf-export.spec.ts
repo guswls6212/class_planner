@@ -61,7 +61,7 @@ test.describe("PDF export", () => {
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
     // portal 로 document.body 에 mount — page 전체 검색으로 menuitem 매칭
-    await page.getByRole("menuitem", { name: /인쇄 가이드/ }).click();
+    await page.getByRole("button", { name: /인쇄 가이드/ }).click();
     await expect(page.getByText("PDF 출력 가이드")).toBeVisible({ timeout: 3000 });
   });
 
@@ -70,7 +70,7 @@ test.describe("PDF export", () => {
     await page.goto("/schedule");
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
-    await page.getByRole("menuitem", { name: /전체 인쇄/ }).click();
+    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
@@ -86,7 +86,7 @@ test.describe("PDF export", () => {
     await page.goto("/schedule");
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
-    await page.getByRole("menuitem", { name: /전체 인쇄/ }).click();
+    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });

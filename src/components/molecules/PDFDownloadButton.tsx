@@ -156,7 +156,6 @@ function MenuItem({
   return (
     <button
       type="button"
-      role="menuitem"
       onClick={onClick}
       disabled={disabled}
       className="w-full text-left px-3 py-2 text-sm inline-flex items-center gap-2 text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
