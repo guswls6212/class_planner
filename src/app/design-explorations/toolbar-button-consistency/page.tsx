@@ -86,6 +86,73 @@ export default function ToolbarButtonConsistencyPage() {
         </VariantCard>
       </div>
 
+      {/* Section 2 — PDF + ⓘ 묶음 옵션 */}
+      <section className="mt-12 max-w-5xl mx-auto">
+        <h2 className="text-xl font-bold mb-1">
+          Section 2 — PDF + ⓘ 가이드 묶음 (C variant 기반)
+        </h2>
+        <p className="text-sm text-slate-400 mb-4">
+          ⓘ 가 PDF 인쇄 가이드 전용임을 시각적으로 명확화. 4 옵션 비교.
+        </p>
+
+        <div className="space-y-4">
+          <VariantCard
+            letter="P1"
+            title="Segmented Group — PDF + ⓘ 붙임 (추천)"
+            description="두 button 이 같은 그룹으로 시각 묶임 (gap 0, border share). 다른 button (템플릿/공유) 과 명확히 분리."
+            recommended
+          >
+            <ToolbarSegmented />
+          </VariantCard>
+
+          <VariantCard
+            letter="P2"
+            title="Dropdown 안 가이드 항목"
+            description="ⓘ 별도 button 제거. PDF dropdown 마지막에 '📖 인쇄 가이드' 항목. UI 폭 절약 / 한 step 추가."
+          >
+            <ToolbarDropdownGuide />
+          </VariantCard>
+
+          <VariantCard
+            letter="P3"
+            title="Corner Badge — PDF button 우상단 작은 ⓘ"
+            description="ⓘ 가 PDF button 의 우상단 corner 에 작은 badge. 시각적 부착감 명확. clickable area 작음."
+          >
+            <ToolbarCornerBadge />
+          </VariantCard>
+
+          <VariantCard
+            letter="P4"
+            title="ⓘ Button 폐기 + Tooltip"
+            description="ⓘ button 자체 제거. PDF button hover 시 'PDF 인쇄 가이드 보기 →' 안내. 가장 조용. 발견성 낮음."
+          >
+            <ToolbarTooltipOnly />
+          </VariantCard>
+        </div>
+
+        <div className="mt-4 max-w-3xl text-sm text-slate-400">
+          <h3 className="text-base font-bold text-slate-200 mb-2">결정 기준</h3>
+          <ul className="list-disc list-inside space-y-1.5">
+            <li>
+              <strong className="text-slate-200">P1 Segmented (추천)</strong>:
+              PDF 의 i 임이 한눈에. 다른 button 과 명확히 분리. 1-step 가이드 접근
+            </li>
+            <li>
+              <strong className="text-slate-200">P2 Dropdown</strong>: 가장
+              깔끔. 사용자가 PDF dropdown 열어야 가이드 발견 — 사전 정보로는 늦음
+            </li>
+            <li>
+              <strong className="text-slate-200">P3 Corner Badge</strong>: 시각
+              부착감 강함. 작은 클릭 영역 (모바일 부담)
+            </li>
+            <li>
+              <strong className="text-slate-200">P4 Tooltip only</strong>: 최소
+              UI. 발견성 낮음 — hover 안 하면 가이드 존재 모름
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="mt-8 max-w-3xl mx-auto text-sm text-slate-400">
         <h2 className="text-base font-bold text-slate-200 mb-2">결정 기준</h2>
         <ul className="list-disc list-inside space-y-1.5">
@@ -345,5 +412,113 @@ function BtnIconSquare({
         <span className="absolute -bottom-0.5 right-0.5 text-[7px] text-slate-400">▾</span>
       )}
     </button>
+  );
+}
+
+// ============================================================
+// Section 2 — PDF + ⓘ 묶음 옵션
+// ============================================================
+
+/** P1 — Segmented (PDF + ⓘ 붙임, 같은 그룹 시각) */
+function ToolbarSegmented() {
+  return (
+    <div className="flex items-center gap-2">
+      <DropdownGhost label="템플릿" />
+      {/* PDF + ⓘ — 같은 그룹 */}
+      <div className="inline-flex items-stretch rounded-md overflow-hidden ring-1 ring-amber-500">
+        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition-colors">
+          <Download size={14} />
+          PDF
+        </button>
+        <button
+          title="PDF 인쇄 가이드"
+          aria-label="PDF 인쇄 가이드"
+          className="px-2 inline-flex items-center justify-center bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border-l border-amber-500/40 transition-colors"
+        >
+          <Info size={13} />
+        </button>
+      </div>
+      <BtnIconGhost icon={<Share2 size={14} />} label="공유" />
+    </div>
+  );
+}
+
+/** P2 — Dropdown 안 가이드 항목 */
+function ToolbarDropdownGuide() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex items-center gap-2">
+      <DropdownGhost label="템플릿" />
+      <div className="relative">
+        <button
+          onClick={() => setOpen(!open)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-md transition-colors"
+        >
+          <Download size={14} />
+          PDF
+          <ChevronDown size={11} />
+        </button>
+        {open && (
+          <div className="absolute right-0 top-full mt-1 w-48 rounded bg-slate-800 border border-slate-700 shadow-xl py-1 z-50">
+            <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 inline-flex items-center gap-1.5">
+              <Download size={11} /> 전체 인쇄
+            </button>
+            <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 inline-flex items-center gap-1.5">
+              <Download size={11} /> 강사별
+            </button>
+            <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 inline-flex items-center gap-1.5">
+              <Download size={11} /> 학생별
+            </button>
+            <div className="h-px bg-slate-700 my-1" />
+            <button className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-700 inline-flex items-center gap-1.5 text-slate-400">
+              <Info size={11} /> 인쇄 가이드
+            </button>
+          </div>
+        )}
+      </div>
+      <BtnIconGhost icon={<Share2 size={14} />} label="공유" />
+    </div>
+  );
+}
+
+/** P3 — Corner badge (PDF button 우상단 작은 ⓘ) */
+function ToolbarCornerBadge() {
+  return (
+    <div className="flex items-center gap-2">
+      <DropdownGhost label="템플릿" />
+      <div className="relative inline-block">
+        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-md transition-colors">
+          <Download size={14} />
+          PDF
+        </button>
+        <button
+          title="PDF 인쇄 가이드"
+          aria-label="PDF 인쇄 가이드"
+          className="absolute -top-1 -right-1 w-4 h-4 inline-flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-slate-200 ring-2 ring-slate-950"
+        >
+          <Info size={9} />
+        </button>
+      </div>
+      <BtnIconGhost icon={<Share2 size={14} />} label="공유" />
+    </div>
+  );
+}
+
+/** P4 — Tooltip only (ⓘ button 폐기) */
+function ToolbarTooltipOnly() {
+  return (
+    <div className="flex items-center gap-2">
+      <DropdownGhost label="템플릿" />
+      <div className="relative group">
+        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-md transition-colors">
+          <Download size={14} />
+          PDF
+        </button>
+        <div className="invisible group-hover:visible absolute top-full mt-1 right-0 px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-200 whitespace-nowrap shadow-lg">
+          PDF 인쇄 가이드 →
+        </div>
+      </div>
+      <BtnIconGhost icon={<Share2 size={14} />} label="공유" />
+    </div>
   );
 }
