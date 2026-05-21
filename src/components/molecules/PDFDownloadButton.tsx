@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Download, Info } from "lucide-react";
 import { showError } from "../../lib/toast";
 
@@ -20,7 +21,9 @@ interface PDFDownloadButtonProps {
  * UAT 2026-05-21 — ADR-020 후속:
  *   - C variant (Solid Hierarchy): primary amber button
  *   - P2 (dropdown 안 가이드): "인쇄 가이드" 가 menu 마지막 항목 → InfoTrigger 폐기
- *   - "강사별 / 학생별" 옵션 placeholder — 동작은 후속 PR (#427) 에서 PdfExportRangeModal 통합 시 활성
+ *   - Portal — dropdown 을 document.body 에 mount. schedule grid 의 stacking context 가
+ *     자식 dropdown 을 가두던 가려짐 fix (z-index 만 올려서는 안 됐던 root cause).
+ *   - "강사별 / 학생별" 옵션 placeholder — 동작은 후속 PR (#427) 에서 활성
  */
 const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   onDownload,
@@ -31,15 +34,29 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   viewLabel = "시간표",
 }) => {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(
+    null,
+  );
 
+  // open 시 anchor 위치 계산 + scroll/resize 시 닫기 (재배치 대신 단순화)
   useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    if (!open || !triggerRef.current) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = triggerRef.current.getBoundingClientRect();
+    setMenuPos({
+      top: rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
     };
-    window.addEventListener("mousedown", handler);
-    return () => window.removeEventListener("mousedown", handler);
   }, [open]);
 
   const handleFullPrint = async () => {
@@ -54,9 +71,59 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
     }
   };
 
+  const menu =
+    open && menuPos
+      ? createPortal(
+          <>
+            {/* backdrop — click 시 닫기. z-9998 (menu 보다 낮음) */}
+            <div
+              className="fixed inset-0 z-[9998]"
+              onClick={() => setOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-56 rounded-md bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-2xl py-1"
+              style={{ top: menuPos.top, right: menuPos.right }}
+            >
+              <MenuItem
+                icon={<Download size={13} />}
+                label="전체 인쇄"
+                onClick={() => void handleFullPrint()}
+              />
+              <MenuItem
+                icon={<Download size={13} />}
+                label="강사별 (준비 중)"
+                disabled
+              />
+              <MenuItem
+                icon={<Download size={13} />}
+                label="학생별 (준비 중)"
+                disabled
+              />
+              {onOpenGuide && (
+                <>
+                  <div className="my-1 border-t border-[var(--color-border)]" />
+                  <MenuItem
+                    icon={<Info size={13} />}
+                    label="인쇄 가이드"
+                    onClick={() => {
+                      setOpen(false);
+                      onOpenGuide();
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
+
   return (
-    <div className="relative" ref={wrapRef}>
+    <>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         disabled={isDownloading}
@@ -69,42 +136,8 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
         <span>{isDownloading ? "다운로드 중..." : "PDF"}</span>
         <ChevronDown size={12} aria-hidden="true" />
       </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full mt-1 z-[1000] w-56 rounded-md bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-2xl py-1"
-        >
-          <MenuItem
-            icon={<Download size={13} />}
-            label="전체 인쇄"
-            onClick={() => void handleFullPrint()}
-          />
-          <MenuItem
-            icon={<Download size={13} />}
-            label="강사별 (준비 중)"
-            disabled
-          />
-          <MenuItem
-            icon={<Download size={13} />}
-            label="학생별 (준비 중)"
-            disabled
-          />
-          {onOpenGuide && (
-            <>
-              <div className="my-1 border-t border-[var(--color-border)]" />
-              <MenuItem
-                icon={<Info size={13} />}
-                label="인쇄 가이드"
-                onClick={() => {
-                  setOpen(false);
-                  onOpenGuide();
-                }}
-              />
-            </>
-          )}
-        </div>
-      )}
-    </div>
+      {menu}
+    </>
   );
 };
 
