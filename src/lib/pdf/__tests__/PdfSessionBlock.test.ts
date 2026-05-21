@@ -40,20 +40,20 @@ describe("drawSessionBlock — 시각 표시 (A-4)", () => {
     vi.clearAllMocks();
   });
 
-  it("cell.height > 8이면 시각 텍스트를 그린다 (1시간 수업 ~10.7mm)", () => {
-    // 1시간 수업의 실제 height ≈ 10.7mm (150/28 * 2)
+  it("cell.height >= 6 이면 [시작 - 마침] 시간 텍스트를 그린다 (ADR-020 보강)", () => {
+    // 30분 이상 (≥ 6mm) → 시간 표시
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 10.7 };
     drawSessionBlock(mockDoc, cell, baseData);
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).toContain("10:00~11:00");
+    expect(textCalls).toContain("10:00 - 11:00");
   });
 
-  it("cell.height ≤ 8이면 시각 텍스트를 그리지 않는다 (30분 수업)", () => {
-    // 30분 수업의 height ≈ 5.4mm
+  it("cell.height < 6 이면 시간 텍스트 hidden (30분 미만)", () => {
+    // 30분 미만 (< 6mm) — 제목 + 강사만, 시간 hidden
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 5.4 };
     drawSessionBlock(mockDoc, cell, baseData);
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).not.toContain("10:00~11:00");
+    expect(textCalls).not.toContain("10:00 - 11:00");
   });
 
   it("항상 과목 이름을 그린다", () => {
@@ -98,13 +98,15 @@ describe("drawSessionBlock — 강사 이름 (plain text)", () => {
     expect(textCalls).not.toContain("▸ 이강사");
   });
 
-  it("cell.height ≤ 7이면 teacherName을 그리지 않는다", () => {
+  it("teacherName 은 cell.height 무관 항상 우상단에 그린다 (ADR-020 보강)", () => {
+    // 새 spec: 강사 우상단 = 항상 표시 (subject 좌상단과 같은 y, right-align)
+    // 옛 spec (cell.height > 7 일 때만) 폐기 — block 안 정보 우선순위는 시간/학생 에만 적용.
     const cell: CellPosition = { x: 25, y: 35, width: 37, height: 5 };
     drawSessionBlock(mockDoc, cell, {
       ...baseData,
       teacherName: "이강사",
     });
     const textCalls = (textMock.mock.calls as [string][]).map(([t]) => t);
-    expect(textCalls).not.toContain("이강사");
+    expect(textCalls).toContain("이강사");
   });
 });

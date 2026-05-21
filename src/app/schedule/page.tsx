@@ -2010,6 +2010,27 @@ function SchedulePageContent(): JSX.Element {
           )
         : allSessionsRaw;
 
+      // ADR-020 보강 (UAT 2026-05-21): 인쇄 출력 범위 자동 — 데이터 기반 (max(timeRange, 데이터)).
+      // 빈 공간 큰 PDF 회피. sessions empty 시 사용자 timeRange fallback.
+      const timeToMinLocal = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      };
+      const dataMinMin = allSessions.length
+        ? Math.min(...allSessions.map((s) => timeToMinLocal(s.startsAt)))
+        : null;
+      const dataMaxMin = allSessions.length
+        ? Math.max(...allSessions.map((s) => timeToMinLocal(s.endsAt)))
+        : null;
+      const autoStartHour =
+        dataMinMin !== null
+          ? Math.max(0, Math.min(timeRange.startHour, Math.floor(dataMinMin / 60)))
+          : timeRange.startHour;
+      const autoEndHour =
+        dataMaxMin !== null
+          ? Math.min(24, Math.max(timeRange.endHour + 1, Math.ceil(dataMaxMin / 60)))
+          : timeRange.endHour + 1;
+
       if (range.perTeacher) {
         const teachersToExport = range.selectedTeacherIds?.length
           ? teachers.filter((t) => range.selectedTeacherIds!.includes(t.id))
@@ -2032,8 +2053,8 @@ function SchedulePageContent(): JSX.Element {
               weekRange: { startDate: range.startDate, endDate: range.endDate },
               filterTeacherId: teacher.id,
               showStudentNames: range.showStudentNames ?? false,
-              startHour: timeRange.startHour,
-              endHour: timeRange.endHour + 1,
+              startHour: autoStartHour,
+              endHour: autoEndHour,
             }
           );
         }
