@@ -476,8 +476,15 @@ function DailyTimeline({
               <div className="text-[9px] text-[var(--color-text-muted)] truncate">
                 {s.startsAt}
               </div>
-              {group.length <= 3 && previewNames && (
-                <div className="text-[10px] text-[var(--color-text-secondary)] truncate mt-0.5">
+              {previewNames && (
+                <div
+                  className="text-[10px] text-[var(--color-text-secondary)] truncate mt-0.5"
+                  title={
+                    studentNames.length > 0
+                      ? studentNames.join(", ")
+                      : undefined
+                  }
+                >
                   {previewNames}
                   {moreCount > 0 && (
                     <span className="text-[var(--color-text-muted)]"> +{moreCount}</span>
