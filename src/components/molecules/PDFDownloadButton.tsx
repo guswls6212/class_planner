@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Download, Info } from "lucide-react";
 import { showError } from "../../lib/toast";
@@ -39,8 +39,9 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
     null,
   );
 
-  // open 시 anchor 위치 계산 + scroll/resize 시 닫기 (재배치 대신 단순화)
-  useEffect(() => {
+  // open 시 anchor 위치 계산 + scroll/resize 시 닫기 (재배치 대신 단순화).
+  // useLayoutEffect — paint 전 measure 로 e2e timing 안정 (mount 후 한 frame 늦지 않게).
+  useLayoutEffect(() => {
     if (!open || !triggerRef.current) {
       setMenuPos(null);
       return;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Trash2, Save, Eye, ChevronDown } from "lucide-react";
 
@@ -33,7 +33,7 @@ export function TemplateMenuV2({
     null,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !triggerRef.current) {
       setMenuPos(null);
       return;
