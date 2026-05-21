@@ -1991,8 +1991,26 @@ function SchedulePageContent(): JSX.Element {
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
     try {
+      // ADR-020 보강 (UAT 2026-05-21): 화면 필터 chip 활성 시 인쇄 sessions 도 사전 필터.
+      // 화면은 dim (context 보존), 인쇄는 hidden (lane 폭 회수 + 가독성).
+      const allSessionsRaw = Array.from(displaySessions.values()).flat();
+      const isAnyFilter =
+        selectedStudentIds.length > 0 ||
+        selectedSubjectIds.length > 0 ||
+        selectedTeacherIds.length > 0;
+      const allSessions = isAnyFilter
+        ? allSessionsRaw.filter((s) =>
+            sessionMatchesFilters(
+              s,
+              enrollments,
+              selectedStudentIds,
+              selectedSubjectIds,
+              selectedTeacherIds,
+            ),
+          )
+        : allSessionsRaw;
+
       if (range.perTeacher) {
-        const allSessions = Array.from(displaySessions.values()).flat();
         const teachersToExport = range.selectedTeacherIds?.length
           ? teachers.filter((t) => range.selectedTeacherIds!.includes(t.id))
           : teachers;
@@ -2031,7 +2049,7 @@ function SchedulePageContent(): JSX.Element {
         }
 
         await renderSchedulePdf(
-          Array.from(displaySessions.values()).flat(),
+          allSessions,
           subjects,
           students,
           enrollments,
@@ -2442,6 +2460,7 @@ function SchedulePageContent(): JSX.Element {
             onDownloadEnd={() => {}}
             userId={userId}
             canManage={canManage}
+            viewMode={viewMode}
             onSaveTemplate={() => setShowSavePickerModal(true)}
             onApplyTemplate={() => {
               _fetchTemplates();
