@@ -28,6 +28,18 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+/**
+ * Session block 렌더링.
+ *
+ * ADR-020 보강 (UAT 2026-05-21):
+ *   - 강사 우상단 (subject 좌상단과 같은 y, right-align)
+ *   - 시간 [시작-마침] 둘 다 표시
+ *   - 길이별 정보 우선순위:
+ *       · 30분 미만 (height < 6mm): 제목 + 강사 우상단만
+ *       · 30분~60분 (height < 12mm): + [시작-마침]
+ *       · 60분~90분 (height < 18mm): + 학생 1줄 truncate
+ *       · 90분+ (height >= 18mm): + 학생 wrap (최대 2줄)
+ */
 export function drawSessionBlock(
   doc: jsPDF,
   cell: CellPosition,
@@ -47,42 +59,86 @@ export function drawSessionBlock(
     "F"
   );
 
-  // Left accent border (3px)
+  // Left accent stripe (1.5mm)
   doc.setFillColor(r, g, b);
   doc.rect(cell.x + padding, cell.y + padding, 1.5, cell.height - 2 * padding, "F");
 
-  // Text
-  doc.setTextColor(40, 40, 40);
+  // Text positioning
   const textX = cell.x + padding + 3;
+  const textXRight = cell.x + cell.width - padding - 1;
   let textY = cell.y + padding + 3;
+  const cellHeight = cell.height;
 
-  // Subject name
+  // 1. Subject 좌상단 (항상) + Teacher 우상단 (항상)
   doc.setFont("Pretendard", "normal");
   doc.setFontSize(7);
+  doc.setTextColor(40, 40, 40);
   doc.text(data.subjectName, textX, textY);
-  textY += 3.5;
-
-  // Teacher name (plain text, no dot)
-  if (data.teacherName && cell.height > 7) {
+  if (data.teacherName) {
     doc.setFontSize(6);
     doc.setTextColor(80, 80, 80);
-    doc.text(data.teacherName, textX, textY);
+    doc.text(data.teacherName, textXRight, textY, { align: "right" });
+  }
+  textY += 3.5;
+
+  // 2. [시작-마침] 시간 — 30분 이상 (>= 6mm)
+  if (cellHeight >= 6) {
+    doc.setFontSize(5.5);
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `${data.startsAt} - ${data.endsAt}`,
+      textX,
+      textY,
+      { maxWidth: cell.width - padding - 4 },
+    );
     textY += 3;
   }
 
-  // Student names
-  if (data.studentNames.length > 0 && cell.height > 8) {
+  // 3. 학생 — 60분 이상 (>= 12mm)
+  if (cellHeight >= 12 && data.studentNames.length > 0) {
     doc.setFontSize(6);
     doc.setTextColor(80, 80, 80);
     const names = data.studentNames.join(", ");
-    doc.text(names, textX, textY, { maxWidth: cell.width - padding - 4 });
-    textY += 3;
+    // 90분+ 면 wrap (최대 2줄), 60-90분 은 1줄 truncate.
+    const maxLines = cellHeight >= 18 ? 2 : 1;
+    drawTextClamped(doc, names, textX, textY, {
+      maxWidth: cell.width - padding - 4,
+      maxLines,
+      lineHeight: 2.8,
+    });
   }
+}
 
-  // Time (1시간 수업 height ≈ 10.7mm이므로 8mm 임계로 표시)
-  if (cell.height > 8) {
-    doc.setFontSize(5.5);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`${data.startsAt}~${data.endsAt}`, textX, textY);
+/**
+ * jsPDF doc.text 의 maxWidth 는 자동 wrap 하지만 줄 수 제한 X.
+ * 줄 수 제한 + truncate "..." 처리.
+ */
+function drawTextClamped(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  opts: { maxWidth: number; maxLines: number; lineHeight: number },
+): void {
+  const { maxWidth, maxLines, lineHeight } = opts;
+  // jsPDF splitTextToSize — 자동 줄바꿈
+  const lines: string[] = doc.splitTextToSize(text, maxWidth);
+  if (lines.length <= maxLines) {
+    for (let i = 0; i < lines.length; i++) {
+      doc.text(lines[i], x, y + i * lineHeight);
+    }
+    return;
   }
+  // 초과 — 마지막 visible 줄에 "..." 추가
+  for (let i = 0; i < maxLines - 1; i++) {
+    doc.text(lines[i], x, y + i * lineHeight);
+  }
+  const lastIdx = maxLines - 1;
+  const lastLine = lines[lastIdx];
+  // 끝에 "..." 추가 — 너무 길면 잘라냄
+  let truncated = lastLine.replace(/[,，\s]+$/, "") + "...";
+  while (doc.getTextWidth(truncated) > maxWidth && truncated.length > 4) {
+    truncated = truncated.slice(0, -4) + "...";
+  }
+  doc.text(truncated, x, y + lastIdx * lineHeight);
 }
