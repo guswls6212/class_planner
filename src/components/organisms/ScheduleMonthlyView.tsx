@@ -11,7 +11,10 @@ interface ScheduleMonthlyViewProps {
   students?: Student[];
   teachers?: Teacher[];
   colorBy?: ColorByMode;
+  // ADR-020 R5 Full Parity: 학생/과목/강사 모두 dim contrast 적용 (UAT 2026-05-21)
   selectedStudentIds?: string[];
+  selectedSubjectIds?: string[];
+  selectedTeacherIds?: string[];
   currentDate: Date;
   onDayClick: (date: Date) => void;
 }
@@ -46,6 +49,8 @@ export default function ScheduleMonthlyView({
   teachers = [],
   colorBy = "subject",
   selectedStudentIds,
+  selectedSubjectIds,
+  selectedTeacherIds,
   currentDate,
   onDayClick,
 }: ScheduleMonthlyViewProps) {
@@ -94,6 +99,8 @@ export default function ScheduleMonthlyView({
               teachers={teachers}
               colorBy={colorBy}
               selectedStudentIds={selectedStudentIds}
+              selectedSubjectIds={selectedSubjectIds}
+              selectedTeacherIds={selectedTeacherIds}
               isToday={isSameDay(date, today)}
               isCurrentMonth={date.getMonth() === currentMonth}
               onDayClick={onDayClick}

@@ -10,11 +10,9 @@ import {
   getImprovedStudentDisplayText,
   getSessionBlockStyles,
   getSessionSubject,
-  pickRingHex,
   resolveSessionColor,
   sessionMatchesFilters,
 } from "./SessionBlock.utils";
-import { hexToRgba } from "@/lib/colors/hexToRgba";
 import { tintFromHex } from "@/lib/colors/tintFromHex";
 import { resolveSessionTone } from "./SessionCard.utils";
 
@@ -298,14 +296,13 @@ function SessionBlock({
   const cursorClassName =
     isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
 
-  // When colorBy='student' but no chip is selected, treat as subject mode for labels
+  // ADR-020 R5: "학생" 모드 selector 폐기. label/뱃지 의미는 학생 chip 활성으로 결정.
+  // (colorBy === "student" 입력은 useColorBy 가 subject 로 정규화하므로 사실상 dead path)
   const isStudentModeActive =
-    colorBy === "student" &&
-    selectedStudentIds != null &&
-    selectedStudentIds.length > 0;
+    (selectedStudentIds?.length ?? 0) > 0;
 
-  // 필터 매칭 dim/glow 일반화 — 학생/과목/강사 중 하나라도 활성이면 매칭/비매칭에 따라
-  // ring glow 또는 opacity dim. AND 결합은 sessionMatchesFilters에서 처리.
+  // 필터 매칭 dim 일반화 — 학생/과목/강사 중 하나라도 활성이면 매칭/비매칭에 따라 opacity 대비.
+  // ADR-020 R5: ring 표시 폐기 → 비매칭만 opacity 0.25 dim. 매칭은 본체 색 그대로 유지.
   const isAnyFilterActive =
     (selectedStudentIds?.length ?? 0) > 0 ||
     (selectedSubjectIds?.length ?? 0) > 0 ||
@@ -323,26 +320,13 @@ function SessionBlock({
 
   const isDragActive = isAnyDragging || isDragging;
 
-  let dimGlowStyle: React.CSSProperties = {};
-  if (isAnyFilterActive && !isDragActive) {
-    if (sessionMatchesAllFilters) {
-      const ringHex = pickRingHex(
-        colorBy,
-        selectedStudentIds,
-        selectedSubjectIds,
-        selectedTeacherIds,
-        subjects,
-        teachers,
-      );
-      dimGlowStyle = {
-        boxShadow: `0 0 0 1.5px ${hexToRgba(ringHex, 0.55)}, 0 1px 2px rgba(0,0,0,0.3)`,
-      };
-    } else {
-      // Combined with completed session's 0.55 inner opacity this results in ~0.14 total
-      // visual opacity — intentional: completed non-matching sessions fade further.
-      dimGlowStyle = { opacity: 0.25 };
-    }
-  }
+  // 비매칭만 dim. 매칭/필터 없음 → 본체 색 + opacity 1 그대로.
+  // Combined with completed session's 0.55 inner opacity, non-matching completed sessions
+  // fade to ~0.14 — intentional.
+  const dimGlowStyle: React.CSSProperties =
+    isAnyFilterActive && !isDragActive && !sessionMatchesAllFilters
+      ? { opacity: 0.25 }
+      : {};
 
   const wrapperStyle: React.CSSProperties = {
     position: "absolute",
@@ -382,7 +366,10 @@ function SessionBlock({
     overflow: "hidden",
     cursor: styles.cursor,
     pointerEvents: styles.pointerEvents,
-    opacity: isCompleted ? 0.55 : styles.opacity,
+    // ADR-020 R5 보강 (UAT 2026-05-21): 필터 매칭 session 은 completed status 의 0.55 dim 도
+    // override. 사용자가 chip 으로 명시 선택한 session 은 시간 dim 없이 또렷하게 표시.
+    opacity:
+      isCompleted && !sessionMatchesAllFilters ? 0.55 : styles.opacity,
     visibility: styles.visibility as React.CSSProperties["visibility"],
     transition: styles.transition,
     width: "100%",

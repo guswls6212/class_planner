@@ -122,30 +122,8 @@ export const getSessionBlockStyles = (
   };
 };
 
-// Q Pastel 팔레트 — 학생 결정론적 색상에 사용
-const Q_PASTEL_PALETTE = [
-  "#f87171",
-  "#fb923c",
-  "#facc15",
-  "#4ade80",
-  "#60a5fa",
-  "#a78bfa",
-  "#f472b6",
-  "#94a3b8",
-];
-
-// 문자열을 팔레트 인덱스로 해시
-function hashStringToIndex(str: string, length: number): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash) % length;
-}
-
-export const getStudentDeterministicColor = (studentId: string): string => {
-  return Q_PASTEL_PALETTE[hashStringToIndex(studentId, Q_PASTEL_PALETTE.length)];
-};
+// ADR-020 R5: 학생 deterministic 색 + Q Pastel 팔레트 폐기 — 학생 색을 session 본체에 표시 X.
+// `getStudentDeterministicColor` / `Q_PASTEL_PALETTE` / `hashStringToIndex` 삭제.
 
 export type ColorByMode = "subject" | "student" | "teacher";
 
@@ -204,38 +182,18 @@ export const sessionMatchesFilters = (
 };
 
 /**
- * 매칭 ring 색 결정 — colorBy 우선, 없으면 fallback chain (학생 → 과목 → 강사).
- * 사용처: SessionBlock의 dim/glow 일반화. 필터 매칭 세션의 boxShadow ring 색.
+ * Session 본체 색 결정 — ADR-020 R5.
+ *   - colorBy="teacher" : session.teacher_id 의 강사 색
+ *   - colorBy="subject" (default, "student" 입력 시도 동일) : firstEnrollment.subjectId 의 과목 색
+ *
+ * 필터 매칭 시각화는 ring 이 아닌 dim contrast 만 사용 (SessionBlock 에서 처리).
+ * 본 함수는 session 본체 색만 반환. selectedStudentIds 등은 더 이상 영향 X (호환 인자).
+ *
+ * Migration 노트:
+ *   - 이전 spec (ADR-003 + PR #284): colorBy="student" + chip 선택 → firstEnrollment 학생의 deterministic 색.
+ *     → ADR-020 D1 으로 폐기. 학생 색은 session 본체에 표시 X.
+ *   - `pickRingHex` 함수: ADR-020 R5 에서 ring 자체 제거 → 삭제됨.
  */
-export const pickRingHex = (
-  colorBy: ColorByMode,
-  selectedStudentIds?: string[],
-  selectedSubjectIds?: string[],
-  selectedTeacherIds?: string[],
-  subjects?: Subject[],
-  teachers?: Array<{ id: string; color: string }>
-): string => {
-  const teacherHex = () => {
-    if (!selectedTeacherIds?.length) return null;
-    const t = teachers?.find((x) => x.id === selectedTeacherIds[0]);
-    return t?.color ?? null;
-  };
-  const subjectHex = () => {
-    if (!selectedSubjectIds?.length) return null;
-    const s = subjects?.find((x) => x.id === selectedSubjectIds[0]);
-    return s?.color ?? null;
-  };
-  const studentHex = () =>
-    selectedStudentIds?.length
-      ? getStudentDeterministicColor(selectedStudentIds[0])
-      : null;
-
-  if (colorBy === "teacher") return teacherHex() ?? subjectHex() ?? studentHex() ?? "#888";
-  if (colorBy === "subject") return subjectHex() ?? teacherHex() ?? studentHex() ?? "#888";
-  // colorBy === "student" or default
-  return studentHex() ?? subjectHex() ?? teacherHex() ?? "#888";
-};
-
 export const resolveSessionColor = (
   session: Session,
   colorBy: ColorByMode,
@@ -243,29 +201,16 @@ export const resolveSessionColor = (
   subjects: Subject[],
   _students: Array<{ id: string; name: string }>,
   teachers: Array<{ id: string; name: string; color: string }>,
-  selectedStudentIds?: string[]
+  _selectedStudentIds?: string[]
 ): string => {
-  const firstEnrollment = enrollments.find(
-    (e) => e.id === session.enrollmentIds?.[0]
-  );
-
-  if (colorBy === "student") {
-    // When no chip is selected, fall through to subject color (same as subject mode)
-    if (!selectedStudentIds || selectedStudentIds.length === 0) {
-      const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
-      return subject?.color ?? "#888";
-    }
-    const studentId = firstEnrollment?.studentId;
-    if (studentId) return getStudentDeterministicColor(studentId);
-    return "#888";
-  }
-
   if (colorBy === "teacher") {
     const teacher = teachers.find((t) => t.id === session.teacherId);
     return teacher?.color ?? "#888";
   }
-
-  // default: subject
+  // colorBy === "subject" 또는 (legacy) "student" 모두 과목 색으로 폴백
+  const firstEnrollment = enrollments.find(
+    (e) => e.id === session.enrollmentIds?.[0]
+  );
   const subject = subjects.find((s) => s.id === firstEnrollment?.subjectId);
   return subject?.color ?? "#888";
 };

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getGroupStudentNames,
   getSessionBlockStyles,
-  pickRingHex,
   resolveSessionColor,
   sessionMatchesFilters,
 } from "../SessionBlock.utils";
@@ -291,7 +290,9 @@ describe("resolveSessionColor", () => {
     expect(color).toBe("#FF0000");
   });
 
-  it("colorBy='student', selectedStudentIds 있음 → 학생 해시 색상 반환", () => {
+  it("colorBy='student', selectedStudentIds 있음 → 과목 색상 폴백 (ADR-020 R5)", () => {
+    // ADR-020 R5: colorBy='student' 모드 폐기. session 본체 색은 항상 과목 색.
+    // 학생 선택은 dim contrast 로만 시각화 (SessionBlock 에서 처리), 본체 색 변경 X.
     const color = resolveSessionColor(
       mockSession as any,
       "student",
@@ -301,10 +302,7 @@ describe("resolveSessionColor", () => {
       mockTeachers,
       ["student-1"]
     );
-    // Should NOT be the subject color — should be a student hash color
-    expect(color).not.toBe("#FF0000");
-    // Should be a valid hex color from Q_PASTEL_PALETTE
-    expect(color).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(color).toBe("#FF0000");
   });
 
   it("colorBy='subject' 일 때 selectedStudentIds를 무시한다 (regression)", () => {
@@ -460,29 +458,5 @@ describe("sessionMatchesFilters — 학생/과목/강사 AND 결합", () => {
   });
 });
 
-describe("pickRingHex — 매칭 ring 색 우선순위", () => {
-  const subjects = [{ id: "sub-1", name: "수학", color: "#AB1234" }] as any;
-  const teachers = [{ id: "tch-1", name: "홍", color: "#56CDEF" }];
-
-  it("colorBy=teacher + 강사 선택 → 강사 색", () => {
-    expect(pickRingHex("teacher", [], [], ["tch-1"], subjects, teachers)).toBe("#56CDEF");
-  });
-
-  it("colorBy=subject + 과목 선택 → 과목 색", () => {
-    expect(pickRingHex("subject", [], ["sub-1"], [], subjects, teachers)).toBe("#AB1234");
-  });
-
-  it("colorBy=student + 학생 선택 → 학생 결정론적 색 (Q_PASTEL_PALETTE 중 하나)", () => {
-    const hex = pickRingHex("student", ["stu-X"], [], [], subjects, teachers);
-    expect(hex).toMatch(/^#[0-9a-f]{6}$/i);
-  });
-
-  it("colorBy=teacher 인데 강사 미선택 → fallback (subject → student)", () => {
-    const hex = pickRingHex("teacher", [], ["sub-1"], [], subjects, teachers);
-    expect(hex).toBe("#AB1234");
-  });
-
-  it("아무 것도 선택 안 됨 → 기본 #888", () => {
-    expect(pickRingHex("subject", [], [], [], subjects, teachers)).toBe("#888");
-  });
-});
+// ADR-020 R5: `pickRingHex` 함수 폐기 (필터 매칭 ring 자체 제거 — dim contrast 만 사용).
+// 이전 describe("pickRingHex — 매칭 ring 색 우선순위") block 은 본 PR 에서 삭제.

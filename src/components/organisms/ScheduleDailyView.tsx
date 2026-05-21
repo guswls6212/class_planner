@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import type { Session, Subject, Student, Enrollment, Teacher } from "@/lib/planner";
 import type { ColorByMode } from "@/hooks/useColorBy";
 import { SessionCard } from "@/components/molecules/SessionCard";
-import { resolveSessionColor, sessionContainsSelected } from "@/components/molecules/SessionBlock.utils";
+import { resolveSessionColor, sessionMatchesFilters } from "@/components/molecules/SessionBlock.utils";
 
 type AttendanceStatus = "all-present" | "partial" | "absent" | "unmarked";
 
@@ -16,7 +16,10 @@ interface ScheduleDailyViewProps {
   teachers: Teacher[];
   selectedWeekday: number;
   colorBy: ColorByMode;
+  // ADR-020 R5 Full Parity: 학생/과목/강사 모두 dim contrast 적용 (UAT 2026-05-21)
   selectedStudentIds?: string[];
+  selectedSubjectIds?: string[];
+  selectedTeacherIds?: string[];
   onSessionClick: (session: Session) => void;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
@@ -26,9 +29,14 @@ interface ScheduleDailyViewProps {
 
 export function ScheduleDailyView({
   sessions, subjects, students, enrollments, teachers,
-  selectedWeekday, colorBy, selectedStudentIds, onSessionClick,
+  selectedWeekday, colorBy, selectedStudentIds, selectedSubjectIds, selectedTeacherIds, onSessionClick,
   onSwipeLeft, onSwipeRight, onAttendanceClick, attendanceStatusMap,
 }: ScheduleDailyViewProps) {
+  // ADR-020 R5 Full Parity: 활성 필터 type 어느 하나라도 있으면 매칭/비매칭 dim 적용.
+  const isAnyFilterActive =
+    (selectedStudentIds?.length ?? 0) > 0 ||
+    (selectedSubjectIds?.length ?? 0) > 0 ||
+    (selectedTeacherIds?.length ?? 0) > 0;
   const daySessions = useMemo(() => {
     const raw = sessions.get(selectedWeekday) ?? [];
     return [...raw].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -101,13 +109,18 @@ export function ScheduleDailyView({
               teachers,
               selectedStudentIds
             );
-            const isStudentFilterActive =
-              colorBy === "student" && selectedStudentIds != null && selectedStudentIds.length > 0;
-            const containsSelected = isStudentFilterActive
-              ? sessionContainsSelected(session, enrollments, selectedStudentIds!)
-              : false;
-            const isDimmed = isStudentFilterActive && !containsSelected;
-            const isHighlighted = isStudentFilterActive && containsSelected;
+            // ADR-020 R5: 활성 필터의 AND 결합 매칭 — 비매칭 dim, 매칭 highlight.
+            const matches = isAnyFilterActive
+              ? sessionMatchesFilters(
+                  session,
+                  enrollments,
+                  selectedStudentIds ?? [],
+                  selectedSubjectIds ?? [],
+                  selectedTeacherIds ?? [],
+                )
+              : true;
+            const isDimmed = isAnyFilterActive && !matches;
+            const isHighlighted = isAnyFilterActive && matches;
 
             return (
               <SessionCard

@@ -24,15 +24,20 @@ export interface PrimarySidebarProps {
   isOpen: boolean;
   onClose: () => void;
 
+  /** cascading 적용된 narrowed list. */
   students: SidebarStudent[];
+  /** cascading 이전 전체 수 — section header 의 "관련 N / 전체 M" badge 에 사용 */
+  totalStudents: number;
   selectedStudentIds: string[];
   onToggleStudent: (id: string) => void;
 
   subjects: SidebarSubject[];
+  totalSubjects: number;
   selectedSubjectIds: string[];
   onToggleSubject: (id: string) => void;
 
   teachers: SidebarTeacher[];
+  totalTeachers: number;
   selectedTeacherIds: string[];
   onToggleTeacher: (id: string) => void;
 }
@@ -43,12 +48,15 @@ export default function PrimarySidebar({
   isOpen,
   onClose,
   students,
+  totalStudents,
   selectedStudentIds,
   onToggleStudent,
   subjects,
+  totalSubjects,
   selectedSubjectIds,
   onToggleSubject,
   teachers,
+  totalTeachers,
   selectedTeacherIds,
   onToggleTeacher,
 }: PrimarySidebarProps) {
@@ -116,6 +124,7 @@ export default function PrimarySidebar({
         <Section
           title="학생"
           count={students.length}
+          total={totalStudents}
           selectedCount={selectedStudentIds.length}
           collapsed={collapsed.student}
           onToggleCollapse={() => toggleSection("student")}
@@ -140,10 +149,15 @@ export default function PrimarySidebar({
         <Section
           title="과목"
           count={subjects.length}
+          total={totalSubjects}
           selectedCount={selectedSubjectIds.length}
           collapsed={collapsed.subject}
           onToggleCollapse={() => toggleSection("subject")}
-          badge="placeholder"
+          onClearAll={
+            selectedSubjectIds.length > 0
+              ? () => selectedSubjectIds.forEach(onToggleSubject)
+              : undefined
+          }
         >
           {filteredSubjects.map((s) => (
             <Row
@@ -159,6 +173,7 @@ export default function PrimarySidebar({
         <Section
           title="강사"
           count={teachers.length}
+          total={totalTeachers}
           selectedCount={selectedTeacherIds.length}
           collapsed={collapsed.teacher}
           onToggleCollapse={() => toggleSection("teacher")}
@@ -185,7 +200,10 @@ export default function PrimarySidebar({
 
 interface SectionProps {
   title: string;
+  /** cascading 적용된 visible 개수 */
   count: number;
+  /** cascading 이전 전체 개수 — count < total 이면 narrowing 활성 (Variant C 표시) */
+  total: number;
   selectedCount: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -197,6 +215,7 @@ interface SectionProps {
 function Section({
   title,
   count,
+  total,
   selectedCount,
   collapsed,
   onToggleCollapse,
@@ -204,6 +223,8 @@ function Section({
   badge,
   children,
 }: SectionProps) {
+  // ADR-020 보강 (Variant C): cascading narrowing 시 "관련 N / 전체 M" 인지 표시.
+  const isNarrowed = count < total;
   return (
     <div className="border-b border-[var(--color-border)] last:border-b-0">
       <button
@@ -217,7 +238,15 @@ function Section({
           ) : (
             <ChevronLeft size={12} className="rotate-[-90deg]" />
           )}
-          {title} ({count})
+          <span>{title}</span>
+          {isNarrowed ? (
+            <span className="normal-case tracking-normal">
+              <span className="text-amber-400 font-medium">{count}</span>
+              <span className="text-[var(--color-text-muted)]"> / {total}</span>
+            </span>
+          ) : (
+            <span className="normal-case tracking-normal">({total})</span>
+          )}
           {badge && (
             <span className="text-[8px] px-1 rounded bg-amber-500/15 text-amber-400 normal-case tracking-normal">
               {badge}
