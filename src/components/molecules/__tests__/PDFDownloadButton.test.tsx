@@ -1,14 +1,17 @@
 /**
- * PDFDownloadButton 테스트
+ * PDFDownloadButton 테스트 (dropdown 패턴, ADR-020 후속 UAT 2026-05-21).
  *
- * 핵심 검증 사항:
- * 1. 버튼이 올바르게 렌더링된다
- * 2. 버튼 클릭 시 onDownload 콜백이 호출된다
- * 3. 생성 중에는 로딩 상태(disabled)가 표시된다
- * 4. 에러 발생 시 showError가 호출된다
+ * 핵심 검증:
+ * 1. 초기 렌더 — toggle button 노출, dropdown 닫힌 상태
+ * 2. toggle 클릭 → menu 열림 (전체 인쇄 / 강사별 / 학생별 / 인쇄 가이드)
+ * 3. "전체 인쇄" 클릭 → onDownloadStart/onDownload/onDownloadEnd 순차 호출
+ * 4. "인쇄 가이드" 클릭 → onOpenGuide 호출
+ * 5. onOpenGuide 미전달 시 가이드 항목 미렌더 (teacher-schedule 호환)
+ * 6. isDownloading=true → toggle button 비활성
+ * 7. 다운로드 실패 → showError + onDownloadEnd 보장 (finally)
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PDFDownloadButton from "../PDFDownloadButton";
 
@@ -18,143 +21,129 @@ vi.mock("@/lib/toast", () => ({
   showToast: vi.fn(),
 }));
 
-describe("PDFDownloadButton", () => {
+describe("PDFDownloadButton (dropdown)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockShowError.mockClear();
   });
 
-  it("초기 렌더 시 에러 없이 렌더링되어야 한다", () => {
-    expect(() => {
-      render(
-        <PDFDownloadButton
-          onDownload={vi.fn()}
-          isDownloading={false}
-          onDownloadStart={vi.fn()}
-          onDownloadEnd={vi.fn()}
-        />
-      );
-    }).not.toThrow();
-  });
-
-  it("기본 구조가 렌더링되어야 한다", () => {
-    const { container } = render(
+  it("초기 렌더 — toggle button 노출, menu 는 닫힌 상태", () => {
+    render(
       <PDFDownloadButton
         onDownload={vi.fn()}
+        onOpenGuide={vi.fn()}
         isDownloading={false}
         onDownloadStart={vi.fn()}
         onDownloadEnd={vi.fn()}
-      />
+      />,
     );
-
-    expect(container.firstChild).toBeDefined();
+    // toggle button 'PDF' 텍스트 + aria-expanded=false
+    const toggle = screen.getByRole("button", { name: /시간표 PDF/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("isDownloading=true 일 때 버튼이 비활성화되어야 한다", () => {
+  it("toggle 클릭 → menu 열림 + 4 항목 표시 (가이드 포함)", () => {
     render(
       <PDFDownloadButton
         onDownload={vi.fn()}
-        isDownloading={true}
+        onOpenGuide={vi.fn()}
+        isDownloading={false}
         onDownloadStart={vi.fn()}
         onDownloadEnd={vi.fn()}
-      />
+      />,
     );
-
-    const button = screen.getByRole("button");
-    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("전체 인쇄")).toBeInTheDocument();
+    expect(within(menu).getByText("강사별 (준비 중)")).toBeInTheDocument();
+    expect(within(menu).getByText("학생별 (준비 중)")).toBeInTheDocument();
+    expect(within(menu).getByText("인쇄 가이드")).toBeInTheDocument();
   });
 
-  it("isDownloading=true 일 때 '다운로드 중...' 텍스트를 표시해야 한다", () => {
-    render(
-      <PDFDownloadButton
-        onDownload={vi.fn()}
-        isDownloading={true}
-        onDownloadStart={vi.fn()}
-        onDownloadEnd={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText("다운로드 중...")).toBeDefined();
-  });
-
-  it("isDownloading=false 일 때 '시간표 PDF 다운로드' 텍스트를 표시해야 한다", () => {
+  it("onOpenGuide 미전달 시 '인쇄 가이드' 항목 미렌더", () => {
     render(
       <PDFDownloadButton
         onDownload={vi.fn()}
         isDownloading={false}
         onDownloadStart={vi.fn()}
         onDownloadEnd={vi.fn()}
-      />
+      />,
     );
-
-    expect(screen.getByText("시간표 PDF 다운로드")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    expect(screen.queryByText("인쇄 가이드")).toBeNull();
   });
 
-  it("버튼 클릭 시 onDownloadStart와 onDownload가 호출되어야 한다", async () => {
+  it("'전체 인쇄' 클릭 → onDownloadStart/onDownload/onDownloadEnd 호출", async () => {
+    const onDownload = vi.fn().mockResolvedValue(undefined);
     const onDownloadStart = vi.fn();
     const onDownloadEnd = vi.fn();
-    const onDownload = vi.fn().mockResolvedValue(undefined);
-
     render(
       <PDFDownloadButton
         onDownload={onDownload}
+        onOpenGuide={vi.fn()}
         isDownloading={false}
         onDownloadStart={onDownloadStart}
         onDownloadEnd={onDownloadEnd}
-      />
+      />,
     );
-
-    fireEvent.click(screen.getByRole("button"));
-
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    fireEvent.click(screen.getByText("전체 인쇄"));
     await vi.waitFor(() => {
       expect(onDownload).toHaveBeenCalledTimes(1);
     });
-
     expect(onDownloadStart).toHaveBeenCalledTimes(1);
     expect(onDownloadEnd).toHaveBeenCalledTimes(1);
   });
 
-  it("다운로드 성공 후 onDownloadEnd 가 호출되어야 한다", async () => {
-    const onDownloadStart = vi.fn();
-    const onDownloadEnd = vi.fn();
-    const onDownload = vi.fn().mockResolvedValue(undefined);
-
+  it("'인쇄 가이드' 클릭 → onOpenGuide 호출", () => {
+    const onOpenGuide = vi.fn();
     render(
       <PDFDownloadButton
-        onDownload={onDownload}
+        onDownload={vi.fn()}
+        onOpenGuide={onOpenGuide}
         isDownloading={false}
-        onDownloadStart={onDownloadStart}
-        onDownloadEnd={onDownloadEnd}
-      />
+        onDownloadStart={vi.fn()}
+        onDownloadEnd={vi.fn()}
+      />,
     );
-
-    fireEvent.click(screen.getByRole("button"));
-
-    await vi.waitFor(() => {
-      expect(onDownloadEnd).toHaveBeenCalledTimes(1);
-    });
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    fireEvent.click(screen.getByText("인쇄 가이드"));
+    expect(onOpenGuide).toHaveBeenCalledTimes(1);
   });
 
-  it("다운로드 실패 시에도 onDownloadEnd 가 호출되어야 한다 (finally 보장)", async () => {
-    const onDownload = vi.fn().mockRejectedValueOnce(new Error("PDF error"));
-    const onDownloadStart = vi.fn();
-    const onDownloadEnd = vi.fn();
+  it("isDownloading=true → toggle button 비활성 + '다운로드 중...' 라벨", () => {
+    render(
+      <PDFDownloadButton
+        onDownload={vi.fn()}
+        onOpenGuide={vi.fn()}
+        isDownloading={true}
+        onDownloadStart={vi.fn()}
+        onDownloadEnd={vi.fn()}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: /시간표 PDF/i });
+    expect(toggle).toBeDisabled();
+    expect(screen.getByText("다운로드 중...")).toBeInTheDocument();
+  });
 
+  it("다운로드 실패 → showError + onDownloadEnd 보장 (finally)", async () => {
+    const onDownload = vi.fn().mockRejectedValueOnce(new Error("PDF error"));
+    const onDownloadEnd = vi.fn();
     render(
       <PDFDownloadButton
         onDownload={onDownload}
+        onOpenGuide={vi.fn()}
         isDownloading={false}
-        onDownloadStart={onDownloadStart}
+        onDownloadStart={vi.fn()}
         onDownloadEnd={onDownloadEnd}
-      />
+      />,
     );
-
-    fireEvent.click(screen.getByRole("button"));
-
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    fireEvent.click(screen.getByText("전체 인쇄"));
     await vi.waitFor(() => {
       expect(onDownloadEnd).toHaveBeenCalledTimes(1);
     });
-
     expect(mockShowError).toHaveBeenCalledWith("PDF 다운로드에 실패했습니다.");
   });
 });

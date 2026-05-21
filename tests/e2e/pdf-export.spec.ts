@@ -45,60 +45,52 @@ async function seedScheduleWithSession(page: Page): Promise<void> {
 }
 
 test.describe("PDF export", () => {
-  test("PDF 다운로드 버튼이 schedule 헤더에 보인다 + aria-label", async ({ page }) => {
+  test("PDF dropdown trigger 가 schedule 헤더에 보인다 + aria-label (ADR-020 후속)", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    const button = page.getByRole("button", { name: /PDF 다운로드/ });
-    await expect(button).toBeVisible();
-    await expect(button).toBeEnabled();
+    // 새 dropdown 패턴 — aria-label = `${viewLabel} PDF` (예: "주간 시간표 PDF")
+    const trigger = page.getByRole("button", { name: /시간표 PDF/ });
+    await expect(trigger).toBeVisible();
+    await expect(trigger).toBeEnabled();
   });
 
-  test("PDF 가이드 InfoTrigger 클릭 시 PdfGuideModal이 열린다", async ({ page }) => {
+  test("PDF dropdown 안 '인쇄 가이드' menuitem 클릭 → PdfGuideModal 열린다 (P2)", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    await page.getByRole("button", { name: /PDF 출력 가이드/ }).click();
-    // PdfGuideModal — 가이드 콘텐츠 식별 가능한 텍스트 (모달 헤더 등)
-    await expect(page.getByText(/PDF/).first()).toBeVisible();
+    await page.getByRole("button", { name: /시간표 PDF/ }).click();
+    // portal 로 document.body 에 mount — page 전체 검색으로 menuitem 매칭
+    await page.getByRole("button", { name: /인쇄 가이드/ }).click();
+    await expect(page.getByText("PDF 출력 가이드")).toBeVisible({ timeout: 3000 });
   });
 
-  test("PDF 다운로드 클릭 → 모달 → '출력' 클릭 → download 이벤트 발생 (jsPDF)", async ({ page }) => {
+  test("PDF dropdown → '전체 인쇄' → 모달 → '출력' → download 이벤트", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    // 1. PDF 다운로드 버튼 → PdfExportRangeModal 열림
-    await page.getByRole("button", { name: /PDF 다운로드/ }).click();
-
-    // 2. 모달 title 확인 — "PDF 출력 범위"
+    await page.getByRole("button", { name: /시간표 PDF/ }).click();
+    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
-    // 3. download 이벤트 promise 등록 (출력 클릭 직전)
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
-
-    // 4. 기본 "현재 뷰만 출력" radio default 선택됨 — 바로 "출력" 버튼 클릭
     await page.getByRole("button", { name: /^출력$/ }).click();
-
-    // 5. jsPDF doc.save() 트리거 → browser download
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
   });
 
-  test("'출력' 클릭 시 모달 버튼이 '출력 중...' 라벨로 변경된다 (in-progress 표시)", async ({
+  test("'출력' 클릭 → in-progress 라벨 + download 이벤트 발사", async ({
     page,
   }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    await page.getByRole("button", { name: /PDF 다운로드/ }).click();
+    await page.getByRole("button", { name: /시간표 PDF/ }).click();
+    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
-    const exportButton = page.getByRole("button", { name: /^출력$/ });
-    // download 시작 전 race를 피하기 위해 이벤트 promise 미리 등록
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
-    await exportButton.click();
-
-    // jsPDF 동기 처리라 "출력 중..." 라벨이 매우 짧게 노출 — disabled 또는 download 발사 사실로 검증
+    await page.getByRole("button", { name: /^출력$/ }).click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
   });
