@@ -6,22 +6,29 @@
  *   npx tsx scripts/uat-seed.ts
  *   (또는 npm run uat:seed)
  *
- * 데이터 설계 (2026-05-21 풍부화):
+ * 데이터 설계 (2026-05-21 풍부화 v2 — 월별 분산 + 최대 겹침):
  *   - subjects 8개: 다양한 색상 + 12자 edge (`중등수학심화`)
  *   - teachers 6개: 일반 5 + `강사_uat` (Phase 5 member view 검증용)
  *   - students 10개: 한국 이름 3~4자 + 영문 edge (`TomLee` 6자)
  *   - enrollments: 학생당 1~3과목, 다양한 조합
- *   - sessions 25개: 월~일 7요일 채움
- *       · 시간 충돌 2건 — 같은 weekday/시각에 y_position 1/2 분리
+ *   - sessions ~50개: 5개 주에 분산 (`weekOffset` -2/-1/0/+1/+2)
+ *       · 이번주 32개 (메인 25 + 겹침 강화 7)
+ *       · 지난 주 6개 / 다음 주 6개 (monthly view 다양성)
+ *       · 2주 전 3개 / 2주 후 3개 (sparse edge — cross-week banner 검증)
+ *       · 최대 5-stack 겹침 — 목 14:00 (사회/미술/수학/영어/코딩) → +N overflow chip 검증
+ *       · 4-stack 겹침 — 월 10:00 (수학/영어/국어/사회)
+ *       · 시간 충돌 2건 (기존) — 월 09:00, 목 14:00 base
  *       · 강사 미배정 3건 — teacher_id null (미술)
- *       · 강사_uat 담당 3건 — 화·목·토 사회 (S-20.5)
- *       · 다인원(4-5명) 2건 — 토요 영어, 금 수학
+ *       · 강사_uat 담당 다중 주 — 화·목·토 이번주 + 지난주/다음주/2주후 cross-week
  *       · 길이 다양 — 1h / 1.5h / 2h 수업 혼재
  *       · 오전/오후/저녁 시간대 모두 포함
  *
  * 시나리오 커버:
  *   - 캘린더 전체 채우기 → 빈 슬롯 없는 schedule 시각 검증
  *   - 시간 충돌 stacking → y_position UI 검증
+ *   - 최대 겹침 5-stack → overflow `+N` chip + cluster expand 검증
+ *   - monthly view 다양성 → 5주 분산 데이터로 month 그리드 채움
+ *   - cross-week banner → 강사_uat 같은 entity 가 2주 전·후 주에 분산되어 banner 검증 케이스 자동 생성
  *   - 다양한 enrollment 조합 → 필터/CRUD 검증
  *   - edge case 입력값 (12자 과목, 6자 영문 학생, 강사 미배정) → validation UI 검증
  *   - Phase 5 member view (S-20.5/20.6/20.7) — uat:invite 가 강사_uat 를 user_id link 만 처리하면 즉시 진입 가능
@@ -115,6 +122,12 @@ interface SessionSeed {
   attendees: Array<{ studentName: string; subjectName: string }>;
   publicDescription?: string;
   internalNote?: string;
+  /**
+   * 이 session 이 속할 주 — 이번주 KST 월요일 기준 offset.
+   *   0 = 이번주 (default), -1 = 지난 주, -2 = 2주 전, +1 = 다음 주, +2 = 2주 후
+   * monthly view 다양화 + cross-week banner / 주별 navigation 검증용.
+   */
+  weekOffset?: number;
 }
 
 const SEED_SUBJECTS: SubjectSeed[] = [
@@ -486,6 +499,271 @@ const SEED_SESSIONS: SessionSeed[] = [
     ],
     publicDescription: "일요일 코딩 특강 (격주)",
   },
+
+  // ═════════════════════════════════════════════════════════════════
+  // 이번주 — 겹침 검증 cluster (overflow +N 검증용)
+  // ═════════════════════════════════════════════════════════════════
+  // 월 10:00-11:00 4-stack — 수학 / 영어 / 국어 / 사회 (y=1/2/3/4).
+  // overflow threshold = 4 이면 +N chip 동작 검증 가능.
+  {
+    weekday: 0,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [{ studentName: "한도윤", subjectName: "수학" }],
+  },
+  {
+    weekday: 0,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    teacherName: "이선생",
+    yPosition: 2,
+    attendees: [{ studentName: "김지우", subjectName: "영어" }],
+  },
+  {
+    weekday: 0,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    teacherName: "윤멘토교육",
+    yPosition: 3,
+    attendees: [{ studentName: "박지수", subjectName: "국어" }],
+  },
+  {
+    weekday: 0,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    teacherName: "최쌤",
+    yPosition: 4,
+    attendees: [{ studentName: "이서준", subjectName: "사회" }],
+  },
+
+  // 목 14:00-15:00 5-stack — 기존 2 (사회 y=1, 미술 y=2) + 추가 3 (수학/영어/코딩 y=3/4/5)
+  // → 최대 겹침 케이스. visible 3 + overflow +2 검증.
+  {
+    weekday: 3,
+    startsAt: "14:00",
+    endsAt: "15:00",
+    teacherName: "김선생",
+    yPosition: 3,
+    attendees: [
+      { studentName: "김영수", subjectName: "수학" },
+      { studentName: "한도윤", subjectName: "수학" },
+    ],
+  },
+  {
+    weekday: 3,
+    startsAt: "14:00",
+    endsAt: "15:00",
+    teacherName: "이선생",
+    yPosition: 4,
+    attendees: [
+      { studentName: "박지수", subjectName: "영어" },
+      { studentName: "김지우", subjectName: "영어" },
+    ],
+  },
+  {
+    weekday: 3,
+    startsAt: "14:00",
+    endsAt: "15:00",
+    teacherName: "박코치",
+    yPosition: 5,
+    attendees: [
+      { studentName: "홍길동", subjectName: "코딩" },
+      { studentName: "TomLee", subjectName: "코딩" },
+    ],
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // 지난 주 (weekOffset = -1) — monthly view 다양화
+  // ═════════════════════════════════════════════════════════════════
+  {
+    weekOffset: -1,
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [
+      { studentName: "홍길동", subjectName: "수학" },
+      { studentName: "김영수", subjectName: "수학" },
+    ],
+  },
+  {
+    weekOffset: -1,
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    teacherName: "이선생",
+    yPosition: 1,
+    attendees: [{ studentName: "최민준", subjectName: "과학" }],
+  },
+  {
+    weekOffset: -1,
+    weekday: 2,
+    startsAt: "15:00",
+    endsAt: "16:00",
+    teacherName: "박코치",
+    yPosition: 1,
+    attendees: [
+      { studentName: "TomLee", subjectName: "코딩" },
+      { studentName: "김지우", subjectName: "코딩" },
+    ],
+  },
+  {
+    weekOffset: -1,
+    weekday: 3,
+    startsAt: "11:00",
+    endsAt: "12:00",
+    teacherName: "강사_uat",
+    yPosition: 1,
+    attendees: [{ studentName: "정수아", subjectName: "사회" }],
+  },
+  {
+    weekOffset: -1,
+    weekday: 4,
+    startsAt: "13:00",
+    endsAt: "14:00",
+    teacherName: "이선생",
+    yPosition: 1,
+    attendees: [
+      { studentName: "박지수", subjectName: "영어" },
+      { studentName: "김지우", subjectName: "영어" },
+    ],
+  },
+  {
+    weekOffset: -1,
+    weekday: 5,
+    startsAt: "10:00",
+    endsAt: "12:00",
+    teacherName: "이선생",
+    yPosition: 1,
+    attendees: [{ studentName: "정수아", subjectName: "영어" }],
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // 다음 주 (weekOffset = +1) — monthly view 다양화
+  // ═════════════════════════════════════════════════════════════════
+  {
+    weekOffset: 1,
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [
+      { studentName: "홍길동", subjectName: "수학" },
+      { studentName: "김영수", subjectName: "수학" },
+      { studentName: "최민준", subjectName: "수학" },
+    ],
+  },
+  {
+    weekOffset: 1,
+    weekday: 1,
+    startsAt: "14:00",
+    endsAt: "15:00",
+    teacherName: "최쌤",
+    yPosition: 1,
+    attendees: [{ studentName: "이서준", subjectName: "사회" }],
+  },
+  {
+    weekOffset: 1,
+    weekday: 2,
+    startsAt: "11:00",
+    endsAt: "12:00",
+    teacherName: "이선생",
+    yPosition: 1,
+    attendees: [{ studentName: "박지수", subjectName: "영어" }],
+  },
+  {
+    weekOffset: 1,
+    weekday: 3,
+    startsAt: "16:00",
+    endsAt: "17:00",
+    teacherName: "윤멘토교육",
+    yPosition: 1,
+    attendees: [{ studentName: "박지수", subjectName: "국어" }],
+  },
+  {
+    weekOffset: 1,
+    weekday: 4,
+    startsAt: "19:00",
+    endsAt: "20:30",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [{ studentName: "한도윤", subjectName: "중등수학심화" }],
+  },
+  {
+    weekOffset: 1,
+    weekday: 6,
+    startsAt: "14:00",
+    endsAt: "16:00",
+    teacherName: "박코치",
+    yPosition: 1,
+    attendees: [{ studentName: "홍길동", subjectName: "코딩" }],
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // 2주 전 (weekOffset = -2) — sparse, monthly view edge
+  // ═════════════════════════════════════════════════════════════════
+  {
+    weekOffset: -2,
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [{ studentName: "홍길동", subjectName: "수학" }],
+  },
+  {
+    weekOffset: -2,
+    weekday: 2,
+    startsAt: "15:00",
+    endsAt: "16:00",
+    teacherName: "박코치",
+    yPosition: 1,
+    attendees: [{ studentName: "김지우", subjectName: "코딩" }],
+  },
+  {
+    weekOffset: -2,
+    weekday: 4,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [{ studentName: "최민준", subjectName: "수학" }],
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // 2주 후 (weekOffset = +2) — sparse, monthly view edge
+  // ═════════════════════════════════════════════════════════════════
+  {
+    weekOffset: 2,
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "김선생",
+    yPosition: 1,
+    attendees: [{ studentName: "홍길동", subjectName: "수학" }],
+  },
+  {
+    weekOffset: 2,
+    weekday: 3,
+    startsAt: "11:00",
+    endsAt: "12:00",
+    teacherName: "강사_uat",
+    yPosition: 1,
+    attendees: [{ studentName: "정수아", subjectName: "사회" }],
+  },
+  {
+    weekOffset: 2,
+    weekday: 5,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    teacherName: "강사_uat",
+    yPosition: 1,
+    attendees: [{ studentName: "최민준", subjectName: "사회" }],
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -638,12 +916,18 @@ async function main(): Promise<void> {
     enrollmentIdByPair.set(`${e.student_id}::${e.subject_id}`, e.id);
   }
 
-  // 6. sessions INSERT — 주별 격리 모델 (migration 031). 모두 이번주(KST 월요일)에 시드.
-  //    schedule UI 의 default view 가 "이번주" 라 진입 즉시 데이터 노출.
-  //    다음주/저번주 검증이 필요해지면 SessionSeed 에 weekOffset 옵션 추가 권장.
+  // 6. sessions INSERT — 주별 격리 모델 (migration 031).
+  //    SessionSeed.weekOffset 으로 다중 주 분산 (default 0 = 이번주).
+  //    monthly view / cross-week banner / 주 navigation 검증 가능.
   const currentWeekStart = getWeekStartDate(new Date());
+  const offsetWeek = (weekOffset: number): string => {
+    if (!weekOffset) return currentWeekStart;
+    const monday = new Date(`${currentWeekStart}T12:00:00+09:00`);
+    monday.setUTCDate(monday.getUTCDate() + weekOffset * 7);
+    return monday.toISOString().slice(0, 10);
+  };
   console.log(
-    `📅 sessions INSERT (${SEED_SESSIONS.length}개, week_start_date=${currentWeekStart})`,
+    `📅 sessions INSERT (${SEED_SESSIONS.length}개, base week=${currentWeekStart})`,
   );
   const sessionRows = SEED_SESSIONS.map((s) => ({
     academy_id: academyId,
@@ -652,7 +936,7 @@ async function main(): Promise<void> {
     ends_at: s.endsAt,
     teacher_id: s.teacherName ? teacherIdByName.get(s.teacherName) ?? null : null,
     y_position: s.yPosition,
-    week_start_date: currentWeekStart,
+    week_start_date: offsetWeek(s.weekOffset ?? 0),
     public_description: s.publicDescription ?? null,
     internal_note: s.internalNote ?? null,
   }));
@@ -712,6 +996,23 @@ async function main(): Promise<void> {
   })();
 
   const uatTeacherSessions = SEED_SESSIONS.filter((s) => s.teacherName === "강사_uat").length;
+  const sessionsByWeek = SEED_SESSIONS.reduce<Record<number, number>>((acc, s) => {
+    const off = s.weekOffset ?? 0;
+    acc[off] = (acc[off] ?? 0) + 1;
+    return acc;
+  }, {});
+  const weekDistribution = Object.entries(sessionsByWeek)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([off, n]) => `${off === "0" ? "이번주" : `${off}주`}=${n}`)
+    .join(", ");
+  const maxStack = (() => {
+    const slotCounts = new Map<string, number>();
+    for (const s of SEED_SESSIONS) {
+      const key = `${s.weekOffset ?? 0}|${s.weekday}|${s.startsAt}`;
+      slotCounts.set(key, (slotCounts.get(key) ?? 0) + 1);
+    }
+    return Math.max(...slotCounts.values());
+  })();
 
   console.log("");
   console.log("✅ UAT 풍부 시드 완료 (owner academy):");
@@ -720,8 +1021,9 @@ async function main(): Promise<void> {
   console.log(`   - students: ${SEED_STUDENTS.length} (영문 edge 포함)`);
   console.log(`   - enrollments: ${SEED_ENROLLMENTS.length}`);
   console.log(
-    `   - sessions: ${SEED_SESSIONS.length} (요일 7개 모두 포함, ${unassignedSessions}건 강사 미배정, ${conflictPairs}건 시간 충돌, ${uatTeacherSessions}건 강사_uat 담당)`,
+    `   - sessions: ${SEED_SESSIONS.length} (요일 7개 모두 포함, ${unassignedSessions}건 강사 미배정, ${conflictPairs}건 시간 충돌, ${uatTeacherSessions}건 강사_uat 담당, 최대 ${maxStack}-stack)`,
   );
+  console.log(`   - 주별 분포: ${weekDistribution}`);
   console.log(`   - session_enrollments: ${linkRows.length} 연결`);
   console.log("");
   console.log("📝 다음:");
