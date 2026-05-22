@@ -41,6 +41,13 @@ interface Props {
 
 const STUDENT_PAGE_GUARD_THRESHOLD = 30;
 
+// 무한 re-render 회피 — Props default `= []` 는 매 render 마다 new reference
+// → useEffect dep `[scope, teachers, students]` 변경 인지 → 발동 → setState
+// → re-render → 무한 hang (vitest jsdom 환경에서 silent CPU 100% lockup).
+// Module-level stable reference 로 dep 변화 차단.
+const EMPTY_TEACHERS: { id: string; name: string; color?: string }[] = [];
+const EMPTY_STUDENTS: { id: string; name: string; color?: string }[] = [];
+
 export default function PdfExportRangeModal({
   isOpen,
   onClose,
@@ -48,8 +55,8 @@ export default function PdfExportRangeModal({
   viewMode,
   selectedDate,
   isExporting = false,
-  teachers = [],
-  students = [],
+  teachers = EMPTY_TEACHERS,
+  students = EMPTY_STUDENTS,
   preflightResult,
   hasStudentFilter = false,
   hasTeacherFilter = false,
