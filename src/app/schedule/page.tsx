@@ -2027,6 +2027,18 @@ function SchedulePageContent(): JSX.Element {
     enrollments,
   ]);
 
+  // PR #438: "전체 수업" 인쇄 시 전체 sessions 기준 preflight — 더 많은 경고 가능
+  const pdfPreflightResultAll = useMemo(() => {
+    if (!isPdfDialogOpen) return undefined;
+    const allSessionsRaw = Array.from(displaySessions.values()).flat();
+    return preflightCheck(allSessionsRaw, {
+      isStudentFilter: false,
+      startHour: timeRange.startHour,
+      endHour: timeRange.endHour + 1,
+      enrollments,
+    });
+  }, [isPdfDialogOpen, displaySessions, timeRange, enrollments]);
+
   // PR #432: modal 의 "필터 적용 N 수업 / 전체 N 수업" 카운트
   // PR #435: dropdown 도 사용 (그룹 분리 layout) → isPdfDialogOpen 가드 제거
   const pdfCounts = useMemo(() => {
@@ -3113,6 +3125,7 @@ function SchedulePageContent(): JSX.Element {
         teachers={teachersForPdfModal}
         students={studentsForPdfModal}
         preflightResult={pdfPreflightResult}
+        allPreflightResult={pdfPreflightResultAll}
         hasStudentFilter={selectedStudentIds.length > 0}
         hasTeacherFilter={selectedTeacherIds.length > 0}
         initialScope={pdfInitialScope}
