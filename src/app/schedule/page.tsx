@@ -1992,8 +1992,9 @@ function SchedulePageContent(): JSX.Element {
       isStudentFilter: selectedStudentIds.length > 0,
       startHour: timeRange.startHour,
       endHour: timeRange.endHour + 1,
+      enrollments, // PR #429-B: crowded-class warning (1h + 5+학생)
     });
-  }, [isPdfDialogOpen, displaySessions, selectedStudentIds, timeRange]);
+  }, [isPdfDialogOpen, displaySessions, selectedStudentIds, timeRange, enrollments]);
 
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
