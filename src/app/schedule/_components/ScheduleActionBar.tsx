@@ -2,19 +2,11 @@
 
 import Link from "next/link";
 import { Share2 } from "lucide-react";
-import { useState } from "react";
 import PDFDownloadButton from "../../../components/molecules/PDFDownloadButton";
-import PdfGuideModal from "../../../components/molecules/PdfGuideModal";
 
 interface Props {
   viewLabel: string;
   onOpenPdfDialog: () => void;
-  /** 강사별로 1장씩 — dropdown 진입점. PdfExportRangeModal 을 per-teacher pre-set 으로 연다. */
-  onOpenPdfPerTeacher?: () => void;
-  /** 학생별로 1장씩 — dropdown 진입점. PdfExportRangeModal 을 per-student pre-set 으로 연다. */
-  onOpenPdfPerStudent?: () => void;
-  /** PR #435 A4: 전체 수업 인쇄 (필터 무시). hasAnyFilter 그룹 분리 dropdown 에서 사용. */
-  onOpenPdfAllPrint?: () => void;
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
@@ -26,11 +18,17 @@ interface Props {
    * daily/monthly 의 PDF 는 별도 PR 에서 전용 layout 으로 구현 예정.
    */
   viewMode?: "daily" | "weekly" | "monthly";
-  /** PR #435 A4: 화면 필터 활성 여부 — dropdown 을 그룹 분리 layout 으로 전환 */
+  /** @deprecated dropdown 제거 후 미사용 — page-level call site 호환용 */
+  onOpenPdfPerTeacher?: () => void;
+  /** @deprecated 동일 */
+  onOpenPdfPerStudent?: () => void;
+  /** @deprecated 동일 */
+  onOpenPdfAllPrint?: () => void;
+  /** @deprecated 동일 */
   hasAnyFilter?: boolean;
-  /** PR #435: 필터 적용 수업 수 */
+  /** @deprecated 동일 */
   filteredCount?: number;
-  /** PR #435: 전체 수업 수 */
+  /** @deprecated 동일 */
   totalCount?: number;
   /** @deprecated Retained to keep the page-level call site unchanged. TemplateMenuV2 owns this action now. */
   onSaveTemplate?: () => void;
@@ -43,20 +41,11 @@ interface Props {
 export default function ScheduleActionBar({
   viewLabel,
   onOpenPdfDialog,
-  onOpenPdfPerTeacher,
-  onOpenPdfPerStudent,
-  onOpenPdfAllPrint,
   isDownloading,
-  onDownloadStart,
-  onDownloadEnd,
   userId,
   canManage = true,
   viewMode = "weekly",
-  hasAnyFilter = false,
-  filteredCount = 0,
-  totalCount = 0,
 }: Props) {
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const showPdf = viewMode === "weekly";
 
   return (
@@ -64,17 +53,8 @@ export default function ScheduleActionBar({
       {showPdf && (
         <PDFDownloadButton
           onDownload={onOpenPdfDialog}
-          onPerTeacher={onOpenPdfPerTeacher}
-          onPerStudent={onOpenPdfPerStudent}
-          onAllPrint={onOpenPdfAllPrint}
-          onOpenGuide={() => setIsGuideOpen(true)}
           isDownloading={isDownloading}
-          onDownloadStart={onDownloadStart}
-          onDownloadEnd={onDownloadEnd}
           viewLabel={viewLabel}
-          hasAnyFilter={hasAnyFilter}
-          filteredCount={filteredCount}
-          totalCount={totalCount}
         />
       )}
       {userId && canManage && (
@@ -87,7 +67,6 @@ export default function ScheduleActionBar({
           <Share2 size={15} strokeWidth={2} />
         </Link>
       )}
-      <PdfGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   );
 }

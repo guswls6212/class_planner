@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Filter } from "lucide-react";
+import { Filter, HelpCircle } from "lucide-react";
 import { useModalA11y } from "@/hooks/useModalA11y";
+import PdfGuideModal from "./PdfGuideModal";
 import type { ScheduleViewMode } from "@/hooks/useScheduleView";
 import {
   addWeeks,
@@ -87,6 +88,7 @@ export default function PdfExportRangeModal({
   const [printTarget, setPrintTarget] = useState<PrintTarget>(
     initialPrintTarget ?? "filtered",
   );
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [showStudentNames, setShowStudentNames] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     () => teachers.map((t) => t.id)
@@ -593,24 +595,35 @@ export default function PdfExportRangeModal({
           </div>
         )}
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-md border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+            onClick={() => setIsGuideOpen(true)}
+            className="inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:underline underline-offset-2 transition-colors"
           >
-            취소
+            <HelpCircle size={13} strokeWidth={2} />
+            인쇄 가이드 보기
           </button>
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={rangeInvalid || noTeachersSelected || noStudentsSelected || isExporting}
-            className="px-4 py-2 rounded-md bg-accent text-sm text-white font-medium disabled:opacity-50 transition-colors"
-          >
-            {isExporting ? "출력 중..." : "출력"}
-          </button>
+          <div className="flex gap-3 justify-end ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-md border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={rangeInvalid || noTeachersSelected || noStudentsSelected || isExporting}
+              className="px-4 py-2 rounded-md bg-accent text-sm text-white font-medium disabled:opacity-50 transition-colors"
+            >
+              {isExporting ? "출력 중..." : "출력"}
+            </button>
+          </div>
         </div>
       </div>
+      <PdfGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   );
 }

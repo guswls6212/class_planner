@@ -14,9 +14,11 @@ describe("PdfGuideModal", () => {
     expect(screen.getByText(/PDF 출력 가이드/)).toBeInTheDocument();
   });
 
-  it("한계 정보 표 내 'lane 4 이상'과 관련된 안내 문구가 있다", () => {
+  it("한계 정보 표 내 '같은 시간 수업 4개 이상' 안내 문구가 있다", () => {
     render(<PdfGuideModal isOpen={true} onClose={vi.fn()} />);
-    expect(screen.getAllByText(/동시간 4건 이상/).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/같은 시간 수업 4개 이상/).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("닫기 버튼 클릭 시 onClose가 호출된다", () => {

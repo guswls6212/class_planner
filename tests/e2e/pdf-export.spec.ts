@@ -45,32 +45,31 @@ async function seedScheduleWithSession(page: Page): Promise<void> {
 }
 
 test.describe("PDF export", () => {
-  test("PDF dropdown trigger 가 schedule 헤더에 보인다 + aria-label (ADR-020 후속)", async ({ page }) => {
+  test("PDF 버튼이 schedule 헤더에 보인다 + aria-label (UAT 2026-05-22 dropdown 제거 후)", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
-    // 새 dropdown 패턴 — aria-label = `${viewLabel} PDF` (예: "주간 시간표 PDF")
+    // 단순 버튼 패턴 — aria-label = `${viewLabel} PDF` (예: "주간 시간표 PDF")
     const trigger = page.getByRole("button", { name: /시간표 PDF/ });
     await expect(trigger).toBeVisible();
     await expect(trigger).toBeEnabled();
   });
 
-  test("PDF dropdown 안 '인쇄 가이드' menuitem 클릭 → PdfGuideModal 열린다 (P2)", async ({ page }) => {
+  test("PDF 출력 모달 → '인쇄 가이드 보기' 클릭 → PdfGuideModal 열린다 (1단계 접근)", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
-    // portal 로 document.body 에 mount — page 전체 검색으로 menuitem 매칭
-    await page.getByRole("button", { name: /인쇄 가이드/ }).click();
+    await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
+    await page.getByRole("button", { name: /인쇄 가이드 보기/ }).click();
     await expect(page.getByText("PDF 출력 가이드")).toBeVisible({ timeout: 3000 });
   });
 
-  test("PDF dropdown → '전체 인쇄' → 모달 → '출력' → download 이벤트", async ({ page }) => {
+  test("PDF 버튼 → 모달 → '출력' → download 이벤트", async ({ page }) => {
     await seedScheduleWithSession(page);
     await page.goto("/schedule");
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
-    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
@@ -86,7 +85,6 @@ test.describe("PDF export", () => {
     await page.goto("/schedule");
 
     await page.getByRole("button", { name: /시간표 PDF/ }).click();
-    await page.getByRole("button", { name: /전체 인쇄/ }).click();
     await expect(page.getByText("PDF 출력 범위")).toBeVisible({ timeout: 3000 });
 
     const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
