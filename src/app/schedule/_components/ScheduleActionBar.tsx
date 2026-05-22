@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { Share2 } from "lucide-react";
-import { useState } from "react";
 import PDFDownloadButton from "../../../components/molecules/PDFDownloadButton";
-import PdfGuideModal from "../../../components/molecules/PdfGuideModal";
 
 interface Props {
   viewLabel: string;
@@ -56,7 +54,6 @@ export default function ScheduleActionBar({
   filteredCount = 0,
   totalCount = 0,
 }: Props) {
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const showPdf = viewMode === "weekly";
 
   return (
@@ -67,7 +64,6 @@ export default function ScheduleActionBar({
           onPerTeacher={onOpenPdfPerTeacher}
           onPerStudent={onOpenPdfPerStudent}
           onAllPrint={onOpenPdfAllPrint}
-          onOpenGuide={() => setIsGuideOpen(true)}
           isDownloading={isDownloading}
           onDownloadStart={onDownloadStart}
           onDownloadEnd={onDownloadEnd}
@@ -87,7 +83,6 @@ export default function ScheduleActionBar({
           <Share2 size={15} strokeWidth={2} />
         </Link>
       )}
-      <PdfGuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
     </div>
   );
 }
