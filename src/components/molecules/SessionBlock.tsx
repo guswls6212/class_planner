@@ -16,6 +16,20 @@ import {
 import { tintFromHex } from "@/lib/colors/tintFromHex";
 import { resolveSessionTone } from "./SessionCard.utils";
 
+/**
+ * 세션 블록 표시 모드.
+ * - "edit": 기본. 모든 기능 + drag + cursor:pointer.
+ * - "share": 공유 view. cursor:default + 시간 HH:MM. 학생 정보/사람 chip 유지 (강사 공유 등).
+ * - "filtered-share": 학생 본인 공유 (filter_student_id 있음). share + 학생 이름/사람 chip 제거 + 강사 이름 chip 표시.
+ */
+export type PresentationMode = "edit" | "share" | "filtered-share";
+
+function formatSessionTime(time: string, shorten: boolean): string {
+  if (!shorten) return time;
+  // "HH:MM:SS" -> "HH:MM". 더 짧은 형식은 그대로 (이미 정상).
+  return time.length >= 5 ? time.slice(0, 5) : time;
+}
+
 interface SessionBlockProps {
   session: Session;
   subjects: Subject[];
@@ -71,6 +85,11 @@ interface SessionBlockProps {
    * 모드 진입 + 이 세션이 즉시 selected 상태로.
    */
   onContextMenuStartSelect?: () => void;
+  /**
+   * 표시 모드 — share view에서 학생 정보/cursor/시간 format 분기.
+   * Default "edit" (기존 동작 그대로).
+   */
+  presentationMode?: PresentationMode;
 }
 
 export const validateSessionBlockProps = (
@@ -116,14 +135,18 @@ function SessionBlock({
   onSelectToggle,
   onContextMenuCopy,
   onContextMenuStartSelect,
+  presentationMode = "edit",
 }: SessionBlockProps) {
+  const isShareView = presentationMode !== "edit";
+  const isFilteredShare = presentationMode === "filtered-share";
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMovedRef = useRef(false);
 
+  const isShareViewEarly = presentationMode !== "edit";
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id: session?.id ?? "__null__",
-    disabled: isReadOnly || !session,
+    disabled: isReadOnly || isShareViewEarly || !session,
     data: { session },
   });
 
@@ -202,7 +225,7 @@ function SessionBlock({
   // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (isReadOnly) return;
+      if (isReadOnly || isShareViewEarly) return;
       touchMovedRef.current = false;
       longPressTimerRef.current = setTimeout(() => {
         if (!touchMovedRef.current) {
@@ -211,7 +234,7 @@ function SessionBlock({
         }
       }, 300);
     },
-    [isReadOnly]
+    [isReadOnly, isShareViewEarly]
   );
 
   const handleTouchMove = useCallback(() => {
@@ -253,7 +276,7 @@ function SessionBlock({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isReadOnly) return;
+    if (isReadOnly || isShareViewEarly) return;
     // Shift/Ctrl/Cmd + click → 다중 선택 toggle (Edit modal 안 열림)
     if ((e.shiftKey || e.ctrlKey || e.metaKey) && onSelectToggle) {
       onSelectToggle();
@@ -364,7 +387,7 @@ function SessionBlock({
     display: "flex",
     alignItems: "stretch",
     overflow: "hidden",
-    cursor: styles.cursor,
+    cursor: isShareView ? "default" : styles.cursor,
     pointerEvents: styles.pointerEvents,
     // ADR-020 R5 보강 (UAT 2026-05-21): 필터 매칭 session 은 completed status 의 0.55 dim 도
     // override. 사용자가 chip 으로 명시 선택한 session 은 시간 dim 없이 또렷하게 표시.
@@ -455,8 +478,9 @@ function SessionBlock({
             ✓
           </span>
         )}
-        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에. */}
-        {!isReadOnly && (
+        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에.
+            share view (presentationMode !== "edit")에서도 숨김 (cursor-grab 노출 방지) */}
+        {!isReadOnly && !isShareViewEarly && (
           <div
             {...attributes}
             {...listeners}
@@ -513,9 +537,9 @@ function SessionBlock({
             ].join(" ")}
           >
             <span className={showStudentBadgeInline ? "truncate" : undefined}>
-              {session.startsAt}-{session.endsAt}
+              {formatSessionTime(session.startsAt, isShareView)}-{formatSessionTime(session.endsAt, isShareView)}
             </span>
-            {showStudentBadgeInline && (
+            {showStudentBadgeInline && !isFilteredShare && (
               <span
                 aria-label={`총 ${totalStudentCount}명`}
                 className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-sm session-overlay-pill backdrop-blur-sm px-1 py-px text-[9px] font-semibold text-white"
@@ -525,7 +549,7 @@ function SessionBlock({
               </span>
             )}
           </div>
-          {secondaryLabel && (
+          {secondaryLabel && !isFilteredShare && (
             <div className="text-[10px] opacity-[0.85] truncate leading-tight">
               {secondaryLabel}
             </div>
@@ -533,7 +557,7 @@ function SessionBlock({
         </div>
       </button>
 
-      {totalStudentCount >= 2 && !showStudentBadgeInline && (
+      {totalStudentCount >= 2 && !showStudentBadgeInline && !isFilteredShare && (
         <span
           className={[
             "absolute top-1 inline-flex items-center gap-0.5 rounded-md session-overlay-pill backdrop-blur-sm px-1 py-px text-[10px] font-semibold text-white pointer-events-none",
@@ -546,8 +570,21 @@ function SessionBlock({
         </span>
       )}
 
+      {/* 학생 본인 공유 (filtered-share) — 사람 chip 자리에 강사 이름 chip */}
+      {isFilteredShare && teacher && (
+        <span
+          className={[
+            "absolute top-1 inline-flex items-center rounded-md session-overlay-pill backdrop-blur-sm px-1.5 py-px text-[10px] font-semibold text-white pointer-events-none max-w-[60%] truncate",
+            hasConflict ? "right-[18px]" : "right-1",
+          ].join(" ")}
+          aria-label={`강사: ${teacher.name}`}
+        >
+          {teacher.name}
+        </span>
+      )}
+
       {/* 롱프레스 컨텍스트 메뉴 */}
-      {contextMenuOpen && !isReadOnly && (
+      {contextMenuOpen && !isReadOnly && !isShareViewEarly && (
         <>
           {/* 백드롭 — 외부 클릭 시 메뉴 닫기 */}
           <div
