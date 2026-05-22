@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { Filter } from "lucide-react";
 import { useModalA11y } from "@/hooks/useModalA11y";
 import type { ScheduleViewMode } from "@/hooks/useScheduleView";
 import {
@@ -46,6 +47,10 @@ interface Props {
   filteredCount?: number;
   /** PR #432: 전체 수업 수 (필터 무관) */
   totalCount?: number;
+  /** PR #435: dropdown 진입 시 인쇄 대상 pre-set. 'all' 시 자동으로 "전체 수업" 선택 */
+  initialPrintTarget?: PrintTarget;
+  /** PR #435: B1 amber pill — 필터 chip 라벨 (예: "국어"). 미설정 시 "필터 적용 중" */
+  filterChipLabel?: string;
 }
 
 const STUDENT_PAGE_GUARD_THRESHOLD = 30;
@@ -73,11 +78,15 @@ export default function PdfExportRangeModal({
   hasAnyFilter = false,
   filteredCount = 0,
   totalCount = 0,
+  initialPrintTarget,
+  filterChipLabel,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
   const [scope, setScope] = useState<Scope>(initialScope ?? "current");
-  const [printTarget, setPrintTarget] = useState<PrintTarget>("filtered");
+  const [printTarget, setPrintTarget] = useState<PrintTarget>(
+    initialPrintTarget ?? "filtered",
+  );
   const [showStudentNames, setShowStudentNames] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     () => teachers.map((t) => t.id)
@@ -90,6 +99,11 @@ export default function PdfExportRangeModal({
   useEffect(() => {
     if (isOpen && initialScope) setScope(initialScope);
   }, [isOpen, initialScope]);
+
+  // PR #435: dropdown 진입 시 initialPrintTarget 반영
+  useEffect(() => {
+    if (isOpen && initialPrintTarget) setPrintTarget(initialPrintTarget);
+  }, [isOpen, initialPrintTarget]);
 
   useEffect(() => {
     if (hasStudentFilter && scope === "per-teacher") {
@@ -205,12 +219,26 @@ export default function PdfExportRangeModal({
         onClick={(e) => e.stopPropagation()}
         className="bg-[var(--color-bg-primary)] rounded-lg p-6 min-w-[320px] max-w-[440px] shadow-xl"
       >
-        <h3
-          id="pdf-export-title"
-          className="text-lg font-semibold text-[var(--color-text-primary)] mb-4"
-        >
-          PDF 출력 범위
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <h3
+            id="pdf-export-title"
+            className="text-lg font-semibold text-[var(--color-text-primary)]"
+          >
+            PDF 출력 범위
+          </h3>
+          {hasAnyFilter && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-700 dark:text-amber-300 text-xs font-medium whitespace-nowrap"
+              aria-label="현재 필터 적용 상태"
+            >
+              <Filter size={12} strokeWidth={2.2} />
+              {filterChipLabel ?? "필터 적용 중"}
+              <span className="text-amber-600/70 dark:text-amber-400/70 ml-0.5">
+                · {filteredCount}/{totalCount}
+              </span>
+            </span>
+          )}
+        </div>
 
         {hasAnyFilter && (
           <div className="mb-4">
