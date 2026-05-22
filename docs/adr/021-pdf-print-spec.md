@@ -26,29 +26,43 @@ block 의 cell.height (mm) 기준 단계 노출:
 |---|---|
 | 항상 | subject 좌상단 + teacher 우상단 (right-align) |
 | `>= 6mm` (30분+) | + `시작 - 마침` 시간 (둘 다, 스페이스 포함) |
-| `>= 12mm` (1h+) | + 학생 1줄 truncate (... 처리) |
+| **`>= 10mm` (1h+)** (PR #429) | + 학생 1줄 truncate (... 처리) — 9-24시 union grid 의 1h cell (10mm) 도 포함 |
 | `>= 18mm` (1.5h+) | + 학생 wrap 최대 2줄 |
+
+PR #429 갱신: 12mm → 10mm threshold. 이유: data-tight (D2) 적용 후 1h cell ≥ 15mm 가 default 지만, 사용자 timeRange fallback (sessions empty) 등 union grid 경로에서 1h = 10mm. 10mm 도 학생 1줄 fit (font 6pt, line height 2.4mm 미세 조정).
 
 근거:
 - 강사 우상단 = subject 와 같은 y 라 시선 1줄에 핵심 정보 (과목 + 담당). 종이 인쇄 시 한눈 인지
 - 30분 미만 cell 은 시간 표시 공간 부족 → 제목+강사만
 - 학생 1.5h+ wrap = 다인원 수업의 학생 명단 풍부 표현
 
-### D2. 출력 범위 자동
+### D2. 출력 범위 자동 — Data-tight + 1h padding (PR #429)
 
 `startHour` / `endHour` 결정 정책:
 
 ```
-autoStartHour = max(0, min(userTimeRange.start, floor(dataMin / 60)))
-autoEndHour   = min(24, max(userTimeRange.end, ceil(dataMax / 60)))
+autoStartHour = max(0, floor(dataMin / 60) - 1)  // 데이터 기준 - 1h padding
+autoEndHour   = min(24, ceil(dataMax / 60) + 1)  // 데이터 기준 + 1h padding
+
+// sessions empty 시 fallback: userTimeRange
+if (sessions.empty) {
+  autoStartHour = userTimeRange.start
+  autoEndHour = userTimeRange.end + 1
+}
 ```
 
-- 사용자 timeRange 설정 + 데이터 실제 분포 둘 다 고려 → **union**
-- 데이터가 사용자 범위 안에 있으면 사용자 범위 그대로
-- 데이터가 사용자 범위 밖이면 자동 확장 (잘림 방지)
-- sessions empty 시 사용자 timeRange fallback
+- **데이터 기준 + 1h padding** — 빈 시간대 자동 제거
+- 사용자 timeRange 는 **화면 표시용** 으로 분리 — PDF 출력 시 미적용
+- 14-17시 데이터 → 13-18시 출력 (이전 union 정책: 9-24시 강제)
+- 1h cell = 15mm (이전 union: 10mm) — 학생 1줄 충분
+- sessions empty 시 userTimeRange fallback (안전망)
 
-기존 단순 `timeRange.startHour ~ timeRange.endHour + 1` 정책의 빈 공간 큰 문제 해소.
+근거:
+- 빈 시간대 자동 제거로 가독성 ↑ (사용자 보고: 9-24시 grid 80% 빈 공간)
+- cell 압축 회피 — 5h grid 가 15h grid 보다 3배 큰 cell
+- 사용자 timeRange (9-23시 default) 는 운영 시간 표현 — 화면에 적합, PDF 출력은 데이터 기준
+
+기존 union 정책 (`max(userTimeRange, 데이터)`) 폐기 — 잘림 방지는 padding 으로 충분, 빈 공간 trade-off 가 더 큼.
 
 ### D3. 시간 표시 포맷
 
@@ -124,4 +138,5 @@ autoEndHour   = min(24, max(userTimeRange.end, ceil(dataMax / 60)))
 - PR #425: PDF button 노출 정책 + 필터 hidden 인쇄
 - PR #427: 본 ADR 구현 (PdfSessionBlock 보정 + 출력 범위 자동)
 - PR #428: D4 구현 (dropdown 강사별/학생별 활성 + perStudent mode 신설 + 30명+ guard)
+- PR #429: D2 갱신 (union → data-tight + 1h padding) + D1 threshold 완화 (12mm → 10mm, 1h cell 학생 표시)
 - UAT 2026-05-21 사용자 보고

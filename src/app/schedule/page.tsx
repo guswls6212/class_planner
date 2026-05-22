@@ -2017,8 +2017,11 @@ function SchedulePageContent(): JSX.Element {
           )
         : allSessionsRaw;
 
-      // ADR-020 보강 (UAT 2026-05-21): 인쇄 출력 범위 자동 — 데이터 기반 (max(timeRange, 데이터)).
-      // 빈 공간 큰 PDF 회피. sessions empty 시 사용자 timeRange fallback.
+      // ADR-021 D2 (PR #429): data-tight + 1h padding.
+      // 사용자 timeRange 는 화면용 — PDF 출력은 데이터 기준 + ±1h padding.
+      // 14-17시 데이터 → 13-18시 출력 (이전 union 정책: 9-24시 강제, 80% 빈 공간).
+      // sessions empty 시 fallback: userTimeRange (안전망).
+      const PDF_PADDING_HOURS = 1;
       const timeToMinLocal = (t: string) => {
         const [h, m] = t.split(":").map(Number);
         return h * 60 + m;
@@ -2031,11 +2034,11 @@ function SchedulePageContent(): JSX.Element {
         : null;
       const autoStartHour =
         dataMinMin !== null
-          ? Math.max(0, Math.min(timeRange.startHour, Math.floor(dataMinMin / 60)))
+          ? Math.max(0, Math.floor(dataMinMin / 60) - PDF_PADDING_HOURS)
           : timeRange.startHour;
       const autoEndHour =
         dataMaxMin !== null
-          ? Math.min(24, Math.max(timeRange.endHour + 1, Math.ceil(dataMaxMin / 60)))
+          ? Math.min(24, Math.ceil(dataMaxMin / 60) + PDF_PADDING_HOURS)
           : timeRange.endHour + 1;
 
       if (range.perStudent) {
@@ -2119,8 +2122,8 @@ function SchedulePageContent(): JSX.Element {
             title: pdfTitle,
             filterStudentId: selectedStudentIds[0] ?? undefined,
             weekRange: range,
-            startHour: timeRange.startHour,
-            endHour: timeRange.endHour + 1,
+            startHour: autoStartHour,
+            endHour: autoEndHour,
           }
         );
       }
