@@ -7,6 +7,10 @@ import { showError } from "../../lib/toast";
 interface PDFDownloadButtonProps {
   /** 전체 인쇄 — 기본 PdfExportRangeModal 열기 */
   onDownload: () => Promise<void> | void;
+  /** 강사별로 1장씩 — PdfExportRangeModal 을 per-teacher pre-set 으로 열기. 미설정 시 "준비 중" placeholder. */
+  onPerTeacher?: () => void;
+  /** 학생별로 1장씩 — PdfExportRangeModal 을 per-student pre-set 으로 열기. 미설정 시 "준비 중" placeholder. */
+  onPerStudent?: () => void;
   /** 인쇄 가이드 modal 열기 — 없으면 menu 항목 미렌더 (teacher-schedule 같이 가이드 없는 환경) */
   onOpenGuide?: () => void;
   isDownloading: boolean;
@@ -23,10 +27,15 @@ interface PDFDownloadButtonProps {
  *   - P2 (dropdown 안 가이드): "인쇄 가이드" 가 menu 마지막 항목 → InfoTrigger 폐기
  *   - Portal — dropdown 을 document.body 에 mount. schedule grid 의 stacking context 가
  *     자식 dropdown 을 가두던 가려짐 fix (z-index 만 올려서는 안 됐던 root cause).
- *   - "강사별 / 학생별" 옵션 placeholder — 동작은 후속 PR (#427) 에서 활성
+ *
+ * PR #428 — ADR-021 D4 follow-up:
+ *   - "강사별 / 학생별" 옵션 활성 (onPerTeacher / onPerStudent props 전달 시).
+ *   - 미전달 시 "준비 중" placeholder 유지 (backward compat).
  */
 const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   onDownload,
+  onPerTeacher,
+  onPerStudent,
   onOpenGuide,
   isDownloading,
   onDownloadStart,
@@ -94,13 +103,29 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
               />
               <MenuItem
                 icon={<Download size={13} />}
-                label="강사별 (준비 중)"
-                disabled
+                label={onPerTeacher ? "강사별로 1장씩" : "강사별 (준비 중)"}
+                disabled={!onPerTeacher}
+                onClick={
+                  onPerTeacher
+                    ? () => {
+                        setOpen(false);
+                        onPerTeacher();
+                      }
+                    : undefined
+                }
               />
               <MenuItem
                 icon={<Download size={13} />}
-                label="학생별 (준비 중)"
-                disabled
+                label={onPerStudent ? "학생별로 1장씩" : "학생별 (준비 중)"}
+                disabled={!onPerStudent}
+                onClick={
+                  onPerStudent
+                    ? () => {
+                        setOpen(false);
+                        onPerStudent();
+                      }
+                    : undefined
+                }
               />
               {onOpenGuide && (
                 <>

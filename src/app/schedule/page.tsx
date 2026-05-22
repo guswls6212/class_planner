@@ -1977,6 +1977,13 @@ function SchedulePageContent(): JSX.Element {
   const timeTableRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
+  const [pdfInitialScope, setPdfInitialScope] = useState<
+    "per-teacher" | "per-student" | undefined
+  >(undefined);
+  const openPdfDialog = (scope?: "per-teacher" | "per-student") => {
+    setPdfInitialScope(scope);
+    setIsPdfDialogOpen(true);
+  };
 
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
@@ -2031,7 +2038,39 @@ function SchedulePageContent(): JSX.Element {
           ? Math.min(24, Math.max(timeRange.endHour + 1, Math.ceil(dataMaxMin / 60)))
           : timeRange.endHour + 1;
 
-      if (range.perTeacher) {
+      if (range.perStudent) {
+        const studentsToExport = range.selectedStudentIds?.length
+          ? students.filter((s) => range.selectedStudentIds!.includes(s.id))
+          : students;
+        for (const student of studentsToExport) {
+          const studentEnrollmentIds = new Set(
+            enrollments
+              .filter((e) => e.studentId === student.id)
+              .map((e) => e.id),
+          );
+          const studentSessions = allSessions.filter((s) =>
+            s.enrollmentIds?.some((eid) => studentEnrollmentIds.has(eid)),
+          );
+          if (studentSessions.length === 0) continue;
+          renderSchedulePdf(
+            studentSessions,
+            subjects,
+            students,
+            enrollments,
+            teachers,
+            {
+              academyName: "CLASS PLANNER",
+              title: `${student.name} 학생 시간표`,
+              filename: `${student.name}_시간표_${range.startDate}.pdf`,
+              weekRange: { startDate: range.startDate, endDate: range.endDate },
+              filterStudentId: student.id,
+              perStudent: true,
+              startHour: autoStartHour,
+              endHour: autoEndHour,
+            },
+          );
+        }
+      } else if (range.perTeacher) {
         const teachersToExport = range.selectedTeacherIds?.length
           ? teachers.filter((t) => range.selectedTeacherIds!.includes(t.id))
           : teachers;
@@ -2413,6 +2452,11 @@ function SchedulePageContent(): JSX.Element {
     [teachers]
   );
 
+  const studentsForPdfModal = useMemo(
+    () => students.map((s) => ({ id: s.id, name: s.name })),
+    [students]
+  );
+
   return (
     <div className={isP3 ? "flex h-screen overflow-hidden" : ""}>
       {isP3 && (
@@ -2475,7 +2519,9 @@ function SchedulePageContent(): JSX.Element {
           )}
           <ScheduleActionBar
             viewLabel={scheduleTitle}
-            onOpenPdfDialog={() => setIsPdfDialogOpen(true)}
+            onOpenPdfDialog={() => openPdfDialog()}
+            onOpenPdfPerTeacher={() => openPdfDialog("per-teacher")}
+            onOpenPdfPerStudent={() => openPdfDialog("per-student")}
             isDownloading={isDownloading}
             onDownloadStart={() => {}}
             onDownloadEnd={() => {}}
@@ -2956,8 +3002,11 @@ function SchedulePageContent(): JSX.Element {
         selectedDate={selectedDate}
         isExporting={isDownloading}
         teachers={teachersForPdfModal}
+        students={studentsForPdfModal}
         preflightResult={pdfPreflightResult}
         hasStudentFilter={selectedStudentIds.length > 0}
+        hasTeacherFilter={selectedTeacherIds.length > 0}
+        initialScope={pdfInitialScope}
       />
     </div>
 

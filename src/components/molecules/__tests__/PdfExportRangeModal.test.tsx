@@ -270,3 +270,109 @@ describe("PdfExportRangeModal — teacher chip selector", () => {
     );
   });
 });
+
+// PR #428 — ADR-021 D4 follow-up: per-student mirror + initialScope pre-set + 30명+ guard.
+describe("PdfExportRangeModal — per-student (PR #428)", () => {
+  const students = [
+    { id: "s1", name: "학생A" },
+    { id: "s2", name: "학생B" },
+  ];
+
+  it("students prop 있을 때 '학생별로 1장씩' 라디오 옵션이 렌더된다", () => {
+    render(<PdfExportRangeModal {...baseProps} students={students} />);
+    expect(screen.getByLabelText("학생별로 1장씩")).toBeInTheDocument();
+  });
+
+  it("students=[] 일 때 '학생별로 1장씩' 라디오가 disabled + '학생이 없습니다' 안내", () => {
+    render(<PdfExportRangeModal {...baseProps} students={[]} />);
+    expect(screen.getByLabelText("학생별로 1장씩")).toBeDisabled();
+    expect(screen.getByText("(학생이 없습니다)")).toBeInTheDocument();
+  });
+
+  it("'학생별로 1장씩' 선택 후 출력 → perStudent: true + selectedStudentIds 전체 포함", () => {
+    const onExport = vi.fn();
+    render(
+      <PdfExportRangeModal {...baseProps} students={students} onExport={onExport} />,
+    );
+    fireEvent.click(screen.getByLabelText("학생별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(onExport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        perStudent: true,
+        selectedStudentIds: ["s1", "s2"],
+      }),
+    );
+  });
+
+  it("학생 chip 클릭 시 deselect (aria-pressed=false)", () => {
+    render(<PdfExportRangeModal {...baseProps} students={students} />);
+    fireEvent.click(screen.getByLabelText("학생별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: /학생A/ }));
+    expect(screen.getByRole("button", { name: /학생A/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("0명 선택 시 출력 버튼 disabled + '학생을 1명 이상' 에러", () => {
+    render(<PdfExportRangeModal {...baseProps} students={students} />);
+    fireEvent.click(screen.getByLabelText("학생별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "전체 해제" }));
+    expect(screen.getByRole("button", { name: "출력" })).toBeDisabled();
+    expect(screen.getByText("학생을 1명 이상 선택해주세요.")).toBeInTheDocument();
+  });
+
+  it("initialScope='per-student' 시 modal 오픈 즉시 per-student 선택됨", () => {
+    render(
+      <PdfExportRangeModal
+        {...baseProps}
+        students={students}
+        initialScope="per-student"
+      />,
+    );
+    expect(screen.getByLabelText("학생별로 1장씩")).toBeChecked();
+  });
+
+  it("hasTeacherFilter=true 시 per-student 라디오 미렌더 (mutually exclusive)", () => {
+    render(
+      <PdfExportRangeModal
+        {...baseProps}
+        students={students}
+        hasTeacherFilter={true}
+      />,
+    );
+    expect(screen.queryByLabelText("학생별로 1장씩")).not.toBeInTheDocument();
+  });
+
+  it("30명+ 선택 + window.confirm 거부 → onExport 미호출", () => {
+    const onExport = vi.fn();
+    const many = Array.from({ length: 31 }, (_, i) => ({
+      id: `s${i}`,
+      name: `학생${i}`,
+    }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<PdfExportRangeModal {...baseProps} students={many} onExport={onExport} />);
+    fireEvent.click(screen.getByLabelText("학생별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onExport).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it("30명+ 선택 + window.confirm 승낙 → onExport 호출", () => {
+    const onExport = vi.fn();
+    const many = Array.from({ length: 31 }, (_, i) => ({
+      id: `s${i}`,
+      name: `학생${i}`,
+    }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<PdfExportRangeModal {...baseProps} students={many} onExport={onExport} />);
+    fireEvent.click(screen.getByLabelText("학생별로 1장씩"));
+    fireEvent.click(screen.getByRole("button", { name: "출력" }));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(onExport).toHaveBeenCalledWith(
+      expect.objectContaining({ perStudent: true }),
+    );
+    confirmSpy.mockRestore();
+  });
+});

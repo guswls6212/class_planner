@@ -9,6 +9,10 @@ import PdfGuideModal from "../../../components/molecules/PdfGuideModal";
 interface Props {
   viewLabel: string;
   onOpenPdfDialog: () => void;
+  /** 강사별로 1장씩 — dropdown 진입점. PdfExportRangeModal 을 per-teacher pre-set 으로 연다. */
+  onOpenPdfPerTeacher?: () => void;
+  /** 학생별로 1장씩 — dropdown 진입점. PdfExportRangeModal 을 per-student pre-set 으로 연다. */
+  onOpenPdfPerStudent?: () => void;
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
@@ -31,6 +35,8 @@ interface Props {
 export default function ScheduleActionBar({
   viewLabel,
   onOpenPdfDialog,
+  onOpenPdfPerTeacher,
+  onOpenPdfPerStudent,
   isDownloading,
   onDownloadStart,
   onDownloadEnd,
@@ -46,6 +52,8 @@ export default function ScheduleActionBar({
       {showPdf && (
         <PDFDownloadButton
           onDownload={onOpenPdfDialog}
+          onPerTeacher={onOpenPdfPerTeacher}
+          onPerStudent={onOpenPdfPerStudent}
           onOpenGuide={() => setIsGuideOpen(true)}
           isDownloading={isDownloading}
           onDownloadStart={onDownloadStart}

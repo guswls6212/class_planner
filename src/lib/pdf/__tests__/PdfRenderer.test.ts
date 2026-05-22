@@ -371,3 +371,37 @@ describe("renderSchedulePdf — yPosition overflow 버그 (fix/pdf-lane-overflow
     expect(uniqueX.size).toBeGreaterThan(1); // 서로 다른 lane
   });
 });
+
+// PR #428 — ADR-021 D4 follow-up: footer 분할 라벨 (per-teacher / per-student / 전체)
+describe("renderSchedulePdf — footer 분할 라벨", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("perStudent: true → footer meta에 '분할: 학생별' 포함 (PR #428)", () => {
+    renderSchedulePdf([], [], [], [], [], { perStudent: true });
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    const hasStudentSplit = textArgs.some(
+      (t) => typeof t === "string" && t.includes("분할: 학생별"),
+    );
+    expect(hasStudentSplit).toBe(true);
+  });
+
+  it("perTeacher: true → footer meta에 '분할: 강사별' 포함 (회귀 가드)", () => {
+    renderSchedulePdf([], [], [], [], [], { perTeacher: true });
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    const hasTeacherSplit = textArgs.some(
+      (t) => typeof t === "string" && t.includes("분할: 강사별"),
+    );
+    expect(hasTeacherSplit).toBe(true);
+  });
+
+  it("perTeacher/perStudent 미설정 → footer meta에 '분할: 전체' 포함", () => {
+    renderSchedulePdf([], [], [], [], []);
+    const textArgs = (textMock.mock.calls as [string][]).map(([t]) => t);
+    const hasFullSplit = textArgs.some(
+      (t) => typeof t === "string" && t.includes("분할: 전체"),
+    );
+    expect(hasFullSplit).toBe(true);
+  });
+});

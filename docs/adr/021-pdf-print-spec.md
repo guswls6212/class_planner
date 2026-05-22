@@ -56,9 +56,17 @@ autoEndHour   = min(24, max(userTimeRange.end, ceil(dataMax / 60)))
 
 근거: 두 시각이 둘 다 명시되어야 시간 인지 명확 (옛 포맷도 둘 다였지만 `~` 가 한국 문맥에서 "약" 의미 가능 — `-` 가 "from-to" 의미 더 명확).
 
-### D4. 강사별 / 학생별 페이지 (향후)
+### D4. 강사별 / 학생별 페이지 (PR #428)
 
-본 ADR scope: PDF rendering 만. dropdown 의 "강사별 (준비 중)" / "학생별 (준비 중)" 옵션은 **후속 PR (#428+)** 에서 PdfExportRangeModal 통합으로 활성. 본 PR (#427) 에서는 placeholder 유지.
+본 ADR scope: PDF rendering 만. dropdown 의 "강사별 / 학생별" 옵션은 **PR #428** 에서 PdfExportRangeModal 통합으로 활성화:
+
+- `PDFDownloadButton` 의 disabled placeholder → `onPerTeacher` / `onPerStudent` props 전달 시 활성. 미전달 시 placeholder 유지 (backward compat — teacher-schedule 등).
+- `PdfExportRangeModal` 에 `initialScope` prop 추가 — dropdown 에서 진입 시 mode pre-set (`per-teacher` / `per-student`).
+- 학생별 mode 신설: `Scope` union 확장 + `selectedStudentIds` chip selector (강사별 mirror). caller 가 학생별 1회씩 `renderSchedulePdf({ filterStudentId, title, perStudent: true })` 호출 — 학생당 1 PDF 파일.
+- **페이지 폭발 가드**: 학생 30명 초과 선택 + 출력 클릭 시 `window.confirm` 확인 (학원당 100명+ 가능 — 한 번에 100 PDF 다운로드 회피).
+- `PdfRenderOptions.perStudent?: boolean` 추가 — 푸터 메타 "분할: 학생별" 표기 (rendering 자체는 `filterStudentId` 로 학생 필터링).
+
+`hasTeacherFilter && per-student` / `hasStudentFilter && per-teacher` 충돌 회피 — 화면 필터 활성 시 해당 mode 라디오 미렌더 (mutually exclusive).
 
 ## Multi-Perspective Analysis
 
@@ -107,7 +115,7 @@ autoEndHour   = min(24, max(userTimeRange.end, ceil(dataMax / 60)))
 **Negative / Trade-offs:**
 - 30분 미만 cell 의 시간 표시 hidden — 드물지만 사용자 의문 가능성
 - 학생 wrap 2줄 한도 — 다인원 부분 hidden
-- D4 (강사별/학생별 페이지) 미구현 — dropdown 의 "준비 중" 표시 유지
+- 학생별 30명+ 시 `window.confirm` — modal 안 modal 패턴, UX 깊이 1단 더 (대안: inline warning 만 + 그냥 진행 — 100 PDF 다운로드 위험)
 
 ## References
 
@@ -115,4 +123,5 @@ autoEndHour   = min(24, max(userTimeRange.end, ceil(dataMax / 60)))
 - ADR-020: 필터-색 일치 + Lane Reorder (2026-05-21) — 본 ADR 의 모체
 - PR #425: PDF button 노출 정책 + 필터 hidden 인쇄
 - PR #427: 본 ADR 구현 (PdfSessionBlock 보정 + 출력 범위 자동)
+- PR #428: D4 구현 (dropdown 강사별/학생별 활성 + perStudent mode 신설 + 30명+ guard)
 - UAT 2026-05-21 사용자 보고
