@@ -364,30 +364,49 @@ OnboardingPage (src/app/onboarding/page.tsx)
 
 ---
 
-### 2.9 학부모 공유 (`/share/{token}`) — 모바일 우선 PWA 페이지
+### 2.9 학부모/학생/강사 공유 (`/share/{token}`) — 모바일 우선 PWA 페이지
 
-**Public route** (인증 불필요). 학부모/학생이 token URL로 진입해 자녀 시간표 확인.
+**Public route** (인증 불필요). 학부모/학생/강사가 token URL로 진입해 시간표 확인.
 
-#### 레이아웃
+#### 레이아웃 (PR #441 단순화 후, 2026-05-22)
 - `flex h-dvh` 기반 (PWA standalone 모드 + iPhone notch 고려 — `viewport-fit=cover` + `env(safe-area-inset-*)`)
-- 상단: 학원/강사 정보 + `SegmentedButton` (일/주/월 — mobileLabel "일/주/월")
-- 본문: `ScheduleDailyView` / `TimeTableGrid` / `ScheduleMonthlyView` (viewMode 분기)
+- 상단: 학원/강사 정보 + 주간 네비게이터 (`< 5월 18일 — 5월 24일 > [오늘]`)
+- 본문: `TimeTableGrid` 주간 view 단일 (일별/월별 view 제거 — 트래픽 안전망 + UX 단순화)
 - 변경 배지: `ScheduleChangeBanner` — `hasChanges=true && lastViewedAt !== null` 일 때만 (최초 방문 미표시)
 - SyncStatusDot 미표시 (anonymous 사용자, sync 없음)
 
+#### SessionBlock `presentationMode` 분기 (PR #441)
+`SessionBlock`에 새 prop `presentationMode: "edit" | "share" | "filtered-share"` 도입. share 페이지에서 API 응답의 `filterStudentId` 기반 분기:
+
+| mode | trigger | cursor | 시간 format | 학생 이름 (블록 내) | 사람 chip | 강사 이름 chip |
+|------|---------|--------|-------------|---------------------|-----------|----------------|
+| `edit` (default) | owner/admin/member 화면 | pointer + drag handle 표시 | `HH:MM:SS` | ✓ | ✓ (학생 ≥ 2명) | – |
+| `share` (강사·일반 공유) | `filterStudentId` 없음 | default | `HH:MM` | ✓ | ✓ | – |
+| `filtered-share` (학생 본인 공유) | `filterStudentId` 있음 | default | `HH:MM` | ✗ | ✗ | ✓ (사람 chip 자리) |
+
+prop chain: `SessionBlock` ← `TimeTableRow` ← `TimeTableGrid` ← share page. owner/admin/member 화면은 default `"edit"` 이라 기존 동작 보존.
+
+#### 트래픽 안전망 (PR #441)
+- **Polling 60초 간격** (`POLL_INTERVAL_MS = 60_000`). 30s → 60s 변경으로 서버 부담 1/2.
+- **Page Visibility API**: tab 비활성 시 polling 정지 (`document.hidden`), 활성화 시 즉시 fetch + 재개. 학부모 백그라운드 tab 8시간 → 실제 보는 시간만 (~97% 절감).
+- IP rate limit (`route.ts`): 분당 30회 (`checkRateLimit`).
+
 #### 핵심 컴포넌트
-- `SegmentedButton` (atoms, mobileLabel 사용 — PR #238)
-- `ScheduleDailyView` / `TimeTableGrid` / `ScheduleMonthlyView`
-- `DayChipBar` (일별 모드 — 7개 weekday 탭, 44px touch target)
+- `TimeTableGrid` (주간 view, `presentationMode` prop 전달)
 - `ScheduleChangeBanner`
+- `RefreshCw` / `ChevronLeft` / `ChevronRight` / `Calendar` (lucide icons)
 
 #### PWA 설치 안내 (선택, 미구현)
 - `display-mode: standalone` 미감지 + 첫 N번째 방문 시 "홈 화면에 추가" 권유 prompt 후보 (ADR-006 기각된 alternative)
 
 #### 검증
 - `tests/e2e/share-mobile.spec.ts` — Mobile Chrome 375×667 viewport
-- 시나리오: 페이지 로드 + SegmentedButton 라벨 축약 + viewMode 토글 + DayChipBar 표시
+- 시나리오: 페이지 로드 + 주간 view 단일 (SegmentedButton/DayChipBar 미노출) + `TimeTableGrid` 표시
 - iPhone Safari "홈 화면에 추가" 후 standalone 모드 진입 — manual smoke
+
+#### Mockup 학습 자료
+- `/design-explorations/share-page-improvements` — Before/After 시각 비교 + polling timeline + scope 옵션 (PR #441)
+- `/design-explorations/share-url-and-expiry` — share URL helper + 만료 env + reverse proxy 시각 explainer (PR #440)
 
 ---
 
@@ -402,7 +421,7 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `ErrorBoundary` | `ErrorBoundary.tsx` | `children`, `fallback?` | React 에러 경계. 전체 앱 감쌈 |
 | `Input` | `Input.tsx` | `type`, `value`, `onChange`, `placeholder` | 공통 텍스트 입력 |
 | `Label` | `Label.tsx` | `htmlFor`, `children` | 폼 레이블 |
-| `SegmentedButton` | `SegmentedButton.tsx` | `options: Option<T>[]` (`label`, `value`, optional `mobileLabel`), `value: T`, `onChange` | 3-N개 탭/모드 선택 atom. `mobileLabel` 옵션 — `<640px`에서 짧은 라벨로 자동 swap (`<span hidden sm:inline>{label}</span>` + `<span sm:hidden>{mobileLabel}</span>` 패턴, useMediaQuery 회피로 hydration mismatch 방지). PR #238 atoms로 이동. 사용처: `/share/{token}` 일/주/월, `/schedule` 뷰 전환 |
+| `SegmentedButton` | `SegmentedButton.tsx` | `options: Option<T>[]` (`label`, `value`, optional `mobileLabel`), `value: T`, `onChange` | 3-N개 탭/모드 선택 atom. `mobileLabel` 옵션 — `<640px`에서 짧은 라벨로 자동 swap (`<span hidden sm:inline>{label}</span>` + `<span sm:hidden>{mobileLabel}</span>` 패턴, useMediaQuery 회피로 hydration mismatch 방지). PR #238 atoms로 이동. 사용처: `/schedule` 뷰 전환 (`/share/{token}` 사용처는 PR #441에서 제거 — 주간 view 단일로 단순화) |
 | `InfoTrigger` | `InfoTrigger.tsx` | `label`, `onClick`, `size: sm\|md` | 정보 아이콘 버튼. lucide Info SVG 자체 원만 사용 (button border 제거 — 동심원 2겹 회피, PR #372). `sm`(24×24, icon 14) / `md`(32×32, icon 18) |
 | `NotificationBell` | `NotificationBell.tsx` | `unread`, `pulse?`, `onClick`, `active?`, `size?: "sm"\|"md"\|"nav"`, `compact?` (deprecated) | 알림 트리거 atom. unread 배지(에러+경고만) + `motion-safe:animate-ping` pulse. size: `sm`(w-8 h-8 icon16, TopBar) / `md`(w-9 h-9 icon18, Sidebar expanded inline) / `nav`(w-10 h-10 icon22, Sidebar collapsed nav-style). NotificationDropdown 안에서만 사용. (PR #372 + 후속 PR size 확장) |
 | `StudentListItem` | `StudentListItem.tsx` | `student`, `isSelected`, `onClick`, `onDelete` | 학생 목록 단일 아이템. 선택/삭제 기능 |

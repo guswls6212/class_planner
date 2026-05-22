@@ -143,6 +143,11 @@ src/app/design-explorations/p4-a/page.tsx
 src/app/design-explorations/p4-b/page.tsx
 src/app/design-explorations/p4-c/page.tsx
 src/app/design-explorations/page.tsx
+src/app/design-explorations/share-page-improvements/page.tsx
+src/app/design-explorations/share-url-and-expiry/page.tsx
+src/app/design-explorations/share-url-and-expiry/playwright-e2e/page.tsx
+src/app/design-explorations/share-url-and-expiry/reverse-proxy/page.tsx
+src/app/design-explorations/share-url-and-expiry/server-only-context/page.tsx
 src/app/dev/button-feedback/page.tsx
 src/app/favicon.ico
 src/app/global-error.tsx
@@ -212,8 +217,8 @@ src/app/schedule/_utils/__tests__/sessionSaveUtils.ensureEnrollments.test.ts
 src/app/schedule/_utils/__tests__/sessionSaveUtils.test.ts
 src/app/schedule/_utils/buildApplyTemplate.ts
 src/app/schedule/_utils/buildTemplateData.ts
-src/app/schedule/_utils/cascadeFilterOptions.ts
 src/app/schedule/_utils/bulkSessionOps.ts
+src/app/schedule/_utils/cascadeFilterOptions.ts
 src/app/schedule/_utils/collisionHelpers.ts
 src/app/schedule/_utils/collisionQueries.ts
 src/app/schedule/_utils/computeBulkMoveTargets.ts
@@ -586,6 +591,7 @@ src/lib/__tests__/authUtils.test.ts
 src/lib/__tests__/dateUtils.test.ts
 src/lib/__tests__/duplicateLabel.test.ts
 src/lib/__tests__/errorTracker.test.ts
+src/lib/__tests__/getPublicBaseUrl.test.ts
 src/lib/__tests__/laneInsert.test.ts
 src/lib/__tests__/localStorageCrud.test.ts
 src/lib/__tests__/logger.browser.test.ts
@@ -645,6 +651,7 @@ src/lib/errors/httpErrors.ts
 src/lib/errors/index.ts
 src/lib/errors/messages.ko.ts
 src/lib/formatExpiry.ts
+src/lib/getPublicBaseUrl.ts
 src/lib/laneInsert.ts
 src/lib/localStorageCrud.ts
 src/lib/logger.ts
