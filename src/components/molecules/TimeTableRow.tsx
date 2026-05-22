@@ -8,6 +8,7 @@ import { SLOT_HEIGHT_PX } from "@/shared/constants/sessionConstants";
 import { computeRequiredLanes } from "../../lib/sessionCollisionUtils";
 import { computeRowClusters } from "../../lib/sessionClusters";
 import { sessionMatchesFilters } from "./SessionBlock.utils";
+import type { PresentationMode } from "./SessionBlock";
 import TimeTableCell from "./TimeTableCell";
 import SessionBlock from "./SessionBlock";
 import HiddenSessionsPopover from "./HiddenSessionsPopover";
@@ -130,6 +131,8 @@ interface TimeTableRowProps {
    * row 도 같이 expand 가 자연 UX).
    */
   onToggleAllRowsInWeekday?: () => void;
+  /** SessionBlock 표시 모드 — share view 분기용. Default "edit". */
+  presentationMode?: PresentationMode;
   /**
    * @deprecated weekday 전체 토글 — backward compat 용. 새 코드는 expandedRowKeys 사용.
    * 단일 cluster (weekday 에 cluster 1 개) 시나리오에서만 등가. multi-cluster 면 모든
@@ -189,6 +192,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   onSessionContextMenuStartSelect,
   startHour = 9,
   endHour = 23,
+  presentationMode = "edit",
 }) => {
   // popover state — cluster key 기반 단일 변수 (한 번에 하나의 cluster popover 만 열림).
   const [openPopoverClusterKey, setOpenPopoverClusterKey] = React.useState<string | null>(null);
@@ -630,6 +634,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           draggedSessionId={dragPreview?.draggedSession?.id}
           isAnyDragging={isAnyDragging}
           isCopyMode={isCopyMode}
+          presentationMode={presentationMode}
           overflowsTop={overflowsTop}
           overflowsBottom={overflowsBottom}
           hasLaneOverflowChip={(() => {

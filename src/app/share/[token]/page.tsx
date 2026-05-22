@@ -12,7 +12,7 @@ import { getWeekStartDate } from "@/lib/weekStart";
 import type { Session, Student, Subject, Enrollment, Teacher } from "@/lib/planner";
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 60_000;
 
 interface ShareData {
   academyName: string;
@@ -26,6 +26,7 @@ interface ShareData {
   lastViewedAt: string | null;
   hasChanges: boolean;
   currentWeek: string;
+  filterStudentId: string | null;
 }
 
 interface RawSession {
@@ -143,7 +144,26 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
     fetchData(false, weeks);
     if (pollerRef.current) clearInterval(pollerRef.current);
     pollerRef.current = setInterval(() => fetchData(true, weeks), POLL_INTERVAL_MS);
-    return () => { if (pollerRef.current) clearInterval(pollerRef.current); };
+
+    // Page Visibility API — 비활성 tab일 땐 polling 정지, 활성화 시 즉시 fetch + 재개.
+    // 학부모가 tab 열어두고 8시간 자리 비울 때 backgroud 폴링 낭비 차단.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (pollerRef.current) {
+          clearInterval(pollerRef.current);
+          pollerRef.current = null;
+        }
+      } else if (pollerRef.current === null) {
+        fetchData(true, weeks);
+        pollerRef.current = setInterval(() => fetchData(true, weeks), POLL_INTERVAL_MS);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      if (pollerRef.current) clearInterval(pollerRef.current);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [token, weeksKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 날짜 네비게이션
@@ -201,6 +221,12 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
   const today = new Date();
   const todayWeekday = today.getDay() === 0 ? 6 : today.getDay() - 1;
   const selectedWeekday = selectedDate.getDay() === 0 ? 6 : selectedDate.getDay() - 1;
+
+  // share token에 filter_student_id가 있으면 학생 본인 공유 모드 — 학생 이름/사람 chip
+  // 제거 + 강사 이름 chip. 없으면 강사 공유/일반 공유 모드 — HH:MM + cursor만 변경.
+  const presentationMode = data.filterStudentId
+    ? ("filtered-share" as const)
+    : ("share" as const);
 
   const students: Student[] = data.students.map((s) => ({ id: s.id, name: s.name, gender: s.gender, birthDate: s.birth_date, grade: s.grade, school: s.school, phone: s.phone }));
   const subjects: Subject[] = data.subjects.map((s) => ({ id: s.id, name: s.name, color: s.color }));
@@ -302,6 +328,7 @@ export default function SharePage({ params }: { params: Promise<{ token: string 
             teachers={teachers}
             colorBy="subject"
             isReadOnly={true}
+            presentationMode={presentationMode}
             onSessionClick={() => {}}
             onDrop={() => {}}
             onEmptySpaceClick={() => {}}

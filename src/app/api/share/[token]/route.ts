@@ -142,6 +142,7 @@ export async function GET(
         hasChanges,
         currentWeek: primaryWeek,
         weeks,
+        filterStudentId,
       },
     });
   } catch (error) {

@@ -19,6 +19,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useDragController } from "../../hooks/useDragController";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import TimeTableRow from "../molecules/TimeTableRow";
+import type { PresentationMode } from "../molecules/SessionBlock";
 import {
   DndContext,
   DragOverlay,
@@ -109,6 +110,8 @@ interface TimeTableGridProps {
   /** 외부 scroll container가 있을 때 (P3 floating layout 등) grid 자체
    *  max-h-[80vh]/overflow 제거 → outer가 scroll 받음. default false. */
   fillHeight?: boolean;
+  /** SessionBlock 표시 모드 — share view 분기. Default "edit". */
+  presentationMode?: PresentationMode;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -145,6 +148,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       startHour = 9,
       endHour = 23,
       fillHeight = false,
+      presentationMode = "edit",
     },
     ref
   ) => {
@@ -831,6 +835,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 nowTimeStr={isToday ? nowTimeStr : undefined}
                 startHour={startHour}
                 endHour={endHour}
+                presentationMode={presentationMode}
                 selectedSessionIds={selectedSessionIds}
                 onSessionSelectToggle={
                   isReadOnly ? undefined : onSessionSelectToggle
