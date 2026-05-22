@@ -1980,8 +1980,15 @@ function SchedulePageContent(): JSX.Element {
   const [pdfInitialScope, setPdfInitialScope] = useState<
     "per-teacher" | "per-student" | undefined
   >(undefined);
-  const openPdfDialog = (scope?: "per-teacher" | "per-student") => {
+  const [pdfInitialPrintTarget, setPdfInitialPrintTarget] = useState<
+    "filtered" | "all" | undefined
+  >(undefined);
+  const openPdfDialog = (
+    scope?: "per-teacher" | "per-student",
+    printTarget?: "filtered" | "all",
+  ) => {
     setPdfInitialScope(scope);
+    setPdfInitialPrintTarget(printTarget);
     setIsPdfDialogOpen(true);
   };
 
@@ -2021,8 +2028,9 @@ function SchedulePageContent(): JSX.Element {
   ]);
 
   // PR #432: modal 의 "필터 적용 N 수업 / 전체 N 수업" 카운트
+  // PR #435: dropdown 도 사용 (그룹 분리 layout) → isPdfDialogOpen 가드 제거
   const pdfCounts = useMemo(() => {
-    if (!isPdfDialogOpen || !displaySessions) return { filtered: 0, total: 0 };
+    if (!displaySessions) return { filtered: 0, total: 0 };
     const allSessionsRaw = Array.from(displaySessions.values()).flat();
     const hasAnyFilter =
       selectedStudentIds.length > 0 ||
@@ -2041,12 +2049,44 @@ function SchedulePageContent(): JSX.Element {
       : allSessionsRaw;
     return { filtered: filtered.length, total: allSessionsRaw.length };
   }, [
-    isPdfDialogOpen,
     displaySessions,
     selectedStudentIds,
     selectedSubjectIds,
     selectedTeacherIds,
     enrollments,
+  ]);
+
+  // PR #435: B1 amber pill — 첫 활성 필터의 label
+  const filterChipLabel = useMemo<string | undefined>(() => {
+    if (selectedStudentIds.length > 0) {
+      const s = students.find((x) => x.id === selectedStudentIds[0]);
+      const name = s?.name ?? "학생";
+      return selectedStudentIds.length === 1
+        ? name
+        : `${name} 외 ${selectedStudentIds.length - 1}`;
+    }
+    if (selectedSubjectIds.length > 0) {
+      const s = subjects.find((x) => x.id === selectedSubjectIds[0]);
+      const name = s?.name ?? "과목";
+      return selectedSubjectIds.length === 1
+        ? name
+        : `${name} 외 ${selectedSubjectIds.length - 1}`;
+    }
+    if (selectedTeacherIds.length > 0) {
+      const t = teachers.find((x) => x.id === selectedTeacherIds[0]);
+      const name = t?.name ?? "강사";
+      return selectedTeacherIds.length === 1
+        ? name
+        : `${name} 외 ${selectedTeacherIds.length - 1}`;
+    }
+    return undefined;
+  }, [
+    selectedStudentIds,
+    selectedSubjectIds,
+    selectedTeacherIds,
+    students,
+    subjects,
+    teachers,
   ]);
 
   const handlePdfExport = async (range: PdfExportRange) => {
@@ -2581,8 +2621,16 @@ function SchedulePageContent(): JSX.Element {
           <ScheduleActionBar
             viewLabel={scheduleTitle}
             onOpenPdfDialog={() => openPdfDialog()}
-            onOpenPdfPerTeacher={() => openPdfDialog("per-teacher")}
-            onOpenPdfPerStudent={() => openPdfDialog("per-student")}
+            onOpenPdfPerTeacher={() => openPdfDialog("per-teacher", "all")}
+            onOpenPdfPerStudent={() => openPdfDialog("per-student", "all")}
+            onOpenPdfAllPrint={() => openPdfDialog(undefined, "all")}
+            hasAnyFilter={
+              selectedStudentIds.length > 0 ||
+              selectedSubjectIds.length > 0 ||
+              selectedTeacherIds.length > 0
+            }
+            filteredCount={pdfCounts.filtered}
+            totalCount={pdfCounts.total}
             isDownloading={isDownloading}
             onDownloadStart={() => {}}
             onDownloadEnd={() => {}}
@@ -3068,6 +3116,8 @@ function SchedulePageContent(): JSX.Element {
         hasStudentFilter={selectedStudentIds.length > 0}
         hasTeacherFilter={selectedTeacherIds.length > 0}
         initialScope={pdfInitialScope}
+        initialPrintTarget={pdfInitialPrintTarget}
+        filterChipLabel={filterChipLabel}
         hasAnyFilter={
           selectedStudentIds.length > 0 ||
           selectedSubjectIds.length > 0 ||
