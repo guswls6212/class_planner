@@ -9,8 +9,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
     watch: false, // Watch 모드 비활성화 (자동 종료)
-    // PR #428 sub-fix: vitest worker hang (CI 27-52분 timeout).
-    // threads pool 누수 → forks 격리. 각 spec 자체 process — worker leak 차단.
+    // PR #428 sub-fix: vitest worker hang (CI 20+분 hang 반복).
+    // threads pool 누수 → forks 격리. testTimeout — 무한 hang 자동 cut → root cause 진단.
     pool: "forks",
     poolOptions: {
       forks: {
@@ -18,6 +18,9 @@ export default defineConfig({
         minForks: 1,
       },
     },
+    testTimeout: 30000, // 30s per test — 무한 hang case 자동 fail
+    hookTimeout: 30000,
+    teardownTimeout: 30000,
     exclude: [
       "node_modules/",
       "dist/",
