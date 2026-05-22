@@ -19,9 +19,12 @@ export interface PdfExportRange {
   showStudentNames?: boolean;
   selectedTeacherIds?: string[];   // undefined = all (backward compat)
   selectedStudentIds?: string[];   // undefined = all (backward compat)
+  /** PR #432 (UAT 2026-05-22): 화면 필터 적용 여부. true(default)=필터된 수업만 인쇄, false=전체 인쇄 */
+  applyFilter?: boolean;
 }
 
 type Scope = "current" | "range" | "per-teacher" | "per-student";
+type PrintTarget = "filtered" | "all";
 
 interface Props {
   isOpen: boolean;
@@ -37,6 +40,12 @@ interface Props {
   hasTeacherFilter?: boolean;
   /** Dropdown에서 진입 시 모드 pre-set (per-teacher | per-student). 미설정 시 current. */
   initialScope?: Scope;
+  /** PR #432: 화면 필터 활성 여부. true 시 "인쇄 대상" 라디오 그룹 표시 */
+  hasAnyFilter?: boolean;
+  /** PR #432: 필터 적용된 수업 수 (현재 화면 표시) */
+  filteredCount?: number;
+  /** PR #432: 전체 수업 수 (필터 무관) */
+  totalCount?: number;
 }
 
 const STUDENT_PAGE_GUARD_THRESHOLD = 30;
@@ -61,10 +70,14 @@ export default function PdfExportRangeModal({
   hasStudentFilter = false,
   hasTeacherFilter = false,
   initialScope,
+  hasAnyFilter = false,
+  filteredCount = 0,
+  totalCount = 0,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
   const [scope, setScope] = useState<Scope>(initialScope ?? "current");
+  const [printTarget, setPrintTarget] = useState<PrintTarget>("filtered");
   const [showStudentNames, setShowStudentNames] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     () => teachers.map((t) => t.id)
@@ -116,6 +129,9 @@ export default function PdfExportRangeModal({
   const studentPageExplosion =
     scope === "per-student" && selectedStudentIds.length > STUDENT_PAGE_GUARD_THRESHOLD;
 
+  // PR #432: 화면 필터 활성 시 사용자가 "필터된 수업만 / 전체 수업" 선택. 필터 미활성 시 default true.
+  const applyFilter = hasAnyFilter ? printTarget === "filtered" : true;
+
   const handleExport = () => {
     if (
       studentPageExplosion &&
@@ -130,11 +146,11 @@ export default function PdfExportRangeModal({
         selectedDate.getFullYear(),
         selectedDate.getMonth() + 1
       );
-      onExport({ startDate: formatLocalISO(start), endDate: formatLocalISO(end) });
+      onExport({ startDate: formatLocalISO(start), endDate: formatLocalISO(end), applyFilter });
       return;
     }
     if (scope === "current") {
-      onExport({ startDate: formatLocalISO(weekStart), endDate: formatLocalISO(weekEnd) });
+      onExport({ startDate: formatLocalISO(weekStart), endDate: formatLocalISO(weekEnd), applyFilter });
       return;
     }
     if (scope === "per-teacher") {
@@ -146,6 +162,7 @@ export default function PdfExportRangeModal({
         perTeacher: true,
         showStudentNames,
         selectedTeacherIds,
+        applyFilter,
       });
       return;
     }
@@ -157,10 +174,11 @@ export default function PdfExportRangeModal({
         endDate: weekEndStr,
         perStudent: true,
         selectedStudentIds,
+        applyFilter,
       });
       return;
     }
-    onExport({ startDate: rangeStart, endDate: rangeEnd });
+    onExport({ startDate: rangeStart, endDate: rangeEnd, applyFilter });
   };
 
   return (
@@ -184,13 +202,59 @@ export default function PdfExportRangeModal({
           PDF 출력 범위
         </h3>
 
-        {preflightResult && preflightResult.warnings.length > 0 && (
+        {hasAnyFilter && (
+          <div className="mb-4">
+            <div className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-1.5">
+              인쇄 대상
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="pdf-print-target"
+                  aria-label="필터 적용 수업만"
+                  checked={printTarget === "filtered"}
+                  onChange={() => setPrintTarget("filtered")}
+                />
+                <span className="text-sm text-[var(--color-text-primary)]">
+                  필터 적용 수업만
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  ({filteredCount} 수업)
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="pdf-print-target"
+                  aria-label="전체 수업 (필터 무시)"
+                  checked={printTarget === "all"}
+                  onChange={() => setPrintTarget("all")}
+                />
+                <span className="text-sm text-[var(--color-text-primary)]">
+                  전체 수업
+                </span>
+                <span className="text-xs text-[var(--color-text-muted)]">
+                  (필터 무시 — {totalCount} 수업)
+                </span>
+              </label>
+            </div>
+            <div className="border-t border-[var(--color-border)] mt-3" />
+          </div>
+        )}
+
+        {preflightResult && preflightResult.warnings.length > 0 && printTarget === "filtered" && (
           <div
             role="alert"
             className="mb-4 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm"
           >
             <p className="font-medium text-amber-800 dark:text-amber-300 mb-1.5">
               ⚠ 출력 시 확인
+              {hasAnyFilter && (
+                <span className="ml-1 font-normal text-amber-700/80 dark:text-amber-400/80 text-xs">
+                  ({filteredCount} 수업 기준)
+                </span>
+              )}
             </p>
             <ul className="space-y-1">
               {preflightResult.warnings.map((w, i) => (
@@ -208,6 +272,12 @@ export default function PdfExportRangeModal({
                 강사별 분할로 전환
               </button>
             )}
+          </div>
+        )}
+
+        {hasAnyFilter && printTarget === "all" && (
+          <div className="mb-4 text-xs text-[var(--color-text-muted)]">
+            전체 {totalCount} 수업 인쇄 — 화면 필터 무시 (preflight 경고 미반영)
           </div>
         )}
 

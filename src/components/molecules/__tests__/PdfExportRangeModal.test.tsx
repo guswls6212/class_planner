@@ -48,6 +48,7 @@ describe("PdfExportRangeModal", () => {
     expect(onExport).toHaveBeenCalledWith({
       startDate: "2026-04-13",
       endDate: "2026-04-19",
+      applyFilter: true,
     });
   });
 
@@ -72,6 +73,7 @@ describe("PdfExportRangeModal", () => {
     expect(onExport).toHaveBeenCalledWith({
       startDate: "2026-04-13",
       endDate: "2026-05-03",
+      applyFilter: true,
     });
   });
 
@@ -89,6 +91,7 @@ describe("PdfExportRangeModal", () => {
     expect(onExport).toHaveBeenCalledWith({
       startDate: "2026-03-30",
       endDate: "2026-04-30",
+      applyFilter: true,
     });
   });
 

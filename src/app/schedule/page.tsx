@@ -1987,14 +1987,67 @@ function SchedulePageContent(): JSX.Element {
 
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
-    const allSessions = Array.from(displaySessions.values()).flat();
-    return preflightCheck(allSessions, {
+    const allSessionsRaw = Array.from(displaySessions.values()).flat();
+    const hasAnyFilter =
+      selectedStudentIds.length > 0 ||
+      selectedSubjectIds.length > 0 ||
+      selectedTeacherIds.length > 0;
+    // PR #432: preflight 는 필터된 수업 기준 (modal 의 printTarget='filtered' default)
+    const filtered = hasAnyFilter
+      ? allSessionsRaw.filter((s) =>
+          sessionMatchesFilters(
+            s,
+            enrollments,
+            selectedStudentIds,
+            selectedSubjectIds,
+            selectedTeacherIds,
+          ),
+        )
+      : allSessionsRaw;
+    return preflightCheck(filtered, {
       isStudentFilter: selectedStudentIds.length > 0,
       startHour: timeRange.startHour,
       endHour: timeRange.endHour + 1,
       enrollments, // PR #429-B: crowded-class warning (1h + 5+학생)
     });
-  }, [isPdfDialogOpen, displaySessions, selectedStudentIds, timeRange, enrollments]);
+  }, [
+    isPdfDialogOpen,
+    displaySessions,
+    selectedStudentIds,
+    selectedSubjectIds,
+    selectedTeacherIds,
+    timeRange,
+    enrollments,
+  ]);
+
+  // PR #432: modal 의 "필터 적용 N 수업 / 전체 N 수업" 카운트
+  const pdfCounts = useMemo(() => {
+    if (!isPdfDialogOpen || !displaySessions) return { filtered: 0, total: 0 };
+    const allSessionsRaw = Array.from(displaySessions.values()).flat();
+    const hasAnyFilter =
+      selectedStudentIds.length > 0 ||
+      selectedSubjectIds.length > 0 ||
+      selectedTeacherIds.length > 0;
+    const filtered = hasAnyFilter
+      ? allSessionsRaw.filter((s) =>
+          sessionMatchesFilters(
+            s,
+            enrollments,
+            selectedStudentIds,
+            selectedSubjectIds,
+            selectedTeacherIds,
+          ),
+        )
+      : allSessionsRaw;
+    return { filtered: filtered.length, total: allSessionsRaw.length };
+  }, [
+    isPdfDialogOpen,
+    displaySessions,
+    selectedStudentIds,
+    selectedSubjectIds,
+    selectedTeacherIds,
+    enrollments,
+  ]);
 
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
@@ -2006,7 +2059,9 @@ function SchedulePageContent(): JSX.Element {
         selectedStudentIds.length > 0 ||
         selectedSubjectIds.length > 0 ||
         selectedTeacherIds.length > 0;
-      const allSessions = isAnyFilter
+      // PR #432: range.applyFilter === false 시 (모달의 "전체 수업" 선택) 필터 무시
+      const applyFilter = range.applyFilter !== false;
+      const allSessions = isAnyFilter && applyFilter
         ? allSessionsRaw.filter((s) =>
             sessionMatchesFilters(
               s,
@@ -3013,6 +3068,13 @@ function SchedulePageContent(): JSX.Element {
         hasStudentFilter={selectedStudentIds.length > 0}
         hasTeacherFilter={selectedTeacherIds.length > 0}
         initialScope={pdfInitialScope}
+        hasAnyFilter={
+          selectedStudentIds.length > 0 ||
+          selectedSubjectIds.length > 0 ||
+          selectedTeacherIds.length > 0
+        }
+        filteredCount={pdfCounts.filtered}
+        totalCount={pdfCounts.total}
       />
     </div>
 
