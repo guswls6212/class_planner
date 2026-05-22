@@ -38,6 +38,8 @@ interface Props {
   teachers?: { id: string; name: string; color?: string }[];
   students?: { id: string; name: string; color?: string }[];
   preflightResult?: PreflightResult;
+  /** PR #438: 전체 sessions 기준 preflight. printTarget='all' 시 사용 — 더 많은 경고 가능 */
+  allPreflightResult?: PreflightResult;
   hasStudentFilter?: boolean;
   hasTeacherFilter?: boolean;
   /** Dropdown에서 진입 시 모드 pre-set (per-teacher | per-student). 미설정 시 current. */
@@ -73,6 +75,7 @@ export default function PdfExportRangeModal({
   teachers = EMPTY_TEACHERS,
   students = EMPTY_STUDENTS,
   preflightResult,
+  allPreflightResult,
   hasStudentFilter = false,
   hasTeacherFilter = false,
   initialScope,
@@ -157,6 +160,13 @@ export default function PdfExportRangeModal({
 
   // PR #432: 화면 필터 활성 시 사용자가 "필터된 수업만 / 전체 수업" 선택. 필터 미활성 시 default true.
   const applyFilter = hasAnyFilter ? printTarget === "filtered" : true;
+
+  // PR #438: printTarget 에 따라 다른 preflight 사용 — 전체 수업 시 더 많은 경고 가능
+  const activePreflightResult =
+    printTarget === "all" && allPreflightResult
+      ? allPreflightResult
+      : preflightResult;
+  const activeSessionCount = printTarget === "all" ? totalCount : filteredCount;
 
   const handleExport = () => {
     if (
@@ -283,7 +293,7 @@ export default function PdfExportRangeModal({
           </div>
         )}
 
-        {preflightResult && preflightResult.warnings.length > 0 && printTarget === "filtered" && (
+        {activePreflightResult && activePreflightResult.warnings.length > 0 && (
           <div
             role="alert"
             className="mb-4 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm"
@@ -292,32 +302,28 @@ export default function PdfExportRangeModal({
               ⚠ 출력 시 확인
               {hasAnyFilter && (
                 <span className="ml-1 font-normal text-amber-700/80 dark:text-amber-400/80 text-xs">
-                  ({filteredCount} 수업 기준)
+                  ({activeSessionCount} 수업 기준)
                 </span>
               )}
             </p>
             <ul className="space-y-1">
-              {preflightResult.warnings.map((w, i) => (
+              {activePreflightResult.warnings.map((w, i) => (
                 <li key={i} className="text-amber-700 dark:text-amber-400">
                   • {w.message}
                 </li>
               ))}
             </ul>
-            {preflightResult.suggestSplit === "per-teacher" && !hasStudentFilter && (
-              <button
-                type="button"
-                onClick={() => setScope("per-teacher")}
-                className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-300 underline underline-offset-2 hover:no-underline"
-              >
-                강사별 분할로 전환
-              </button>
-            )}
-          </div>
-        )}
-
-        {hasAnyFilter && printTarget === "all" && (
-          <div className="mb-4 text-xs text-[var(--color-text-muted)]">
-            전체 {totalCount} 수업 인쇄 — 화면 필터 무시 (preflight 경고 미반영)
+            {activePreflightResult.suggestSplit === "per-teacher" &&
+              !hasStudentFilter &&
+              !splitDisabledByFilter && (
+                <button
+                  type="button"
+                  onClick={() => setScope("per-teacher")}
+                  className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-300 underline underline-offset-2 hover:no-underline"
+                >
+                  강사별 분할로 전환
+                </button>
+              )}
           </div>
         )}
 
