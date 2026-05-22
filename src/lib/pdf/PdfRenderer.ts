@@ -238,8 +238,9 @@ function drawWeekPage(
     : options.perStudent
       ? "학생별"
       : "전체";
+  // ADR-021 D2 (PR #429): data-tight + 1h padding 자동 결정. footer 에 "자동" 라벨로 사용자 인지.
   drawFooter(doc, dims, {
-    meta: `출력 범위 ${startHour}:00~${endHour}:00 · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
+    meta: `출력 범위 ${startHour}:00~${endHour}:00 (자동) · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
   });
 }
 

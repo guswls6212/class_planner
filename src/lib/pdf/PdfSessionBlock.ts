@@ -31,14 +31,17 @@ function hexToRgb(hex: string): [number, number, number] {
 /**
  * Session block 렌더링.
  *
- * ADR-020 보강 (UAT 2026-05-21):
+ * ADR-021 D1 (PR #429 갱신):
  *   - 강사 우상단 (subject 좌상단과 같은 y, right-align)
  *   - 시간 [시작-마침] 둘 다 표시
  *   - 길이별 정보 우선순위:
  *       · 30분 미만 (height < 6mm): 제목 + 강사 우상단만
- *       · 30분~60분 (height < 12mm): + [시작-마침]
- *       · 60분~90분 (height < 18mm): + 학생 1줄 truncate
+ *       · 30분~60분 (height < 10mm): + [시작-마침]
+ *       · 60분~90분 (height < 18mm, **>= 10mm**): + 학생 1줄 truncate
  *       · 90분+ (height >= 18mm): + 학생 wrap (최대 2줄)
+ *
+ * threshold 12mm → 10mm (PR #429): union grid 의 1h cell (10mm) 도 학생 표시.
+ * data-tight (D2) 적용 후 1h cell ≥ 15mm 가 default 이지만, fallback grid 보호.
  */
 export function drawSessionBlock(
   doc: jsPDF,
@@ -94,17 +97,18 @@ export function drawSessionBlock(
     textY += 3;
   }
 
-  // 3. 학생 — 60분 이상 (>= 12mm)
-  if (cellHeight >= 12 && data.studentNames.length > 0) {
+  // 3. 학생 — 60분 이상 (>= 10mm, PR #429)
+  if (cellHeight >= 10 && data.studentNames.length > 0) {
     doc.setFontSize(6);
     doc.setTextColor(80, 80, 80);
     const names = data.studentNames.join(", ");
     // 90분+ 면 wrap (최대 2줄), 60-90분 은 1줄 truncate.
     const maxLines = cellHeight >= 18 ? 2 : 1;
+    // 1h cell (10mm) 빠듯한 fit 위해 lineHeight 미세 조정 (2.8 → 2.4).
     drawTextClamped(doc, names, textX, textY, {
       maxWidth: cell.width - padding - 4,
       maxLines,
-      lineHeight: 2.8,
+      lineHeight: 2.4,
     });
   }
 }
