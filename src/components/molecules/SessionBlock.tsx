@@ -143,9 +143,10 @@ function SessionBlock({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMovedRef = useRef(false);
 
+  const isShareViewEarly = presentationMode !== "edit";
   const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
     id: session?.id ?? "__null__",
-    disabled: isReadOnly || !session,
+    disabled: isReadOnly || isShareViewEarly || !session,
     data: { session },
   });
 
@@ -224,7 +225,7 @@ function SessionBlock({
   // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (isReadOnly) return;
+      if (isReadOnly || isShareViewEarly) return;
       touchMovedRef.current = false;
       longPressTimerRef.current = setTimeout(() => {
         if (!touchMovedRef.current) {
@@ -233,7 +234,7 @@ function SessionBlock({
         }
       }, 300);
     },
-    [isReadOnly]
+    [isReadOnly, isShareViewEarly]
   );
 
   const handleTouchMove = useCallback(() => {
@@ -275,7 +276,7 @@ function SessionBlock({
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isReadOnly) return;
+    if (isReadOnly || isShareViewEarly) return;
     // Shift/Ctrl/Cmd + click → 다중 선택 toggle (Edit modal 안 열림)
     if ((e.shiftKey || e.ctrlKey || e.metaKey) && onSelectToggle) {
       onSelectToggle();
@@ -477,8 +478,9 @@ function SessionBlock({
             ✓
           </span>
         )}
-        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에. */}
-        {!isReadOnly && (
+        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에.
+            share view (presentationMode !== "edit")에서도 숨김 (cursor-grab 노출 방지) */}
+        {!isReadOnly && !isShareViewEarly && (
           <div
             {...attributes}
             {...listeners}
@@ -582,7 +584,7 @@ function SessionBlock({
       )}
 
       {/* 롱프레스 컨텍스트 메뉴 */}
-      {contextMenuOpen && !isReadOnly && (
+      {contextMenuOpen && !isReadOnly && !isShareViewEarly && (
         <>
           {/* 백드롭 — 외부 클릭 시 메뉴 닫기 */}
           <div
