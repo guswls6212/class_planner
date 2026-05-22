@@ -2,44 +2,19 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// PDFDownloadButton mock — dropdown 구조 시뮬레이션 (toggle + 가이드 + 강사별/학생별)
+// PDFDownloadButton mock — UAT 2026-05-22 dropdown 제거 후 단순 button
 vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   default: ({
     viewLabel,
     onDownload,
-    onPerTeacher,
-    onPerStudent,
-    onOpenGuide,
   }: {
     viewLabel?: string;
     onDownload: () => void;
-    onPerTeacher?: () => void;
-    onPerStudent?: () => void;
-    onOpenGuide?: () => void;
     isDownloading: boolean;
-    onDownloadStart: () => void;
-    onDownloadEnd: () => void;
   }) => (
-    <div>
-      <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF`}>
-        PDF
-      </button>
-      {onPerTeacher && (
-        <button onClick={onPerTeacher} aria-label="강사별로 1장씩">
-          강사별
-        </button>
-      )}
-      {onPerStudent && (
-        <button onClick={onPerStudent} aria-label="학생별로 1장씩">
-          학생별
-        </button>
-      )}
-      {onOpenGuide && (
-        <button onClick={onOpenGuide} aria-label="PDF 인쇄 가이드">
-          인쇄 가이드
-        </button>
-      )}
-    </div>
+    <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF`}>
+      PDF
+    </button>
   ),
 }));
 
@@ -116,58 +91,17 @@ describe("ScheduleActionBar", () => {
     expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
   });
 
-  it("viewMode='daily' → PDF dropdown 렌더 X (라벨 불일치 회피)", () => {
+  it("viewMode='daily' → PDF 버튼 렌더 X (라벨 불일치 회피)", () => {
     render(<ScheduleActionBar {...baseProps} viewMode="daily" />);
     expect(
       screen.queryByRole("button", { name: /주간 시간표 PDF/ }),
     ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /PDF 인쇄 가이드/ }),
-    ).toBeNull();
   });
 
-  it("viewMode='monthly' → PDF dropdown 렌더 X", () => {
+  it("viewMode='monthly' → PDF 버튼 렌더 X", () => {
     render(<ScheduleActionBar {...baseProps} viewMode="monthly" />);
     expect(
       screen.queryByRole("button", { name: /주간 시간표 PDF/ }),
-    ).toBeNull();
-  });
-
-  it("강사별 dropdown 클릭 시 onOpenPdfPerTeacher 호출 (PR #428, SKIP — CI hang)", () => {
-    const onOpenPdfPerTeacher = vi.fn();
-    render(
-      <ScheduleActionBar
-        {...baseProps}
-        onOpenPdfPerTeacher={onOpenPdfPerTeacher}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /강사별로 1장씩/ }));
-    expect(onOpenPdfPerTeacher).toHaveBeenCalledTimes(1);
-  });
-
-  it("학생별 dropdown 클릭 시 onOpenPdfPerStudent 호출 (PR #428, SKIP — CI hang)", () => {
-    const onOpenPdfPerStudent = vi.fn();
-    render(
-      <ScheduleActionBar
-        {...baseProps}
-        onOpenPdfPerStudent={onOpenPdfPerStudent}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /학생별로 1장씩/ }));
-    expect(onOpenPdfPerStudent).toHaveBeenCalledTimes(1);
-  });
-
-  it("onOpenPdfPerTeacher 미전달 시 강사별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
-    render(<ScheduleActionBar {...baseProps} />);
-    expect(
-      screen.queryByRole("button", { name: /강사별로 1장씩/ }),
-    ).toBeNull();
-  });
-
-  it("onOpenPdfPerStudent 미전달 시 학생별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
-    render(<ScheduleActionBar {...baseProps} />);
-    expect(
-      screen.queryByRole("button", { name: /학생별로 1장씩/ }),
     ).toBeNull();
   });
 });

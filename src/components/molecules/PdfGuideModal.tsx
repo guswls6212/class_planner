@@ -14,7 +14,7 @@ const LIMIT_ROWS = [
   { case: "같은 시간 수업 3개", singlePage: "△ 빠듯", withSplit: "✅ 강사별 분할", hardLimit: "—" },
   { case: "같은 시간 수업 4개 이상", singlePage: "❌ 글자 가려짐", withSplit: "✅ 강사별 분할", hardLimit: "—" },
   { case: "같은 시간 수업 5개 이상", singlePage: "❌", withSplit: "✅ 강사별 분할*", hardLimit: "한 강사가 같은 시간에 여러 수업하면 분할도 한계" },
-  { case: "9시 이전 / 23시 이후 수업", singlePage: "❌ 표시 안 됨", withSplit: "—", hardLimit: "현재 버전 제한" },
+  { case: "9시 이전 / 23시 이후 수업", singlePage: "✅ 자동 표시", withSplit: "—", hardLimit: "—" },
   { case: "일요일 수업", singlePage: "✅", withSplit: "—", hardLimit: "—" },
 ];
 
@@ -134,8 +134,8 @@ export default function PdfGuideModal({ isOpen, onClose }: Props) {
         <div className="text-xs text-[var(--color-text-muted)] space-y-1">
           <p>• <strong>출력 시간 자동 조정:</strong> 실제 수업이 있는 시간대만 PDF에 나오도록 자동으로 맞춰서 출력해요. 위아래 빈 공간을 줄여서 가독성을 높입니다.</p>
           <p>• <strong>화면 시간 범위 (9-23시 등):</strong> 화면에 보여줄 시간대 설정입니다. PDF 출력은 실제 수업 시간 기준으로 자동 조정됩니다.</p>
-          <p>• <strong>강사별 분할:</strong> PDF 다운로드 → &quot;강사별로 1장씩&quot; 선택 — 강사마다 한 페이지씩 출력합니다.</p>
-          <p>• <strong>학생별 분할:</strong> &quot;학생별로 1장씩&quot; 선택 — 학생마다 한 페이지씩 (학생이 30명 넘으면 한 번 더 확인 메시지가 떠요).</p>
+          <p>• <strong>강사별 분할:</strong> PDF 다운로드 → 출력 모달에서 &quot;강사별로 1장씩&quot; 선택 — 강사마다 한 페이지씩 출력합니다.</p>
+          <p>• <strong>학생별 분할:</strong> 출력 모달에서 &quot;학생별로 1장씩&quot; 선택 — 학생마다 한 페이지씩 (학생이 30명 넘으면 한 번 더 확인 메시지가 떠요).</p>
         </div>
       </div>
     </div>

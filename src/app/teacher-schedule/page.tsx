@@ -70,8 +70,6 @@ export default function TeacherSchedulePage() {
             )
           }
           isDownloading={isDownloading}
-          onDownloadStart={() => setIsDownloading(true)}
-          onDownloadEnd={() => setIsDownloading(false)}
         />
       </div>
 
