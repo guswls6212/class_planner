@@ -98,7 +98,15 @@ export default function PdfExportRangeModal({
     if (hasTeacherFilter && scope === "per-student") {
       setScope("current");
     }
-  }, [hasStudentFilter, hasTeacherFilter, scope]);
+    // PR #432-follow-up: "필터 적용 수업만" 선택 + 강사별/학생별 = 의미 모호 → current 로 reset
+    if (
+      hasAnyFilter &&
+      printTarget === "filtered" &&
+      (scope === "per-teacher" || scope === "per-student")
+    ) {
+      setScope("current");
+    }
+  }, [hasStudentFilter, hasTeacherFilter, hasAnyFilter, printTarget, scope]);
 
   useEffect(() => {
     if (scope === "per-teacher") {
@@ -124,6 +132,8 @@ export default function PdfExportRangeModal({
   const rangeInvalid = scope === "range" && rangeEnd < rangeStart;
   const noTeachers = teachers.length === 0;
   const noStudents = students.length === 0;
+  // PR #432-follow-up: 필터 적용 수업만 + 강사별/학생별 = 의미 모호 → disable
+  const splitDisabledByFilter = hasAnyFilter && printTarget === "filtered";
   const noTeachersSelected = scope === "per-teacher" && selectedTeacherIds.length === 0;
   const noStudentsSelected = scope === "per-student" && selectedStudentIds.length === 0;
   const studentPageExplosion =
@@ -346,7 +356,7 @@ export default function PdfExportRangeModal({
             {!hasStudentFilter && (
               <>
                 <label
-                  className={`flex items-center gap-2 cursor-pointer ${noTeachers ? "opacity-50" : ""}`}
+                  className={`flex items-center gap-2 cursor-pointer ${noTeachers || splitDisabledByFilter ? "opacity-50" : ""}`}
                 >
                   <input
                     type="radio"
@@ -355,7 +365,7 @@ export default function PdfExportRangeModal({
                     value="per-teacher"
                     checked={scope === "per-teacher"}
                     onChange={() => setScope("per-teacher")}
-                    disabled={noTeachers}
+                    disabled={noTeachers || splitDisabledByFilter}
                   />
                   <span className="text-sm text-[var(--color-text-primary)]">
                     강사별로 1장씩
@@ -363,6 +373,10 @@ export default function PdfExportRangeModal({
                   {noTeachers ? (
                     <span className="text-xs text-[var(--color-text-muted)]">
                       (강사가 없습니다)
+                    </span>
+                  ) : splitDisabledByFilter ? (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      (전체 수업 선택 시 활용)
                     </span>
                   ) : (
                     <span className="text-xs text-[var(--color-text-muted)]">
@@ -448,7 +462,7 @@ export default function PdfExportRangeModal({
             {!hasTeacherFilter && (
               <>
                 <label
-                  className={`flex items-center gap-2 cursor-pointer ${noStudents ? "opacity-50" : ""}`}
+                  className={`flex items-center gap-2 cursor-pointer ${noStudents || splitDisabledByFilter ? "opacity-50" : ""}`}
                 >
                   <input
                     type="radio"
@@ -457,7 +471,7 @@ export default function PdfExportRangeModal({
                     value="per-student"
                     checked={scope === "per-student"}
                     onChange={() => setScope("per-student")}
-                    disabled={noStudents}
+                    disabled={noStudents || splitDisabledByFilter}
                   />
                   <span className="text-sm text-[var(--color-text-primary)]">
                     학생별로 1장씩
@@ -465,6 +479,10 @@ export default function PdfExportRangeModal({
                   {noStudents ? (
                     <span className="text-xs text-[var(--color-text-muted)]">
                       (학생이 없습니다)
+                    </span>
+                  ) : splitDisabledByFilter ? (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      (전체 수업 선택 시 활용)
                     </span>
                   ) : (
                     <span className="text-xs text-[var(--color-text-muted)]">
