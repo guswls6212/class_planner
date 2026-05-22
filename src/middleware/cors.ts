@@ -18,6 +18,14 @@ const corsConfig = {
 };
 
 export function getAllowedOrigins(): string[] {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
   const env = process.env.NODE_ENV || "development";
   const validEnv =
     env in corsConfig ? (env as keyof typeof corsConfig) : "development";

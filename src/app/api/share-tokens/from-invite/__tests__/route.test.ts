@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
-process.env.NEXT_PUBLIC_APP_URL = "https://class-planner.info365.studio";
+process.env.PUBLIC_BASE_URL = "https://class-planner.info365.studio";
 
 const { mockFrom } = vi.hoisted(() => ({
   mockFrom: vi.fn(),

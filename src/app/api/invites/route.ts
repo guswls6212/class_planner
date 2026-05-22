@@ -114,7 +114,11 @@ export async function POST(request: NextRequest) {
       teacherEmail = teacher.email ?? null;
     }
 
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const inviteExpiresHours =
+      Number(process.env.INVITE_EXPIRES_HOURS) || 24;
+    const expiresAt = new Date(
+      Date.now() + inviteExpiresHours * 60 * 60 * 1000
+    ).toISOString();
 
     const { data, error } = await client
       .from("invite_tokens")

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { getServerBaseUrl } from "@/lib/getPublicBaseUrl";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 
@@ -100,9 +101,8 @@ export async function POST(request: NextRequest) {
           logger.error("audit_log insert failed", {}, auditError as Error);
       });
 
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://class-planner.info365.studio";
-    const shareUrl = `${appUrl}/share/${shareToken.token}`;
+    const baseUrl = getServerBaseUrl(request);
+    const shareUrl = `${baseUrl}/share/${shareToken.token}`;
 
     return NextResponse.json({
       success: true,
