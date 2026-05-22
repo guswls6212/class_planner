@@ -272,9 +272,7 @@ describe("PdfExportRangeModal — teacher chip selector", () => {
 });
 
 // PR #428 — ADR-021 D4 follow-up: per-student mirror + initialScope pre-set + 30명+ guard.
-// describe.skip 임시 — CI vitest worker hang (1-4차 모두 20+ 분 hang). root cause 미확정.
-// PR #429 에서 hunt 후 복구 (worker isolation 또는 source 코드 useEffect 재진입 검토).
-describe.skip("PdfExportRangeModal — per-student (PR #428)", () => {
+describe("PdfExportRangeModal — per-student (PR #428)", () => {
   const students = [
     { id: "s1", name: "학생A" },
     { id: "s2", name: "학생B" },
@@ -346,7 +344,7 @@ describe.skip("PdfExportRangeModal — per-student (PR #428)", () => {
     expect(screen.queryByLabelText("학생별로 1장씩")).not.toBeInTheDocument();
   });
 
-  it.skip("30명+ 선택 + window.confirm 거부 → onExport 미호출", () => {
+  it("30명+ 선택 + window.confirm 거부 → onExport 미호출", () => {
     const onExport = vi.fn();
     const many = Array.from({ length: 31 }, (_, i) => ({
       id: `s${i}`,
@@ -361,7 +359,7 @@ describe.skip("PdfExportRangeModal — per-student (PR #428)", () => {
     confirmSpy.mockRestore();
   });
 
-  it.skip("30명+ 선택 + window.confirm 승낙 → onExport 호출", () => {
+  it("30명+ 선택 + window.confirm 승낙 → onExport 호출", () => {
     const onExport = vi.fn();
     const many = Array.from({ length: 31 }, (_, i) => ({
       id: `s${i}`,

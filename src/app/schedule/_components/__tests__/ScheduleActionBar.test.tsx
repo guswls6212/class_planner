@@ -146,7 +146,7 @@ describe("ScheduleActionBar", () => {
     ).toBeNull();
   });
 
-  it.skip("강사별 dropdown 클릭 시 onOpenPdfPerTeacher 호출 (PR #428, SKIP — CI hang)", () => {
+  it("강사별 dropdown 클릭 시 onOpenPdfPerTeacher 호출 (PR #428, SKIP — CI hang)", () => {
     const onOpenPdfPerTeacher = vi.fn();
     render(
       <ScheduleActionBar
@@ -158,7 +158,7 @@ describe("ScheduleActionBar", () => {
     expect(onOpenPdfPerTeacher).toHaveBeenCalledTimes(1);
   });
 
-  it.skip("학생별 dropdown 클릭 시 onOpenPdfPerStudent 호출 (PR #428, SKIP — CI hang)", () => {
+  it("학생별 dropdown 클릭 시 onOpenPdfPerStudent 호출 (PR #428, SKIP — CI hang)", () => {
     const onOpenPdfPerStudent = vi.fn();
     render(
       <ScheduleActionBar
@@ -170,14 +170,14 @@ describe("ScheduleActionBar", () => {
     expect(onOpenPdfPerStudent).toHaveBeenCalledTimes(1);
   });
 
-  it.skip("onOpenPdfPerTeacher 미전달 시 강사별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
+  it("onOpenPdfPerTeacher 미전달 시 강사별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
     render(<ScheduleActionBar {...baseProps} />);
     expect(
       screen.queryByRole("button", { name: /강사별로 1장씩/ }),
     ).toBeNull();
   });
 
-  it.skip("onOpenPdfPerStudent 미전달 시 학생별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
+  it("onOpenPdfPerStudent 미전달 시 학생별 dropdown 미렌더 (placeholder, PR #428 SKIP)", () => {
     render(<ScheduleActionBar {...baseProps} />);
     expect(
       screen.queryByRole("button", { name: /학생별로 1장씩/ }),

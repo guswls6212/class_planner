@@ -150,7 +150,7 @@ describe("PDFDownloadButton (dropdown)", () => {
     expect(mockShowError).toHaveBeenCalledWith("PDF 다운로드에 실패했습니다.");
   });
 
-  it.skip("onPerTeacher 전달 시 '강사별로 1장씩' 활성 + 클릭 시 호출 (PR #428, SKIP — CI hang root cause hunt 후 복구)", () => {
+  it("onPerTeacher 전달 시 '강사별로 1장씩' 활성 + 클릭 시 호출 (PR #428, SKIP — CI hang root cause hunt 후 복구)", () => {
     const onPerTeacher = vi.fn();
     render(
       <PDFDownloadButton
@@ -169,7 +169,7 @@ describe("PDFDownloadButton (dropdown)", () => {
     expect(onPerTeacher).toHaveBeenCalledTimes(1);
   });
 
-  it.skip("onPerStudent 전달 시 '학생별로 1장씩' 활성 + 클릭 시 호출 (PR #428, SKIP — CI hang root cause hunt 후 복구)", () => {
+  it("onPerStudent 전달 시 '학생별로 1장씩' 활성 + 클릭 시 호출 (PR #428, SKIP — CI hang root cause hunt 후 복구)", () => {
     const onPerStudent = vi.fn();
     render(
       <PDFDownloadButton
