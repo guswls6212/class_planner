@@ -29,6 +29,8 @@ export interface PdfRenderOptions {
   operatingDays?: number[];
   /** 강사별 분할 여부 — 푸터 메타 표기용 */
   perTeacher?: boolean;
+  /** 학생별 분할 여부 — 푸터 메타 표기용 (caller가 학생당 1회 호출) */
+  perStudent?: boolean;
   /** 강사별 분할 모드에서 학생 이름 표시 여부 (기본값: false = 숨김) */
   showStudentNames?: boolean;
   /** 표시 시작 시각 (0-23). default 9. */
@@ -231,7 +233,11 @@ function drawWeekPage(
   }
 
   const maxLanes = Math.max(1, ...operatingDays.map((wd) => lanesByWeekday.get(wd) ?? 1));
-  const splitLabel = options.perTeacher ? "강사별" : "전체";
+  const splitLabel = options.perTeacher
+    ? "강사별"
+    : options.perStudent
+      ? "학생별"
+      : "전체";
   drawFooter(doc, dims, {
     meta: `출력 범위 ${startHour}:00~${endHour}:00 · 분할: ${splitLabel} · 동시간 최대 ${maxLanes}건`,
   });

@@ -2,15 +2,19 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// PDFDownloadButton mock — dropdown 구조 시뮬레이션 (toggle + 가이드 항목)
+// PDFDownloadButton mock — dropdown 구조 시뮬레이션 (toggle + 가이드 + 강사별/학생별)
 vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   default: ({
     viewLabel,
     onDownload,
+    onPerTeacher,
+    onPerStudent,
     onOpenGuide,
   }: {
     viewLabel?: string;
     onDownload: () => void;
+    onPerTeacher?: () => void;
+    onPerStudent?: () => void;
     onOpenGuide?: () => void;
     isDownloading: boolean;
     onDownloadStart: () => void;
@@ -20,6 +24,16 @@ vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
       <button onClick={onDownload} aria-label={`${viewLabel ?? "시간표"} PDF`}>
         PDF
       </button>
+      {onPerTeacher && (
+        <button onClick={onPerTeacher} aria-label="강사별로 1장씩">
+          강사별
+        </button>
+      )}
+      {onPerStudent && (
+        <button onClick={onPerStudent} aria-label="학생별로 1장씩">
+          학생별
+        </button>
+      )}
       {onOpenGuide && (
         <button onClick={onOpenGuide} aria-label="PDF 인쇄 가이드">
           인쇄 가이드
@@ -129,6 +143,44 @@ describe("ScheduleActionBar", () => {
     render(<ScheduleActionBar {...baseProps} viewMode="monthly" />);
     expect(
       screen.queryByRole("button", { name: /주간 시간표 PDF/ }),
+    ).toBeNull();
+  });
+
+  it("강사별 dropdown 클릭 시 onOpenPdfPerTeacher 호출 (PR #428)", () => {
+    const onOpenPdfPerTeacher = vi.fn();
+    render(
+      <ScheduleActionBar
+        {...baseProps}
+        onOpenPdfPerTeacher={onOpenPdfPerTeacher}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /강사별로 1장씩/ }));
+    expect(onOpenPdfPerTeacher).toHaveBeenCalledTimes(1);
+  });
+
+  it("학생별 dropdown 클릭 시 onOpenPdfPerStudent 호출 (PR #428)", () => {
+    const onOpenPdfPerStudent = vi.fn();
+    render(
+      <ScheduleActionBar
+        {...baseProps}
+        onOpenPdfPerStudent={onOpenPdfPerStudent}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /학생별로 1장씩/ }));
+    expect(onOpenPdfPerStudent).toHaveBeenCalledTimes(1);
+  });
+
+  it("onOpenPdfPerTeacher 미전달 시 강사별 dropdown 미렌더 (placeholder)", () => {
+    render(<ScheduleActionBar {...baseProps} />);
+    expect(
+      screen.queryByRole("button", { name: /강사별로 1장씩/ }),
+    ).toBeNull();
+  });
+
+  it("onOpenPdfPerStudent 미전달 시 학생별 dropdown 미렌더 (placeholder)", () => {
+    render(<ScheduleActionBar {...baseProps} />);
+    expect(
+      screen.queryByRole("button", { name: /학생별로 1장씩/ }),
     ).toBeNull();
   });
 });

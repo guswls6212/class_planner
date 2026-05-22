@@ -1,5 +1,5 @@
 /**
- * PDFDownloadButton 테스트 (dropdown 패턴, ADR-020 후속 UAT 2026-05-21).
+ * PDFDownloadButton 테스트 (dropdown 패턴, ADR-020/021 후속 UAT 2026-05-21).
  *
  * 핵심 검증:
  * 1. 초기 렌더 — toggle button 노출, dropdown 닫힌 상태
@@ -9,6 +9,9 @@
  * 5. onOpenGuide 미전달 시 가이드 항목 미렌더 (teacher-schedule 호환)
  * 6. isDownloading=true → toggle button 비활성
  * 7. 다운로드 실패 → showError + onDownloadEnd 보장 (finally)
+ * 8. onPerTeacher / onPerStudent 미전달 시 "준비 중" disabled placeholder (backward compat)
+ * 9. onPerTeacher 전달 시 "강사별로 1장씩" 활성 + 클릭 시 호출 (PR #428)
+ * 10. onPerStudent 전달 시 "학생별로 1장씩" 활성 + 클릭 시 호출 (PR #428)
  */
 
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -145,5 +148,43 @@ describe("PDFDownloadButton (dropdown)", () => {
       expect(onDownloadEnd).toHaveBeenCalledTimes(1);
     });
     expect(mockShowError).toHaveBeenCalledWith("PDF 다운로드에 실패했습니다.");
+  });
+
+  it("onPerTeacher 전달 시 '강사별로 1장씩' 활성 + 클릭 시 호출 (PR #428)", () => {
+    const onPerTeacher = vi.fn();
+    render(
+      <PDFDownloadButton
+        onDownload={vi.fn()}
+        onPerTeacher={onPerTeacher}
+        isDownloading={false}
+        onDownloadStart={vi.fn()}
+        onDownloadEnd={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    const item = screen.getByText("강사별로 1장씩");
+    expect(item).toBeInTheDocument();
+    expect(item.closest("button")).not.toBeDisabled();
+    fireEvent.click(item);
+    expect(onPerTeacher).toHaveBeenCalledTimes(1);
+  });
+
+  it("onPerStudent 전달 시 '학생별로 1장씩' 활성 + 클릭 시 호출 (PR #428)", () => {
+    const onPerStudent = vi.fn();
+    render(
+      <PDFDownloadButton
+        onDownload={vi.fn()}
+        onPerStudent={onPerStudent}
+        isDownloading={false}
+        onDownloadStart={vi.fn()}
+        onDownloadEnd={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /시간표 PDF/i }));
+    const item = screen.getByText("학생별로 1장씩");
+    expect(item).toBeInTheDocument();
+    expect(item.closest("button")).not.toBeDisabled();
+    fireEvent.click(item);
+    expect(onPerStudent).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,9 +15,13 @@ export interface PdfExportRange {
   startDate: string;
   endDate: string;
   perTeacher?: boolean;
+  perStudent?: boolean;
   showStudentNames?: boolean;
   selectedTeacherIds?: string[];   // undefined = all (backward compat)
+  selectedStudentIds?: string[];   // undefined = all (backward compat)
 }
+
+type Scope = "current" | "range" | "per-teacher" | "per-student";
 
 interface Props {
   isOpen: boolean;
@@ -27,11 +31,15 @@ interface Props {
   selectedDate: Date;
   isExporting?: boolean;
   teachers?: { id: string; name: string; color?: string }[];
+  students?: { id: string; name: string; color?: string }[];
   preflightResult?: PreflightResult;
   hasStudentFilter?: boolean;
+  hasTeacherFilter?: boolean;
+  /** Dropdown에서 진입 시 모드 pre-set (per-teacher | per-student). 미설정 시 current. */
+  initialScope?: Scope;
 }
 
-type Scope = "current" | "range" | "per-teacher";
+const STUDENT_PAGE_GUARD_THRESHOLD = 30;
 
 export default function PdfExportRangeModal({
   isOpen,
@@ -41,28 +49,45 @@ export default function PdfExportRangeModal({
   selectedDate,
   isExporting = false,
   teachers = [],
+  students = [],
   preflightResult,
   hasStudentFilter = false,
+  hasTeacherFilter = false,
+  initialScope,
 }: Props) {
   const { containerRef } = useModalA11y({ isOpen, onClose });
   const isMonthly = viewMode === "monthly";
-  const [scope, setScope] = useState<Scope>("current");
+  const [scope, setScope] = useState<Scope>(initialScope ?? "current");
   const [showStudentNames, setShowStudentNames] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>(
     () => teachers.map((t) => t.id)
   );
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(
+    () => students.map((s) => s.id)
+  );
+
+  // Dropdown 재진입 시 initialScope 반영 (예: 전체 인쇄 → 학생별로 재오픈).
+  useEffect(() => {
+    if (isOpen && initialScope) setScope(initialScope);
+  }, [isOpen, initialScope]);
 
   useEffect(() => {
     if (hasStudentFilter && scope === "per-teacher") {
       setScope("current");
     }
-  }, [hasStudentFilter, scope]);
+    if (hasTeacherFilter && scope === "per-student") {
+      setScope("current");
+    }
+  }, [hasStudentFilter, hasTeacherFilter, scope]);
 
   useEffect(() => {
     if (scope === "per-teacher") {
       setSelectedTeacherIds(teachers.map((t) => t.id));
     }
-  }, [scope, teachers]);
+    if (scope === "per-student") {
+      setSelectedStudentIds(students.map((s) => s.id));
+    }
+  }, [scope, teachers, students]);
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate]);
   const weekEnd = useMemo(() => {
@@ -78,9 +103,21 @@ export default function PdfExportRangeModal({
 
   const rangeInvalid = scope === "range" && rangeEnd < rangeStart;
   const noTeachers = teachers.length === 0;
+  const noStudents = students.length === 0;
   const noTeachersSelected = scope === "per-teacher" && selectedTeacherIds.length === 0;
+  const noStudentsSelected = scope === "per-student" && selectedStudentIds.length === 0;
+  const studentPageExplosion =
+    scope === "per-student" && selectedStudentIds.length > STUDENT_PAGE_GUARD_THRESHOLD;
 
   const handleExport = () => {
+    if (
+      studentPageExplosion &&
+      !window.confirm(
+        `${selectedStudentIds.length}명의 학생 각각 1페이지로 출력합니다. 계속할까요?`,
+      )
+    ) {
+      return;
+    }
     if (isMonthly) {
       const { start, end } = getMonthWeekRange(
         selectedDate.getFullYear(),
@@ -102,6 +139,17 @@ export default function PdfExportRangeModal({
         perTeacher: true,
         showStudentNames,
         selectedTeacherIds,
+      });
+      return;
+    }
+    if (scope === "per-student") {
+      const weekStartStr = formatLocalISO(weekStart);
+      const weekEndStr = formatLocalISO(weekEnd);
+      onExport({
+        startDate: weekStartStr,
+        endDate: weekEndStr,
+        perStudent: true,
+        selectedStudentIds,
       });
       return;
     }
@@ -320,6 +368,105 @@ export default function PdfExportRangeModal({
                 )}
               </>
             )}
+            {!hasTeacherFilter && (
+              <>
+                <label
+                  className={`flex items-center gap-2 cursor-pointer ${noStudents ? "opacity-50" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="pdf-scope"
+                    aria-label="학생별로 1장씩"
+                    value="per-student"
+                    checked={scope === "per-student"}
+                    onChange={() => setScope("per-student")}
+                    disabled={noStudents}
+                  />
+                  <span className="text-sm text-[var(--color-text-primary)]">
+                    학생별로 1장씩
+                  </span>
+                  {noStudents ? (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      (학생이 없습니다)
+                    </span>
+                  ) : (
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {scope === "per-student" && selectedStudentIds.length > 0
+                        ? selectedStudentIds.length === students.length
+                          ? `(전체 ${students.length}명)`
+                          : `(${selectedStudentIds.length}명 선택)`
+                        : "(학생 수만큼 파일 다운로드)"}
+                    </span>
+                  )}
+                </label>
+                {scope === "per-student" && (
+                  <div className="ml-6 mt-2 flex flex-col gap-2">
+                    {/* 학생 chip 선택 */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-[var(--color-text-muted)]">출력할 학생</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedStudentIds(
+                              selectedStudentIds.length === students.length
+                                ? []
+                                : students.map((s) => s.id)
+                            )
+                          }
+                          className="text-xs text-[var(--color-accent)] hover:underline underline-offset-2"
+                        >
+                          {selectedStudentIds.length === students.length ? "전체 해제" : "전체 선택"}
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {students.map((student) => {
+                          const isSelected = selectedStudentIds.includes(student.id);
+                          return (
+                            <button
+                              key={student.id}
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() =>
+                                setSelectedStudentIds((prev) =>
+                                  isSelected
+                                    ? prev.filter((id) => id !== student.id)
+                                    : [...prev, student.id]
+                                )
+                              }
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                                isSelected
+                                  ? "border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+                                  : "border-[var(--color-border)] text-[var(--color-text-muted)] opacity-50 hover:opacity-75"
+                              }`}
+                            >
+                              {student.color && (
+                                <span
+                                  className="w-2 h-2 rounded-full shrink-0"
+                                  style={{ backgroundColor: student.color }}
+                                />
+                              )}
+                              {student.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {noStudentsSelected && (
+                        <p className="text-xs text-red-500 mt-1">학생을 1명 이상 선택해주세요.</p>
+                      )}
+                      {studentPageExplosion && (
+                        <p
+                          role="status"
+                          className="text-xs text-amber-700 dark:text-amber-300 mt-1"
+                        >
+                          ⚠ {selectedStudentIds.length}명 → {selectedStudentIds.length}개 파일 다운로드. 출력 시 한 번 더 확인합니다.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -334,7 +481,7 @@ export default function PdfExportRangeModal({
           <button
             type="button"
             onClick={handleExport}
-            disabled={rangeInvalid || noTeachersSelected || isExporting}
+            disabled={rangeInvalid || noTeachersSelected || noStudentsSelected || isExporting}
             className="px-4 py-2 rounded-md bg-accent text-sm text-white font-medium disabled:opacity-50 transition-colors"
           >
             {isExporting ? "출력 중..." : "출력"}
