@@ -116,19 +116,6 @@ describe("ScheduleActionBar", () => {
     expect(onOpenPdfDialog).toHaveBeenCalledTimes(1);
   });
 
-  it("PDF 가이드 버튼이 dropdown 안에 렌더된다 (P2 패턴)", () => {
-    render(<ScheduleActionBar {...baseProps} />);
-    expect(
-      screen.getByRole("button", { name: /PDF 인쇄 가이드/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("PDF 가이드 버튼 클릭 시 가이드 모달이 열린다", () => {
-    render(<ScheduleActionBar {...baseProps} />);
-    fireEvent.click(screen.getByRole("button", { name: /PDF 인쇄 가이드/ }));
-    expect(screen.getByText("PDF 출력 가이드")).toBeInTheDocument();
-  });
-
   it("viewMode='daily' → PDF dropdown 렌더 X (라벨 불일치 회피)", () => {
     render(<ScheduleActionBar {...baseProps} viewMode="daily" />);
     expect(

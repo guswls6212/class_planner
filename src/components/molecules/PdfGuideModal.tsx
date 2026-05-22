@@ -9,22 +9,22 @@ interface Props {
 }
 
 const LIMIT_ROWS = [
-  { case: "강사 1명 학원", singlePage: "✅", withSplit: "—", hardLimit: "—" },
-  { case: "동시간 최대 lane 2", singlePage: "✅", withSplit: "—", hardLimit: "—" },
-  { case: "동시간 최대 lane 3", singlePage: "△ 빠듯", withSplit: "✅ 강사별", hardLimit: "—" },
-  { case: "동시간 4건 이상", singlePage: "❌ 텍스트 불가", withSplit: "✅ 강사별", hardLimit: "—" },
-  { case: "동시간 5건+", singlePage: "❌", withSplit: "✅ 강사별*", hardLimit: "강사 간 겹침 시 불가" },
-  { case: "9시 이전/23시 이후 수업", singlePage: "❌ 누락", withSplit: "—", hardLimit: "현재 버전 제한" },
+  { case: "강사 1명만 있는 학원", singlePage: "✅", withSplit: "—", hardLimit: "—" },
+  { case: "같은 시간 수업 최대 2개", singlePage: "✅", withSplit: "—", hardLimit: "—" },
+  { case: "같은 시간 수업 3개", singlePage: "△ 빠듯", withSplit: "✅ 강사별 분할", hardLimit: "—" },
+  { case: "같은 시간 수업 4개 이상", singlePage: "❌ 글자 가려짐", withSplit: "✅ 강사별 분할", hardLimit: "—" },
+  { case: "같은 시간 수업 5개 이상", singlePage: "❌", withSplit: "✅ 강사별 분할*", hardLimit: "한 강사가 같은 시간에 여러 수업하면 분할도 한계" },
+  { case: "9시 이전 / 23시 이후 수업", singlePage: "❌ 표시 안 됨", withSplit: "—", hardLimit: "현재 버전 제한" },
   { case: "일요일 수업", singlePage: "✅", withSplit: "—", hardLimit: "—" },
 ];
 
-// PR #429-B: 출력 시간 범위별 1h cell 가독성 표 (D2 data-tight 적용 후)
+// 출력 시간 범위별 1시간 수업 가독성 표
 const RANGE_ROWS = [
-  { range: "9-18시 (9h)", cellHeight: "17mm", studentLine: "✅ 여유", note: "—" },
-  { range: "9-20시 (11h)", cellHeight: "14mm", studentLine: "✅", note: "—" },
-  { range: "9-22시 (13h)", cellHeight: "12mm", studentLine: "⚠ 빠듯", note: "font 작아짐" },
-  { range: "9-24시 (15h)", cellHeight: "10mm", studentLine: "△ truncate", note: "1줄만, lineHeight 작음" },
-  { range: "≥14h 광범위", cellHeight: "< 11mm", studentLine: "❌ 잘림 위험", note: "preflight 경고" },
+  { range: "9시 - 18시 (9시간)", cellHeight: "여유", studentLine: "✅ 학생 이름 잘 보임", note: "—" },
+  { range: "9시 - 20시 (11시간)", cellHeight: "여유", studentLine: "✅ 학생 이름 보임", note: "—" },
+  { range: "9시 - 22시 (13시간)", cellHeight: "보통", studentLine: "⚠ 빠듯하게 보임", note: "글씨 작아짐" },
+  { range: "9시 - 24시 (15시간)", cellHeight: "좁음", studentLine: "△ 일부만 보임", note: "긴 이름은 잘림" },
+  { range: "14시간 이상 광범위", cellHeight: "매우 좁음", studentLine: "❌ 잘릴 위험", note: "출력 전 안내 표시" },
 ];
 
 export default function PdfGuideModal({ isOpen, onClose }: Props) {
@@ -105,8 +105,8 @@ export default function PdfGuideModal({ isOpen, onClose }: Props) {
             <thead>
               <tr className="bg-[var(--color-bg-secondary)]">
                 <th className="border border-[var(--color-border)] px-2 py-1.5 text-left">출력 범위</th>
-                <th className="border border-[var(--color-border)] px-2 py-1.5">1h cell</th>
-                <th className="border border-[var(--color-border)] px-2 py-1.5">학생 1줄</th>
+                <th className="border border-[var(--color-border)] px-2 py-1.5">1시간 수업 칸</th>
+                <th className="border border-[var(--color-border)] px-2 py-1.5">학생 이름 표시</th>
                 <th className="border border-[var(--color-border)] px-2 py-1.5">비고</th>
               </tr>
             </thead>
@@ -132,10 +132,10 @@ export default function PdfGuideModal({ isOpen, onClose }: Props) {
         </div>
 
         <div className="text-xs text-[var(--color-text-muted)] space-y-1">
-          <p>• <strong>출력 범위 자동 조정 (PR #429):</strong> PDF 출력 시 데이터 범위 + 1시간 padding 으로 자동 결정 — 빈 공간 제거</p>
-          <p>• <strong>화면 시간 범위 (9-23시 등):</strong> 화면 표시용 — PDF 출력에는 데이터 기준 적용</p>
-          <p>• <strong>강사별 분할:</strong> PDF 다운로드 버튼 → &quot;강사별로 1장씩&quot; — 강사당 최대 lane 2~3</p>
-          <p>• <strong>학생별 분할 (PR #428):</strong> &quot;학생별로 1장씩&quot; — 학생당 1 PDF, 30명+ 시 confirm</p>
+          <p>• <strong>출력 시간 자동 조정:</strong> 실제 수업이 있는 시간대만 PDF에 나오도록 자동으로 맞춰서 출력해요. 위아래 빈 공간을 줄여서 가독성을 높입니다.</p>
+          <p>• <strong>화면 시간 범위 (9-23시 등):</strong> 화면에 보여줄 시간대 설정입니다. PDF 출력은 실제 수업 시간 기준으로 자동 조정됩니다.</p>
+          <p>• <strong>강사별 분할:</strong> PDF 다운로드 → &quot;강사별로 1장씩&quot; 선택 — 강사마다 한 페이지씩 출력합니다.</p>
+          <p>• <strong>학생별 분할:</strong> &quot;학생별로 1장씩&quot; 선택 — 학생마다 한 페이지씩 (학생이 30명 넘으면 한 번 더 확인 메시지가 떠요).</p>
         </div>
       </div>
     </div>
