@@ -2018,29 +2018,28 @@ function SchedulePageContent(): JSX.Element {
           )
         : allSessionsRaw;
 
-      // ADR-021 D2 (PR #429): data-tight + 1h padding.
-      // 사용자 timeRange 는 화면용 — PDF 출력은 데이터 기준 + ±1h padding.
-      // 14-17시 데이터 → 13-18시 출력 (이전 union 정책: 9-24시 강제, 80% 빈 공간).
+      // ADR-021 D2: data-tight + 1h padding.
+      // PR #429-fix: 강사별/학생별 분기에서는 그 강사/학생 sessions 만 기준으로
+      // 재계산 (이전 PR #429 는 allSessions 기준만 — 다른 강사 sessions 까지 grid 포함되는 사고).
       // sessions empty 시 fallback: userTimeRange (안전망).
       const PDF_PADDING_HOURS = 1;
       const timeToMinLocal = (t: string) => {
         const [h, m] = t.split(":").map(Number);
         return h * 60 + m;
       };
-      const dataMinMin = allSessions.length
-        ? Math.min(...allSessions.map((s) => timeToMinLocal(s.startsAt)))
-        : null;
-      const dataMaxMin = allSessions.length
-        ? Math.max(...allSessions.map((s) => timeToMinLocal(s.endsAt)))
-        : null;
-      const autoStartHour =
-        dataMinMin !== null
-          ? Math.max(0, Math.floor(dataMinMin / 60) - PDF_PADDING_HOURS)
-          : timeRange.startHour;
-      const autoEndHour =
-        dataMaxMin !== null
-          ? Math.min(24, Math.ceil(dataMaxMin / 60) + PDF_PADDING_HOURS)
-          : timeRange.endHour + 1;
+      const computeAutoRange = (
+        scopedSessions: typeof allSessions,
+      ): { startHour: number; endHour: number } => {
+        if (!scopedSessions.length) {
+          return { startHour: timeRange.startHour, endHour: timeRange.endHour + 1 };
+        }
+        const minMin = Math.min(...scopedSessions.map((s) => timeToMinLocal(s.startsAt)));
+        const maxMin = Math.max(...scopedSessions.map((s) => timeToMinLocal(s.endsAt)));
+        return {
+          startHour: Math.max(0, Math.floor(minMin / 60) - PDF_PADDING_HOURS),
+          endHour: Math.min(24, Math.ceil(maxMin / 60) + PDF_PADDING_HOURS),
+        };
+      };
 
       if (range.perStudent) {
         const studentsToExport = range.selectedStudentIds?.length
@@ -2056,6 +2055,7 @@ function SchedulePageContent(): JSX.Element {
             s.enrollmentIds?.some((eid) => studentEnrollmentIds.has(eid)),
           );
           if (studentSessions.length === 0) continue;
+          const { startHour, endHour } = computeAutoRange(studentSessions);
           renderSchedulePdf(
             studentSessions,
             subjects,
@@ -2069,8 +2069,8 @@ function SchedulePageContent(): JSX.Element {
               weekRange: { startDate: range.startDate, endDate: range.endDate },
               filterStudentId: student.id,
               perStudent: true,
-              startHour: autoStartHour,
-              endHour: autoEndHour,
+              startHour,
+              endHour,
             },
           );
         }
@@ -2083,6 +2083,7 @@ function SchedulePageContent(): JSX.Element {
             (s) => s.teacherId === teacher.id
           );
           if (teacherSessions.length === 0) continue;
+          const { startHour, endHour } = computeAutoRange(teacherSessions);
           renderSchedulePdf(
             teacherSessions,
             subjects,
@@ -2096,8 +2097,8 @@ function SchedulePageContent(): JSX.Element {
               weekRange: { startDate: range.startDate, endDate: range.endDate },
               filterTeacherId: teacher.id,
               showStudentNames: range.showStudentNames ?? false,
-              startHour: autoStartHour,
-              endHour: autoEndHour,
+              startHour,
+              endHour,
             }
           );
         }
@@ -2112,6 +2113,7 @@ function SchedulePageContent(): JSX.Element {
           if (teacher) pdfTitle = `${teacher.name} 선생님 시간표`;
         }
 
+        const { startHour, endHour } = computeAutoRange(allSessions);
         await renderSchedulePdf(
           allSessions,
           subjects,
@@ -2123,8 +2125,8 @@ function SchedulePageContent(): JSX.Element {
             title: pdfTitle,
             filterStudentId: selectedStudentIds[0] ?? undefined,
             weekRange: range,
-            startHour: autoStartHour,
-            endHour: autoEndHour,
+            startHour,
+            endHour,
           }
         );
       }
