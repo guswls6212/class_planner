@@ -34,8 +34,15 @@ export interface ScheduleMeta {
   acknowledgeChanges: () => void;
 }
 
-const lastViewedKey = (userId: string) =>
-  `class_planner_${userId}_lastViewedAt_schedule`;
+/**
+ * userId × academyId 별 마지막 본 시각 키. multi-academy 환경에서 다른 academy 의
+ * stale lastViewed 가 비교 baseline 으로 잘못 쓰이는 false-positive 회피
+ * (사용자 보고 2026-05-23: 박관리자 invite accept 직후 토스트 발화 — 다른 academy
+ * 에서 set 된 12:57:10 lastViewed 가 UAT Test Academy 의 schedule_updated_at
+ * 13:57:49 와 비교돼 hasChanges=true 가 됨).
+ */
+const lastViewedKey = (userId: string, academyId: string) =>
+  `class_planner_${userId}_${academyId}_lastViewedAt_schedule`;
 
 /**
  * 활성 academy의 schedule meta(갱신 시각)를 30초 polling으로 가져온다.
@@ -44,8 +51,14 @@ const lastViewedKey = (userId: string) =>
  * 탭이 백그라운드면 polling 정지 — 보이는 동안만 동기화 (학부모 share 페이지와 동일 패턴).
  *
  * @param userId Supabase user.id. null이면 hook은 idle 상태 (anonymous 또는 로그인 전).
+ * @param academyId 현재 활성 academy id. null이면 idle (multi-academy 초기 로딩 중 또는
+ *                  active_academy 미설정). 값이 바뀌면 새 academy 기준으로 fetch + lastViewed
+ *                  키 재계산.
  */
-export function useScheduleMeta(userId: string | null): ScheduleMeta {
+export function useScheduleMeta(
+  userId: string | null,
+  academyId: string | null,
+): ScheduleMeta {
   const [scheduleUpdatedAt, setScheduleUpdatedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasChanges, setHasChanges] = useState<boolean>(false);
@@ -103,17 +116,19 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
   }, []);
 
   const fetchMeta = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !academyId) return;
     try {
       const res = await fetch(
-        `/api/academies/active/schedule-meta?userId=${encodeURIComponent(userId)}`,
+        `/api/academies/active/schedule-meta?userId=${encodeURIComponent(userId)}&academyId=${encodeURIComponent(academyId)}`,
       );
       if (!res.ok) return;
       const json = await res.json();
       const next = (json.scheduleUpdatedAt as string | null) ?? null;
+      const memberJoinedAt = (json.memberJoinedAt as string | null) ?? null;
       setScheduleUpdatedAt(next);
       if (typeof window === "undefined" || !next) return;
 
+      const key = lastViewedKey(userId, academyId);
       const serverTs = new Date(next).getTime();
       // (a) 본인 변경 자동 감지 — ref + localStorage 둘 다 검사 (탭 race / page reload race 보호)
       let fallbackSync = 0;
@@ -133,30 +148,40 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
         Math.abs(serverTs - effectiveSelfSync) <= SELF_SYNC_WINDOW_MS
       ) {
         // 본인 변경 → 자동 ack
-        window.localStorage.setItem(lastViewedKey(userId), next);
+        window.localStorage.setItem(key, next);
         ackedTimestampRef.current = next;
         return;
       }
 
-      const lastViewed = window.localStorage.getItem(lastViewedKey(userId));
+      // (a") joined_at 자동 ack — 사용자가 academy 가입한 시점보다 옛 schedule_updated_at
+      // 은 알릴 가치 없음. localStorage 잔존 + invite accept 직후 stale schedule_updated_at
+      // 케이스 모두 해결 (사용자 보고 2026-05-23 박관리자 케이스 root cause).
+      if (memberJoinedAt) {
+        const joinedTs = new Date(memberJoinedAt).getTime();
+        if (Number.isFinite(joinedTs) && serverTs <= joinedTs) {
+          window.localStorage.setItem(key, next);
+          ackedTimestampRef.current = next;
+          return;
+        }
+      }
+
+      const lastViewed = window.localStorage.getItem(key);
       const lastViewedTs = lastViewed ? new Date(lastViewed).getTime() : 0;
 
-      // (a') PR 15 — lastViewedAt 없음 = 신규 가입 user 첫 진입. server timestamp 를
-      // 즉시 lastViewed 로 set + ack. 사용자 보고: invite 수락 후 첫 schedule 진입 시
-      // "시간표가 새로 갱신되었어요" 토스트 false-positive (owner 가 최근 24h 이내
-      // 변경했을 때 발화). 본인 변경 아닌 owner 의 기존 변경을 알릴 가치 없음 — 새
-      // 가입자는 다음 polling 부터 정상 비교.
+      // (a') 신규 가입 user 첫 진입 (이 academy 의 lastViewed 키 없음). server timestamp 를
+      // 즉시 lastViewed 로 set + ack. PR #458 / PR 15 패턴 유지 — academy 별 키 분리 후에도
+      // 다른 academy 잔존 lastViewed 가 비교 baseline 으로 잘못 쓰이지 않음.
       if (!lastViewed) {
-        window.localStorage.setItem(lastViewedKey(userId), next);
+        window.localStorage.setItem(key, next);
         ackedTimestampRef.current = next;
         return;
       }
 
       // (b) Stale 변경 자동 ack — 24시간 이상 묵힌 변경은 알릴 가치 없음.
       // page reload 후 lastSelfSyncAt이 0이고 server timestamp는 어제 시각인 경우 등
-      // (사용자 보고: \"어제 변경했는데 오늘 페이지 열자마자 다른 관리자가 변경했다고 뜸\")
+      // (사용자 보고: "어제 변경했는데 오늘 페이지 열자마자 다른 관리자가 변경했다고 뜸")
       if (lastViewedTs > 0 && serverTs - lastViewedTs > STALE_CHANGE_THRESHOLD_MS) {
-        window.localStorage.setItem(lastViewedKey(userId), next);
+        window.localStorage.setItem(key, next);
         ackedTimestampRef.current = next;
         return;
       }
@@ -172,21 +197,28 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, academyId]);
+
+  // academy 전환 시 hasChanges/ackedTimestamp 초기화 — 이전 academy 의 상태가 새 academy 에
+  // 누적되지 않도록.
+  useEffect(() => {
+    setHasChanges(false);
+    ackedTimestampRef.current = null;
+  }, [academyId]);
 
   // 초기 진입 — fetchMeta 만 호출. lastViewedAt 초기화는 fetchMeta 내부 (a') 분기에서
-  // server timestamp 로 set — 신규 가입자 false-positive 회피 (PR 15).
+  // server timestamp 로 set — 신규 가입자 false-positive 회피.
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !academyId) {
       setIsLoading(false);
       return;
     }
     void fetchMeta();
-  }, [userId, fetchMeta]);
+  }, [userId, academyId, fetchMeta]);
 
   // 폴링 (visibility gate)
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !academyId) return;
     function tick() {
       if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       void fetchMeta();
@@ -195,14 +227,17 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
     return () => {
       if (pollerRef.current) clearInterval(pollerRef.current);
     };
-  }, [userId, fetchMeta]);
+  }, [userId, academyId, fetchMeta]);
 
   const acknowledgeChanges = useCallback(() => {
-    if (!userId || typeof window === "undefined") return;
-    window.localStorage.setItem(lastViewedKey(userId), new Date().toISOString());
+    if (!userId || !academyId || typeof window === "undefined") return;
+    window.localStorage.setItem(
+      lastViewedKey(userId, academyId),
+      new Date().toISOString(),
+    );
     if (scheduleUpdatedAt) ackedTimestampRef.current = scheduleUpdatedAt;
     setHasChanges(false);
-  }, [userId, scheduleUpdatedAt]);
+  }, [userId, academyId, scheduleUpdatedAt]);
 
   return { scheduleUpdatedAt, isLoading, hasChanges, acknowledgeChanges };
 }
