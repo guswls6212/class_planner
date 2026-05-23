@@ -21,6 +21,7 @@ import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
+import ReassignTeacherModal from "../../components/molecules/ReassignTeacherModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 import { RolePermissionCards } from "../../components/molecules/RolePermissionCards";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
@@ -81,6 +82,9 @@ export default function SettingsPage() {
   // kick (academy_members 제외) 과 의미가 달라 별도 state 로 분리.
   const [deleteTeacherTarget, setDeleteTeacherTarget] = useState<TeacherWithStatus | null>(null);
   const [isDeletingTeacher, setIsDeletingTeacher] = useState(false);
+  // 강사 교체 (PR 8 Phase 2) — 대체 강사 선택 + sessions 일괄 이전 + (default) 원 강사 자동 보관.
+  const [reassignTarget, setReassignTarget] = useState<TeacherWithStatus | null>(null);
+  const [isReassigning, setIsReassigning] = useState(false);
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
@@ -351,6 +355,12 @@ export default function SettingsPage() {
           setKickTarget(teacher);
           break;
         }
+        case "reassign": {
+          const teacher = teachers.find((t) => t.id === teacherId);
+          if (!teacher) return;
+          setReassignTarget(teacher);
+          break;
+        }
         case "archive": {
           const teacher = teachers.find((t) => t.id === teacherId);
           if (!teacher) return;
@@ -491,6 +501,63 @@ export default function SettingsPage() {
       }
     },
     [userId, invites, fetchData]
+  );
+
+  // 강사 교체 (PR 8 Phase 2) — POST /api/teachers/[id]/reassign + localStorage 동기화.
+  // 원 강사의 sessions 모두 to 강사로 이전. archiveOriginal default true.
+  const handleReassignConfirm = useCallback(
+    async (toTeacherId: string, archiveOriginal: boolean) => {
+      if (!userId || !reassignTarget) return;
+      setIsReassigning(true);
+      try {
+        const res = await fetch(
+          `/api/teachers/${reassignTarget.id}/reassign?userId=${userId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to: toTeacherId, archiveOriginal }),
+          },
+        );
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          showError(body.error ?? "강사 교체에 실패했습니다.");
+          return;
+        }
+        const body = await res.json();
+        const reassignedCount: number = body?.data?.reassignedCount ?? 0;
+        // localStorage 동기화 — sessions teacherId reassign + (옵션) 원 강사 삭제.
+        // class-planner 의 localStorage 흐름은 보관 ≈ 삭제 (보관된 강사는 server-only).
+        if (typeof window !== "undefined") {
+          const local = getClassPlannerData();
+          local.sessions = local.sessions.map((s) =>
+            s.teacherId === reassignTarget.id ? { ...s, teacherId: toTeacherId } : s,
+          );
+          local.lastModified = new Date().toISOString();
+          // 변경 저장 위해 setClassPlannerData 사용해야 — getClassPlannerData 만으로는 갱신 X.
+          // 단순화: settings 흐름에서는 fetchData() 가 server-side teachers 새로 가져옴.
+          // sessions 는 schedule 페이지의 useScheduleManagement 가 localStorage refetch.
+          // 일단 직접 setItem 으로 sessions 저장 — main key 'classPlannerData' 기준.
+          try {
+            window.localStorage.setItem("classPlannerData", JSON.stringify(local));
+          } catch {
+            // quota 등 무시 — 다음 sync 가 처리.
+          }
+        }
+        if (archiveOriginal) {
+          deleteTeacherFromLocal(reassignTarget.id);
+        }
+        showSuccess(
+          `${reassignTarget.name} → 수업 ${reassignedCount}개 이전 완료${archiveOriginal ? " · 원 강사 보관" : ""}`,
+        );
+        setReassignTarget(null);
+        await fetchData();
+      } catch {
+        showError("강사 교체 중 오류가 발생했습니다.");
+      } finally {
+        setIsReassigning(false);
+      }
+    },
+    [userId, reassignTarget, fetchData],
   );
 
   // 강사 보관 (PR 6 Phase 1 — design-exploration teacher-replace-ux Variant C).
@@ -1162,6 +1229,19 @@ export default function SettingsPage() {
         onClose={() => (isKicking ? undefined : setKickTarget(null))}
       />
 
+      {/* 강사 교체 (PR 8 Phase 2) — 대체 강사 선택 + sessions 일괄 이전 */}
+      <ReassignTeacherModal
+        isOpen={reassignTarget !== null}
+        originalTeacher={reassignTarget ? { id: reassignTarget.id, name: reassignTarget.name } : null}
+        candidates={teachers
+          .filter((t) => t.id !== reassignTarget?.id && !t.archivedAt)
+          .map((t) => ({ id: t.id, name: t.name, color: t.color }))}
+        affectedSessionCount={0}
+        isProcessing={isReassigning}
+        onConfirm={handleReassignConfirm}
+        onClose={() => (isReassigning ? undefined : setReassignTarget(null))}
+      />
+
       {/* 강사 보관 (PR 6 Phase 1) — typing 무게 그대로, 의미만 '삭제' → '보관' */}
       <TypedConfirmationModal
         isOpen={deleteTeacherTarget !== null}
@@ -1249,7 +1329,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
     case "invite_expired":
       return [
         { key: "reinvite", label: "새 링크 발급" },
-        { key: "share_link", label: "시간표만 공유", disabled: true },
+        { key: "reassign", label: "다른 강사로 교체" },
         { key: "archive", label: "보관", variant: "danger" },
       ];
     case "share_only":
@@ -1268,7 +1348,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
     default:
       return [
         { key: "invite", label: "초대 보내기" },
-        { key: "share_link", label: "시간표 공유 링크 발급", disabled: true },
+        { key: "reassign", label: "다른 강사로 교체" },
         { key: "edit_teacher", label: "강사 정보 수정", disabled: true },
         { key: "archive", label: "보관", variant: "danger" },
       ];
