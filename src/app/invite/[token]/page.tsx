@@ -188,6 +188,22 @@ export default function InvitePage({
         return;
       }
 
+      // PR 13 — invite accept 직후 active_academy 직접 localStorage set.
+      // MemberContext 가 /api/academies/mine fetch 후 비동기 setActiveAcademyId
+      // 호출하지만, 같은 tab 의 localStorage 변경은 storage event 발동 안 함 →
+      // useGlobalDataInitialization 가 첫 mount 시 academy NULL 로 sessions
+      // fetch → 빈 화면 → 사용자 새로고침 (사용자 2026-05-23 발견 race).
+      if (data.academyId) {
+        try {
+          const { setActiveAcademyId } = await import("@/lib/localStorageCrud");
+          setActiveAcademyId(session.user.id, data.academyId);
+          // dispatch storage event 수동 — useGlobalDataInitialization 의 bump 발동.
+          window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+        } catch (e) {
+          logger.warn("active_academy 사전 설정 실패 (새로고침 시 회복)", { academyId: data.academyId }, e as Error);
+        }
+      }
+
       logger.info("초대 수락 완료", { academyId: data.academyId });
       router.push("/schedule");
     } catch (err) {
