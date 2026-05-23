@@ -503,6 +503,37 @@ export default function SettingsPage() {
     [userId, invites, fetchData]
   );
 
+  // 가입 완료 관리자 (admin invite 로 들어온 사용자, teacher 미연동) 액션 핸들러 (PR 12).
+  // kick 만 처리 — TypedConfirmationModal 의 kickTarget 시그니처 (TeacherWithStatus) 에
+  // 맞춰 fake teacher 객체로 wrapping. 색은 admin chip 파랑 사용.
+  const handleAdminMemberAction = useCallback(
+    (action: string, memberUserId: string) => {
+      if (!userId) return;
+      const target = members.find((m) => m.userId === memberUserId);
+      if (!target) return;
+
+      switch (action) {
+        case "kick": {
+          // TypedConfirmationModal 호환 fake teacher — id 는 dummy, name/userId 만 사용됨.
+          const fakeTeacher: TeacherWithStatus = {
+            id: `admin-member-${memberUserId}`,
+            name: target.name || target.email || "관리자",
+            color: "#3b82f6",
+            email: target.email,
+            phone: null,
+            userId: memberUserId,
+            status: "active",
+          };
+          setKickTarget(fakeTeacher);
+          break;
+        }
+        default:
+          showToast("info", "준비 중입니다");
+      }
+    },
+    [userId, members],
+  );
+
   // 강사 교체 (PR 8 Phase 2) — POST /api/teachers/[id]/reassign + localStorage 동기화.
   // 원 강사의 sessions 모두 to 강사로 이전. archiveOriginal default true.
   const handleReassignConfirm = useCallback(
@@ -928,6 +959,21 @@ export default function SettingsPage() {
                 />
               ))}
 
+          {/* 가입 완료 관리자 (academy_members.role=admin, teacher 미연동) — admin
+              invite 로 가입한 사용자는 teacher row 가 없어 강사 목록에 안 나옴
+              (PR 12 fix, 사용자 2026-05-23 발견). owner 다음, 강사 위에 노출. */}
+          {members
+            .filter((m) => m.role === "admin" && !m.linkedTeacherId)
+            .map((adminMember) => (
+              <ActiveAdminMemberRow
+                key={adminMember.userId}
+                member={adminMember}
+                isMe={adminMember.userId === userId}
+                canManage={canManage}
+                onAction={handleAdminMemberAction}
+              />
+            ))}
+
           {/* 강사 목록 — 상태 pill + 액션 */}
           {teachers.map((teacher) => (
             <TeacherRow
@@ -1298,6 +1344,98 @@ function OwnerRow({ member, isMe, canViewEmail }: OwnerRowProps) {
         </div>
       </div>
       {/* 원장 행은 액션 메뉴 없음 */}
+    </div>
+  );
+}
+
+// 가입 완료 관리자 row (PR 12) — admin invite 로 가입한 사용자 (academy_members.role=admin)
+// 가 teacher 미연동이라 강사 목록에 안 나오는 문제 fix. 본인 row 는 액션 메뉴 없음.
+interface ActiveAdminMemberRowProps {
+  member: Member;
+  isMe: boolean;
+  canManage: boolean;
+  /** kick 액션 시 호출 — (action, memberUserId) */
+  onAction: (action: string, memberUserId: string) => void;
+}
+
+function ActiveAdminMemberRow({ member, isMe, canManage, onAction }: ActiveAdminMemberRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const display = member.name || member.email || member.userId.slice(0, 8);
+  const initial = display.charAt(0).toUpperCase();
+  const showMenu = canManage && !isMe;
+
+  return (
+    <div
+      data-testid={`active-admin-member-row-${member.userId}`}
+      className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg-primary)]"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-400/15 text-blue-300 text-sm font-bold flex-shrink-0">
+          {initial}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-[var(--color-text-primary)] truncate">
+              {member.name || display}
+            </span>
+            <TeacherStatusPill status="active" role="admin" />
+            {isMe && (
+              <span className="text-[11px] text-[var(--color-text-secondary)]">본인</span>
+            )}
+          </div>
+          <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
+            {member.email ?? "이메일 미입력"}
+          </p>
+        </div>
+      </div>
+
+      {showMenu && (
+        <div ref={menuRef} className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="관리자 멤버 액션 메뉴"
+            data-testid={`active-admin-menu-trigger-${member.userId}`}
+            className="p-1.5 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          >
+            <MoreHorizontal size={16} strokeWidth={2} />
+          </button>
+          {menuOpen && (
+            <div
+              data-testid={`active-admin-menu-${member.userId}`}
+              className="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg overflow-hidden z-10"
+            >
+              {/* admin invite 로 가입한 사용자는 teacher row 없음 — '권한 변경' 은
+                  member 강등 시 schedule 접근 못 함 (teacher 연결 필요) 의미 복잡함
+                  으로 일단 미노출. 향후 admin invite accept 시 teacher 자동 생성
+                  spec 결정 후 활성화. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("kick", member.userId);
+                }}
+                className="w-full text-left px-3 py-2.5 text-[13px] hover:bg-white/5 text-red-400"
+              >
+                팀에서 제외
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
