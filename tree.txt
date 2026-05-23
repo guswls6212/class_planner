@@ -75,6 +75,8 @@ src/app/api/data-snapshots/route.ts
 src/app/api/enrollments/__tests__/route.test.ts
 src/app/api/enrollments/route.ts
 src/app/api/invites/[id]/__tests__/route.test.ts
+src/app/api/invites/[id]/regenerate/__tests__/route.test.ts
+src/app/api/invites/[id]/regenerate/route.ts
 src/app/api/invites/[id]/route.ts
 src/app/api/invites/__tests__/route.test.ts
 src/app/api/invites/accept/__tests__/route.test.ts
@@ -148,6 +150,7 @@ src/app/design-explorations/share-url-and-expiry/page.tsx
 src/app/design-explorations/share-url-and-expiry/playwright-e2e/page.tsx
 src/app/design-explorations/share-url-and-expiry/reverse-proxy/page.tsx
 src/app/design-explorations/share-url-and-expiry/server-only-context/page.tsx
+src/app/design-explorations/team-invite-redesign/page.tsx
 src/app/dev/button-feedback/page.tsx
 src/app/favicon.ico
 src/app/global-error.tsx
