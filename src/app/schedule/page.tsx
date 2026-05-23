@@ -250,12 +250,21 @@ function SchedulePageContent(): JSX.Element {
   // Role-based UI gate — member role gets read-only schedule
   const { canManage, adminCount } = useMyRole();
 
+  // 활성 academy id — useScheduleMeta 가 academy 별 lastViewed 키 분리에 사용.
+  // localStorage 만 source — Sidebar 의 학원 selector 가 academy 전환 시 reload
+  // 하므로 mount 시 1회 읽음. SSR safe (getActiveAcademyId 가 window undefined 처리).
+  const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    setActiveAcademyId(getActiveAcademyId(userId));
+  }, [userId]);
+
   // 다른 admin의 변경 인지 — academies.schedule_updated_at 30초 polling
   const {
     scheduleUpdatedAt,
     hasChanges: hasScheduleChanges,
     acknowledgeChanges: ackScheduleChanges,
-  } = useScheduleMeta(userId);
+  } = useScheduleMeta(userId, activeAcademyId);
 
   // hasScheduleChanges false → true 전이 시 토스트 발화 (이전 banner 대체).
   // useScheduleMeta가 본인 변경(같은 탭 윈도우 + 다른 탭 localStorage 공유 + 24h

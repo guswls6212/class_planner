@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useScheduleMeta } from "../useScheduleMeta";
 
 const USER_ID = "user-1";
-const KEY = `class_planner_${USER_ID}_lastViewedAt_schedule`;
+const ACADEMY_ID = "acad-1";
+const KEY = `class_planner_${USER_ID}_${ACADEMY_ID}_lastViewedAt_schedule`;
 
 const fetchMock = vi.fn();
 const originalFetch = global.fetch;
@@ -57,7 +58,14 @@ function jsonResponse(payload: unknown, ok = true) {
 
 describe("useScheduleMeta", () => {
   it("userId=null 이면 idle 상태 (fetch 호출 안 함)", () => {
-    const { result } = renderHook(() => useScheduleMeta(null));
+    const { result } = renderHook(() => useScheduleMeta(null, ACADEMY_ID));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.scheduleUpdatedAt).toBeNull();
+    expect(result.current.hasChanges).toBe(false);
+  });
+
+  it("academyId=null 이면 idle 상태 (active_academy 미설정 보호)", () => {
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, null));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result.current.scheduleUpdatedAt).toBeNull();
     expect(result.current.hasChanges).toBe(false);
@@ -70,7 +78,7 @@ describe("useScheduleMeta", () => {
       jsonResponse({ scheduleUpdatedAt: "2020-01-01T00:00:00Z" }),
     );
 
-    const { result } = renderHook(() => useScheduleMeta(USER_ID));
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
     await waitFor(() => {
       expect(result.current.scheduleUpdatedAt).toBe("2020-01-01T00:00:00Z");
@@ -78,7 +86,7 @@ describe("useScheduleMeta", () => {
     expect(result.current.hasChanges).toBe(false);
     expect(window.localStorage.getItem(KEY)).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
-      `/api/academies/active/schedule-meta?userId=${USER_ID}`,
+      `/api/academies/active/schedule-meta?userId=${USER_ID}&academyId=${ACADEMY_ID}`,
     );
   });
 
@@ -91,7 +99,7 @@ describe("useScheduleMeta", () => {
       jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
     );
 
-    const { result } = renderHook(() => useScheduleMeta(USER_ID));
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
     // 초기 fetch 완료까지 대기 — 그 시점에 hasChanges가 계산됨
     await waitFor(() => {
@@ -107,7 +115,7 @@ describe("useScheduleMeta", () => {
       jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
     );
 
-    const { result } = renderHook(() => useScheduleMeta(USER_ID));
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
     await waitFor(() => {
       expect(result.current.scheduleUpdatedAt).toBe("2026-05-04T10:00:00Z");
@@ -126,7 +134,7 @@ describe("useScheduleMeta", () => {
   it("fetch 실패 — 에러 무시 + scheduleUpdatedAt 유지", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ error: "fail" }, false));
 
-    const { result } = renderHook(() => useScheduleMeta(USER_ID));
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -138,7 +146,7 @@ describe("useScheduleMeta", () => {
     window.localStorage.setItem(KEY, "2026-05-03T00:00:00Z");
     fetchMock.mockResolvedValueOnce(jsonResponse({ scheduleUpdatedAt: null }));
 
-    const { result } = renderHook(() => useScheduleMeta(USER_ID));
+    const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -157,14 +165,9 @@ describe("useScheduleMeta", () => {
 
       // selfSync 이벤트 발사 시뮬레이션
       const apiSync = await import("../../lib/apiSync");
-      // private 함수라 직접 호출 — onSyncSuccess가 호출하는 notifySelfSync를 흉내내려면
-      // 직접 EventTarget dispatch가 필요. 대신 subscribeSelfSync로 구독하는 hook이
-      // mount 후, 같은 EventTarget에 dispatch하기 위해 onSyncSuccess 경유 또는
-      // 다른 sync* 함수 호출. 가장 간단: 실제 sync 함수를 mock 200으로 호출.
       const { syncStudentCreate } = apiSync;
-      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
       // hook mount 직후 selfSync 이벤트 발사
-      // 수동으로 fetch가 200 응답하게 mock + sync 호출
       const mockFetchOk = vi.fn().mockResolvedValue(jsonResponse({}));
       const prevFetch = global.fetch;
       global.fetch = mockFetchOk as unknown as typeof fetch;
@@ -189,7 +192,7 @@ describe("useScheduleMeta", () => {
         jsonResponse({ scheduleUpdatedAt: "2026-05-04T10:00:00Z" }),
       );
 
-      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
       await waitFor(() => {
         expect(result.current.scheduleUpdatedAt).toBe("2026-05-04T10:00:00Z");
@@ -213,7 +216,7 @@ describe("useScheduleMeta", () => {
         jsonResponse({ scheduleUpdatedAt: serverNew }),
       );
 
-      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
       await waitFor(() => {
         expect(result.current.scheduleUpdatedAt).toBe(serverNew);
@@ -238,12 +241,154 @@ describe("useScheduleMeta", () => {
         jsonResponse({ scheduleUpdatedAt: serverTs }),
       );
 
-      const { result } = renderHook(() => useScheduleMeta(USER_ID));
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
 
       await waitFor(() => {
         expect(result.current.scheduleUpdatedAt).toBe(serverTs);
       });
       // self-sync window 안 → 자동 ack → hasChanges false
+      expect(result.current.hasChanges).toBe(false);
+    });
+  });
+
+  describe("joined_at 자동 ack — 박관리자 invite accept 케이스 (2026-05-23 회귀 가드)", () => {
+    it("schedule_updated_at <= memberJoinedAt 이면 자동 ack (hasChanges=false 유지)", async () => {
+      // 사용자 보고 시나리오: 박관리자가 UAT Test Academy 에 admin 으로 invite accept
+      //   joined_at = 2026-05-23 13:58:44
+      //   schedule_updated_at = 2026-05-23 13:57:49 (가입 55초 전 owner 변경)
+      // 가입 이전의 변경은 새 멤버에게 알릴 가치 없음 — 자동 ack.
+      // 다른 academy 에서 set 된 stale lastViewed 가 잔존해도 무관.
+      window.localStorage.setItem(KEY, "2026-05-23T12:57:10.930Z"); // 다른 academy 잔존 시뮬
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-23T13:57:49.709Z",
+          memberJoinedAt: "2026-05-23T13:58:44.719Z",
+        }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe(
+          "2026-05-23T13:57:49.709Z",
+        );
+      });
+      // 자동 ack → 토스트 안 뜸
+      expect(result.current.hasChanges).toBe(false);
+      // lastViewedAt 이 server schedule_updated_at 으로 갱신
+      expect(window.localStorage.getItem(KEY)).toBe("2026-05-23T13:57:49.709Z");
+    });
+
+    it("schedule_updated_at > memberJoinedAt 이면 정상 비교 (hasChanges=true)", async () => {
+      // 가입 후 다른 admin 이 schedule 변경한 정상 시나리오 — 알림 유지.
+      window.localStorage.setItem(KEY, "2026-05-23T14:00:00.000Z");
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-23T14:05:00.000Z",
+          memberJoinedAt: "2026-05-23T13:58:44.000Z",
+        }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe(
+          "2026-05-23T14:05:00.000Z",
+        );
+      });
+      // joined_at(13:58) 이후 변경(14:05) → 정상 알림
+      expect(result.current.hasChanges).toBe(true);
+    });
+
+    it("memberJoinedAt=null 이면 (a) (a') (b) 기존 분기로 동작 (회귀 가드)", async () => {
+      // legacy server / RLS 우회 케이스 — memberJoinedAt 누락 시 hook 이 옛 분기로 fallback
+      window.localStorage.setItem(KEY, "2026-05-04T09:00:00Z");
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-04T10:00:00Z",
+          memberJoinedAt: null,
+        }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_ID));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe("2026-05-04T10:00:00Z");
+      });
+      expect(result.current.hasChanges).toBe(true);
+    });
+  });
+
+  describe("academy 별 lastViewedKey 분리 — multi-academy 회귀 가드 (2026-05-23)", () => {
+    it("다른 academy 의 lastViewed 가 비교 baseline 으로 쓰이지 않음", async () => {
+      // 사용자 보고 root cause: 박관리자가 academy A 에서 lastViewed set 했다가
+      // academy B (UAT Test Academy) 첫 진입 시 A 의 stale lastViewed 로 비교돼
+      // false-positive 토스트.
+      const ACADEMY_B = "acad-2";
+      const KEY_A = `class_planner_${USER_ID}_${ACADEMY_ID}_lastViewedAt_schedule`;
+      const KEY_B = `class_planner_${USER_ID}_${ACADEMY_B}_lastViewedAt_schedule`;
+
+      // academy A 의 stale lastViewed
+      window.localStorage.setItem(KEY_A, "2026-05-23T12:57:10Z");
+
+      // academy B 의 schedule_updated_at — A 의 lastViewed 보다 새로움
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-23T13:57:49Z",
+          memberJoinedAt: null, // joined_at ack 분기 우회 — 본 테스트는 키 분리만 검증
+        }),
+      );
+
+      const { result } = renderHook(() => useScheduleMeta(USER_ID, ACADEMY_B));
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe("2026-05-23T13:57:49Z");
+      });
+      // academy B 의 lastViewed 키는 비어있었으므로 (a') 첫 진입 분기로 set
+      expect(result.current.hasChanges).toBe(false);
+      expect(window.localStorage.getItem(KEY_B)).toBe("2026-05-23T13:57:49Z");
+      // academy A 의 lastViewed 는 그대로 유지 — 분리됨
+      expect(window.localStorage.getItem(KEY_A)).toBe("2026-05-23T12:57:10Z");
+    });
+
+    it("academy 전환 시 hasChanges/ackedTimestamp 가 reset 됨", async () => {
+      // academy A 에서 hasChanges=true 상태였다가 academy B 로 전환하면
+      // ack ref 초기화 + 새 academy 의 schedule 비교 흐름 시작.
+      const ACADEMY_B = "acad-2";
+      // academy A 첫 fetch — hasChanges=true 만들기
+      window.localStorage.setItem(
+        `class_planner_${USER_ID}_${ACADEMY_ID}_lastViewedAt_schedule`,
+        "2026-05-23T13:00:00Z",
+      );
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-23T13:30:00Z",
+          memberJoinedAt: "2026-05-22T00:00:00Z",
+        }),
+      );
+
+      const { result, rerender } = renderHook(
+        ({ academyId }: { academyId: string }) =>
+          useScheduleMeta(USER_ID, academyId),
+        { initialProps: { academyId: ACADEMY_ID } },
+      );
+      await waitFor(() => {
+        expect(result.current.hasChanges).toBe(true);
+      });
+
+      // academy B 전환 — 새 academy 는 첫 진입이라 (a') 분기로 ack
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({
+          scheduleUpdatedAt: "2026-05-23T14:00:00Z",
+          memberJoinedAt: null,
+        }),
+      );
+      rerender({ academyId: ACADEMY_B });
+
+      await waitFor(() => {
+        expect(result.current.scheduleUpdatedAt).toBe("2026-05-23T14:00:00Z");
+      });
+      // hasChanges 가 academy 전환 시 reset 됨
       expect(result.current.hasChanges).toBe(false);
     });
   });
