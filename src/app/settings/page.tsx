@@ -7,7 +7,7 @@ import { Select } from "@/components/atoms/Select";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
 import { showError, showSuccess, showToast } from "../../lib/toast";
-import { getClassPlannerData } from "../../lib/localStorageCrud";
+import { getClassPlannerData, deleteTeacherFromLocal } from "../../lib/localStorageCrud";
 import { getKoMessage } from "../../lib/errors/messages.ko";
 import {
   ACADEMY_NAME_MAX_LENGTH,
@@ -77,6 +77,10 @@ export default function SettingsPage() {
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
   const [kickTarget, setKickTarget] = useState<TeacherWithStatus | null>(null);
   const [isKicking, setIsKicking] = useState(false);
+  // 강사 row 자체 삭제 (PR 5 — invite_expired/none/teachers entity DELETE).
+  // kick (academy_members 제외) 과 의미가 달라 별도 state 로 분리.
+  const [deleteTeacherTarget, setDeleteTeacherTarget] = useState<TeacherWithStatus | null>(null);
+  const [isDeletingTeacher, setIsDeletingTeacher] = useState(false);
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
@@ -347,6 +351,18 @@ export default function SettingsPage() {
           setKickTarget(teacher);
           break;
         }
+        case "delete": {
+          const teacher = teachers.find((t) => t.id === teacherId);
+          if (!teacher) return;
+          // 강사 row 자체 삭제 (entity 제거). 가입된 멤버라면 kick 액션으로 academy_members
+          // 먼저 끊으세요 — 본 액션은 invite_expired / none 등 미연동 상태용.
+          if (teacher.userId) {
+            showToast("info", "가입된 멤버는 먼저 '팀에서 제외' 후 삭제할 수 있습니다");
+            return;
+          }
+          setDeleteTeacherTarget(teacher);
+          break;
+        }
         case "change_role": {
           const teacher = teachers.find((t) => t.id === teacherId);
           if (!teacher) return;
@@ -476,6 +492,34 @@ export default function SettingsPage() {
     },
     [userId, invites, fetchData]
   );
+
+  // 강사 row 자체 삭제 (PR 5). DELETE /api/teachers/[id]. 담당 수업 + 공유 링크
+  // 영향 — 서버 deleteTeacher 가 cascade 또는 orphan 처리. typing 같은 무게.
+  const handleDeleteTeacherConfirm = useCallback(async () => {
+    if (!userId || !deleteTeacherTarget) return;
+    setIsDeletingTeacher(true);
+    try {
+      const res = await fetch(
+        `/api/teachers/${deleteTeacherTarget.id}?userId=${userId}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        showError(body.error ?? "강사 삭제에 실패했습니다.");
+        return;
+      }
+      // /teachers 페이지는 localStorage 기반 (useTeacherManagementLocal) 이라 서버 DELETE 만으로는
+      // stale. 같이 정리 — 수업 블록의 teacherId 도 undefined 로 reset (deleteTeacherFromLocal 내부 처리).
+      deleteTeacherFromLocal(deleteTeacherTarget.id);
+      showSuccess(`${deleteTeacherTarget.name} 강사가 삭제되었습니다`);
+      setDeleteTeacherTarget(null);
+      await fetchData();
+    } catch {
+      showError("강사 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeletingTeacher(false);
+    }
+  }, [userId, deleteTeacherTarget, fetchData]);
 
   // 가입 멤버 제외 (Variant B — typed confirmation). academy_members DELETE +
   // teachers.user_id NULL 복원 은 서버에서 atomic 처리.
@@ -1111,6 +1155,18 @@ export default function SettingsPage() {
         onClose={() => (isKicking ? undefined : setKickTarget(null))}
       />
 
+      {/* 강사 row 삭제 (PR 5) — 같은 typing 무게로 통일 */}
+      <TypedConfirmationModal
+        isOpen={deleteTeacherTarget !== null}
+        title={`'${deleteTeacherTarget?.name ?? ""}' 강사를 삭제하시겠습니까?`}
+        description="강사 정보가 영구 삭제됩니다. 담당 수업과 공유 링크는 강사 정보를 잃습니다 (복구 불가)."
+        confirmText={deleteTeacherTarget?.name ?? ""}
+        confirmLabel={`${deleteTeacherTarget?.name ?? ""} 삭제`.trim()}
+        isProcessing={isDeletingTeacher}
+        onConfirm={handleDeleteTeacherConfirm}
+        onClose={() => (isDeletingTeacher ? undefined : setDeleteTeacherTarget(null))}
+      />
+
       {/* 시간표 운영시간 — useTimeRange + writeStoredRange 사용 */}
       <OperatingHoursSection userId={userId} />
 
@@ -1187,7 +1243,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
       return [
         { key: "reinvite", label: "새 링크 발급" },
         { key: "share_link", label: "시간표만 공유", disabled: true },
-        { key: "delete", label: "삭제", variant: "danger", disabled: true },
+        { key: "delete", label: "삭제", variant: "danger" },
       ];
     case "share_only":
       return [
@@ -1207,7 +1263,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
         { key: "invite", label: "초대 보내기" },
         { key: "share_link", label: "시간표 공유 링크 발급", disabled: true },
         { key: "edit_teacher", label: "강사 정보 수정", disabled: true },
-        { key: "delete", label: "삭제", variant: "danger", disabled: true },
+        { key: "delete", label: "삭제", variant: "danger" },
       ];
   }
 }
