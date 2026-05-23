@@ -338,15 +338,33 @@ export default function InvitePage({
                   >
                     Google로 가입하기
                   </button>
+                  {/* 카카오 — frosted 비활성 (/login 페이지와 일관성, PR 10) */}
                   <button
-                    onClick={handleShareLinkOnly}
-                    disabled={shareLinkLoading}
-                    className="w-full py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                    disabled
+                    title="준비 중"
+                    className="relative flex min-h-[44px] w-full items-center justify-center gap-3 rounded-lg border border-white/10 bg-[#FEE500]/[0.06] px-4 py-3 text-sm font-medium text-[#FEE500]/40 cursor-not-allowed mb-3"
                   >
-                    {shareLinkLoading
-                      ? "링크 생성 중..."
-                      : "시간표 보기 링크만 받기 →"}
+                    <svg viewBox="0 0 24 24" width="18" height="18" className="shrink-0 opacity-40" fill="#3C1E1E" aria-hidden="true">
+                      <path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.713 1.68 5.1 4.237 6.55L5.17 21l4.524-2.903C10.4 18.36 11.19 18.5 12 18.5c5.523 0 10-3.477 10-7.7S17.523 3 12 3z"/>
+                    </svg>
+                    카카오로 가입하기
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                      준비 중
+                    </span>
                   </button>
+                  {/* share-only 옵션은 admin invite 에는 의미 없음 (관리자는 풀 권한 필요).
+                      member/teacher invite 에만 노출. PR 10 — 사용자 발견. */}
+                  {inviteInfo.role !== "admin" && (
+                    <button
+                      onClick={handleShareLinkOnly}
+                      disabled={shareLinkLoading}
+                      className="w-full py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                    >
+                      {shareLinkLoading
+                        ? "링크 생성 중..."
+                        : "시간표 보기 링크만 받기 →"}
+                    </button>
+                  )}
                 </>
               ) : (
                 <div>
