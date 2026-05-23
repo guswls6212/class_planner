@@ -71,6 +71,7 @@ export default function MonetizationStrategyPage() {
         <ClassPlannerTiers />
         <SafetyNetSection />
         <DataRetentionArchitecture />
+        <DataValueSection />
         <AdsVsPremium />
         <PhaseTimeline />
         <FinalRecommendation />
@@ -1037,6 +1038,577 @@ function RetentionLayerCard({
           <span className="text-[var(--color-text-muted)]">법적 가드</span>
           <span className="text-[var(--color-text-secondary)]">{legal}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────── 데이터 가치 + 활용 + 수익화 + 기능 ───────────────── */
+
+function DataValueSection() {
+  return (
+    <section>
+      <SectionHeader icon={<LineChart className="w-5 h-5 text-violet-400" />}>
+        ⑤d 데이터 가치 — 활용 영역 + 수익화 + 추가 기능 우선순위
+      </SectionHeader>
+      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+        {'현재 수집 데이터 (시간표 + 학생 + 강사) 만으로는 moat 30% 수준. 출결·수업료·학부모 engagement 가 가세해야 80% — 어떤 기능을 더 개발해야 데이터가 살아나는가.'}
+      </p>
+
+      <DataInventory />
+      <DataValueQuadrants />
+      <FutureFeatures />
+      <RevenueModels />
+      <ProductLines />
+    </section>
+  );
+}
+
+/* —— 현재/추가 데이터 인벤토리 —— */
+
+function DataInventory() {
+  const rows = [
+    { kind: '시간표 (요일·시간·세션)', current: true, value: '중', use: '시간대별 인기도, 강사 워크로드, AI 자동 최적화' },
+    { kind: '학생 기본정보 (이름·학년·학교)', current: true, value: '중', use: '학원 규모, 학년 분포, 학교별 수요' },
+    { kind: '강사 기본정보 + 담당 과목', current: true, value: '중', use: '과목 인기도, 강사 1인당 학생 수' },
+    { kind: '출결 (출석·결석·지각)', current: false, value: '높음', use: 'retention 예측, 학생 이탈 신호, 학원 KPI' },
+    { kind: '수업료 / 결제', current: false, value: '높음', use: '학원 매출, 단가 동향, 미납 패턴, 수익 예측' },
+    { kind: '학부모 engagement (share 페이지 view)', current: '부분', value: '높음', use: '학원 신뢰도 지표, 학부모 활동성, 마케팅 ROI' },
+    { kind: '성적 / 평가 기록', current: false, value: '중', use: '학업 성과 추세, 강사별 성과, 학원 quality 지표' },
+    { kind: '학생 입학 출처 (광고/추천)', current: false, value: '높음', use: '학원 마케팅 ROI, 채널별 효과, 신규 학생 유치 비용' },
+    { kind: '상담 / 메모 기록', current: false, value: '낮음', use: '학원-학부모 관계 강도, 이탈 사전 신호' },
+    { kind: '수업 노트 (강사 → 학생)', current: false, value: '중', use: 'AI 학생별 progress 요약, 학부모 리포트 자동 생성' },
+    { kind: '지역 / 학원 위치', current: '부분', value: '높음', use: '지역별 시장 분석, 학원 밀도, B2B 리포트' },
+    { kind: '시간표 변경 history', current: '자동 수집', value: '낮음', use: '운영 안정성 지표 (잦은 변경 = 불안정)' },
+  ];
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <ClipboardList className="w-4 h-4 text-sky-400" /> 데이터 인벤토리 — 현재 + 추가 수집 후보
+      </h3>
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+        <table className="w-full text-[12px]">
+          <thead className="bg-[var(--color-bg-secondary)] text-left text-[var(--color-text-muted)]">
+            <tr>
+              <th className="px-3 py-2 font-medium">데이터 종류</th>
+              <th className="px-3 py-2 font-medium">현재</th>
+              <th className="px-3 py-2 font-medium">가치</th>
+              <th className="px-3 py-2 font-medium">활용</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.kind} className={i % 2 ? 'bg-[var(--color-bg-secondary)]/20' : ''}>
+                <td className="px-3 py-2 font-medium">{r.kind}</td>
+                <td className="px-3 py-2">
+                  {r.current === true ? (
+                    <span className="text-emerald-300">✓</span>
+                  ) : r.current === false ? (
+                    <span className="text-rose-400">✗ 미수집</span>
+                  ) : (
+                    <span className="text-amber-300">{r.current}</span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <ValueBadge level={r.value} />
+                </td>
+                <td className="px-3 py-2 text-[var(--color-text-secondary)]">{r.use}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+        {'요약: 12 종류 중 현재 완전 수집 = 3, 부분/자동 = 3, 미수집 = 6. 미수집 6개 중 4개가 "높음" 가치 — 우선 개발 대상.'}
+      </div>
+    </div>
+  );
+}
+
+function ValueBadge({ level }: { level: string }) {
+  const cls =
+    level === '높음'
+      ? 'bg-emerald-500/20 text-emerald-300'
+      : level === '중'
+        ? 'bg-amber-500/20 text-amber-300'
+        : 'bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)]';
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${cls}`}>
+      {level}
+    </span>
+  );
+}
+
+/* —— 데이터 가치 4사분면 —— */
+
+function DataValueQuadrants() {
+  const quadrants = [
+    {
+      icon: <BarChart3 className="w-5 h-5" />,
+      tone: 'sky' as const,
+      label: 'A. 내부 분석 (Premium feature)',
+      audience: '학원 운영자 본인',
+      examples: [
+        '학원 KPI 대시보드 — 학생 수 추이, 출결률, retention',
+        '강사별 워크로드 + 학생 수 균형',
+        '시간대별 수업 효율 (빈 시간 vs 만석)',
+        '학부모 engagement 점수 — share 페이지 view 빈도',
+      ],
+      monetize: 'Premium 14,900원/월 의 핵심 가치',
+      example_company: 'Toss 사장님 분석 / Square Analytics',
+    },
+    {
+      icon: <Receipt className="w-5 h-5" />,
+      tone: 'emerald' as const,
+      label: 'B. B2B 시장 리포트 (별도 product)',
+      audience: '교육 산업 stakeholder',
+      examples: [
+        '출판사·교재사 — 시기별 과목 인기도, 학년별 수요',
+        '교육청·정부 — 시도별 사교육 동향 데이터',
+        '학원 프랜차이즈 — 지역 진출 의사결정 자료',
+        '부동산 — 학원 밀집도 데이터 (간접)',
+      ],
+      monetize: '연 1천만~1억원 계약 단위. 학원 데이터 1000곳+ 누적 후 시작 가능',
+      example_company: 'Nielsen / SimilarWeb / Statista',
+    },
+    {
+      icon: <Brain className="w-5 h-5" />,
+      tone: 'violet' as const,
+      label: 'C. AI flywheel (자기 강화)',
+      audience: 'class-planner 본인 + Premium 사용자',
+      examples: [
+        '신규 학원 가입 시 자동 시간표 추천 — 비슷한 규모 학원 패턴',
+        'AI 학생 picker — 강사·과목·시간 조합 자동 제안',
+        '수업료 가이드 — 지역·규모·과목별 평균',
+        'AI 학부모 메시지 — 출결 알림 / 상담 요청 자동 생성',
+        '운영 anomaly 감지 — "이번 달 retention 5% 하락, 원인 분석"',
+      ],
+      monetize: 'Premium feature + 사용자 lock-in (사용할수록 추천 품질 ↑)',
+      example_company: 'GitHub Copilot / Notion AI / Linear AI',
+    },
+    {
+      icon: <Network className="w-5 h-5" />,
+      tone: 'amber' as const,
+      label: 'D. 마켓플레이스 수수료 (Phase 4+)',
+      audience: '학원 + 외부 partner',
+      examples: [
+        '강사 채용 매칭 — 비슷한 학원에서 잘한 강사 추천',
+        '교재 / 학원 보험 partnership',
+        '학원 마케팅 도구 — 신규 학생 유치 캠페인',
+        '학생 학원 추천 (B2C) — 학부모가 학원 찾을 때',
+      ],
+      monetize: '매칭/판매 성공 시 수수료 5~10%',
+      example_company: 'Wyzant / Preply (강사 매칭) / 알바몬 (채용 수수료)',
+    },
+  ];
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <PieChart className="w-4 h-4 text-violet-400" /> 데이터 가치 — 4사분면 활용
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {quadrants.map((q) => (
+          <QuadrantCard key={q.label} {...q} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuadrantCard({
+  icon,
+  tone,
+  label,
+  audience,
+  examples,
+  monetize,
+  example_company,
+}: {
+  icon: React.ReactNode;
+  tone: 'sky' | 'emerald' | 'violet' | 'amber';
+  label: string;
+  audience: string;
+  examples: string[];
+  monetize: string;
+  example_company: string;
+}) {
+  const borderClass =
+    tone === 'sky'
+      ? 'border-sky-500/30 bg-sky-500/5'
+      : tone === 'emerald'
+        ? 'border-emerald-500/30 bg-emerald-500/5'
+        : tone === 'violet'
+          ? 'border-violet-500/30 bg-violet-500/5'
+          : 'border-amber-500/30 bg-amber-500/5';
+  const iconClass =
+    tone === 'sky'
+      ? 'bg-sky-500/15 text-sky-400'
+      : tone === 'emerald'
+        ? 'bg-emerald-500/15 text-emerald-400'
+        : tone === 'violet'
+          ? 'bg-violet-500/15 text-violet-400'
+          : 'bg-amber-500/15 text-amber-400';
+  return (
+    <div className={`rounded-xl border p-4 ${borderClass}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconClass}`}>
+          {icon}
+        </div>
+        <div>
+          <div className="font-semibold text-sm">{label}</div>
+          <div className="text-[10px] text-[var(--color-text-muted)] mt-0.5">{audience}</div>
+        </div>
+      </div>
+      <ul className="space-y-1 mb-3 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+        {examples.map((e) => (
+          <li key={e} className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+            {e}
+          </li>
+        ))}
+      </ul>
+      <div className="rounded-md bg-[var(--color-bg-tertiary)]/40 px-2.5 py-2 text-[10.5px] text-[var(--color-text-secondary)] mb-1.5 leading-relaxed">
+        <strong className="text-[var(--color-text-primary)]">수익:</strong> {monetize}
+      </div>
+      <div className="text-[9.5px] text-[var(--color-text-muted)]">
+        예시: {example_company}
+      </div>
+    </div>
+  );
+}
+
+/* —— 추가 기능 우선순위 —— */
+
+function FutureFeatures() {
+  const features = [
+    {
+      rank: 1,
+      title: '출결 관리',
+      desc: '학생 출석·결석·지각 기록. 강사 앱 또는 학생 키오스크 입력.',
+      dataValue: 'retention 예측 + 학원 KPI 의 핵심. AI flywheel 시작.',
+      effort: '중',
+      tier: 'Free (기본) + Premium (출결 자동화·알림)',
+    },
+    {
+      rank: 2,
+      title: '수업료 / 결제',
+      desc: '학원비 청구·납부·미납 추적. PG 통합 (토스/카카오 페이 등).',
+      dataValue: '학원 매출 + 단가 동향 + 미납 패턴. B2B 리포트 핵심 데이터.',
+      effort: '높음 (PG 계약·정산)',
+      tier: 'Free (기록만) + Premium (자동 청구·결제) + 수수료 1.5%',
+    },
+    {
+      rank: 3,
+      title: '학부모 소통 (인앱 메시지)',
+      desc: '출결 알림 / 공지 / 상담 요청. SMS 대체.',
+      dataValue: '학부모 engagement 점수 — 학원 신뢰도. share 페이지 + 통합.',
+      effort: '중',
+      tier: 'Free (수동 메시지) + Premium (AI 자동 생성·일괄)',
+    },
+    {
+      rank: 4,
+      title: '학생 입학 출처 추적',
+      desc: '신규 학생 등록 시 "어떻게 알게 됐나" 입력 (광고/지인/검색).',
+      dataValue: '학원 마케팅 ROI. 채널별 효과 측정. B2B 마케팅 리포트.',
+      effort: '낮음',
+      tier: 'Free (입력) + Premium (분석 대시보드)',
+    },
+    {
+      rank: 5,
+      title: '성적 / 평가 기록',
+      desc: '학생별 시험 점수 / 강사 평가. 단순 5점 척도 시작.',
+      dataValue: '학업 성과 추세 + 강사별 quality + retention 예측 변수.',
+      effort: '중',
+      tier: 'Free (기본 기록) + Premium (분석·학부모 리포트 자동 생성)',
+    },
+    {
+      rank: 6,
+      title: '수업 노트 (강사 → 학생)',
+      desc: '강사가 수업 후 학생별 메모. AI 가 학부모 리포트 요약.',
+      dataValue: 'AI 학습 데이터 + 학원 quality 지표.',
+      effort: '중',
+      tier: 'Premium (AI 요약·자동 리포트)',
+    },
+    {
+      rank: 7,
+      title: '상담 기록',
+      desc: '학부모 상담 일자 / 내용 / 결과. 이탈 사전 신호.',
+      dataValue: '학원-학부모 관계 강도 + 이탈 사전 신호 데이터.',
+      effort: '낮음',
+      tier: 'Premium (CRM 통합)',
+    },
+    {
+      rank: 8,
+      title: '지역 / 학교 정보',
+      desc: '학원 위치 (좌표) + 학생 학교. 지도 + 통계.',
+      dataValue: 'B2B 리포트의 핵심 — 지역별 시장 분석 / 학원 밀도.',
+      effort: '낮음',
+      tier: 'Free (입력) — class-planner 본인 B2B 데이터',
+    },
+    {
+      rank: 9,
+      title: '학원 마케팅 도구',
+      desc: '학부모 추천 reward / 신규 학생 캠페인 / 학원 홍보 페이지.',
+      dataValue: '마케팅 채널 효과 측정 + B2B partnership 데이터.',
+      effort: '높음',
+      tier: 'Premium (캠페인 도구) + 마켓플레이스 수수료',
+    },
+    {
+      rank: 10,
+      title: '강사 마켓플레이스',
+      desc: '학원이 강사 구할 때 비슷한 학원에서 잘한 강사 추천 (B2B).',
+      dataValue: 'D. 마켓플레이스 수수료. 데이터 누적 후 가능 (1000+ 학원).',
+      effort: '높음 (별도 product)',
+      tier: 'Phase 4+ — 채용 성공 수수료',
+    },
+  ];
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <Target className="w-4 h-4 text-emerald-400" /> 추가 기능 우선순위 (Top 10)
+      </h3>
+      <div className="space-y-2">
+        {features.map((f) => (
+          <FeatureRow key={f.rank} {...f} />
+        ))}
+      </div>
+      <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-emerald-300">권장 도입 순서:</strong>{' '}
+        Phase 2 (3-6개월) — 1, 4, 8 (출결 + 입학 출처 + 지역). 작은 노력으로 큰 데이터 가치. Phase 3 — 2, 3, 5 (수업료 + 학부모 + 성적). 결제 + AI 자동화 가세. Phase 4+ — 9, 10 (마케팅 + 강사 마켓). 데이터 누적 후.
+      </div>
+    </div>
+  );
+}
+
+function FeatureRow({
+  rank,
+  title,
+  desc,
+  dataValue,
+  effort,
+  tier,
+}: {
+  rank: number;
+  title: string;
+  desc: string;
+  dataValue: string;
+  effort: string;
+  tier: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/40 p-3 grid grid-cols-[40px_1fr] gap-3">
+      <div className="flex items-start justify-center">
+        <span className="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-300 text-[12px] font-semibold flex items-center justify-center">
+          {rank}
+        </span>
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-semibold text-sm">{title}</span>
+          <span className="text-[9px] text-[var(--color-text-muted)] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)]">
+            구현 {effort}
+          </span>
+        </div>
+        <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed mb-1">
+          {desc}
+        </p>
+        <div className="text-[10.5px] text-[var(--color-text-muted)] mb-1">
+          <strong className="text-violet-300">데이터 가치:</strong>{' '}
+          <span className="text-[var(--color-text-secondary)]">{dataValue}</span>
+        </div>
+        <div className="text-[10.5px] text-[var(--color-text-muted)]">
+          <strong className="text-amber-300">tier:</strong>{' '}
+          <span className="text-[var(--color-text-secondary)]">{tier}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* —— 수익화 모델 5가지 —— */
+
+function RevenueModels() {
+  const models = [
+    {
+      icon: <Star className="w-5 h-5" />,
+      tone: 'emerald' as const,
+      name: 'Premium 구독',
+      arr: '학원 1000곳 × 5% × 14,900원 = 75만원/월 → ARR 900만원',
+      mature: '저', current: '메인',
+    },
+    {
+      icon: <Receipt className="w-5 h-5" />,
+      tone: 'sky' as const,
+      name: 'B2B 시장 리포트',
+      arr: '출판사 5곳 × 연 5천만원 = 2.5억원/년',
+      mature: '고 (3년+)', current: 'Phase 4',
+    },
+    {
+      icon: <Wallet className="w-5 h-5" />,
+      tone: 'amber' as const,
+      name: '결제 수수료',
+      arr: '학원 1000곳 × 평균 학원비 1000만원/월 × 1.5% = 1.5억원/월',
+      mature: '중 (PG 계약 필요)', current: 'Phase 3',
+    },
+    {
+      icon: <Network className="w-5 h-5" />,
+      tone: 'violet' as const,
+      name: '마켓플레이스 수수료',
+      arr: '강사 채용 100건/년 × 평균 학원비 1년치 × 10% = 1억원/년',
+      mature: '고 (마켓 양면)', current: 'Phase 4+',
+    },
+    {
+      icon: <Boxes className="w-5 h-5" />,
+      tone: 'rose' as const,
+      name: 'API / Data 판매',
+      arr: 'edtech / 출판 / 정부 API 계약 — 각 1천만원/년',
+      mature: '고', current: 'Phase 5',
+    },
+  ];
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <DollarSign className="w-4 h-4 text-emerald-400" /> 수익화 모델 5가지 — ARR 추정
+      </h3>
+      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+        <table className="w-full text-[12px]">
+          <thead className="bg-[var(--color-bg-secondary)] text-left text-[var(--color-text-muted)]">
+            <tr>
+              <th className="px-3 py-2 font-medium">모델</th>
+              <th className="px-3 py-2 font-medium">ARR 추정 (학원 1000곳 기준)</th>
+              <th className="px-3 py-2 font-medium">성숙도</th>
+              <th className="px-3 py-2 font-medium">Phase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((m, i) => (
+              <tr key={m.name} className={i % 2 ? 'bg-[var(--color-bg-secondary)]/20' : ''}>
+                <td className="px-3 py-2 font-medium flex items-center gap-2">
+                  <span
+                    className={`w-7 h-7 rounded flex items-center justify-center ${
+                      m.tone === 'emerald'
+                        ? 'bg-emerald-500/15 text-emerald-400'
+                        : m.tone === 'sky'
+                          ? 'bg-sky-500/15 text-sky-400'
+                          : m.tone === 'amber'
+                            ? 'bg-amber-500/15 text-amber-400'
+                            : m.tone === 'violet'
+                              ? 'bg-violet-500/15 text-violet-400'
+                              : 'bg-rose-500/15 text-rose-400'
+                    }`}
+                  >
+                    {m.icon}
+                  </span>
+                  {m.name}
+                </td>
+                <td className="px-3 py-2 text-[var(--color-text-secondary)]">{m.arr}</td>
+                <td className="px-3 py-2 text-[var(--color-text-secondary)]">{m.mature}</td>
+                <td className="px-3 py-2">
+                  <span className="px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[10px] text-[var(--color-text-secondary)]">
+                    {m.current}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-violet-300">중요:</strong>{' '}
+        {'Phase 1-2 는 Premium 구독 (안정) 만. Phase 3 결제 통합으로 폭발적 ARR — 1000 학원 × 학원비 1억원 거래량 × 1.5% = 월 1.5억원. Phase 4+ B2B 리포트/마켓이 long-tail. 결제 통합이 게임 체인저.'}
+      </div>
+    </div>
+  );
+}
+
+/* —— Future product lines —— */
+
+function ProductLines() {
+  const products = [
+    {
+      name: 'class-planner Core',
+      tone: 'emerald' as const,
+      desc: '시간표 + 학생 + 강사 — 무료/Premium (현재)',
+      phase: 'Phase 1-2',
+      status: '진행 중',
+    },
+    {
+      name: 'class-planner Insights',
+      tone: 'sky' as const,
+      desc: 'KPI 대시보드 + AI 자동화 — Premium feature',
+      phase: 'Phase 2-3',
+      status: '계획',
+    },
+    {
+      name: 'class-planner Pay',
+      tone: 'amber' as const,
+      desc: '학원비 결제 + 자동 청구 — Free + 수수료',
+      phase: 'Phase 3',
+      status: '계획',
+    },
+    {
+      name: 'class-planner Market (B2B)',
+      tone: 'violet' as const,
+      desc: '시장 리포트 + 데이터 API — 출판사/교육청 별도 상품',
+      phase: 'Phase 4+',
+      status: '미래',
+    },
+    {
+      name: 'class-planner Match',
+      tone: 'rose' as const,
+      desc: '강사 채용 매칭 / 학원 추천 — 마켓플레이스',
+      phase: 'Phase 4+',
+      status: '미래',
+    },
+  ];
+  return (
+    <div>
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <Boxes className="w-4 h-4 text-violet-400" /> Future Product Lines — class-planner 가족
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+        {products.map((p) => (
+          <ProductLineCard key={p.name} {...p} />
+        ))}
+      </div>
+      <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-amber-300">로드맵 logic:</strong>{' '}
+        {'Core (무료 대규모 사용자) → Insights (데이터 누적 + Premium ARR 확보) → Pay (거래 데이터 + 폭발적 수수료) → Market/Match (누적 데이터로 B2B 진입). 각 product line 은 이전 데이터 위에 빌드 — 순서 바꾸면 데이터 부족으로 실패.'}
+      </div>
+    </div>
+  );
+}
+
+function ProductLineCard({
+  name,
+  tone,
+  desc,
+  phase,
+  status,
+}: {
+  name: string;
+  tone: 'emerald' | 'sky' | 'amber' | 'violet' | 'rose';
+  desc: string;
+  phase: string;
+  status: string;
+}) {
+  const borderClass =
+    tone === 'emerald'
+      ? 'border-emerald-500/30 bg-emerald-500/5'
+      : tone === 'sky'
+        ? 'border-sky-500/30 bg-sky-500/5'
+        : tone === 'amber'
+          ? 'border-amber-500/30 bg-amber-500/5'
+          : tone === 'violet'
+            ? 'border-violet-500/30 bg-violet-500/5'
+            : 'border-rose-500/30 bg-rose-500/5';
+  return (
+    <div className={`rounded-lg border p-3 ${borderClass}`}>
+      <div className="font-semibold text-[11px] mb-1">{name}</div>
+      <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed mb-2">{desc}</p>
+      <div className="text-[9px] text-[var(--color-text-muted)] flex items-center justify-between">
+        <span>{phase}</span>
+        <span className="px-1 py-0.5 rounded bg-[var(--color-bg-tertiary)]">{status}</span>
       </div>
     </div>
   );
