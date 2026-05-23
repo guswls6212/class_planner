@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Archive, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
 import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
@@ -8,7 +9,18 @@ import { useAuth } from "../../contexts/AuthContext";
 import { showError, showSuccess } from "../../lib/toast";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useMyRole } from "../../hooks/useMyRole";
+import { logger } from "../../lib/logger";
 import type { TeacherRole } from "../../lib/planner";
+
+// 보관된 강사 row — server 응답 shape (PR 6 Phase 1 archive endpoint 응답 + GET enrich).
+interface ArchivedTeacher {
+  id: string;
+  name: string;
+  color: string;
+  email?: string | null;
+  phone?: string | null;
+  archivedAt: string;
+}
 
 const TeachersPage = () => {
   const { canManage, linkedTeacherId } = useMyRole();
@@ -29,21 +41,47 @@ const TeachersPage = () => {
   const { subjects = [], enrollments = [], sessions = [], students = [] } = data ?? {};
 
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
-  // 강사 row 삭제 typing confirmation (PR 5 — settings 와 동일 무게). 기존 onDelete 직호출은
-  // 가벼운 흐름이라 실수 위험. invite_expired/none/active 상태 모두 통일.
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 보관된 강사 (PR 6 Phase 1b) — 서버 fetch 별도. localStorage 와 무관.
+  const [archivedTeachers, setArchivedTeachers] = useState<ArchivedTeacher[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [isLoadingArchived, setIsLoadingArchived] = useState(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   const deleteTarget = useMemo(
     () => teachers.find((t) => t.id === deleteTargetId) ?? null,
     [teachers, deleteTargetId],
   );
 
-  // 영향 미리보기 — 담당 수업 갯수 (sessions.teacherId 매칭).
   const affectedSessionCount = useMemo(() => {
     if (!deleteTarget) return 0;
     return sessions.filter((s) => s.teacherId === deleteTarget.id).length;
   }, [deleteTarget, sessions]);
+
+  const fetchArchived = useCallback(async () => {
+    if (!userId) return;
+    setIsLoadingArchived(true);
+    try {
+      const res = await fetch(`/api/teachers?userId=${userId}&includeArchived=true`);
+      if (!res.ok) return;
+      const body = (await res.json()) as { data?: Array<ArchivedTeacher & { archivedAt?: string | null }> };
+      const onlyArchived = (body.data ?? []).filter(
+        (t): t is ArchivedTeacher => Boolean(t.archivedAt),
+      );
+      setArchivedTeachers(onlyArchived);
+    } catch (e) {
+      logger.warn("archived teachers fetch 실패", undefined, e as Error);
+    } finally {
+      setIsLoadingArchived(false);
+    }
+  }, [userId]);
+
+  // showArchived ON 시 fetch. 보관 후에도 refresh — 보관 직후 list 갱신용.
+  useEffect(() => {
+    if (showArchived) void fetchArchived();
+  }, [showArchived, fetchArchived]);
 
   const handleUpdate = useCallback(
     async (id: string, updates: {
@@ -59,9 +97,6 @@ const TeachersPage = () => {
     [updateTeacher]
   );
 
-  // useTeacherManagementLocal의 addTeacher는 (name, color, userId?, profile?)을 받지만
-  // TeachersPageLayout는 (name, color, profile?) 형태만 노출. userId는 신규 추가 시점에
-  // 항상 null (강사를 user 계정에 link하는 별도 흐름은 detail panel에서).
   const handleAddTeacher = useCallback(
     async (
       name: string,
@@ -80,13 +115,11 @@ const TeachersPage = () => {
     [addTeacher],
   );
 
-  // onDelete prop 은 id 만 전달 — modal 띄우기. 실제 삭제는 modal 의 onConfirm 이.
   const handleRequestDelete = useCallback((id: string) => {
     setDeleteTargetId(id);
   }, []);
 
-  // 강사 보관 (PR 6 Phase 1) — 서버 archive POST + localStorage 강사 row 정리.
-  // 수업은 그대로 (강사 정보 유지). 복구는 '보관된 강사 보기' 토글에서.
+  // 강사 보관 — 서버 archive POST + localStorage 강사 row 정리. 수업은 그대로.
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -106,14 +139,47 @@ const TeachersPage = () => {
           return;
         }
       }
-      // 익명 사용자 또는 서버 보관 성공 후 — localStorage 정리. 수업의 teacherId 도 undefined.
       await deleteTeacher(deleteTarget.id);
       showSuccess(`${deleteTarget.name} 강사가 보관되었습니다`);
       setDeleteTargetId(null);
+      // 보관 직후 archived list refresh — toggle 열려있을 때만.
+      if (showArchived) void fetchArchived();
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTarget, deleteTeacher, userId]);
+  }, [deleteTarget, deleteTeacher, userId, showArchived, fetchArchived]);
+
+  // 복구 (PR 6 Phase 1b) — archive POST { archived: false } + 클라이언트 강사 목록 refresh.
+  // useTeacherManagementLocal 은 localStorage 기반이라 server-only 복구 후 직접 sync 필요.
+  // 가장 단순한 방법 — 페이지 reload (localStorage refetch). 추후 hook refresh 추가 가능.
+  const handleRestore = useCallback(
+    async (id: string) => {
+      if (!userId) return;
+      setRestoringId(id);
+      try {
+        const res = await fetch(
+          `/api/teachers/${id}/archive?userId=${userId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archived: false }),
+          },
+        );
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          showError(body.error ?? "강사 복구에 실패했습니다.");
+          return;
+        }
+        const restored = archivedTeachers.find((t) => t.id === id);
+        showSuccess(`${restored?.name ?? "강사"}가 복구되었습니다. 페이지를 새로고침하면 목록에 표시됩니다.`);
+        // archived list 에서 제거 — 다음 fetchArchived 갱신 전에라도 즉시 반영.
+        setArchivedTeachers((prev) => prev.filter((t) => t.id !== id));
+      } finally {
+        setRestoringId(null);
+      }
+    },
+    [userId, archivedTeachers],
+  );
 
   const sessionImpactNote = affectedSessionCount > 0
     ? `담당 수업 ${affectedSessionCount}개의 강사 정보는 그대로 보존됩니다.`
@@ -121,6 +187,68 @@ const TeachersPage = () => {
 
   return (
     <>
+      {canManage && userId && (
+        <div className="px-4 pt-3" data-testid="archived-teachers-section">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-expanded={showArchived}
+            data-testid="archived-teachers-toggle"
+          >
+            {showArchived ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            <Archive className="w-3.5 h-3.5" />
+            보관된 강사 보기
+            {!isLoadingArchived && archivedTeachers.length > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-semibold">
+                {archivedTeachers.length}
+              </span>
+            )}
+          </button>
+
+          {showArchived && (
+            <div className="mt-2 mb-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30 p-3">
+              {isLoadingArchived ? (
+                <p className="text-[12px] text-[var(--color-text-muted)] text-center py-2">불러오는 중...</p>
+              ) : archivedTeachers.length === 0 ? (
+                <p className="text-[12px] text-[var(--color-text-muted)] text-center py-2">보관된 강사가 없습니다.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {archivedTeachers.map((t) => (
+                    <li
+                      key={t.id}
+                      data-testid={`archived-teacher-row-${t.id}`}
+                      className="flex items-center justify-between gap-3 p-2 rounded bg-[var(--color-bg-primary)] opacity-70"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <span className="text-[13px] text-[var(--color-text-primary)] truncate">{t.name}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-500/20 text-zinc-400 font-medium flex-shrink-0">
+                          보관됨
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleRestore(t.id)}
+                        disabled={restoringId === t.id}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-semibold bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 disabled:opacity-50 transition-colors flex-shrink-0"
+                        data-testid={`archived-teacher-restore-${t.id}`}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        {restoringId === t.id ? "복구 중..." : "복구"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <TeachersPageLayout
         teachers={teachers}
         sessions={sessions}
