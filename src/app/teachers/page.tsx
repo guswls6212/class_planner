@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
+import ReassignTeacherModal from "../../components/molecules/ReassignTeacherModal";
 import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
 import { useAuth } from "../../contexts/AuthContext";
 import { showError, showSuccess } from "../../lib/toast";
@@ -43,6 +44,9 @@ const TeachersPage = () => {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // 강사 교체 (PR 9) — TeacherDetailPanel 의 Replace 아이콘 트리거.
+  const [reassignTargetId, setReassignTargetId] = useState<string | null>(null);
+  const [isReassigning, setIsReassigning] = useState(false);
 
   // 보관된 강사 (PR 6 Phase 1b) — 서버 fetch 별도. localStorage 와 무관.
   const [archivedTeachers, setArchivedTeachers] = useState<ArchivedTeacher[]>([]);
@@ -118,6 +122,84 @@ const TeachersPage = () => {
   const handleRequestDelete = useCallback((id: string) => {
     setDeleteTargetId(id);
   }, []);
+
+  const handleRequestReassign = useCallback((id: string) => {
+    setReassignTargetId(id);
+  }, []);
+
+  const reassignTarget = useMemo(
+    () => teachers.find((t) => t.id === reassignTargetId) ?? null,
+    [teachers, reassignTargetId],
+  );
+
+  const reassignCandidates = useMemo(
+    () =>
+      teachers
+        .filter((t) => t.id !== reassignTargetId)
+        .map((t) => ({ id: t.id, name: t.name, color: t.color })),
+    [teachers, reassignTargetId],
+  );
+
+  const reassignAffectedCount = useMemo(() => {
+    if (!reassignTarget) return 0;
+    return sessions.filter((s) => s.teacherId === reassignTarget.id).length;
+  }, [reassignTarget, sessions]);
+
+  // 강사 교체 (PR 9) — settings/page.tsx 와 동일 흐름. POST reassign + localStorage 동기화.
+  const handleReassignConfirm = useCallback(
+    async (toTeacherId: string, archiveOriginal: boolean) => {
+      if (!reassignTarget) return;
+      setIsReassigning(true);
+      try {
+        if (userId) {
+          const res = await fetch(
+            `/api/teachers/${reassignTarget.id}/reassign?userId=${userId}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ to: toTeacherId, archiveOriginal }),
+            },
+          );
+          if (!res.ok) {
+            const body = (await res.json().catch(() => ({}))) as { error?: string };
+            showError(body.error ?? "강사 교체에 실패했습니다.");
+            return;
+          }
+        }
+        // localStorage 동기화 — sessions teacherId 교체 + (옵션) 원 강사 보관(=local delete).
+        await Promise.all(
+          sessions
+            .filter((s) => s.teacherId === reassignTarget.id)
+            .map((s) => updateTeacher(reassignTarget.id, {})),  // no-op
+        );
+        if (typeof window !== "undefined") {
+          try {
+            const raw = window.localStorage.getItem("classPlannerData");
+            if (raw) {
+              const data = JSON.parse(raw) as { sessions?: Array<{ teacherId?: string | null }> };
+              if (Array.isArray(data.sessions)) {
+                data.sessions = data.sessions.map((s) =>
+                  s.teacherId === reassignTarget.id ? { ...s, teacherId: toTeacherId } : s,
+                );
+                (data as { lastModified?: string }).lastModified = new Date().toISOString();
+                window.localStorage.setItem("classPlannerData", JSON.stringify(data));
+              }
+            }
+          } catch {
+            // graceful — localStorage 동기화 실패해도 server 는 처리됨.
+          }
+        }
+        if (archiveOriginal) {
+          await deleteTeacher(reassignTarget.id);
+        }
+        showSuccess(`${reassignTarget.name} 강사 수업이 이전되었습니다${archiveOriginal ? " · 원 강사 보관" : ""}`);
+        setReassignTargetId(null);
+      } finally {
+        setIsReassigning(false);
+      }
+    },
+    [reassignTarget, userId, sessions, deleteTeacher, updateTeacher],
+  );
 
   // 강사 보관 — 서버 archive POST + localStorage 강사 row 정리. 수업은 그대로.
   const handleConfirmDelete = useCallback(async () => {
@@ -259,6 +341,7 @@ const TeachersPage = () => {
         onSelectTeacher={setSelectedTeacherId}
         onAddTeacher={handleAddTeacher}
         onDeleteTeacher={handleRequestDelete}
+        onReassignTeacher={canManage ? handleRequestReassign : undefined}
         onUpdateTeacher={handleUpdate}
         onAddTeacherSubject={addTeacherSubject}
         onRemoveTeacherSubject={removeTeacherSubject}
@@ -266,6 +349,16 @@ const TeachersPage = () => {
         onClearError={clearError}
         canManage={canManage}
         linkedTeacherId={linkedTeacherId}
+      />
+
+      <ReassignTeacherModal
+        isOpen={reassignTarget !== null}
+        originalTeacher={reassignTarget ? { id: reassignTarget.id, name: reassignTarget.name } : null}
+        candidates={reassignCandidates}
+        affectedSessionCount={reassignAffectedCount}
+        isProcessing={isReassigning}
+        onConfirm={handleReassignConfirm}
+        onClose={() => (isReassigning ? undefined : setReassignTargetId(null))}
       />
 
       <TypedConfirmationModal

@@ -139,9 +139,9 @@ describe("TeacherDetailPanel", () => {
     expect(screen.queryByText("저장")).not.toBeInTheDocument();
   });
 
-  it("삭제 버튼 클릭 시 onDelete가 호출된다", () => {
+  it("보관 버튼 클릭 시 onDelete가 호출된다 (PR 6 — '삭제' → '보관' 라벨 변경)", () => {
     render(<TeacherDetailPanel {...baseProps} />);
-    fireEvent.click(screen.getByLabelText("삭제"));
+    fireEvent.click(screen.getByLabelText("보관"));
     expect(baseProps.onDelete).toHaveBeenCalledWith("1");
   });
 

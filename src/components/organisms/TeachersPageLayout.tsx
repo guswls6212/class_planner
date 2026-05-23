@@ -28,6 +28,8 @@ interface TeachersPageLayoutProps {
     profile?: { email?: string; phone?: string },
   ) => Promise<boolean>;
   onDeleteTeacher: (id: string) => void;
+  /** 강사 교체 트리거 (PR 9). 옵션. */
+  onReassignTeacher?: (id: string) => void;
   onUpdateTeacher: (id: string, updates: {
     name?: string;
     color?: string;
@@ -217,6 +219,7 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
             onAddSubject={props.onAddTeacherSubject}
             onRemoveSubject={props.onRemoveTeacherSubject}
             onDelete={props.onDeleteTeacher}
+            onReassign={props.onReassignTeacher}
             onBack={() => setShowDetail(false)}
             canManage={canManage}
             isOwnTeacher={
