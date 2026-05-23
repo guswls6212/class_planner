@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar } from "lucide-react";
+import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Replace } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, TeacherRole } from "@/lib/planner";
 import { TeacherEditForm } from "@/components/molecules/TeacherEditForm";
 import { TeacherContactDisplay } from "@/components/molecules/TeacherContactDisplay";
@@ -30,6 +30,8 @@ interface TeacherDetailPanelProps {
   onAddSubject: (teacherId: string, subjectId: string) => void;
   onRemoveSubject: (teacherId: string, subjectId: string) => void;
   onDelete: (id: string) => void;
+  /** 강사 교체 트리거 (PR 9). 옵션 — 미제공 시 버튼 미노출. canManage 시에만 의미 있음. */
+  onReassign?: (id: string) => void;
   onBack?: () => void;
   /** When false, name/color/role fields become read-only and add/delete buttons are hidden. Default: true */
   canManage?: boolean;
@@ -46,6 +48,7 @@ export function TeacherDetailPanel({
   onAddSubject,
   onRemoveSubject,
   onDelete,
+  onReassign,
   onBack,
   canManage = true,
   isOwnTeacher = false,
@@ -158,9 +161,17 @@ export function TeacherDetailPanel({
             <IconButton aria-label="편집" onClick={() => setIsEditing((v) => !v)}>
               <Pencil size={16} strokeWidth={1.5} />
             </IconButton>
+            {canManage && onReassign && (
+              <IconButton
+                aria-label="강사 교체"
+                onClick={() => onReassign(teacher.id)}
+              >
+                <Replace size={16} strokeWidth={1.5} />
+              </IconButton>
+            )}
             {canManage && (
               <IconButton
-                aria-label="삭제"
+                aria-label="보관"
                 variant="danger"
                 onClick={() => onDelete(teacher.id)}
               >
