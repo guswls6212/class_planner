@@ -150,6 +150,7 @@ src/app/design-explorations/share-url-and-expiry/page.tsx
 src/app/design-explorations/share-url-and-expiry/playwright-e2e/page.tsx
 src/app/design-explorations/share-url-and-expiry/reverse-proxy/page.tsx
 src/app/design-explorations/share-url-and-expiry/server-only-context/page.tsx
+src/app/design-explorations/member-removal-ux/page.tsx
 src/app/design-explorations/team-invite-redesign/page.tsx
 src/app/dev/button-feedback/page.tsx
 src/app/favicon.ico

@@ -1245,7 +1245,10 @@ function AdminInviteRow({ invite, onAction }: AdminInviteRowProps) {
             <MoreHorizontal size={16} strokeWidth={2} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg overflow-hidden z-10">
+            <div
+              data-testid={`admin-invite-menu-${invite.id}`}
+              className="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg overflow-hidden z-10"
+            >
               <button
                 type="button"
                 onClick={() => {
