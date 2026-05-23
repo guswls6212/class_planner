@@ -205,6 +205,7 @@ src/app/api/
 ├── enrollments/          # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
 ├── onboarding/           # 신규 사용자 온보딩 (Academy 생성)
 ├── invites/              # 초대 토큰 (GET/POST 목록·생성 — admin 발급 시 invitee_label 필수 추적, [id] DELETE 취소, [id]/regenerate POST atomic 재발급 (기존 row token/expires_at 갱신), check GET 공개조회, accept POST 이메일 매칭 검증 K-2)
+├── teachers/             # 강사 CRUD + 보관 (PR 6 Phase 1) — GET 에 includeArchived=true 옵션, [id]/archive POST 로 archived_at 토글
 ├── members/              # 멤버 관리 (GET 목록, [userId] DELETE 제거, [userId] PATCH 역할 변경 K-3)
 ├── share/
 │   ├── [token]/          # GET — 공개 링크 데이터 (인증 불필요, token 검증, W3)

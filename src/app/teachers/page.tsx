@@ -4,12 +4,16 @@ import { useCallback, useMemo, useState } from "react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
 import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
+import { useAuth } from "../../contexts/AuthContext";
+import { showError, showSuccess } from "../../lib/toast";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useMyRole } from "../../hooks/useMyRole";
 import type { TeacherRole } from "../../lib/planner";
 
 const TeachersPage = () => {
   const { canManage, linkedTeacherId } = useMyRole();
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const {
     teachers,
     addTeacher,
@@ -81,19 +85,38 @@ const TeachersPage = () => {
     setDeleteTargetId(id);
   }, []);
 
+  // 강사 보관 (PR 6 Phase 1) — 서버 archive POST + localStorage 강사 row 정리.
+  // 수업은 그대로 (강사 정보 유지). 복구는 '보관된 강사 보기' 토글에서.
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      if (userId) {
+        const res = await fetch(
+          `/api/teachers/${deleteTarget.id}/archive?userId=${userId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archived: true }),
+          },
+        );
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          showError(body.error ?? "강사 보관에 실패했습니다.");
+          return;
+        }
+      }
+      // 익명 사용자 또는 서버 보관 성공 후 — localStorage 정리. 수업의 teacherId 도 undefined.
       await deleteTeacher(deleteTarget.id);
+      showSuccess(`${deleteTarget.name} 강사가 보관되었습니다`);
       setDeleteTargetId(null);
     } finally {
       setIsDeleting(false);
     }
-  }, [deleteTarget, deleteTeacher]);
+  }, [deleteTarget, deleteTeacher, userId]);
 
   const sessionImpactNote = affectedSessionCount > 0
-    ? `담당 수업 ${affectedSessionCount}개가 강사 정보를 잃습니다.`
+    ? `담당 수업 ${affectedSessionCount}개의 강사 정보는 그대로 보존됩니다.`
     : "담당 중인 수업이 없습니다.";
 
   return (
@@ -119,10 +142,10 @@ const TeachersPage = () => {
 
       <TypedConfirmationModal
         isOpen={deleteTarget !== null}
-        title={`'${deleteTarget?.name ?? ""}' 강사를 삭제하시겠습니까?`}
-        description={`강사 정보가 영구 삭제됩니다. ${sessionImpactNote} 복구할 수 없습니다.`}
+        title={`'${deleteTarget?.name ?? ""}' 강사를 보관하시겠습니까?`}
+        description={`강사 페이지 목록에서 숨김됩니다. ${sessionImpactNote} '보관된 강사 보기' 토글로 복구할 수 있습니다.`}
         confirmText={deleteTarget?.name ?? ""}
-        confirmLabel={`${deleteTarget?.name ?? ""} 삭제`.trim()}
+        confirmLabel={`${deleteTarget?.name ?? ""} 보관`.trim()}
         isProcessing={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => (isDeleting ? undefined : setDeleteTargetId(null))}
