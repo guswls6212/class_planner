@@ -2,6 +2,7 @@
 
 import {
   AlertTriangle,
+  Archive,
   ArrowRight,
   Award,
   BadgePercent,
@@ -68,6 +69,7 @@ export default function MonetizationStrategyPage() {
         <AiEraChallenge />
         <FreemiumPatterns />
         <ClassPlannerTiers />
+        <SafetyNetSection />
         <AdsVsPremium />
         <PhaseTimeline />
         <FinalRecommendation />
@@ -495,11 +497,13 @@ function ClassPlannerTiers() {
           freeTier={[
             "학생 30명까지 무료 (모든 기능)",
             "강사 무제한, PDF 무제한",
-            "광고/브랜드 표시 없음",
+            "강사 휴지통 (보관) 30일 유지",
+            "자동 백업 7일 (기본 안전망)",
           ]}
           premiumTier={[
             "학생 30+ 명 — 월 9,900원/학원",
-            "전체 기능 동일, 학생 수만 늘어남",
+            "강사 휴지통·자동 백업 무제한 유지",
+            "전체 기능 동일, 학생 수·안전망만 늘어남",
           ]}
           pros={["가장 단순", "사용자 인지 비용 낮음"]}
           cons={["변환 trigger 가 학생 수 하나 — 작은 학원은 평생 무료"]}
@@ -507,33 +511,40 @@ function ClassPlannerTiers() {
         <TierVariant
           number="안 B"
           recommended
-          title="Usage + 협업 gating"
-          subtitle="개인 무료, 협업 paid"
+          title="Usage + 협업 + 안전망 gating"
+          subtitle="개인·기초 무료, 협업·고급 안전망 paid"
           freeTier={[
             "학생 30명까지 무료",
             "본인 (원장) 1명까지 무료",
             "PDF 인쇄 + 학부모 share + 기본 시간표 풀 기능",
+            "강사 휴지통 30일 (이후 영구 삭제 안내)",
+            "자동 백업 최근 1개 + 7일 유지",
           ]}
           premiumTier={[
             "월 14,900원/학원 (annual 12,900원)",
             "학생 무제한",
             "강사·관리자 초대 무제한 (협업)",
             "AI 시간표 최적화·학생 picker 등 +기능",
-            "학원별 분석 대시보드",
-            "PDF 워터마크 제거",
+            "학원별 분석 대시보드 + PDF 워터마크 제거",
+            "강사 휴지통 무제한 + 보관 audit log",
+            "데이터 복구 — 자동 백업 90일 + 수동 스냅샷 + 시점 복원",
           ]}
           pros={[
-            "Usage + 협업 두 trigger — 변환율 6-10% 예상",
+            "Usage + 협업 + 안전망 3 trigger — 변환율 6-10% 예상",
             "Figma 패턴: 협업 시작 시 자연 upgrade",
+            "안전망 = 사고 발생 시 즉시 upgrade trigger (Dropbox/Notion 패턴)",
             "AI feature 가 추가 가치 — AI 차별화",
           ]}
-          cons={["가격 결정 + AI 기능 개발 필요"]}
+          cons={["가격 결정 + AI/백업 인프라 개발 필요"]}
         />
         <TierVariant
           number="안 C"
           title="Outcome gating (수업료 % 연동)"
           subtitle="결제 통합 + 수수료 모델"
-          freeTier={["모든 기능 + 학생 수 무제한 무료"]}
+          freeTier={[
+            "모든 기능 + 학생 수 무제한 무료",
+            "강사 휴지통 + 데이터 복구 풀 기능",
+          ]}
           premiumTier={[
             "학원비 결제 통합 시 수수료 1.5% (랠리즈 패턴)",
             "또는 수업료 자동 청구 / 미납 추적 등 outcome feature 별 paid",
@@ -542,6 +553,7 @@ function ClassPlannerTiers() {
           cons={[
             "결제 통합 인프라 + PG 계약 필요 (시간/리스크 큼)",
             "수수료 모델은 학원 운영자에게 민감 — 신뢰 형성 후 도입",
+            "안전망까지 무료 — 가치 대비 인프라 비용 부담",
           ]}
         />
       </div>
@@ -655,6 +667,146 @@ function ProsCons({ pros, cons }: { pros: string[]; cons: string[] }) {
           ))}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/* ───────────────── 안전망 (강사 보관 + 데이터 복구) ───────────────── */
+
+function SafetyNetSection() {
+  const features = [
+    {
+      icon: <Archive className="w-5 h-5" />,
+      tone: "amber" as const,
+      title: "강사 휴지통 (현재 \"보관\")",
+      currentImpl: "teachers.archived_at 컬럼. /teachers 페이지 보관함 (사용자 결정 후 단어 통일)",
+      freeLimit: "보관 후 30일 자동 영구 삭제 (학원 한 곳당 보관 슬롯 5개)",
+      premiumPlus: "무제한 보관 + 보관 audit log (누가 언제 보관/복구) + 일괄 복구",
+      trigger: "강사 2-3명 보관 시도 시 \"보관함 가득\" 알림 → upgrade",
+      analogy: "Gmail 휴지통 30일 (free) / Google Workspace 무제한 + 복구 로그",
+    },
+    {
+      icon: <Database className="w-5 h-5" />,
+      tone: "sky" as const,
+      title: "데이터 복구 (자동 백업 + 시점 복원)",
+      currentImpl: "data_snapshots 테이블 있음. UI 미구현. 학원 전체 시점 백업",
+      freeLimit: "자동 백업 최근 1개 + 7일 보관. 시점 복원 1회/월",
+      premiumPlus: "자동 백업 90일 무제한 + 수동 스냅샷 무제한 + 시점 복원 무제한 + 다운로드 (JSON)",
+      trigger: "\"학생 50명 잘못 삭제\" 같은 사고 발생 시 즉시 upgrade",
+      analogy: "Dropbox 30일 history (free) / Plus 180일 + 복원 + 다운로드",
+    },
+  ];
+
+  return (
+    <section>
+      <SectionHeader icon={<Shield className="w-5 h-5 text-amber-400" />}>
+        ⑤b 안전망 기능의 freemium 전략 (강사 보관 + 데이터 복구)
+      </SectionHeader>
+      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+        강사 보관 + 데이터 복구는 사용자 사고 발생 시 강력한 upgrade trigger. Dropbox /
+        Notion / Gmail 모두 \"안전망 = 시간/볼륨 limit\" freemium 패턴.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {features.map((f) => (
+          <SafetyFeatureCard key={f.title} {...f} />
+        ))}
+      </div>
+      <div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 text-[12px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-violet-300">왜 안전망이 강한 upgrade trigger 인가:</strong>{" "}
+        실수·사고 발생 후의 사용자 = "지금 당장" 지불 의지 가장 높은 순간. Dropbox 가
+        "30일 history" 를 freemium 의 핵심으로 둔 이유 — 31일째 자료 잃은 사용자가
+        Plus 결제. class-planner 도 동일 패턴 적용 가능. 단, 무료 안전망이 너무 약하면
+        \"이거 못 믿는데\" 라며 이탈 — 7일/1개 등 최소한은 무료에 두기.
+      </div>
+      <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-emerald-300">데이터 복구 UI 구현 timeline 권장:</strong>{" "}
+        현재 <code className="px-1 rounded bg-[var(--color-bg-tertiary)]">data_snapshots</code> 테이블
+        backend 만 있음. Phase 2 (3~6개월) 중 자동 백업 UI + 시점 복원 모달 구현 →
+        Phase 3 (6~12개월) 에 수동 스냅샷 + 다운로드 + audit log 추가 (Premium feature).
+      </div>
+    </section>
+  );
+}
+
+function SafetyFeatureCard({
+  icon,
+  tone,
+  title,
+  currentImpl,
+  freeLimit,
+  premiumPlus,
+  trigger,
+  analogy,
+}: {
+  icon: React.ReactNode;
+  tone: "amber" | "sky";
+  title: string;
+  currentImpl: string;
+  freeLimit: string;
+  premiumPlus: string;
+  trigger: string;
+  analogy: string;
+}) {
+  const borderClass =
+    tone === "amber"
+      ? "border-amber-500/30 bg-amber-500/5"
+      : "border-sky-500/30 bg-sky-500/5";
+  const iconClass =
+    tone === "amber"
+      ? "bg-amber-500/15 text-amber-400"
+      : "bg-sky-500/15 text-sky-400";
+  return (
+    <div className={`rounded-xl border p-5 ${borderClass}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconClass}`}>
+          {icon}
+        </div>
+        <h3 className="font-semibold text-sm">{title}</h3>
+      </div>
+      <div className="space-y-2 text-[11px] leading-relaxed">
+        <Row label="현재 구현" tone="muted">
+          {currentImpl}
+        </Row>
+        <Row label="Free 한도" tone="emerald">
+          {freeLimit}
+        </Row>
+        <Row label="Premium +" tone="amber">
+          {premiumPlus}
+        </Row>
+        <Row label="Upgrade trigger" tone="violet">
+          {trigger}
+        </Row>
+        <Row label="경쟁 패턴" tone="muted">
+          {analogy}
+        </Row>
+      </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  tone,
+  children,
+}: {
+  label: string;
+  tone: "muted" | "emerald" | "amber" | "violet";
+  children: React.ReactNode;
+}) {
+  const labelClass =
+    tone === "emerald"
+      ? "text-emerald-300"
+      : tone === "amber"
+        ? "text-amber-300"
+        : tone === "violet"
+          ? "text-violet-300"
+          : "text-[var(--color-text-muted)]";
+  return (
+    <div className="grid grid-cols-[90px_1fr] gap-2">
+      <div className={`text-[10px] uppercase tracking-wider font-medium ${labelClass}`}>
+        {label}
+      </div>
+      <div className="text-[var(--color-text-secondary)]">{children}</div>
     </div>
   );
 }
@@ -782,6 +934,8 @@ function PhaseTimeline() {
       actions: [
         "Premium feature 1차: AI 시간표 자동 최적화 (드래그 충돌 해결 자동화)",
         "Premium feature 2차: 강사 무제한 초대 + 강사별 권한 세분",
+        "데이터 복구 UI 구현 — 자동 백업 (Free 7일·Premium 90일) + 시점 복원 모달",
+        "강사 휴지통 한도 — Free 30일 자동 영구 삭제 + Premium 무제한",
         "PDF brand 제거 (학원 logo upload) — premium",
         "Stripe 결제 통합 (또는 토스페이먼츠)",
         "Phase 1 사용자에게 \"6개월 무료 grandfather\" 제공 — 신뢰 형성",
@@ -796,6 +950,8 @@ function PhaseTimeline() {
         "학원별 분석 대시보드 (출결률, 학생 retention, 매출 추세)",
         "학원 간 벤치마킹 (anonymized — \"비슷한 학원 대비 우리 학원은...\")",
         "학부모 알림 자동화 (출결 자동 발송, AI 메시지 생성)",
+        "데이터 복구 — 수동 스냅샷 + 다운로드 (JSON) + audit log 추가 (Premium)",
+        "강사 보관 audit log (누가 언제 보관/복구) + 일괄 복구 (Premium)",
         "결제 통합 (PG 계약 + 학원비 자동 청구) — 수수료 1.5%",
         "iOS/Android 앱 — push 알림 + 모바일 first 학원 운영자 캡처",
       ],
