@@ -22,11 +22,16 @@ interface TeacherOption {
   email: string | null;
 }
 
+export interface InviteCreatedInfo {
+  role: "admin" | "member";
+  label: string | null;
+}
+
 interface InviteModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
-  onInviteCreated?: () => void;
+  onInviteCreated?: (info: InviteCreatedInfo) => void;
   /**
    * When provided, the modal pre-selects the teacher and skips role/dropdown UI.
    * Used when the modal is opened from a specific teacher row (e.g. settings page).
@@ -45,6 +50,7 @@ export default function InviteModal({
 }: InviteModalProps) {
   const isPreSelected = Boolean(defaultTeacherId && defaultTeacherName);
   const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [adminLabel, setAdminLabel] = useState("");
   const [isCreatingInvite, setIsCreatingInvite] = useState(false);
 
   // Teacher selection state
@@ -104,6 +110,9 @@ export default function InviteModal({
       if (inviteRole === "member" && selectedTeacherId) {
         body.teacherId = selectedTeacherId;
       }
+      if (inviteRole === "admin") {
+        body.label = adminLabel.trim();
+      }
       const res = await fetch(`/api/invites?userId=${userId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,7 +134,10 @@ export default function InviteModal({
           }
         }
         handleClose();
-        onInviteCreated?.();
+        onInviteCreated?.({
+          role: inviteRole,
+          label: inviteRole === "admin" ? trimmedLabel : null,
+        });
       }
     } finally {
       setIsCreatingInvite(false);
@@ -135,11 +147,15 @@ export default function InviteModal({
   const handleClose = () => {
     setInviteRole("member");
     setSelectedTeacherId("");
+    setAdminLabel("");
     onClose();
   };
 
   const noUnlinkedTeachers = inviteRole === "member" && !isFetchingTeachers && teachers.length === 0;
-  const canSubmit = inviteRole === "admin" || (inviteRole === "member" && selectedTeacherId !== "");
+  const trimmedLabel = adminLabel.trim();
+  const canSubmit =
+    (inviteRole === "admin" && trimmedLabel.length > 0 && trimmedLabel.length <= 50) ||
+    (inviteRole === "member" && selectedTeacherId !== "");
   const selectedTeacherEmail = selectedTeacherId
     ? teachers.find((t) => t.id === selectedTeacherId)?.email ?? null
     : null;
@@ -236,6 +252,32 @@ export default function InviteModal({
                 ))}
               </ul>
             </div>
+
+            {/* admin invite는 teacher row 없이 발급되므로, 누구에게 보냈는지 settings
+                목록에서 식별할 수 있는 별칭이 필수 (변경 시 ADR 후속). */}
+            {inviteRole === "admin" && (
+              <div className="mb-5">
+                <label
+                  htmlFor="invite-admin-label"
+                  className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1"
+                >
+                  이 사람 별칭 <span className="text-red-400">(필수)</span>
+                </label>
+                <input
+                  id="invite-admin-label"
+                  data-testid="invite-admin-label-input"
+                  type="text"
+                  value={adminLabel}
+                  onChange={(e) => setAdminLabel(e.target.value)}
+                  maxLength={50}
+                  placeholder="예: 박원장님"
+                  className="w-full px-3 py-2 rounded bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+                <p className="text-[11px] text-[var(--color-text-muted)] mt-1">
+                  멤버 목록에서 누가 초대 대기 중인지 식별합니다. 50자 이하.
+                </p>
+              </div>
+            )}
 
             {/* Teacher dropdown — only visible for 'member' role */}
             {inviteRole === "member" && (
