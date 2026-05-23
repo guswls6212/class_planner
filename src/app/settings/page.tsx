@@ -20,6 +20,7 @@ import type { TeacherWithStatus } from "../api/teachers/route";
 import { formatExpiry, getExpiryColorClass } from "../../lib/formatExpiry";
 import InviteModal from "../../components/molecules/InviteModal";
 import { TeacherAddModal } from "../../components/molecules/TeacherAddModal";
+import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 import { RolePermissionCards } from "../../components/molecules/RolePermissionCards";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
@@ -74,6 +75,8 @@ export default function SettingsPage() {
   const [inviteTargetTeacherId, setInviteTargetTeacherId] = useState<string | null>(null);
   const [inviteTargetTeacherName, setInviteTargetTeacherName] = useState<string | null>(null);
   const [addTeacherOpen, setAddTeacherOpen] = useState(false);
+  const [kickTarget, setKickTarget] = useState<TeacherWithStatus | null>(null);
+  const [isKicking, setIsKicking] = useState(false);
 
   // 공유 링크
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
@@ -333,6 +336,17 @@ export default function SettingsPage() {
           setShowInviteModal(true);
           break;
         }
+        case "kick": {
+          const teacher = teachers.find((t) => t.id === teacherId);
+          if (!teacher) return;
+          // 가입되지 않은 강사는 academy_members row 없음 — kick 대상 아님.
+          if (!teacher.userId) {
+            showToast("info", "가입된 멤버만 제외할 수 있습니다");
+            return;
+          }
+          setKickTarget(teacher);
+          break;
+        }
         case "change_role": {
           const teacher = teachers.find((t) => t.id === teacherId);
           if (!teacher) return;
@@ -462,6 +476,30 @@ export default function SettingsPage() {
     },
     [userId, invites, fetchData]
   );
+
+  // 가입 멤버 제외 (Variant B — typed confirmation). academy_members DELETE +
+  // teachers.user_id NULL 복원 은 서버에서 atomic 처리.
+  const handleKickConfirm = useCallback(async () => {
+    if (!userId || !kickTarget?.userId) return;
+    setIsKicking(true);
+    try {
+      const res = await fetch(`/api/members/${kickTarget.userId}?userId=${userId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        showError(body.error ?? "멤버 제거에 실패했습니다.");
+        return;
+      }
+      showSuccess(`${kickTarget.name} 멤버가 학원에서 제외되었습니다`);
+      setKickTarget(null);
+      await fetchData();
+    } catch {
+      showError("멤버 제거 중 오류가 발생했습니다.");
+    } finally {
+      setIsKicking(false);
+    }
+  }, [userId, kickTarget, fetchData]);
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
   useEffect(() => {
@@ -1061,6 +1099,18 @@ export default function SettingsPage() {
         }}
       />
 
+      {/* 팀에서 제외 — Variant B (typed confirmation) */}
+      <TypedConfirmationModal
+        isOpen={kickTarget !== null}
+        title={`${kickTarget?.name ?? "이 멤버"}님을 학원에서 제외하시겠습니까?`}
+        description="권한이 즉시 회수됩니다. 강사 정보와 담당 수업·공유 링크는 그대로 보존되며, 재초대 시 다시 연결됩니다."
+        confirmText={kickTarget?.name ?? ""}
+        confirmLabel={`${kickTarget?.name ?? ""} 제외하기`.trim()}
+        isProcessing={isKicking}
+        onConfirm={handleKickConfirm}
+        onClose={() => (isKicking ? undefined : setKickTarget(null))}
+      />
+
       {/* 시간표 운영시간 — useTimeRange + writeStoredRange 사용 */}
       <OperatingHoursSection userId={userId} />
 
@@ -1149,7 +1199,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
       return [
         { key: "change_role", label: "권한 변경" },
         { key: "edit_teacher", label: "강사 정보", disabled: true },
-        { key: "kick", label: "팀에서 제외", variant: "danger", disabled: true },
+        { key: "kick", label: "팀에서 제외", variant: "danger" },
       ];
     case "none":
     default:

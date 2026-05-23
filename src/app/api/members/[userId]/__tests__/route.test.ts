@@ -19,7 +19,7 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
   }),
 }));
 
-import { PATCH } from "../route";
+import { DELETE, PATCH } from "../route";
 
 // PATCH는 actor의 academy_members 행 조회(target 검증) → academy_members.update 두 단계.
 // mockFrom은 .select / .update 호출에 따라 다른 빌더를 반환하도록 구성한다.
@@ -171,5 +171,134 @@ describe("PATCH /api/members/[userId] — role change", () => {
     const req = createPatchRequest("u-missing", "u-owner", { role: "admin" });
     const res = await PATCH(req, { params: Promise.resolve({ userId: "u-missing" }) });
     expect(res.status).toBe(404);
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// DELETE — Variant B 멤버 제거. owner 모두 / admin 은 member 만 / 자기 자신 차단 +
+// owner target 차단(last_owner_check 동시 충족) + teachers.user_id NULL 복원.
+// ────────────────────────────────────────────────────────────
+
+function configureDeleteFrom({
+  targetRole,
+  deleteError = null,
+  teacherUpdateError = null,
+}: {
+  targetRole: string | null;
+  deleteError?: unknown;
+  teacherUpdateError?: unknown;
+}) {
+  const teachersUpdateMock = vi.fn().mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: teacherUpdateError }),
+    }),
+  });
+  const membersDeleteMock = vi.fn().mockReturnValue({
+    eq: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: deleteError }),
+    }),
+  });
+
+  mockFrom.mockImplementation((table: string) => {
+    if (table === "academy_members") {
+      return {
+        select: vi.fn().mockReturnValue(buildSelectChain(targetRole)),
+        delete: membersDeleteMock,
+      };
+    }
+    if (table === "teachers") {
+      return { update: teachersUpdateMock };
+    }
+    return {};
+  });
+
+  return { teachersUpdateMock, membersDeleteMock };
+}
+
+function createDeleteRequest(targetUserId: string, actorUserId: string | null): NextRequest {
+  const url = actorUserId
+    ? `http://localhost/api/members/${targetUserId}?userId=${actorUserId}`
+    : `http://localhost/api/members/${targetUserId}`;
+  return new NextRequest(url, { method: "DELETE" });
+}
+
+describe("DELETE /api/members/[userId] — kick", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("requesterId 누락 시 400", async () => {
+    const req = createDeleteRequest("u-target", null);
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target" }) });
+    expect(res.status).toBe(400);
+  });
+
+  it("자기 자신 제거 시도 시 400", async () => {
+    const req = createDeleteRequest("u-self", "u-self");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-self" }) });
+    expect(res.status).toBe(400);
+  });
+
+  it("member 권한은 403", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
+    const req = createDeleteRequest("u-target", "u-actor");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("target 멤버 부재 시 404", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    configureDeleteFrom({ targetRole: null });
+    const req = createDeleteRequest("u-missing", "u-owner");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-missing" }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("owner target 은 제거 불가 (last_owner_check 동시 충족) → 403", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    configureDeleteFrom({ targetRole: "owner" });
+    const req = createDeleteRequest("u-target-owner", "u-actor-owner");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target-owner" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("admin 은 다른 admin 제거 불가 → 403", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "admin" });
+    configureDeleteFrom({ targetRole: "admin" });
+    const req = createDeleteRequest("u-admin", "u-actor-admin");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-admin" }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("owner 가 admin 제거 → 200 + teachers.user_id NULL 복원 호출", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    const { membersDeleteMock, teachersUpdateMock } = configureDeleteFrom({ targetRole: "admin" });
+
+    const req = createDeleteRequest("u-target", "u-owner");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target" }) });
+    expect(res.status).toBe(200);
+
+    expect(membersDeleteMock).toHaveBeenCalledTimes(1);
+    expect(teachersUpdateMock).toHaveBeenCalledTimes(1);
+    expect(teachersUpdateMock.mock.calls[0][0]).toEqual({ user_id: null });
+  });
+
+  it("admin 이 member 제거 → 200", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "admin" });
+    configureDeleteFrom({ targetRole: "member" });
+    const req = createDeleteRequest("u-target", "u-actor-admin");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target" }) });
+    expect(res.status).toBe(200);
+  });
+
+  it("teachers update 실패해도 200 (graceful — academy_members DELETE 는 이미 commit)", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    configureDeleteFrom({
+      targetRole: "admin",
+      teacherUpdateError: { message: "teachers update failed" },
+    });
+    const req = createDeleteRequest("u-target", "u-owner");
+    const res = await DELETE(req, { params: Promise.resolve({ userId: "u-target" }) });
+    expect(res.status).toBe(200);
   });
 });
