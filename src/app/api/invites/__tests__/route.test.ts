@@ -30,7 +30,7 @@ describe("GET /api/invites", () => {
           is: vi.fn().mockReturnValue({
             gt: vi.fn().mockResolvedValue({
               data: [
-                { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: null, teacher_id: null },
+                { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14", teachers: null, teacher_id: null, invitee_label: "박원장님" },
               ],
               error: null,
             }),
@@ -51,6 +51,7 @@ describe("GET /api/invites", () => {
     expect(body.data[0].expires_at).toBeUndefined();
     expect(body.data[0].teacherName).toBeNull();
     expect(body.data[0].teacherId).toBeNull();
+    expect(body.data[0].label).toBe("박원장님");
   });
 
   it("강사 연동된 초대는 teacherName을 포함한다", async () => {
@@ -96,13 +97,13 @@ describe("GET /api/invites", () => {
 describe("POST /api/invites", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("owner가 admin 역할 초대 토큰을 생성할 수 있다", async () => {
+  it("owner가 admin 역할 초대 토큰을 생성할 수 있다 (label 포함)", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
     mockFrom.mockReturnValue({
       insert: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14" },
+            data: { id: "tok-1", token: "abc123", role: "admin", expires_at: "2099-01-01", created_at: "2026-04-14", invitee_label: "박원장님" },
             error: null,
           }),
         }),
@@ -111,7 +112,7 @@ describe("POST /api/invites", () => {
 
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "박원장님" }),
       headers: { "Content-Type": "application/json" },
     });
     const res = await POST(req);
@@ -120,6 +121,77 @@ describe("POST /api/invites", () => {
     expect(res.status).toBe(201);
     expect(body.success).toBe(true);
     expect(body.data.token).toBe("abc123");
+    expect(body.data.invitee_label).toBe("박원장님");
+  });
+
+  it("admin 초대에 label 없으면 400 반환", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toContain("INVITE_ADMIN_REQUIRES_LABEL");
+  });
+
+  it("admin 초대 label이 공백뿐이면 400 반환", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin", label: "   " }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toContain("INVITE_ADMIN_REQUIRES_LABEL");
+  });
+
+  it("label이 50자 초과면 400 반환", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+    const tooLong = "가".repeat(51);
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin", label: tooLong }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toContain("INVITE_LABEL_TOO_LONG");
+  });
+
+  it("admin label 앞뒤 공백은 trim된다", async () => {
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-x", token: "xx", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-23", invitee_label: "박원장님" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin", label: "  박원장님  " }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    expect(insertMock).toHaveBeenCalledTimes(1);
+    expect(insertMock.mock.calls[0][0].invitee_label).toBe("박원장님");
   });
 
   it("role=member + teacherId 없으면 400을 반환한다", async () => {
@@ -256,7 +328,7 @@ describe("POST /api/invites", () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "박원장님" }),
       headers: { "Content-Type": "application/json" },
     });
     const res = await POST(req);
@@ -326,7 +398,7 @@ describe("POST /api/invites", () => {
     const before = Date.now();
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "박원장님" }),
       headers: { "Content-Type": "application/json" },
     });
     await POST(req);
