@@ -63,13 +63,10 @@ const LoginPage: React.FC = () => {
           </p>
         </div>
 
-        {/* 로그인 카드 — frosted glass + amber gradient border */}
+        {/* 로그인 카드 — frosted glass + amber gradient border. '로그인' h2 헤딩은
+            카드 자체가 의미 충분히 전달 + 페이지 헤더 '클래스 플래너'와 중복이라 제거 (PR 10). */}
         <div className="onboarding-card p-8">
           <div className="relative">
-            <h2 className="mb-6 text-center text-xs font-medium uppercase tracking-[0.06em] text-zinc-300">
-              로그인
-            </h2>
-
             {error && (
               <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                 {error}

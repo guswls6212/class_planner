@@ -22,6 +22,11 @@ const LANDING_DEMO_DATA: PreviewCell[] = [
   { day: 4, timeIndex: 3, subjectLabel: "사회", studentLabel: "강예린", color: "orange" },
 ];
 
+// invite/[token]/page.tsx 의 OAuth 시작 직전에 set 하는 키 (PR 10 — Supabase Allowed
+// Redirect URLs 미등록 시 callback 이 Site URL(=root) 로 fallback 하는 케이스 처리).
+// root 가 일반 schedule redirect 전에 이 키 확인해서 invite 페이지로 priority redirect.
+const PENDING_INVITE_KEY = "pending_invite_token";
+
 export default function LandingPage() {
   const router = useRouter();
   const [checked, setChecked] = useState(false);
@@ -29,6 +34,15 @@ export default function LandingPage() {
 
   useEffect(() => {
     const check = () => {
+      // PR 10 우선순위 1 — OAuth callback fallback 처리. invite 페이지가 set 한
+      // pending token 이 있으면 schedule redirect 보다 invite 흐름이 우선.
+      if (typeof window !== "undefined") {
+        const pendingInvite = localStorage.getItem(PENDING_INVITE_KEY);
+        if (pendingInvite) {
+          router.replace(`/invite/${encodeURIComponent(pendingInvite)}`);
+          return;
+        }
+      }
       const userId = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
       setIsLoggedIn(!!userId);
       setChecked(true);
