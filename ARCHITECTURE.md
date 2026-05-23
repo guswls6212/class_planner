@@ -90,6 +90,7 @@ List endpoint 공통 helper: `src/lib/pagination.ts` SSOT.
   - `TemplateMenuV2`, `ApplyTemplateConfirm`, `TemplatePreviewModal` — 템플릿 메뉴 + 적용 확인 + 미리보기.
   - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
   - `TypedConfirmationModal` — 위험 액션용 "이름 타이핑 확인" 모달 (GitHub repo delete 패턴). 멤버 학원 제외 등에 사용 (PR 4, design-exploration member-removal-ux Variant B).
+  - `ReassignTeacherModal` — 강사 교체 모달 (PR 8 Phase 2, design-exploration teacher-replace-ux Variant B). 대체 강사 선택 + 영향 미리보기 + 원 강사 자동 보관 옵션.
   - `StudentAddDetailModal` — `/students` 헤더 "+ 상세 등록" 진입점. 이름 필수 + 성별/생년월일 권장 입력 (PR #289). 동명이인 식별 + dedup 정확도 보강 목적.
   - `TeacherAddDetailModal` — `/teachers` 헤더 "+ 상세 등록" 진입점. 이름 필수 + 이메일/전화번호 권장 입력 + 이메일 형식 검증 (PR #289). settings의 `TeacherAddModal`(invite/share)과 별개.
   - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)
@@ -205,7 +206,7 @@ src/app/api/
 ├── enrollments/          # 수강 등록 CRUD (GET, POST, DELETE — id는 request body로 전달)
 ├── onboarding/           # 신규 사용자 온보딩 (Academy 생성)
 ├── invites/              # 초대 토큰 (GET/POST 목록·생성 — admin 발급 시 invitee_label 필수 추적, [id] DELETE 취소, [id]/regenerate POST atomic 재발급 (기존 row token/expires_at 갱신), check GET 공개조회, accept POST 이메일 매칭 검증 K-2)
-├── teachers/             # 강사 CRUD + 보관 (PR 6 Phase 1) — GET 에 includeArchived=true 옵션, [id]/archive POST 로 archived_at 토글
+├── teachers/             # 강사 CRUD + 보관(PR 6 Phase 1) + 교체(PR 8 Phase 2) — GET 에 includeArchived=true 옵션, [id]/archive POST 로 archived_at 토글, [id]/reassign POST 로 sessions teacher_id 일괄 이전 + (default) 원 강사 자동 보관
 ├── members/              # 멤버 관리 (GET 목록, [userId] DELETE 제거, [userId] PATCH 역할 변경 K-3)
 ├── share/
 │   ├── [token]/          # GET — 공개 링크 데이터 (인증 불필요, token 검증, W3)

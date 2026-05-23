@@ -125,6 +125,8 @@ src/app/api/teacher-subjects/route.ts
 src/app/api/teachers/[id]/__tests__/route.test.ts
 src/app/api/teachers/[id]/archive/__tests__/route.test.ts
 src/app/api/teachers/[id]/archive/route.ts
+src/app/api/teachers/[id]/reassign/__tests__/route.test.ts
+src/app/api/teachers/[id]/reassign/route.ts
 src/app/api/teachers/[id]/route.ts
 src/app/api/teachers/__tests__/route.test.ts
 src/app/api/teachers/route.ts
@@ -357,6 +359,7 @@ src/components/molecules/PDFDownloadButton.tsx
 src/components/molecules/ParentCodeStickyBar.tsx
 src/components/molecules/PdfExportRangeModal.tsx
 src/components/molecules/PdfGuideModal.tsx
+src/components/molecules/ReassignTeacherModal.tsx
 src/components/molecules/ScheduleChangeBanner.tsx
 src/components/molecules/ScheduleDateNavigator.tsx
 src/components/molecules/SessionBlock.stories.tsx
