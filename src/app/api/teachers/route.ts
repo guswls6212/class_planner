@@ -19,6 +19,8 @@ export interface TeacherWithStatus {
   userId: string | null;
   status: TeacherStatus;
   inviteExpiresAt?: string | null;
+  /** 보관 시점 (PR 6 Phase 1). NULL = 활성, NOT NULL = 보관됨. */
+  archivedAt?: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -36,6 +38,7 @@ export async function GET(request: NextRequest) {
     logger.debug("API GET /api/teachers", { userId });
 
     const unlinkedOnly = searchParams.get("unlinked") === "true";
+    const includeArchived = searchParams.get("includeArchived") === "true";
     const paginationOpts = parsePaginationParams(searchParams);
 
     const academyId = await resolveAcademyId(userId);
@@ -57,7 +60,24 @@ export async function GET(request: NextRequest) {
     const teachers = await getTeacherService().getAllTeachers(academyId);
 
     if (unlinkedOnly) {
-      const result = teachers.filter((t) => t.userId === null);
+      // unlinkedOnly 흐름은 InviteModal teacher dropdown 용 — archived 강사 자동 제외.
+      // graceful: 조회 실패 시 archivedSet empty (기존 동작 유지).
+      const client = getServiceRoleClient();
+      const archivedSet = new Set<string>();
+      try {
+        const { data: archivedRows } = await client
+          .from("teachers")
+          .select("id, archived_at")
+          .eq("academy_id", academyId);
+        for (const row of archivedRows ?? []) {
+          if (row.archived_at) archivedSet.add(row.id);
+        }
+      } catch (e) {
+        logger.warn("teachers archived_at fetch (unlinked) 실패", {}, e as Error);
+      }
+      const result = teachers.filter(
+        (t) => t.userId === null && !archivedSet.has(t.toJSON().id),
+      );
       return NextResponse.json({ success: true, data: result });
     }
 
@@ -120,7 +140,25 @@ export async function GET(request: NextRequest) {
         .filter((id): id is string => id !== null)
     );
 
-    const result = teachers.map((t) => {
+    // archived_at fetch — 보관된 강사 식별 (PR 6 Phase 1).
+    // graceful: 조회 실패 시 archivedMap empty → 모든 강사 visible (기존 동작과 동일).
+    const archivedMap = new Map<string, string>();
+    try {
+      const { data: archivedRows } = await client
+        .from("teachers")
+        .select("id, archived_at")
+        .eq("academy_id", academyId);
+      for (const row of archivedRows ?? []) {
+        if (row.archived_at) archivedMap.set(row.id, row.archived_at);
+      }
+    } catch (e) {
+      logger.warn("teachers archived_at fetch 실패", {}, e as Error);
+    }
+    const visibleTeachers = includeArchived
+      ? teachers
+      : teachers.filter((t) => !archivedMap.has(t.toJSON().id));
+
+    const result = visibleTeachers.map((t) => {
       let status: TeacherStatus;
       let inviteExpiresAt: string | undefined;
       const dto = t.toJSON();
@@ -139,10 +177,10 @@ export async function GET(request: NextRequest) {
         status = "none";
       }
 
-      const base = { ...dto, status };
-      if (inviteExpiresAt !== undefined) {
-        return { ...base, inviteExpiresAt };
-      }
+      const archivedAt = archivedMap.get(teacherIdStr) ?? null;
+      const base: Record<string, unknown> = { ...dto, status };
+      if (inviteExpiresAt !== undefined) base.inviteExpiresAt = inviteExpiresAt;
+      if (archivedAt !== null) base.archivedAt = archivedAt;
       return base;
     });
 

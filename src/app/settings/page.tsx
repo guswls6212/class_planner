@@ -351,13 +351,13 @@ export default function SettingsPage() {
           setKickTarget(teacher);
           break;
         }
-        case "delete": {
+        case "archive": {
           const teacher = teachers.find((t) => t.id === teacherId);
           if (!teacher) return;
-          // 강사 row 자체 삭제 (entity 제거). 가입된 멤버라면 kick 액션으로 academy_members
-          // 먼저 끊으세요 — 본 액션은 invite_expired / none 등 미연동 상태용.
+          // 보관 (PR 6 Phase 1) — 강사 row archived_at 토글. 가입된 멤버는 먼저
+          // 'kick' 으로 academy_members 끊으세요 (보관은 미연동 강사 전용).
           if (teacher.userId) {
-            showToast("info", "가입된 멤버는 먼저 '팀에서 제외' 후 삭제할 수 있습니다");
+            showToast("info", "가입된 멤버는 먼저 '팀에서 제외' 후 보관할 수 있습니다");
             return;
           }
           setDeleteTeacherTarget(teacher);
@@ -493,29 +493,36 @@ export default function SettingsPage() {
     [userId, invites, fetchData]
   );
 
-  // 강사 row 자체 삭제 (PR 5). DELETE /api/teachers/[id]. 담당 수업 + 공유 링크
-  // 영향 — 서버 deleteTeacher 가 cascade 또는 orphan 처리. typing 같은 무게.
+  // 강사 보관 (PR 6 Phase 1 — design-exploration teacher-replace-ux Variant C).
+  // POST /api/teachers/[id]/archive { archived: true } — archived_at 토글. 강사 row
+  // 보존, 수업 정보 그대로, 목록에서 숨김. 복구 가능. localStorage 도 보관 처리.
   const handleDeleteTeacherConfirm = useCallback(async () => {
     if (!userId || !deleteTeacherTarget) return;
     setIsDeletingTeacher(true);
     try {
       const res = await fetch(
-        `/api/teachers/${deleteTeacherTarget.id}?userId=${userId}`,
-        { method: "DELETE" },
+        `/api/teachers/${deleteTeacherTarget.id}/archive?userId=${userId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived: true }),
+        },
       );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
-        showError(body.error ?? "강사 삭제에 실패했습니다.");
+        showError(body.error ?? "강사 보관에 실패했습니다.");
         return;
       }
-      // /teachers 페이지는 localStorage 기반 (useTeacherManagementLocal) 이라 서버 DELETE 만으로는
-      // stale. 같이 정리 — 수업 블록의 teacherId 도 undefined 로 reset (deleteTeacherFromLocal 내부 처리).
+      // localStorage 동기화 — 보관된 강사는 /teachers 페이지 default 에서 숨김.
+      // deleteTeacherFromLocal 은 hard remove 라 archived_at 표시는 못 함. local 흐름은
+      // 단순화: 강사 row 와 수업의 teacherId 모두 제거 (localStorage 에서는 보관 ≈ 삭제).
+      // 보관된 강사 보기는 서버 includeArchived=true 옵션으로 fetch.
       deleteTeacherFromLocal(deleteTeacherTarget.id);
-      showSuccess(`${deleteTeacherTarget.name} 강사가 삭제되었습니다`);
+      showSuccess(`${deleteTeacherTarget.name} 강사가 보관되었습니다`);
       setDeleteTeacherTarget(null);
       await fetchData();
     } catch {
-      showError("강사 삭제 중 오류가 발생했습니다.");
+      showError("강사 보관 중 오류가 발생했습니다.");
     } finally {
       setIsDeletingTeacher(false);
     }
@@ -1155,13 +1162,13 @@ export default function SettingsPage() {
         onClose={() => (isKicking ? undefined : setKickTarget(null))}
       />
 
-      {/* 강사 row 삭제 (PR 5) — 같은 typing 무게로 통일 */}
+      {/* 강사 보관 (PR 6 Phase 1) — typing 무게 그대로, 의미만 '삭제' → '보관' */}
       <TypedConfirmationModal
         isOpen={deleteTeacherTarget !== null}
-        title={`'${deleteTeacherTarget?.name ?? ""}' 강사를 삭제하시겠습니까?`}
-        description="강사 정보가 영구 삭제됩니다. 담당 수업과 공유 링크는 강사 정보를 잃습니다 (복구 불가)."
+        title={`'${deleteTeacherTarget?.name ?? ""}' 강사를 보관하시겠습니까?`}
+        description="강사 정보와 담당 수업은 그대로 보존됩니다. 강사 페이지의 '보관된 강사 보기' 토글로 복구할 수 있습니다."
         confirmText={deleteTeacherTarget?.name ?? ""}
-        confirmLabel={`${deleteTeacherTarget?.name ?? ""} 삭제`.trim()}
+        confirmLabel={`${deleteTeacherTarget?.name ?? ""} 보관`.trim()}
         isProcessing={isDeletingTeacher}
         onConfirm={handleDeleteTeacherConfirm}
         onClose={() => (isDeletingTeacher ? undefined : setDeleteTeacherTarget(null))}
@@ -1243,7 +1250,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
       return [
         { key: "reinvite", label: "새 링크 발급" },
         { key: "share_link", label: "시간표만 공유", disabled: true },
-        { key: "delete", label: "삭제", variant: "danger" },
+        { key: "archive", label: "보관", variant: "danger" },
       ];
     case "share_only":
       return [
@@ -1263,7 +1270,7 @@ function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
         { key: "invite", label: "초대 보내기" },
         { key: "share_link", label: "시간표 공유 링크 발급", disabled: true },
         { key: "edit_teacher", label: "강사 정보 수정", disabled: true },
-        { key: "delete", label: "삭제", variant: "danger" },
+        { key: "archive", label: "보관", variant: "danger" },
       ];
   }
 }
