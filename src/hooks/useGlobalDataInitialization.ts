@@ -185,7 +185,12 @@ export const useGlobalDataInitialization = () => {
         // frame flash 방지 위해 setIsInitialized(true) 후 hard navigate.
         // status fetch 자체 실패 시(네트워크 에러 등) 기존 흐름 폴백 — anonymous
         // 데이터 보존은 applyLocalDataChoice의 totalSynced=0 분기가 2차 방어.
-        // 이미 /onboarding에 있는 경우 redirect 발동 시 무한 루프 — pathname 체크 필수.
+        //
+        // pathname guard (PR 11) — onboarding redirect 발동 안 하는 경로:
+        //   /onboarding — 자기 자신 (무한 루프 회피)
+        //   /invite/* — invite 수락 흐름은 academy 없음이 정상. OAuth callback 후
+        //     invite 페이지에서 이 redirect 가 발동되면 사용자가 학원 정보 설정으로
+        //     강제 이동되어 invite accept 못 함 (사용자 2026-05-23 발견 버그).
         try {
           const statusRes = await fetch(
             `/api/onboarding/status?userId=${encodeURIComponent(userId)}`
@@ -193,17 +198,19 @@ export const useGlobalDataInitialization = () => {
           if (statusRes.ok) {
             const statusJson = await statusRes.json();
             if (statusJson?.success && statusJson?.hasAcademy === false) {
-              const onOnboarding =
-                typeof window !== "undefined" &&
-                window.location.pathname === "/onboarding";
+              const pathname =
+                typeof window !== "undefined" ? window.location.pathname : "";
+              const onProtectedPath =
+                pathname === "/onboarding" || pathname.startsWith("/invite/");
               logger.info("학원 매핑 없음 — 마이그레이션 skip", {
-                redirect: !onOnboarding,
+                redirect: !onProtectedPath,
+                pathname,
               });
               if (mounted) {
                 setIsInitialized(true);
                 setIsInitializing(false);
               }
-              if (!onOnboarding) {
+              if (!onProtectedPath) {
                 window.location.replace("/onboarding");
               }
               return;
