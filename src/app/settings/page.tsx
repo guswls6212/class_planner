@@ -32,6 +32,7 @@ interface PendingInvite {
   expiresAt: string;
   teacherId: string | null;
   teacherName: string | null;
+  label: string | null;
 }
 
 interface ShareToken {
@@ -286,9 +287,46 @@ export default function SettingsPage() {
           await fetchData();
           break;
         }
-        case "invite":
         case "reinvite": {
-          // Pre-select the teacher so InviteModal skips the redundant dropdown
+          // invite_pending 상태에서는 기존 invite_tokens row 의 token + expires_at 만
+          // atomic 하게 갱신 (regenerate endpoint). 옛 링크는 자동 만료 — 토큰 누적
+          // 방지. invite_expired 등 그 외 상태는 InviteModal 새 발급 흐름으로 fallback.
+          const teacher = teachers.find((t) => t.id === teacherId);
+          if (!teacher) return;
+          const pending = invites.find((i) => i.teacherId === teacherId);
+          if (teacher.status === "invite_pending" && pending) {
+            try {
+              const res = await fetch(`/api/invites/${pending.id}/regenerate?userId=${userId}`, {
+                method: "POST",
+              });
+              if (!res.ok) {
+                showError("새 링크 발급에 실패했습니다. 다시 시도해 주세요.");
+                return;
+              }
+              const body = await res.json();
+              if (body.success) {
+                const url = `${window.location.origin}/invite/${body.data.token}`;
+                if (typeof window !== "undefined" && window.navigator?.clipboard) {
+                  try {
+                    await window.navigator.clipboard.writeText(url);
+                    showSuccess("새 링크가 발급되어 복사되었습니다");
+                  } catch {
+                    showSuccess("새 링크가 발급되었습니다");
+                  }
+                }
+                await fetchData();
+              }
+            } catch {
+              showError("새 링크 발급 중 오류가 발생했습니다.");
+            }
+            return;
+          }
+          setInviteTargetTeacherId(teacherId);
+          setInviteTargetTeacherName(teacher.name);
+          setShowInviteModal(true);
+          break;
+        }
+        case "invite": {
           const teacher = teachers.find((t) => t.id === teacherId);
           setInviteTargetTeacherId(teacherId);
           setInviteTargetTeacherName(teacher?.name ?? null);
@@ -359,6 +397,70 @@ export default function SettingsPage() {
       }
     },
     [userId, invites, fetchData, teachers, members]
+  );
+
+  // 관리자 초대 대기 row (teacher 미연동) 전용 액션 핸들러. teacherId 없이 invite id
+  // 기반. handleTeacherAction 과 분리한 이유: data model 다름 (teacher row 없음) +
+  // action 종류 줄어듦 (권한 변경/kick 불가).
+  const handleAdminInviteAction = useCallback(
+    async (action: string, inviteId: string) => {
+      if (!userId) return;
+      const invite = invites.find((i) => i.id === inviteId);
+      if (!invite) return;
+
+      switch (action) {
+        case "copy_invite": {
+          const link = `${window.location.origin}/invite/${invite.token}`;
+          if (typeof window !== "undefined" && window.navigator?.clipboard) {
+            await window.navigator.clipboard.writeText(link);
+            showSuccess("초대 링크가 복사되었습니다");
+          }
+          break;
+        }
+        case "reinvite": {
+          try {
+            const res = await fetch(`/api/invites/${invite.id}/regenerate?userId=${userId}`, {
+              method: "POST",
+            });
+            if (!res.ok) {
+              showError("새 링크 발급에 실패했습니다. 다시 시도해 주세요.");
+              return;
+            }
+            const body = await res.json();
+            if (body.success) {
+              const url = `${window.location.origin}/invite/${body.data.token}`;
+              if (typeof window !== "undefined" && window.navigator?.clipboard) {
+                try {
+                  await window.navigator.clipboard.writeText(url);
+                  showSuccess("새 링크가 발급되어 복사되었습니다");
+                } catch {
+                  showSuccess("새 링크가 발급되었습니다");
+                }
+              }
+              await fetchData();
+            }
+          } catch {
+            showError("새 링크 발급 중 오류가 발생했습니다.");
+          }
+          break;
+        }
+        case "cancel_invite": {
+          if (!confirm("이 초대를 취소하시겠습니까?")) return;
+          const res = await fetch(`/api/invites/${invite.id}?userId=${userId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) {
+            showError("초대 취소에 실패했습니다. 다시 시도해 주세요.");
+            return;
+          }
+          await fetchData();
+          break;
+        }
+        default:
+          showToast("info", "준비 중입니다");
+      }
+    },
+    [userId, invites, fetchData]
   );
 
   // 로컬 학생 목록 로드 (공유 링크 학생 필터용)
@@ -656,6 +758,20 @@ export default function SettingsPage() {
             />
           )}
 
+          {/* 관리자 초대 대기 (teacher row 없이 발급된 admin invite) — owner 와
+              강사 사이에 권한 위계 순서로 노출. 수락 시 academy_members 로 들어가
+              여기서 사라짐. design-exploration team-invite-redesign Variant C. */}
+          {canManage &&
+            invites
+              .filter((i) => i.role === "admin" && !i.teacherId)
+              .map((invite) => (
+                <AdminInviteRow
+                  key={invite.id}
+                  invite={invite}
+                  onAction={handleAdminInviteAction}
+                />
+              ))}
+
           {/* 강사 목록 — 상태 pill + 액션 */}
           {teachers.map((teacher) => (
             <TeacherRow
@@ -915,11 +1031,16 @@ export default function SettingsPage() {
             setInviteTargetTeacherName(null);
           }}
           userId={userId}
-          onInviteCreated={() => {
+          onInviteCreated={(info) => {
             fetchData();
+            const who =
+              info.role === "admin"
+                ? (info.label ?? "관리자")
+                : (inviteTargetTeacherName ?? "강사");
+            const roleLabel = info.role === "admin" ? "관리자" : "강사";
             showToast(
               "success",
-              `${inviteTargetTeacherName ?? "강사"} 초대 링크가 복사됐습니다 · 24시간 후 만료`
+              `${who}(${roleLabel}) 초대 링크가 복사됐습니다 · 24시간 후 만료`
             );
             setInviteTargetTeacherName(null);
             setInviteTargetTeacherId(null);
@@ -1006,14 +1127,15 @@ interface MenuItem {
 function getMenuItems(status: TeacherWithStatus["status"]): MenuItem[] {
   switch (status) {
     case "invite_pending":
+      // "링크 복사" 는 quick action 으로 분리되어 메뉴에서 제거 (PR #444 후속,
+      // design-exploration team-invite-redesign Option 1).
       return [
-        { key: "copy_invite", label: "링크 복사" },
-        { key: "reinvite", label: "재발송" },
+        { key: "reinvite", label: "새 링크 발급" },
         { key: "cancel_invite", label: "초대 취소", variant: "danger" },
       ];
     case "invite_expired":
       return [
-        { key: "reinvite", label: "재초대" },
+        { key: "reinvite", label: "새 링크 발급" },
         { key: "share_link", label: "시간표만 공유", disabled: true },
         { key: "delete", label: "삭제", variant: "danger", disabled: true },
       ];
@@ -1045,7 +1167,7 @@ function getQuickAction(status: TeacherWithStatus["status"]): { action: string; 
     case "invite_pending":
       return { action: "copy_invite", label: "링크 복사" };
     case "invite_expired":
-      return { action: "reinvite", label: "재초대" };
+      return { action: "reinvite", label: "새 링크 발급" };
     case "none":
       return { action: "invite", label: "초대 보내기" };
     case "active":
@@ -1053,6 +1175,103 @@ function getQuickAction(status: TeacherWithStatus["status"]): { action: string; 
     default:
       return null;
   }
+}
+
+interface AdminInviteRowProps {
+  invite: PendingInvite;
+  onAction: (action: string, inviteId: string) => void;
+}
+
+function AdminInviteRow({ invite, onAction }: AdminInviteRowProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const diffMs = new Date(invite.expiresAt).getTime() - Date.now();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const expiryLabel = diffDays > 0 ? `D-${diffDays}` : "오늘 만료";
+  const aliasInitial = (invite.label ?? "관").charAt(0);
+
+  return (
+    <div
+      data-testid={`admin-invite-row-${invite.id}`}
+      className="flex items-center justify-between gap-3 p-3 rounded-lg bg-[var(--color-bg-primary)]"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-400/15 text-blue-300 text-sm font-bold flex-shrink-0">
+          {aliasInitial}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm text-[var(--color-text-primary)] truncate">
+              {invite.label ?? "관리자"}
+            </span>
+            <TeacherStatusPill status="invite_pending" expiresAt={invite.expiresAt} role="admin" />
+          </div>
+          <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">
+            관리자 권한 초대 · {expiryLabel} 후 만료
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Button
+          variant="tonal"
+          size="small"
+          onClick={() => onAction("copy_invite", invite.id)}
+          feedback="inline"
+          successLabel="복사됨"
+        >
+          링크 복사
+        </Button>
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="관리자 초대 액션 메뉴"
+            data-testid={`admin-invite-menu-trigger-${invite.id}`}
+            className="p-1.5 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          >
+            <MoreHorizontal size={16} strokeWidth={2} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] shadow-lg overflow-hidden z-10">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("reinvite", invite.id);
+                }}
+                className="w-full text-left px-3 py-2.5 text-[13px] hover:bg-white/5 text-[var(--color-text-primary)]"
+              >
+                새 링크 발급
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAction("cancel_invite", invite.id);
+                }}
+                className="w-full text-left px-3 py-2.5 text-[13px] hover:bg-white/5 text-red-400"
+              >
+                초대 취소
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TeacherRow({ teacher, invites, canManage, currentUserId, onAction }: TeacherRowProps) {
