@@ -70,6 +70,7 @@ export default function MonetizationStrategyPage() {
         <FreemiumPatterns />
         <ClassPlannerTiers />
         <SafetyNetSection />
+        <DataRetentionArchitecture />
         <AdsVsPremium />
         <PhaseTimeline />
         <FinalRecommendation />
@@ -807,6 +808,236 @@ function Row({
         {label}
       </div>
       <div className="text-[var(--color-text-secondary)]">{children}</div>
+    </div>
+  );
+}
+
+/* ───────────────── 데이터 보관 아키텍처 (4-layer) ───────────────── */
+
+function DataRetentionArchitecture() {
+  const layers = [
+    {
+      icon: <Zap className="w-5 h-5" />,
+      tone: "emerald" as const,
+      tag: "Layer 1",
+      title: "Live data",
+      duration: "현재 활성 — 무기한",
+      access: "사용자 항상 접근",
+      content: "학원 운영 중인 모든 row (학생/강사/세션 등). 사용자가 항상 보고 편집",
+      legal: "사용자의 명시 동의 기반 운영 (서비스 제공 목적)",
+    },
+    {
+      icon: <Archive className="w-5 h-5" />,
+      tone: "amber" as const,
+      tag: "Layer 2",
+      title: "User-visible backup",
+      duration: "Free 7일 / Premium 90일",
+      access: "사용자 UI 에서 복구",
+      content: "soft-delete + 자동 백업 스냅샷. 사용자가 실수 회복 (Dropbox 패턴)",
+      legal: "freemium gating 의 noticed limit — UI 에서 한도 명시",
+    },
+    {
+      icon: <Database className="w-5 h-5" />,
+      tone: "sky" as const,
+      tag: "Layer 3",
+      title: "Internal retention (PII 포함)",
+      duration: "2~3년 (PIPA 보유 기간)",
+      access: "사용자 안 보임 — 운영자(class-planner)만 audit log 접근",
+      content: "audit log, CS 분쟁 대응, 법적 분쟁 증거. 사용자가 본인 데이터 삭제 요청 시 즉시 삭제",
+      legal: "한국 PIPA: 보유 기간 + 목적 사용자 동의 + DPA 위탁 처리자 계약 + Right to Erasure 응대",
+    },
+    {
+      icon: <PieChart className="w-5 h-5" />,
+      tone: "violet" as const,
+      tag: "Layer 4",
+      title: "Anonymized aggregate",
+      duration: "무기한 (PII 제거)",
+      access: "사용자 안 보임 — class-planner 내부 분석 + 비교용 통계",
+      content: "요일별 수업 분포 / 시간대 인기도 / 강사 워크로드 평균 / 학원 규모별 trend. PII 제거 후 통계 only",
+      legal: "익명화된 데이터 — PII 보호법 적용 외. 무기한 보관 + 분석 자유",
+    },
+  ];
+
+  return (
+    <section>
+      <SectionHeader icon={<Layers className="w-5 h-5 text-violet-400" />}>
+        ⑤c 데이터 보관 아키텍처 (4-Layer) — 사용자 노출 ≠ Server 측 정책
+      </SectionHeader>
+      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+        {'Vertical SaaS moat = 데이터. 그러나 PII 보호법 (한국 PIPA / GDPR) 으로 "무기한 보관 = 자유" 아님. 4-Layer 분리로 (a) 사용자 안전망 + (b) 운영 audit + (c) 익명 분석 무기한 동시 가능.'}
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        {layers.map((l) => (
+          <RetentionLayerCard key={l.tag} {...l} />
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-5 mb-3">
+        <h4 className="font-medium text-sm text-violet-300 mb-2 flex items-center gap-1.5">
+          <Brain className="w-4 h-4" /> Vertical SaaS moat — Layer 4 의 가치
+        </h4>
+        <ul className="space-y-1.5 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-violet-400 mt-0.5 flex-shrink-0" />
+            {'학원 운영 패턴 (anonymized) 를 누적 → 신규 학원이 가입 시 "비슷한 규모의 평균은…" 추천 가능 (Premium 가치).'}
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-violet-400 mt-0.5 flex-shrink-0" />
+            {'AI 시간표 자동 최적화 — 다른 학원의 충돌 해결 패턴을 학습. 사용자가 늘수록 추천 품질 ↑ = flywheel.'}
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-violet-400 mt-0.5 flex-shrink-0" />
+            {'경쟁사 (AI-native upstart) 가 80% 가격으로 들어와도 — 그들에겐 누적 데이터 X. moat 의 핵심.'}
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-violet-400 mt-0.5 flex-shrink-0" />
+            {'시도별 / 학원 규모별 사교육 동향 데이터 — 추후 별도 product line (e.g. 시장 리포트 B2B) 도 가능.'}
+          </li>
+        </ul>
+      </div>
+
+      <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-5 mb-3">
+        <h4 className="font-medium text-sm text-rose-300 mb-2 flex items-center gap-1.5">
+          <Shield className="w-4 h-4" /> 법적 가드 (Non-negotiable)
+        </h4>
+        <ul className="space-y-1.5 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-rose-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong className="text-rose-200">한국 PIPA (개인정보보호법):</strong>{' '}
+              학생 이름·전화·학부모 정보 = PII. 수집·이용 목적 + 보유 기간 + 동의 명시 의무. 가입 약관에 4-Layer 정책 모두 명시.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-rose-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong className="text-rose-200">위탁 처리자 계약 (DPA):</strong>{' '}
+              학원이 학생/학부모 데이터의 "처리자", class-planner 가 "위탁 처리자". 가입 시 DPA 체결 — 추후 분쟁 보호.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-rose-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong className="text-rose-200">Right to Erasure (삭제권):</strong>{' '}
+              사용자가 본인 학원 삭제 요청 시 Layer 1~3 즉시 삭제 (Layer 4 는 익명화 되어 영향 없음).
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-rose-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong className="text-rose-200">익명화 기준:</strong>{' '}
+              개별 학원/학생 식별 불가능한 통계만 Layer 4 로 이관. 학원 N개 미만 그룹은 통계 안 만듦 (k-anonymity).
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+        <h4 className="font-medium text-sm text-emerald-300 mb-2 flex items-center gap-1.5">
+          <Boxes className="w-4 h-4" /> Supabase 구현 가이드 (간단)
+        </h4>
+        <ul className="space-y-1.5 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Layer 1+2:</strong> 기존 테이블 + soft-delete 컬럼 (<code>deleted_at TIMESTAMPTZ</code>) + <code>data_snapshots</code> 테이블 활용 (이미 있음).
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Layer 3:</strong> 별도 <code>audit_log</code> 테이블 (이미 있음) + cold storage (Supabase Storage 또는 S3 Glacier). 비용 절감 위해 압축 JSON.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Layer 4:</strong> 별도 schema <code>analytics</code> + nightly ETL job (PII 제거 + aggregate). cron + Edge Functions.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>Retention enforcement:</strong> Supabase cron job — Layer 2 (Free 7일/Premium 90일) 자동 purge, Layer 3 (3년) 자동 purge. Layer 4 만 무기한.
+            </span>
+          </li>
+          <li className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>비용 추정:</strong> 학원 1000곳 × 평균 학생 100명 × 10년 = 1M rows × ~1KB = ~1GB. Supabase Pro $25/월 (8GB) 충분. cold storage 별도 $5/월 추가.
+            </span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function RetentionLayerCard({
+  icon,
+  tone,
+  tag,
+  title,
+  duration,
+  access,
+  content,
+  legal,
+}: {
+  icon: React.ReactNode;
+  tone: "emerald" | "amber" | "sky" | "violet";
+  tag: string;
+  title: string;
+  duration: string;
+  access: string;
+  content: string;
+  legal: string;
+}) {
+  const borderClass =
+    tone === "emerald"
+      ? "border-emerald-500/30 bg-emerald-500/5"
+      : tone === "amber"
+        ? "border-amber-500/30 bg-amber-500/5"
+        : tone === "sky"
+          ? "border-sky-500/30 bg-sky-500/5"
+          : "border-violet-500/30 bg-violet-500/5";
+  const iconClass =
+    tone === "emerald"
+      ? "bg-emerald-500/15 text-emerald-400"
+      : tone === "amber"
+        ? "bg-amber-500/15 text-amber-400"
+        : tone === "sky"
+          ? "bg-sky-500/15 text-sky-400"
+          : "bg-violet-500/15 text-violet-400";
+  return (
+    <div className={`rounded-xl border p-4 ${borderClass}`}>
+      <div className="flex items-center gap-3 mb-2.5">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconClass}`}>
+          {icon}
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)]">
+              {tag}
+            </span>
+            <div className="font-semibold text-sm">{title}</div>
+          </div>
+          <div className="text-[10px] text-[var(--color-text-muted)]">{duration}</div>
+        </div>
+      </div>
+      <div className="space-y-1.5 text-[10.5px] leading-relaxed">
+        <div className="grid grid-cols-[60px_1fr] gap-2">
+          <span className="text-[var(--color-text-muted)]">접근</span>
+          <span className="text-[var(--color-text-secondary)]">{access}</span>
+        </div>
+        <div className="grid grid-cols-[60px_1fr] gap-2">
+          <span className="text-[var(--color-text-muted)]">내용</span>
+          <span className="text-[var(--color-text-secondary)]">{content}</span>
+        </div>
+        <div className="grid grid-cols-[60px_1fr] gap-2">
+          <span className="text-[var(--color-text-muted)]">법적 가드</span>
+          <span className="text-[var(--color-text-secondary)]">{legal}</span>
+        </div>
+      </div>
     </div>
   );
 }
