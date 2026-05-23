@@ -58,6 +58,7 @@ export async function findAcademyIdForOwner(
  * 새 academy_id-scoped 테이블 추가 시 양쪽 동시 갱신.
  */
 export const ACADEMY_SCOPED_TABLES = [
+  "audit_log",           // 035_audit_log.sql — academies FK RESTRICT, 정리 누락 시 academies DELETE 실패 (사용자 2026-05-23 발견)
   "attendance",          // 040 이전 추가, 학생 단위 출석 마킹
   "session_enrollments", // FK: sessions, enrollments
   "sessions",

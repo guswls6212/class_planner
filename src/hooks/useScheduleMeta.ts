@@ -141,6 +141,17 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
       const lastViewed = window.localStorage.getItem(lastViewedKey(userId));
       const lastViewedTs = lastViewed ? new Date(lastViewed).getTime() : 0;
 
+      // (a') PR 15 — lastViewedAt 없음 = 신규 가입 user 첫 진입. server timestamp 를
+      // 즉시 lastViewed 로 set + ack. 사용자 보고: invite 수락 후 첫 schedule 진입 시
+      // "시간표가 새로 갱신되었어요" 토스트 false-positive (owner 가 최근 24h 이내
+      // 변경했을 때 발화). 본인 변경 아닌 owner 의 기존 변경을 알릴 가치 없음 — 새
+      // 가입자는 다음 polling 부터 정상 비교.
+      if (!lastViewed) {
+        window.localStorage.setItem(lastViewedKey(userId), next);
+        ackedTimestampRef.current = next;
+        return;
+      }
+
       // (b) Stale 변경 자동 ack — 24시간 이상 묵힌 변경은 알릴 가치 없음.
       // page reload 후 lastSelfSyncAt이 0이고 server timestamp는 어제 시각인 경우 등
       // (사용자 보고: \"어제 변경했는데 오늘 페이지 열자마자 다른 관리자가 변경했다고 뜸\")
@@ -151,7 +162,6 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
       }
 
       if (
-        lastViewed &&
         new Date(next) > new Date(lastViewed) &&
         ackedTimestampRef.current !== next
       ) {
@@ -164,17 +174,12 @@ export function useScheduleMeta(userId: string | null): ScheduleMeta {
     }
   }, [userId]);
 
-  // 초기 진입 — lastViewedAt 초기화 + 즉시 fetch
+  // 초기 진입 — fetchMeta 만 호출. lastViewedAt 초기화는 fetchMeta 내부 (a') 분기에서
+  // server timestamp 로 set — 신규 가입자 false-positive 회피 (PR 15).
   useEffect(() => {
     if (!userId) {
       setIsLoading(false);
       return;
-    }
-    if (typeof window !== "undefined") {
-      const key = lastViewedKey(userId);
-      if (!window.localStorage.getItem(key)) {
-        window.localStorage.setItem(key, new Date().toISOString());
-      }
     }
     void fetchMeta();
   }, [userId, fetchMeta]);
