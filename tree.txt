@@ -389,6 +389,7 @@ src/components/molecules/TemplatePreviewModal.tsx
 src/components/molecules/TimeTableCell.tsx
 src/components/molecules/TimeTableRow.tsx
 src/components/molecules/TopBar.tsx
+src/components/molecules/TypedConfirmationModal.tsx
 src/components/molecules/__tests__/ApplyTemplateConfirm.test.tsx
 src/components/molecules/__tests__/AttendanceSheet.test.tsx
 src/components/molecules/__tests__/BottomSheet.test.tsx

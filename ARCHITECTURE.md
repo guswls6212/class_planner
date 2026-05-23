@@ -89,6 +89,7 @@ List endpoint 공통 helper: `src/lib/pagination.ts` SSOT.
   - `SlotPickerModal` — 시간표 템플릿 슬롯 picker (save/apply mode 분기, ADR-008 multi-slot UI).
   - `TemplateMenuV2`, `ApplyTemplateConfirm`, `TemplatePreviewModal` — 템플릿 메뉴 + 적용 확인 + 미리보기.
   - `ConfirmModal`, `DataConflictModal` — 범용 확인/충돌 모달.
+  - `TypedConfirmationModal` — 위험 액션용 "이름 타이핑 확인" 모달 (GitHub repo delete 패턴). 멤버 학원 제외 등에 사용 (PR 4, design-exploration member-removal-ux Variant B).
   - `StudentAddDetailModal` — `/students` 헤더 "+ 상세 등록" 진입점. 이름 필수 + 성별/생년월일 권장 입력 (PR #289). 동명이인 식별 + dedup 정확도 보강 목적.
   - `TeacherAddDetailModal` — `/teachers` 헤더 "+ 상세 등록" 진입점. 이름 필수 + 이메일/전화번호 권장 입력 + 이메일 형식 검증 (PR #289). settings의 `TeacherAddModal`(invite/share)과 별개.
   - `HelpTooltip`, `ColorByToggle`, `ScheduleChangeBanner` — UI 헬퍼. (`AccountMenu` 제거 — 2026-05-03)

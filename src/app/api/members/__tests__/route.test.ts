@@ -27,7 +27,6 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
 }));
 
 import { GET } from "../route";
-import { DELETE } from "../[userId]/route";
 
 describe("GET /api/members", () => {
   beforeEach(() => { vi.clearAllMocks(); });
@@ -190,37 +189,6 @@ describe("GET /api/members", () => {
   });
 });
 
-describe("DELETE /api/members/[userId]", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  it("owner가 다른 멤버를 제거할 수 있다", async () => {
-    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
-    mockFrom.mockReturnValue({
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    });
-
-    const req = new NextRequest("http://localhost/api/members/u2?userId=u1");
-    const res = await DELETE(req, { params: Promise.resolve({ userId: "u2" }) });
-    expect(res.status).toBe(200);
-  });
-
-  it("owner가 본인을 제거하려 하면 400을 반환한다", async () => {
-    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
-
-    const req = new NextRequest("http://localhost/api/members/u1?userId=u1");
-    const res = await DELETE(req, { params: Promise.resolve({ userId: "u1" }) });
-    expect(res.status).toBe(400);
-  });
-
-  it("owner가 아니면 403을 반환한다", async () => {
-    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "admin" });
-
-    const req = new NextRequest("http://localhost/api/members/u2?userId=u1");
-    const res = await DELETE(req, { params: Promise.resolve({ userId: "u2" }) });
-    expect(res.status).toBe(403);
-  });
-});
+// DELETE /api/members/[userId] 테스트는 변경된 권한 모델 (owner 모두 / admin 은
+// member 만) + teachers.user_id 복원 검증을 위해
+// src/app/api/members/[userId]/__tests__/route.test.ts 로 통합 이전.
