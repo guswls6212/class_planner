@@ -74,6 +74,8 @@ export default function MonetizationStrategyPage() {
         <DataValueSection />
         <AdsVsPremium />
         <PhaseTimeline />
+        <Phase1Readiness />
+        <Phase4B2CExpansion />
         <FinalRecommendation />
         <References />
       </div>
@@ -1808,6 +1810,474 @@ function PhaseTimeline() {
         ))}
       </ol>
     </section>
+  );
+}
+
+/* ───────────────── Phase 1 — 구현 vs 부족 ───────────────── */
+
+function Phase1Readiness() {
+  const implemented = [
+    { name: '시간표 작성 + 드래그앤드롭', where: '/schedule', quality: '완성', note: 'Local-first, 0ms 조작' },
+    { name: '학생 / 강사 / 과목 CRUD', where: '/students /teachers /subjects', quality: '완성', note: '활성/보관 + 검색 + 입력 검증' },
+    { name: '출결 관리', where: 'AttendanceSheet (schedule 내부)', quality: '완성 (UI 노출 약함)', note: 'API + UI 있음. 별도 메뉴 X — 발견성 낮음' },
+    { name: 'PDF 인쇄', where: 'PDFDownloadButton', quality: '완성', note: '학원 운영자 핵심 가치' },
+    { name: '학부모 share (share token)', where: '/share/[token]', quality: '완성', note: '6자리 access-code + 만료' },
+    { name: '학원 멤버 / 강사 초대', where: 'invite_tokens', quality: '완성', note: '이번 세션 16 PR 사이클로 UX 다듬어짐' },
+    { name: '데이터 백업 API', where: '/api/data-snapshots', quality: '완성 (UI 미연결)', note: 'restore API 있음. 사용자 UI X' },
+    { name: '강사 보관 (archived_at)', where: 'PR #449/450', quality: '완성 (단어 검토 중)', note: '§A vocabulary mockup 참조' },
+    { name: 'PWA manifest', where: 'manifest.ts', quality: '완성', note: '스탠드얼론 + 아이콘. push 알림 X' },
+    { name: 'app_logs (server-side error)', where: '/api/logs/client', quality: '완성', note: 'omni-radar 연동' },
+    { name: 'OAuth 로그인 (Google/Kakao)', where: 'Supabase Auth', quality: '완성', note: '익명-First + 로그인 시 마이그' },
+    { name: '다중 academy', where: 'academies + academy_members', quality: '완성', note: 'PR #456 active_academy 사전 set' },
+  ];
+
+  const missing = [
+    {
+      rank: 1,
+      title: 'In-app 피드백 채널',
+      reason: '친구 학원 운영자 직접 피드백 받기 — 가장 큰 빈틈',
+      effort: '낮음 (1-2일)',
+      example: 'Sidebar 하단 "피드백 보내기" 버튼 → 모달 → /api/feedback POST → Supabase 테이블',
+    },
+    {
+      rank: 2,
+      title: '랜딩 페이지 (/about) 보강',
+      reason: '현재 12 lines = empty placeholder. SEO + 신규 유저 acquisition 의 첫 인상',
+      effort: '중 (2-3일)',
+      example: '히어로 + 핵심 가치 3개 + 데모 영상 + try-it-now (익명 모드 진입) + 가격 안내 + FAQ',
+    },
+    {
+      rank: 3,
+      title: 'Production 머지 (16 PR + 신규 mockup)',
+      reason: '친구 선공개 = production deploy. 현재 dev 만 최신. main 미반영',
+      effort: '낮음 (사용자 결정 + CI)',
+      example: 'dev → main PR 일괄 (이번 세션의 schedule-meta + 16 PR 누적)',
+    },
+    {
+      rank: 4,
+      title: '익명 사용자 추적 + 활성도 measurement',
+      reason: 'Phase 1 KPI \"WAU 100+ 학원\" 측정 도구 부재',
+      effort: '낮음 (Plausible 또는 Vercel Analytics — anonymous, GDPR-safe)',
+      example: 'app/layout.tsx 에 <Analytics /> 추가. PII 없음. 페이지뷰 + 핵심 conversion event',
+    },
+    {
+      rank: 5,
+      title: '학원 운영자 Onboarding 흐름 보강',
+      reason: '첫 진입 후 어떤 액션부터 시작할지 안내 미흡',
+      effort: '중',
+      example: '4-step wizard — 학원 정보 → 강사 1명 → 학생 3명 → 시간표 1개. \"5분 안에 완성\" 약속',
+    },
+    {
+      rank: 6,
+      title: '출결 / 데이터 복구 UI 노출',
+      reason: '둘 다 backend 있음 — UI 발견성 부족',
+      effort: '낮음',
+      example: '출결 = Sidebar 별도 메뉴 또는 schedule 내 명시 버튼. 데이터 복구 = 설정 페이지 \"백업 / 복구\" 섹션',
+    },
+    {
+      rank: 7,
+      title: 'SEO 메타 + Open Graph + 구조화 데이터',
+      reason: '현재 title/desc 만. \"학원 시간표\" 검색 시 노출 거의 불가',
+      effort: '낮음 (1일)',
+      example: 'next-seo + sitemap + robots.txt + JSON-LD (Organization, SoftwareApplication)',
+    },
+    {
+      rank: 8,
+      title: '에러 모니터링 (Sentry / Vercel)',
+      reason: 'omni-radar 는 개발용. production 운영 중 사용자 에러 추적 필요',
+      effort: '낮음',
+      example: 'Sentry free tier (5K errors/월) — 학원 100곳 운영 충분',
+    },
+    {
+      rank: 9,
+      title: '도메인 + 이메일 (info365.studio)',
+      reason: 'class-planner.info365.studio 운영 중. 친구한테 단축 URL / QR 코드 제공',
+      effort: '낮음',
+      example: 'QR 코드 + 시작 가이드 PDF — 친구한테 전달',
+    },
+    {
+      rank: 10,
+      title: '데모 데이터 시드',
+      reason: '첫 진입 시 빈 화면 → 어떻게 사용할지 모름. 데모 학원 1개 sample',
+      effort: '낮음',
+      example: '\"데모 학원 둘러보기\" 버튼 → 학생 10명 + 시간표 30개 미리 채워진 sample academy',
+    },
+  ];
+
+  return (
+    <section>
+      <SectionHeader icon={<Rocket className="w-5 h-5 text-emerald-400" />}>
+        ⑨ Phase 1 — 친구 선공개 전 현황 (이미 구현 vs 아직 부족)
+      </SectionHeader>
+      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+        {'친구 (학원 운영자, 와이프 공동 운영) 선공개 = production main 머지 + 피드백 수집 인프라. 현재 코어 기능은 거의 완성. 부족한 건 acquisition + feedback 인프라.'}
+      </p>
+
+      <div className="mb-6">
+        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-400" /> 이미 구현 (12 영역) — 코어 충분
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {implemented.map((i) => (
+            <ImplementedRow key={i.name} {...i} />
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400" /> 부족 — 친구 선공개 전 채울 항목 (Top 10)
+        </h3>
+        <div className="space-y-2">
+          {missing.map((m) => (
+            <MissingRow key={m.rank} {...m} />
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[11px] leading-relaxed text-[var(--color-text-secondary)]">
+        <strong className="text-emerald-300">친구 선공개 최소 권장 (1-2주 작업):</strong>{' '}
+        {'(1) 16 PR + 본 mockup PR 일괄 main 머지. (2) Top 10 중 rank 1, 2, 4 (피드백 채널 + 랜딩 + analytics) 우선 — 빠른 가치. (3) QR 코드 + 시작 가이드 1장 PDF 친구한테 전달. rank 5-10 은 친구 피드백 받으며 점진 보강.'}
+      </div>
+    </section>
+  );
+}
+
+function ImplementedRow({ name, where, quality, note }: { name: string; where: string; quality: string; note: string }) {
+  const qualityClass = quality.startsWith('완성 (')
+    ? 'bg-amber-500/20 text-amber-300'
+    : 'bg-emerald-500/20 text-emerald-300';
+  return (
+    <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/40 p-2.5">
+      <div className="flex items-center gap-2 mb-1">
+        <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+        <span className="text-[12px] font-medium">{name}</span>
+        <span className={`ml-auto px-1.5 py-0.5 rounded text-[9px] font-medium ${qualityClass}`}>
+          {quality}
+        </span>
+      </div>
+      <div className="text-[10px] text-[var(--color-text-muted)] font-mono mb-0.5">{where}</div>
+      <div className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed">{note}</div>
+    </div>
+  );
+}
+
+function MissingRow({
+  rank,
+  title,
+  reason,
+  effort,
+  example,
+}: {
+  rank: number;
+  title: string;
+  reason: string;
+  effort: string;
+  example: string;
+}) {
+  return (
+    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 grid grid-cols-[36px_1fr] gap-3">
+      <div className="flex items-start justify-center">
+        <span className="w-7 h-7 rounded-full bg-amber-500/20 text-amber-300 text-[12px] font-semibold flex items-center justify-center">
+          {rank}
+        </span>
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="font-semibold text-sm">{title}</span>
+          <span className="text-[9px] text-[var(--color-text-muted)] px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)]">
+            {effort}
+          </span>
+        </div>
+        <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed mb-1">
+          <strong className="text-amber-300">이유:</strong> {reason}
+        </p>
+        <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+          <strong className="text-emerald-300">구현 안:</strong> {example}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────── Phase 4 — B2C 확장 ───────────────── */
+
+function Phase4B2CExpansion() {
+  return (
+    <section>
+      <SectionHeader icon={<Heart className="w-5 h-5 text-rose-400" />}>
+        ⑩ Phase 4+ — 학부모 / 학생 잠재고객 확장 (B2B → B2C 마켓플레이스)
+      </SectionHeader>
+      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+        {'class-planner 의 진짜 확장 — 학원 운영자만이 아닌 학부모·학생 자체를 product user 로. 현재 학부모 view = share token 한정. Phase 4+ 에서 B2C product line 신설.'}
+      </p>
+
+      <B2CCurrentState />
+      <B2CFutureProducts />
+      <B2CMarketplaceFlywheel />
+      <B2CRevenueImpact />
+    </section>
+  );
+}
+
+function B2CCurrentState() {
+  return (
+    <div className="mb-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)]/40 p-5">
+      <h3 className="text-sm font-semibold mb-2">현재 학부모/학생 노출 (Phase 1)</h3>
+      <ul className="text-[11px] text-[var(--color-text-secondary)] space-y-1.5 leading-relaxed">
+        <li className="flex items-start gap-1.5">
+          <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+          {'/share/[token] — 학원이 만든 share URL 로 학부모/학생이 시간표 view (read-only)'}
+        </li>
+        <li className="flex items-start gap-1.5">
+          <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+          {'access-code 6자리 — 추가 보안. 학부모가 URL 만 가져도 코드 없으면 못 봄'}
+        </li>
+        <li className="flex items-start gap-1.5">
+          <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+          {'학부모/학생 계정 X — 익명 view only. 학부모가 본인 계정 만들 수단 없음'}
+        </li>
+        <li className="flex items-start gap-1.5">
+          <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+          {'한계: 학부모가 class-planner 의 product user 가 아닌 \"학원의 손님\"'}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+function B2CFutureProducts() {
+  const products = [
+    {
+      tone: 'rose' as const,
+      icon: <Heart className="w-5 h-5" />,
+      name: 'class-planner Parents (앱)',
+      desc: '학부모 본인 계정. 자녀 학원 N개 통합 view.',
+      features: [
+        '자녀 학원 시간표 통합 (여러 학원 = 한 화면)',
+        '출결 push 알림 — 결석 시 즉시 알림',
+        '학원비 결제 (Phase 3 결제 통합 활용)',
+        '상담 예약 / 학원과 메시지',
+        '학원 검색 / 비교 (마켓플레이스 entry)',
+      ],
+      monetize: '학원당 학부모 N명 자동 가입 → 학원 traction 가속 + 마켓플레이스 트래픽',
+      arr: '학부모 사용은 무료. 학원 검색 → 매칭 수수료 + 학원비 결제 수수료',
+    },
+    {
+      tone: 'sky' as const,
+      icon: <GraduationCap className="w-5 h-5" />,
+      name: 'class-planner Students (앱)',
+      desc: '학생 본인 계정 — 중·고생 타겟.',
+      features: [
+        '본인 시간표 (학원 + 학교)',
+        '출결 self check-in (QR 스캔)',
+        '수업 노트 + 강사 메모 view',
+        '시험 일정 / 과제 알림',
+        '친구 학원 추천 (viral loop)',
+      ],
+      monetize: '학생 무료. 친구 추천 → 신규 학원 유입 (강력한 viral)',
+      arr: '학원 유입 효과 측정. 학생 1명 = 학원 1곳 추천 평균 0.3건',
+    },
+    {
+      tone: 'violet' as const,
+      icon: <Filter className="w-5 h-5" />,
+      name: 'class-planner Find (B2C 마켓플레이스)',
+      desc: '학부모가 학원 찾을 때 — 학원 비교 / 검색.',
+      features: [
+        '지역 + 과목 + 수업료 + 시간대로 학원 검색',
+        '학원 리뷰 (학부모 작성 — class-planner 가입 학원만)',
+        'Premium 학원 우선 노출 + 배지',
+        '검색 결과 \"이 학원과 비슷한 곳\" 추천',
+        '학원 컨택 → class-planner 가입 학원이면 한번에 견적/예약',
+      ],
+      monetize: '학원 가입 매칭 수수료 + Premium 학원 광고 슬롯',
+      arr: '강남엄마 / 학원몰 패턴. 학원당 신규 학생 매칭 2-5만원/건',
+    },
+    {
+      tone: 'amber' as const,
+      icon: <Star className="w-5 h-5" />,
+      name: 'class-planner Tutor (1:1 강사)',
+      desc: '학원 외 — 개인 과외 강사. Wyzant/Preply 패턴.',
+      features: [
+        '강사 프로필 + 시간표 + 가격',
+        '학부모/학생 booking',
+        '결제 + 수업 진행 + 평가',
+        '강사 본인 계정 (학원 없음) — 새 사용자군 확보',
+      ],
+      monetize: 'class-planner 핵심 사용자군 확장 (학원만이 아님)',
+      arr: '수업당 수수료 10-15%. Preply 평균 ARR per active tutor = 5천만원',
+    },
+  ];
+  return (
+    <div className="mb-6">
+      <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+        <Boxes className="w-4 h-4 text-rose-400" /> Phase 4+ Product Lines — B2C 확장 4개
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {products.map((p) => (
+          <B2CProductCard key={p.name} {...p} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function B2CProductCard({
+  tone,
+  icon,
+  name,
+  desc,
+  features,
+  monetize,
+  arr,
+}: {
+  tone: 'rose' | 'sky' | 'violet' | 'amber';
+  icon: React.ReactNode;
+  name: string;
+  desc: string;
+  features: string[];
+  monetize: string;
+  arr: string;
+}) {
+  const borderClass =
+    tone === 'rose'
+      ? 'border-rose-500/30 bg-rose-500/5'
+      : tone === 'sky'
+        ? 'border-sky-500/30 bg-sky-500/5'
+        : tone === 'violet'
+          ? 'border-violet-500/30 bg-violet-500/5'
+          : 'border-amber-500/30 bg-amber-500/5';
+  const iconClass =
+    tone === 'rose'
+      ? 'bg-rose-500/15 text-rose-400'
+      : tone === 'sky'
+        ? 'bg-sky-500/15 text-sky-400'
+        : tone === 'violet'
+          ? 'bg-violet-500/15 text-violet-400'
+          : 'bg-amber-500/15 text-amber-400';
+  return (
+    <div className={`rounded-xl border p-4 ${borderClass}`}>
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconClass}`}>
+          {icon}
+        </div>
+        <div>
+          <div className="font-semibold text-sm">{name}</div>
+          <div className="text-[10.5px] text-[var(--color-text-muted)] mt-0.5">{desc}</div>
+        </div>
+      </div>
+      <ul className="space-y-1 mb-2.5 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-1.5">
+            <ChevronRight className="w-3 h-3 text-[var(--color-text-muted)] mt-0.5 flex-shrink-0" />
+            {f}
+          </li>
+        ))}
+      </ul>
+      <div className="rounded-md bg-[var(--color-bg-tertiary)]/40 px-2.5 py-2 text-[10.5px] text-[var(--color-text-secondary)] leading-relaxed mb-1">
+        <strong className="text-[var(--color-text-primary)]">수익화:</strong> {monetize}
+      </div>
+      <div className="text-[10px] text-[var(--color-text-muted)]">{arr}</div>
+    </div>
+  );
+}
+
+function B2CMarketplaceFlywheel() {
+  return (
+    <div className="mb-6 rounded-xl border border-violet-500/30 bg-violet-500/5 p-5">
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <Flame className="w-4 h-4 text-violet-400" /> Two-sided 마켓플레이스 Flywheel
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-3">
+        <FlywheelStep n={1} text="학원 100곳 가입" />
+        <FlywheelStep n={2} text="각 학원의 학부모/학생 노출 (share token)" />
+        <FlywheelStep n={3} text="Parents 앱 가입 → 자녀 학원 통합 view" />
+        <FlywheelStep n={4} text="학부모가 Find 마켓에서 추가 학원 검색" />
+        <FlywheelStep n={5} text="가입 학원만 노출 → 다른 학원도 가입 유인 ↑" />
+      </div>
+      <p className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+        {'양면 마켓플레이스의 핵심 = 한쪽 사용자가 늘면 다른 쪽 가치도 늘어남. 학원 ↑ → 학부모 검색 풍부 ↑ → 학부모 ↑ → 학원 가입 유인 ↑. 강남엄마 / 학원몰 이 이 패턴으로 성장.'}
+      </p>
+    </div>
+  );
+}
+
+function FlywheelStep({ n, text }: { n: number; text: string }) {
+  return (
+    <div className="rounded-md border border-violet-500/30 bg-[var(--color-bg-primary)]/60 p-2.5">
+      <div className="w-6 h-6 rounded-full bg-violet-500/20 text-violet-300 text-[11px] font-mono flex items-center justify-center mb-1.5">
+        {n}
+      </div>
+      <p className="text-[10px] text-[var(--color-text-secondary)] leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+function B2CRevenueImpact() {
+  return (
+    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <TrendingUp className="w-4 h-4 text-emerald-400" /> B2C 확장 시 ARR 가능성 (학원 1000곳 + 학부모 5000명 가정)
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <RevenueImpactCard
+          tone="emerald"
+          channel="Parents 결제 수수료"
+          calc="5,000명 × 평균 학원비 50만원/월 × 1.5%"
+          arr="3.75억원 / 월 = 45억원 / 년"
+        />
+        <RevenueImpactCard
+          tone="violet"
+          channel="Find 마켓 매칭 수수료"
+          calc="월 신규 매칭 500건 × 평균 학원비 1년치 × 5%"
+          arr="3억원 / 월 = 36억원 / 년"
+        />
+        <RevenueImpactCard
+          tone="amber"
+          channel="Premium 학원 광고 슬롯"
+          calc="100 Premium × 월 50,000원 = 500만원 + Find 상위 노출"
+          arr="6천만원 / 년"
+        />
+        <RevenueImpactCard
+          tone="sky"
+          channel="Tutor 수업 수수료"
+          calc="개인 강사 1,000명 × 월 평균 100만원 × 10%"
+          arr="1억원 / 월 = 12억원 / 년"
+        />
+      </div>
+      <div className="rounded-md bg-[var(--color-bg-primary)]/40 px-3 py-2.5 text-[11px] text-[var(--color-text-secondary)] leading-relaxed">
+        <strong className="text-emerald-300">Phase 4+ ARR 총합 추정:</strong>{' '}
+        {'93억원/년 (B2B Phase 1-3 ARR 20억원 +B2C 73억원). B2C 가 진짜 unlock. 단 양면 마켓플레이스 = chicken-and-egg — Phase 1-3 의 학원 사용자가 critical mass (1000곳+) 가 되어야 시작 가능.'}
+      </div>
+    </div>
+  );
+}
+
+function RevenueImpactCard({
+  tone,
+  channel,
+  calc,
+  arr,
+}: {
+  tone: 'emerald' | 'violet' | 'amber' | 'sky';
+  channel: string;
+  calc: string;
+  arr: string;
+}) {
+  const borderClass =
+    tone === 'emerald'
+      ? 'border-emerald-500/30 bg-emerald-500/5'
+      : tone === 'violet'
+        ? 'border-violet-500/30 bg-violet-500/5'
+        : tone === 'amber'
+          ? 'border-amber-500/30 bg-amber-500/5'
+          : 'border-sky-500/30 bg-sky-500/5';
+  return (
+    <div className={`rounded-lg border p-3 ${borderClass}`}>
+      <div className="text-[11px] font-medium mb-1">{channel}</div>
+      <div className="text-[10px] text-[var(--color-text-muted)] mb-1.5">{calc}</div>
+      <div className="text-[14px] font-semibold text-emerald-300">{arr}</div>
+    </div>
   );
 }
 
