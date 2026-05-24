@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Loader2,
+  Maximize2,
   MessageSquare,
   Send,
   X,
@@ -92,6 +93,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [submit, setSubmit] = useState<SubmitState>({ kind: "idle" });
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -111,9 +113,23 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
       setScreenshot(null);
       setScreenshotPreview(null);
       setSubmit({ kind: "idle" });
+      setLightboxOpen(false);
     }, 800);
     return () => clearTimeout(timer);
   }, [isOpen]);
+
+  // Lightbox ESC 키 닫기
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setLightboxOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [lightboxOpen]);
 
   async function handleCaptureScreenshot() {
     setCapturing(true);
@@ -313,30 +329,29 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
                   </button>
                 )}
               </div>
-              {screenshotPreview ? (
-                <div className="mt-2">
+              {screenshotPreview && (
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  className="mt-2 block w-full rounded-md overflow-hidden border border-[var(--color-border)] hover:border-amber-500/40 transition-colors group relative cursor-zoom-in"
+                  title="클릭하면 크게 보기"
+                  data-testid="feedback-screenshot-thumbnail"
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={screenshotPreview}
-                    alt="첨부 스크린샷 미리보기"
-                    className="w-full rounded-md border border-[var(--color-border)] max-h-32 object-cover"
+                    alt="첨부 스크린샷 미리보기 (클릭 시 확대)"
+                    className="w-full max-h-48 object-cover"
                   />
-                  <p className="text-[9.5px] text-[var(--color-text-muted)] mt-1 leading-snug">
-                    Privacy: 학생/강사 이름이 화면에 보이면 image 에 포함됩니다. 민감 정보 노출 우려 시 제거하세요.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-[9.5px] text-[var(--color-text-muted)] leading-snug">
-                  버튼 누르면 모달 제외한 현재 화면 캡처. 1MB 이하 JPEG. 학원
-                  내부 정보 (학생/강사 이름) 노출 가능 — 의식적 선택.
-                </p>
+                  {/* hover overlay with zoom hint */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 text-white text-[11px] font-medium backdrop-blur-sm">
+                      <Maximize2 className="w-3 h-3" />
+                      크게 보기
+                    </span>
+                  </div>
+                </button>
               )}
-            </div>
-
-            {/* Metadata info banner */}
-            <div className="mt-2 text-[9.5px] text-[var(--color-text-muted)] leading-snug">
-              자동 첨부: IP / 브라우저 / 화면 크기 / timezone / 페이지 history
-              — 디버깅 용도.
             </div>
 
             {/* Error message */}
@@ -375,6 +390,50 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
           </>
         )}
       </div>
+
+      {/* Lightbox — 스크린샷 큰 미리보기 (modal 위 z-[110]) */}
+      {lightboxOpen && screenshotPreview && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[110] p-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            setLightboxOpen(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="스크린샷 크게 보기"
+          data-html2canvas-ignore="true"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={screenshotPreview}
+            alt="첨부 스크린샷 (전체 크기)"
+            className="max-w-full max-h-[calc(100vh-80px)] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {/* Top-right close button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxOpen(false);
+            }}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm"
+            aria-label="닫기 (ESC)"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          {/* Bottom-center hint */}
+          <div
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/60 text-white text-[11px] backdrop-blur-sm flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span>클릭 또는</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px]">ESC</kbd>
+            <span>로 닫기</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
