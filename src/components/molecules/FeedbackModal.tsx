@@ -57,12 +57,21 @@ async function captureScreenshot(): Promise<{ blob: Blob | null; error: string |
     // class-planner 의 Sidebar inline style 에 color-mix(in srgb, ...) 사용 — vanilla html2canvas 비호환.
     const mod = await import("html2canvas-pro");
     const html2canvas = (mod as { default: (...args: unknown[]) => Promise<HTMLCanvasElement> }).default;
+
+    // Viewport-only capture (사용자가 실제 본 화면 그대로).
+    // 이유: html2canvas-pro 가 position: fixed/sticky element 를 document bottom 으로
+    // 처리 → 사용자의 실제 viewport 와 시각 차이. floating toolbar 같은 fixed UI 가
+    // capture 시 위치 어긋남. width/height/x/y 로 window 시야 한정 → 실제 UX 그대로.
+    const scale = Math.min(window.devicePixelRatio || 1, 2); // 2x 까지 (1MB 한계 회피)
     const canvas = await html2canvas(document.body, {
       backgroundColor: null,
-      scale: 1,
+      scale,
       logging: false,
       useCORS: true,
-      // foreignObjectRendering 은 일부 환경에서 fail — default false 유지
+      width: window.innerWidth,
+      height: window.innerHeight,
+      x: window.scrollX,
+      y: window.scrollY,
       ignoreElements: (el: Element) =>
         el instanceof HTMLElement && el.hasAttribute("data-html2canvas-ignore"),
     } as Record<string, unknown>);
