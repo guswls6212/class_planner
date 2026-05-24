@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   AlertTriangle,
   Archive,
@@ -695,7 +696,7 @@ function SafetyNetSection() {
       icon: <Database className="w-5 h-5" />,
       tone: "sky" as const,
       title: "데이터 복구 (자동 백업 + 시점 복원)",
-      currentImpl: "data_snapshots 테이블 있음. UI 미구현. 학원 전체 시점 백업",
+      currentImpl: "data_snapshots 테이블 + DataHistorySection UI 완성 (설정 페이지 노출, owner/admin gate, 스냅샷 list/복원/삭제 모달). freemium gating(Free 7일/1회·Premium 90일/무제한 한도) 만 미구현 — Phase 2 정책 결정",
       freeLimit: "자동 백업 최근 1개 + 7일 보관. 시점 복원 1회/월",
       premiumPlus: "자동 백업 90일 무제한 + 수동 스냅샷 무제한 + 시점 복원 무제한 + 다운로드 (JSON)",
       trigger: "\"학생 50명 잘못 삭제\" 같은 사고 발생 시 즉시 upgrade",
@@ -725,10 +726,11 @@ function SafetyNetSection() {
         \"이거 못 믿는데\" 라며 이탈 — 7일/1개 등 최소한은 무료에 두기.
       </div>
       <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-[12px] leading-relaxed text-[var(--color-text-secondary)]">
-        <strong className="text-emerald-300">데이터 복구 UI 구현 timeline 권장:</strong>{" "}
-        현재 <code className="px-1 rounded bg-[var(--color-bg-tertiary)]">data_snapshots</code> 테이블
-        backend 만 있음. Phase 2 (3~6개월) 중 자동 백업 UI + 시점 복원 모달 구현 →
-        Phase 3 (6~12개월) 에 수동 스냅샷 + 다운로드 + audit log 추가 (Premium feature).
+        <strong className="text-emerald-300">데이터 복구 — 실제 구현 현황:</strong>{" "}
+        UI 는 Phase 1 에 이미 완성 (<code className="px-1 rounded bg-[var(--color-bg-tertiary)]">DataHistorySection</code> 컴포넌트
+        + 설정 페이지 노출). Phase 2 에 남은 작업은 <strong className="text-amber-300">freemium gating</strong>{" "}
+        (Free 7일/1회 vs Premium 90일/무제한 한도) — 비즈니스 결정 영역.
+        Phase 3 에 수동 스냅샷 + 다운로드 (JSON) + audit log 추가 (Premium 차별화).
       </div>
     </section>
   );
@@ -1739,10 +1741,10 @@ function PhaseTimeline() {
       duration: "3 ~ 6개월",
       goal: "안 B 채택 → 학생 limit 30명 도입 + premium 기능 1-2개 출시",
       actions: [
-        "Premium feature 1차: AI 시간표 자동 최적화 (드래그 충돌 해결 자동화)",
-        "Premium feature 2차: 강사 무제한 초대 + 강사별 권한 세분",
-        "데이터 복구 UI 구현 — 자동 백업 (Free 7일·Premium 90일) + 시점 복원 모달",
-        "강사 휴지통 한도 — Free 30일 자동 영구 삭제 + Premium 무제한",
+        "Premium feature 1차: AI 시간표 자동 최적화 (드래그 충돌 해결 자동화) — 신규 기능",
+        "강사 freemium gating — 현재 무제한 (PR #462) → Free tier 강사 3명 limit + Premium 무제한 + 강사별 세밀 권한 (자기 수업만 보기 등)",
+        "데이터 복구 freemium gating — UI 이미 Phase 1 완성 (DataHistorySection). Free 7일·Premium 90일 한도 정책 결정 + UI 한도 표시 추가",
+        "강사 휴지통 한도 — 현재 무제한 → Free 30일 자동 영구 삭제 + Premium 무제한",
         "PDF brand 제거 (학원 logo upload) — premium",
         "Stripe 결제 통합 (또는 토스페이먼츠)",
         "Phase 1 사용자에게 \"6개월 무료 grandfather\" 제공 — 신뢰 형성",
@@ -1825,12 +1827,13 @@ function Phase1Readiness() {
     { name: 'PDF 인쇄', where: 'PDFDownloadButton', quality: '완성', note: '학원 운영자 핵심 가치' },
     { name: '학부모 share (share token)', where: '/share/[token]', quality: '완성', note: '6자리 access-code + 만료' },
     { name: '학원 멤버 / 강사 초대', where: 'invite_tokens', quality: '완성', note: '이번 세션 16 PR 사이클로 UX 다듬어짐' },
-    { name: '데이터 백업 API', where: '/api/data-snapshots', quality: '완성 (UI 미연결)', note: 'restore API 있음. 사용자 UI X' },
+    { name: '데이터 백업 + 복구 UI', where: 'DataHistorySection + /api/data-snapshots/[id]/restore', quality: '완성', note: '설정 페이지 노출 (owner/admin gate) + 스냅샷 list + 복원/삭제 모달' },
     { name: '강사 보관 (archived_at)', where: 'PR #449/450', quality: '완성 (단어 검토 중)', note: '§A vocabulary mockup 참조' },
     { name: 'PWA manifest', where: 'manifest.ts', quality: '완성', note: '스탠드얼론 + 아이콘. push 알림 X' },
     { name: 'app_logs (server-side error)', where: '/api/logs/client', quality: '완성', note: 'omni-radar 연동' },
-    { name: 'OAuth 로그인 (Google/Kakao)', where: 'Supabase Auth', quality: '완성', note: '익명-First + 로그인 시 마이그' },
-    { name: '다중 academy', where: 'academies + academy_members', quality: '완성', note: 'PR #456 active_academy 사전 set' },
+    { name: 'OAuth 로그인 (Google 단일)', where: 'Supabase Auth + /login', quality: '완성', note: 'Google provider만 active. 카카오 버튼은 disabled "준비 중" placeholder. 익명-First + 로그인 시 마이그' },
+    { name: '다중 academy (무제한)', where: 'academies + academy_members', quality: '완성', note: 'PR #462 Slack/Linear/Notion 패턴 (ADR-023). active_academy 사전 set (PR #456)' },
+    { name: '권한 시스템 (owner/admin/member)', where: 'lib/auth/permissions.ts + MemberContext', quality: '완성', note: '3-tier role + canManage 정책. PR #460-462 multi-academy + invite role 통합' },
   ];
 
   const missing = [
@@ -1850,10 +1853,10 @@ function Phase1Readiness() {
     },
     {
       rank: 3,
-      title: 'Production 머지 (16 PR + 신규 mockup)',
+      title: 'Production 머지 (dev 누적 PR + 신규 mockup)',
       reason: '친구 선공개 = production deploy. 현재 dev 만 최신. main 미반영',
       effort: '낮음 (사용자 결정 + CI)',
-      example: 'dev → main PR 일괄 (이번 세션의 schedule-meta + 16 PR 누적)',
+      example: 'dev → main PR 일괄 (Stage E 체크리스트 통과 후. PR 카운트는 머지 시점 기준 — phase1-release-readiness 페이지 참조)',
     },
     {
       rank: 4,
@@ -1911,13 +1914,22 @@ function Phase1Readiness() {
       <SectionHeader icon={<Rocket className="w-5 h-5 text-emerald-400" />}>
         ⑨ Phase 1 — 친구 선공개 전 현황 (이미 구현 vs 아직 부족)
       </SectionHeader>
-      <p className="text-xs text-[var(--color-text-muted)] mb-5">
+      <p className="text-xs text-[var(--color-text-muted)] mb-3">
         {'친구 (학원 운영자, 와이프 공동 운영) 선공개 = production main 머지 + 피드백 수집 인프라. 현재 코어 기능은 거의 완성. 부족한 건 acquisition + feedback 인프라.'}
       </p>
+      <Link
+        href="/design-explorations/phase1-release-readiness"
+        className="block mb-5 rounded-xl border border-violet-500/30 bg-violet-500/5 p-3 text-[12px] hover:bg-violet-500/10 transition-colors"
+      >
+        <span className="text-violet-300 font-medium">→ 상세 SSOT:</span>{' '}
+        <span className="text-[var(--color-text-secondary)]">
+          Phase 1 Production Release Readiness 페이지 (이미 구현 13 영역 / 부족 Top 10 / 미래 Phase에서 이미 구현 3 + Stage A-E Roadmap + UAT Phase 1 mode + Production-grade 테스트 가이드)
+        </span>
+      </Link>
 
       <div className="mb-6">
         <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-          <Check className="w-4 h-4 text-emerald-400" /> 이미 구현 (12 영역) — 코어 충분
+          <Check className="w-4 h-4 text-emerald-400" /> 이미 구현 (13 영역) — 코어 충분
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {implemented.map((i) => (
