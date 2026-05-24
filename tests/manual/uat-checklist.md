@@ -153,6 +153,7 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 |---|---|---|---|
 | **Smoke** | 10-15분 | 매 PR (dev → main 머지 직전 또는 변경 큰 PR) | ❌ 즉석 spot-check, 사본 없음 |
 | **Release UAT** | 150분 | 분기 1회 또는 큰 리팩터 후 | ✅ `runs/<DATE>-<COMMIT>-release.md` commit |
+| **Phase 1 Production Readiness** | 240분 | **친구 선공개 전 1회** (production main 머지 직전) — Stage C of `/design-explorations/phase1-release-readiness` | ✅ `runs/<DATE>-<COMMIT>-phase1-prod.md` commit |
 
 #### Smoke 5개 핵심 시나리오 (10-15분)
 
@@ -2704,6 +2705,148 @@ Issue 등록 형식:
 
 ---
 
+## 22. Phase 1 Production Readiness Mode (240분, 친구 선공개 전 1회)
+
+> Stage C of `/design-explorations/phase1-release-readiness`. 친구 학원 운영자(와이프 공동 운영) 선공개 = production main 머지 직전 1회 실행. Smoke (매 PR) / Release (분기 1회) 와 별도 의미 — Phase 1 정의된 13 구현 영역이 **production build** 환경에서 모두 동작하는지 + 권한/데이터 복구/multi-academy 흐름 + 5 production smoke 가 통과하는지 검증.
+
+### 22.1 사용 시점
+
+- Stage A-D (`/design-explorations/phase1-release-readiness` Roadmap) 모두 완료 후
+- dev → main PR 작성 직전
+- 부족 Top 10 중 rank 1 (피드백 채널) + 4 (analytics) + 8 (Sentry) + 9 (QR 가이드) 구현 후
+- 사용자 결정으로 친구 선공개 의사 결정 완료 시
+
+### 22.2 사전 준비
+
+```bash
+# cwd
+cd ~/lee_file/entrepreneur/project/dev-pack/class-planner
+
+# 1. dev 최신 동기화 + 신규 branch
+git switch dev
+git pull --ff-only origin dev
+git switch -c chore/uat-$(date +%Y-%m-%d)-phase1-prod
+
+# 2. UAT 3 계정 fresh cleanup + seed + invite
+npm run uat:teardown                # 3 계정 academy/member/invite cleanup
+npm run uat:setup                   # 3 user 멱등 생성
+npm run uat:seed                    # owner academy 시드 (학생/과목/강사/세션)
+npm run uat:invite                  # admin/member 자동 초대 + 수락 fast-path
+
+# 3. production server 준비 (Stage D)
+npm install                         # start-server-and-test devDependency 반영 (1회만)
+npm run test:release                # production build + start (localhost:3100) + 5 smoke 자동 통과 검증
+                                    # → fail 시 main 머지 차단. fix 후 재실행.
+
+# 4. (test:release 통과 후) production server 분리 유지 — 본 UAT 는 dev 서버 X, production 서버 사용
+npm run build
+npm run start:prod-test &           # localhost:3100 background
+# 또는 다른 터미널: npm run start:prod-test
+
+# 5. 사본 생성
+bash scripts/uat-new.sh phase1-prod
+# → tests/manual/runs/<DATE>-<COMMIT>-phase1-prod.md 생성
+```
+
+> **production server :3100 사용 의무** — dev :3000 와 분리. Service Worker 가 production 에서만 활성 (serwist). 본 UAT 는 production build 의 실제 동작 검증이 목적.
+
+### 22.3 P0 시나리오 (240분 — 6 묶음 × 40분)
+
+#### 묶음 1. Phase 1 코어 13 구현 (owner 시점, 60분)
+
+> 기존 §1~§18 시나리오 link. production server :3100 에서 owner 로그인 후 진행.
+
+- **S-1.5 / S-1.5b** — 첫 로그인 + 학원 자동 생성 (ADR-019)
+- **S-2.1 / S-2.7** — 학생 추가 + 상세 등록
+- **S-3.1** — 과목 빠른 추가
+- **S-4.1** — 강사 추가
+- **S-5.6 / S-5.24** — 수업 추가 모달 V3 chip+popover
+- **S-6.x** — 드래그앤드롭 + lane insert (대표 2-3개)
+- **S-7.x** — PDF 출력 + 학부모 share 생성
+- **S-14.1 / S-14.7** — 충돌 모달 + 자동 백업 발동
+- **S-15.x** — AttendanceSheet (출결 입력 + 누적)
+- **S-12.1** — 새로고침 후 데이터 유지
+
+**P0 Pass 기준**: 13 항목 모두 production server :3100 에서 dev :3000 와 동일 동작 (visual/UX 차이 X).
+
+#### 묶음 2. 권한 흐름 — admin / member (40분)
+
+> **신규 시나리오 P1-PROD-2.1 ~ P1-PROD-2.3** (기존 §19/§20 의 production server 검증판)
+
+- **P1-PROD-2.1**: admin 로그인 → /settings 진입 가능, 멤버 관리 가능 (canManage true). data history 섹션(DataHistorySection) 노출. [P0]
+- **P1-PROD-2.2**: member 로그인 → /settings 멤버 관리 차단 (UI 자체 hidden 또는 disabled). data history 섹션 미렌더. 시간표 view + 편집은 가능. [P0]
+- **P1-PROD-2.3**: admin 이 invite 새 user → 6자리 token 발급 → 새 incognito 창 + token 입력 → academy 조인 후 admin 권한 부여 확인. [P0]
+
+#### 묶음 3. 데이터 복구 UI 흐름 (40분)
+
+> **신규 시나리오 P1-PROD-3.1 ~ P1-PROD-3.3** (DataHistorySection production 검증)
+
+- **P1-PROD-3.1**: owner 로그인 → /settings 하단 "데이터 이력" 섹션 노출 + 스냅샷 list 1개 이상 표시 (사전 seed 가 자동 백업 생성). [P0]
+- **P1-PROD-3.2**: 의도적 학생 10명 일괄 삭제 → /settings 데이터 이력 → 최근 스냅샷 "복원" 클릭 → confirmation 모달 → 복원 → 학생 10명 복귀 확인. [P0]
+- **P1-PROD-3.3**: 스냅샷 1개 "삭제" 클릭 → confirmation 모달 → 삭제 → list 에서 제거 확인. [P1]
+
+#### 묶음 4. Multi-Academy switch + isolation (30분)
+
+> **신규 시나리오 P1-PROD-4.1 ~ P1-PROD-4.2** + 기존 §10 활용
+
+- **P1-PROD-4.1**: owner 로그인 → Sidebar "+ 새 학원 만들기" 버튼 enabled (PR #462 무제한) → 학원 B 생성 → academy switch dropdown 에 학원 A/B 양쪽 표시. [P0]
+- **P1-PROD-4.2**: 학원 A 에서 학생 10명 생성 → 학원 B 로 switch → 학원 A 의 학생 0명 표시 (data isolation) → 학원 B 에서 학생 5명 생성 → 학원 A switch → 학원 A 학생 10명 그대로. [P0]
+- **S-10.1 / S-10.2** — 기존 academy 전환 + 쿠키 저장
+
+#### 묶음 5. Production build 특수성 (30분)
+
+> **신규 시나리오 P1-PROD-5.1 ~ P1-PROD-5.5** (dev mode 와 다른 production-only)
+
+- **P1-PROD-5.1**: `npm run test:release` 통과 (5 smoke + production build success). [P0]
+- **P1-PROD-5.2**: production server :3100 에서 DevTools → Application 탭 → Service Workers → "activated and is running" 표시. [P0]
+- **P1-PROD-5.3**: production server stop → 브라우저 새로고침 → SW cached page 또는 offline page (`/~offline` route) 표시 — 완전 blank 화면 X. [P1]
+- **P1-PROD-5.4**: production server 의 `/robots.txt` + `/sitemap.xml` 노출 (Stage E 이후, rank 7 SEO 구현 후 활성). [P2 — Stage E 의존]
+- **P1-PROD-5.5**: production server bundle 확인 — DevTools → Sources → `_next/static/chunks/` → 파일 list 에 `SUPABASE_SERVICE_ROLE_KEY` grep 0건 (RLS 보안). [P0]
+
+#### 묶음 6. 학생/학부모 incognito view (40분)
+
+> 기존 §21 시나리오 production server 환경 그대로 실행. share token + 6자리 access-code 가 production OAuth flow 와 충돌 없는지 검증.
+
+- **S-21.1** — share-link 직접 접근
+- **S-21.2** — 6자리 access-code 입력 + 인증
+- **S-21.3** — 5회 실패 academy+IP lockout (1h)
+- **S-21.4** — 만료된 code 처리
+- **S-21.5** — student-scoped share (본인 자녀 세션만)
+
+### 22.4 Pass / Fail 결정
+
+| 결과 | 의미 | 다음 액션 |
+|---|---|---|
+| **All P0 Pass** (6 묶음 모두) | Phase 1 production release ready | Stage E — dev → main PR 작성 가능 |
+| **P0 Fail 1건 이상** | release 차단 | fix → 신규 PR → dev 머지 → 본 UAT 재실행 |
+| **P1/P2 Fail** | release 가능, GitHub Issue 등록 | Phase 1 → Phase 2 사이 fix |
+
+### 22.5 결과 기록 + commit
+
+```bash
+# 사본에서 [ ] → [x]/[!]/[~] 기록 + 메모
+
+# 완료 시
+git add tests/manual/runs/<DATE>-<COMMIT>-phase1-prod.md
+git commit -m "chore(uat): <DATE> phase1-prod release readiness run"
+git push -u origin chore/uat-<DATE>-phase1-prod
+gh pr create --base dev --title "chore(uat): <DATE> phase1-prod run"
+
+# 모든 P0 Pass + PR 머지 시 Stage E 진입 가능
+```
+
+### 22.6 cleanup
+
+```bash
+# UAT 종료 시 production server 정리
+lsof -ti:3100 | xargs kill 2>/dev/null
+
+# 3 계정 academy/member/invite cleanup (user 보존)
+npm run uat:teardown
+```
+
+---
+
 ## 변경 이력
 
 - 2026-05-04: 초기 작성 (73 시나리오 + 10 edge case). PR #211 회귀 가드 cross-reference 포함.
@@ -2726,6 +2869,7 @@ Issue 등록 형식:
 - 2026-05-20: **§1 S-1.5 갱신 + S-1.5b 신설** (ADR-019 first-user owner-enforcement + academy singularity 1+1). 영향: `/onboarding/page.tsx` 역할 라디오 3개 제거 (owner/admin/member → owner 자동), amber Crown 안내 박스 추가, "원장으로 학원 만들기" CTA, "초대 받았어요" secondary link → `/invite/[token]` redirect. `/api/onboarding` body.role 무시 + hardcoded owner. Sidebar "+ 새 학원 만들기" tooltip "본인 학원 1개 제한 (ADR-019)". 정책 영구화: owner 1개 + invited 1개 = 최대 2학원, 학원 추가 기능 deferred. 총 §1 P0 2 / 6→7 (S-1.5b 신설).
 - 2026-05-12 (3): **§18 보강 — body 순서 fix + V3 month calendar + 날짜 chip label** (사용자 발견: PR #376 후 mockup ↔ 적용 갭). body 순서를 mockup C variant(과목 → 강사 → 학생)로 재정렬 (PR #376 누락 fix). 헤더 weekday chip의 7-grid popover → V3 1달 캘린더(이전/다음 달 navigation + 선택 날짜 amber + 오늘 ring). chip label `목` → `5월 15일 (목)` 형식(`weekStartDate` prop 추가, schedule page에서 `currentWeekStart` 전달). schedule paradigm 보존 — 다른 달 날짜 선택해도 weekday만 추출. S-18.7/18.8 추가, AC-15~19 추가. P0: 39 → 40 (S-18.8 P0). 회귀 가드 45 RTL pass.
 - 2026-05-12 (4): **§18 보강 — 다른 주 날짜로 세션 이동 + 시간표 자동 navigate** (사용자 발견: paradigm 재해석). 잘못된 paradigm 가정 fix — schedule은 "매주 반복"이 아니라 **"특정 주(weekStartDate) + 요일(weekday) 조합"**. 데이터 모델(`planner.ts`)이 이미 둘 다 보존. 변경: API/Service/Repo chain 모두 `weekStartDate` forward + EditSessionModal `selectedWeekStart` state + onSave `(weekday, weekStartDate?)` 시그니처 + schedule page `setSelectedDate` navigate. footer 안내 "주간 반복" → "그 날짜로 이동". S-18.9(P0) 추가, AC-20~22 추가. P0: 40 → 41. 회귀 가드 236 tests pass.
+- 2026-05-24: **§22 Phase 1 Production Readiness Mode 신설** (Stage C of `/design-explorations/phase1-release-readiness`). 친구 학원 운영자 선공개 = production main 머지 직전 1회 실행. 240분, 6 묶음: Phase 1 코어 13 owner (60분, §1~§18 link) / 권한 admin·member (40분, P1-PROD-2.1~2.3 신규) / 데이터 복구 UI (40분, P1-PROD-3.1~3.3 신규 — DataHistorySection production 검증) / Multi-academy switch+isolation (30분, P1-PROD-4.1~4.2 신규, PR #462 무제한) / Production build 특수성 (30분, P1-PROD-5.1~5.5 신규 — SW 활성, RLS bundle 검증) / 학생·학부모 incognito (40분, §21 link). 사전 준비: `npm run test:release` 통과 의무. `scripts/uat-new.sh phase1-prod` 모드 지원 + §2 모드 표에 신규 mode 추가. dev :3000 와 분리된 production server :3100 사용. P0: 50 → 50 + 신규 9 (P1-PROD-2.1~5.5 중 P0 8 + P1 1). 결과: `runs/<DATE>-<COMMIT>-phase1-prod.md` commit.
 - 2026-05-20 (2): **다중 역할 UAT 모델 도입 (3 계정) + 시나리오 전면 재구성** (사용자 발화 — "원장 계정 teardown 처럼 다른 계정들도 같이 초기화, 몇 개 계정 필요한지, 자연스러운 흐름 시나리오, 정책확인 표기 제거"):
   - **3 계정 모델**: `UAT_TEST_OWNER_*` / `UAT_TEST_ADMIN_*` / `UAT_TEST_MEMBER_*`. legacy `UAT_TEST_USER_*` → owner alias (deprecated 1주일 후 제거). 학생/학부모 = 계정 X, incognito + share-token / 6자리 access-code 검증.
   - **scripts 갱신**: `uat-cleanup-helper.ts` — `invites` → `invite_tokens` fix, `attendance` + `data_snapshots` 테이블 cleanup 추가, `cleanupMultipleUatUsers` batch helper 신설. `setup-uat-test-user.ts` 3 계정 멱등 생성. `uat-teardown.ts` `--user owner|admin|member|all` flag (default all). `uat-invite-seed.ts` 신규 — admin/member 자동 초대 + 수락 fast-path (UI 흐름 자체 검증은 §19/§20 직접 의무). `package.json` `uat:invite` 등록.

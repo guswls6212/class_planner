@@ -5,6 +5,7 @@
 #   bash scripts/uat-new.sh                # 기본 release
 #   bash scripts/uat-new.sh release        # 분기 1회 또는 큰 리팩터 후 — 사본 commit
 #   bash scripts/uat-new.sh smoke          # 매 PR 직전 — 사본 X (안내만 출력)
+#   bash scripts/uat-new.sh phase1-prod    # 친구 선공개 전 1회 — 사본 commit, 240분
 #
 # 동작:
 #   - tests/manual/uat-checklist.md 를 tests/manual/runs/<DATE>-<COMMIT>-release.md 로 복사
@@ -24,6 +25,11 @@ fi
 MODE="${1:-release}"
 case "$MODE" in
   release) ;;
+  phase1-prod)
+    echo "Phase 1 Production Readiness 모드 — 친구 선공개 전 1회 (240분)." >&2
+    echo "  사전: npm run uat:setup && npm run uat:seed && npm run test:release" >&2
+    echo "  본문: uat-checklist.md §22 Phase 1 Production Readiness Mode 참조" >&2
+    ;;
   smoke)
     echo "Smoke 모드는 사본 X — 즉석 spot-check 만 진행." >&2
     echo "  1. PORT=3000 npm run dev   (다른 터미널)" >&2
@@ -38,7 +44,7 @@ case "$MODE" in
     echo "      다음 사이클부터 'release' 사용 권장." >&2
     MODE="release"
     ;;
-  *) echo "ERROR: 모드는 release|smoke 중 하나 (legacy: core|extended|full)" >&2; exit 1 ;;
+  *) echo "ERROR: 모드는 release|smoke|phase1-prod 중 하나 (legacy: core|extended|full)" >&2; exit 1 ;;
 esac
 
 DATE=$(date +%Y-%m-%d-%H%M)
