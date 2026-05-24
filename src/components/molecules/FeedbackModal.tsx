@@ -51,17 +51,64 @@ function captureClientMetadata(): ClientMetadata {
   };
 }
 
+/**
+ * Capture 직전: 모든 position: fixed/sticky 요소를 절대 위치 (document coordinate)
+ * 로 강제 변환. html2canvas-pro 가 fixed element 를 document bottom 으로 잘못
+ * 배치하는 known limitation 회피.
+ *
+ * data-html2canvas-ignore 가진 element 는 skip (modal 자체, lightbox 등).
+ * 반환 함수로 원본 style 복원.
+ */
+function pinFixedElementsForCapture(): () => void {
+  const restorers: Array<() => void> = [];
+  const all = document.querySelectorAll<HTMLElement>("*");
+  for (const el of Array.from(all)) {
+    if (el.hasAttribute("data-html2canvas-ignore")) continue;
+    const computed = window.getComputedStyle(el);
+    if (computed.position !== "fixed" && computed.position !== "sticky") continue;
+
+    const rect = el.getBoundingClientRect();
+    const original = {
+      position: el.style.position,
+      top: el.style.top,
+      left: el.style.left,
+      right: el.style.right,
+      bottom: el.style.bottom,
+      transform: el.style.transform,
+    };
+    el.style.position = "absolute";
+    el.style.top = `${rect.top + window.scrollY}px`;
+    el.style.left = `${rect.left + window.scrollX}px`;
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+    // translate 등이 absolute 시 겹쳐서 어긋날 수 있음 — reset
+    el.style.transform = "none";
+    restorers.push(() => {
+      el.style.position = original.position;
+      el.style.top = original.top;
+      el.style.left = original.left;
+      el.style.right = original.right;
+      el.style.bottom = original.bottom;
+      el.style.transform = original.transform;
+    });
+  }
+  return () => restorers.forEach((r) => r());
+}
+
 async function captureScreenshot(): Promise<{ blob: Blob | null; error: string | null }> {
+  let restore: (() => void) | null = null;
   try {
     // html2canvas-pro = html2canvas fork with modern CSS support (oklch / color-mix / lab / lch).
     // class-planner 의 Sidebar inline style 에 color-mix(in srgb, ...) 사용 — vanilla html2canvas 비호환.
     const mod = await import("html2canvas-pro");
     const html2canvas = (mod as { default: (...args: unknown[]) => Promise<HTMLCanvasElement> }).default;
 
-    // Viewport-only capture (사용자가 실제 본 화면 그대로).
-    // 이유: html2canvas-pro 가 position: fixed/sticky element 를 document bottom 으로
-    // 처리 → 사용자의 실제 viewport 와 시각 차이. floating toolbar 같은 fixed UI 가
-    // capture 시 위치 어긋남. width/height/x/y 로 window 시야 한정 → 실제 UX 그대로.
+    // STEP 1: fixed/sticky 요소들을 document coordinate 의 absolute 로 pin (modal/lightbox 제외).
+    // html2canvas-pro 가 fixed 를 document bottom 으로 보내는 known limitation 회피 — 사용자가
+    // 본 viewport 위치 그대로 capture.
+    restore = pinFixedElementsForCapture();
+
+    // STEP 2: viewport 시야 한정 capture (사용자가 실제 본 영역만)
     const scale = Math.min(window.devicePixelRatio || 1, 2); // 2x 까지 (1MB 한계 회피)
     const canvas = await html2canvas(document.body, {
       backgroundColor: null,
@@ -72,9 +119,16 @@ async function captureScreenshot(): Promise<{ blob: Blob | null; error: string |
       height: window.innerHeight,
       x: window.scrollX,
       y: window.scrollY,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
       ignoreElements: (el: Element) =>
         el instanceof HTMLElement && el.hasAttribute("data-html2canvas-ignore"),
     } as Record<string, unknown>);
+
+    // STEP 3: 원본 style 복원
+    restore();
+    restore = null;
+
     if (!(canvas instanceof HTMLCanvasElement)) {
       return { blob: null, error: "html2canvas 결과가 canvas 가 아닙니다." };
     }
@@ -86,8 +140,15 @@ async function captureScreenshot(): Promise<{ blob: Blob | null; error: string |
       );
     });
   } catch (err) {
+    // 예외 발생 시도 복원 보장
+    if (restore) {
+      try {
+        restore();
+      } catch {
+        /* ignore restore error */
+      }
+    }
     const message = err instanceof Error ? err.message : String(err);
-    // dev 환경에서는 console 출력 — omni-radar 가 capture 가능 (디버깅 단서)
     if (typeof console !== "undefined") {
       console.error("[FeedbackModal] captureScreenshot error:", err);
     }
