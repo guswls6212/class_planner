@@ -10,9 +10,11 @@ import {
   GraduationCap,
   Settings,
   LogIn,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
+import { FeedbackModal } from "./FeedbackModal";
 import type { LucideIcon } from "lucide-react";
 import { signOut } from "@/lib/auth/signOut";
 import { useMyRole } from "@/hooks/useMyRole";
@@ -141,6 +143,7 @@ export function Sidebar() {
   // switching reloads the page (cleanest way to reset all derived state).
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
   const [userIdForCreate, setUserIdForCreate] = useState<string | null>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
@@ -364,6 +367,33 @@ export function Sidebar() {
       </div>
 
       <div className={`mt-auto flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
+        {/* 피드백 보내기 — design-exploration feedback-channel-design Variant A 채택 (2026-05-24).
+            학원 멤버 (owner/admin/member) 만 노출. share-token viewer 차단. Phase 1 =
+            개발자 (HYUNJIN) 수신 only (proposal phase1-production-release Step 1.1 Option E). */}
+        {isLoggedIn && role !== null && (
+          <button
+            type="button"
+            onClick={() => setShowFeedback(true)}
+            aria-label="피드백 보내기"
+            title={expanded ? "피드백 보내기" : "피드백 보내기"}
+            data-testid="open-feedback-modal"
+            className={`group relative flex items-center h-10 rounded-admin-md transition-all ${
+              expanded
+                ? "w-full px-3 gap-3 bg-gradient-to-r from-amber-500/15 to-orange-500/15 hover:from-amber-500/25 hover:to-orange-500/25 border border-amber-500/30 hover:shadow-md"
+                : "justify-center w-10 hover:bg-amber-500/15 border border-transparent hover:border-amber-500/30"
+            } text-amber-300`}
+          >
+            <MessageSquare size={20} strokeWidth={1.5} className="flex-shrink-0" />
+            {expanded ? (
+              <span className="text-sm font-medium whitespace-nowrap">피드백 보내기</span>
+            ) : (
+              <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-admin-sm bg-[var(--color-bg-secondary)] px-2 py-1 text-caption text-[var(--color-text-primary)] opacity-0 group-hover:opacity-100 transition-opacity shadow-admin-sm z-50">
+                피드백 보내기
+              </span>
+            )}
+          </button>
+        )}
+
         {/* User info: email + role + logout (expanded + logged-in only) */}
         {expanded && <UserBottomSection role={role} />}
 
@@ -385,6 +415,11 @@ export function Sidebar() {
         userId={userIdForCreate}
         onClose={() => setShowCreateModal(false)}
         onCreated={handleAcademyCreated}
+      />
+      <FeedbackModal
+        isOpen={showFeedback}
+        userId={userIdForCreate}
+        onClose={() => setShowFeedback(false)}
       />
     </aside>
   );
