@@ -50,23 +50,38 @@ function captureClientMetadata(): ClientMetadata {
   };
 }
 
-async function captureScreenshot(): Promise<Blob | null> {
+async function captureScreenshot(): Promise<{ blob: Blob | null; error: string | null }> {
   try {
-    const mod = await import("html2canvas");
-    const html2canvas = (mod as unknown as { default: typeof import("html2canvas").default }).default;
+    // html2canvas-pro = html2canvas fork with modern CSS support (oklch / color-mix / lab / lch).
+    // class-planner 의 Sidebar inline style 에 color-mix(in srgb, ...) 사용 — vanilla html2canvas 비호환.
+    const mod = await import("html2canvas-pro");
+    const html2canvas = (mod as { default: (...args: unknown[]) => Promise<HTMLCanvasElement> }).default;
     const canvas = await html2canvas(document.body, {
       backgroundColor: null,
       scale: 1,
       logging: false,
       useCORS: true,
+      // foreignObjectRendering 은 일부 환경에서 fail — default false 유지
       ignoreElements: (el: Element) =>
         el instanceof HTMLElement && el.hasAttribute("data-html2canvas-ignore"),
+    } as Record<string, unknown>);
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return { blob: null, error: "html2canvas 결과가 canvas 가 아닙니다." };
+    }
+    return new Promise<{ blob: Blob | null; error: string | null }>((resolve) => {
+      canvas.toBlob(
+        (blob) => resolve({ blob, error: blob ? null : "blob 생성 실패" }),
+        "image/jpeg",
+        0.8,
+      );
     });
-    return new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.8);
-    });
-  } catch {
-    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // dev 환경에서는 console 출력 — omni-radar 가 capture 가능 (디버깅 단서)
+    if (typeof console !== "undefined") {
+      console.error("[FeedbackModal] captureScreenshot error:", err);
+    }
+    return { blob: null, error: message || "알 수 없는 캡처 오류" };
   }
 }
 
@@ -103,7 +118,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
   async function handleCaptureScreenshot() {
     setCapturing(true);
     try {
-      const blob = await captureScreenshot();
+      const { blob, error } = await captureScreenshot();
       if (blob) {
         setScreenshot(blob);
         // revoke previous URL 메모리 누수 회피
@@ -113,7 +128,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
       } else {
         setSubmit({
           kind: "error",
-          message: "스크린샷 캡처에 실패했습니다.",
+          message: `스크린샷 캡처 실패: ${error ?? "알 수 없는 오류"}. 텍스트만 전송 가능합니다.`,
         });
       }
     } finally {
