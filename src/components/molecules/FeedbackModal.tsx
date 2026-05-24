@@ -12,6 +12,7 @@ import {
   Send,
   X,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -137,9 +138,11 @@ async function captureScreenshot(): Promise<{ blob: Blob | null; error: string |
       err instanceof Error && err.name === "NotAllowedError"
         ? "화면 공유 권한이 거부됐습니다. 텍스트만 전송 가능합니다."
         : `캡처 실패: ${message}`;
-    if (typeof console !== "undefined") {
-      console.error("[FeedbackModal] captureScreenshot error:", err);
-    }
+    logger.error(
+      "[FeedbackModal] captureScreenshot error",
+      undefined,
+      err instanceof Error ? err : new Error(String(err)),
+    );
     return { blob: null, error: friendly };
   } finally {
     // STEP 4: stream 해제 + modal 복원
@@ -404,7 +407,6 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
                   title="클릭하면 크게 보기"
                   data-testid="feedback-screenshot-thumbnail"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={screenshotPreview}
                     alt="첨부 스크린샷 미리보기 (클릭 시 확대)"
