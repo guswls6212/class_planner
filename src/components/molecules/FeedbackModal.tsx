@@ -208,9 +208,10 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
         setScreenshotPreview(URL.createObjectURL(blob));
         setIncludeScreenshot(true);
       } else {
+        // captureScreenshot 이 이미 친절 메시지 (권한 거부 / 미지원 등) 반환 — wrapper prefix X
         setSubmit({
           kind: "error",
-          message: `스크린샷 캡처 실패: ${error ?? "알 수 없는 오류"}. 텍스트만 전송 가능합니다.`,
+          message: error ?? "스크린샷 캡처에 실패했습니다.",
         });
       }
     } finally {
