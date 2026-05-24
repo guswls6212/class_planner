@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, MessageSquare, Send, X, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  Camera,
+  CheckCircle2,
+  Image as ImageIcon,
+  Loader2,
+  MessageSquare,
+  Send,
+  X,
+} from "lucide-react";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -15,11 +24,60 @@ type SubmitState =
   | { kind: "success" }
   | { kind: "error"; message: string };
 
+interface ClientMetadata {
+  screen: { width: number; height: number };
+  viewport: { width: number; height: number };
+  devicePixelRatio: number;
+  referrer: string;
+  timezone: string;
+  locale: string;
+  online: boolean;
+  cookieEnabled: boolean;
+  historyLength: number;
+}
+
+function captureClientMetadata(): ClientMetadata {
+  return {
+    screen: { width: window.screen.width, height: window.screen.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    devicePixelRatio: window.devicePixelRatio,
+    referrer: document.referrer,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    locale: navigator.language,
+    online: navigator.onLine,
+    cookieEnabled: navigator.cookieEnabled,
+    historyLength: window.history.length,
+  };
+}
+
+async function captureScreenshot(): Promise<Blob | null> {
+  try {
+    const mod = await import("html2canvas");
+    const html2canvas = (mod as unknown as { default: typeof import("html2canvas").default }).default;
+    const canvas = await html2canvas(document.body, {
+      backgroundColor: null,
+      scale: 1,
+      logging: false,
+      useCORS: true,
+      ignoreElements: (el: Element) =>
+        el instanceof HTMLElement && el.hasAttribute("data-html2canvas-ignore"),
+    });
+    return new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.8);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
   const [body, setBody] = useState("");
+  const [includeScreenshot, setIncludeScreenshot] = useState(false);
+  const [screenshot, setScreenshot] = useState<Blob | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
   const [submit, setSubmit] = useState<SubmitState>({ kind: "idle" });
 
-  // ESC 키 닫기
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
@@ -29,15 +87,46 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  // 모달 닫힐 때 상태 초기화 (1초 후 — success 메시지 보이게)
+  // 모달 닫힐 때 상태 초기화 (0.8s 후 — success 메시지 보이게)
   useEffect(() => {
     if (isOpen) return;
     const timer = setTimeout(() => {
       setBody("");
+      setIncludeScreenshot(false);
+      setScreenshot(null);
+      setScreenshotPreview(null);
       setSubmit({ kind: "idle" });
     }, 800);
     return () => clearTimeout(timer);
   }, [isOpen]);
+
+  async function handleCaptureScreenshot() {
+    setCapturing(true);
+    try {
+      const blob = await captureScreenshot();
+      if (blob) {
+        setScreenshot(blob);
+        // revoke previous URL 메모리 누수 회피
+        if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+        setScreenshotPreview(URL.createObjectURL(blob));
+        setIncludeScreenshot(true);
+      } else {
+        setSubmit({
+          kind: "error",
+          message: "스크린샷 캡처에 실패했습니다.",
+        });
+      }
+    } finally {
+      setCapturing(false);
+    }
+  }
+
+  function handleRemoveScreenshot() {
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshot(null);
+    setScreenshotPreview(null);
+    setIncludeScreenshot(false);
+  }
 
   if (!isOpen) return null;
 
@@ -57,16 +146,23 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
 
     setSubmit({ kind: "submitting" });
     try {
-      const res = await fetch(`/api/feedback?userId=${encodeURIComponent(userId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          body: trimmed,
-          category: "general",
-          url: typeof window !== "undefined" ? window.location.href : null,
-          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
-        }),
-      });
+      const metadata = captureClientMetadata();
+
+      // multipart formData (스크린샷 첨부 가능 + JSON metadata 전달)
+      const formData = new FormData();
+      formData.append("body", trimmed);
+      formData.append("category", "general");
+      formData.append("url", window.location.href);
+      formData.append("userAgent", navigator.userAgent);
+      formData.append("metadata", JSON.stringify(metadata));
+      if (includeScreenshot && screenshot) {
+        formData.append("screenshot", screenshot, "screenshot.jpg");
+      }
+
+      const res = await fetch(
+        `/api/feedback?userId=${encodeURIComponent(userId)}`,
+        { method: "POST", body: formData },
+      );
       const data = (await res.json().catch(() => ({}))) as {
         success?: boolean;
         error?: string;
@@ -79,7 +175,6 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
         return;
       }
       setSubmit({ kind: "success" });
-      // 1.5초 후 자동 닫기
       setTimeout(() => onClose(), 1500);
     } catch (err) {
       setSubmit({
@@ -102,10 +197,12 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="feedback-modal-title"
+      data-html2canvas-ignore="true"
     >
       <div
         className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
+        data-html2canvas-ignore="true"
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
@@ -145,7 +242,6 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
           </div>
         ) : (
           <>
-            {/* Textarea */}
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -156,12 +252,76 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
               data-testid="feedback-textarea"
             />
 
-            {/* Char count */}
             <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--color-text-muted)]">
               <span>{body.length} / 4000</span>
               <span>
-                현재 페이지: <code className="font-mono">{typeof window !== "undefined" ? window.location.pathname : ""}</code>
+                현재 페이지:{" "}
+                <code className="font-mono">
+                  {typeof window !== "undefined" ? window.location.pathname : ""}
+                </code>
               </span>
+            </div>
+
+            {/* Screenshot section */}
+            <div className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]/40 p-3">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--color-text-secondary)]">
+                  <ImageIcon className="w-3.5 h-3.5 text-amber-300" />
+                  스크린샷 첨부
+                  <span className="text-[10px] text-[var(--color-text-muted)] font-normal">
+                    (선택)
+                  </span>
+                </div>
+                {!screenshot ? (
+                  <button
+                    type="button"
+                    onClick={handleCaptureScreenshot}
+                    disabled={capturing || isSubmitting}
+                    data-testid="feedback-capture-screenshot"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
+                  >
+                    {capturing ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Camera className="w-3 h-3" />
+                    )}
+                    {capturing ? "캡처 중..." : "현재 화면 캡처"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleRemoveScreenshot}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-rose-300 hover:bg-rose-500/10"
+                  >
+                    <X className="w-3 h-3" /> 제거
+                  </button>
+                )}
+              </div>
+              {screenshotPreview ? (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={screenshotPreview}
+                    alt="첨부 스크린샷 미리보기"
+                    className="w-full rounded-md border border-[var(--color-border)] max-h-32 object-cover"
+                  />
+                  <p className="text-[9.5px] text-[var(--color-text-muted)] mt-1 leading-snug">
+                    Privacy: 학생/강사 이름이 화면에 보이면 image 에 포함됩니다. 민감 정보 노출 우려 시 제거하세요.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[9.5px] text-[var(--color-text-muted)] leading-snug">
+                  버튼 누르면 모달 제외한 현재 화면 캡처. 1MB 이하 JPEG. 학원
+                  내부 정보 (학생/강사 이름) 노출 가능 — 의식적 선택.
+                </p>
+              )}
+            </div>
+
+            {/* Metadata info banner */}
+            <div className="mt-2 text-[9.5px] text-[var(--color-text-muted)] leading-snug">
+              자동 첨부: IP / 브라우저 / 화면 크기 / timezone / 페이지 history
+              — 디버깅 용도.
             </div>
 
             {/* Error message */}
@@ -189,7 +349,11 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
                 data-testid="feedback-submit"
                 className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-[12px] text-amber-300 hover:bg-amber-500/30 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Send className="w-3 h-3" />
+                {isSubmitting ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Send className="w-3 h-3" />
+                )}
                 {isSubmitting ? "전송 중..." : "보내기"}
               </button>
             </div>
