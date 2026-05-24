@@ -51,47 +51,104 @@ function captureClientMetadata(): ClientMetadata {
   };
 }
 
+/**
+ * Native Screen Capture API 으로 capture.
+ *
+ * Browser 의 navigator.mediaDevices.getDisplayMedia() — browser 가 직접 화면을
+ * 화면 그대로 capture. fixed/sticky/transform/modern CSS 모두 정확 처리 (html2canvas
+ * lib 의 layout limitation 회피).
+ *
+ * 흐름:
+ *   1. modal 임시 hide (capture 결과에서 modal 자체 제외)
+ *   2. getDisplayMedia 호출 → browser prompt ("이 탭" / "창" / "전체 화면" 선택)
+ *   3. MediaStream 의 첫 frame 을 video → canvas drawImage → blob
+ *   4. stream 해제 + modal 복원
+ *
+ * 한계 / 사용자 안내:
+ *   - Browser 권한 prompt 첫 사용 시 1회 (이후 browser 가 권한 기억)
+ *   - HTTPS 또는 localhost 필요 (production OK)
+ *   - 사용자가 권한 거부 시 → error
+ *   - Chrome 의 `preferCurrentTab` 으로 "이 탭" 자동 highlight (Firefox/Safari fallback)
+ */
 async function captureScreenshot(): Promise<{ blob: Blob | null; error: string | null }> {
-  try {
-    // html2canvas-pro = html2canvas fork with modern CSS support (oklch / color-mix / lab / lch).
-    // class-planner 의 Sidebar inline style 에 color-mix(in srgb, ...) 사용 — vanilla html2canvas 비호환.
-    const mod = await import("html2canvas-pro");
-    const html2canvas = (mod as { default: (...args: unknown[]) => Promise<HTMLCanvasElement> }).default;
+  // STEP 1: modal 임시 hide — capture 결과에서 modal overlay 제외.
+  // visibility 사용 (display 가 아닌 — layout shift 회피).
+  const modals = Array.from(
+    document.querySelectorAll<HTMLElement>("[data-feedback-modal-root]"),
+  );
+  const originalVisibility: Array<{ el: HTMLElement; value: string }> = [];
+  for (const m of modals) {
+    originalVisibility.push({ el: m, value: m.style.visibility });
+    m.style.visibility = "hidden";
+  }
 
-    // Viewport-only capture (사용자가 실제 본 화면 그대로).
-    // 이유: html2canvas-pro 가 position: fixed/sticky element 를 document bottom 으로
-    // 처리 → 사용자의 실제 viewport 와 시각 차이. floating toolbar 같은 fixed UI 가
-    // capture 시 위치 어긋남. width/height/x/y 로 window 시야 한정 → 실제 UX 그대로.
-    const scale = Math.min(window.devicePixelRatio || 1, 2); // 2x 까지 (1MB 한계 회피)
-    const canvas = await html2canvas(document.body, {
-      backgroundColor: null,
-      scale,
-      logging: false,
-      useCORS: true,
-      width: window.innerWidth,
-      height: window.innerHeight,
-      x: window.scrollX,
-      y: window.scrollY,
-      ignoreElements: (el: Element) =>
-        el instanceof HTMLElement && el.hasAttribute("data-html2canvas-ignore"),
-    } as Record<string, unknown>);
-    if (!(canvas instanceof HTMLCanvasElement)) {
-      return { blob: null, error: "html2canvas 결과가 canvas 가 아닙니다." };
+  // 다음 frame 까지 wait (modal hide 적용 보장)
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+
+  let stream: MediaStream | null = null;
+  try {
+    // STEP 2: Native API. preferCurrentTab 은 Chrome only experimental — TS 정의에 없음, cast.
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      return {
+        blob: null,
+        error: "이 브라우저는 화면 캡처를 지원하지 않습니다. 텍스트만 전송 가능합니다.",
+      };
     }
-    return new Promise<{ blob: Blob | null; error: string | null }>((resolve) => {
-      canvas.toBlob(
-        (blob) => resolve({ blob, error: blob ? null : "blob 생성 실패" }),
-        "image/jpeg",
-        0.8,
-      );
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        displaySurface: "browser",
+      },
+      audio: false,
+      preferCurrentTab: true,
+    } as DisplayMediaStreamOptions & { preferCurrentTab?: boolean });
+
+    // STEP 3: video → canvas → blob
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("video metadata load 실패"));
     });
+    await video.play();
+
+    // settling 위해 100ms wait (첫 frame 안정화)
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return { blob: null, error: "Canvas 2D context unavailable" };
+    }
+    ctx.drawImage(video, 0, 0);
+
+    // blob 변환 (JPEG 0.8 quality, 1MB 한계 위해)
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.8),
+    );
+    return { blob, error: blob ? null : "blob 생성 실패" };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // dev 환경에서는 console 출력 — omni-radar 가 capture 가능 (디버깅 단서)
+    // user denied 의 경우 친절 안내
+    const friendly =
+      err instanceof Error && err.name === "NotAllowedError"
+        ? "화면 공유 권한이 거부됐습니다. 텍스트만 전송 가능합니다."
+        : `캡처 실패: ${message}`;
     if (typeof console !== "undefined") {
       console.error("[FeedbackModal] captureScreenshot error:", err);
     }
-    return { blob: null, error: message || "알 수 없는 캡처 오류" };
+    return { blob: null, error: friendly };
+  } finally {
+    // STEP 4: stream 해제 + modal 복원
+    if (stream) {
+      stream.getTracks().forEach((t) => t.stop());
+    }
+    for (const { el, value } of originalVisibility) {
+      el.style.visibility = value;
+    }
   }
 }
 
@@ -237,7 +294,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="feedback-modal-title"
-      data-html2canvas-ignore="true"
+      data-feedback-modal-root="true"
     >
       <div
         className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-2xl w-full max-w-md p-6 shadow-2xl"
