@@ -19,6 +19,7 @@ import { useMyRole } from "@/hooks/useMyRole";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationDropdown } from "../molecules/NotificationDropdown";
+import CreateAcademyModal from "./CreateAcademyModal";
 
 interface SidebarItem {
   href: string;
@@ -139,7 +140,9 @@ export function Sidebar() {
   // localStorage on mount; the dropdown lists all the user's academies and
   // switching reloads the page (cleanest way to reset all derived state).
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
+  const [userIdForCreate, setUserIdForCreate] = useState<string | null>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -148,10 +151,27 @@ export function Sidebar() {
         ? localStorage.getItem("supabase_user_id")
         : null;
     if (!userId) return;
+    setUserIdForCreate(userId);
     import("@/lib/localStorageCrud").then(({ getActiveAcademyId }) => {
       setActiveAcademyId(getActiveAcademyId(userId));
     });
   }, []);
+
+  async function handleAcademyCreated(newAcademyId: string) {
+    const userId = userIdForCreate;
+    if (!userId) {
+      setShowCreateModal(false);
+      return;
+    }
+    await fetch("/api/auth/set-active-academy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, academyId: newAcademyId }),
+    }).catch(() => {});
+    const { setActiveAcademyId: setActive } = await import("@/lib/localStorageCrud");
+    setActive(userId, newAcademyId);
+    window.location.reload();
+  }
 
   // Close switcher dropdown on outside click.
   useEffect(() => {
@@ -299,19 +319,20 @@ export function Sidebar() {
               </div>
             )}
             <div className="border-t border-slate-700 mt-1 pt-1">
-              {/* "새 학원 만들기" — ADR-019에 따라 의도적 미구현.
-                  정책 (ADR-019): owner 1개 + invited 1개 = 최대 2학원.
-                  학원 추가 기능(POST /api/academies)은 분원/멀티-브랜드 요구
-                  발생 시점에 도입 (정책 5 트리거). 그때 sidebar 활성화 + DB
-                  constraint + API check 함께. UAT 시나리오에는 미포함. */}
+              {/* "새 학원 만들기" — ADR-023 (2026-05-24) 다중 학원 무제한.
+                  본인 owner 학원 무제한. POST /api/academies 신규 endpoint 사용.
+                  Premium 가치는 학원 수 limit 이 아닌 + feature (분점 통합
+                  대시보드 등) 으로 차별화 (ADR-022). */}
               <button
                 type="button"
-                disabled
-                aria-disabled="true"
-                title="본인 학원 1개 제한 (ADR-019)"
-                className="w-full px-3 py-2 text-left text-[11px] text-slate-500 cursor-not-allowed opacity-50 rounded-lg"
+                onClick={() => {
+                  setShowSwitcher(false);
+                  setShowCreateModal(true);
+                }}
+                data-testid="open-create-academy-modal"
+                className="w-full px-3 py-2 text-left text-[11px] text-amber-300 hover:bg-slate-800 rounded-lg"
               >
-                + 새 학원 만들기 <span className="text-[10px] text-slate-600">(1개 제한)</span>
+                + 새 학원 만들기
               </button>
             </div>
           </div>
@@ -359,6 +380,12 @@ export function Sidebar() {
             : <PanelLeftOpen size={16} strokeWidth={2} />}
         </button>
       </div>
+      <CreateAcademyModal
+        isOpen={showCreateModal}
+        userId={userIdForCreate}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={handleAcademyCreated}
+      />
     </aside>
   );
 }

@@ -1,9 +1,29 @@
 # ADR-019: First-user owner-enforcement + Academy Singularity (1+1) Policy
 
-**상태:** Accepted
+**상태:** 정책 1만 유효 · 정책 2/3 은 ADR-023 으로 supersede (2026-05-24)
 **일자:** 2026-05-20
 **관련 PR:** #413 (예정)
-**관련 ADR:** ADR-002 (Academy 멀티테넌트 아키텍처), ADR-013 (Anonymous migration), ADR-015 (Teacher permission domain)
+**관련 ADR:** ADR-002 (Academy 멀티테넌트 아키텍처), ADR-013 (Anonymous migration), ADR-015 (Teacher permission domain), ADR-023 (다중 학원 무제한 + Premium 차별화)
+
+## ⚠️ 2026-05-24 — 정책 2/3 supersede
+
+ADR-019 의 정책 2 (Academy Singularity 1+1) + 정책 3 (학원 추가 기능 deferred) 는
+**ADR-023 (다중 학원 무제한 + Premium feature 차별화)** 로 supersede.
+
+배경: monetization 전략 검토 (ADR-022) + Slack/Linear/Notion SaaS 표준 패턴 분석
+결과, 본인 학원 수 자체에 hard limit 두는 것은 (a) SaaS 표준 어긋남, (b) 사용자
+신뢰 손상, (c) viral 효과 막힘. Premium 가치는 학원 수 limit 이 아닌 + feature
+(분점 통합 대시보드 등) 으로 차별화.
+
+**유효 정책**:
+- 정책 1 (첫 학원 생성자 = owner 강제) — 그대로 유효
+- 정책 2 (Academy Singularity 1+1) — **superseded** (본인 학원 무제한 + 초대 무제한)
+- 정책 3 (학원 추가 기능 deferred) — **superseded** (POST /api/academies 구현)
+- 정책 4 (강제 layer) — 정책 2 supersede 되어 자연 폐기
+
+상세는 ADR-023 참조.
+
+---
 
 ## 컨텍스트
 
