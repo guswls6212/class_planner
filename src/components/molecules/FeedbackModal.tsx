@@ -473,7 +473,6 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
           aria-label="스크린샷 크게 보기"
           data-html2canvas-ignore="true"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={screenshotPreview}
             alt="첨부 스크린샷 (전체 크기)"
