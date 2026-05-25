@@ -53,6 +53,7 @@
     "jsdom": "^26.1.0",
     "jspdf": "^3.0.2",
     "lucide-react": "^1.8.0",
+    "modern-screenshot": "^4.7.0",
     "next": "15.5.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
