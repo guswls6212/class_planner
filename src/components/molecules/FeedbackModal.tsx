@@ -164,7 +164,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
     return () => window.removeEventListener("keydown", onKey, { capture: true });
   }, [lightboxOpen]);
 
-  async function handleCaptureScreenshot() {
+  async function handleCaptureScreenshot(openCropperAfter = false) {
     setCapturing(true);
     try {
       const { blob, error } = await captureScreenshot();
@@ -174,6 +174,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
         if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
         setScreenshotPreview(URL.createObjectURL(blob));
         setIncludeScreenshot(true);
+        if (openCropperAfter) setCropperOpen(true);
       } else {
         // captureScreenshot 이 이미 친절 메시지 (권한 거부 / 미지원 등) 반환 — wrapper prefix X
         setSubmit({
@@ -347,20 +348,36 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
                   </span>
                 </div>
                 {!screenshot ? (
-                  <button
-                    type="button"
-                    onClick={handleCaptureScreenshot}
-                    disabled={capturing || isSubmitting}
-                    data-testid="feedback-capture-screenshot"
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
-                  >
-                    {capturing ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Camera className="w-3 h-3" />
-                    )}
-                    {capturing ? "캡처 중..." : "전체 페이지 캡처"}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCaptureScreenshot(false)}
+                      disabled={capturing || isSubmitting}
+                      data-testid="feedback-capture-screenshot"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
+                    >
+                      {capturing ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Camera className="w-3 h-3" />
+                      )}
+                      {capturing ? "캡처 중..." : "전체 페이지"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCaptureScreenshot(true)}
+                      disabled={capturing || isSubmitting}
+                      data-testid="feedback-capture-and-crop"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/15 border border-amber-500/30 text-[11px] text-amber-300 hover:bg-amber-500/25 disabled:opacity-40"
+                    >
+                      {capturing ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Crop className="w-3 h-3" />
+                      )}
+                      {capturing ? "캡처 중..." : "영역 자르기"}
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex items-center gap-1">
                     <button

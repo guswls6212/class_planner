@@ -162,6 +162,10 @@ export function FeedbackScreenshotCropper({
       aria-label="스크린샷 영역 자르기"
       data-feedback-modal-root="true"
       data-html2canvas-ignore="true"
+      // 모든 click/pointer event 가 FeedbackModal backdrop 으로 bubble 되지 않도록 차단
+      // (backdrop 의 onClick={onClose} 가 cropper button click 도 받아 modal 이 닫히던 버그 fix)
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 bg-black/60 border-b border-white/10">
