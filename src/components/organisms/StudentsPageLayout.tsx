@@ -5,9 +5,11 @@ import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
 import { Skeleton } from "@/components/atoms/Skeleton";
+import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
 import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
+import { Plus, Users } from "lucide-react";
 import { GradeBadge } from "@/components/atoms/GradeBadge";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { showSuccess, showToast } from "@/lib/toast";
@@ -175,9 +177,33 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
         {/* Student list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {query ? "검색 결과 없음" : "학생을 추가해주세요"}
-            </li>
+            query ? (
+              <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
+                검색 결과 없음
+              </li>
+            ) : (
+              // D Empty state CTA (phase1-production-release Step 1.4) — 신규 가입자 첫 행동 유도.
+              // mockup: internal-dashboard /strategy/onboarding-walkthrough § Part D
+              <li className="p-4">
+                <EmptyStateCTA
+                  data-testid="empty-students-cta"
+                  icon={<Users size={26} strokeWidth={1.5} />}
+                  title="아직 등록된 학생이 없어요"
+                  description={"학생을 추가하면\n시간표에 배치할 수 있어요"}
+                  primaryAction={
+                    canManage
+                      ? {
+                          label: "첫 학생 추가",
+                          onClick: () => setIsAddDetailOpen(true),
+                          icon: <Plus size={14} strokeWidth={2.5} />,
+                          ariaLabel: "학생 상세 등록 모달 열기",
+                          "data-testid": "empty-students-add",
+                        }
+                      : undefined
+                  }
+                />
+              </li>
+            )
           ) : (
             filtered.map((student) => {
               const studentCode = codeByStudentId.get(student.id);

@@ -65,12 +65,16 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("학생이 없을 때 빈 상태 메시지가 표시되어야 한다", () => {
+  it("학생이 없을 때 EmptyStateCTA 카드가 표시되어야 한다", () => {
     const emptyProps = { ...mockProps, students: [] };
 
     render(<StudentsPageLayout {...emptyProps} />);
 
-    expect(screen.getByText(/학생을 추가해주세요/)).toBeInTheDocument();
+    // D Empty state CTA (phase1-production-release Step 1.4) — inline 텍스트 →
+    // EmptyStateCTA molecule 으로 교체 (2026-05-25).
+    expect(screen.getByTestId("empty-students-cta")).toBeInTheDocument();
+    expect(screen.getByText(/아직 등록된 학생이 없어요/)).toBeInTheDocument();
+    expect(screen.getByTestId("empty-students-add")).toBeInTheDocument();
   });
 
   // errorMessage 배너 제거됨 (ADR-014 D3) — 토스트가 SSOT, 인라인 배너 표시 안 함.
