@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Camera,
   CheckCircle2,
+  Crop,
   Image as ImageIcon,
   Loader2,
   Maximize2,
@@ -13,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { FeedbackScreenshotCropper } from "./FeedbackScreenshotCropper";
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -121,15 +123,18 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
   const [capturing, setCapturing] = useState(false);
   const [submit, setSubmit] = useState<SubmitState>({ kind: "idle" });
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [cropperOpen, setCropperOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
+      // cropper open 중이면 cropper 의 자체 ESC handler (capture phase) 우선
+      if (cropperOpen) return;
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, cropperOpen]);
 
   // 모달 닫힐 때 상태 초기화 (0.8s 후 — success 메시지 보이게)
   useEffect(() => {
@@ -141,6 +146,7 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
       setScreenshotPreview(null);
       setSubmit({ kind: "idle" });
       setLightboxOpen(false);
+      setCropperOpen(false);
     }, 800);
     return () => clearTimeout(timer);
   }, [isOpen]);
@@ -185,6 +191,15 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
     setScreenshot(null);
     setScreenshotPreview(null);
     setIncludeScreenshot(false);
+  }
+
+  function handleCropConfirm(croppedBlob: Blob, croppedUrl: string) {
+    // 이전 preview URL 정리 후 cropped blob 으로 교체
+    if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    setScreenshot(croppedBlob);
+    setScreenshotPreview(croppedUrl);
+    setIncludeScreenshot(true);
+    setCropperOpen(false);
   }
 
   if (!isOpen) return null;
@@ -347,14 +362,25 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
                     {capturing ? "캡처 중..." : "전체 페이지 캡처"}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleRemoveScreenshot}
-                    disabled={isSubmitting}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-rose-300 hover:bg-rose-500/10"
-                  >
-                    <X className="w-3 h-3" /> 제거
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCropperOpen(true)}
+                      disabled={isSubmitting}
+                      data-testid="feedback-open-cropper"
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-amber-300 hover:bg-amber-500/10"
+                    >
+                      <Crop className="w-3 h-3" /> 자르기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveScreenshot}
+                      disabled={isSubmitting}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-rose-300 hover:bg-rose-500/10"
+                    >
+                      <X className="w-3 h-3" /> 제거
+                    </button>
+                  </div>
                 )}
               </div>
               {screenshotPreview && (
@@ -459,6 +485,15 @@ export function FeedbackModal({ isOpen, userId, onClose }: FeedbackModalProps) {
             <span>로 닫기</span>
           </div>
         </div>
+      )}
+
+      {/* Cropper — drag-selectable 영역 자르기 (variant B 옵션). lightbox 보다 위 z-[120] */}
+      {cropperOpen && screenshotPreview && (
+        <FeedbackScreenshotCropper
+          imageUrl={screenshotPreview}
+          onCancel={() => setCropperOpen(false)}
+          onConfirm={handleCropConfirm}
+        />
       )}
     </div>
   );
