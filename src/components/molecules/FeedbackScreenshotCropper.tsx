@@ -112,18 +112,45 @@ export function FeedbackScreenshotCropper({
   }
 
   async function handleConfirm() {
-    if (!selection || !imageRef.current) return;
+    if (!selection || !imageRef.current || !containerRef.current) return;
     const img = imageRef.current;
     if (!img.naturalWidth || !img.naturalHeight) return;
 
     setConfirming(true);
     try {
-      const scaleX = img.naturalWidth / img.clientWidth;
-      const scaleY = img.naturalHeight / img.clientHeight;
-      const sx = Math.round(selection.x * scaleX);
-      const sy = Math.round(selection.y * scaleY);
-      const sw = Math.round(selection.width * scaleX);
-      const sh = Math.round(selection.height * scaleY);
+      // 좌표 변환 — selection 은 container 기준, 변환 단계:
+      //   container 좌표
+      //   → img element box 좌표 (container padding + img element position)
+      //   → object-contain content 좌표 (box 안의 letterbox offset 제거)
+      //   → image natural 좌표 (contain ratio scale 적용)
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const imgRect = img.getBoundingClientRect();
+      const imgBoxLeft = imgRect.left - containerRect.left;
+      const imgBoxTop = imgRect.top - containerRect.top;
+
+      // object-contain: image content 가 img box 안에서 aspect 유지하며 fit.
+      // 더 작은 비율이 fit 되는 축, 다른 축에 letterbox (가운데 정렬).
+      const ratioW = img.clientWidth / img.naturalWidth;
+      const ratioH = img.clientHeight / img.naturalHeight;
+      const containRatio = Math.min(ratioW, ratioH);
+      const displayedWidth = img.naturalWidth * containRatio;
+      const displayedHeight = img.naturalHeight * containRatio;
+      const letterboxX = (img.clientWidth - displayedWidth) / 2;
+      const letterboxY = (img.clientHeight - displayedHeight) / 2;
+
+      // selection (container 좌표) 의 image content 기준 좌표
+      const contentLeft = imgBoxLeft + letterboxX;
+      const contentTop = imgBoxTop + letterboxY;
+      const naturalX = (selection.x - contentLeft) / containRatio;
+      const naturalY = (selection.y - contentTop) / containRatio;
+      const naturalW = selection.width / containRatio;
+      const naturalH = selection.height / containRatio;
+
+      // image bounds 안으로 clamp (사용자가 image 밖 drag 시 잘림 방지)
+      const sx = Math.max(0, Math.min(img.naturalWidth - 1, Math.round(naturalX)));
+      const sy = Math.max(0, Math.min(img.naturalHeight - 1, Math.round(naturalY)));
+      const sw = Math.max(1, Math.min(img.naturalWidth - sx, Math.round(naturalW)));
+      const sh = Math.max(1, Math.min(img.naturalHeight - sy, Math.round(naturalH)));
 
       const canvas = document.createElement("canvas");
       canvas.width = sw;
