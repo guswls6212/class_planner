@@ -236,7 +236,6 @@ export function FeedbackScreenshotCropper({
         onPointerCancel={handlePointerUp}
         data-testid="feedback-crop-canvas"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- preview Blob URL */}
         <img
           ref={imageRef}
           src={imageUrl}
