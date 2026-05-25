@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp, Shield } from "lucide-react";
 import { Select } from "@/components/atoms/Select";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
@@ -1302,6 +1302,30 @@ export default function SettingsPage() {
 
       {/* 시간표 운영시간 — useTimeRange + writeStoredRange 사용 */}
       <OperatingHoursSection userId={userId} />
+
+      {/* phase1-release-readiness rank 6 (발견성) — 데이터 복구 발견성 강화.
+          DataHistorySection 위에 amber hint 카드 추가하여 사용자가 데이터
+          복구 기능 존재를 사고 발생 전 인지. mockup:
+          /strategy/discoverability-attendance-recovery § E */}
+      {userId && canManage && (
+        <section
+          className="bg-amber-500/[0.07] border border-amber-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
+          data-testid="data-recovery-hint"
+        >
+          <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+            <Shield className="w-4 h-4 text-amber-300" />
+          </div>
+          <div className="text-[13px] leading-relaxed">
+            <p className="text-amber-200 font-medium">
+              안전 자동 백업 활성
+            </p>
+            <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
+              학생/시간표 실수 삭제 시 시점 복구 가능. 아래 &apos;데이터 이력&apos;
+              섹션에서 스냅샷 목록 확인.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
       {userId && <DataHistorySection userId={userId} />}
