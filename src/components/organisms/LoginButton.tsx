@@ -20,7 +20,12 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/students` },
+      options: {
+        redirectTo: `${window.location.origin}/students`,
+        // prompt=select_account — multi-account 사용자가 다른 Google 계정 선택 가능.
+        // Chrome 프로필 단일 계정 시 chooser 자동 skip 회피 (production silent fail).
+        queryParams: { prompt: "select_account" },
+      },
     });
     if (error) {
       logger.error("Google 로그인 에러:", undefined, error as Error);
