@@ -136,8 +136,9 @@ export async function POST(request: NextRequest) {
       teacherEmail = teacher.email ?? null;
     }
 
+    const rawHours = Number(process.env.INVITE_EXPIRES_HOURS);
     const inviteExpiresHours =
-      Number(process.env.INVITE_EXPIRES_HOURS) || 24;
+      Number.isFinite(rawHours) && rawHours >= 0 ? rawHours : 24;
     const expiresAt = new Date(
       Date.now() + inviteExpiresHours * 60 * 60 * 1000
     ).toISOString();

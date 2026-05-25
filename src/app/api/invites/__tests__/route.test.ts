@@ -410,4 +410,131 @@ describe("POST /api/invites", () => {
     expect(expiresAtMs).toBeGreaterThan(before + 23 * oneHour);
     expect(expiresAtMs).toBeLessThan(before + 25 * oneHour);
   });
+
+  it("INVITE_EXPIRES_HOURS=0 환경변수 설정 시 0시간(즉시 만료)이 적용된다", async () => {
+    vi.stubEnv("INVITE_EXPIRES_HOURS", "0");
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-zero", token: "zzz", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-02" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const before = Date.now();
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    const insertPayload = insertMock.mock.calls[0][0];
+    const expiresAtMs = new Date(insertPayload.expires_at).getTime();
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before);
+    expect(expiresAtMs).toBeLessThan(before + 1000);
+    vi.unstubAllEnvs();
+  });
+
+  it("INVITE_EXPIRES_HOURS=168 환경변수 설정 시 168시간(7일)이 적용된다", async () => {
+    vi.stubEnv("INVITE_EXPIRES_HOURS", "168");
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-week", token: "qqq", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-02" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const before = Date.now();
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    const insertPayload = insertMock.mock.calls[0][0];
+    const expiresAtMs = new Date(insertPayload.expires_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    expect(expiresAtMs).toBeGreaterThan(before + 167 * oneHour);
+    expect(expiresAtMs).toBeLessThan(before + 169 * oneHour);
+    vi.unstubAllEnvs();
+  });
+
+  it("INVITE_EXPIRES_HOURS이 숫자가 아닌 값이면 default 24시간으로 fallback", async () => {
+    vi.stubEnv("INVITE_EXPIRES_HOURS", "not-a-number");
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-invalid", token: "www", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-02" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const before = Date.now();
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    const insertPayload = insertMock.mock.calls[0][0];
+    const expiresAtMs = new Date(insertPayload.expires_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    expect(expiresAtMs).toBeGreaterThan(before + 23 * oneHour);
+    expect(expiresAtMs).toBeLessThan(before + 25 * oneHour);
+    vi.unstubAllEnvs();
+  });
+
+  it("INVITE_EXPIRES_HOURS이 음수면 default 24시간으로 fallback", async () => {
+    vi.stubEnv("INVITE_EXPIRES_HOURS", "-5");
+    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+
+    const insertMock = vi.fn();
+    mockFrom.mockReturnValue({
+      insert: insertMock.mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "tok-neg", token: "nnn", role: "admin", expires_at: "2099-01-01", created_at: "2026-05-02" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const before = Date.now();
+    const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
+      method: "POST",
+      body: JSON.stringify({ role: "admin" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    await POST(req);
+
+    const insertPayload = insertMock.mock.calls[0][0];
+    const expiresAtMs = new Date(insertPayload.expires_at).getTime();
+    const oneHour = 60 * 60 * 1000;
+    expect(expiresAtMs).toBeGreaterThan(before + 23 * oneHour);
+    expect(expiresAtMs).toBeLessThan(before + 25 * oneHour);
+    vi.unstubAllEnvs();
+  });
 });
