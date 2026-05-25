@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import React from "react";
+import AnalyticsTracker from "./_components/AnalyticsTracker";
 import RootProviders from "./_components/RootProviders";
 import "./globals.css";
 
@@ -54,6 +55,7 @@ export default function RootLayout({
           <script src="/uat/console-tools.js" defer />
         )}
         <RootProviders>{children}</RootProviders>
+        <AnalyticsTracker />
       </body>
     </html>
   );
