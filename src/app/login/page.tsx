@@ -33,7 +33,13 @@ const LoginPage: React.FC = () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/` },
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          // prompt=select_account — Chrome 프로필이 단일 Google 계정 로그인 상태일 때
+          // chooser 화면이 skip 되어 다른 계정으로 로그인 불가한 사고 (production silent
+          // fail) 회피. multi-account 표준 패턴 (Slack/Notion/Linear 동일).
+          queryParams: { prompt: "select_account" },
+        },
       });
       if (error) {
         setError("로그인에 실패했습니다. 다시 시도해주세요.");

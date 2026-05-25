@@ -149,7 +149,13 @@ export default function InvitePage({
     localStorage.setItem(PENDING_INVITE_KEY, token);
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/invite/${token}` },
+      options: {
+        redirectTo: `${window.location.origin}/invite/${token}`,
+        // prompt=select_account — 초대받은 사용자가 Chrome 의 기본 계정과 다른 Google
+        // 계정으로 로그인 가능. 초대 흐름에선 특히 중요 (운영자가 친구 계정으로 초대 받고
+        // 본인 계정으로 가입하는 케이스 흔함)
+        queryParams: { prompt: "select_account" },
+      },
     });
   }
 
@@ -219,7 +225,13 @@ export default function InvitePage({
     await supabase.auth.signOut();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/invite/${token}` },
+      options: {
+        redirectTo: `${window.location.origin}/invite/${token}`,
+        // prompt=select_account — handleSwitchAccount 의 의도가 명시적 계정 전환이므로
+        // chooser 필수. signOut() 만으로는 Chrome 의 Google 세션 보존 시 같은 계정 자동
+        // 재선택될 수 있음.
+        queryParams: { prompt: "select_account" },
+      },
     });
   }
 
