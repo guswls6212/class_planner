@@ -46,10 +46,13 @@ describe("SubjectsPageLayout", () => {
     expect(screen.getByTestId("subjects-page")).toBeInTheDocument();
   });
 
-  it("과목이 없을 때 빈 상태 메시지가 표시되어야 한다", () => {
+  it("과목이 없을 때 EmptyStateCTA 카드가 표시되어야 한다", () => {
     render(<SubjectsPageLayout {...mockProps} />);
 
-    expect(screen.getByText(/과목을 추가해주세요/)).toBeInTheDocument();
+    // phase1-release-readiness rank 10 재정의 — EmptyStateCTA 전 entity 확장 (2026-05-25)
+    expect(screen.getByTestId("empty-subjects-cta")).toBeInTheDocument();
+    expect(screen.getByText(/아직 등록된 과목이 없어요/)).toBeInTheDocument();
+    expect(screen.getByTestId("empty-subjects-add")).toBeInTheDocument();
   });
 
   it("과목 데이터를 처리해야 한다", () => {

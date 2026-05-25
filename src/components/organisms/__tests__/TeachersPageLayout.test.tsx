@@ -55,9 +55,12 @@ describe("TeachersPageLayout", () => {
     });
   });
 
-  it("강사가 없을 때 빈 상태 메시지가 표시된다", () => {
+  it("강사가 없을 때 EmptyStateCTA 카드가 표시된다", () => {
     render(<TeachersPageLayout {...baseProps} teachers={[]} />);
-    expect(screen.getByText("강사를 추가해주세요")).toBeInTheDocument();
+    // phase1-release-readiness rank 10 재정의 — EmptyStateCTA 전 entity 확장 (2026-05-25)
+    expect(screen.getByTestId("empty-teachers-cta")).toBeInTheDocument();
+    expect(screen.getByText(/아직 등록된 강사가 없어요/)).toBeInTheDocument();
+    expect(screen.getByTestId("empty-teachers-add")).toBeInTheDocument();
   });
 
   it("검색어로 필터링된다 (통합 input)", () => {
