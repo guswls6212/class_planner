@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { GraduationCap, Plus } from "lucide-react";
 import type { Teacher, Session, Enrollment, Subject, Student, TeacherRole } from "@/lib/planner";
 import { DEFAULT_TEACHER_COLORS } from "@/lib/teacherColors";
 import { TeacherDetailPanel } from "./TeacherDetailPanel";
+import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import TeacherAddDetailModal from "@/components/molecules/TeacherAddDetailModal";
 import { showSuccess, showToast } from "@/lib/toast";
@@ -158,9 +160,33 @@ export default function TeachersPageLayout(props: TeachersPageLayoutProps) {
         {/* Teacher list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {query ? "검색 결과 없음" : "강사를 추가해주세요"}
-            </li>
+            query ? (
+              <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
+                검색 결과 없음
+              </li>
+            ) : (
+              // phase1-release-readiness rank 10 재정의 (2026-05-25) — EmptyStateCTA 전 entity 확장.
+              // mockup: /strategy/onboarding-walkthrough § Part D + rank 9 D 패턴 일관.
+              <li className="p-4">
+                <EmptyStateCTA
+                  data-testid="empty-teachers-cta"
+                  icon={<GraduationCap size={26} strokeWidth={1.5} />}
+                  title="아직 등록된 강사가 없어요"
+                  description={"강사를 추가하면\n수업에 배정할 수 있어요"}
+                  primaryAction={
+                    canManage
+                      ? {
+                          label: "첫 강사 추가",
+                          onClick: () => setIsAddDetailOpen(true),
+                          icon: <Plus size={14} strokeWidth={2.5} />,
+                          ariaLabel: "강사 상세 등록 모달 열기",
+                          "data-testid": "empty-teachers-add",
+                        }
+                      : undefined
+                  }
+                />
+              </li>
+            )
           ) : (
             filtered.map((teacher) => (
               <li key={teacher.id}>

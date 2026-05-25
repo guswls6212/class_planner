@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { BookOpen, Plus } from "lucide-react";
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
 import { SubjectDetailPanel } from "./SubjectDetailPanel";
+import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import SubjectAddDetailModal from "@/components/molecules/SubjectAddDetailModal";
 import { showSuccess } from "@/lib/toast";
@@ -108,9 +110,32 @@ export default function SubjectsPageLayout(props: SubjectsPageLayoutProps) {
         {/* Subject list */}
         <ul className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
-              {query ? "검색 결과 없음" : "과목을 추가해주세요"}
-            </li>
+            query ? (
+              <li className="p-4 text-[11px] text-[var(--color-text-muted)] text-center">
+                검색 결과 없음
+              </li>
+            ) : (
+              // phase1-release-readiness rank 10 재정의 (2026-05-25) — EmptyStateCTA 전 entity 확장.
+              <li className="p-4">
+                <EmptyStateCTA
+                  data-testid="empty-subjects-cta"
+                  icon={<BookOpen size={26} strokeWidth={1.5} />}
+                  title="아직 등록된 과목이 없어요"
+                  description={"과목을 추가하면\n수업에 배정할 수 있어요"}
+                  primaryAction={
+                    canManage
+                      ? {
+                          label: "첫 과목 추가",
+                          onClick: () => setIsAddDetailOpen(true),
+                          icon: <Plus size={14} strokeWidth={2.5} />,
+                          ariaLabel: "과목 상세 등록 모달 열기",
+                          "data-testid": "empty-subjects-add",
+                        }
+                      : undefined
+                  }
+                />
+              </li>
+            )
           ) : (
             filtered.map((subject) => (
               <li key={subject.id}>
