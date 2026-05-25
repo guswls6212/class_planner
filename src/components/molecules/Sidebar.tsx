@@ -4,15 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  CalendarDays,
-  Users,
   BookOpen,
+  CalendarDays,
+  ClipboardCheck,
   GraduationCap,
-  Settings,
   LogIn,
   MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
+  Users,
 } from "lucide-react";
 import { FeedbackModal } from "./FeedbackModal";
 import type { LucideIcon } from "lucide-react";
@@ -33,6 +34,10 @@ interface SidebarItem {
 
 const topItems: SidebarItem[] = [
   { href: "/schedule", icon: CalendarDays, label: "시간표" },
+  // phase1-release-readiness rank 6 (발견성) — 출결을 시간표 다음에 배치하여
+  // mental model 통합 (시간표 ↔ 출결). 단순 wrap 페이지 (오늘/이번 주 sessions
+  // list + AttendanceSheet modal). 상세: /strategy/discoverability-attendance-recovery
+  { href: "/attendance", icon: ClipboardCheck, label: "출결" },
   { href: "/students", icon: Users, label: "학생", adminOnly: true },
   { href: "/subjects", icon: BookOpen, label: "과목", adminOnly: true },
   { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
