@@ -8,6 +8,7 @@
  */
 
 import { trackError } from "@/hooks/useUserTracking";
+import { sendErrorEvent } from "@/lib/observability/omni-radar";
 import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
@@ -34,6 +35,13 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // 에러를 Vercel 로그 시스템에 전송
     trackError(error, errorInfo.componentStack || undefined, "ErrorBoundary");
+
+    // omni-radar production observability — fire-and-forget
+    void sendErrorEvent({
+      source: "react-error-boundary",
+      error,
+      componentStack: errorInfo.componentStack,
+    });
 
     // 추가 에러 핸들러가 있으면 호출
     if (this.props.onError) {
