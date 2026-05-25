@@ -416,6 +416,7 @@ describe("POST /api/invites", () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "owner" });
 
     const insertMock = vi.fn();
+    // PR 5b71e1c 이후 admin 초대는 label 필수 — test body 모두 label 포함
     mockFrom.mockReturnValue({
       insert: insertMock.mockReturnValue({
         select: vi.fn().mockReturnValue({
@@ -430,7 +431,7 @@ describe("POST /api/invites", () => {
     const before = Date.now();
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "test-admin" }),
       headers: { "Content-Type": "application/json" },
     });
     await POST(req);
@@ -461,7 +462,7 @@ describe("POST /api/invites", () => {
     const before = Date.now();
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "test-admin" }),
       headers: { "Content-Type": "application/json" },
     });
     await POST(req);
@@ -493,7 +494,7 @@ describe("POST /api/invites", () => {
     const before = Date.now();
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "test-admin" }),
       headers: { "Content-Type": "application/json" },
     });
     await POST(req);
@@ -525,7 +526,7 @@ describe("POST /api/invites", () => {
     const before = Date.now();
     const req = new NextRequest("http://localhost/api/invites?userId=user-1", {
       method: "POST",
-      body: JSON.stringify({ role: "admin" }),
+      body: JSON.stringify({ role: "admin", label: "test-admin" }),
       headers: { "Content-Type": "application/json" },
     });
     await POST(req);
