@@ -1,13 +1,15 @@
 /**
  * Schedule picker(강사 pill picker / filter chip bar)에서 표시할 강사를 결정한다.
  *
- * 정책 (ADR-015, 2026-05-26 teacher-display-identity Phase 1 강화):
- * "강사 칩"은 member 만 표시. admin/owner 는 멤버십 권한이라 schedule 도메인 외.
+ * 정책 (ADR-015, 2026-05-26 teacher-display-identity Phase 1 의도 정정):
  *
- * Phase 1 변경: owner/admin 은 `selected` 여부 무관 **hard exclude**.
- * 이유: owner 가 강사 dropdown 에 노출되면 원장이 강사인 척 가장 가능 → 신뢰 문제.
- * 친구 선공개 직전 차단. 기존 selected 예외 (legacy session 편집) 는 제거.
- * legacy admin 배정 session 은 별도 마이그레이션 또는 사용자 수동 정리.
+ * **모든 teachers 노출** (owner/admin/member 무관). 원장도 직접 수업 가능하므로
+ * dropdown / grid / chip / sidebar 모두에 노출. 진짜 원장 vs 가짜 "원장님" 이름의
+ * 일반 강사 구분은 **badge (Crown + "원장")** 으로 시각 표현 (isAdminRole helper +
+ * TeacherStatusPill / inline icon).
+ *
+ * 본 함수는 SSOT 자리 보존 — 향후 filter logic (예: archived 제외, role 별 정렬)
+ * 추가 시 단일 진입점. 현재 signature 는 호환성 유지.
  */
 
 export type TeacherRoleLike = "owner" | "admin" | "member" | string | null | undefined;
@@ -23,12 +25,12 @@ export function isAdminRole(role: TeacherRoleLike): boolean {
 
 /**
  * Picker에 표시할 teachers를 추린다.
- * - admin/owner 는 selected 여부 무관 항상 제외 (Phase 1 hard exclude)
- * - `selected` 인자는 호환성 위해 type signature 유지 (실제 사용 X)
+ * 현재: 모든 teachers 반환 (owner/admin 도 노출 — badge 으로 시각 구분).
+ * `selected` 인자는 호환성 위해 signature 유지 (향후 filter 추가 시 활용).
  */
 export function filterTeachersForPicker<T extends TeacherWithRole>(
   teachers: T[],
   _selected?: string | string[] | null,
 ): T[] {
-  return teachers.filter((t) => !isAdminRole(t.role));
+  return teachers;
 }

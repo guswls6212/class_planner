@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
-import { filterTeachersForPicker, isAdminRole, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
+import { filterTeachersForPicker, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
 import { TeacherChip } from "@/components/molecules/TeacherChip";
+import { RoleBadge } from "@/components/atoms/RoleBadge";
 
 /**
  * Picker용 강사 데이터 (ADR-015). role/email/phone은 동명이인 부제 + admin 필터에 사용.
@@ -133,14 +134,13 @@ export default function TeacherPillPicker({
 
   const renderChip = (teacher: TeacherPickerOption) => {
     const isActive = selectedTeacherId === teacher.id;
-    const adminTag = isAdminRole(teacher.role) ? "관리자" : undefined;
     return (
       <TeacherChip
         key={teacher.id}
         teacher={teacher}
         selected={isActive}
         onClick={() => onSelect(isActive ? null : teacher.id)}
-        contextTag={adminTag}
+        contextTag={<RoleBadge role={teacher.role} size="xs" />}
       />
     );
   };

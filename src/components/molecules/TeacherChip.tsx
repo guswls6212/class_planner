@@ -71,9 +71,12 @@ export function TeacherChip(props: TeacherChipProps) {
         style={{ backgroundColor: teacher.color }}
       />
       <span>{teacher.name}</span>
-      {contextTag && (
-        <span className="text-[10px] text-[var(--color-text-muted)]">· {contextTag}</span>
-      )}
+      {contextTag &&
+        (typeof contextTag === "string" ? (
+          <span className="text-[10px] text-[var(--color-text-muted)]">· {contextTag}</span>
+        ) : (
+          <span className="ml-1">{contextTag}</span>
+        ))}
     </button>
   );
 

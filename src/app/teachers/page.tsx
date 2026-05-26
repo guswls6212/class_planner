@@ -14,7 +14,6 @@ import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useMyRole } from "../../hooks/useMyRole";
 import { logger } from "../../lib/logger";
 import type { TeacherRole } from "../../lib/planner";
-import { filterTeachersForPicker } from "@/lib/teacherPickerFilter";
 
 // 보관된 강사 row — server 응답 shape (PR 6 Phase 1 archive endpoint 응답 + GET enrich).
 interface ArchivedTeacher {
@@ -278,6 +277,10 @@ const TeachersPage = () => {
     ? `담당 수업 ${affectedSessionCount}개의 강사 정보는 그대로 보존됩니다.`
     : "담당 중인 수업이 없습니다.";
 
+  // member (강사) 는 /teacher-schedule 으로 redirect 진행 중 — render 자체 차단해 flash 회피.
+  // role === null 은 fetching 중 — owner/admin 도 잠깐 보지만 redirect 후 본 화면 노출.
+  if (role === "member") return null;
+
   return (
     <>
       {canManage && userId && (
@@ -348,7 +351,7 @@ const TeachersPage = () => {
       <OwnerTeacherCard />
 
       <TeachersPageLayout
-        teachers={filterTeachersForPicker(teachers).filter((t) => t.id !== linkedTeacherId)}
+        teachers={teachers.filter((t) => t.id !== linkedTeacherId)}
         sessions={sessions}
         enrollments={enrollments}
         subjects={subjects}
