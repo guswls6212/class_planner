@@ -46,20 +46,26 @@ API endpoint 의 표준 가드:
 
 이유: admin 권한이 "수업 운영" 라는 게 ARCHITECTURE.md / image #4 권한 카드 spec 에 명시이지만 코드 SSOT (`src/lib/auth/permissions.ts`) 의 module-level docstring 부재 → 신규 endpoint 작성 시 권한 가드 누락 회귀 위험. 본 amendment 으로 module docstring 추가 + ARCHITECTURE.md teachers 테이블 명세에 API 권한 layer 명시.
 
-### D3: Schedule picker는 강사(member)만 — hard exclude (2026-05-26 강화)
+### D3: Schedule picker — 모든 teachers 노출 + badge 시각 구분 (2026-05-26 의도 정정)
 
-`TeacherPillPicker`/`TeacherFilterChipBar`에 노출되는 강사는 `role === 'member'` (또는 null/unknown) **만**. admin/owner는 강사 카탈로그 외 권한 멤버이므로 schedule 도메인에 노출하지 않는다.
+`TeacherPillPicker`/`TeacherFilterChipBar`/`TeacherDropdownPicker`/PrimarySidebar 의 강사 row 에 **모든 teachers 노출** (owner/admin/member 무관). 원장도 직접 수업 가능. 진짜 원장 vs 가짜 "원장님" 이름의 일반 강사는 **badge 으로 시각 구분**:
+- owner: amber Crown + "원장"
+- admin: blue Shield + "관리자"
+- member: badge 없음
 
-**Amendment 2026-05-26 (teacher-display-identity Phase 1)**:
-기존 "selected 예외 보존" 제거 → **selected 여부 무관 hard exclude**.
+**Amendment 2026-05-26 v1 (teacher-display-identity Phase 1)** — 초기 hard exclude:
+사용자 발화 "원장이 강사인 척 못하게" 를 hard exclude 으로 해석 → 모든 picker 에서 owner 제거. 사용자 본 결과 verify (image #15) 시 "왜 안 보임?" 의문 — 정반대 방향.
 
-- **이유**: owner 가 강사 dropdown 에 노출되면 원장이 강사인 척 가장 가능 → 신뢰 문제. 친구 선공개 (Phase 1 production release) 직전 차단 의무.
-- **legacy admin 배정 session 영향**: 해당 session 편집 시 picker 에 selected admin 안 보임. 사용자 의도적 정리 (admin 배정 자체가 권장 X). 별도 마이그레이션 미정.
-- **owner-link API 정합성**: `POST /api/teachers/owner-link` 가 owner teacher row insert 시 `role: 'owner'` 명시 (이전엔 NULL → filter 통과). 신규 row 부터 정상. 기존 row 는 별도 backfill.
+**Amendment 2026-05-26 v2 (의도 정정, 본 fix)**:
+사용자 진짜 의도 = "원장도 직접 강의 가능 → 노출 의무. 진짜 vs 가짜 시각 구분 = badge." hard exclude 모두 revert + RoleBadge atom 도입.
 
-구현 SSOT: `src/lib/teacherPickerFilter.ts`
-- `isAdminRole(role)` — `'admin' | 'owner'` 판정
-- `filterTeachersForPicker(teachers, _selected?)` — admin/owner 항상 제외. `selected` 인자는 호환성 위해 signature 유지 (사용 X)
+- **legacy admin 배정 session 영향 해소**: filter 무효화 → selected admin/owner 도 picker 에 노출됨. legacy 흐름 정상 동작.
+- **owner-link API 정합성 유지**: `role: 'owner'` 명시 + backfill 으로 정확한 role 데이터 — badge 표시 위해 필수.
+- **시각 SSOT**: `src/components/atoms/RoleBadge.tsx` — owner/admin 모두 동일 atom 으로 표시. dropdown / chip / sidebar 5+ 호출처 적용.
+
+구현 SSOT:
+- `src/lib/teacherPickerFilter.ts` — `isAdminRole(role)` 만 사용 (badge 의 owner/admin 판정). `filterTeachersForPicker` 는 logic 무효화 (모두 반환). 향후 archived 등 filter 추가 시 진입점.
+- `src/components/atoms/RoleBadge.tsx` — owner/admin 시각 badge SSOT.
 
 ### D4: 동명이인 부제 SSOT — `lib/duplicateLabel.ts`
 
