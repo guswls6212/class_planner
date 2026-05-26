@@ -18,22 +18,6 @@ vi.mock("../../../../components/molecules/PDFDownloadButton", () => ({
   ),
 }));
 
-vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    ...props
-  }: {
-    href: string;
-    children: React.ReactNode;
-    [key: string]: unknown;
-  }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}));
-
 import ScheduleActionBar from "../ScheduleActionBar";
 
 const baseProps = {
@@ -42,7 +26,6 @@ const baseProps = {
   isDownloading: false,
   onDownloadStart: vi.fn(),
   onDownloadEnd: vi.fn(),
-  userId: null,
   onSaveTemplate: vi.fn(),
   onApplyTemplate: vi.fn(),
   isSaving: false,
@@ -58,30 +41,15 @@ describe("ScheduleActionBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("userId가 null이면 공유 링크가 없다", () => {
-    render(<ScheduleActionBar {...baseProps} userId={null} />);
-    expect(screen.queryByRole("link", { name: /공유/ })).toBeNull();
-  });
-
   it("legacy TemplateMenu(저장/적용 트리거)는 렌더되지 않는다", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
+    render(<ScheduleActionBar {...baseProps} />);
     expect(screen.queryByText("템플릿 저장 트리거")).toBeNull();
     expect(screen.queryByText("템플릿 적용 트리거")).toBeNull();
   });
 
-  it("userId가 있으면 공유 링크가 렌더된다", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" />);
-    expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
-  });
-
-  it("canManage=false이면 공유 링크가 숨겨진다 (member 역할)", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" canManage={false} />);
+  it("공유 링크는 더 이상 렌더되지 않는다 (schedule-share-button-removal)", () => {
+    render(<ScheduleActionBar {...baseProps} />);
     expect(screen.queryByRole("link", { name: /공유/ })).toBeNull();
-  });
-
-  it("canManage=true이면 공유 링크가 렌더된다 (owner/admin 역할)", () => {
-    render(<ScheduleActionBar {...baseProps} userId="user-1" canManage={true} />);
-    expect(screen.getByRole("link", { name: /공유/ })).toBeDefined();
   });
 
   it("PDF 버튼 클릭 시 onOpenPdfDialog 호출", () => {
