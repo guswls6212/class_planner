@@ -104,10 +104,10 @@ export default function TeacherDropdownPicker({
   // ref 적용해 scrollIntoView 호출 → modal scroll container 가 panel 의 위치 기반 scroll.
   useEffect(() => {
     if (!isOpen) return;
-    const id = requestAnimationFrame(() => {
+    const id = window.requestAnimationFrame(() => {
       dropdownPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
-    return () => cancelAnimationFrame(id);
+    return () => window.cancelAnimationFrame(id);
   }, [isOpen]);
 
   const showInlineCreate = Boolean(canManage && onCreate && setInputValue);
