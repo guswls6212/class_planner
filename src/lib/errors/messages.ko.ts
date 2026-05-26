@@ -55,6 +55,7 @@ const messages: Record<ErrorCode, string> = {
   SESSION_DESCRIPTION_TOO_LONG: `수업 설명은 최대 ${SESSION_DESCRIPTION_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   SESSION_NOTE_TOO_LONG: `수업 메모는 최대 ${SESSION_NOTE_MAX_LENGTH}자까지 입력할 수 있습니다.`,
   SESSION_WEEKDAY_INVALID: "요일은 0(일)~6(토) 사이의 정수여야 합니다.",
+  SESSION_TEACHER_ID_REQUIRED: "강사를 선택해주세요.",
 
   // Template
   TEMPLATE_NAME_REQUIRED: "템플릿 이름을 입력해주세요.",

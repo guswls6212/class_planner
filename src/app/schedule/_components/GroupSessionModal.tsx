@@ -315,6 +315,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   const canProceedStep0 = groupModalData.studentIds.length > 0;
   const canProceedStep1 =
     !!groupModalData.subjectId &&
+    !!groupModalData.teacherId &&
     !!groupModalData.startTime &&
     !!groupModalData.endTime &&
     !groupTimeError;

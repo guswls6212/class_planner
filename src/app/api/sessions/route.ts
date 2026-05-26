@@ -3,6 +3,7 @@ import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
+import { ErrorCodes } from "@/lib/errors/codes";
 import {
   validateSessionMemoFields,
   validateWeekday,
@@ -112,6 +113,13 @@ export async function POST(request: NextRequest) {
     if (!memo.ok) throw new AppError(memo.code, { statusHint: 400 });
 
     const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
+
+    // attendance-permission-fix Phase 1 Step 2 (2026-05-26): 신규 수업 추가 시 teacher_id 필수.
+    // 기존 NULL teacher_id sessions 는 legacy — PUT 으로 편집 시 NULL 유지 가능 (사용자 결정).
+    // requireRole 직후 위치 — 다른 모든 basic validation + 권한 통과 후 teacher_id check.
+    if (!teacherId) {
+      throw new AppError(ErrorCodes.SESSION_TEACHER_ID_REQUIRED, { statusHint: 400 });
+    }
 
     // public_description은 owner/admin만 편집 가능
     if (role === "member" && public_description != null) {

@@ -249,7 +249,7 @@ function SchedulePageContent(): JSX.Element {
   const userId = authUser?.id ?? null;
 
   // Role-based UI gate — member role gets read-only schedule
-  const { canManage, adminCount, role } = useMyRole();
+  const { canManage, adminCount, role, linkedTeacherId } = useMyRole();
 
   // member 는 /teacher-schedule 로 redirect (학원 전체 view 권한 X).
   // router 선언이 본 useEffect 보다 뒤라 window.location 사용 (single redirect, lifecycle 무관).
@@ -2504,11 +2504,16 @@ function SchedulePageContent(): JSX.Element {
 
   const handleOpenAttendance = useCallback(
     async (session: Session) => {
+      // attendance-permission-fix Phase 1 Step 4 (2026-05-27): 강사 (member) 본인 수업만 진입.
+      // 다른 강사 수업 또는 NULL teacher_id session 출결 차단 — UI 가 click 시점에 막음 (API 도 가드).
+      if (role === "member" && session.teacherId !== linkedTeacherId) {
+        return;
+      }
       setAttendanceSession(session);
       const dateStr = selectedDate.toISOString().slice(0, 10);
       await fetchAttendance(session.id, dateStr);
     },
-    [selectedDate, fetchAttendance]
+    [selectedDate, fetchAttendance, role, linkedTeacherId]
   );
 
   const attendanceStudents = useMemo(() => {

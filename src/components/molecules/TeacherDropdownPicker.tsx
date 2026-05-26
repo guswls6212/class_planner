@@ -52,6 +52,7 @@ export default function TeacherDropdownPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
 
   const visibleTeachers = useMemo(
     () => filterTeachersForPicker(teachers, selectedTeacherId ?? null),
@@ -94,6 +95,19 @@ export default function TeacherDropdownPicker({
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
+  }, [isOpen]);
+
+  // dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연스럽게 스크롤.
+  // Root cause (사용자 verify 2026-05-27): dropdown panel 이 position:absolute — wrap div
+  // (containerRef) 의 visual height 에 영향 X. 이전 fix (containerRef.scrollIntoView) 는
+  // button bottom 만 viewport 안 가져옴, dropdown panel 은 viewport 밖 유지. panel 자체에
+  // ref 적용해 scrollIntoView 호출 → modal scroll container 가 panel 의 위치 기반 scroll.
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = window.requestAnimationFrame(() => {
+      dropdownPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [isOpen]);
 
   const showInlineCreate = Boolean(canManage && onCreate && setInputValue);
@@ -182,6 +196,7 @@ export default function TeacherDropdownPicker({
 
       {isOpen && (
         <div
+          ref={dropdownPanelRef}
           role="listbox"
           data-testid="teacher-dropdown-panel"
           className="absolute z-50 mt-1 w-full max-h-72 overflow-auto rounded-md border border-amber-500/30 bg-zinc-900 shadow-lg p-2 space-y-1"

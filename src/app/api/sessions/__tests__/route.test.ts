@@ -227,7 +227,7 @@ describe("/api/sessions API Routes", () => {
       );
     });
 
-    it("teacherId가 없으면 addSession에 teacherId 키가 없다", async () => {
+    it("teacherId가 없으면 400 SESSION_TEACHER_ID_REQUIRED 반환 (attendance-permission-fix Phase 1)", async () => {
       const request = new NextRequest(
         "http://localhost:3000/api/sessions?userId=test-user",
         {
@@ -244,10 +244,12 @@ describe("/api/sessions API Routes", () => {
         }
       );
 
-      await POST(request);
+      const response = await POST(request);
+      const data = await response.json();
 
-      const [sessionData] = mockAddSession.mock.calls[0];
-      expect(sessionData).not.toHaveProperty("teacherId");
+      expect(response.status).toBe(400);
+      expect(data.error.code).toBe("SESSION_TEACHER_ID_REQUIRED");
+      expect(mockAddSession).not.toHaveBeenCalled();
     });
   });
 
@@ -268,6 +270,7 @@ describe("/api/sessions API Routes", () => {
             enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
+            teacherId: "teacher-uuid-fixture",
             yPosition: 5,
           }),
           headers: { "Content-Type": "application/json" },
@@ -292,6 +295,7 @@ describe("/api/sessions API Routes", () => {
             enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
+            teacherId: "teacher-uuid-fixture",
           }),
           headers: { "Content-Type": "application/json" },
         }
@@ -313,6 +317,7 @@ describe("/api/sessions API Routes", () => {
             enrollmentIds: ["e-1"],
             weekday: 0,
             weekStartDate: "2026-04-27",
+            teacherId: "teacher-uuid-fixture",
             yPosition: "invalid",
           }),
           headers: { "Content-Type": "application/json" },
@@ -412,6 +417,7 @@ describe("/api/sessions API Routes", () => {
       enrollmentIds: ["e-1"],
       weekday: 0,
       weekStartDate: "2026-04-27",
+      teacherId: "teacher-uuid-fixture",
     };
 
     it("member가 public_description 설정하면 403", async () => {

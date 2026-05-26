@@ -394,7 +394,8 @@ subjects           (id UUID PK, academy_id UUID FK, name TEXT, color TEXT)
 enrollments        (id UUID PK, student_id UUID FK, subject_id UUID FK)
 -- sessions: enrollment_ids JSONB 컬럼은 migration 030에서 추가됐다가 migration 044(PR #379)에서 drop.
 -- enrollment 관계는 session_enrollments(M:N) SSOT만 사용. (audit_log race 회피 + dedupe 단순화)
-sessions           (id UUID PK, academy_id UUID FK, weekday INT, starts_at TIME, ends_at TIME, room TEXT, y_position INT)
+-- teacher_id: 담당 강사 직렬 (attendance-permission-fix Phase 1 의 출결 권한 root). nullable — legacy NULL 보존, 신규 row 는 form validation 으로 NOT NULL 강제 (Step 2). FK SET NULL.
+sessions           (id UUID PK, academy_id UUID FK, weekday INT, starts_at TIME, ends_at TIME, room TEXT, y_position INT, teacher_id UUID FK NULL REFERENCES teachers ON DELETE SET NULL)
 session_enrollments(session_id UUID FK, enrollment_id UUID FK)
 
 -- 공유 링크 (W3 — supabase/migrations/026 + 029)
