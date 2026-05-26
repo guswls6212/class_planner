@@ -179,6 +179,8 @@ export function useTour(): UseTourReturn {
     const step = activeSteps[currentStep];
     if (!step) return;
 
+    let didInitialScroll = false;
+
     const findVisible = (): HTMLElement | null => {
       const els = document.querySelectorAll<HTMLElement>(step.targetSelector);
       for (const el of Array.from(els)) {
@@ -193,6 +195,10 @@ export function useTour(): UseTourReturn {
       if (el) {
         setTargetRect(el.getBoundingClientRect());
         setIsWaitingForTarget(false);
+        if (!didInitialScroll && typeof el.scrollIntoView === "function") {
+          didInitialScroll = true;
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        }
       }
       return el;
     };

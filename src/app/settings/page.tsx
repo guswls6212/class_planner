@@ -1358,8 +1358,8 @@ export default function SettingsPage() {
           <div className="flex-1 text-[13px] leading-relaxed">
             <p className="text-sky-200 font-medium">도움말 — 튜토리얼 다시 보기</p>
             <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
-              처음 진행했던 5 step walkthrough 를 다시 볼 수 있습니다.
-              시간표 / 학생 / 과목 · 강사 / PDF · 공유 핵심 기능을 안내합니다.
+              처음 진행했던 튜토리얼을 다시 볼 수 있어요.
+              권한에 맞는 핵심 기능을 안내해드려요.
             </p>
           </div>
           <button
