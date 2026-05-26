@@ -31,21 +31,50 @@ export function OwnerTeacherCard() {
     "원장님";
 
   const handleSaveSubjects = async (selectedIds: string[]) => {
-    if (!linkedTeacherId) {
-      showError(
-        "원장님 강사 자동 등록은 곧 추가될 거예요. 지금은 강사 페이지에서 본인을 강사로 등록해주세요.",
-      );
+    const ownerUserId = session?.user?.id;
+    if (!ownerUserId) {
+      showError("로그인 정보를 확인해주세요");
       return;
     }
-    const toAdd = selectedIds.filter((id) => !ownerSubjectIds.includes(id));
-    const toRemove = ownerSubjectIds.filter((id) => !selectedIds.includes(id));
-    for (const subId of toAdd) {
-      await addTeacherSubject(linkedTeacherId, subId);
+
+    if (linkedTeacherId) {
+      const toAdd = selectedIds.filter((id) => !ownerSubjectIds.includes(id));
+      const toRemove = ownerSubjectIds.filter((id) => !selectedIds.includes(id));
+      for (const subId of toAdd) {
+        await addTeacherSubject(linkedTeacherId, subId);
+      }
+      for (const subId of toRemove) {
+        await removeTeacherSubject(linkedTeacherId, subId);
+      }
+      showSuccess("담당 과목이 저장됐어요");
+      return;
     }
-    for (const subId of toRemove) {
-      await removeTeacherSubject(linkedTeacherId, subId);
+
+    try {
+      const res = await fetch(
+        `/api/teachers/owner-link?userId=${encodeURIComponent(ownerUserId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            displayName,
+            color: "#fbbf24",
+            subjectIds: selectedIds,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const errorBody = (await res.json().catch(() => ({}))) as { error?: string };
+        showError(errorBody.error ?? "원장 강사 등록에 실패했어요");
+        return;
+      }
+      showSuccess("원장님 강사 등록 완료! 새로고침하면 강사 목록에 반영돼요");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+      }
+    } catch {
+      showError("원장 강사 등록에 실패했어요");
     }
-    showSuccess("담당 과목이 저장됐어요");
   };
 
   return (
