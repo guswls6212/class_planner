@@ -116,6 +116,8 @@ export async function seedAnonymous(
     // getStorageKey가 ANONYMOUS_STORAGE_KEY를 반환하도록.
     localStorage.removeItem("supabase_user_id");
     localStorage.setItem("classPlannerData:anonymous", JSON.stringify(payload));
+    // rank 5-A InlineTour — anonymous user 도 자동 walkthrough 시작 차단 (e2e 회귀 가드)
+    localStorage.setItem("onboarding_completed_anonymous", new Date().toISOString());
   }, data);
 }
 
@@ -148,6 +150,8 @@ export async function seedAuthenticated(
       localStorage.setItem("supabase_user_id", uid);
       // 기본 (single-academy) key — academyId 없이 `classPlannerData:${userId}`
       localStorage.setItem(`classPlannerData:${uid}`, JSON.stringify(payload));
+      // rank 5-A InlineTour — authenticated user 자동 walkthrough 시작 차단 (e2e 회귀 가드)
+      localStorage.setItem(`onboarding_completed_${uid}`, new Date().toISOString());
     },
     { uid: userId, seed: data },
   );

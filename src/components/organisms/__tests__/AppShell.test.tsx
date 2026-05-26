@@ -17,6 +17,9 @@ vi.mock("../../molecules/TopBar", () => ({
 vi.mock("../../molecules/BottomTabBar", () => ({
   BottomTabBar: () => <div data-testid="bottombar">BOTTOMBAR</div>,
 }));
+vi.mock("../../molecules/InlineTour", () => ({
+  InlineTour: () => <div data-testid="inline-tour-mount">INLINE_TOUR</div>,
+}));
 vi.mock("../HelpDrawer", () => ({
   HelpDrawer: () => null,
 }));
@@ -82,5 +85,17 @@ describe("AppShell — shell visibility per route", () => {
     expect(screen.queryByTestId("bottombar")).not.toBeInTheDocument();
     // 컨텐츠 자체는 렌더돼야 함
     expect(screen.getByTestId("page-content")).toBeInTheDocument();
+  });
+
+  it("admin 라우트에서 InlineTour 가 mount 됨 (rank 5-A)", () => {
+    mockUsePathname.mockReturnValue("/schedule");
+    renderShell();
+    expect(screen.getByTestId("inline-tour-mount")).toBeInTheDocument();
+  });
+
+  it("/ (home) 에서 InlineTour mount X (shell 자체 X)", () => {
+    mockUsePathname.mockReturnValue("/");
+    renderShell();
+    expect(screen.queryByTestId("inline-tour-mount")).not.toBeInTheDocument();
   });
 });

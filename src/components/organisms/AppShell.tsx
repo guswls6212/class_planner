@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { TopBar } from "../molecules/TopBar";
 import { BottomTabBar } from "../molecules/BottomTabBar";
 import { Sidebar } from "../molecules/Sidebar";
+import { InlineTour } from "../molecules/InlineTour";
 import { HelpDrawerProvider } from "../../contexts/HelpDrawerContext";
 import { HelpDrawer } from "./HelpDrawer";
 import { SidebarProvider, useSidebar } from "../../contexts/SidebarContext";
@@ -47,6 +48,7 @@ function AppShellInner({ children }: AppShellProps) {
           <BottomTabBar />
         </div>
         <HelpDrawer />
+        <InlineTour />
       </div>
     </HelpDrawerProvider>
   );

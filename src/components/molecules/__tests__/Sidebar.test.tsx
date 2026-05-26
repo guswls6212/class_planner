@@ -490,3 +490,43 @@ describe("Sidebar — Anonymous Mode + Loading State", () => {
     expect(screen.getByText("참여 중인 학원이 없어요")).toBeInTheDocument();
   });
 });
+
+describe("Sidebar — Tour data-tour attribute (rank 5-A)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetActiveAcademyId.mockReturnValue("ac-1");
+    window.localStorage.getItem = vi.fn((key: string) => {
+      if (key === "supabase_user_id") return "user-test";
+      return null;
+    });
+    mockUseMyRole.mockReturnValue({
+      role: "owner",
+      isLoading: false,
+      academies: ACADEMIES_MULTI,
+    });
+  });
+
+  it("/students link 가 data-tour='students' attribute 를 가짐", async () => {
+    renderSidebar();
+    const link = await screen.findByRole("link", { name: "학생" });
+    expect(link.getAttribute("data-tour")).toBe("students");
+  });
+
+  it("/subjects link 가 data-tour='subjects' attribute 를 가짐", async () => {
+    renderSidebar();
+    const link = await screen.findByRole("link", { name: "과목" });
+    expect(link.getAttribute("data-tour")).toBe("subjects");
+  });
+
+  it("/schedule link 가 data-tour='schedule' attribute 를 가짐", async () => {
+    renderSidebar();
+    const link = await screen.findByRole("link", { name: "시간표" });
+    expect(link.getAttribute("data-tour")).toBe("schedule");
+  });
+
+  it("/settings link 가 data-tour='settings' attribute 를 가짐 (로그인 시)", async () => {
+    renderSidebar();
+    const link = await screen.findByRole("link", { name: "설정" });
+    expect(link.getAttribute("data-tour")).toBe("settings");
+  });
+});

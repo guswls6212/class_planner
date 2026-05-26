@@ -122,8 +122,17 @@ export function useTour(): UseTourReturn {
     const step = TOUR_STEPS[currentStep];
     if (!step) return;
 
+    const findVisible = (): HTMLElement | null => {
+      const els = document.querySelectorAll<HTMLElement>(step.targetSelector);
+      for (const el of Array.from(els)) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) return el;
+      }
+      return null;
+    };
+
     const findAndSet = (): HTMLElement | null => {
-      const el = document.querySelector<HTMLElement>(step.targetSelector);
+      const el = findVisible();
       if (el) {
         setTargetRect(el.getBoundingClientRect());
         setIsWaitingForTarget(false);
@@ -153,7 +162,7 @@ export function useTour(): UseTourReturn {
       waitTimeoutRef.current = setTimeout(() => {
         observerRef.current?.disconnect();
         observerRef.current = null;
-        if (!document.querySelector(step.targetSelector)) {
+        if (!findVisible()) {
           setIsWaitingForTarget(false);
           next();
         }
@@ -161,7 +170,7 @@ export function useTour(): UseTourReturn {
     }
 
     const updateRect = () => {
-      const el = document.querySelector<HTMLElement>(step.targetSelector);
+      const el = findVisible();
       if (el) setTargetRect(el.getBoundingClientRect());
     };
     window.addEventListener("resize", updateRect);
