@@ -1,96 +1,128 @@
 "use client";
 
+import { useState } from "react";
 import { Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMyRole } from "@/hooks/useMyRole";
 import { useIntegratedDataLocal } from "@/hooks/useIntegratedDataLocal";
+import { useTeacherManagementLocal } from "@/hooks/useTeacherManagementLocal";
+import { showError, showSuccess } from "@/lib/toast";
+import { SubjectPickModal } from "./SubjectPickModal";
 
-interface OwnerTeacherCardProps {
-  /**
-   * "과목 변경" 버튼 클릭 핸들러. 부모에서 SubjectPickModal 등 연결 (Part 2).
-   * 미제공 시 버튼 숨김 (Part 1 — UI only).
-   */
-  onChangeSubjects?: () => void;
-}
-
-export function OwnerTeacherCard({ onChangeSubjects }: OwnerTeacherCardProps = {}) {
+export function OwnerTeacherCard() {
   const { role, linkedTeacherId } = useMyRole();
   const { session } = useAuth();
   const { data } = useIntegratedDataLocal();
+  const { addTeacherSubject, removeTeacherSubject } = useTeacherManagementLocal();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (role !== "owner") return null;
-  if (!linkedTeacherId) return null;
 
   const teachers = data?.teachers ?? [];
   const subjects = data?.subjects ?? [];
-  const ownerTeacher = teachers.find((t) => t.id === linkedTeacherId);
-  if (!ownerTeacher) return null;
-
-  const ownerSubjectIds = ownerTeacher.subjectIds ?? [];
+  const ownerTeacher = linkedTeacherId
+    ? teachers.find((t) => t.id === linkedTeacherId)
+    : null;
+  const ownerSubjectIds = ownerTeacher?.subjectIds ?? [];
   const ownerSubjects = subjects.filter((s) => ownerSubjectIds.includes(s.id));
   const displayName =
-    ownerTeacher.name || session?.user?.email?.split("@")[0] || "원장님";
+    ownerTeacher?.name ||
+    session?.user?.email?.split("@")[0] ||
+    "원장님";
+
+  const handleSaveSubjects = async (selectedIds: string[]) => {
+    if (!linkedTeacherId) {
+      showError(
+        "원장님 강사 자동 등록은 곧 추가될 거예요. 지금은 강사 페이지에서 본인을 강사로 등록해주세요.",
+      );
+      return;
+    }
+    const toAdd = selectedIds.filter((id) => !ownerSubjectIds.includes(id));
+    const toRemove = ownerSubjectIds.filter((id) => !selectedIds.includes(id));
+    for (const subId of toAdd) {
+      await addTeacherSubject(linkedTeacherId, subId);
+    }
+    for (const subId of toRemove) {
+      await removeTeacherSubject(linkedTeacherId, subId);
+    }
+    showSuccess("담당 과목이 저장됐어요");
+  };
 
   return (
-    <section
-      data-testid="owner-teacher-card"
-      className="mx-4 mt-3 rounded-xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-4 space-y-3"
-    >
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center shrink-0">
-          <Crown className="w-5 h-5 text-amber-300" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold text-amber-200 truncate">
-              원장님 ({displayName})
-            </span>
-            <span className="px-1.5 py-0.5 bg-amber-500/30 text-amber-200 text-[10px] rounded-full font-mono shrink-0">
-              원장
-            </span>
-            <span className="text-[11px] text-emerald-300 ml-auto shrink-0">
-              ✓ 직접 수업 가능
-            </span>
+    <>
+      <section
+        data-testid="owner-teacher-card"
+        className="mx-4 mt-3 rounded-xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/10 to-orange-500/5 p-4 space-y-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-amber-500/30 flex items-center justify-center shrink-0">
+            <Crown className="w-5 h-5 text-amber-300" />
           </div>
-          <div className="text-[11px] text-amber-200/60 mt-0.5">
-            별도 등록 없이 자동으로 강사 목록에 표시돼요
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-amber-500/20 pt-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[11px] text-amber-200/80">담당 과목:</span>
-            {ownerSubjects.length === 0 ? (
-              <span className="text-[11px] text-amber-200/60 italic">
-                아직 설정 안 됨
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[14px] font-semibold text-amber-200 truncate">
+                원장님 ({displayName})
               </span>
-            ) : (
-              ownerSubjects.map((s) => (
+              <span className="px-1.5 py-0.5 bg-amber-500/30 text-amber-200 text-[10px] rounded-full font-mono shrink-0">
+                원장
+              </span>
+              {ownerTeacher && (
                 <span
-                  key={s.id}
-                  className="px-2 py-0.5 rounded-full text-[11px] text-zinc-900 font-medium"
-                  style={{ backgroundColor: s.color }}
-                  data-testid={`owner-subject-${s.id}`}
+                  className="text-[11px] text-emerald-300 ml-auto shrink-0"
+                  data-testid="owner-direct-teach-badge"
                 >
-                  {s.name}
+                  ✓ 직접 수업 가능
                 </span>
-              ))
-            )}
+              )}
+            </div>
+            <div className="text-[11px] text-amber-200/60 mt-0.5">
+              {ownerTeacher
+                ? "별도 등록 없이 자동으로 강사 목록에 표시돼요"
+                : "담당 과목을 설정하면 강사 목록에 표시돼요"}
+            </div>
           </div>
-          {onChangeSubjects && (
+        </div>
+
+        <div className="border-t border-amber-500/20 pt-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] text-amber-200/80">담당 과목:</span>
+              {ownerSubjects.length === 0 ? (
+                <span className="text-[11px] text-amber-200/60 italic">
+                  아직 설정 안 됨
+                </span>
+              ) : (
+                ownerSubjects.map((s) => (
+                  <span
+                    key={s.id}
+                    className="px-2 py-0.5 rounded-full text-[11px] text-zinc-900 font-medium"
+                    style={{ backgroundColor: s.color }}
+                    data-testid={`owner-subject-${s.id}`}
+                  >
+                    {s.name}
+                  </span>
+                ))
+              )}
+            </div>
             <button
               type="button"
-              onClick={onChangeSubjects}
+              onClick={() => setIsModalOpen(true)}
               className="px-2 py-0.5 text-[11px] text-amber-300 hover:bg-amber-500/15 rounded transition-colors"
               data-testid="owner-change-subjects"
             >
               과목 변경
             </button>
-          )}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <SubjectPickModal
+        open={isModalOpen}
+        subjects={subjects.map((s) => ({ id: s.id, name: s.name, color: s.color ?? "#999999" }))}
+        initialSelectedIds={ownerSubjectIds}
+        onSave={handleSaveSubjects}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 }
