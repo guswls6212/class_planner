@@ -248,7 +248,15 @@ function SchedulePageContent(): JSX.Element {
   const userId = authUser?.id ?? null;
 
   // Role-based UI gate — member role gets read-only schedule
-  const { canManage, adminCount } = useMyRole();
+  const { canManage, adminCount, role } = useMyRole();
+
+  // member 는 /teacher-schedule 로 redirect (학원 전체 view 권한 X).
+  // router 선언이 본 useEffect 보다 뒤라 window.location 사용 (single redirect, lifecycle 무관).
+  useEffect(() => {
+    if (role === "member" && typeof window !== "undefined") {
+      window.location.replace("/teacher-schedule");
+    }
+  }, [role]);
 
   // 활성 academy id — useScheduleMeta 가 academy 별 lastViewed 키 분리에 사용.
   // localStorage 만 source — Sidebar 의 학원 selector 가 academy 전환 시 reload
