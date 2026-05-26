@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  CORE_STEPS,
   TOUR_AUTO_START_DELAY_MS,
   TOUR_FLAG_KEY_PREFIX,
   TOUR_START_EVENT,
-  TOUR_STEPS,
   TOUR_TARGET_WAIT_MS,
   getTourFlagKey,
+  getTourLoginFlagKey,
+  getTourSteps,
   type TourStep,
 } from "@/lib/tour-steps";
 
@@ -30,8 +32,11 @@ export interface UseTourReturn {
 export function useTour(): UseTourReturn {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const isLoggedIn = !!session;
   const router = useRouter();
   const pathname = usePathname();
+
+  const activeSteps = useMemo(() => getTourSteps(isLoggedIn), [isLoggedIn]);
 
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -42,74 +47,105 @@ export function useTour(): UseTourReturn {
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const flagKey = getTourFlagKey(userId);
+  const coreFlagKey = getTourFlagKey(userId);
+  const loginFlagKey = getTourLoginFlagKey(userId);
 
   const start = useCallback(() => {
     setCurrentStep(0);
     setIsActive(true);
   }, []);
 
-  const complete = useCallback(() => {
-    if (typeof window !== "undefined") {
+  const persistSegmentFlag = useCallback(
+    (segment: "core" | "login") => {
+      if (typeof window === "undefined") return;
+      const key = segment === "core" ? coreFlagKey : loginFlagKey;
       try {
-        localStorage.setItem(flagKey, new Date().toISOString());
+        localStorage.setItem(key, new Date().toISOString());
       } catch {
-        // localStorage 비활성/quota 초과 시 silent — flag 못 쓰면 다음 진입 시 다시 보임 (수용)
+        // localStorage 비활성/quota 초과 시 silent
       }
+    },
+    [coreFlagKey, loginFlagKey],
+  );
+
+  const complete = useCallback(() => {
+    const currentStepObj = activeSteps[currentStep];
+    if (currentStepObj) {
+      persistSegmentFlag(currentStepObj.segment);
     }
     setIsActive(false);
     setCurrentStep(0);
     setTargetRect(null);
     setIsWaitingForTarget(false);
-  }, [flagKey]);
+  }, [activeSteps, currentStep, persistSegmentFlag]);
 
   const skip = complete;
 
   const next = useCallback(() => {
     setCurrentStep((s) => {
-      if (s >= TOUR_STEPS.length - 1) {
+      const cur = activeSteps[s];
+      const nxt = activeSteps[s + 1];
+      // segment 전환 시점 — 직전 step 의 segment flag 저장
+      if (cur && nxt && cur.segment !== nxt.segment) {
+        persistSegmentFlag(cur.segment);
+      }
+      if (s >= activeSteps.length - 1) {
         complete();
         return s;
       }
       return s + 1;
     });
-  }, [complete]);
+  }, [activeSteps, complete, persistSegmentFlag]);
 
   const prev = useCallback(() => {
     setCurrentStep((s) => Math.max(0, s - 1));
   }, []);
 
+  // anonymous → user 전환 시 core flag 마이그레이션 (anonymous 에서 봤으면 user 도 본 것으로 인정).
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!userId) return;
     try {
       const anonFlag = localStorage.getItem(`${TOUR_FLAG_KEY_PREFIX}anonymous`);
-      if (anonFlag && !localStorage.getItem(flagKey)) {
-        localStorage.setItem(flagKey, anonFlag);
+      if (anonFlag && !localStorage.getItem(coreFlagKey)) {
+        localStorage.setItem(coreFlagKey, anonFlag);
       }
     } catch {
-      // localStorage 비활성 시 silent — 다음 진입에서 자동 시작 (사용자 1회 더 봄)
+      // localStorage 비활성 시 silent
     }
-  }, [userId, flagKey]);
+  }, [userId, coreFlagKey]);
 
+  // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from CORE.length.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    let completed: string | null = null;
+    let coreDone: string | null = null;
+    let loginDone: string | null = null;
     try {
-      completed = localStorage.getItem(flagKey);
+      coreDone = localStorage.getItem(coreFlagKey);
+      if (isLoggedIn) loginDone = localStorage.getItem(loginFlagKey);
     } catch {
-      completed = null;
+      // localStorage 비활성 — 보수적으로 X 처리 (자동 시작 X)
+      return;
     }
-    if (completed) return;
+
+    let startIndex: number | null = null;
+    if (!coreDone) {
+      startIndex = 0;
+    } else if (isLoggedIn && !loginDone) {
+      startIndex = CORE_STEPS.length;
+    }
+
+    if (startIndex === null) return;
 
     autoStartTimeoutRef.current = setTimeout(() => {
+      setCurrentStep(startIndex);
       setIsActive(true);
     }, TOUR_AUTO_START_DELAY_MS);
 
     return () => {
       if (autoStartTimeoutRef.current) clearTimeout(autoStartTimeoutRef.current);
     };
-  }, [flagKey]);
+  }, [coreFlagKey, loginFlagKey, isLoggedIn]);
 
   useEffect(() => {
     const handler = () => start();
@@ -119,13 +155,13 @@ export function useTour(): UseTourReturn {
 
   useEffect(() => {
     if (!isActive) return;
-    const step = TOUR_STEPS[currentStep];
+    const step = activeSteps[currentStep];
     if (!step) return;
 
     if (step.targetPath && pathname !== step.targetPath) {
       router.push(step.targetPath);
     }
-  }, [isActive, currentStep, pathname, router]);
+  }, [isActive, currentStep, activeSteps, pathname, router]);
 
   useEffect(() => {
     if (!isActive) {
@@ -133,7 +169,7 @@ export function useTour(): UseTourReturn {
       setIsWaitingForTarget(false);
       return;
     }
-    const step = TOUR_STEPS[currentStep];
+    const step = activeSteps[currentStep];
     if (!step) return;
 
     const findVisible = (): HTMLElement | null => {
@@ -200,13 +236,13 @@ export function useTour(): UseTourReturn {
       window.removeEventListener("resize", updateRect);
       window.removeEventListener("scroll", updateRect, { capture: true });
     };
-  }, [isActive, currentStep, next]);
+  }, [isActive, currentStep, activeSteps, next]);
 
   return {
     isActive,
     currentStep,
-    totalSteps: TOUR_STEPS.length,
-    step: TOUR_STEPS[currentStep] ?? null,
+    totalSteps: activeSteps.length,
+    step: activeSteps[currentStep] ?? null,
     targetRect,
     isWaitingForTarget,
     next,

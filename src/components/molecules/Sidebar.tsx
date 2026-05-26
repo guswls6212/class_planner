@@ -250,6 +250,7 @@ export function Sidebar() {
           aria-label={activeAcademy?.name ?? "학원"}
           aria-expanded={showSwitcher}
           title={activeAcademy?.name ?? "학원"}
+          data-tour="academy-switch"
           className={`flex items-center rounded-lg transition-colors hover:opacity-80 ${
             expanded
               ? "w-full px-3 py-2 gap-2 text-sm font-semibold"
