@@ -122,7 +122,8 @@ export default function TeacherSchedulePage() {
         </div>
       </div>
 
-      <div data-surface="surface">
+      {/* data-surface wrapper 제거 — body dark theme 상속 (image #11 fix). PDF 출력은 renderSchedulePdf 자체 light styling. */}
+      <div>
         <TimeTableGrid
           sessions={displaySessions}
           subjects={subjects}

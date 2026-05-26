@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useAttendance } from "../../hooks/useAttendance";
+import { useMyRole } from "../../hooks/useMyRole";
 import { formatLocalISO, getWeekStart } from "../../lib/dateUtils";
 import type { Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
@@ -30,6 +31,9 @@ const AttendanceSheet = dynamic(
  * modal" entry point. schedule 페이지 안의 attendance 진입과 같은 UX 단,
  * URL 직접 진입 (북마크) + focus mode (시간표 안 보고 출결만) 가치.
  *
+ * 강사 (member role) — sessions.teacher_id 기준 본인 수업만 표시
+ * (attendance-permission-fix proposal — image #12 발견 fix).
+ *
  * Phase 2 보강 (별도 future-work doc):
  * - 월별/주별 출결 view (학생별 출결률)
  * - 결석 alert (3회 연속 결석 학생)
@@ -43,10 +47,21 @@ export default function AttendancePage() {
   const userId = session?.user?.id ?? null;
 
   const {
-    data: { students, subjects, sessions, enrollments },
+    data: { students, subjects, sessions, enrollments, teachers },
   } = useIntegratedDataLocal();
   const { attendance, fetchAttendance, markAttendance, markAllPresent } =
     useAttendance(userId);
+  const { role } = useMyRole();
+  const isMember = role === "member";
+
+  // 강사 (member) 의 teacher_id — sessions.teacher_id 매칭용 (본인 수업 filter)
+  const myTeacherId = useMemo(() => {
+    if (!isMember) return null;
+    if (typeof window === "undefined") return null;
+    const localUserId = localStorage.getItem("supabase_user_id");
+    if (!localUserId) return null;
+    return teachers.find((t) => t.userId === localUserId)?.id ?? null;
+  }, [teachers, isMember]);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [attendanceSessionId, setAttendanceSessionId] = useState<string | null>(
@@ -64,8 +79,10 @@ export default function AttendancePage() {
         (s) =>
           s.weekday === sessionWeekday && s.weekStartDate === weekStartISO,
       )
+      // 강사 (member) 본인 수업만 — 다른 강사 수업 노출 차단
+      .filter((s) => !isMember || s.teacherId === myTeacherId)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  }, [sessions, sessionWeekday, weekStartISO]);
+  }, [sessions, sessionWeekday, weekStartISO, isMember, myTeacherId]);
 
   const getSessionStudents = (s: Session) => {
     const eIds = s.enrollmentIds ?? [];
@@ -174,10 +191,14 @@ export default function AttendancePage() {
         >
           <ClipboardCheck className="w-10 h-10 text-[var(--color-text-muted)] mx-auto opacity-50" />
           <p className="text-sm text-[var(--color-text-secondary)]">
-            이 날짜에 등록된 수업이 없어요
+            {isMember
+              ? "이 날짜에 본인 수업이 없어요"
+              : "이 날짜에 등록된 수업이 없어요"}
           </p>
           <p className="text-[11px] text-[var(--color-text-muted)]">
-            시간표 페이지에서 수업을 먼저 추가하세요
+            {isMember
+              ? "시간표 페이지에서 본인 수업을 확인하세요"
+              : "시간표 페이지에서 수업을 먼저 추가하세요"}
           </p>
         </div>
       ) : (
