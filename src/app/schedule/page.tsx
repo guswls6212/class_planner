@@ -2686,8 +2686,6 @@ function SchedulePageContent(): JSX.Element {
             isDownloading={isDownloading}
             onDownloadStart={() => {}}
             onDownloadEnd={() => {}}
-            userId={userId}
-            canManage={canManage}
             viewMode={viewMode}
             onSaveTemplate={() => setShowSavePickerModal(true)}
             onApplyTemplate={() => {
