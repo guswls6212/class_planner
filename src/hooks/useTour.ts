@@ -163,6 +163,7 @@ export function useTour(): UseTourReturn {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    (window as Window & { __tourActive?: boolean }).__tourActive = isActive;
     window.dispatchEvent(
       new CustomEvent(TOUR_STATE_EVENT, { detail: { isActive } }),
     );

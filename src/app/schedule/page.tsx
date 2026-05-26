@@ -1131,6 +1131,10 @@ function SchedulePageContent(): JSX.Element {
   const [tourActive, setTourActive] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const initial = (window as Window & { __tourActive?: boolean }).__tourActive;
+      if (initial === true) setTourActive(true);
+    }
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ isActive: boolean }>).detail;
       setTourActive(detail?.isActive ?? false);
