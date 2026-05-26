@@ -6,9 +6,9 @@ import { ChevronDown, Plus } from "lucide-react";
 import { NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import {
   filterTeachersForPicker,
-  isAdminRole,
   type TeacherRoleLike,
 } from "@/lib/teacherPickerFilter";
+import { RoleBadge } from "@/components/atoms/RoleBadge";
 
 export interface TeacherDropdownOption {
   id: string;
@@ -100,7 +100,6 @@ export default function TeacherDropdownPicker({
 
   const renderItem = (teacher: TeacherDropdownOption) => {
     const isActive = selectedTeacherId === teacher.id;
-    const adminTag = isAdminRole(teacher.role) ? "관리자" : undefined;
     return (
       <button
         key={teacher.id}
@@ -124,9 +123,7 @@ export default function TeacherDropdownPicker({
         <span className="text-[12px] text-[var(--color-text-primary)]">
           {teacher.name}
         </span>
-        {adminTag && (
-          <span className="text-[9px] text-zinc-400 ml-1">{adminTag}</span>
-        )}
+        <RoleBadge role={teacher.role} size="xs" className="ml-1" />
         {isActive && (
           <span className="ml-auto text-[10px] text-amber-300">✓</span>
         )}

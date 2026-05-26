@@ -416,6 +416,8 @@ sessions           (... public_description TEXT NULL, internal_note TEXT NULL)  
 
 -- 강사 (Phase 4 + K-1 확장 — migration 032: email/phone/role/notes 추가, migration 036: RLS member_own)
 -- RLS: name/color 수정은 owner/admin만, email/phone/notes는 본인(user_id 매칭) member도 가능 (K-1)
+-- API 권한 (ADR-015 D2): POST /api/teachers + archive 는 owner+admin (requireRole). owner-link API 는 owner only.
+-- 2026-05-26 teacher-display-identity Phase 1: owner-link insert 시 role='owner' 명시 (이전 NULL → filter 통과 사고).
 teachers           (id UUID PK, academy_id UUID FK, name TEXT NOT NULL, color TEXT, user_id UUID FK NULL, email TEXT NULL, phone TEXT NULL, role TEXT CHECK('owner','admin','member') DEFAULT 'member', notes TEXT NULL)
 -- 강사↔과목 M:N (migration 032)
 teacher_subjects   (teacher_id UUID FK, subject_id UUID FK, academy_id UUID FK, created_at TIMESTAMPTZ, PRIMARY KEY(teacher_id, subject_id))

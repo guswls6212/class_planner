@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           name: displayName,
           color,
+          role: "owner",
         })
         .select("id")
         .single();

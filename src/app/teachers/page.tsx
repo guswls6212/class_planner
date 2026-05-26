@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Archive, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
@@ -25,9 +26,17 @@ interface ArchivedTeacher {
 }
 
 const TeachersPage = () => {
-  const { canManage, linkedTeacherId } = useMyRole();
+  const router = useRouter();
+  const { canManage, linkedTeacherId, role } = useMyRole();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // teacher-display-identity Phase 1 (2026-05-26): member (강사) 는 /teachers 접근 X.
+  // 본인 강사 entry 외 다른 강사 정보 read/edit 권한 없음 (image #4 권한 카드 spec).
+  // role fetching 중 (null) 은 통과 — fetch 완료 후 'member' 이면 redirect.
+  useEffect(() => {
+    if (role === "member") router.replace("/teacher-schedule");
+  }, [role, router]);
   const {
     teachers,
     addTeacher,
@@ -267,6 +276,11 @@ const TeachersPage = () => {
   const sessionImpactNote = affectedSessionCount > 0
     ? `담당 수업 ${affectedSessionCount}개의 강사 정보는 그대로 보존됩니다.`
     : "담당 중인 수업이 없습니다.";
+
+  // owner/admin 만 render. role === null (fetching) + role === "member" 모두 차단.
+  // 강사 계정의 page flash 완전 회피. owner/admin 도 fetching 시 잠깐 blank 일 수 있으나
+  // MemberContext 의 localStorage cache 가 있으면 0ms. cache miss 시 < 500ms.
+  if (role !== "owner" && role !== "admin") return null;
 
   return (
     <>

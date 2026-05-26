@@ -3,6 +3,8 @@
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { GradeBadge } from "@/components/atoms/GradeBadge";
+import { RoleBadge } from "@/components/atoms/RoleBadge";
+import type { TeacherRoleLike } from "@/lib/teacherPickerFilter";
 
 interface SidebarStudent {
   id: string;
@@ -18,6 +20,7 @@ interface SidebarTeacher {
   id: string;
   name: string;
   color: string;
+  role?: TeacherRoleLike;
 }
 
 export interface PrimarySidebarProps {
@@ -190,6 +193,7 @@ export default function PrimarySidebar({
               dot={t.color}
               selected={selectedTeacherIds.includes(t.id)}
               onToggle={() => onToggleTeacher(t.id)}
+              trailing={<RoleBadge role={t.role} size="sm" />}
             />
           ))}
         </Section>
@@ -281,9 +285,11 @@ interface RowProps {
   dot?: string;
   selected: boolean;
   onToggle: () => void;
+  /** trailing element — RoleBadge 등 row 끝 표시용 */
+  trailing?: React.ReactNode;
 }
 
-function Row({ label, dot, selected, onToggle }: RowProps) {
+function Row({ label, dot, selected, onToggle, trailing }: RowProps) {
   return (
     <li>
       <button
@@ -312,6 +318,7 @@ function Row({ label, dot, selected, onToggle }: RowProps) {
           />
         )}
         <span className="truncate">{label}</span>
+        {trailing && <span className="ml-auto shrink-0">{trailing}</span>}
       </button>
     </li>
   );

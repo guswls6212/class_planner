@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { filterTeachersForPicker, type TeacherRoleLike } from "@/lib/teacherPickerFilter";
 import { TeacherChip } from "@/components/molecules/TeacherChip";
+import { RoleBadge } from "@/components/atoms/RoleBadge";
 
 interface TeacherFilterChipBarProps {
   teachers: {
@@ -91,6 +92,7 @@ export default function TeacherFilterChipBar({
             teacher={teacher}
             selected={isSelected}
             onClick={() => onToggleTeacher(teacher.id)}
+            contextTag={<RoleBadge role={teacher.role} size="xs" />}
           />
         );
       })}

@@ -1,4 +1,12 @@
 // src/lib/auth/permissions.ts
+//
+// Academy 권한 모델 (ADR-015 D2):
+//   - owner: 학원 전체 관리 + 학원 이름/주소 변경 + 멤버 초대 (admin/member 부여). teachers CRUD 가능.
+//   - admin: 수업 운영. teachers / students / subjects / sessions CRUD 가능. 멤버 초대 가능 (admin 권한 부여는 owner 만).
+//   - member: 본인 시간표 조회. teachers / students / subjects / sessions 는 read-only. 본인 강사 entry 의 email/phone/notes 만 편집 가능 (K-1 RLS).
+//
+// 본 module 의 requireRole(userId, ["owner","admin"]) 패턴 = teachers/students/subjects/sessions CRUD endpoint 의 표준 가드.
+// owner-link API 는 본인 등록이라 owner only.
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { AppError } from "@/lib/errors/AppError";

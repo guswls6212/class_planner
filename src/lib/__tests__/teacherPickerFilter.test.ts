@@ -25,29 +25,24 @@ describe("filterTeachersForPicker", () => {
     { id: "t5", role: "member" },
   ];
 
-  it("기본: admin/owner 제외, member/null 통과", () => {
+  it("기본: 모든 teachers 반환 (의도 정정 2026-05-26 — badge 으로 시각 구분)", () => {
     const result = filterTeachersForPicker(teachers);
-    expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
 
-  it("selected가 admin이면 예외적으로 보존", () => {
+  it("selected 인자 무관 — 모든 teachers 반환", () => {
     const result = filterTeachersForPicker(teachers, "t2");
-    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
 
-  it("selected가 owner여도 보존", () => {
-    const result = filterTeachersForPicker(teachers, "t3");
-    expect(result.map((t) => t.id)).toEqual(["t1", "t3", "t4", "t5"]);
-  });
-
-  it("selected가 array면 array 안의 admin/owner도 모두 보존", () => {
+  it("selected array 도 모든 teachers 반환", () => {
     const result = filterTeachersForPicker(teachers, ["t2", "t3"]);
     expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
 
   it("selected=null이면 기본 동작", () => {
     const result = filterTeachersForPicker(teachers, null);
-    expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
   });
 
   it("teachers가 비어있으면 빈 배열", () => {
