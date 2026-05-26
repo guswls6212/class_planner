@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
 import { useColorBy } from "../../hooks/useColorBy";
@@ -36,6 +37,7 @@ function formatWeekRange(weekStart: string): string {
 }
 
 export default function TeacherSchedulePage() {
+  const router = useRouter();
   const {
     data: { sessions, enrollments, subjects, students, teachers },
   } = useIntegratedDataLocal();
@@ -71,6 +73,16 @@ export default function TeacherSchedulePage() {
     return () => clearTimeout(t);
   }, [teachers.length]);
 
+  // teacher-schedule-admin-access-policy (2026-05-27): myTeacherId null 이면 /schedule redirect.
+  // 강사 entry 매핑 안 된 사용자 (owner/admin/일반 member) 차단 — "본인 시간표" 도메인 외.
+  // initialLoad 끝난 후 + teachers fetched + myTeacherId 여전히 null → redirect.
+  useEffect(() => {
+    if (initialLoad) return;
+    if (teachers.length > 0 && !myTeacherId) {
+      router.replace("/schedule");
+    }
+  }, [initialLoad, teachers.length, myTeacherId, router]);
+
   if (initialLoad && teachers.length === 0) {
     return (
       <div className="p-4 min-h-screen flex items-center justify-center">
@@ -80,6 +92,9 @@ export default function TeacherSchedulePage() {
       </div>
     );
   }
+
+  // teachers fetched + myTeacherId null → redirect 진행 중. render 차단 (flash 회피).
+  if (teachers.length > 0 && !myTeacherId) return null;
 
   const weekLabel = formatWeekRange(currentWeekStart);
 

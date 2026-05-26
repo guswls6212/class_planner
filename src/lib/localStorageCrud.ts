@@ -42,11 +42,25 @@ export function getActiveAcademyId(userId: string): string | null {
 export function setActiveAcademyId(userId: string, academyId: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`, academyId);
+  // Same-tab race window 회피 (2026-05-27 admin 첫 로그인 사고):
+  // localStorage.setItem 은 same-tab storage event 발화 X. useIntegratedDataLocal /
+  // useGlobalDataInitialization 등 listener 들이 active_academy 변화 인지 못해 stale
+  // legacy fallback key data 유지 → 사용자 화면에 "수업 없음" 노출 (새로고침으로만 회복).
+  // setTimeout 0 으로 microtask 분리 — test 의 sync expect 영향 X, 사용자 perceive X (ms 단위).
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+    window.dispatchEvent(new CustomEvent("classPlannerDataChanged"));
+  }, 0);
 }
 
 export function clearActiveAcademy(userId: string): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
+  // Same-tab race 회피 (위 setActiveAcademyId 와 동일 이유, setTimeout 0 microtask 분리)
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+    window.dispatchEvent(new CustomEvent("classPlannerDataChanged"));
+  }, 0);
 }
 
 export function getStorageKey(academyId?: string): string {
