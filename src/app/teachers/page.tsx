@@ -277,9 +277,10 @@ const TeachersPage = () => {
     ? `담당 수업 ${affectedSessionCount}개의 강사 정보는 그대로 보존됩니다.`
     : "담당 중인 수업이 없습니다.";
 
-  // member (강사) 는 /teacher-schedule 으로 redirect 진행 중 — render 자체 차단해 flash 회피.
-  // role === null 은 fetching 중 — owner/admin 도 잠깐 보지만 redirect 후 본 화면 노출.
-  if (role === "member") return null;
+  // owner/admin 만 render. role === null (fetching) + role === "member" 모두 차단.
+  // 강사 계정의 page flash 완전 회피. owner/admin 도 fetching 시 잠깐 blank 일 수 있으나
+  // MemberContext 의 localStorage cache 가 있으면 0ms. cache miss 시 < 500ms.
+  if (role !== "owner" && role !== "admin") return null;
 
   return (
     <>
