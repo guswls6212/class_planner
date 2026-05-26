@@ -171,7 +171,7 @@ describe("OwnerTeacherCard", () => {
     });
   });
 
-  it("SubjectPickModal save (linkedTeacherId 없음) → showError 호출 (Part 2b 안내)", async () => {
+  it("SubjectPickModal save (linkedTeacherId 없음, first-time) → POST owner-link API 호출 + 성공 toast + academy-changed event", async () => {
     mockUseMyRole.mockReturnValue({
       role: "owner",
       linkedTeacherId: null,
@@ -182,14 +182,62 @@ describe("OwnerTeacherCard", () => {
       linkedTeacherColor: null,
       adminCount: 1,
     });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { id: "new-teacher", subjectIds: [ENGLISH_SUBJECT.id] } }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const eventListener = vi.fn();
+    window.addEventListener("class-planner:academy-changed", eventListener);
+
     render(<OwnerTeacherCard />);
     fireEvent.click(screen.getByTestId("owner-change-subjects"));
     fireEvent.click(screen.getByTestId(`subject-pick-${ENGLISH_SUBJECT.id}`));
     fireEvent.click(screen.getByTestId("subject-pick-save"));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/teachers/owner-link?userId=");
+    expect(opts.method).toBe("POST");
+    const body = JSON.parse(opts.body as string) as { subjectIds: string[]; displayName: string; color: string };
+    expect(body.subjectIds).toEqual([ENGLISH_SUBJECT.id]);
+    expect(body.displayName).toBeTruthy();
+    expect(body.color).toBeTruthy();
+
+    expect(mockShowSuccess).toHaveBeenCalled();
+    expect(eventListener).toHaveBeenCalled();
+    expect(mockAddTeacherSubject).not.toHaveBeenCalled();
+
+    window.removeEventListener("class-planner:academy-changed", eventListener);
+  });
+
+  it("SubjectPickModal save (linkedTeacherId 없음) → fetch 실패 시 showError", async () => {
+    mockUseMyRole.mockReturnValue({
+      role: "owner",
+      linkedTeacherId: null,
+      canManage: true,
+      academies: [],
+      isLoading: false,
+      linkedTeacherName: null,
+      linkedTeacherColor: null,
+      adminCount: 1,
+    });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "원장 강사 등록 실패" }),
+    }) as unknown as typeof fetch;
+
+    render(<OwnerTeacherCard />);
+    fireEvent.click(screen.getByTestId("owner-change-subjects"));
+    fireEvent.click(screen.getByTestId(`subject-pick-${ENGLISH_SUBJECT.id}`));
+    fireEvent.click(screen.getByTestId("subject-pick-save"));
+
     await waitFor(() => {
       expect(mockShowError).toHaveBeenCalled();
     });
-    expect(mockAddTeacherSubject).not.toHaveBeenCalled();
   });
 
   it("teacher.name 없으면 user email prefix 로 fallback", () => {
