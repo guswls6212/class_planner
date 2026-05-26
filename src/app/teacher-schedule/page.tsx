@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
 import { useColorBy } from "../../hooks/useColorBy";
 import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
+import { getWeekStartDate } from "../../lib/weekStart";
 
 const PDFDownloadButton = dynamic(
   () => import("../../components/molecules/PDFDownloadButton"),
@@ -29,8 +30,15 @@ export default function TeacherSchedulePage() {
   const myTeacherId = findMyTeacherId(teachers);
   const myTeacher = teachers.find((t) => t.id === myTeacherId) ?? null;
 
+  // 주별 격리 모델 — 현재 주의 sessions 만 표시 (schedule page 라인 240/840 패턴 일치)
+  const currentWeekStart = useMemo(() => getWeekStartDate(new Date()), []);
+  const weekSessions = useMemo(
+    () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
+    [sessions, currentWeekStart],
+  );
+
   const { sessions: displaySessions } = useTeacherDisplaySessions(
-    sessions,
+    weekSessions,
     enrollments,
     myTeacherId
   );
@@ -56,7 +64,7 @@ export default function TeacherSchedulePage() {
             </p>
           )}
         </div>
-        <div data-tour="export">
+        <div data-tour="export" className="inline-block">
           <PDFDownloadButton
             onDownload={() =>
               renderSchedulePdf(
