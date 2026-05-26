@@ -134,4 +134,19 @@ describe("useTour", () => {
     expect(result.current.step?.title.length).toBeGreaterThan(0);
     expect(result.current.step?.description.length).toBeGreaterThan(0);
   });
+
+  it("anonymous → user 전환 시 anonymous flag 가 user flag 로 마이그레이션 (자동 시작 X)", () => {
+    const ANON_KEY = "onboarding_completed_anonymous";
+    const userFlag = `onboarding_completed_test-user`;
+    // anonymous flag 만 set, user flag 없는 상태
+    (window.localStorage.getItem as ReturnType<typeof vi.fn>).mockImplementation(
+      (k: string) => (k === ANON_KEY ? "2026-01-01T00:00:00.000Z" : null),
+    );
+    renderHook(() => useTour());
+    // useEffect 가 mount 시 user flag 도 set
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      userFlag,
+      "2026-01-01T00:00:00.000Z",
+    );
+  });
 });
