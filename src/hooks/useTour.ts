@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   TOUR_AUTO_START_DELAY_MS,
+  TOUR_FLAG_KEY_PREFIX,
   TOUR_START_EVENT,
   TOUR_STEPS,
   TOUR_TARGET_WAIT_MS,
@@ -77,6 +78,19 @@ export function useTour(): UseTourReturn {
   const prev = useCallback(() => {
     setCurrentStep((s) => Math.max(0, s - 1));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!userId) return;
+    try {
+      const anonFlag = localStorage.getItem(`${TOUR_FLAG_KEY_PREFIX}anonymous`);
+      if (anonFlag && !localStorage.getItem(flagKey)) {
+        localStorage.setItem(flagKey, anonFlag);
+      }
+    } catch {
+      // localStorage 비활성 시 silent — 다음 진입에서 자동 시작 (사용자 1회 더 봄)
+    }
+  }, [userId, flagKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

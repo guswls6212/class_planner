@@ -78,7 +78,7 @@ beforeEach(() => {
   mockTourState = {
     isActive: true,
     currentStep: 0,
-    totalSteps: 5,
+    totalSteps: 6,
     step: FIRST_STEP,
     targetRect: makeRect(),
     isWaitingForTarget: false,
@@ -198,7 +198,7 @@ describe("InlineTour", () => {
   it("step indicator shows N/Total format", () => {
     mockTourState.currentStep = 2;
     render(<InlineTour />);
-    expect(screen.getByText("3/5")).toBeInTheDocument();
+    expect(screen.getByText("3/6")).toBeInTheDocument();
   });
 
   it("data-placement attribute reflects resolved placement", () => {
