@@ -10,6 +10,17 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useMyRole", () => ({
+  useMyRole: () => ({
+    role: "owner",
+    canManage: true,
+    isLoading: false,
+    academies: [],
+    linkedTeacherId: null,
+    adminCount: 0,
+  }),
+}));
+
 const FLAG_KEY = "onboarding_completed_test-user";
 const localStorageMock = window.localStorage as unknown as {
   getItem: ReturnType<typeof vi.fn>;

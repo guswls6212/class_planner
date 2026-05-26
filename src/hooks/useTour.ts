@@ -121,6 +121,9 @@ export function useTour(): UseTourReturn {
   // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from login segment 시작점.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // PR #485 회귀 fix — useMyRole fetch 미완 시 자동 시작 대기 (race window 회피).
+    // fetch 완료 후 role 변경 → useEffect 재실행 → localStorage flag 재확인.
+    if (isLoggedIn && role === null) return;
     let coreDone: string | null = null;
     let loginDone: string | null = null;
     try {
@@ -149,7 +152,7 @@ export function useTour(): UseTourReturn {
     return () => {
       if (autoStartTimeoutRef.current) clearTimeout(autoStartTimeoutRef.current);
     };
-  }, [coreFlagKey, loginFlagKey, isLoggedIn, activeSteps]);
+  }, [coreFlagKey, loginFlagKey, isLoggedIn, role, activeSteps]);
 
   useEffect(() => {
     const handler = () => start();
