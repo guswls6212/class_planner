@@ -5,6 +5,7 @@ import { Archive, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
 import ReassignTeacherModal from "../../components/molecules/ReassignTeacherModal";
+import { OwnerTeacherCard } from "../../components/molecules/OwnerTeacherCard";
 import { useTeacherManagementLocal } from "../../hooks/useTeacherManagementLocal";
 import { useAuth } from "../../contexts/AuthContext";
 import { showError, showSuccess } from "../../lib/toast";
@@ -331,8 +332,13 @@ const TeachersPage = () => {
         </div>
       )}
 
+      {/* rank 5-A teacher-owner-overlap A2 (Part 1, UI only) — owner 본인의 강사 정보를
+          별도 amber card 로 표시 + 일반 강사 grid 에서 중복 제거. 과목 변경 modal 은
+          Part 2 (별도 commit) — 본 Part 1 은 onChangeSubjects 미연결. */}
+      <OwnerTeacherCard />
+
       <TeachersPageLayout
-        teachers={teachers}
+        teachers={teachers.filter((t) => t.id !== linkedTeacherId)}
         sessions={sessions}
         enrollments={enrollments}
         subjects={subjects}
