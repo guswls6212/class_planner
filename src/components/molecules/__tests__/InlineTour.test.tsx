@@ -195,10 +195,10 @@ describe("InlineTour", () => {
     );
   });
 
-  it("step indicator shows N/Total format", () => {
+  it("progress bar + step indicator shows N/Total format", () => {
     mockTourState.currentStep = 2;
     render(<InlineTour />);
-    expect(screen.getByText("3/6")).toBeInTheDocument();
+    expect(screen.getByTestId("inline-tour-progress")).toHaveTextContent("3/6");
   });
 
   it("data-placement attribute reflects resolved placement", () => {

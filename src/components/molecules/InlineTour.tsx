@@ -255,6 +255,26 @@ export function InlineTour() {
         data-placement={placement}
       >
         <div className="p-4 space-y-3">
+          {/* Progress bar — amber (CORE 1-6) → sky (LOGIN 7-12) gradient. mockup login-tour-extension D variant. */}
+          <div data-testid="inline-tour-progress">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-amber-300 font-mono">
+                {tour.currentStep + 1}/{tour.totalSteps}
+                {tour.step.segment === "login" ? " — 로그인 후 확장" : ""}
+              </span>
+              <span className="text-[10px] text-zinc-400">
+                {Math.round(((tour.currentStep + 1) / tour.totalSteps) * 100)}%
+              </span>
+            </div>
+            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-sky-500 transition-all"
+                style={{
+                  width: `${((tour.currentStep + 1) / tour.totalSteps) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
           <div className="flex items-start justify-between gap-3">
             <h2
               id="inline-tour-tooltip-title"

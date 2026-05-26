@@ -743,7 +743,10 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)] mb-6">학원 설정</h1>
 
       {/* 학원 이름 섹션 — hasAcademy는 위 early return에서 보장됨. academyName 조건 제거. */}
-      <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
+      <section
+        className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]"
+        data-tour="academy-info"
+      >
           <div className="flex items-center justify-between gap-3">
             {isEditingName ? (
               <div className="flex-1 flex items-center gap-2">
@@ -897,7 +900,10 @@ export default function SettingsPage() {
         </section>
 
       {/* 통합 팀 섹션 — 원장 + 강사 전체 (상태 pill 포함) */}
-      <section className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]">
+      <section
+        className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]"
+        data-tour="teacher-invite"
+      >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-accent/15 text-accent flex items-center justify-center flex-shrink-0">
@@ -999,7 +1005,10 @@ export default function SettingsPage() {
 
       {/* 공유 링크 섹션 — 아코디언 */}
       {canManage && (
-        <section className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden">
+        <section
+          className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden"
+          data-tour="share-link"
+        >
           {/* 아코디언 헤더 — 항상 표시 */}
           <div
             role="button"
@@ -1329,7 +1338,11 @@ export default function SettingsPage() {
       )}
 
       {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
-      {userId && <DataHistorySection userId={userId} />}
+      {userId && (
+        <div data-tour="data-history">
+          <DataHistorySection userId={userId} />
+        </div>
+      )}
 
       {/* phase1-release-readiness rank 5-A (도움말) — 인라인 튜토리얼 진입점.
           window event dispatch → useTour listener 가 강제 시작 (localStorage flag 무시).
