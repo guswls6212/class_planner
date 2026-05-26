@@ -266,7 +266,7 @@ export function InlineTour() {
                 {Math.round(((tour.currentStep + 1) / tour.totalSteps) * 100)}%
               </span>
             </div>
-            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-sky-500 transition-all"
                 style={{
@@ -298,52 +298,33 @@ export function InlineTour() {
             {tour.step.description}
           </p>
           <div className="flex items-center justify-between pt-2 border-t border-white/10">
-            <div
-              className="flex items-center gap-1.5"
-              aria-label={`${tour.currentStep + 1} / ${tour.totalSteps} 단계`}
-            >
-              {Array.from({ length: tour.totalSteps }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                    i === tour.currentStep
-                      ? "bg-amber-400"
-                      : i < tour.currentStep
-                        ? "bg-amber-700"
-                        : "bg-zinc-700"
-                  }`}
-                  aria-hidden="true"
-                />
-              ))}
-              <span className="ml-1 text-[10px] text-zinc-400 font-mono">
-                {tour.currentStep + 1}/{tour.totalSteps}
-              </span>
-            </div>
+            {!isLastStep ? (
+              <button
+                type="button"
+                onClick={tour.skip}
+                className="px-2 py-1 rounded text-[11px] text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition-colors flex items-center gap-1 flex-shrink-0 whitespace-nowrap"
+              >
+                <SkipForward className="w-3 h-3" />
+                건너뛰기
+              </button>
+            ) : (
+              <div />
+            )}
             <div className="flex items-center gap-1">
               {!isFirstStep && (
                 <button
                   type="button"
                   onClick={tour.prev}
-                  className="px-2 py-1 rounded text-[11px] text-zinc-300 hover:bg-white/5 transition-colors flex items-center gap-1"
+                  className="px-2 py-1 rounded text-[11px] text-zinc-300 hover:bg-white/5 transition-colors flex items-center gap-1 flex-shrink-0 whitespace-nowrap"
                 >
                   <ChevronLeft className="w-3 h-3" />
                   이전
                 </button>
               )}
-              {!isLastStep && (
-                <button
-                  type="button"
-                  onClick={tour.skip}
-                  className="px-2 py-1 rounded text-[11px] text-zinc-400 hover:bg-white/5 transition-colors flex items-center gap-1"
-                >
-                  <SkipForward className="w-3 h-3" />
-                  건너뛰기
-                </button>
-              )}
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-900 font-medium text-[11px] flex items-center gap-1 transition-colors"
+                className="px-3 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-900 font-medium text-[11px] flex items-center gap-1 transition-colors flex-shrink-0 whitespace-nowrap"
               >
                 {isLastStep ? "완료" : "다음"}
                 {!isLastStep && <ChevronRight className="w-3 h-3" />}

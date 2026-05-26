@@ -207,4 +207,13 @@ describe("InlineTour", () => {
     // FIRST_STEP.placement = "right" → 그대로 사용 (auto 아님)
     expect(tooltip.getAttribute("data-placement")).toBe("right");
   });
+
+  it("Variant C: 12-step footer renders without dots (progress bar + counter only)", () => {
+    mockTourState.currentStep = 6;
+    mockTourState.totalSteps = 12;
+    render(<InlineTour />);
+    expect(screen.getByTestId("inline-tour-progress")).toHaveTextContent("7/12");
+    expect(screen.queryByLabelText(/단계$/)).toBeNull();
+    expect(screen.getByRole("button", { name: /건너뛰기/ })).toBeInTheDocument();
+  });
 });
