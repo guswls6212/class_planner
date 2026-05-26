@@ -5,7 +5,7 @@ import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
-import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
 import { StudentChip } from "../../../components/molecules/StudentChip";
 import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
 
@@ -792,7 +792,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
         <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           강사
         </label>
-        <TeacherPillPicker
+        <TeacherDropdownPicker
           teachers={teachers}
           selectedTeacherId={groupModalData.teacherId ?? null}
           onSelect={(id) => setGroupModalData((prev) => ({ ...prev, teacherId: id ?? undefined }))}
@@ -802,7 +802,7 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
           onCreate={onCreateTeacher}
           creating={teacherCreating}
           createError={teacherCreateError}
-          subjectId={groupModalData.subjectId || null}
+          subjectId={groupModalData.subjectId || undefined}
           subjectName={subjects.find((s) => s.id === groupModalData.subjectId)?.name}
         />
       </div>
