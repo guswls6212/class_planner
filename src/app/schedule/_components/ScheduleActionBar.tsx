@@ -49,7 +49,7 @@ export default function ScheduleActionBar({
   const showPdf = viewMode === "weekly";
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" data-tour="export">
       {showPdf && (
         <PDFDownloadButton
           onDownload={onOpenPdfDialog}

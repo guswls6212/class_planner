@@ -90,6 +90,7 @@ function SidebarLink({
     <Link
       href={href}
       aria-label={label}
+      data-tour={href.startsWith("/") ? href.slice(1) : href}
       className={`group relative flex items-center h-10 rounded-admin-md transition-colors ${
         expanded ? "w-full px-3 gap-3" : "justify-center w-10"
       } ${

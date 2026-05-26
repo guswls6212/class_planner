@@ -712,6 +712,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       <div
         className="time-table-container"
         data-testid="time-table-grid"
+        data-tour="schedule-grid"
       >
         <div
           ref={(node) => {

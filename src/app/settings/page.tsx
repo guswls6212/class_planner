@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp, Shield } from "lucide-react";
+import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp, Shield, Sparkles } from "lucide-react";
+import { TOUR_START_EVENT } from "@/lib/tour-steps";
 import { Select } from "@/components/atoms/Select";
 import { useAuth } from "../../contexts/AuthContext";
 import { logger } from "../../lib/logger";
@@ -1329,6 +1330,35 @@ export default function SettingsPage() {
 
       {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
       {userId && <DataHistorySection userId={userId} />}
+
+      {/* phase1-release-readiness rank 5-A (도움말) — 인라인 튜토리얼 진입점.
+          window event dispatch → useTour listener 가 강제 시작 (localStorage flag 무시).
+          mockup: /strategy/onboarding-walkthrough § Part A */}
+      {userId && (
+        <section
+          className="bg-sky-500/[0.07] border border-sky-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
+          data-testid="tutorial-restart-card"
+        >
+          <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-sky-300" />
+          </div>
+          <div className="flex-1 text-[13px] leading-relaxed">
+            <p className="text-sky-200 font-medium">도움말 — 튜토리얼 다시 보기</p>
+            <p className="text-[12px] text-[var(--color-text-secondary)] mt-0.5">
+              처음 진행했던 5 step walkthrough 를 다시 볼 수 있습니다.
+              시간표 / 학생 / 과목 · 강사 / PDF · 공유 핵심 기능을 안내합니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent(TOUR_START_EVENT))}
+            className="px-3 py-1.5 rounded-md bg-sky-500 hover:bg-sky-400 text-zinc-900 font-medium text-[12px] transition-colors shrink-0"
+            data-testid="tutorial-restart-button"
+          >
+            다시 보기
+          </button>
+        </section>
+      )}
     </div>
   );
 }

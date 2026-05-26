@@ -137,4 +137,42 @@ describe("Settings Page", () => {
       expect(screen.queryByText("학부모 접속 URL")).not.toBeInTheDocument();
     });
   });
+
+  it("'튜토리얼 다시 보기' 카드가 로그인 사용자에게 렌더된다 (rank 5-A)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tutorial-restart-card")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("tutorial-restart-button")).toBeInTheDocument();
+  });
+
+  it("'다시 보기' 버튼 click 시 class-planner:start-tour custom event 발화", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
+    });
+
+    const listener = vi.fn();
+    window.addEventListener("class-planner:start-tour", listener);
+
+    const { default: SettingsPage } = await import("../page");
+    const { fireEvent } = await import("@testing-library/react");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tutorial-restart-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tutorial-restart-button"));
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("class-planner:start-tour", listener);
+  });
 });
