@@ -138,7 +138,14 @@ export function Sidebar() {
   // re-render; clicking them lands on the middleware redirect with a toast.
   const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
-  const visibleTopItems = topItems.filter((item) => !item.adminOnly || !isMember);
+  // member 는 시간표 link 를 /teacher-schedule 로 분기 (학원 전체 view 권한 X).
+  const visibleTopItems = topItems
+    .filter((item) => !item.adminOnly || !isMember)
+    .map((item) =>
+      item.label === "시간표" && isMember
+        ? { ...item, href: "/teacher-schedule" }
+        : item,
+    );
 
   // Login state — AuthContext에서 단일 source로 받음.
   const { session } = useAuth();

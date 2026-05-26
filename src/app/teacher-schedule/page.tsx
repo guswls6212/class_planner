@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
 import { useColorBy } from "../../hooks/useColorBy";
@@ -22,6 +22,19 @@ function findMyTeacherId(teachers: Array<{ id: string; userId?: string | null }>
   return teacher?.id ?? null;
 }
 
+const WEEK_LABEL_FORMATTER = new Intl.DateTimeFormat("ko-KR", {
+  month: "long",
+  day: "numeric",
+  timeZone: "Asia/Seoul",
+});
+
+function formatWeekRange(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00+09:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${WEEK_LABEL_FORMATTER.format(start)} — ${WEEK_LABEL_FORMATTER.format(end)}`;
+}
+
 export default function TeacherSchedulePage() {
   const {
     data: { sessions, enrollments, subjects, students, teachers },
@@ -30,7 +43,7 @@ export default function TeacherSchedulePage() {
   const myTeacherId = findMyTeacherId(teachers);
   const myTeacher = teachers.find((t) => t.id === myTeacherId) ?? null;
 
-  // 주별 격리 모델 — 현재 주의 sessions 만 표시 (schedule page 라인 240/840 패턴 일치)
+  // 주별 격리 모델 — 현재 주의 sessions 만 표시
   const currentWeekStart = useMemo(() => getWeekStartDate(new Date()), []);
   const weekSessions = useMemo(
     () => sessions.filter((s) => s.weekStartDate === currentWeekStart),
@@ -47,13 +60,39 @@ export default function TeacherSchedulePage() {
 
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // 시크릿 모드 첫 로그인 등 cache 비어있는 경우 loading state — teachers fetch 대기
+  const [initialLoad, setInitialLoad] = useState(true);
+  useEffect(() => {
+    if (teachers.length > 0) {
+      setInitialLoad(false);
+      return;
+    }
+    const t = setTimeout(() => setInitialLoad(false), 1500);
+    return () => clearTimeout(t);
+  }, [teachers.length]);
+
+  if (initialLoad && teachers.length === 0) {
+    return (
+      <div className="p-4 min-h-screen flex items-center justify-center">
+        <p className="text-sm text-[--color-text-secondary]">
+          데이터 불러오는 중...
+        </p>
+      </div>
+    );
+  }
+
+  const weekLabel = formatWeekRange(currentWeekStart);
+
   return (
     <div className="p-4">
       <div className="mb-4 flex items-center justify-between border-b border-[--color-border] pb-3">
         <div>
-          <h2 className="text-2xl font-semibold text-[--color-text-primary]">
-            내 시간표
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-2xl font-semibold text-[--color-text-primary]">
+              내 시간표
+            </h2>
+            <span className="text-xs text-[--color-text-muted]">{weekLabel}</span>
+          </div>
           {myTeacher ? (
             <p className="mt-1 text-sm text-[--color-text-secondary]">
               {myTeacher.name} 강사의 시간표입니다.
