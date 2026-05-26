@@ -96,6 +96,19 @@ export default function TeacherDropdownPicker({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
+  // dropdown 펼침 시 modal scroll container 가 dropdown content 까지 자연스럽게 스크롤.
+  // GroupSessionModal/EditSessionModal 의 max-h-[55vh] overflow-y-auto 영역에서
+  // dropdown 이 viewport 밖이면 사용자가 강사 보이지 않음 사고 회피 (사용자 verify 2026-05-27).
+  // block: 'end' — wrap div (button + dropdown content) 의 bottom 이 viewport bottom 에 맞도록.
+  // requestAnimationFrame 으로 dropdown content mount 후 다음 paint 에 scroll.
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const id = requestAnimationFrame(() => {
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isOpen]);
+
   const showInlineCreate = Boolean(canManage && onCreate && setInputValue);
 
   const renderItem = (teacher: TeacherDropdownOption) => {
