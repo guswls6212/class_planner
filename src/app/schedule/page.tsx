@@ -46,6 +46,7 @@ import SegmentedButton from "../../components/atoms/SegmentedButton";
 import ColorByToggle from "../../components/molecules/ColorByToggle";
 import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
 import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
+import { filterTeachersForPicker } from "@/lib/teacherPickerFilter";
 import { findClosestMatchingWeek } from "./_utils/findClosestMatchingWeek";
 import type { ScheduleViewMode } from "../../hooks/useScheduleView";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
@@ -886,12 +887,19 @@ function SchedulePageContent(): JSX.Element {
   // 활성/비활성 type 모두 narrowing — 현재 selected 의 AND 매칭 session 에 나타나는 entity 만 표시.
   // selected 자기 자신은 자기 type 에 항상 등장 (chip 해제 가능).
   // 로직 본체는 `_utils/cascadeFilterOptions.ts` — 단위 테스트 가능한 형태.
+  // teacher-display-identity Phase 1 (2026-05-26): admin/owner 는 picker 외 filter chip / PrimarySidebar 에도 hard exclude.
+  // PrimarySidebar 가 cascadedFilterOptions.teachers 를 그대로 노출하던 사고 회피.
+  const pickerEligibleTeachers = useMemo(
+    () => filterTeachersForPicker(teachers),
+    [teachers],
+  );
+
   const cascadedFilterOptions = useMemo(
     () =>
       cascadeFilterOptions({
         students,
         subjects,
-        teachers,
+        teachers: pickerEligibleTeachers,
         sessions,
         enrollments,
         selectedStudentIds,
@@ -901,7 +909,7 @@ function SchedulePageContent(): JSX.Element {
     [
       students,
       subjects,
-      teachers,
+      pickerEligibleTeachers,
       sessions,
       enrollments,
       selectedStudentIds,
@@ -2620,7 +2628,7 @@ function SchedulePageContent(): JSX.Element {
           selectedSubjectIds={selectedSubjectIds}
           onToggleSubject={tryToggleSubject}
           teachers={cascadedFilterOptions.teachers}
-          totalTeachers={teachers.length}
+          totalTeachers={pickerEligibleTeachers.length}
           selectedTeacherIds={selectedTeacherIds}
           onToggleTeacher={tryToggleTeacher}
         />

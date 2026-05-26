@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Archive, RotateCcw, ChevronDown, ChevronRight } from "lucide-react";
 import TeachersPageLayout from "../../components/organisms/TeachersPageLayout";
 import TypedConfirmationModal from "../../components/molecules/TypedConfirmationModal";
@@ -13,6 +14,7 @@ import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useMyRole } from "../../hooks/useMyRole";
 import { logger } from "../../lib/logger";
 import type { TeacherRole } from "../../lib/planner";
+import { filterTeachersForPicker } from "@/lib/teacherPickerFilter";
 
 // 보관된 강사 row — server 응답 shape (PR 6 Phase 1 archive endpoint 응답 + GET enrich).
 interface ArchivedTeacher {
@@ -25,9 +27,17 @@ interface ArchivedTeacher {
 }
 
 const TeachersPage = () => {
-  const { canManage, linkedTeacherId } = useMyRole();
+  const router = useRouter();
+  const { canManage, linkedTeacherId, role } = useMyRole();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+
+  // teacher-display-identity Phase 1 (2026-05-26): member (강사) 는 /teachers 접근 X.
+  // 본인 강사 entry 외 다른 강사 정보 read/edit 권한 없음 (image #4 권한 카드 spec).
+  // role fetching 중 (null) 은 통과 — fetch 완료 후 'member' 이면 redirect.
+  useEffect(() => {
+    if (role === "member") router.replace("/teacher-schedule");
+  }, [role, router]);
   const {
     teachers,
     addTeacher,
@@ -338,7 +348,7 @@ const TeachersPage = () => {
       <OwnerTeacherCard />
 
       <TeachersPageLayout
-        teachers={teachers.filter((t) => t.id !== linkedTeacherId)}
+        teachers={filterTeachersForPicker(teachers).filter((t) => t.id !== linkedTeacherId)}
         sessions={sessions}
         enrollments={enrollments}
         subjects={subjects}
