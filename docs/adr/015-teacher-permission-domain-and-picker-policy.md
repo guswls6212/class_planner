@@ -1,6 +1,6 @@
 # ADR-015: 강사 권한 도메인 분리 + Schedule Picker 표시 정책
 
-- **Status:** Accepted
+- **Status:** Accepted (Amended 2026-05-26 — D3 강화)
 - **Date:** 2026-05-10
 - **Related PR:** UAT 2026-05-10 후속 PR (강사 detail 색상/역할/저장 흐름 + schedule picker 동명이인)
 - **Related ADR:** ADR-014 (동명이인 정책 일관성 + Toast SSOT), ADR-012 (fire-and-forget vs await for CUD)
@@ -37,15 +37,29 @@ UAT 2026-05-10 추가 사이클에서 사용자가 5건을 보고했고, 모두 
 
 `TeacherDetailPanel`에서는 역할 변경 UI 미노출. 보기 모드 표시는 유지(역할 인지 가치) + "역할 변경: Settings → 멤버" 작은 안내 hint. `useTeacherManagementLocal.updateTeacher`의 role 필드 시그니처는 그대로 (settings 호출자 보존).
 
-### D3: Schedule picker는 강사(member)만 — selected 예외 보존
+**Amendment 2026-05-26 (teacher-display-identity Phase 1) — admin 강사 CRUD 권한 명문화**:
 
-`TeacherPillPicker`/`TeacherFilterChipBar`에 노출되는 강사는 기본적으로 `role === 'member'` (또는 null/unknown). admin/owner는 강사 카탈로그 외 권한 멤버이므로 schedule 도메인에 노출하지 않는다.
+API endpoint 의 표준 가드:
+- `POST /api/teachers` / `PATCH /api/teachers/[id]` / archive → `requireRole(["owner", "admin"])` — admin 도 강사 CRUD 가능 (수업 운영 권한). member 는 read-only (본인 entry 의 email/phone/notes 만 K-1 RLS).
+- `POST /api/teachers/owner-link` → `requireRole(["owner"])` — 본인 등록 endpoint 라 owner only.
+- 멤버십 권한 변경 (`/api/members/:userId` PATCH) → owner only — admin 가 다른 admin 못 만들음.
 
-예외 — **`selectedTeacherId`가 admin/owner인 경우 픽커에 보존**. legacy session(role 정책 도입 전 admin이 강사로 배정됨) 편집 시 사용자 작업이 끊기지 않도록. selected admin pill에는 작은 회색 "관리자" 부제 표시.
+이유: admin 권한이 "수업 운영" 라는 게 ARCHITECTURE.md / image #4 권한 카드 spec 에 명시이지만 코드 SSOT (`src/lib/auth/permissions.ts`) 의 module-level docstring 부재 → 신규 endpoint 작성 시 권한 가드 누락 회귀 위험. 본 amendment 으로 module docstring 추가 + ARCHITECTURE.md teachers 테이블 명세에 API 권한 layer 명시.
+
+### D3: Schedule picker는 강사(member)만 — hard exclude (2026-05-26 강화)
+
+`TeacherPillPicker`/`TeacherFilterChipBar`에 노출되는 강사는 `role === 'member'` (또는 null/unknown) **만**. admin/owner는 강사 카탈로그 외 권한 멤버이므로 schedule 도메인에 노출하지 않는다.
+
+**Amendment 2026-05-26 (teacher-display-identity Phase 1)**:
+기존 "selected 예외 보존" 제거 → **selected 여부 무관 hard exclude**.
+
+- **이유**: owner 가 강사 dropdown 에 노출되면 원장이 강사인 척 가장 가능 → 신뢰 문제. 친구 선공개 (Phase 1 production release) 직전 차단 의무.
+- **legacy admin 배정 session 영향**: 해당 session 편집 시 picker 에 selected admin 안 보임. 사용자 의도적 정리 (admin 배정 자체가 권장 X). 별도 마이그레이션 미정.
+- **owner-link API 정합성**: `POST /api/teachers/owner-link` 가 owner teacher row insert 시 `role: 'owner'` 명시 (이전엔 NULL → filter 통과). 신규 row 부터 정상. 기존 row 는 별도 backfill.
 
 구현 SSOT: `src/lib/teacherPickerFilter.ts`
 - `isAdminRole(role)` — `'admin' | 'owner'` 판정
-- `filterTeachersForPicker(teachers, selected?)` — 단일 selected ID 또는 selected ID array 모두 보존
+- `filterTeachersForPicker(teachers, _selected?)` — admin/owner 항상 제외. `selected` 인자는 호환성 위해 signature 유지 (사용 X)
 
 ### D4: 동명이인 부제 SSOT — `lib/duplicateLabel.ts`
 

@@ -30,19 +30,19 @@ describe("filterTeachersForPicker", () => {
     expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
   });
 
-  it("selected가 admin이면 예외적으로 보존", () => {
+  it("selected가 admin이어도 hard exclude (Phase 1 강화)", () => {
     const result = filterTeachersForPicker(teachers, "t2");
-    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
   });
 
-  it("selected가 owner여도 보존", () => {
+  it("selected가 owner여도 hard exclude (Phase 1 강화)", () => {
     const result = filterTeachersForPicker(teachers, "t3");
-    expect(result.map((t) => t.id)).toEqual(["t1", "t3", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
   });
 
-  it("selected가 array면 array 안의 admin/owner도 모두 보존", () => {
+  it("selected array에 admin/owner 가 있어도 hard exclude (Phase 1 강화)", () => {
     const result = filterTeachersForPicker(teachers, ["t2", "t3"]);
-    expect(result.map((t) => t.id)).toEqual(["t1", "t2", "t3", "t4", "t5"]);
+    expect(result.map((t) => t.id)).toEqual(["t1", "t4", "t5"]);
   });
 
   it("selected=null이면 기본 동작", () => {
