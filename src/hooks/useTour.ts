@@ -8,6 +8,7 @@ import {
   TOUR_AUTO_START_DELAY_MS,
   TOUR_FLAG_KEY_PREFIX,
   TOUR_START_EVENT,
+  TOUR_STATE_EVENT,
   TOUR_TARGET_WAIT_MS,
   getTourFlagKey,
   getTourLoginFlagKey,
@@ -161,6 +162,14 @@ export function useTour(): UseTourReturn {
   }, [start]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    (window as Window & { __tourActive?: boolean }).__tourActive = isActive;
+    window.dispatchEvent(
+      new CustomEvent(TOUR_STATE_EVENT, { detail: { isActive } }),
+    );
+  }, [isActive]);
+
+  useEffect(() => {
     if (!isActive) return;
     const step = activeSteps[currentStep];
     if (!step) return;
@@ -179,6 +188,8 @@ export function useTour(): UseTourReturn {
     const step = activeSteps[currentStep];
     if (!step) return;
 
+    let didInitialScroll = false;
+
     const findVisible = (): HTMLElement | null => {
       const els = document.querySelectorAll<HTMLElement>(step.targetSelector);
       for (const el of Array.from(els)) {
@@ -193,6 +204,10 @@ export function useTour(): UseTourReturn {
       if (el) {
         setTargetRect(el.getBoundingClientRect());
         setIsWaitingForTarget(false);
+        if (!didInitialScroll && typeof el.scrollIntoView === "function") {
+          didInitialScroll = true;
+          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+        }
       }
       return el;
     };

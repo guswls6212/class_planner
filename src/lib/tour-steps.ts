@@ -93,8 +93,8 @@ export const LOGIN_STEPS: TourStep[] = [
     id: "academy-info",
     targetSelector: '[data-tour="academy-info"]',
     targetPath: "/settings",
-    title: "학원 정보와 권한",
-    description: "학원 이름과 멤버 권한 (원장 / 관리자 / 강사) 을 관리해요.",
+    title: "학원 정보 변경",
+    description: "학원 이름과 학부모 접속 URL 을 변경할 수 있어요. 원장만 가능합니다.",
     placement: "auto",
     segment: "login",
     roles: ["owner"],
@@ -104,7 +104,7 @@ export const LOGIN_STEPS: TourStep[] = [
     targetSelector: '[data-tour="teacher-invite"]',
     targetPath: "/settings",
     title: "강사 초대",
-    description: "초대 링크를 만들어 카톡이나 이메일로 보내면 강사가 자동으로 학원에 합류해요.",
+    description: "초대 링크를 만들어 카톡이나 이메일로 보내면 강사가 수락하고 학원에 합류해요.",
     placement: "auto",
     segment: "login",
     roles: ["owner", "admin"],
@@ -173,6 +173,7 @@ export function getTourStepsForRole(
 export const TOUR_FLAG_KEY_PREFIX = "onboarding_completed_";
 export const TOUR_LOGIN_FLAG_KEY_PREFIX = "onboarding_login_completed_";
 export const TOUR_START_EVENT = "class-planner:start-tour";
+export const TOUR_STATE_EVENT = "class-planner:tour-state";
 export const TOUR_TARGET_WAIT_MS = 5000;
 export const TOUR_AUTO_START_DELAY_MS = 1000;
 
