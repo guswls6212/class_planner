@@ -52,6 +52,7 @@ export default function TeacherDropdownPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
 
   const visibleTeachers = useMemo(
     () => filterTeachersForPicker(teachers, selectedTeacherId ?? null),
@@ -96,15 +97,15 @@ export default function TeacherDropdownPicker({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
-  // dropdown 펼침 시 modal scroll container 가 dropdown content 까지 자연스럽게 스크롤.
-  // GroupSessionModal/EditSessionModal 의 max-h-[55vh] overflow-y-auto 영역에서
-  // dropdown 이 viewport 밖이면 사용자가 강사 보이지 않음 사고 회피 (사용자 verify 2026-05-27).
-  // block: 'end' — wrap div (button + dropdown content) 의 bottom 이 viewport bottom 에 맞도록.
-  // requestAnimationFrame 으로 dropdown content mount 후 다음 paint 에 scroll.
+  // dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연스럽게 스크롤.
+  // Root cause (사용자 verify 2026-05-27): dropdown panel 이 position:absolute — wrap div
+  // (containerRef) 의 visual height 에 영향 X. 이전 fix (containerRef.scrollIntoView) 는
+  // button bottom 만 viewport 안 가져옴, dropdown panel 은 viewport 밖 유지. panel 자체에
+  // ref 적용해 scrollIntoView 호출 → modal scroll container 가 panel 의 위치 기반 scroll.
   useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
+    if (!isOpen) return;
     const id = requestAnimationFrame(() => {
-      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      dropdownPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     return () => cancelAnimationFrame(id);
   }, [isOpen]);
@@ -195,6 +196,7 @@ export default function TeacherDropdownPicker({
 
       {isOpen && (
         <div
+          ref={dropdownPanelRef}
           role="listbox"
           data-testid="teacher-dropdown-panel"
           className="absolute z-50 mt-1 w-full max-h-72 overflow-auto rounded-md border border-amber-500/30 bg-zinc-900 shadow-lg p-2 space-y-1"
