@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyRole } from "@/hooks/useMyRole";
 import {
-  CORE_STEPS,
   TOUR_AUTO_START_DELAY_MS,
   TOUR_FLAG_KEY_PREFIX,
   TOUR_START_EVENT,
   TOUR_TARGET_WAIT_MS,
   getTourFlagKey,
   getTourLoginFlagKey,
-  getTourSteps,
+  getTourStepsForRole,
   type TourStep,
 } from "@/lib/tour-steps";
 
@@ -31,12 +31,16 @@ export interface UseTourReturn {
 
 export function useTour(): UseTourReturn {
   const { session } = useAuth();
+  const { role } = useMyRole();
   const userId = session?.user?.id ?? null;
   const isLoggedIn = !!session;
   const router = useRouter();
   const pathname = usePathname();
 
-  const activeSteps = useMemo(() => getTourSteps(isLoggedIn), [isLoggedIn]);
+  const activeSteps = useMemo(
+    () => getTourStepsForRole(isLoggedIn, role ?? null),
+    [isLoggedIn, role],
+  );
 
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -85,7 +89,6 @@ export function useTour(): UseTourReturn {
     setCurrentStep((s) => {
       const cur = activeSteps[s];
       const nxt = activeSteps[s + 1];
-      // segment 전환 시점 — 직전 step 의 segment flag 저장
       if (cur && nxt && cur.segment !== nxt.segment) {
         persistSegmentFlag(cur.segment);
       }
@@ -115,16 +118,18 @@ export function useTour(): UseTourReturn {
     }
   }, [userId, coreFlagKey]);
 
-  // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from CORE.length.
+  // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from login segment 시작점.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // PR #485 회귀 fix — useMyRole fetch 미완 시 자동 시작 대기 (race window 회피).
+    // fetch 완료 후 role 변경 → useEffect 재실행 → localStorage flag 재확인.
+    if (isLoggedIn && role === null) return;
     let coreDone: string | null = null;
     let loginDone: string | null = null;
     try {
       coreDone = localStorage.getItem(coreFlagKey);
       if (isLoggedIn) loginDone = localStorage.getItem(loginFlagKey);
     } catch {
-      // localStorage 비활성 — 보수적으로 X 처리 (자동 시작 X)
       return;
     }
 
@@ -132,10 +137,12 @@ export function useTour(): UseTourReturn {
     if (!coreDone) {
       startIndex = 0;
     } else if (isLoggedIn && !loginDone) {
-      startIndex = CORE_STEPS.length;
+      // role 별 visible login segment 시작점 — activeSteps 안에서 첫 login segment 찾기
+      const loginStart = activeSteps.findIndex((s) => s.segment === "login");
+      startIndex = loginStart === -1 ? null : loginStart;
     }
 
-    if (startIndex === null) return;
+    if (startIndex === null || startIndex >= activeSteps.length) return;
 
     autoStartTimeoutRef.current = setTimeout(() => {
       setCurrentStep(startIndex);
@@ -145,7 +152,7 @@ export function useTour(): UseTourReturn {
     return () => {
       if (autoStartTimeoutRef.current) clearTimeout(autoStartTimeoutRef.current);
     };
-  }, [coreFlagKey, loginFlagKey, isLoggedIn]);
+  }, [coreFlagKey, loginFlagKey, isLoggedIn, role, activeSteps]);
 
   useEffect(() => {
     const handler = () => start();

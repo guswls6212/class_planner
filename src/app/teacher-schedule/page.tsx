@@ -56,21 +56,23 @@ export default function TeacherSchedulePage() {
             </p>
           )}
         </div>
-        <PDFDownloadButton
-          onDownload={() =>
-            renderSchedulePdf(
-              Array.from(displaySessions.values()).flat(),
-              subjects,
-              students,
-              enrollments,
-              teachers,
-              {
-                academyName: "CLASS PLANNER",
-              }
-            )
-          }
-          isDownloading={isDownloading}
-        />
+        <div data-tour="export">
+          <PDFDownloadButton
+            onDownload={() =>
+              renderSchedulePdf(
+                Array.from(displaySessions.values()).flat(),
+                subjects,
+                students,
+                enrollments,
+                teachers,
+                {
+                  academyName: "CLASS PLANNER",
+                }
+              )
+            }
+            isDownloading={isDownloading}
+          />
+        </div>
       </div>
 
       <div data-surface="surface">
