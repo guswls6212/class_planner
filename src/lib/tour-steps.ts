@@ -173,6 +173,7 @@ export function getTourStepsForRole(
 export const TOUR_FLAG_KEY_PREFIX = "onboarding_completed_";
 export const TOUR_LOGIN_FLAG_KEY_PREFIX = "onboarding_login_completed_";
 export const TOUR_START_EVENT = "class-planner:start-tour";
+export const TOUR_STATE_EVENT = "class-planner:tour-state";
 export const TOUR_TARGET_WAIT_MS = 5000;
 export const TOUR_AUTO_START_DELAY_MS = 1000;
 

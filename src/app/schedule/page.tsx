@@ -75,6 +75,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useMyRole } from "../../hooks/useMyRole";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { preflightCheck } from "@/lib/pdf/preflightCheck";
+import { TOUR_STATE_EVENT } from "@/lib/tour-steps";
 import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
 // ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
 import ScheduleGridSection from "./_components/ScheduleGridSection";
@@ -1127,10 +1128,23 @@ function SchedulePageContent(): JSX.Element {
   // Option C — Hide-on-Scroll: 시간표 스크롤 시 헤더 압축
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const [headerScrolled, setHeaderScrolled] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
 
   useEffect(() => {
-    if (!isP3) {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ isActive: boolean }>).detail;
+      setTourActive(detail?.isActive ?? false);
+    };
+    window.addEventListener(TOUR_STATE_EVENT, handler);
+    return () => window.removeEventListener(TOUR_STATE_EVENT, handler);
+  }, []);
+
+  useEffect(() => {
+    if (!isP3 || tourActive) {
       setHeaderScrolled(false);
+      if (tourActive && mainScrollRef.current) {
+        mainScrollRef.current.scrollTop = 0;
+      }
       return;
     }
     const el = mainScrollRef.current;
@@ -1138,7 +1152,7 @@ function SchedulePageContent(): JSX.Element {
     const onScroll = () => setHeaderScrolled(el.scrollTop > 20);
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [isP3]);
+  }, [isP3, tourActive]);
 
   const {
     validateTimeRange,

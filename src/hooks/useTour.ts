@@ -8,6 +8,7 @@ import {
   TOUR_AUTO_START_DELAY_MS,
   TOUR_FLAG_KEY_PREFIX,
   TOUR_START_EVENT,
+  TOUR_STATE_EVENT,
   TOUR_TARGET_WAIT_MS,
   getTourFlagKey,
   getTourLoginFlagKey,
@@ -159,6 +160,13 @@ export function useTour(): UseTourReturn {
     window.addEventListener(TOUR_START_EVENT, handler);
     return () => window.removeEventListener(TOUR_START_EVENT, handler);
   }, [start]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(TOUR_STATE_EVENT, { detail: { isActive } }),
+    );
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) return;
