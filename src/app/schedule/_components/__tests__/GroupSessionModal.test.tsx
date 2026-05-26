@@ -335,16 +335,18 @@ describe("GroupSessionModal - 강사·과목 인라인 추가", () => {
     ).toBeInTheDocument();
   });
 
-  it("canManage=true 이면 '+ 새 강사' pill이 렌더된다 (TeacherPillPicker 통합)", () => {
+  it("canManage=true 이면 강사 dropdown 안 '새 강사 추가' 버튼이 렌더된다 (TeacherDropdownPicker 통합, PR5 Part 3)", async () => {
     renderAtStep1({
       canManage: true,
-      teachers: [],
+      teachers: [{ id: "t-1", name: "기존 강사", color: "#10b981" }],
       teacherInputValue: "",
       setTeacherInputValue: () => {},
       onCreateTeacher: vi.fn().mockResolvedValue(true),
     });
-    expect(
-      screen.getByRole("button", { name: /＋ 새 강사/ })
-    ).toBeInTheDocument();
+    // dropdown 디자인 (PR5 Part 3) — trigger click 후 panel 안 '새 강사 추가' 표시
+    const trigger = screen.getByTestId("teacher-dropdown-trigger");
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.click(trigger);
+    expect(screen.getByTestId("teacher-dropdown-add-new")).toBeInTheDocument();
   });
 });

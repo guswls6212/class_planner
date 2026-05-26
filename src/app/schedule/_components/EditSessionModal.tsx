@@ -7,7 +7,7 @@ import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
-import TeacherPillPicker from "../../../components/molecules/TeacherPillPicker";
+import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
 import { StudentChip } from "../../../components/molecules/StudentChip";
 
 /**
@@ -720,11 +720,11 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         {/* Teacher (always shown, pills) */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
-          <TeacherPillPicker
+          <TeacherDropdownPicker
             teachers={teachers}
             selectedTeacherId={tempTeacherId || null}
             onSelect={(id) => onTeacherChange(id ?? null)}
-            subjectId={tempSubjectId || null}
+            subjectId={tempSubjectId || undefined}
             subjectName={currentSubject?.name}
           />
         </div>
