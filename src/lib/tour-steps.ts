@@ -43,7 +43,7 @@ export const TOUR_STEPS: TourStep[] = [
     targetSelector: '[data-tour="schedule-grid"]',
     targetPath: "/schedule",
     title: "수업 블록 이동",
-    description: "등록된 수업 블록에 마우스를 올리면 왼쪽 위에 드래그 아이콘이 나타나요. 그 아이콘을 끌어 다른 시간으로 옮길 수 있어요. 같은 시간에 여러 학생이 있으면 자동으로 그룹 수업이 돼요.",
+    description: "등록된 수업 블록에 마우스를 올리면 왼쪽 위에 드래그 아이콘이 나타나요. 그 아이콘을 끌어 다른 시간으로 옮길 수 있어요. 한 수업에 여러 학생을 등록하면 그룹 수업도 만들 수 있어요.",
     placement: "auto",
   },
   {
