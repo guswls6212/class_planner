@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * Edit Session Modal — Design Exploration: 수업 편집 모달 redesign mockup.
+ * 사용자 시각 검증용 정적 페이지. production 흐름과 분리.
+ *
+ * 의존성:
+ *   - 자체 inline state 만 (실제 hook/api 미연결)
+ *   - non-goal: 실제 session edit (production 은 `/schedule/_components/EditSessionModal.tsx`)
+ *
+ * 결정 history:
+ *   - Mockup 페이지 — 신규 mockup 은 internal-dashboard 의무 (CLAUDE.md § Mockup-in-Internal-Dashboard).
+ *   - 본 페이지는 legacy 잔여 — production deploy 사이트 (class-planner.info365.studio) 비공개 라우트.
+ *   - ADR-002 (2026-05-28): 응집 UI mockup, 분리 needs-review (mockup 자체 응집).
+ *
+ * Sniff test: UI mockup 한 도메인 (edit session redesign). 분리 후보: 없음 (mockup 응집).
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Calendar as CalendarIcon,

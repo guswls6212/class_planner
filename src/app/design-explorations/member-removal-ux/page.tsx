@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * Member Removal UX — Design Exploration: 학원 member 제거 흐름 mockup.
+ * 사용자 시각 검증용 정적 페이지. production 흐름과 분리.
+ *
+ * 의존성:
+ *   - 자체 inline state + lucide-react
+ *   - non-goal: 실제 member removal (production 은 settings/academy)
+ *
+ * 결정 history:
+ *   - Mockup 페이지 — 신규 mockup 은 internal-dashboard 의무.
+ *   - 본 페이지는 legacy 잔여.
+ *   - ADR-002 (2026-05-28): UI mockup, 분리 needs-review (mockup 응집).
+ *
+ * Sniff test: UI mockup 한 도메인 (member removal UX 비교). 분리 후보: 없음.
+ */
+
 import { useState } from "react";
 import {
   Crown,
