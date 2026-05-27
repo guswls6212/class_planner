@@ -127,6 +127,7 @@ import { planSessionPositionUpdate } from "./_utils/updateSessionPositionHelpers
 import { planSessionInsertBeforeLane } from "./_utils/insertSessionHelpers";
 import { computeFilterCascadeAutoDeselect } from "./_utils/filterCascadeAutoDeselect";
 import { planGroupSessionAdd } from "./_utils/groupSessionAddHelpers";
+import { planAddStudentFromInput } from "./_utils/studentInputHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1232,45 +1233,36 @@ function SchedulePageContent(): JSX.Element {
 
   // 🆕 입력창에서 학생 추가 함수
   const addStudentFromInput = () => {
-    const trimmedValue = studentInputValue.trim();
-    if (!trimmedValue) return;
-
-    // 정확한 이름으로 기존 학생 찾기 (동명이인은 첫 번째만 발견)
-    const student = students.find(
-      (s) => s.name.toLowerCase() === trimmedValue.toLowerCase()
-    );
-    if (student) {
-      if (groupModalData.studentIds.includes(student.id)) {
-        // UAT 2026-05-10: 이미 추가된 학생 — silent failure 회귀 방지.
-        // 동명이인이 더 있으면 아래 list에서 선택해야 한다고 안내.
-        const otherDups = students.filter(
-          (s) =>
-            s.id !== student.id &&
-            s.name.toLowerCase() === trimmedValue.toLowerCase(),
-        );
-        if (otherDups.length > 0) {
-          showToast(
-            "info",
-            `'${trimmedValue}' 학생이 이미 추가되어 있습니다. 동명이인이 ${otherDups.length}명 더 있어요 — 아래 목록에서 직접 선택해주세요.`,
-          );
-        } else {
-          showToast("info", `'${trimmedValue}' 학생이 이미 추가되어 있습니다.`);
-        }
+    const outcome = planAddStudentFromInput({
+      input: studentInputValue,
+      students,
+      selectedStudentIds: groupModalData.studentIds,
+      maxStudents: 14,
+    });
+    switch (outcome.action) {
+      case "noop":
         return;
-      }
-      // 🆕 최대 14명 제한 확인
-      if (groupModalData.studentIds.length >= 14) {
+      case "add":
+        addStudent(outcome.studentId);
+        return;
+      case "already-added":
+        showToast(
+          "info",
+          outcome.otherDuplicatesCount > 0
+            ? `'${outcome.studentName}' 학생이 이미 추가되어 있습니다. 동명이인이 ${outcome.otherDuplicatesCount}명 더 있어요 — 아래 목록에서 직접 선택해주세요.`
+            : `'${outcome.studentName}' 학생이 이미 추가되어 있습니다.`,
+        );
+        return;
+      case "max-reached":
         showToast("warning", "최대 14명까지 추가할 수 있습니다.");
         return;
-      }
-      addStudent(student.id);
-    } else {
-      // 일치 없음 — 토스트 안내. 신규 생성은 dropdown의 CTA 버튼만 담당
-      // (Enter는 매칭만, 신규는 의식적 버튼 클릭으로 통일 — 오타 자동 등록 방지).
-      showToast(
-        "info",
-        `'${trimmedValue}' 학생을 찾을 수 없습니다. 아래 '+ 새 학생으로 추가' 버튼을 눌러주세요.`,
-      );
+      case "not-found":
+        // 신규 생성은 dropdown CTA 버튼만 담당 (Enter 자동 등록 회피).
+        showToast(
+          "info",
+          `'${outcome.trimmedInput}' 학생을 찾을 수 없습니다. 아래 '+ 새 학생으로 추가' 버튼을 눌러주세요.`,
+        );
+        return;
     }
   };
 
