@@ -125,6 +125,7 @@ import {
 import { planSessionUpdate } from "./_utils/updateSessionHelpers";
 import { planSessionPositionUpdate } from "./_utils/updateSessionPositionHelpers";
 import { planSessionInsertBeforeLane } from "./_utils/insertSessionHelpers";
+import { computeFilterCascadeAutoDeselect } from "./_utils/filterCascadeAutoDeselect";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -768,63 +769,21 @@ function SchedulePageContent(): JSX.Element {
   ]);
 
   // Auto-deselect: selected 가 cascading 매칭 set 에 없어졌으면 silent 해제.
-  // 사용자 결정: 토스트 없이 단순 정리 (Variant C 의 N/M badge 가 cascading 인지 신호 제공).
-  // 다른 chip 선택으로 인해 이전 selected 와 매칭 sessions 가 0 이 된 경우 모두 해제 → reset.
+  // computeFilterCascadeAutoDeselect 가 다음 selected + removed 결정. page 는 setter 호출.
   useEffect(() => {
-    // corrupted localStorage (object 등) 방어. useLocal 이 type 검증 X.
-    if (
-      !Array.isArray(selectedStudentIds) ||
-      !Array.isArray(selectedSubjectIds) ||
-      !Array.isArray(selectedTeacherIds)
-    ) {
-      return;
+    const plan = computeFilterCascadeAutoDeselect({
+      sessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+    });
+    if (!plan.shouldCleanup) return;
+    plan.removedStudentIds.forEach((id) => toggleStudentFilter(id));
+    if (plan.subjectsChanged) {
+      setSelectedSubjectIds(plan.nextSubjectIds);
     }
-    if (
-      selectedStudentIds.length === 0 &&
-      selectedSubjectIds.length === 0 &&
-      selectedTeacherIds.length === 0
-    ) {
-      return;
-    }
-    const matching = sessions.filter((s) =>
-      sessionMatchesFilters(
-        s,
-        enrollments,
-        selectedStudentIds,
-        selectedSubjectIds,
-        selectedTeacherIds,
-      ),
-    );
-    const enrollmentById = new Map(enrollments.map((e) => [e.id, e]));
-    const validStudents = new Set<string>();
-    const validSubjects = new Set<string>();
-    const validTeachers = new Set<string>();
-    for (const sess of matching) {
-      for (const eid of sess.enrollmentIds ?? []) {
-        const e = enrollmentById.get(eid);
-        if (e) {
-          validStudents.add(e.studentId);
-          validSubjects.add(e.subjectId);
-        }
-      }
-      if (sess.teacherId) validTeachers.add(sess.teacherId);
-    }
-    const nextStudents = selectedStudentIds.filter((id) => validStudents.has(id));
-    const nextSubjects = selectedSubjectIds.filter((id) => validSubjects.has(id));
-    const nextTeachers = selectedTeacherIds.filter((id) => validTeachers.has(id));
-    if (nextStudents.length !== selectedStudentIds.length) {
-      selectedStudentIds
-        .filter((id) => !validStudents.has(id))
-        .forEach((id) => toggleStudentFilter(id));
-    }
-    if (nextSubjects.length !== selectedSubjectIds.length) {
-      setSelectedSubjectIds(nextSubjects);
-    }
-    if (nextTeachers.length !== selectedTeacherIds.length) {
-      selectedTeacherIds
-        .filter((id) => !validTeachers.has(id))
-        .forEach((id) => toggleTeacherFilter(id));
-    }
+    plan.removedTeacherIds.forEach((id) => toggleTeacherFilter(id));
   }, [
     sessions,
     enrollments,
@@ -833,6 +792,7 @@ function SchedulePageContent(): JSX.Element {
     selectedTeacherIds,
     toggleStudentFilter,
     toggleTeacherFilter,
+    setSelectedSubjectIds,
   ]);
 
   // chip 추가 검증 — 새 chip 으로 인해 매칭 0 되면 추가 거부 + 토스트 (Edge 1, option b).
