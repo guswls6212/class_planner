@@ -1,8 +1,23 @@
 /**
- * 🎣 Custom Hook - useStudentManagementLocal (localStorage 직접 조작)
+ * useStudentManagementLocal: localStorage SSOT 의 학생 entity CRUD (add/update/
+ * delete) + deferred-commit undo + server sync + role permission gate 만 담당.
  *
- * localStorage의 classPlannerData를 직접 조작하여 즉시 UI에 반영하고,
- * debounce로 서버와 동기화하는 초고속 학생 데이터 관리 훅입니다.
+ * 의존성:
+ *   - localStorageCrud (학생 CRUD + cascade)
+ *   - apiSync (syncStudentCreateAsync — id reconcile, syncStudentUpdate)
+ *   - pendingDeletes (deferred-commit + recovery)
+ *   - validation/profileSchemas (validateStudentName — SSOT)
+ *   - errors/messages.ko (사용자 표시 에러 메시지)
+ *   - useMyRole (canManage 권한 게이트)
+ *   - toast (undo UX + 사용자 피드백)
+ *
+ * 결정 history:
+ *   - UAT 2026-05-09 김요섭/강지원/김승건 부활: fire-and-forget commit race → await + pendingDeletes (race window 0, ADR-012).
+ *   - UAT 2026-05-10 중복 토스트: hook 에서 add success toast 제거 (호출부 StudentsPageLayout 책임).
+ *   - omni-radar 2026-05-11: validation SSOT (profileSchemas) — localStorage 저장 직전 차단으로 sync retry 폭주 회피.
+ *   - share-tokens revoke best-effort: 학생 삭제는 이미 성공 → revoke 실패는 무시.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — commit 패턴 2 곳 중복 (recovery + setTimeout)
+ *     을 internal helper `commitStudentDeleteOnServer` 로 추출.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +50,57 @@ import { showToast, showUndoToast } from "../lib/toast";
 import { useMyRole } from "./useMyRole";
 
 const PERMISSION_DENIED_MESSAGE = "학생 추가/수정/삭제는 원장과 관리자만 가능합니다.";
+
+/**
+ * Server 에 학생 DELETE 요청 + share-tokens access-code revoke (best-effort) +
+ * 결과에 따라 pendingDeletes 정리 만 담당.
+ *
+ * - userId null (anonymous) → server 호출 skip, 바로 pendingDeletes 정리.
+ * - response.ok → share-token revoke (실패해도 무시) → pendingDeletes 정리.
+ * - 4xx/5xx → pendingDeletes 유지 (recovery hook 이 다음 mount 에서 재시도).
+ * - network 오류 → pendingDeletes 유지.
+ *
+ * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
+ * 2 곳 (recovery effect / deleteStudent setTimeout) 에서 동일 호출 — ADR-002 sweep #7.
+ */
+async function commitStudentDeleteOnServer(
+  userId: string | null,
+  id: string,
+): Promise<boolean> {
+  if (!userId) {
+    removePendingDelete("student", id);
+    return true;
+  }
+  try {
+    const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
+    const response = await fetch(url, { method: "DELETE" });
+    if (!response.ok) {
+      logger.warn(
+        "학생 삭제 commit 실패 — pendingDeletes 유지, 다음 mount에 재시도",
+        { id, status: response.status },
+      );
+      return false;
+    }
+  } catch (err) {
+    logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+  // share-tokens access-code revoke — best-effort (학생 삭제는 이미 성공)
+  try {
+    await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId: id }),
+    });
+  } catch {
+    // ignore — access-code revoke 실패는 학생 삭제 성공과 무관
+  }
+  removePendingDelete("student", id);
+  return true;
+}
 
 // ===== 타입 정의 =====
 
@@ -122,50 +188,11 @@ export const useStudentManagementLocal =
       const userId = localStorage.getItem("supabase_user_id");
       const now = Date.now();
 
-      // Server DELETE를 await — 응답 받은 후에만 pendingDeletes 제거 (UAT 2026-05-09
-      // 김요섭/강지원/김승건 부활 root cause). fire-and-forget commit은 server에 DELETE
-      // 도착 전 useGlobalData 재실행 시 server fetch가 학생 그대로 받아옴 + pendingDeletes
-      // 비었음 → filter 못 함 → 부활. await로 race window 0.
-      // 실패 시 pendingDeletes 그대로 둠 → 다음 mount의 recovery hook이 재시도.
-      const commitOne = async (id: string) => {
-        if (!userId) {
-          // userId 없으면 sync 자체 의미 없음 — pendingDeletes만 정리
-          removePendingDelete("student", id);
-          return;
-        }
-        try {
-          const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
-          const response = await fetch(url, { method: "DELETE" });
-          if (!response.ok) {
-            logger.warn("학생 삭제 commit 실패 — pendingDeletes 유지, 다음 mount에 재시도", {
-              id,
-              status: response.status,
-            });
-            return; // pendingDeletes 그대로
-          }
-        } catch (err) {
-          logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-            id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return;
-        }
-        // share-tokens revoke는 best-effort (학생 삭제는 이미 성공)
-        try {
-          await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ studentId: id }),
-          });
-        } catch {
-          // ignore — access-code revoke 실패는 학생 삭제 성공과 무관
-        }
-        removePendingDelete("student", id);
-      };
-
+      // server DELETE await — race window 0 (UAT 2026-05-09 김요섭/강지원/김승건 부활).
+      // commitStudentDeleteOnServer helper 호출 (ADR-002 sweep #7).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "student") continue;
-        commitOne(p.id);
+        void commitStudentDeleteOnServer(userId, p.id);
         logger.info(
           "useStudentManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -178,7 +205,7 @@ export const useStudentManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("student", p.id)) return;
-          commitOne(p.id);
+          void commitStudentDeleteOnServer(userId, p.id);
           logger.info(
             "useStudentManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -422,44 +449,11 @@ export const useStudentManagementLocal =
             const deadline = Date.now() + PENDING_DELETE_TTL_MS;
             addPendingDelete({ entityType: "student", id, deadline });
             let cancelled = false;
-            // server DELETE await — 응답 받은 후만 pendingDeletes 제거 (race window 0).
-            // 실패 시 pendingDeletes 그대로 → 다음 mount의 recovery hook이 재시도.
+            // server DELETE await — race window 0. commitStudentDeleteOnServer helper (ADR-002 sweep #7).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              if (!userId) {
-                removePendingDelete("student", id);
-                return;
-              }
-              try {
-                const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
-                const response = await fetch(url, { method: "DELETE" });
-                if (!response.ok) {
-                  logger.warn("학생 삭제 commit 실패 — pendingDeletes 유지, 재시도 대기", {
-                    id,
-                    status: response.status,
-                  });
-                  return; // pendingDeletes 그대로
-                }
-              } catch (err) {
-                logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-                  id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-                return;
-              }
-              try {
-                await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-                  method: "DELETE",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ studentId: id }),
-                });
-              } catch {
-                // share-token revoke best-effort
-              }
-              removePendingDelete("student", id);
-              logger.info("useStudentManagementLocal - 학생 삭제 commit", {
-                id,
-              });
+              const ok = await commitStudentDeleteOnServer(userId, id);
+              if (ok) logger.info("useStudentManagementLocal - 학생 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 
             // 4) Undo toast — restore snapshot if clicked within 5s
