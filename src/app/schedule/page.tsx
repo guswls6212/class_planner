@@ -23,6 +23,7 @@ import type { JSX } from "react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useScheduleFilters } from "./_hooks/useScheduleFilters";
+import { usePdfDialog } from "./_hooks/usePdfDialog";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
@@ -1998,24 +1999,18 @@ function SchedulePageContent(): JSX.Element {
     [canManage, _handleSessionClickBase]
   );
 
-  // 🆕 PDF 다운로드 처리
+  // PDF dialog state — usePdfDialog 로 통합 (schedule-page-split-refactor PR 2).
+  // handlePdfExport (200+ 줄, 다수 dependency) 는 page 안 유지.
   const timeTableRef = useRef<HTMLDivElement>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isPdfDialogOpen, setIsPdfDialogOpen] = useState(false);
-  const [pdfInitialScope, setPdfInitialScope] = useState<
-    "per-teacher" | "per-student" | undefined
-  >(undefined);
-  const [pdfInitialPrintTarget, setPdfInitialPrintTarget] = useState<
-    "filtered" | "all" | undefined
-  >(undefined);
-  const openPdfDialog = (
-    scope?: "per-teacher" | "per-student",
-    printTarget?: "filtered" | "all",
-  ) => {
-    setPdfInitialScope(scope);
-    setPdfInitialPrintTarget(printTarget);
-    setIsPdfDialogOpen(true);
-  };
+  const {
+    isDownloading,
+    isPdfDialogOpen,
+    pdfInitialScope,
+    pdfInitialPrintTarget,
+    setIsDownloading,
+    openPdfDialog,
+    closePdfDialog,
+  } = usePdfDialog();
 
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
@@ -2262,7 +2257,7 @@ function SchedulePageContent(): JSX.Element {
           }
         );
       }
-      setIsPdfDialogOpen(false);
+      closePdfDialog();
     } finally {
       setIsDownloading(false);
     }
@@ -3145,7 +3140,7 @@ function SchedulePageContent(): JSX.Element {
       {/* PDF 범위 선택 다이얼로그 */}
       <PdfExportRangeModal
         isOpen={isPdfDialogOpen}
-        onClose={() => setIsPdfDialogOpen(false)}
+        onClose={closePdfDialog}
         onExport={handlePdfExport}
         viewMode={viewMode}
         selectedDate={selectedDate}
