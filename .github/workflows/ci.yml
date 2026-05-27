@@ -112,3 +112,5 @@ jobs:
             playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+# CI cache measurement noop (2026-05-27)
