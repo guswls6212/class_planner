@@ -113,14 +113,10 @@ import { useEditModalState } from "./_hooks/useEditModalState";
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
 import {
-  applyBulkMoves,
-  computeBulkMoveTargets,
-  type BulkMoveTarget,
-} from "./_utils/computeBulkMoveTargets";
-import {
   planBulkSessionCopy,
   planSingleSessionCopy,
 } from "./_utils/sessionCopyHelpers";
+import { planBulkSessionDrop } from "./_utils/sessionDropHelpers";
 import { planPdfExport } from "./_utils/pdfExportHelpers";
 import {
   buildHandleDrop,
@@ -1668,60 +1664,31 @@ function SchedulePageContent(): JSX.Element {
   // Gate: member role — drag-to-reorder is disabled
   const handleSessionDrop = useCallback(
     async (sessionId: string, weekday: number, time: string, yPosition: number) => {
-      if (!canManage) return;
-      // 다중 선택된 sessions 중 dragged session이 포함되어 있으면 일괄 이동
+      // 다중 선택된 sessions 중 dragged session 이 포함되어 있으면 일괄 이동.
+      // planBulkSessionDrop 이 updatedSessions + moves + outOfRange 까지 pure 계산.
       if (
         sessionSelection.count > 1 &&
         sessionSelection.isSelected(sessionId)
       ) {
-        const { moves, outOfRange } = computeBulkMoveTargets({
+        const plan = planBulkSessionDrop({
+          canManage,
           sessions,
+          enrollments,
+          subjects,
           anchorSessionId: sessionId,
           newWeekday: weekday,
           newTime: time,
           newYPosition: yPosition,
-          selectedIds: sessionSelection.selectedSessionIds,
+          selectedSessionIds: sessionSelection.selectedSessionIds,
         });
-        // ⚠️ Bug fix (2026-05-04): 이전엔 _handleSessionDropBase를 N번 await 없이
-        // 호출하여 모든 호출이 같은 stale `sessions` snapshot을 closure로 잡고
-        // 각자 updateData(자신의 newSessions)를 호출 → React state race로 마지막
-        // 호출만 반영, N-1개 sessions은 미이동. 토스트는 "N개 이동"이지만 실제론 1개.
-        // 해결: moves를 단일 batch로 sessions에 적용한 뒤 updateData 1회 호출.
-        let updatedSessions = applyBulkMoves(sessions, moves);
-        // ⚠️ Bug fix (2026-05-04): 이전엔 batch 적용만 하고 충돌 재배치(repositionSessionsUtil)
-        // 안 호출해서 같은 (weekday, time) 위치에 떨어지면 시각적 stack overlap 발생.
-        // 단일 drop은 _handleSessionDropBase → updateSessionPosition 안에서 reposition
-        // 하지만 bulk batch는 별도 처리 필요. 각 move 적용 후 sequential reposition.
-        //
-        // sequential reposition 호출 순서 결정성 (2026-05-15, adr/014 참조):
-        // anchor 먼저 + 추종 yPos asc — anchor 가 자기 lane 점유 후 추종이 contiguous
-        // yPos 시도. collision chain push 가 visual order 보존.
-        const orderedMoves: BulkMoveTarget[] = [
-          moves.find((m) => m.session.id === sessionId),
-          ...moves
-            .filter((m) => m.session.id !== sessionId)
-            .sort((a, b) => a.yPosition - b.yPosition),
-        ].filter((m): m is BulkMoveTarget => Boolean(m));
-        for (const m of orderedMoves) {
-          updatedSessions = repositionSessionsUtil(
-            updatedSessions,
-            enrollments,
-            subjects,
-            m.weekday,
-            m.startsAt,
-            m.endsAt,
-            m.yPosition,
-            m.session.id,
-          );
-        }
-        await updateData({ sessions: updatedSessions });
-        // 서버 동기화 — 단일 drag와 동일한 /position 엔드포인트 사용 (PR #194에서
-        // userId 쿼리 fix 완료된 syncSessionUpdateAsync 재사용). 이전엔 syncSessionUpdate
-        // (full-update endpoint, 잘못된 URL)을 호출해 모든 PUT이 400 반환됐음.
+        if (!plan.ok) return;
+
+        await updateData({ sessions: plan.updatedSessions });
+        // 서버 동기화 — 단일 drag 와 동일 /position 엔드포인트 (PR #194 userId 쿼리 fix).
         const uid = localStorage.getItem("supabase_user_id");
         if (uid) {
           await Promise.all(
-            moves.map((m) =>
+            plan.moves.map((m) =>
               syncSessionUpdateAsync(uid, m.session.id, {
                 weekday: m.weekday,
                 startsAt: m.startsAt,
@@ -1734,17 +1701,18 @@ function SchedulePageContent(): JSX.Element {
         // 강제 리렌더 (lane layout 재계산)
         setGridVersion((v) => v + 1);
         const total = sessionSelection.count;
-        if (outOfRange > 0) {
+        if (plan.outOfRange > 0) {
           showToast(
             "warning",
-            `${total}개 중 ${moves.length}개 이동 — ${outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
+            `${total}개 중 ${plan.movedCount}개 이동 — ${plan.outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
           );
         } else {
-          showToast("success", `${moves.length}개 이동`);
+          showToast("success", `${plan.movedCount}개 이동`);
         }
         sessionSelection.clear();
         return;
       }
+      if (!canManage) return;
       _handleSessionDropBase(sessionId, weekday, time, yPosition);
     },
     [
