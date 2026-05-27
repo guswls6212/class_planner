@@ -120,6 +120,10 @@ import { planBulkSessionDrop } from "./_utils/sessionDropHelpers";
 import { planPdfExport } from "./_utils/pdfExportHelpers";
 import { planFilterToggleAttempt } from "./_utils/filterToggleHelpers";
 import {
+  planSessionAdd,
+  buildRepositionedSessionsAfterAdd,
+} from "./_utils/sessionAddHelpers";
+import {
   buildHandleDrop,
   buildHandleSessionClick,
   buildHandleSessionDrop,
@@ -416,128 +420,60 @@ function SchedulePageContent(): JSX.Element {
       logger.debug("세션 추가 시작", { sessionData });
       startInteraction("add_session");
 
-      // 1단계: 각 학생에 대해 enrollment 생성/확인
-      const enrollmentIds: string[] = [];
-      const newEnrollments: any[] = [];
+      const plan = planSessionAdd({
+        input: sessionData,
+        sessions,
+        enrollments,
+        fallbackWeekStartDate: getWeekStartDate(selectedDate),
+      });
+      logger.debug("새로운 세션 생성", { newSession: plan.newSession });
 
-      for (const studentId of sessionData.studentIds) {
-        // 기존 enrollment가 있는지 확인
-        let enrollment = enrollments.find(
-          (e) =>
-            e.studentId === studentId && e.subjectId === sessionData.subjectId
-        );
-
-        if (!enrollment) {
-          // 새로운 enrollment 생성
-          enrollment = {
-            id: crypto.randomUUID(),
-            studentId: studentId,
-            subjectId: sessionData.subjectId,
-          };
-          newEnrollments.push(enrollment);
-          logger.debug("새로운 enrollment 생성", { enrollment });
-        } else {
-          logger.debug("기존 enrollment 사용", { enrollment });
-        }
-
-        enrollmentIds.push(enrollment.id);
+      const updateDataPayload: any = { sessions: plan.mergedSessions };
+      if (plan.newEnrollments.length > 0) {
+        updateDataPayload.enrollments = plan.mergedEnrollments;
       }
-
-      // 2단계: 세션 생성
-      // weekStartDate: sessionData.weekStartDate 가 있으면 우선 사용 (GroupSessionModal 캘린더에서
-      // 다른 주 날짜 선택한 경우). 미지정이면 현재 시간표 주(selectedDate 기반) — 이전 동작.
-      const newSession = {
-        id: crypto.randomUUID(),
-        subjectId: sessionData.subjectId,
-        studentIds: sessionData.studentIds,
-        ...(sessionData.teacherId && { teacherId: sessionData.teacherId }),
-        weekday: sessionData.weekday,
-        startsAt: sessionData.startTime,
-        endsAt: sessionData.endTime,
-        weekStartDate: sessionData.weekStartDate ?? getWeekStartDate(selectedDate),
-        room: sessionData.room || "",
-        enrollmentIds: enrollmentIds, // ✅ 실제 enrollment ID 사용
-        yPosition: sessionData.yPosition || 1, // 🆕 yPosition 추가
-      };
-
-      logger.debug("새로운 세션 생성", { newSession });
-
-      // 3단계: enrollment와 session을 한 번에 업데이트
-      const updateDataPayload: any = {
-        sessions: [...sessions, newSession],
-      };
-
-      if (newEnrollments.length > 0) {
-        logger.debug("새로운 enrollments와 세션을 함께 저장", {
-          newEnrollments,
-        });
-        updateDataPayload.enrollments = [...enrollments, ...newEnrollments];
-      }
-
       startApiCall("update_data");
       await updateData(updateDataPayload);
       endApiCall("update_data", true);
 
-      // ⚠️ Bug fix (2026-05-04): updateData는 localStorage만 갱신함.
-      // 이전엔 새 session/enrollment가 server에 POST되지 않아 UI에 ghost로
-      // 누적되었고, 이후 PUT /position 시도 시 404 → ghost cleanup이 삭제 →
-      // 사용자 눈에 "수업이 사라짐"으로 보임.
-      // 이제 명시적으로 syncSessionCreate + syncEnrollmentCreate 호출 (client UUID 포함).
+      // ⚠️ Bug fix (2026-05-04): updateData 는 localStorage 만 갱신. server 동기화는
+      // syncSessionCreate + syncEnrollmentCreate 명시 호출 (client UUID 포함).
       const uidForSync = localStorage.getItem("supabase_user_id");
-      for (const enr of newEnrollments) {
-        syncEnrollmentCreate(uidForSync, {
-          id: enr.id,
-          studentId: enr.studentId,
-          subjectId: enr.subjectId,
-        });
+      for (const enr of plan.newEnrollments) {
+        syncEnrollmentCreate(uidForSync, enr);
       }
-      syncSessionCreate(uidForSync, newSession as Session);
+      syncSessionCreate(uidForSync, plan.newSession);
 
       logger.info("세션 추가 완료");
       endInteraction("add_session");
 
-      // 🆕 충돌 해결을 위해 다음 렌더링 사이클에서 실행
+      // 🆕 충돌 해결 — 다음 렌더링 사이클에서 reposition 후 다시 updateData.
       setTimeout(async () => {
         try {
-          logger.debug("충돌 해결 시작 (비동기)");
-
-          // 현재 세션 목록으로 충돌 해결 (새로 생성된 enrollment 포함)
-          const updatedSessions = [...sessions, newSession];
-          const updatedEnrollments =
-            newEnrollments.length > 0
-              ? [...enrollments, ...newEnrollments]
-              : enrollments;
-
-          const repositionedSessions = repositionSessionsUtil(
-            updatedSessions,
-            updatedEnrollments,
-            subjects,
-            sessionData.weekday,
-            sessionData.startTime,
-            sessionData.endTime,
-            sessionData.yPosition || 1,
-            newSession.id
-          );
-
-          logger.debug("충돌 해결 완료", {
-            finalSessionCount: repositionedSessions.length,
-          });
-
-          // 충돌 해결된 세션들과 enrollment를 함께 업데이트
+          const { repositionedSessions, mergedEnrollments } =
+            buildRepositionedSessionsAfterAdd({
+              newSession: plan.newSession,
+              sessions,
+              enrollments,
+              newEnrollments: plan.newEnrollments,
+              subjects,
+              weekday: sessionData.weekday,
+              startTime: sessionData.startTime,
+              endTime: sessionData.endTime,
+              yPosition: sessionData.yPosition || 1,
+            });
           const updatePayload: any = { sessions: repositionedSessions };
-          if (newEnrollments.length > 0) {
-            updatePayload.enrollments = updatedEnrollments;
+          if (plan.newEnrollments.length > 0) {
+            updatePayload.enrollments = mergedEnrollments;
           }
-
           await updateData(updatePayload);
-
           logger.info("충돌 해결 업데이트 완료");
         } catch (error) {
           logger.error("충돌 해결 실패", undefined, error as Error);
         }
       }, 0);
     },
-    [sessions, enrollments, updateData, selectedDate]
+    [sessions, enrollments, subjects, updateData, selectedDate]
   );
 
   // ================================
