@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ScheduleDailyView: 시간표 일별 view 의 1 day 렌더 — time-axis × lane layout + session 배치
+ * + day navigation (이전/다음 일) 만 담당.
+ *
+ * 의존성:
+ *   - planner type (Session)
+ *   - molecules/SessionBlock (session 렌더)
+ *   - non-goal: weekly view (TimeTableGrid), share view, drag (단순 view 모드)
+ *
+ * 결정 history:
+ *   - weekly view 와 별도 컴포넌트 — 같은 grid 패턴이지만 단일 day 만 표시.
+ *   - share view 와 일부 시각 토큰 공유.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI organism, 분리는 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일? — yes (SessionBlock + day picker).
+ *   2. 시그니처? — props 명확.
+ *   3. UI/state/API 섞임? — UI + state (current day). API X.
+ *   4. 도메인? — 한 도메인 (1 day timetable view).
+ *   5. pure + 부수효과? — 부수효과 (state, scroll).
+ *
+ * 분리 후보 (needs-review): day navigation header 분리, time-axis 분리.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
