@@ -9,10 +9,29 @@
 - **Documentation (*.md):** Korean allowed. This is a Korean-language service; Korean docs reduce cognitive load.
 - **UI strings:** Korean (end-user facing).
 
-## File Size Target (applies global rule)
+## Cohesion Target (overrides legacy "300 lines" rule)
 
-- Max 300 lines per file enforced for **new code**.
-- **Existing violations** (17 files, e.g., `schedule/page.tsx` at 1032 lines): reduce incrementally during Phase 2B refactoring. Do not block PRs solely due to existing violations, but do not make them larger.
+**라인 수 정책 폐기** (2026-05-27, ADR-002 cross-workspace). 글로벌 컨벤션의 § Cohesion & Responsibility
+원칙 적용. 라인 수는 결과지 목표 아님.
+
+### 응집된 큰 파일 OK 예시 (class-planner)
+
+| 파일 | 줄 수 | 평가 |
+|---|---|---|
+| `schedule/page.tsx` | 2356 | **너무 큼** — UI 렌더 + 모달 state 7+ + handler 50+ + drag/drop coordination + filter 가 한 파일. 분리 진행 중 |
+| `localStorageCrud.ts` | 1601 | 평가 보류 — entity CRUD 가 응집도 높으면 OK 가능 |
+| `apiSync.ts` | 1103 | 평가 보류 — sync 도메인 한 파일이면 OK 가능 |
+| `GroupSessionModal.tsx` | 979 | 평가 보류 — 한 모달 의 응집된 UI 면 OK 가능 |
+
+위 표는 "300줄 위반 17 files" 의 옛 표를 대체한다. Cohesion sniff test (글로벌
+§1) 통과하면 라인 수 무관 OK.
+
+### schedule/page.tsx 진행 중 refactor 결정
+
+- 23 PR 누적 3219 → 2356 (−863, 26.8%). 일부 추출은 진짜 책임 분리 (sessionCopy /
+  pdfExport / sessionAdd 등), 일부는 thin wrapper 함정 (ScheduleHeaderActions
+  같은 thin wrapper 는 의도 표현 가치는 있으나 라인 효과만 기대했다면 함정).
+- 다음 phase 는 cohesion 평가 후 진행 (`schedule-page-split-refactor.md` proposal status).
 
 ## Styling (overrides global TypeScript rule)
 
