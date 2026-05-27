@@ -1,4 +1,31 @@
 "use client";
+
+/**
+ * EditSessionModal: 기존 수업 (session) 의 수정/삭제 모달 — 학생 multi-select +
+ * 과목/강사 변경 + 시간/요일 변경 + 삭제 confirmation orchestration.
+ *
+ * 의존성:
+ *   - hooks/useModalA11y, useMediaQuery (모바일 BottomSheet 분기)
+ *   - 학생/과목/강사 picker (GroupSessionModal 과 유사 패턴)
+ *   - lib/duplicateLabel (동명이인 학생 부제)
+ *   - non-goal: server sync (호출부 책임), session add 흐름 (GroupSessionModal 책임)
+ *
+ * 결정 history:
+ *   - V3 calendar — 1달 캘린더로 다른 주 날짜 선택 가능 (cross-week move).
+ *   - 동명이인 부제 helper inline (Turbopack chunk 분리 사고 회피, GroupSessionModal과 동일).
+ *   - 모바일 BottomSheet 분기.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI 컴포넌트, 분리는 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes (호출부 + atom + 시간 UI).
+ *   2. 시그니처 영향? — props 명확.
+ *   3. UI/state/API 섞임? — UI 위주 + 폼 state. API 호출 X.
+ *   4. 도메인? — 한 모달 (session 수정/삭제).
+ *   5. pure + 부수효과? — UI 위주.
+ *
+ * 분리 후보 (needs-review): GroupSessionModal 과 picker 공통 추출, 시간/요일 입력 hook.
+ */
+
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { Trash2, X, ChevronDown, Calendar, Clock, AlertCircle } from "lucide-react";
 import { IconButton } from "@/components/atoms/IconButton";
