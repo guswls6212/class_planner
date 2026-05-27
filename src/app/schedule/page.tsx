@@ -118,6 +118,10 @@ import {
   type BulkMoveTarget,
 } from "./_utils/computeBulkMoveTargets";
 import {
+  planBulkSessionCopy,
+  planSingleSessionCopy,
+} from "./_utils/sessionCopyHelpers";
+import {
   buildHandleDrop,
   buildHandleSessionClick,
   buildHandleSessionDrop,
@@ -1762,152 +1766,74 @@ function SchedulePageContent(): JSX.Element {
       time: string,
       yPosition: number,
     ) => {
-      if (!canManage) return;
-      // 다중 선택 묶음 일괄 복사
+      // 다중 선택 묶음 일괄 복사 — planBulkSessionCopy 가 mergedSessions / newEnrollments
+      // 까지 계산. page 는 updateData / sync / toast / setGridVersion / clear orchestration.
       if (
         sessionSelection.count > 1 &&
         sessionSelection.isSelected(sessionId)
       ) {
-        const { moves, outOfRange } = computeBulkMoveTargets({
+        const plan = planBulkSessionCopy({
+          canManage,
           sessions,
+          enrollments,
+          subjects,
           anchorSessionId: sessionId,
           newWeekday: weekday,
           newTime: time,
           newYPosition: yPosition,
-          selectedIds: sessionSelection.selectedSessionIds,
+          selectedSessionIds: sessionSelection.selectedSessionIds,
+          selectedDate,
         });
-        // ⚠️ Bug fix (2026-05-04): 이전엔 await addSession을 N번 순차 호출했지만
-        // addSession 내부의 `sessions` closure가 매 호출마다 같은 stale snapshot을
-        // 잡아 updateData([...sessions, new])가 매번 같은 배열에 1개만 더해 N-1개가
-        // 덮어써짐. 이제 모든 새 sessions/enrollments를 한 번에 만들고 updateData 1회.
-        // sequential reposition 호출 순서 결정성 (2026-05-15, adr/014 참조):
-        // anchor 먼저 + 추종 yPos asc — anchor 가 자기 lane 점유 후 추종이 contiguous
-        // yPos 로 chain push 안정.
-        const orderedMoves: BulkMoveTarget[] = [
-          moves.find((m) => m.session.id === sessionId),
-          ...moves
-            .filter((m) => m.session.id !== sessionId)
-            .sort((a, b) => a.yPosition - b.yPosition),
-        ].filter((m): m is BulkMoveTarget => Boolean(m));
-        const newSessions: Session[] = [];
-        const newEnrollmentsLocal: Array<{
-          id: string;
-          studentId: string;
-          subjectId: string;
-        }> = [];
-        const wkStart = getWeekStartDate(selectedDate);
-        for (const m of orderedMoves) {
-          if (!m.session.subjectId) continue;
-          const studentIds = (m.session.enrollmentIds ?? [])
-            .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)
-            .filter((sid): sid is string => Boolean(sid));
-          // 각 student마다 enrollment 보장 — 기존 enrollment 우선, 없으면 신규
-          const enrollmentIds: string[] = [];
-          for (const studentId of studentIds) {
-            const existing = enrollments.find(
-              (e) => e.studentId === studentId && e.subjectId === m.session.subjectId,
-            );
-            if (existing) {
-              enrollmentIds.push(existing.id);
-            } else {
-              const ne = {
-                id: crypto.randomUUID(),
-                studentId,
-                subjectId: m.session.subjectId,
-              };
-              newEnrollmentsLocal.push(ne);
-              enrollmentIds.push(ne.id);
-            }
-          }
-          newSessions.push({
-            id: crypto.randomUUID(),
-            subjectId: m.session.subjectId,
-            ...(m.session.teacherId && { teacherId: m.session.teacherId }),
-            weekday: m.weekday,
-            startsAt: m.startsAt,
-            endsAt: m.endsAt,
-            weekStartDate: wkStart,
-            room: m.session.room ?? "",
-            enrollmentIds,
-            yPosition: m.yPosition,
-          } as Session);
-        }
-        // ⚠️ Bug fix (2026-05-04): 이전엔 새 sessions를 그대로 append만 했음.
-        // 같은 (weekday, time) 위치에 떨어지면 기존 sessions와 yPosition 충돌해
-        // 시각적 stack overlap 발생. 단일 add(addSession)는 setTimeout 0 안에서
-        // repositionSessionsUtil 호출하지만 multi-copy는 자체 처리 필요.
-        // 각 새 session에 대해 sequential reposition — 같은 시간 충돌 시 다음 빈
-        // lane으로 자동 배치.
-        const mergedEnrollments =
-          newEnrollmentsLocal.length > 0
-            ? [...enrollments, ...newEnrollmentsLocal]
-            : enrollments;
-        let mergedSessions = [...sessions, ...newSessions];
-        for (const ns of newSessions) {
-          mergedSessions = repositionSessionsUtil(
-            mergedSessions,
-            mergedEnrollments,
-            subjects,
-            ns.weekday,
-            ns.startsAt,
-            ns.endsAt,
-            ns.yPosition ?? 1,
-            ns.id,
-          );
-        }
-        const updatePayload: any = { sessions: mergedSessions };
-        if (newEnrollmentsLocal.length > 0) {
-          updatePayload.enrollments = mergedEnrollments;
+        if (!plan.ok) return;
+
+        const updatePayload: any = { sessions: plan.mergedSessions };
+        if (plan.newEnrollments.length > 0) {
+          updatePayload.enrollments = plan.mergedEnrollments;
         }
         await updateData(updatePayload);
-        // server 동기화 (fire-and-forget) — client UUID 포함
         const uid = localStorage.getItem("supabase_user_id");
-        for (const ne of newEnrollmentsLocal) {
+        for (const ne of plan.newEnrollments) {
           syncEnrollmentCreate(uid, ne);
         }
-        for (const ns of newSessions) {
+        for (const ns of plan.newSessions) {
           syncSessionCreate(uid, ns);
         }
         setGridVersion((v) => v + 1);
-        const copied = newSessions.length;
-        if (outOfRange > 0) {
+        if (plan.outOfRange > 0) {
           showToast(
             "warning",
-            `${sessionSelection.count}개 중 ${copied}개 복사 — ${outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
+            `${sessionSelection.count}개 중 ${plan.copiedCount}개 복사 — ${plan.outOfRange}개는 시간 범위(자정 이전) 초과로 건너뜀`,
           );
         } else {
-          showToast("success", `${copied}개 복사`);
+          showToast("success", `${plan.copiedCount}개 복사`);
         }
         sessionSelection.clear();
         return;
       }
-      const original = sessions.find((s) => s.id === sessionId);
-      if (!original) {
-        logger.warn("복사 대상 세션을 찾을 수 없음", { sessionId });
-        return;
-      }
-      // 원본 enrollmentIds → studentIds 변환 (addSession이 enrollment 생성 책임)
-      const studentIds = (original.enrollmentIds ?? [])
-        .map((eid) => enrollments.find((e) => e.id === eid)?.studentId)
-        .filter((sid): sid is string => Boolean(sid));
-      if (!original.subjectId) {
-        logger.warn("복사 대상 subjectId 없음", { sessionId });
-        return;
-      }
-      // 시간 길이 보존
-      const durationMin =
-        timeToMinutes(original.endsAt) - timeToMinutes(original.startsAt);
-      const newEnd = minutesToTime(timeToMinutes(time) + durationMin);
-      await addSession({
-        subjectId: original.subjectId,
-        studentIds,
-        teacherId: original.teacherId ?? undefined,
-        weekday,
-        startTime: time,
-        endTime: newEnd,
-        yPosition,
-        room: original.room,
+
+      // 단일 복사 — planSingleSessionCopy 가 addSession payload 만 계산.
+      const plan = planSingleSessionCopy({
+        canManage,
+        sessions,
+        enrollments,
+        sessionId,
+        newWeekday: weekday,
+        newTime: time,
+        newYPosition: yPosition,
       });
+      if (!plan.ok) {
+        if (plan.reason === "session-not-found") {
+          logger.warn("복사 대상 세션을 찾을 수 없음", {
+            sessionId: plan.sessionId,
+          });
+        } else if (plan.reason === "missing-subject") {
+          logger.warn("복사 대상 subjectId 없음", {
+            sessionId: plan.sessionId,
+          });
+        }
+        return;
+      }
+      await addSession(plan.payload);
     },
     [
       canManage,
