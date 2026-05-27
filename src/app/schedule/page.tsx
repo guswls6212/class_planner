@@ -46,7 +46,6 @@ import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
 import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
 import { sanitizeTempEnrollments } from "./_utils/sanitizeTempEnrollments";
 import { getWeekStartDate } from "../../lib/weekStart";
-import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
 import { Plus } from "lucide-react";
 import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
 import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
@@ -81,14 +80,12 @@ import { preflightCheck } from "@/lib/pdf/preflightCheck";
 import { TOUR_STATE_EVENT } from "@/lib/tour-steps";
 import { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
 // ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
-import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
 // ScheduleChangeBanner 컴포넌트는 deprecated — toast로 대체 (2026-05-04).
 // 컴포넌트 자체는 legacy로 유지하지만 schedule 페이지에선 mount 안 함.
 import { useScheduleMeta } from "../../hooks/useScheduleMeta";
 import { useOutboxFlush } from "../../hooks/useOutboxFlush";
 import { useSessionSelection } from "../../hooks/useSessionSelection";
-import SelectionBar from "@/components/atoms/SelectionBar";
 import ChipFilterPopover from "./_components/ChipFilterPopover";
 import PrimarySidebar from "./_components/PrimarySidebar";
 import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
@@ -96,6 +93,7 @@ import ScheduleToolbarFilters from "./_components/ScheduleToolbarFilters";
 import ScheduleHeaderActions from "./_components/ScheduleHeaderActions";
 import ScheduleSecondaryModals from "./_components/ScheduleSecondaryModals";
 import ScheduleEditModalWrapper from "./_components/ScheduleEditModalWrapper";
+import ScheduleWeeklyGrid from "./_components/ScheduleWeeklyGrid";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
@@ -171,18 +169,6 @@ const ScheduleMonthlyView = dynamic(
   () => import("../../components/organisms/ScheduleMonthlyView"),
   { ssr: false, loading: () => null }
 );
-
-/**
- * "YYYY-MM-DD" KST 월요일 → "M월 D일 — M월 D일" 표시 (banner용).
- */
-function formatBannerWeekRange(mondayIso: string): string {
-  const monday = new Date(`${mondayIso}T12:00:00+09:00`);
-  if (isNaN(monday.getTime())) return mondayIso;
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
-  return `${fmt(monday)} — ${fmt(sunday)}`;
-}
 
 /**
  * 페이지 엔트리 컴포넌트
@@ -2120,89 +2106,51 @@ function SchedulePageContent(): JSX.Element {
         />
       ) : (
         /* 주간 시간표 그리드 */
-        <div className="relative">
-          <SelectionBar
-            count={sessionSelection.count}
-            onDelete={handleBulkDelete}
-            onClear={sessionSelection.clear}
-          />
-          {/* ADR-020 보강 (UAT 2026-05-21): cross-week filter empty banner (Variant C).
-            * 현재 주에 매칭 없고 다른 주에 있으면 표시. 클릭 시 가장 가까운 매칭 주로 navigate. */}
-          {closestMatchingWeek && (
-            <div
-              role="status"
-              data-testid="cross-week-filter-banner"
-              className="px-3 py-2 mb-2 rounded bg-[var(--color-bg-secondary)] border-l-2 border-[var(--color-accent)] text-xs"
-            >
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-[var(--color-text-primary)] font-medium">
-                  현재 주에 필터 매칭 수업이 없어요
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedDate(
-                      new Date(
-                        `${closestMatchingWeek.weekStartDate}T12:00:00+09:00`,
-                      ),
-                    )
-                  }
-                  className="shrink-0 px-2 py-1 text-[10px] rounded bg-[var(--color-accent)] text-white font-bold hover:opacity-90"
-                >
-                  {closestMatchingWeek.isFuture ? "다음" : "지난"} 매칭 주로 →
-                </button>
-              </div>
-              <p className="text-[10px] text-[var(--color-text-muted)]">
-                가장 가까운 매칭:{" "}
-                <span className="text-[var(--color-text-secondary)] font-medium">
-                  {formatBannerWeekRange(closestMatchingWeek.weekStartDate)}
-                </span>{" "}
-                ({closestMatchingWeek.count}개 수업)
-              </p>
-            </div>
-          )}
-          <ScheduleGridSection
-            containerRef={timeTableRef}
-            gridVersion={gridVersion}
-            sessions={displaySessions}
-            subjects={subjects}
-            enrollments={enrollments}
-            students={students}
-            onSessionClick={handleSessionClick}
-            onSessionDelete={handleSessionDelete}
-            onDrop={handleDrop}
-            onSessionDrop={handleSessionDrop}
-            onSessionCopy={canManage ? handleSessionCopy : undefined}
-            onSessionInsertBefore={canManage ? handleSessionInsertBefore : undefined}
-            onEmptySpaceClick={handleEmptySpaceClick}
-            selectedStudentIds={selectedStudentIds}
-            selectedSubjectIds={selectedSubjectIds}
-            selectedTeacherIds={selectedTeacherIds}
-            isStudentDragging={isStudentDragging}
-            teachers={teachers}
-            colorBy={colorBy}
-            baseDate={selectedDate}
-            selectedSessionIds={sessionSelection.selectedSet}
-            onSessionSelectToggle={canManage ? sessionSelection.toggle : undefined}
-            onSessionContextMenuCopy={canManage ? handleContextMenuCopy : undefined}
-            onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
-            startHour={timeRange.startHour}
-            endHour={timeRange.endHour}
-            fillHeight={isP3}
-          />
-          {weekFilteredSessions.length === 0 && (
-            <EmptyWeekState
-              hasTemplate={Boolean(activeTemplate)}
-              onApplyTemplate={() => { if (canManage) setShowApplyPickerModal(true); }}
-              onAddSession={() => {
-                if (!canManage) return;
-                const now = new Date();
-                const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
-                openGroupModal(selectedWeekday, currentTime, 1);
-              }}
-            />
-          )}
-        </div>
+        <ScheduleWeeklyGrid
+          selectionCount={sessionSelection.count}
+          onBulkDelete={handleBulkDelete}
+          onClearSelection={sessionSelection.clear}
+          closestMatchingWeek={closestMatchingWeek}
+          onJumpToMatchingWeek={(weekStartDate) =>
+            setSelectedDate(new Date(`${weekStartDate}T12:00:00+09:00`))
+          }
+          containerRef={timeTableRef}
+          gridVersion={gridVersion}
+          sessions={displaySessions}
+          subjects={subjects}
+          enrollments={enrollments}
+          students={students}
+          onSessionClick={handleSessionClick}
+          onSessionDelete={handleSessionDelete}
+          onDrop={handleDrop}
+          onSessionDrop={handleSessionDrop}
+          onSessionCopy={canManage ? handleSessionCopy : undefined}
+          onSessionInsertBefore={canManage ? handleSessionInsertBefore : undefined}
+          onEmptySpaceClick={handleEmptySpaceClick}
+          selectedStudentIds={selectedStudentIds}
+          selectedSubjectIds={selectedSubjectIds}
+          selectedTeacherIds={selectedTeacherIds}
+          isStudentDragging={isStudentDragging}
+          teachers={teachers}
+          colorBy={colorBy}
+          baseDate={selectedDate}
+          selectedSessionIds={sessionSelection.selectedSet}
+          onSessionSelectToggle={canManage ? sessionSelection.toggle : undefined}
+          onSessionContextMenuCopy={canManage ? handleContextMenuCopy : undefined}
+          onSessionContextMenuStartSelect={canManage ? handleContextMenuStartSelect : undefined}
+          startHour={timeRange.startHour}
+          endHour={timeRange.endHour}
+          fillHeight={isP3}
+          weekFilteredSessionsCount={weekFilteredSessions.length}
+          hasTemplate={Boolean(activeTemplate)}
+          canManage={canManage}
+          onApplyTemplate={() => setShowApplyPickerModal(true)}
+          onAddSession={() => {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, "0")}:00`;
+            openGroupModal(selectedWeekday, currentTime, 1);
+          }}
+        />
       )}
       </div>
 
