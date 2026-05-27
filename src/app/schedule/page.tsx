@@ -129,6 +129,10 @@ import { computeFilterCascadeAutoDeselect } from "./_utils/filterCascadeAutoDese
 import { planGroupSessionAdd } from "./_utils/groupSessionAddHelpers";
 import { planAddStudentFromInput } from "./_utils/studentInputHelpers";
 import {
+  computeFilteredAndAllSessions,
+  computeFilterChipLabel,
+} from "./_utils/pdfDialogHelpers";
+import {
   buildHandleDrop,
   buildHandleSessionClick,
   buildHandleSessionDrop,
@@ -1630,30 +1634,22 @@ function SchedulePageContent(): JSX.Element {
     closePdfDialog,
   } = usePdfDialog();
 
+  // PR #432: preflight 는 필터된 수업 기준 (modal 의 printTarget='filtered' default).
+  // PR #429-B: crowded-class warning (1h + 5+ 학생) — enrollments 전달.
   const pdfPreflightResult = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
-    const allSessionsRaw = Array.from(displaySessions.values()).flat();
-    const hasAnyFilter =
-      selectedStudentIds.length > 0 ||
-      selectedSubjectIds.length > 0 ||
-      selectedTeacherIds.length > 0;
-    // PR #432: preflight 는 필터된 수업 기준 (modal 의 printTarget='filtered' default)
-    const filtered = hasAnyFilter
-      ? allSessionsRaw.filter((s) =>
-          sessionMatchesFilters(
-            s,
-            enrollments,
-            selectedStudentIds,
-            selectedSubjectIds,
-            selectedTeacherIds,
-          ),
-        )
-      : allSessionsRaw;
-    return preflightCheck(filtered, {
+    const { filteredSessions } = computeFilteredAndAllSessions({
+      displaySessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+    });
+    return preflightCheck(filteredSessions, {
       isStudentFilter: selectedStudentIds.length > 0,
       startHour: timeRange.startHour,
       endHour: timeRange.endHour + 1,
-      enrollments, // PR #429-B: crowded-class warning (1h + 5+학생)
+      enrollments,
     });
   }, [
     isPdfDialogOpen,
@@ -1665,7 +1661,7 @@ function SchedulePageContent(): JSX.Element {
     enrollments,
   ]);
 
-  // PR #438: "전체 수업" 인쇄 시 전체 sessions 기준 preflight — 더 많은 경고 가능
+  // PR #438: "전체 수업" 인쇄 시 전체 sessions 기준 preflight — 더 많은 경고 가능.
   const pdfPreflightResultAll = useMemo(() => {
     if (!isPdfDialogOpen) return undefined;
     const allSessionsRaw = Array.from(displaySessions.values()).flat();
@@ -1677,27 +1673,21 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [isPdfDialogOpen, displaySessions, timeRange, enrollments]);
 
-  // PR #432: modal 의 "필터 적용 N 수업 / 전체 N 수업" 카운트
-  // PR #435: dropdown 도 사용 (그룹 분리 layout) → isPdfDialogOpen 가드 제거
+  // PR #432: modal 의 "필터 적용 N 수업 / 전체 N 수업" 카운트.
+  // PR #435: dropdown 도 사용 — isPdfDialogOpen 가드 제거.
   const pdfCounts = useMemo(() => {
     if (!displaySessions) return { filtered: 0, total: 0 };
-    const allSessionsRaw = Array.from(displaySessions.values()).flat();
-    const hasAnyFilter =
-      selectedStudentIds.length > 0 ||
-      selectedSubjectIds.length > 0 ||
-      selectedTeacherIds.length > 0;
-    const filtered = hasAnyFilter
-      ? allSessionsRaw.filter((s) =>
-          sessionMatchesFilters(
-            s,
-            enrollments,
-            selectedStudentIds,
-            selectedSubjectIds,
-            selectedTeacherIds,
-          ),
-        )
-      : allSessionsRaw;
-    return { filtered: filtered.length, total: allSessionsRaw.length };
+    const { allSessionsRaw, filteredSessions } = computeFilteredAndAllSessions({
+      displaySessions,
+      enrollments,
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+    });
+    return {
+      filtered: filteredSessions.length,
+      total: allSessionsRaw.length,
+    };
   }, [
     displaySessions,
     selectedStudentIds,
@@ -1706,38 +1696,26 @@ function SchedulePageContent(): JSX.Element {
     enrollments,
   ]);
 
-  // PR #435: B1 amber pill — 첫 활성 필터의 label
-  const filterChipLabel = useMemo<string | undefined>(() => {
-    if (selectedStudentIds.length > 0) {
-      const s = students.find((x) => x.id === selectedStudentIds[0]);
-      const name = s?.name ?? "학생";
-      return selectedStudentIds.length === 1
-        ? name
-        : `${name} 외 ${selectedStudentIds.length - 1}`;
-    }
-    if (selectedSubjectIds.length > 0) {
-      const s = subjects.find((x) => x.id === selectedSubjectIds[0]);
-      const name = s?.name ?? "과목";
-      return selectedSubjectIds.length === 1
-        ? name
-        : `${name} 외 ${selectedSubjectIds.length - 1}`;
-    }
-    if (selectedTeacherIds.length > 0) {
-      const t = teachers.find((x) => x.id === selectedTeacherIds[0]);
-      const name = t?.name ?? "강사";
-      return selectedTeacherIds.length === 1
-        ? name
-        : `${name} 외 ${selectedTeacherIds.length - 1}`;
-    }
-    return undefined;
-  }, [
-    selectedStudentIds,
-    selectedSubjectIds,
-    selectedTeacherIds,
-    students,
-    subjects,
-    teachers,
-  ]);
+  // PR #435: B1 amber pill — 첫 활성 필터의 label (학생 → 과목 → 강사 priority).
+  const filterChipLabel = useMemo<string | undefined>(
+    () =>
+      computeFilterChipLabel({
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        students,
+        subjects,
+        teachers,
+      }),
+    [
+      selectedStudentIds,
+      selectedSubjectIds,
+      selectedTeacherIds,
+      students,
+      subjects,
+      teachers,
+    ],
+  );
 
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
