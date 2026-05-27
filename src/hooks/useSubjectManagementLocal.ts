@@ -1,8 +1,22 @@
 /**
- * 🎣 Custom Hook - useSubjectManagementLocal (localStorage 직접 조작)
+ * useSubjectManagementLocal: localStorage SSOT 의 과목 entity CRUD (add/update/
+ * delete) + cascading enrollments + sessions + deferred-commit undo + role gate 만 담당.
  *
- * localStorage의 classPlannerData를 직접 조작하여 즉시 UI에 반영하고,
- * debounce로 서버와 동기화하는 초고속 과목 데이터 관리 훅입니다.
+ * 의존성:
+ *   - localStorageCrud (과목 CRUD + cascade)
+ *   - apiSync (syncSubjectCreateAsync — id reconcile, syncSubjectUpdate)
+ *   - pendingDeletes (deferred-commit + recovery)
+ *   - validation/profileSchemas (validateSubjectName + validateSubjectInput — SSOT)
+ *   - useMyRole (canManage 권한 게이트)
+ *   - toast (undo UX)
+ *
+ * 결정 history:
+ *   - UAT 2026-05-09: deferred-commit + await — race window 0 (학생/강사 동일 패턴, ADR-012).
+ *   - UAT 2026-05-10: 중복 토스트 — hook 에서 add success toast 제거 (호출부 SubjectsPageLayout 책임).
+ *   - 4-layer validation: update 시 invalid color hex 등이 localStorage 저장된 뒤 sync error 따라붙는 모순 차단 (UI/sync layer 사전 검증).
+ *   - Cascade: subject delete 시 관련 enrollments + sessions 정리 (localStorageCrud.deleteSubjectFromLocal). undo 시 snapshot 복원.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — commit 패턴 2 곳 중복을 internal helper
+ *     `commitSubjectDeleteOnServer` 로 추출.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +49,45 @@ import { validateSubjectInput, validateSubjectName } from "../lib/validation/pro
 import { getKoMessage } from "../lib/errors/messages.ko";
 
 const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
+
+/**
+ * Server 에 과목 DELETE 요청 + 결과에 따라 pendingDeletes 정리 만 담당.
+ *
+ * - userId null → server 호출 skip, pendingDeletes 정리.
+ * - response.ok → pendingDeletes 정리.
+ * - 4xx/5xx/network → pendingDeletes 유지 (recovery hook 재시도).
+ *
+ * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
+ * 2 곳 (recovery effect / deleteSubject setTimeout) 동일 호출 — ADR-002 sweep #9.
+ */
+async function commitSubjectDeleteOnServer(
+  userId: string | null,
+  id: string,
+): Promise<boolean> {
+  if (!userId) {
+    removePendingDelete("subject", id);
+    return true;
+  }
+  try {
+    const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
+    const response = await fetch(url, { method: "DELETE" });
+    if (!response.ok) {
+      logger.warn("과목 삭제 commit 실패 — pendingDeletes 유지", {
+        id,
+        status: response.status,
+      });
+      return false;
+    }
+  } catch (err) {
+    logger.warn("과목 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+  removePendingDelete("subject", id);
+  return true;
+}
 
 // ===== 타입 정의 =====
 
@@ -113,35 +166,10 @@ export const useSubjectManagementLocal =
       const userId = localStorage.getItem("supabase_user_id");
       const now = Date.now();
 
-      // server DELETE await — race window 0 (UAT 2026-05-09 학생 부활 패턴 동일).
-      const commitOne = async (id: string) => {
-        if (!userId) {
-          removePendingDelete("subject", id);
-          return;
-        }
-        try {
-          const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
-          const response = await fetch(url, { method: "DELETE" });
-          if (!response.ok) {
-            logger.warn("과목 삭제 commit 실패 — pendingDeletes 유지", {
-              id,
-              status: response.status,
-            });
-            return;
-          }
-        } catch (err) {
-          logger.warn("과목 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-            id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return;
-        }
-        removePendingDelete("subject", id);
-      };
-
+      // server DELETE await — race window 0. commitSubjectDeleteOnServer helper (ADR-002 sweep #9).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "subject") continue;
-        commitOne(p.id);
+        void commitSubjectDeleteOnServer(userId, p.id);
         logger.info(
           "useSubjectManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -154,7 +182,7 @@ export const useSubjectManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("subject", p.id)) return;
-          commitOne(p.id);
+          void commitSubjectDeleteOnServer(userId, p.id);
           logger.info(
             "useSubjectManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -391,32 +419,11 @@ export const useSubjectManagementLocal =
             const deadline = Date.now() + PENDING_DELETE_TTL_MS;
             addPendingDelete({ entityType: "subject", id, deadline });
             let cancelled = false;
-            // server DELETE await — race window 0.
+            // server DELETE await — race window 0. commitSubjectDeleteOnServer helper (ADR-002 sweep #9).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              if (!userId) {
-                removePendingDelete("subject", id);
-                return;
-              }
-              try {
-                const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
-                const response = await fetch(url, { method: "DELETE" });
-                if (!response.ok) {
-                  logger.warn("과목 삭제 commit 실패 — pendingDeletes 유지", {
-                    id,
-                    status: response.status,
-                  });
-                  return;
-                }
-              } catch (err) {
-                logger.warn("과목 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-                  id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-                return;
-              }
-              removePendingDelete("subject", id);
-              logger.info("useSubjectManagementLocal - 과목 삭제 commit", { id });
+              const ok = await commitSubjectDeleteOnServer(userId, id);
+              if (ok) logger.info("useSubjectManagementLocal - 과목 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 
             // 4) Undo toast
