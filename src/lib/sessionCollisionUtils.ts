@@ -1,14 +1,83 @@
 /**
- * 세션 충돌 감지 및 해결 유틸리티
- * develop 브랜치에서 작동하던 원래 로직 복원
+ * sessionCollisionUtils: schedule grid 의 session 시간 충돌 감지 + 우선순위
+ * reposition + lane compact 만 담당 (pure algorithm — no I/O, logger.debug only).
+ *
+ * 의존성:
+ *   - planner.timeToMinutes (시간 string → minutes 변환)
+ *   - 호출처: schedule/page.tsx drag handler, useScheduleLayout, computeTentativeLayout
+ *   - non-goal: localStorage I/O, server sync, UI rendering
+ *
+ * 결정 history:
+ *   - 2026-05-13 (omni-radar): sourceYPos 점유 시 chain redirect → anchor stack 사고.
+ *     canRedirectToSourceYPos 가드 도입.
+ *   - Variant E (insertBefore preview): drop handler 와 preview 결과 일치 보장 위해
+ *     동일 algorithm 을 insertSessionAtLanePreview 에 inline (circular import 회피).
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — repositionSessions 안 inline patterns
+ *     (buildDaySessionsMap × 2, compactYPositions × 2) 를 internal pure helpers 로 추출.
+ *     함수 자체 한 알고리즘 흐름이라 분리 X, helpers 만 응집도 ↑.
  */
 
 import { logger } from "./logger";
 import type { Enrollment, Session, Subject } from "./planner";
 import { timeToMinutes } from "./planner";
 
-interface SessionWithPriority extends Session {
+export interface SessionWithPriority extends Session {
   priorityLevel?: number;
+}
+
+/**
+ * weekday 의 sessions 를 yPosition 별 그룹화한 Map 생성 (priorityLevel: 0 초기화).
+ *
+ * - excludeId 가 주어지면 그 session 제외 (cross-weekday move 시 source 에서 이동
+ *   세션 자체 제거 목적).
+ * - yPosition undefined/null 은 1 로 정규화.
+ * - 반환 Map 의 sub-array 는 mutable — caller 가 in-place push/filter 가능.
+ *
+ * repositionSessions 의 target/source weekday 그룹화 두 곳에서 사용.
+ */
+export function buildDaySessionsMap(
+  sessions: Session[],
+  weekday: number,
+  excludeId?: string,
+): Map<number, SessionWithPriority[]> {
+  const map = new Map<number, SessionWithPriority[]>();
+  sessions
+    .filter((s) => s.weekday === weekday && (excludeId == null || s.id !== excludeId))
+    .forEach((session) => {
+      // `|| 1` preserves original behavior (yPosition=0 → 1; only 1-indexed lanes used in app).
+      const yPos = session.yPosition || 1;
+      if (!map.has(yPos)) map.set(yPos, []);
+      map.get(yPos)!.push({ ...session, priorityLevel: 0 });
+    });
+  return map;
+}
+
+/**
+ * yPosition 기준 정렬된 Map 을 1부터 빈 행 제거하며 compact 재배치.
+ * priorityLevel 속성은 제거하고 plain Session 배열로 반환.
+ *
+ * repositionSessions 의 source/target weekday compact 두 곳에서 사용.
+ */
+export function compactYPositions(
+  daySessionsMap: Map<number, SessionWithPriority[]>,
+): Session[] {
+  const result: Session[] = [];
+  const sortedYs = Array.from(daySessionsMap.keys()).sort((a, b) => a - b);
+  let compactIdx = 1;
+  sortedYs.forEach((yPos) => {
+    const list = daySessionsMap.get(yPos) ?? [];
+    if (list.length === 0) return;
+    list.forEach((session) => {
+      const reassigned: SessionWithPriority = {
+        ...session,
+        yPosition: compactIdx,
+      };
+      const { priorityLevel: _pl, ...clean } = reassigned;
+      result.push(clean as Session);
+    });
+    compactIdx += 1;
+  });
+  return result;
 }
 
 /**
@@ -92,19 +161,8 @@ export const repositionSessions = (
     movingSessionId,
   });
 
-  // 1. targetDaySessions = Map<yPosition, SessionWithPriority[]>
-  const targetDaySessions = new Map<number, SessionWithPriority[]>();
-
-  // 해당 요일의 모든 세션들을 yPosition별로 그룹화 (우선순위 레벨 0으로 초기화)
-  sessions
-    .filter((s) => s.weekday === targetWeekday)
-    .forEach((session) => {
-      const yPos = session.yPosition || 1;
-      if (!targetDaySessions.has(yPos)) {
-        targetDaySessions.set(yPos, []);
-      }
-      targetDaySessions.get(yPos)!.push({ ...session, priorityLevel: 0 });
-    });
+  // 1. targetDaySessions = Map<yPosition, SessionWithPriority[]> — weekday 그룹화 (priorityLevel: 0).
+  const targetDaySessions = buildDaySessionsMap(sessions, targetWeekday);
 
   logger.debug("초기 targetDaySessions", {
     sessions: Object.fromEntries(
@@ -366,34 +424,14 @@ export const repositionSessions = (
   const isCrossWeekdayMove =
     sourceWeekday !== undefined && sourceWeekday !== targetWeekday;
 
-  // 4-1) 원래 요일 압축 처리 (교차-요일 이동인 경우)
-  if (isCrossWeekdayMove) {
-    const sourceDaySessions = new Map<number, SessionWithPriority[]>();
-    sessions
-      .filter((s) => s.weekday === sourceWeekday && s.id !== movingSessionId)
-      .forEach((session) => {
-        const yPos = session.yPosition || 1;
-        if (!sourceDaySessions.has(yPos)) sourceDaySessions.set(yPos, []);
-        sourceDaySessions.get(yPos)!.push({ ...session, priorityLevel: 0 });
-      });
-
-    const sortedSourceY = Array.from(sourceDaySessions.keys()).sort(
-      (a, b) => a - b
+  // 4-1) 원래 요일 압축 처리 (교차-요일 이동인 경우 — 이동 세션 자체 제외 후 compact).
+  if (isCrossWeekdayMove && sourceWeekday !== undefined) {
+    const sourceDaySessions = buildDaySessionsMap(
+      sessions,
+      sourceWeekday,
+      movingSessionId,
     );
-    let compactY = 1;
-    sortedSourceY.forEach((yPos) => {
-      const list = sourceDaySessions.get(yPos) || [];
-      if (list.length === 0) return;
-      list.forEach((session) => {
-        const reassigned: SessionWithPriority = {
-          ...session,
-          yPosition: compactY,
-        };
-        const { priorityLevel, ...clean } = reassigned;
-        finalSessions.push(clean as Session);
-      });
-      compactY += 1;
-    });
+    finalSessions.push(...compactYPositions(sourceDaySessions));
   }
 
   // 4-2) 나머지 다른 요일들은 그대로 유지 (이동 세션 제외, sourceWeekday는 이미 처리했으므로 스킵)
@@ -408,31 +446,8 @@ export const repositionSessions = (
       finalSessions.push(session);
     });
 
-  // 해당(목표) 요일의 세션들은 충돌 해결된 것으로 교체하되,
-  // 빈 yPosition(행)을 제거하고 1부터 연속되도록 압축(compact)한다
-  // 1) yPosition 키를 정렬하여 순회
-  const sortedYPositions = Array.from(targetDaySessions.keys()).sort(
-    (a, b) => a - b
-  );
-
-  // 2) 비어있지 않은 행만 순서대로 재배치하여 yPosition을 1부터 다시 부여
-  let compactIndex = 1;
-  sortedYPositions.forEach((yPos) => {
-    const list = targetDaySessions.get(yPos) || [];
-    if (list.length === 0) return; // 빈 행은 스킵
-
-    list.forEach((session) => {
-      const reassigned: SessionWithPriority = {
-        ...session,
-        yPosition: compactIndex,
-      };
-
-      // priorityLevel 속성 제거하고 원래 Session 타입으로 변환하여 반영
-      const { priorityLevel, ...cleanSession } = reassigned;
-      finalSessions.push(cleanSession as Session);
-    });
-    compactIndex += 1;
-  });
+  // 해당(목표) 요일의 세션들은 충돌 해결된 것으로 교체 — 빈 yPosition 제거 + 1부터 compact 재배치.
+  finalSessions.push(...compactYPositions(targetDaySessions));
 
   logger.debug("우선순위 기반 충돌 해결 완료");
   return finalSessions;
