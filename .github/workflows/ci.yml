@@ -9,14 +9,14 @@ on:
 
 # Hybrid runner 분기 (2026-05-27, proposal ci-hybrid-runner-setup #step-3):
 #   - main 향 PR + push to main → ubuntu-latest (Linux production-parity)
-#   - dev 향 PR → Mac Studio self-hosted runner (~2-3분, minutes 0 사용)
-# 분기 식: (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","macOS","ARM64"]')
+#   - dev 향 PR → Mac Studio docker container runner (~2-3분, minutes 0 사용, network/cpu 격리)
+# 분기 식: (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]')
 # push event 는 on.push.branches 가 [main] 이라 main 만 트리거 → 항상 ubuntu.
 
 jobs:
   check:
     name: Type check, Lint, Unit tests
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,7 +35,7 @@ jobs:
   build:
     name: Production build
     needs: check
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,7 +54,7 @@ jobs:
     # dev 향   = Mac Studio + 1 shard (single fast run).
     name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }})
     needs: build
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","macOS","ARM64"]') }}
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     strategy:
       fail-fast: false
       matrix:
