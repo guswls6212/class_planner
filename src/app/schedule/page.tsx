@@ -133,6 +133,10 @@ import {
   computeFilterChipLabel,
 } from "./_utils/pdfDialogHelpers";
 import {
+  computeScheduleTitle,
+  computeScheduleDateLabels,
+} from "./_utils/scheduleDateLabelHelpers";
+import {
   buildHandleDrop,
   buildHandleSessionClick,
   buildHandleSessionDrop,
@@ -1968,55 +1972,13 @@ function SchedulePageContent(): JSX.Element {
     { label: "월별", value: "monthly" },
   ] as const;
 
-  const scheduleTitle =
-    viewMode === "daily" ? "일별 시간표"
-    : viewMode === "monthly" ? "월별 시간표"
-    : "주간 시간표";
+  const scheduleTitle = computeScheduleTitle(viewMode);
 
-  // dateLabel 두 형태 — desktop은 full, mobile은 함축(year+month). day는 grid 상단에
-  // 표시되므로 toolbar는 month/year 단위로 충분 (모바일 toolbar overflow 방지).
-  const { dateLabel, dateLabelShort } = (() => {
-    if (viewMode === "daily") {
-      const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-      const yy = String(selectedDate.getFullYear()).slice(2);
-      const m = selectedDate.getMonth() + 1;
-      return {
-        dateLabel: `${selectedDate.getFullYear()}년 ${m}월 ${selectedDate.getDate()}일 (${DAY_LABELS[selectedDate.getDay()]})`,
-        dateLabelShort: `${yy}년 ${m}월`,
-      };
-    }
-    if (viewMode === "weekly") {
-      const mon = new Date(selectedDate);
-      mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-      const sun = new Date(mon);
-      sun.setDate(sun.getDate() + 6);
-      const sameMonth = mon.getMonth() === sun.getMonth();
-      const sameYear = mon.getFullYear() === sun.getFullYear();
-      const monMM = mon.getMonth() + 1;
-      const sunMM = sun.getMonth() + 1;
-      const monYY = String(mon.getFullYear()).slice(2);
-      const sunYY = String(sun.getFullYear()).slice(2);
-      const start = `${mon.getFullYear()}년 ${monMM}월 ${mon.getDate()}일`;
-      const end = sameMonth
-        ? `${sun.getDate()}일`
-        : !sameYear
-          ? `${sun.getFullYear()}년 ${sunMM}월 ${sun.getDate()}일`
-          : `${sunMM}월 ${sun.getDate()}일`;
-      return {
-        dateLabel: `${start} — ${end}`,
-        dateLabelShort: sameMonth
-          ? `${monYY}년 ${monMM}월`
-          : !sameYear
-            ? `${monYY}-${sunYY}년 ${monMM}-${sunMM}월`
-            : `${monYY}년 ${monMM}-${sunMM}월`,
-      };
-    }
-    const yy = String(selectedDate.getFullYear()).slice(2);
-    return {
-      dateLabel: `${selectedDate.getFullYear()}년 ${selectedDate.getMonth() + 1}월`,
-      dateLabelShort: `${yy}년 ${selectedDate.getMonth() + 1}월`,
-    };
-  })();
+  // dateLabel 두 형태 — desktop은 full, mobile은 함축. computeScheduleDateLabels 가 viewMode 별 분기.
+  const { dateLabel, dateLabelShort } = computeScheduleDateLabels(
+    viewMode,
+    selectedDate,
+  );
 
   const teachersForPdfModal = useMemo(
     () => teachers.map((t) => ({ id: t.id, name: t.name, color: t.color })),
