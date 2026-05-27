@@ -1,21 +1,53 @@
 "use client";
 
 /**
- * SchedulePage
+ * SchedulePage: 학원 시간표 grid 의 메인 페이지 — week-view 렌더 + filter +
+ * session add/update/delete/drag-drop + group session modal + PDF export + template
+ * apply/save + cascading filter UI 전체 orchestration 만 담당.
  *
- * 파일 구성 가이드 (읽기 순서 권장):
- * 1) Imports & Constants
- * 2) Public Component Entrypoint (SchedulePage)
- * 3) Container Component (SchedulePageContent)
- *    3-1) Data hooks & perf hooks
- *    3-2) Local UI states
- *    3-3) Core callbacks (addSession / updateSession)
- *    3-4) Collision helpers (findCollidingSessions, ...)
- *    3-5) DnD handlers & UI event handlers
- *    3-6) Modal wiring (GroupSessionModal / EditSessionModal)
- *    3-7) Render
+ * 파일 구성 가이드 (읽기 순서):
+ *   1) Imports & Constants
+ *   2) Public Component Entrypoint (SchedulePage)
+ *   3) Container Component (SchedulePageContent)
+ *      3-1) Data hooks & perf hooks
+ *      3-2) Local UI states (모달 7+ / drag context / filter / template)
+ *      3-3) Core callbacks (addSession / updateSession)
+ *      3-4) Collision helpers (findCollidingSessions, ...)
+ *      3-5) DnD handlers & UI event handlers
+ *      3-6) Modal wiring (GroupSessionModal / EditSessionModal / PDF export)
+ *      3-7) Render
  *
- * 주의: 본 리팩토링은 비기능적(가독성) 수정으로, 로직 변경 없음
+ * 의존성:
+ *   - 데이터 hooks: useIntegratedDataLocal, useStudent/Teacher/SubjectManagementLocal
+ *   - schedule sub-hooks: useScheduleFilters, useScheduleLayout, useScheduleView,
+ *     useDisplaySessions, useTimeRange, useTemplates, useAttendance, useTemplateState, usePdfDialog
+ *   - 분리된 helpers: _utils/* (pickerCreate, templateHelpers, sessionSave, etc.) 후속 hook 들로 일부 이전됨
+ *   - 모달 compponents: GroupSessionModal, EditSessionModal, PdfExportRangeModal 등
+ *
+ * 결정 history:
+ *   - 23 PR refactor cycle (2026-05-26 ~ 2026-05-27): 3219줄 → 2356줄 (-863, 26.8%).
+ *     일부 추출 (sessionCopy / pdfExport / sessionAdd 등) 은 진짜 책임 분리,
+ *     일부 (ScheduleHeaderActions 등 thin wrapper) 는 의도 표현 가치만.
+ *   - ADR-002 (2026-05-27): 라인 수 메트릭 폐기 — 응집도/책임/의도 기준 전환.
+ *     본 파일 의 23 PR cycle 이 ADR 도입 trigger 였음.
+ *   - ADR-002 Cohesion Sweep #10 (2026-05-28, 본 PR): UI page 라 분리 작업은
+ *     **needs-review** 자동 마킹 (Presentation coverage 70%, 회귀 가드 부족).
+ *     본 PR 은 docstring + sniff test 기록만. 분리 진행은 별도 cycle 에서.
+ *
+ * Sniff test 결과 (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes 빈번 (모달 / hook / utility 동시 변경 잦음).
+ *   2. 시그니처 변경 영향 — props 없음 (page entrypoint). caller graph = Next.js router.
+ *   3. UI/state/API 섞임? — UI 렌더 + 7+ 모달 state + drag context + 50+ handler.
+ *     API 호출 직접 X (apiSync 경유). **여러 책임 강하게 섞임**.
+ *   4. 도메인 둘 이상? — 시간표 + filter + template + PDF + group modal + drag/drop.
+ *     모두 "schedule UI" 의 sub-pattern (ADR-002 § cell/row/lane 케이스에 가까움).
+ *   5. pure + 부수효과? — 부수효과 위주 (useState/useEffect/setState/event handlers).
+ *
+ * 분리 후보 (후속 cycle):
+ *   - GroupSessionModal wrapper (모달 state 7+ 중 가장 큰 단위)
+ *   - DnD coordinator (drag/drop handlers 묶음)
+ *   - Filter section (cascading filter UI + state)
+ *   - 단 진짜 책임 분리인지 thin wrapper 함정인지 사용자 검토 필요.
  */
 
 import dynamic from "next/dynamic";
