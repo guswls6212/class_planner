@@ -1,3 +1,36 @@
+/**
+ * TimeTableGrid: 시간표 weekly view 의 grid 컨테이너 — 7 요일 × time-axis 의 layout +
+ * lane width 계산 + dnd-kit 컨텍스트 + DragOverlay + tentative drop preview 만 담당.
+ *
+ * 의존성:
+ *   - dnd-kit (DndContext + DragOverlay) — drag/drop coordination
+ *   - sessionCollisionUtils (computeRequiredLanes, computeTentativeLayout) — lane 계산 + preview
+ *   - sessionClusters (computeRowClusters) — row 별 session 묶기
+ *   - molecules/TimeTableRow — 요일 별 row 렌더
+ *   - molecules/SessionBlock (PresentationMode type)
+ *   - hooks/useDragController, useNowMinute, useMediaQuery
+ *   - shared/constants/sessionConstants (LANE_WIDTH / SLOT_HEIGHT 토큰)
+ *   - non-goal: session add/update API, modal 렌더 (schedule/page 책임), single session 렌더 (TimeTableRow → SessionBlock 책임)
+ *
+ * 결정 history:
+ *   - dnd-kit Variant E (insertBefore) preview — tentative drop 표시 위치 (PR #387/388).
+ *   - lane width 모바일/데스크탑 분기 (useMediaQuery + constants).
+ *   - row clustering — sessionClusters로 row 별 session 그룹화.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI organism, 분리는 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes (schedule/page drag handler + TimeTableRow + SessionBlock 연동).
+ *   2. 시그니처 영향? — props 명확 (sessions/subjects/teachers/drag context). caller = schedule/page.
+ *   3. UI/state/API 섞임? — UI + drag state. API X.
+ *   4. 도메인 둘 이상? — 한 도메인 (timetable grid 의 layout + drag coordination).
+ *   5. pure + 부수효과? — 부수효과 위주 (dnd 이벤트 + ref + state).
+ *
+ * 분리 후보 (후속 cycle, needs-review):
+ *   - DragOverlay 분리 sub-component (drag preview 전용).
+ *   - lane width 계산 hook 분리 (useLaneWidth).
+ *   - 진행 전: e2e 회귀 가드 (drag UX) 의무.
+ */
+
 import {
   LANE_WIDTH_PX_DESKTOP,
   LANE_WIDTH_PX_MOBILE,
