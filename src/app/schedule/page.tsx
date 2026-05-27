@@ -30,6 +30,10 @@ import {
   createTeacherFromInputUtil,
   createSubjectFromInputUtil,
 } from "./_utils/pickerCreateHelpers";
+import {
+  applyTemplateUtil,
+  saveTemplateSlotUtil,
+} from "./_utils/templateHelpers";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
@@ -2282,73 +2286,32 @@ function SchedulePageContent(): JSX.Element {
   // 시에만 복원). 또한 모든 새 sessions 가 같은 yPosition 일 때 setTimeout reposition
   // 9회 race 로 lane 깨짐 발생. → bulk copy/move (line 1198-1280) 와 동일 패턴 적용:
   // 새 sessions/enrollments 를 미리 build → repositionSessionsUtil sequential → updateData 1회.
+  // doApplyTemplate — applyTemplateUtil 호출 + setter/toast orchestration (PR 5 utils 패턴).
   const doApplyTemplate = useCallback(
     async (template: ScheduleTemplate) => {
       setIsApplyingTemplate(true);
-      try {
-        const {
-          newSessions,
-          newEnrollments: newEnrollmentsLocal,
-          missingEntities,
-        } = buildApplyTemplatePayload(template, {
-          subjects,
-          students,
-          teachers,
-          enrollments,
-          weekStartDate: currentWeekStart,
-        });
-
-        // 현재 주 세션 일괄 제거 + 새 sessions append (stale closure 회피, 1회 batch)
-        const survivingSessions = sessions.filter(
-          (s) => !weekFilteredSessions.some((w) => w.id === s.id),
-        );
-        const mergedEnrollments =
-          newEnrollmentsLocal.length > 0
-            ? [...enrollments, ...newEnrollmentsLocal]
-            : enrollments;
-
-        // lane 자동 reposition — 같은 (weekday, time) 충돌 시 다음 빈 lane 으로 배치
-        let mergedSessions: Session[] = [...survivingSessions, ...newSessions];
-        for (const ns of newSessions) {
-          mergedSessions = repositionSessionsUtil(
-            mergedSessions,
-            mergedEnrollments,
-            subjects,
-            ns.weekday,
-            ns.startsAt,
-            ns.endsAt,
-            ns.yPosition ?? 1,
-            ns.id,
-          );
-        }
-
-        // localStorage 1회 update
-        const updatePayload: any = { sessions: mergedSessions };
-        if (newEnrollmentsLocal.length > 0) {
-          updatePayload.enrollments = mergedEnrollments;
-        }
-        await updateData(updatePayload);
-
-        // server 동기화 (fire-and-forget) — client UUID 포함 (ghost 방지)
-        const uid = localStorage.getItem("supabase_user_id");
-        for (const ne of newEnrollmentsLocal) {
-          syncEnrollmentCreate(uid, ne);
-        }
-        for (const ns of newSessions) {
-          syncSessionCreate(uid, ns);
-        }
-
-        const uniqueMissing = [...new Set(missingEntities)];
-        const warningText = uniqueMissing.length > 0
-          ? ` (매칭 실패: ${uniqueMissing.slice(0, 3).join(", ")}${uniqueMissing.length > 3 ? " 외" : ""})`
-          : "";
-        showToast("success", `${newSessions.length}개 수업이 템플릿으로 교체되었습니다${warningText}`);
-      } catch (e) {
-        showToast("error", "템플릿 적용 실패: " + (e as Error).message);
-      } finally {
-        setIsApplyingTemplate(false);
-        setApplyConfirmTemplate(null);
+      const result = await applyTemplateUtil({
+        template,
+        weekFilteredSessions,
+        sessions,
+        subjects,
+        students,
+        teachers,
+        enrollments,
+        currentWeekStart,
+        updateData,
+      });
+      setIsApplyingTemplate(false);
+      setApplyConfirmTemplate(null);
+      if (!result.ok) {
+        showToast("error", "템플릿 적용 실패: " + result.error);
+        return;
       }
+      const uniqueMissing = [...new Set(result.missingEntities)];
+      const warningText = uniqueMissing.length > 0
+        ? ` (매칭 실패: ${uniqueMissing.slice(0, 3).join(", ")}${uniqueMissing.length > 3 ? " 외" : ""})`
+        : "";
+      showToast("success", `${result.newSessionsCount}개 수업이 템플릿으로 교체되었습니다${warningText}`);
     },
     [
       weekFilteredSessions,
@@ -2391,57 +2354,35 @@ function SchedulePageContent(): JSX.Element {
    * T2 (ADR-008): SlotPickerModal save mode 의 onSelect 콜백.
    * 슬롯 별 PUT (기존) 또는 POST (빈 슬롯) 분기. quota 초과는 server 가 reject.
    */
+  // handleSaveSlot — saveTemplateSlotUtil 호출 + toast/setter/auto-backup orchestration (PR 5).
   const handleSaveSlot = useCallback(
     async (slotIndex: number, userName?: string) => {
-      const data = buildTemplateData();
-      if (data.sessions.length === 0) {
-        showToast("error", "저장할 수업이 없습니다.");
+      const result = await saveTemplateSlotUtil({
+        slotIndex,
+        userName,
+        templateData: buildTemplateData(),
+        templates,
+        saveTemplate,
+        updateTemplate,
+      });
+      if (!result.ok) {
+        if (result.reason === "empty") showToast("error", "저장할 수업이 없습니다.");
+        else if (result.reason === "quota") showToast("error", "프리 티어는 academy 당 최대 2개 템플릿까지 사용할 수 있습니다. (추후 업데이트 예정)");
+        else showToast("error", `템플릿 ${result.reason === "error" ? "처리" : "저장"}에 실패했습니다. 잠시 후 다시 시도해주세요.`);
         return;
       }
-      const finalName = userName ?? `슬롯 ${slotIndex + 1}`;
-      const existing = templates.find((t) => t.slotIndex === slotIndex);
-
-      if (existing) {
-        const result = await updateTemplate(existing.id, {
-          name: finalName,
-          template_data: data,
-        });
-        if (!result) {
-          showToast("error", "템플릿 갱신에 실패했습니다. 잠시 후 다시 시도해주세요.");
-          return;
-        }
-        showToast("success", `"${finalName}" 슬롯이 갱신되었습니다.`);
-      } else {
-        const result = await saveTemplate({
-          name: finalName,
-          description: "",
-          templateData: data,
-        });
-        if (!result.ok) {
-          if (result.reason === "quota_exceeded") {
-            showToast(
-              "error",
-              "프리 티어는 academy 당 최대 2개 템플릿까지 사용할 수 있습니다. (추후 업데이트 예정)",
-            );
-          } else {
-            showToast("error", "템플릿 저장에 실패했습니다. 잠시 후 다시 시도해주세요.");
-          }
-          return;
-        }
-        showToast("success", `"${finalName}" 슬롯에 저장되었습니다.`);
-      }
+      showToast("success", `"${result.name}" 슬롯${result.action === "create" ? "에 저장" : "이 갱신"}되었습니다.`);
       setShowSavePickerModal(false);
 
       // 템플릿 저장 직후 자동 백업 (auto_template) — fire-and-forget, 사용자 흐름 차단 X.
-      // 시간표가 의미있는 milestone이라는 명시적 신호 시점 (사용자가 save 의도)이라
-      // 백업 trigger로 적합. 30일/10개 retention은 server side에서 atomic 처리.
+      // 30일/10개 retention 은 server side atomic 처리.
       if (userId) {
         const academyId = getActiveAcademyId(userId);
         if (academyId) {
           void createSnapshot(userId, academyId, {
             type: "auto_template",
             payload: getClassPlannerData(),
-            description: `템플릿 "${finalName}" 저장 직후 자동 백업`,
+            description: `템플릿 "${result.name}" 저장 직후 자동 백업`,
           });
         }
       }
