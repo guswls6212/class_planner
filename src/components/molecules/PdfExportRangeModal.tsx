@@ -1,5 +1,22 @@
 "use client";
 
+/**
+ * PdfExportRangeModal: PDF 출력 범위 선택 모달 — 학원 전체 / 학생 별 / 강사 별
+ * 모드 선택 + range filter + onSubmit 으로 export 진입 만 담당.
+ *
+ * 의존성:
+ *   - molecules/StudentChip, TeacherChip 등 picker primitive
+ *   - lib/pdf/PdfSessionBlock — PDF 렌더 component (별도 호출 흐름)
+ *   - non-goal: PDF 자체 렌더 (PdfSessionBlock + html2canvas), export 실행
+ *
+ * 결정 history:
+ *   - 3 mode (default / per-student / per-teacher) — UAT 학원 운영자 요청.
+ *   - filter UI 통일 — 학생/강사 picker 컴포넌트 재사용.
+ *   - ADR-002 (2026-05-28): UI molecule, 분리 needs-review.
+ *
+ * Sniff test: UI + 폼 state. 한 모달 한 도메인 (PDF range 선택). 분리 후보 (needs-review): mode 별 sub-component.
+ */
+
 import React, { useEffect, useMemo, useState } from "react";
 import { Filter, HelpCircle } from "lucide-react";
 import { useModalA11y } from "@/hooks/useModalA11y";
