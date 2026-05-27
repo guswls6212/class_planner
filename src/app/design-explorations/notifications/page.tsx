@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * Notifications — Design Exploration: 알림 banner / toast / list mockup.
+ * 사용자 시각 검증용 정적 페이지. production 흐름과 분리.
+ *
+ * 의존성:
+ *   - 자체 inline state + lucide-react 아이콘
+ *   - non-goal: 실제 알림 stream / push (별도 시스템)
+ *
+ * 결정 history:
+ *   - Mockup 페이지 — 신규 mockup 은 internal-dashboard 의무 (CLAUDE.md § Mockup-in-Internal-Dashboard).
+ *   - 본 페이지는 legacy 잔여 — production deploy 사이트 비공개 라우트.
+ *   - ADR-002 (2026-05-28): UI mockup, 분리 needs-review (mockup 응집).
+ *
+ * Sniff test: UI mockup 한 도메인 (notification UX 비교). 분리 후보: 없음 (mockup 응집).
+ */
+
 import { useMemo, useState } from "react";
 import { AlertCircle, AlertTriangle, Bell, CheckCircle2, Info, Share2, X } from "lucide-react";
 
