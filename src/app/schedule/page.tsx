@@ -47,8 +47,6 @@ import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
 import { sanitizeTempEnrollments } from "./_utils/sanitizeTempEnrollments";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
-import { ApplyTemplateConfirm } from "../../components/molecules/ApplyTemplateConfirm";
-import { TemplatePreviewModal } from "../../components/molecules/TemplatePreviewModal";
 import { Plus } from "lucide-react";
 import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
 import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
@@ -81,7 +79,7 @@ import { useMyRole } from "../../hooks/useMyRole";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { preflightCheck } from "@/lib/pdf/preflightCheck";
 import { TOUR_STATE_EVENT } from "@/lib/tour-steps";
-import PdfExportRangeModal, { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
+import { type PdfExportRange } from "@/components/molecules/PdfExportRangeModal";
 // ConfirmModal — 세션 삭제 confirm 제거 (PR γ undo 토스트 일관성). 다른 곳 사용 시 재 import 필요.
 import ScheduleGridSection from "./_components/ScheduleGridSection";
 import ScheduleHeader from "./_components/ScheduleHeader";
@@ -96,6 +94,7 @@ import PrimarySidebar from "./_components/PrimarySidebar";
 import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
 import ScheduleToolbarFilters from "./_components/ScheduleToolbarFilters";
 import ScheduleHeaderActions from "./_components/ScheduleHeaderActions";
+import ScheduleSecondaryModals from "./_components/ScheduleSecondaryModals";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
@@ -177,10 +176,6 @@ const EditSessionModal = dynamic(
 );
 const GroupSessionModal = dynamic(
   () => import("./_components/GroupSessionModal"),
-  { ssr: false, loading: () => null }
-);
-const SlotPickerModal = dynamic(
-  () => import("../../components/molecules/SlotPickerModal").then((m) => ({ default: m.SlotPickerModal })),
   { ssr: false, loading: () => null }
 );
 const ScheduleDailyView = dynamic(
@@ -2431,71 +2426,38 @@ function SchedulePageContent(): JSX.Element {
 
       {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}
 
-      {/* T2 (ADR-008): 슬롯 picker — 저장 */}
-      <SlotPickerModal
-        open={showSavePickerModal}
-        onClose={() => setShowSavePickerModal(false)}
-        onSelect={(slotIndex, name) => { void handleSaveSlot(slotIndex, name); }}
+      <ScheduleSecondaryModals
+        showSavePickerModal={showSavePickerModal}
+        onCloseSavePickerModal={() => setShowSavePickerModal(false)}
+        onSaveSlot={(slotIndex, name) => {
+          void handleSaveSlot(slotIndex, name);
+        }}
+        isTemplateSaving={templateSaving}
+        showApplyPickerModal={showApplyPickerModal}
+        onCloseApplyPickerModal={() => setShowApplyPickerModal(false)}
+        onApplySlot={handleApplySlot}
+        isApplyingTemplate={isApplyingTemplate}
         templates={templates}
-        mode="save"
-        isSubmitting={templateSaving}
-      />
-
-      {/* T2: 슬롯 picker — 적용 */}
-      <SlotPickerModal
-        open={showApplyPickerModal}
-        onClose={() => setShowApplyPickerModal(false)}
-        onSelect={(slotIndex) => handleApplySlot(slotIndex)}
-        templates={templates}
-        mode="apply"
-        isSubmitting={isApplyingTemplate}
-      />
-
-      {/* 템플릿 적용 확인 모달 (교체 충돌 감지) */}
-      {applyConfirmTemplate && (
-        <ApplyTemplateConfirm
-          existingSessionCount={weekFilteredSessions.length}
-          onConfirm={() => doApplyTemplate(applyConfirmTemplate)}
-          onCancel={() => setApplyConfirmTemplate(null)}
-          isApplying={isApplyingTemplate}
-        />
-      )}
-
-      {/* 템플릿 미리보기 모달 */}
-      {previewTemplate && (
-        <TemplatePreviewModal
-          template={{
-            name: previewTemplate.name,
-            template_data: {
-              sessions: previewTemplate.templateData.sessions.map((s) => ({
-                weekday: s.weekday,
-                startsAt: s.startsAt,
-                endsAt: s.endsAt,
-                subjectName: s.subjectName,
-                studentNames: s.studentNames,
-              })),
-            },
-          }}
-          onClose={() => setPreviewTemplate(null)}
-        />
-      )}
-
-      {/* PDF 범위 선택 다이얼로그 */}
-      <PdfExportRangeModal
-        isOpen={isPdfDialogOpen}
-        onClose={closePdfDialog}
-        onExport={handlePdfExport}
-        viewMode={viewMode}
+        applyConfirmTemplate={applyConfirmTemplate}
+        existingSessionCount={weekFilteredSessions.length}
+        onConfirmApplyTemplate={() => doApplyTemplate(applyConfirmTemplate!)}
+        onCancelApplyTemplate={() => setApplyConfirmTemplate(null)}
+        previewTemplate={previewTemplate}
+        onClosePreviewTemplate={() => setPreviewTemplate(null)}
+        isPdfDialogOpen={isPdfDialogOpen}
+        onClosePdfDialog={closePdfDialog}
+        onPdfExport={handlePdfExport}
+        pdfViewMode={viewMode}
         selectedDate={selectedDate}
-        isExporting={isDownloading}
-        teachers={teachersForPdfModal}
-        students={studentsForPdfModal}
-        preflightResult={pdfPreflightResult}
-        allPreflightResult={pdfPreflightResultAll}
+        isDownloading={isDownloading}
+        pdfTeachers={teachersForPdfModal}
+        pdfStudents={studentsForPdfModal}
+        pdfPreflightResult={pdfPreflightResult}
+        pdfPreflightResultAll={pdfPreflightResultAll}
         hasStudentFilter={selectedStudentIds.length > 0}
         hasTeacherFilter={selectedTeacherIds.length > 0}
-        initialScope={pdfInitialScope}
-        initialPrintTarget={pdfInitialPrintTarget}
+        pdfInitialScope={pdfInitialScope}
+        pdfInitialPrintTarget={pdfInitialPrintTarget}
         filterChipLabel={filterChipLabel}
         hasAnyFilter={
           selectedStudentIds.length > 0 ||
