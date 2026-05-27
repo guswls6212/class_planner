@@ -1,12 +1,24 @@
 /**
- * 학생/강사/과목/학원 입력 검증 — UI form/client sync/server route/domain entity가
- * 모두 동일 helper를 호출하는 단일 진입점(SSOT).
+ * profileSchemas: 학생/강사/과목/학원 + 세션 메모/템플릿/스냅샷/share-token/
+ * user-settings 입력 검증 만 담당 — 4-layer SSOT (UI form / client sync / server
+ * route / domain entity 모두 동일 helper 호출).
  *
- * UAT 2026-05-08 보고: input에 이상값(예: 생년월일 222233년, 성별 "남ㅇㅇㅇ",
- * 학년 자유 텍스트)이 들어가는 문제. 화이트리스트 강제로 데이터 깨끗하게 유지.
+ * 의존성:
+ *   - errors/codes (ErrorCode 매핑 — discriminated union 의 code field)
+ *   - 호출 흐름: 모든 4 layer 에서 validateXxxInput / validateXxxName 동일 호출
+ *   - non-goal: I/O, UI 렌더, server sync. pure validation only.
  *
- * UAT 2026-05-10 보고: schedule 인라인 추가 시 길이 제한 미적용 — 학생/과목/강사가
- * 6자 초과 입력으로 들어옴. validateXxxName helper로 모든 입구 일관 적용.
+ * 결정 history:
+ *   - UAT 2026-05-08: 생년월일 222233년 / 성별 "남ㅇㅇㅇ" / 학년 자유 텍스트
+ *     사고 → 화이트리스트 강제로 데이터 깨끗하게 유지.
+ *   - UAT 2026-05-10: schedule 인라인 추가 시 길이 제한 미적용 사고 →
+ *     validateXxxName helper 로 모든 입구 일관 적용.
+ *   - 길이 정책: 학생/강사 6자 (NAME_MAX_LENGTH), 과목 12자, 학원/학교 30자.
+ *   - Phase 5: 확장 entity (session memo / template / snapshot / share-token /
+ *     user-settings) 통합 — 같은 SSOT 패턴 확장.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — 11 sub-domain validator 가 4-layer
+ *     SSOT 가치로 한 파일 유지 (분리 시 모든 layer 에서 split import 필요 → SSOT
+ *     깨짐). 응집도 OK, internal helper (validateNameField, toIsoDate) 잘 추출됨.
  */
 
 import { ErrorCodes, type ErrorCode } from "../errors/codes";
