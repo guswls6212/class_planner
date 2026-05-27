@@ -90,6 +90,93 @@ interface SessionBlockProps {
    * Default "edit" (기존 동작 그대로).
    */
   presentationMode?: PresentationMode;
+  /**
+   * 출결 요약 — 좌하단 fraction + 우하단 dot 표시 (attendance-block-visual-feedback Step 2A).
+   * undefined 면 indicator 노출 X (데이터 없음 / share view).
+   */
+  attendanceSummary?: {
+    checked: number;
+    total: number;
+    hasAbsent: boolean;
+  };
+  /**
+   * 수업 종료 절대 시각 — 시간 기반 dot 색 분기.
+   * weekStartDate + weekday + endsAt 으로 계산. undefined 면 시간 분기 X (default emerald/amber 만).
+   */
+  sessionEndDate?: Date | null;
+  /** 시간 분기 비교용 — 미주입 시 new Date(). test 결정성 위해 주입 가능. */
+  now?: Date;
+}
+
+/**
+ * Attendance visual indicator — Variant E (fraction + dot) + 시간 기반 분기.
+ * - 좌하단 fraction "체크/전체" (정량)
+ * - 우하단 dot color 분기:
+ *   · 전원 출석 (all "present"): emerald
+ *   · 전원 체크 + 결석·지각 포함: amber
+ *   · 부분 미체크 + 종료 후 24h 이내: red + pulse (알림)
+ *   · 부분 미체크 + 수업 전/진행 중: emerald/50 (subtle)
+ *   · 전부 미체크 + 종료 후 24h 이내: red + pulse
+ *   · 전부 미체크 + 수업 전/진행 중: dot 안 보임
+ */
+function AttendanceIndicator({
+  summary,
+  sessionEndDate,
+  now,
+}: {
+  summary: { checked: number; total: number; hasAbsent: boolean };
+  sessionEndDate?: Date | null;
+  now?: Date;
+}) {
+  if (summary.total === 0) return null;
+
+  const currentNow = now ?? new Date();
+  const isAfterEnd = sessionEndDate ? currentNow.getTime() > sessionEndDate.getTime() : false;
+  const hoursAfter = sessionEndDate
+    ? (currentNow.getTime() - sessionEndDate.getTime()) / 3_600_000
+    : 0;
+  const within24h = isAfterEnd && hoursAfter <= 24;
+
+  const allChecked = summary.checked === summary.total;
+  const partial = summary.checked > 0 && summary.checked < summary.total;
+  const unchecked = summary.checked === 0;
+
+  let dotClass: string | null = null;
+  let pulse = false;
+
+  if (allChecked && !summary.hasAbsent) {
+    dotClass = "bg-emerald-400";
+  } else if (allChecked && summary.hasAbsent) {
+    dotClass = "bg-amber-400";
+  } else if (within24h && (unchecked || partial)) {
+    dotClass = "bg-red-400";
+    pulse = true;
+  } else if (partial) {
+    dotClass = "bg-emerald-400/50";
+  }
+
+  if (!dotClass && summary.checked === 0) return null;
+
+  return (
+    <>
+      {summary.checked > 0 && (
+        <span
+          className="absolute bottom-0.5 left-0.5 text-[8px] leading-none font-mono text-white/90 bg-black/40 px-1 py-px rounded z-[2] pointer-events-none"
+          aria-label={`출결 ${summary.checked} 중 ${summary.total}`}
+        >
+          {summary.checked}/{summary.total}
+        </span>
+      )}
+      {dotClass && (
+        <span
+          aria-hidden="true"
+          className={`absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full ring-1 ring-black/40 ${dotClass} ${
+            pulse ? "animate-pulse" : ""
+          } z-[2] pointer-events-none`}
+        />
+      )}
+    </>
+  );
 }
 
 export const validateSessionBlockProps = (
@@ -136,6 +223,9 @@ function SessionBlock({
   onContextMenuCopy,
   onContextMenuStartSelect,
   presentationMode = "edit",
+  attendanceSummary,
+  sessionEndDate,
+  now,
 }: SessionBlockProps) {
   const isShareView = presentationMode !== "edit";
   const isFilteredShare = presentationMode === "filtered-share";
@@ -555,6 +645,14 @@ function SessionBlock({
             </div>
           )}
         </div>
+        {/* attendance-block-visual-feedback Variant E — share view 외 노출 */}
+        {!isShareView && attendanceSummary && (
+          <AttendanceIndicator
+            summary={attendanceSummary}
+            sessionEndDate={sessionEndDate}
+            now={now}
+          />
+        )}
       </button>
 
       {totalStudentCount >= 2 && !showStudentBadgeInline && !isFilteredShare && (
