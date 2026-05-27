@@ -1,8 +1,22 @@
 /**
- * 🎣 Custom Hook - useTeacherManagementLocal (localStorage 직접 조작)
+ * useTeacherManagementLocal: localStorage SSOT 의 강사 entity CRUD (add/update/
+ * delete + teacher-subject M:N) + deferred-commit undo + server sync 만 담당.
  *
- * localStorage의 classPlannerData를 직접 조작하여 즉시 UI에 반영하고,
- * fire-and-forget으로 서버와 동기화하는 강사 데이터 관리 훅입니다.
+ * 의존성:
+ *   - localStorageCrud (강사 CRUD + teacher-subject M:N)
+ *   - apiSync (syncTeacherCreateAsync — id reconcile, syncTeacherUpdate, syncTeacherSubject*)
+ *   - pendingDeletes (deferred-commit + recovery)
+ *   - validation/profileSchemas (validateTeacherName — SSOT)
+ *   - toast (undo UX)
+ *   - non-goal: permission gate (강사 hook 은 호출부 수준 권한 처리)
+ *
+ * 결정 history:
+ *   - UAT 2026-05-09: deferred-commit + await (race window 0, ADR-012) — 학생/과목 패턴 동일.
+ *   - UAT 2026-05-10: profile (email/phone) 누락 시 동명이인 차단 회귀 → addTeacherToLocal 에 profile 그대로 전달.
+ *   - UAT 2026-05-10: 중복 토스트 회피 — hook 에서 add success toast 제거 (호출부 책임).
+ *   - Cascade: delete 시 sessions.teacherId 를 undefined 로 (세션 자체 보존), undo 시 복원.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — commit 패턴 2 곳 중복을 internal helper
+ *     `commitTeacherDeleteOnServer` 로 추출.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -37,6 +51,46 @@ import {
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import type { Teacher, TeacherRole } from "../lib/planner";
+
+/**
+ * Server 에 강사 DELETE 요청 + 결과에 따라 pendingDeletes 정리 만 담당.
+ *
+ * - userId null (anonymous) → server 호출 skip, 바로 pendingDeletes 정리.
+ * - response.ok → pendingDeletes 정리.
+ * - 4xx/5xx → pendingDeletes 유지 (recovery hook 이 다음 mount 에서 재시도).
+ * - network 오류 → pendingDeletes 유지.
+ *
+ * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
+ * 2 곳 (recovery effect / deleteTeacher setTimeout) 에서 동일 호출 — ADR-002 sweep #8.
+ */
+async function commitTeacherDeleteOnServer(
+  userId: string | null,
+  id: string,
+): Promise<boolean> {
+  if (!userId) {
+    removePendingDelete("teacher", id);
+    return true;
+  }
+  try {
+    const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
+    const response = await fetch(url, { method: "DELETE" });
+    if (!response.ok) {
+      logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
+        id,
+        status: response.status,
+      });
+      return false;
+    }
+  } catch (err) {
+    logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+  removePendingDelete("teacher", id);
+  return true;
+}
 
 // ===== 타입 정의 =====
 
@@ -119,35 +173,10 @@ export const useTeacherManagementLocal =
       const userId = localStorage.getItem("supabase_user_id");
       const now = Date.now();
 
-      // server DELETE await — race window 0 (UAT 2026-05-09 학생 부활 패턴 동일).
-      const commitOne = async (id: string) => {
-        if (!userId) {
-          removePendingDelete("teacher", id);
-          return;
-        }
-        try {
-          const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
-          const response = await fetch(url, { method: "DELETE" });
-          if (!response.ok) {
-            logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
-              id,
-              status: response.status,
-            });
-            return;
-          }
-        } catch (err) {
-          logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-            id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return;
-        }
-        removePendingDelete("teacher", id);
-      };
-
+      // server DELETE await — race window 0. commitTeacherDeleteOnServer helper (ADR-002 sweep #8).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "teacher") continue;
-        commitOne(p.id);
+        void commitTeacherDeleteOnServer(userId, p.id);
         logger.info(
           "useTeacherManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -160,7 +189,7 @@ export const useTeacherManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("teacher", p.id)) return;
-          commitOne(p.id);
+          void commitTeacherDeleteOnServer(userId, p.id);
           logger.info(
             "useTeacherManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -378,32 +407,11 @@ export const useTeacherManagementLocal =
             const deadline = Date.now() + PENDING_DELETE_TTL_MS;
             addPendingDelete({ entityType: "teacher", id, deadline });
             let cancelled = false;
-            // server DELETE await — race window 0.
+            // server DELETE await — race window 0. commitTeacherDeleteOnServer helper (ADR-002 sweep #8).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              if (!userId) {
-                removePendingDelete("teacher", id);
-                return;
-              }
-              try {
-                const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
-                const response = await fetch(url, { method: "DELETE" });
-                if (!response.ok) {
-                  logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
-                    id,
-                    status: response.status,
-                  });
-                  return;
-                }
-              } catch (err) {
-                logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-                  id,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-                return;
-              }
-              removePendingDelete("teacher", id);
-              logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
+              const ok = await commitTeacherDeleteOnServer(userId, id);
+              if (ok) logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 
             // 4) Undo toast
