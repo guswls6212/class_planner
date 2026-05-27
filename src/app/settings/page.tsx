@@ -1,5 +1,42 @@
 "use client";
 
+/**
+ * SettingsPage: 학원 설정 페이지 — academy 이름/운영 시간 + 멤버 초대 + 강사 관리
+ * + share-link/access-code + role permission + 데이터 이력 (snapshot) 의 orchestration.
+ *
+ * 의존성:
+ *   - contexts/AuthContext (useAuth — 사용자 + academy 컨텍스트)
+ *   - api/teachers, api/members, api/share-tokens, api/snapshots (각 sub-section)
+ *   - molecules/InviteModal, TeacherAddModal, TypedConfirmationModal, ReassignTeacherModal
+ *   - organisms/DataHistorySection, OperatingHoursSection, RolePermissionCards
+ *   - validation/profileSchemas (validateAcademyName + 길이 정책)
+ *   - non-goal: schedule 시간표 편집 (schedule/page.tsx), 학생/과목 CRUD (전용 페이지)
+ *
+ * 결정 history:
+ *   - 멤버 초대/role: 원장/관리자/멤버 3 계정 모델 (PR #240 UAT 도입).
+ *   - 강사 관리: 멤버↔강사 연결 모델 (PR #B-3 nested join). reassign 모달로 강사 삭제 시 세션 재배정.
+ *   - share-tokens: 학생/학부모 view (token-link + access-code).
+ *   - 데이터 이력: snapshot CRUD (before_conflict 자동 백업 + manual).
+ *   - 운영 시간: 학원 별 weekly 시간 정책.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI page 라 분리 작업은
+ *     **needs-review** 자동 마킹 (Presentation coverage 70%, 회귀 가드 부족). 본 PR 은
+ *     docstring + sniff test 기록만. 분리 후보: 각 sub-section (member/teacher/share/role/
+ *     data-history/operating-hours) 별 sub-component 분리 또는 별도 page route.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes 빈번 (sub-section 별 component + API + 정책).
+ *   2. 시그니처 영향? — props 없음 (Next.js page entry). caller = router only.
+ *   3. UI/state/API 섞임? — 모달 7+ state + 다수 API fetch + 다수 폼 입력. 강하게 섞임.
+ *   4. 도메인 둘 이상? — 학원 설정 sub-domain (academy/member/teacher/share/role/
+ *     data/operating-hours) 7+. 한 페이지 라는 사용자 mental model 안 응집.
+ *   5. pure + 부수효과? — 부수효과 위주.
+ *
+ * 분리 후보 (후속 cycle, needs-review):
+ *   - 각 sub-section 별 별도 route (/settings/members, /settings/teachers, ...)
+ *   - 또는 sub-section 별 별도 component 추출 (현재 inline JSX)
+ *   - 진행 전: 사용자 검토 + e2e 회귀 가드 확인 의무.
+ */
+
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { UserPlus, Link2, Plus, Pencil, MoreHorizontal, ChevronDown, ChevronUp, Shield, Sparkles } from "lucide-react";
