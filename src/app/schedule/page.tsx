@@ -123,6 +123,7 @@ import {
   planSessionAdd,
   buildRepositionedSessionsAfterAdd,
 } from "./_utils/sessionAddHelpers";
+import { planSessionUpdate } from "./_utils/updateSessionHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -485,75 +486,32 @@ function SchedulePageContent(): JSX.Element {
   const updateSession = useCallback(
     async (sessionId: string, sessionData: SessionUpdateInput) => {
       logger.debug("세션 업데이트 시작", { sessionId, sessionData });
-
-      const newSessions = sessions.map((s) => {
-        if (s.id === sessionId) {
-          const updatedSession = {
-            ...s,
-            ...sessionData,
-            // 시간 필드명 변환 (startTime/endTime → startsAt/endsAt)
-            startsAt: sessionData.startTime || s.startsAt,
-            endsAt: sessionData.endTime || s.endsAt,
-          };
-
-          // 불필요한 필드 제거
-          delete updatedSession.startTime;
-          delete updatedSession.endTime;
-
-          logger.debug("세션 업데이트", {
-            original: { startsAt: s.startsAt, endsAt: s.endsAt },
-            updated: {
-              startsAt: updatedSession.startsAt,
-              endsAt: updatedSession.endsAt,
-            },
-          });
-
-          return updatedSession;
-        }
-        return s;
-      });
-
-      // 🆕 시간 변경 시 충돌 재배치 수행
-      const target = newSessions.find((s) => s.id === sessionId);
-      const targetWeekday = target?.weekday ?? sessionData.weekday ?? 0;
-      const targetStartTime = (target?.startsAt ?? sessionData.startTime) || "";
-      const targetEndTime = (target?.endsAt ?? sessionData.endTime) || "";
-      const targetYPosition = target?.yPosition || 1;
-
-      const repositioned = repositionSessionsUtil(
-        newSessions,
+      const plan = planSessionUpdate({
+        sessionId,
+        input: sessionData,
+        sessions,
         enrollments,
         subjects,
-        targetWeekday,
-        targetStartTime,
-        targetEndTime,
-        targetYPosition,
-        sessionId
-      );
-
-      await updateData({ sessions: repositioned });
+      });
+      await updateData({ sessions: plan.mergedSessions });
       logger.info("세션 업데이트 및 재배치 완료");
 
-      if (userId) {
-        const changed = repositioned.find((s) => s.id === sessionId);
-        if (changed) {
-          const hasTeacherId = "teacherId" in (sessionData as object);
-          const hasWeekStartDate = sessionData.weekStartDate !== undefined;
-          void syncSessionUpdate(userId, sessionId, {
-            weekday: changed.weekday,
-            startsAt: changed.startsAt,
-            endsAt: changed.endsAt,
-            yPosition: changed.yPosition,
-            room: changed.room,
-            subjectId: changed.subjectId,
-            enrollmentIds: changed.enrollmentIds,
-            ...(hasTeacherId && {
-              teacherId: (sessionData as SessionUpdateInput).teacherId,
-            }),
-            // weekStartDate: 사용자가 다른 주 날짜로 이동 시 forward (PATCH /api/sessions/[id] body로).
-            ...(hasWeekStartDate && { weekStartDate: sessionData.weekStartDate }),
-          });
-        }
+      if (userId && plan.changedSession) {
+        const changed = plan.changedSession;
+        void syncSessionUpdate(userId, sessionId, {
+          weekday: changed.weekday,
+          startsAt: changed.startsAt,
+          endsAt: changed.endsAt,
+          yPosition: changed.yPosition,
+          room: changed.room,
+          subjectId: changed.subjectId,
+          enrollmentIds: changed.enrollmentIds,
+          ...(plan.hasTeacherId && { teacherId: sessionData.teacherId }),
+          // weekStartDate: 다른 주 이동 시 forward (PATCH /api/sessions/[id]).
+          ...(plan.hasWeekStartDate && {
+            weekStartDate: sessionData.weekStartDate,
+          }),
+        });
       }
     },
     [sessions, updateData, enrollments, subjects, userId]
