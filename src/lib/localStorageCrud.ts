@@ -1,8 +1,21 @@
 /**
- * 🗄️ localStorage CRUD 유틸리티
+ * localStorageCrud: classPlannerData (학생/과목/강사/세션/등록) 의 localStorage SSOT
+ * CRUD + cross-entity cascade reconcile 만 담당.
  *
- * classPlannerData를 안전하고 효율적으로 조작하는 핵심 유틸리티입니다.
- * 원자성, 일관성, 에러 처리를 보장합니다.
+ * 의존성:
+ *   - storage: window.localStorage (SSR 안전 — typeof window 가드)
+ *   - 동기화: storage event → in-module cache invalidate
+ *   - 호출 흐름: useXxxLocal hooks → 이 파일 → window.localStorage
+ *   - non-goal: server API 호출 (apiSync.ts 책임)
+ *
+ * 결정 history:
+ *   - ADR-013: anonymous → 로그인 마이그레이션 entity 누락 가드
+ *   - ADR-002 (2026-05-27): Cohesion Sweep — sub-domain 분리 검토 후 보류
+ *     (cross-entity cascade invariant 가 강해 같이 두는 게 자연스러움)
+ *   - UAT 2026-05-09: deferred-commit + await — race window 0 (ADR-012)
+ *   - UAT 2026-05-10: 중복 검사 정책 (이름+성별+생년월일 / 이름+이메일+전화)
+ *   - 2026-05-27 admin 첫 로그인: setActiveAcademyId setTimeout 0 microtask
+ *     (same-tab localStorage.setItem 의 storage event 발화 X 가드)
  */
 
 import { logger } from "./logger";
