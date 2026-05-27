@@ -1,5 +1,23 @@
 "use client";
 
+/**
+ * FeedbackModal: 운영자가 피드백/버그 리포트 작성 → 스크린샷 첨부 + 카테고리 선택 →
+ * POST /api/feedback 으로 전송. 작성 폼 + submit + result toast 까지 담당.
+ *
+ * 의존성:
+ *   - lucide-react — 아이콘
+ *   - useAuth — userId 첨부
+ *   - api/feedback — server endpoint
+ *   - non-goal: 피드백 list / admin 응답 (별도 admin page)
+ *
+ * 결정 history:
+ *   - 카테고리 (버그/기능/기타) + 스크린샷 옵션 — UAT 운영자 요청.
+ *   - omni-radar trace_id 첨부 — 후속 디버깅 연동.
+ *   - ADR-002 (2026-05-28): UI molecule, 분리 needs-review (form / submit hook).
+ *
+ * Sniff test: UI + form state + submit. 한 모달 한 도메인 (feedback 입력). 분리 후보 (needs-review): screenshot capture / submit hook.
+ */
+
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
