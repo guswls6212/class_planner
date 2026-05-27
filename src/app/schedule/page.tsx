@@ -46,7 +46,6 @@ import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
 import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
 import { sanitizeTempEnrollments } from "./_utils/sanitizeTempEnrollments";
 import { getWeekStartDate } from "../../lib/weekStart";
-import { TemplateMenuV2 } from "../../components/molecules/TemplateMenuV2";
 import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
 import { ApplyTemplateConfirm } from "../../components/molecules/ApplyTemplateConfirm";
 import { TemplatePreviewModal } from "../../components/molecules/TemplatePreviewModal";
@@ -96,6 +95,7 @@ import ChipFilterPopover from "./_components/ChipFilterPopover";
 import PrimarySidebar from "./_components/PrimarySidebar";
 import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
 import ScheduleToolbarFilters from "./_components/ScheduleToolbarFilters";
+import ScheduleHeaderActions from "./_components/ScheduleHeaderActions";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
@@ -178,10 +178,6 @@ const EditSessionModal = dynamic(
 const GroupSessionModal = dynamic(
   () => import("./_components/GroupSessionModal"),
   { ssr: false, loading: () => null }
-);
-const ScheduleActionBar = dynamic(
-  () => import("./_components/ScheduleActionBar"),
-  { ssr: false }
 );
 const SlotPickerModal = dynamic(
   () => import("../../components/molecules/SlotPickerModal").then((m) => ({ default: m.SlotPickerModal })),
@@ -2034,42 +2030,35 @@ function SchedulePageContent(): JSX.Element {
           scheduleUpdatedAt={scheduleUpdatedAt}
           userId={userId}
         />
-        <div className="flex items-center gap-2">
-          {canManage && userId && viewMode === "weekly" && (
-            <TemplateMenuV2
-              onApply={() => { _fetchTemplates(); setShowApplyPickerModal(true); }}
-              onClearWeek={handleClearWeek}
-              onSave={() => setShowSavePickerModal(true)}
-              onPreview={handlePreviewTemplate}
-              canManage={canManage}
-              hasTemplate={Boolean(activeTemplate)}
-            />
-          )}
-          <ScheduleActionBar
-            viewLabel={scheduleTitle}
-            onOpenPdfDialog={() => openPdfDialog()}
-            onOpenPdfPerTeacher={() => openPdfDialog("per-teacher", "all")}
-            onOpenPdfPerStudent={() => openPdfDialog("per-student", "all")}
-            onOpenPdfAllPrint={() => openPdfDialog(undefined, "all")}
-            hasAnyFilter={
-              selectedStudentIds.length > 0 ||
-              selectedSubjectIds.length > 0 ||
-              selectedTeacherIds.length > 0
-            }
-            filteredCount={pdfCounts.filtered}
-            totalCount={pdfCounts.total}
-            isDownloading={isDownloading}
-            onDownloadStart={() => {}}
-            onDownloadEnd={() => {}}
-            viewMode={viewMode}
-            onSaveTemplate={() => setShowSavePickerModal(true)}
-            onApplyTemplate={() => {
-              _fetchTemplates();
-              setShowApplyPickerModal(true);
-            }}
-            isSaving={templateSaving}
-          />
-        </div>
+        <ScheduleHeaderActions
+          canManage={canManage}
+          userId={userId}
+          viewMode={viewMode}
+          scheduleTitle={scheduleTitle}
+          hasTemplate={Boolean(activeTemplate)}
+          onApplyTemplateMenu={() => {
+            _fetchTemplates();
+            setShowApplyPickerModal(true);
+          }}
+          onClearWeek={handleClearWeek}
+          onSaveTemplateMenu={() => setShowSavePickerModal(true)}
+          onPreviewTemplate={handlePreviewTemplate}
+          openPdfDialog={openPdfDialog}
+          hasAnyFilter={
+            selectedStudentIds.length > 0 ||
+            selectedSubjectIds.length > 0 ||
+            selectedTeacherIds.length > 0
+          }
+          filteredCount={pdfCounts.filtered}
+          totalCount={pdfCounts.total}
+          isDownloading={isDownloading}
+          isTemplateSaving={templateSaving}
+          onSaveTemplate={() => setShowSavePickerModal(true)}
+          onApplyTemplate={() => {
+            _fetchTemplates();
+            setShowApplyPickerModal(true);
+          }}
+        />
       </div>
 
       <ScheduleToolbarFilters
