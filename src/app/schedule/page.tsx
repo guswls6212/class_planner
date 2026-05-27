@@ -25,6 +25,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useScheduleFilters } from "./_hooks/useScheduleFilters";
 import { usePdfDialog } from "./_hooks/usePdfDialog";
 import { useTemplateState } from "./_hooks/useTemplateState";
+import {
+  createStudentFromInputUtil,
+  createTeacherFromInputUtil,
+  createSubjectFromInputUtil,
+} from "./_utils/pickerCreateHelpers";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
@@ -1364,95 +1369,65 @@ function SchedulePageContent(): JSX.Element {
     setStudentCreateError("");
   };
 
-  // 🆕 신규 학생 생성 함수 (B-1: 이름만, 성별 미설정)
+  // 신규 학생 생성 — pickerCreateHelpers util 호출 + setter orchestration (PR 4 utils 패턴).
   const handleCreateStudentFromInput = async () => {
-    const trimmed = studentInputValue.trim();
-    if (!trimmed) return;
-
     setStudentCreating(true);
     setStudentCreateError("");
-
-    try {
-      const success = await createStudent(trimmed);
-      if (success) {
-        // 생성 성공 후 localStorage에서 새 학생 ID 조회
-        const data = getClassPlannerData();
-        const newStudent = data.students.find(
-          (s) => s.name.trim() === trimmed
-        );
-        if (newStudent) {
-          addStudent(newStudent.id);
-        }
-      } else {
-        setStudentCreateError("이미 존재하는 이름입니다.");
-      }
-    } catch {
-      setStudentCreateError("학생 생성에 실패했습니다.");
-    } finally {
-      setStudentCreating(false);
+    const result = await createStudentFromInputUtil({
+      input: studentInputValue,
+      createStudent,
+    });
+    setStudentCreating(false);
+    if (!result.ok) {
+      if (result.reason === "duplicate") setStudentCreateError("이미 존재하는 이름입니다.");
+      else if (result.reason === "error") setStudentCreateError("학생 생성에 실패했습니다.");
+      return;
     }
+    addStudent(result.studentId);
   };
 
-  // 강사 인라인 추가 — 성공 시 true 반환 (모달 row 자동 닫힘 트리거)
+  // 강사 인라인 추가 — 성공 시 true (모달 row 자동 닫힘 트리거).
   const handleCreateTeacherFromInput = async (): Promise<boolean> => {
-    if (!canManage) return false;
-    const trimmed = teacherInputValue.trim();
-    if (!trimmed) return false;
     setTeacherCreating(true);
     setTeacherCreateError("");
-    try {
-      const usedColors = teachers.map((t) => t.color);
-      const color = getNextUnusedColor(TEACHER_PALETTE, usedColors);
-      const success = await createTeacher(trimmed, color);
-      if (!success) {
-        setTeacherCreateError("이미 같은 이름의 강사가 존재합니다.");
-        return false;
-      }
-      const data = getClassPlannerData();
-      const newTeacher = data.teachers.find((t) => t.name.trim() === trimmed);
-      if (newTeacher) {
-        setGroupModalData((prev) => ({ ...prev, teacherId: newTeacher.id }));
-      }
-      setTeacherInputValue("");
-      return true;
-    } catch {
-      setTeacherCreateError("강사 생성에 실패했습니다.");
+    const result = await createTeacherFromInputUtil({
+      input: teacherInputValue,
+      canManage,
+      teachers,
+      createTeacher,
+    });
+    setTeacherCreating(false);
+    if (!result.ok) {
+      if (result.reason === "no-permission" || result.reason === "empty") return false;
+      if (result.reason === "duplicate") setTeacherCreateError("이미 같은 이름의 강사가 존재합니다.");
+      else setTeacherCreateError("강사 생성에 실패했습니다.");
       return false;
-    } finally {
-      setTeacherCreating(false);
     }
+    setGroupModalData((prev) => ({ ...prev, teacherId: result.teacherId }));
+    setTeacherInputValue("");
+    return true;
   };
 
-  // 과목 인라인 추가 — 성공 시 true 반환
+  // 과목 인라인 추가 — 성공 시 true.
   const handleCreateSubjectFromInput = async (): Promise<boolean> => {
-    if (!canManage) return false;
-    const trimmed = subjectInputValue.trim();
-    if (!trimmed) return false;
     setSubjectCreating(true);
     setSubjectCreateError("");
-    try {
-      const usedColors = subjects
-        .map((s) => s.color)
-        .filter((c): c is string => !!c);
-      const color = getNextUnusedColor(SUBJECT_PALETTE, usedColors);
-      const success = await createSubject(trimmed, color);
-      if (!success) {
-        setSubjectCreateError("이미 같은 이름의 과목이 존재합니다.");
-        return false;
-      }
-      const data = getClassPlannerData();
-      const newSubject = data.subjects.find((s) => s.name.trim() === trimmed);
-      if (newSubject) {
-        setGroupModalData((prev) => ({ ...prev, subjectId: newSubject.id }));
-      }
-      setSubjectInputValue("");
-      return true;
-    } catch {
-      setSubjectCreateError("과목 생성에 실패했습니다.");
+    const result = await createSubjectFromInputUtil({
+      input: subjectInputValue,
+      canManage,
+      subjects,
+      createSubject,
+    });
+    setSubjectCreating(false);
+    if (!result.ok) {
+      if (result.reason === "no-permission" || result.reason === "empty") return false;
+      if (result.reason === "duplicate") setSubjectCreateError("이미 같은 이름의 과목이 존재합니다.");
+      else setSubjectCreateError("과목 생성에 실패했습니다.");
       return false;
-    } finally {
-      setSubjectCreating(false);
     }
+    setGroupModalData((prev) => ({ ...prev, subjectId: result.subjectId }));
+    setSubjectInputValue("");
+    return true;
   };
 
   // 🆕 학생 제거 함수
