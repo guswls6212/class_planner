@@ -95,6 +95,7 @@ import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
 import ScheduleToolbarFilters from "./_components/ScheduleToolbarFilters";
 import ScheduleHeaderActions from "./_components/ScheduleHeaderActions";
 import ScheduleSecondaryModals from "./_components/ScheduleSecondaryModals";
+import ScheduleEditModalWrapper from "./_components/ScheduleEditModalWrapper";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
@@ -145,11 +146,6 @@ import {
   syncEnrollmentCreate,
 } from "../../lib/apiSync";
 import {
-  buildEditOnCancel,
-  buildEditOnDelete,
-  buildEditOnSave,
-} from "./_utils/editSaveHandlers";
-import {
   buildEditStudentAdd,
   buildEditStudentAddClick,
   buildEditStudentInputChange,
@@ -158,22 +154,7 @@ import {
   buildEditTimeChangeHandlers,
   buildGroupTimeChangeHandlers,
 } from "./_utils/modalHandlers";
-import {
-  buildSelectedStudents,
-  filterEditableStudents,
-  removeStudentFromEnrollmentIds,
-} from "./_utils/scheduleSelectors";
-import {
-  buildSessionSaveData,
-  ensureEnrollmentIdsForSubject,
-  extractStudentIds,
-  processTempEnrollments,
-} from "./_utils/sessionSaveUtils";
 
-const EditSessionModal = dynamic(
-  () => import("./_components/EditSessionModal"),
-  { ssr: false, loading: () => null }
-);
 const GroupSessionModal = dynamic(
   () => import("./_components/GroupSessionModal"),
   { ssr: false, loading: () => null }
@@ -2309,119 +2290,37 @@ function SchedulePageContent(): JSX.Element {
       )}
 
       {/* 세션 편집 모달 (분리) */}
-      <EditSessionModal
-        isOpen={Boolean(showEditModal && editModalData)}
-        selectedStudents={buildSelectedStudents(
-          editModalData?.enrollmentIds,
-          enrollments,
-          tempEnrollments.map((t) => ({
-            id: t.id,
-            studentId: t.studentId,
-            subjectId: t.subjectId,
-          })),
-          students
-        )}
-        onRemoveStudent={(studentId) => {
-          const updatedEnrollmentIds = removeStudentFromEnrollmentIds(
-            studentId,
-            editModalData?.enrollmentIds,
-            enrollments,
-            tempEnrollments.map((t) => ({
-              id: t.id,
-              studentId: t.studentId,
-              subjectId: t.subjectId,
-            }))
-          );
-          setTempEnrollments((prev) =>
-            prev.filter((e) => e.studentId !== studentId)
-          );
-          setEditModalData((prev) =>
-            prev ? { ...prev, enrollmentIds: updatedEnrollmentIds } : null
-          );
-        }}
+      <ScheduleEditModalWrapper
+        showEditModal={showEditModal}
+        editModalData={editModalData}
+        setEditModalData={setEditModalData}
+        setShowEditModal={setShowEditModal}
+        enrollments={enrollments}
+        students={students}
+        subjects={subjects}
+        teachers={teachers}
+        tempEnrollments={tempEnrollments}
+        setTempEnrollments={setTempEnrollments}
         editStudentInputValue={editStudentInputValue}
-        onEditStudentInputChange={(value) => {
-          logger.debug("학생 입력값 변경", { value });
-          setEditStudentInputValue(value);
-        }}
-        onEditStudentInputKeyDown={() => {
-          // C 패턴 — Enter no-op. 추가는 dropdown row 클릭 또는 CTA 버튼만.
-          // 이전 동작(Enter 자동 매칭 추가)은 동명이인 케이스에서 잘못된 학생
-          // 자동 선택 위험 → 의식적 클릭으로 통일.
-        }}
-        onAddStudentClick={handleEditCreateStudentAndAdd}
-        editSearchResults={filterEditableStudents(
-          editStudentInputValue,
-          editModalData,
-          enrollments,
-          tempEnrollments,
-          students
-        )}
-        onSelectSearchStudent={(studentId) => handleEditStudentAdd(studentId)}
-        subjects={subjects.map((s) => ({ id: s.id, name: s.name, color: s.color }))}
-        onSubjectColorChange={(subjectId, newColor) => {
-          const subject = subjects.find((s) => s.id === subjectId);
-          if (!subject) return;
-          // 1. React 상태 + localStorage 업데이트
-          const updated = subjects.map((s) =>
-            s.id === subjectId ? { ...s, color: newColor } : s
-          );
-          updateData({ subjects: updated });
-          // 2. 서버 fire-and-forget sync (API는 name 필수)
-          syncSubjectUpdate(userId, subjectId, { name: subject.name, color: newColor });
-        }}
-        teachers={teachers.map((t) => ({ id: t.id, name: t.name, color: t.color ?? "#6366f1", role: t.role, email: t.email, phone: t.phone, subjectIds: t.subjectIds ?? [] }))}
+        setEditStudentInputValue={setEditStudentInputValue}
+        handleEditCreateStudentAndAdd={handleEditCreateStudentAndAdd}
+        handleEditStudentAdd={handleEditStudentAdd}
         tempSubjectId={tempSubjectId}
-        onSubjectChange={(subjectId) => setTempSubjectId(subjectId)}
-        tempTeacherId={
-          tempTeacherId === undefined
-            ? (editModalData?.teacherId || "")
-            : (tempTeacherId ?? "")
-        }
-        onTeacherChange={(teacherId) => setTempTeacherId(teacherId)}
-        weekdays={weekdays}
-        defaultWeekday={editModalData?.weekday ?? 0}
-        weekStartDate={currentWeekStart}
-        startTime={editModalTimeData.startTime}
-        endTime={editModalTimeData.endTime}
-        onStartTimeChange={handleEditStartTimeChange}
-        onEndTimeChange={handleEditEndTimeChange}
-        timeError={editTimeError}
-        onDelete={buildEditOnDelete({
-          editModalData,
-          deleteSession,
-          setShowEditModal,
-        })}
-        onCancel={buildEditOnCancel({
-          setShowEditModal,
-          setTempSubjectId,
-          onCancel: () => setTempTeacherId(undefined),
-        })}
-        onSave={buildEditOnSave({
-          editModalData,
-          editModalTimeData,
-          tempSubjectId,
-          tempTeacherId,
-          tempEnrollments,
-          enrollments,
-          addEnrollment,
-          getClassPlannerData,
-          processTempEnrollments,
-          ensureEnrollmentIdsForSubject,
-          extractStudentIds,
-          buildSessionSaveData,
-          updateSession,
-          validateAndToastEdit,
-          setShowEditModal,
-          setTempSubjectId,
-          setTempEnrollments,
-          onSaveComplete: () => setTempTeacherId(undefined),
-          // 다른 주 날짜로 이동 시 시간표 자동 navigate (PR #378, 사용자 결정 ii)
-          onMoveToWeek: (weekStartDate: string) => {
-            // weekStartDate (YYYY-MM-DD KST) → 그 주 월요일 Date 객체
-            setSelectedDate(new Date(`${weekStartDate}T12:00:00+09:00`));
-          },
-        })}
+        setTempSubjectId={setTempSubjectId}
+        tempTeacherId={tempTeacherId}
+        setTempTeacherId={setTempTeacherId}
+        currentWeekStart={currentWeekStart}
+        editModalTimeData={editModalTimeData}
+        handleEditStartTimeChange={handleEditStartTimeChange}
+        handleEditEndTimeChange={handleEditEndTimeChange}
+        editTimeError={editTimeError}
+        userId={userId}
+        updateData={updateData}
+        updateSession={updateSession}
+        deleteSession={deleteSession}
+        addEnrollment={addEnrollment}
+        validateAndToastEdit={validateAndToastEdit}
+        setSelectedDate={setSelectedDate}
       />
 
       {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}
