@@ -22,7 +22,7 @@ import dynamic from "next/dynamic";
 import type { JSX } from "react";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useColorBy } from "../../hooks/useColorBy";
+import { useScheduleFilters } from "./_hooks/useScheduleFilters";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
@@ -59,7 +59,7 @@ import {
   SUBJECT_PALETTE,
 } from "../../lib/colors/getNextUnusedColor";
 import { usePerformanceMonitoring } from "../../hooks/usePerformanceMonitoring";
-import { useStudentFilter } from "./_hooks/useStudentFilter";
+// useStudentFilter — useScheduleFilters 로 통합 (PR 1)
 import { useTimeValidation } from "../../hooks/useTimeValidation";
 import { getActiveAcademyId, getClassPlannerData } from "../../lib/localStorageCrud";
 import { createSnapshot } from "../../lib/snapshots/createSnapshot";
@@ -98,7 +98,7 @@ import {
   MAX_SESSION_DURATION_MINUTES,
 } from "./_constants/scheduleConstants";
 import { useEditModalState } from "./_hooks/useEditModalState";
-import { useTeacherFilter } from "./_hooks/useTeacherFilter";
+// useTeacherFilter — useScheduleFilters 로 통합 (PR 1)
 import { useUiState } from "./_hooks/useUiState";
 import { findCollidingSessionsImpl } from "./_utils/collisionQueries";
 import {
@@ -219,7 +219,7 @@ function SchedulePageContent(): JSX.Element {
   } = useIntegratedDataLocal();
 
   // Color-by 토글
-  const { colorBy, setColorBy } = useColorBy();
+  // colorBy / setColorBy — useScheduleFilters 로 이동 (PR 1)
 
   // 뷰 모드 (일별/주간/월별) 및 날짜 선택
   const {
@@ -374,17 +374,22 @@ function SchedulePageContent(): JSX.Element {
     teacherId?: string | null;
   };
 
+  // schedule-page-split-refactor PR 1 — useScheduleFilters 로 통합.
+  // 기존 useStudentFilter + useTeacherFilter + useColorBy + selectedSubjectIds(page state) + autoColorBy(derived) 가 분산.
   const {
     selectedStudentIds,
-    toggleStudent: toggleStudentFilter,
-    clearFilter: clearStudentFilter,
-  } = useStudentFilter(userId);
-
-  const {
+    selectedSubjectIds,
     selectedTeacherIds,
+    colorBy,
+    autoColorBy,
+    toggleStudent: toggleStudentFilter,
+    toggleSubject: toggleSubjectFilter,
     toggleTeacher: toggleTeacherFilter,
-    clearFilter: clearTeacherFilter,
-  } = useTeacherFilter(userId);
+    setSelectedSubjectIds,
+    clearStudentFilter,
+    clearTeacherFilter,
+    setColorBy,
+  } = useScheduleFilters(userId);
 
   // ================================
   // 🧩 핵심 콜백: 세션 추가
@@ -863,24 +868,9 @@ function SchedulePageContent(): JSX.Element {
   const { isP3 } = useScheduleLayout();
   // 시간 범위 — query > storage > default(9-23). 전체 sessions 기준으로 auto 계산.
   const timeRange = useTimeRange({ sessions, userId });
-  // P3 사이드바 토글 + 과목 필터 placeholder (UI only, 실 시간표 필터링은 별도 PR)
+  // P3 사이드바 토글
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
-  const toggleSubjectFilter = useCallback((id: string) => {
-    setSelectedSubjectIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
-
-  // ADR-020 R5: "학생" 모드 폐기. 단일 강사 필터만 자동 teacher 모드.
-  // 학생 chip 활성은 dim contrast 로만 표현 (colorBy 영향 X).
-  const autoColorBy = useMemo(() => {
-    const hasStudent = selectedStudentIds.length > 0;
-    const hasTeacher = selectedTeacherIds.length > 0;
-    const hasSubject = selectedSubjectIds.length > 0;
-    if (hasTeacher && !hasStudent && !hasSubject) return "teacher" as const;
-    return "subject" as const;
-  }, [selectedStudentIds, selectedTeacherIds, selectedSubjectIds]);
+  // selectedSubjectIds / toggleSubjectFilter / autoColorBy 는 useScheduleFilters 로 이동 (PR 1).
 
   // ADR-020 보강 (UAT 2026-05-21): 필터 옵션 cascading.
   // 활성/비활성 type 모두 narrowing — 현재 selected 의 AND 매칭 session 에 나타나는 entity 만 표시.
