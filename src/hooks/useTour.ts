@@ -15,6 +15,11 @@ import {
   getTourStepsForRole,
   type TourStep,
 } from "@/lib/tour-steps";
+import {
+  fetchTourState,
+  upsertTourCompletion,
+  type TourSegment,
+} from "@/lib/tour/tourPersistence";
 
 export interface UseTourReturn {
   isActive: boolean;
@@ -47,6 +52,8 @@ export function useTour(): UseTourReturn {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isWaitingForTarget, setIsWaitingForTarget] = useState(false);
+  // 로그인 user 의 DB tour state fetch 가 끝났는지 — race window 회피용 (PR #485 패턴 재사용)
+  const [dbSyncDone, setDbSyncDone] = useState(false);
 
   const observerRef = useRef<MutationObserver | null>(null);
   const waitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,16 +68,22 @@ export function useTour(): UseTourReturn {
   }, []);
 
   const persistSegmentFlag = useCallback(
-    (segment: "core" | "login") => {
+    (segment: TourSegment) => {
       if (typeof window === "undefined") return;
+      const timestamp = new Date().toISOString();
       const key = segment === "core" ? coreFlagKey : loginFlagKey;
       try {
-        localStorage.setItem(key, new Date().toISOString());
+        localStorage.setItem(key, timestamp);
       } catch {
         // localStorage 비활성/quota 초과 시 silent
       }
+      // 로그인 user 면 DB 도 함께 갱신 — cross-device 영속화.
+      // void prefix: fire-and-forget intentional. 실패해도 localStorage 가 유지되므로 다음 세션 sync 시도.
+      if (userId) {
+        void upsertTourCompletion(userId, segment, timestamp);
+      }
     },
-    [coreFlagKey, loginFlagKey],
+    [coreFlagKey, loginFlagKey, userId],
   );
 
   const complete = useCallback(() => {
@@ -106,6 +119,7 @@ export function useTour(): UseTourReturn {
   }, []);
 
   // anonymous → user 전환 시 core flag 마이그레이션 (anonymous 에서 봤으면 user 도 본 것으로 인정).
+  // DB 도 함께 sync — anonymous timestamp 를 user_settings 에 upsert.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!userId) return;
@@ -113,18 +127,52 @@ export function useTour(): UseTourReturn {
       const anonFlag = localStorage.getItem(`${TOUR_FLAG_KEY_PREFIX}anonymous`);
       if (anonFlag && !localStorage.getItem(coreFlagKey)) {
         localStorage.setItem(coreFlagKey, anonFlag);
+        // anonymous 에서 본 timestamp 를 DB 에도 기록 — 다른 디바이스에서도 안 봐도 OK.
+        void upsertTourCompletion(userId, "core", anonFlag);
       }
     } catch {
       // localStorage 비활성 시 silent
     }
   }, [userId, coreFlagKey]);
 
+  // 로그인 user 의 DB tour state fetch — localStorage 가 비어있으면 DB 결과로 채움 (cross-device).
+  // 끝나면 dbSyncDone=true 로 자동 시작 useEffect 의 race window 해제.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isLoggedIn) {
+      setDbSyncDone(true);
+      return;
+    }
+    if (!userId) return;
+    setDbSyncDone(false);
+    let cancelled = false;
+    void (async () => {
+      const dbState = await fetchTourState(userId);
+      if (cancelled) return;
+      try {
+        if (dbState.coreAt && !localStorage.getItem(coreFlagKey)) {
+          localStorage.setItem(coreFlagKey, dbState.coreAt);
+        }
+        if (dbState.loginAt && !localStorage.getItem(loginFlagKey)) {
+          localStorage.setItem(loginFlagKey, dbState.loginAt);
+        }
+      } catch {
+        // localStorage 비활성 시 silent
+      }
+      setDbSyncDone(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, userId, coreFlagKey, loginFlagKey]);
+
   // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from login segment 시작점.
   useEffect(() => {
     if (typeof window === "undefined") return;
     // PR #485 회귀 fix — useMyRole fetch 미완 시 자동 시작 대기 (race window 회피).
-    // fetch 완료 후 role 변경 → useEffect 재실행 → localStorage flag 재확인.
     if (isLoggedIn && role === null) return;
+    // 로그인 user 의 DB tour state fetch 완료 전엔 자동 시작 대기 — cross-device 영속화 race window 회피.
+    if (isLoggedIn && !dbSyncDone) return;
     let coreDone: string | null = null;
     let loginDone: string | null = null;
     try {
@@ -153,7 +201,7 @@ export function useTour(): UseTourReturn {
     return () => {
       if (autoStartTimeoutRef.current) clearTimeout(autoStartTimeoutRef.current);
     };
-  }, [coreFlagKey, loginFlagKey, isLoggedIn, role, activeSteps]);
+  }, [coreFlagKey, loginFlagKey, isLoggedIn, role, activeSteps, dbSyncDone]);
 
   useEffect(() => {
     const handler = () => start();

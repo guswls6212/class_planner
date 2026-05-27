@@ -21,6 +21,23 @@ vi.mock("@/hooks/useMyRole", () => ({
   }),
 }));
 
+// tour-persistence-cross-device — DB SSOT 호출 mock.
+// fetchTourState default: 빈 상태 (DB 에도 안 본 user). upsertTourCompletion default: success.
+const mockFetchTourState = vi.fn().mockResolvedValue({ coreAt: null, loginAt: null });
+const mockUpsertTourCompletion = vi.fn().mockResolvedValue(true);
+vi.mock("@/lib/tour/tourPersistence", () => ({
+  fetchTourState: (...args: unknown[]) => mockFetchTourState(...args),
+  upsertTourCompletion: (...args: unknown[]) => mockUpsertTourCompletion(...args),
+}));
+
+// DB fetch (mocked Promise) 의 microtask flush — fakeTimers 환경에서 dbSyncDone 갱신 후 자동 시작 effect 가 재실행되도록.
+async function flushDbSync() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 const FLAG_KEY = "onboarding_completed_test-user";
 const localStorageMock = window.localStorage as unknown as {
   getItem: ReturnType<typeof vi.fn>;
@@ -32,6 +49,8 @@ describe("useTour", () => {
     vi.useFakeTimers();
     localStorageMock.getItem.mockReturnValue(null);
     localStorageMock.setItem.mockClear();
+    mockFetchTourState.mockResolvedValue({ coreAt: null, loginAt: null });
+    mockUpsertTourCompletion.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -45,19 +64,21 @@ describe("useTour", () => {
     expect(result.current.totalSteps).toBeGreaterThan(0);
   });
 
-  it("auto-starts after delay when localStorage flag is absent", () => {
+  it("auto-starts after delay when localStorage flag is absent", async () => {
     const { result } = renderHook(() => useTour());
     expect(result.current.isActive).toBe(false);
-    act(() => {
+    await flushDbSync();
+    await act(async () => {
       vi.advanceTimersByTime(1100);
     });
     expect(result.current.isActive).toBe(true);
   });
 
-  it("does NOT auto-start when localStorage flag is present", () => {
+  it("does NOT auto-start when localStorage flag is present", async () => {
     localStorageMock.getItem.mockReturnValue("2026-01-01T00:00:00.000Z");
     const { result } = renderHook(() => useTour());
-    act(() => {
+    await flushDbSync();
+    await act(async () => {
       vi.advanceTimersByTime(2000);
     });
     expect(result.current.isActive).toBe(false);
@@ -158,6 +179,35 @@ describe("useTour", () => {
     expect(window.localStorage.setItem).toHaveBeenCalledWith(
       userFlag,
       "2026-01-01T00:00:00.000Z",
+    );
+  });
+
+  it("DB 에 coreAt/loginAt 있으면 localStorage 채움 (cross-device)", async () => {
+    const DB_TIMESTAMP = "2026-01-15T10:00:00.000Z";
+    mockFetchTourState.mockResolvedValue({ coreAt: DB_TIMESTAMP, loginAt: DB_TIMESTAMP });
+    renderHook(() => useTour());
+    await flushDbSync();
+    // DB 결과로 localStorage 채워졌는지 검증 — coreFlagKey, loginFlagKey 모두 set 호출
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      "onboarding_completed_test-user",
+      DB_TIMESTAMP,
+    );
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      "onboarding_login_completed_test-user",
+      DB_TIMESTAMP,
+    );
+  });
+
+  it("complete() 호출 시 DB upsert 도 함께 trigger (cross-device 영속화)", async () => {
+    const { result } = renderHook(() => useTour());
+    await flushDbSync();
+    act(() => result.current.start());
+    act(() => result.current.complete());
+    // mockUpsertTourCompletion 가 호출됐는지 검증 (segment + timestamp)
+    expect(mockUpsertTourCompletion).toHaveBeenCalledWith(
+      "test-user",
+      "core",
+      expect.any(String),
     );
   });
 });
