@@ -1,12 +1,31 @@
 /**
- * 클라이언트 CRUD 결과를 서버와 동기화하는 fire-and-forget 유틸리티.
+ * apiSync: localStorage CRUD 결과를 server 와 동기화 만 담당
+ * (fire-and-forget + retry + outbox + sync state toast orchestration).
  *
- * - userId가 null이면 (익명 사용자) 서버 호출 스킵
- * - API 실패 시 exponential backoff 재시도 (max 10회, delay 최대 30s)
- * - 첫 실패 시점에 즉시 dismissible warning toast 1회 노출 (silent failure 방지).
- *   3회 누적 시 더 강한 "동기화 중단 위험" 토스트로 격상.
- * - 재성공 시 상태 리셋 + 복구 success toast 1회 (이전에 실패 toast가 떴던 경우만)
- * - localStorage가 SSOT이며 서버 동기화는 백그라운드
+ * 동작:
+ *   - userId null (익명) → server 호출 skip (localStorage SSOT 만)
+ *   - exponential backoff retry (max 10회, delay 최대 30s)
+ *   - 첫 실패 즉시 dismissible warning toast (silent failure 방지). 3회 누적 시 error 격상.
+ *   - 재성공 시 success toast (이전 실패 알림 표시 경우만)
+ *   - 4xx fast-fail (retry 무의미). 5xx + 네트워크 오류만 outbox 보관.
+ *   - localStorage SSOT — server sync 는 백그라운드.
+ *
+ * 의존성:
+ *   - input: useXxxLocal hooks (CRUD 직후 sync 호출)
+ *   - localStorageCrud.deleteSessionFromLocal (ghost cleanup)
+ *   - syncOutbox.enqueueOutbox (10회 retry 실패 시)
+ *   - validation/profileSchemas (송신 직전 validation)
+ *   - toast (silent failure 방지)
+ *
+ * 결정 history:
+ *   - ADR-012: deferred-commit + await — sessions CUD commit 시 syncXxxUpdateAsync 사용
+ *   - 2026-05-04: ghost cleanup race guard (GHOST_CLEANUP_GRACE_MS 30s) — POST race 사고
+ *   - 2026-05-04: 4xx fast-fail (10회 retry 폭주 회피)
+ *   - 2026-05-04: session PUT/DELETE 의 ?userId= 누락 fix (silent 400 사고)
+ *   - 2026-05-11: pendingRetryTimers test isolation (mock leak fix, dev CI TypeError)
+ *   - ADR-002 (2026-05-27): Cohesion Sweep — per-entity 분리 후보 검토, 보류
+ *     (sync infra fireAndForget/state/ghost cleanup 가 cross-entity 공유 강하고
+ *     race fix history 다수 → 분리 시 회귀 위험 ↑).
  */
 
 import { logger } from "./logger";
