@@ -1,3 +1,31 @@
+/**
+ * SessionBlock: 시간표 grid cell 의 1 session 시각 표현 — 색상 (subject/teacher),
+ * 학생 chip, 시간 라벨, drag handle, context menu (mobile long-press), share view 분기 만 담당.
+ *
+ * 의존성:
+ *   - dnd-kit useDraggable (drag source)
+ *   - SessionBlock.utils (resolveSessionColor, sessionMatchesFilters, resolveSessionTone)
+ *   - molecules/StudentChip + duplicateLabel (학생 표시 + 동명이인 부제)
+ *   - PresentationMode type (edit | share | pdf — 각 분기)
+ *   - non-goal: drag drop coordination (TimeTableGrid 책임), session CRUD
+ *
+ * 결정 history:
+ *   - colorBy mode (subject / teacher) — 시각 차별화.
+ *   - dnd-kit useDraggable + activation distance 5px (modifier-aware).
+ *   - mobile long-press context menu — 복사/선택 시작.
+ *   - share/pdf 분기 — read-only + 학생 이름 부분 마스킹.
+ *   - ADR-002 (2026-05-28): UI molecule, 분리 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes (color util + chip + drag controller).
+ *   2. 시그니처? — props 명확. caller = TimeTableRow.
+ *   3. UI/state/API 섞임? — UI + drag state. API X.
+ *   4. 도메인? — 한 도메인 (1 session 시각).
+ *   5. pure + 부수효과? — UI 위주.
+ *
+ * 분리 후보 (needs-review): share view 분기 sub-component, context menu hook.
+ */
+
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Users } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
