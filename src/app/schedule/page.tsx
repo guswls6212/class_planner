@@ -124,6 +124,7 @@ import {
   buildRepositionedSessionsAfterAdd,
 } from "./_utils/sessionAddHelpers";
 import { planSessionUpdate } from "./_utils/updateSessionHelpers";
+import { planSessionPositionUpdate } from "./_utils/updateSessionPositionHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -552,81 +553,42 @@ function SchedulePageContent(): JSX.Element {
       time: string,
       yPosition: number
     ) => {
-      // 기존 세션의 지속 시간 계산
-      const existingSession = sessions.find((s) => s.id === sessionId);
-      if (!existingSession) {
-        logger.error("세션을 찾을 수 없습니다", { sessionId });
-        return;
-      }
-
-      const startMinutes = timeToMinutes(existingSession.startsAt);
-      const endMinutes = timeToMinutes(existingSession.endsAt);
-      const durationMinutes = endMinutes - startMinutes;
-
-      // 새로운 종료 시간 계산
-      const newStartMinutes = timeToMinutes(time);
-      const newEndMinutes = newStartMinutes + durationMinutes;
-      const newEndTime = minutesToTime(newEndMinutes);
-
-      logger.debug("세션 위치 업데이트", {
+      const plan = planSessionPositionUpdate({
         sessionId,
-        originalTime: `${existingSession.startsAt}-${existingSession.endsAt}`,
-        newTime: `${time}-${newEndTime}`,
-        durationMinutes,
-        targetYPosition: yPosition,
-        originalYPosition: existingSession.yPosition,
-      });
-
-      // 충돌 방지 로직 적용
-      logger.debug("repositionSessions 호출 시작");
-      const newSessions = repositionSessionsUtil(
+        weekday,
+        time,
+        yPosition,
         sessions,
         enrollments,
         subjects,
-        weekday,
-        time,
-        newEndTime,
-        yPosition,
-        sessionId
-      );
-      logger.debug("repositionSessions 완료", {
-        newSessionCount: newSessions.length,
       });
+      if (!plan.ok) {
+        logger.error("세션을 찾을 수 없습니다", { sessionId: plan.sessionId });
+        return;
+      }
 
-      logger.debug("updateData 호출 시작");
-      await updateData({ sessions: newSessions });
+      await updateData({ sessions: plan.mergedSessions });
       logger.info("updateData 완료 (localStorage)");
 
-      // 변경된 세션들을 서버에 await 동기화.
-      // 서버가 source of truth이므로 PUT 완료를 확인한다.
-      // isSyncingSession을 true로 설정해 UI에서 "저장 중" 표시 가능.
+      // 변경된 sessions 서버 await 동기화 — isSyncingSession 로 UI "저장 중" 표시.
       const uid = localStorage.getItem("supabase_user_id");
-      if (uid) {
+      if (uid && plan.changedSessions.length > 0) {
         setIsSyncingSession(true);
         try {
-          const syncPromises = newSessions
-            .filter((s) => {
-              const original = sessions.find((o) => o.id === s.id);
-              return (
-                original &&
-                (original.weekday !== s.weekday ||
-                  original.startsAt !== s.startsAt ||
-                  original.endsAt !== s.endsAt ||
-                  original.yPosition !== s.yPosition)
-              );
-            })
-            .map((s) =>
+          const results = await Promise.all(
+            plan.changedSessions.map((s) =>
               syncSessionUpdateAsync(uid, s.id, {
                 weekday: s.weekday,
                 startsAt: s.startsAt,
                 endsAt: s.endsAt,
                 yPosition: s.yPosition,
-              })
+              }),
+            ),
+          );
+          if (!results.every(Boolean)) {
+            logger.warn(
+              "일부 세션 서버 동기화 실패 — 다음 새로고침 시 서버에서 복원될 수 있음",
             );
-          const results = await Promise.all(syncPromises);
-          const allOk = results.every(Boolean);
-          if (!allOk) {
-            logger.warn("일부 세션 서버 동기화 실패 — 다음 새로고침 시 서버에서 복원될 수 있음");
           } else {
             logger.info("세션 서버 동기화 완료");
           }
