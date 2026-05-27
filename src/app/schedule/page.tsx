@@ -118,6 +118,7 @@ import {
 } from "./_utils/sessionCopyHelpers";
 import { planBulkSessionDrop } from "./_utils/sessionDropHelpers";
 import { planPdfExport } from "./_utils/pdfExportHelpers";
+import { planFilterToggleAttempt } from "./_utils/filterToggleHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1004,26 +1005,24 @@ function SchedulePageContent(): JSX.Element {
   ]);
 
   // chip 추가 검증 — 새 chip 으로 인해 매칭 0 되면 추가 거부 + 토스트 (Edge 1, option b).
-  // 기존 selected 해제는 거부 없이 항상 허용.
+  // 기존 selected 해제는 거부 없이 항상 허용. planFilterToggleAttempt 가 outcome 결정.
   const tryToggleStudent = useCallback(
     (id: string) => {
-      if (selectedStudentIds.includes(id)) {
-        toggleStudentFilter(id);
-        return;
-      }
-      const nextStudents = [...selectedStudentIds, id];
-      const wouldMatch = sessions.some((s) =>
-        sessionMatchesFilters(
-          s,
-          enrollments,
-          nextStudents,
-          selectedSubjectIds,
-          selectedTeacherIds,
-        ),
-      );
-      if (!wouldMatch) {
-        const name = students.find((s) => s.id === id)?.name ?? "이 학생";
-        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+      const outcome = planFilterToggleAttempt({
+        id,
+        kind: "student",
+        sessions,
+        enrollments,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        entityName: students.find((s) => s.id === id)?.name ?? "이 학생",
+      });
+      if (outcome.action === "rejected") {
+        showToast(
+          "info",
+          `${outcome.entityName}은(는) 현재 필터와 매칭되는 수업이 없어요.`,
+        );
         return;
       }
       toggleStudentFilter(id);
@@ -1041,23 +1040,21 @@ function SchedulePageContent(): JSX.Element {
 
   const tryToggleSubject = useCallback(
     (id: string) => {
-      if (selectedSubjectIds.includes(id)) {
-        toggleSubjectFilter(id);
-        return;
-      }
-      const nextSubjects = [...selectedSubjectIds, id];
-      const wouldMatch = sessions.some((s) =>
-        sessionMatchesFilters(
-          s,
-          enrollments,
-          selectedStudentIds,
-          nextSubjects,
-          selectedTeacherIds,
-        ),
-      );
-      if (!wouldMatch) {
-        const name = subjects.find((s) => s.id === id)?.name ?? "이 과목";
-        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+      const outcome = planFilterToggleAttempt({
+        id,
+        kind: "subject",
+        sessions,
+        enrollments,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        entityName: subjects.find((s) => s.id === id)?.name ?? "이 과목",
+      });
+      if (outcome.action === "rejected") {
+        showToast(
+          "info",
+          `${outcome.entityName}은(는) 현재 필터와 매칭되는 수업이 없어요.`,
+        );
         return;
       }
       toggleSubjectFilter(id);
@@ -1075,23 +1072,21 @@ function SchedulePageContent(): JSX.Element {
 
   const tryToggleTeacher = useCallback(
     (id: string) => {
-      if (selectedTeacherIds.includes(id)) {
-        toggleTeacherFilter(id);
-        return;
-      }
-      const nextTeachers = [...selectedTeacherIds, id];
-      const wouldMatch = sessions.some((s) =>
-        sessionMatchesFilters(
-          s,
-          enrollments,
-          selectedStudentIds,
-          selectedSubjectIds,
-          nextTeachers,
-        ),
-      );
-      if (!wouldMatch) {
-        const name = teachers.find((t) => t.id === id)?.name ?? "이 강사";
-        showToast("info", `${name}은(는) 현재 필터와 매칭되는 수업이 없어요.`);
+      const outcome = planFilterToggleAttempt({
+        id,
+        kind: "teacher",
+        sessions,
+        enrollments,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        entityName: teachers.find((t) => t.id === id)?.name ?? "이 강사",
+      });
+      if (outcome.action === "rejected") {
+        showToast(
+          "info",
+          `${outcome.entityName}은(는) 현재 필터와 매칭되는 수업이 없어요.`,
+        );
         return;
       }
       toggleTeacherFilter(id);
