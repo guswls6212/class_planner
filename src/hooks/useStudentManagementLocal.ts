@@ -47,59 +47,24 @@ import {
   removePendingDelete,
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
+import { commitEntityDeleteOnServer } from "./utils/commitEntityDeleteOnServer";
 import { useMyRole } from "./useMyRole";
 
 const PERMISSION_DENIED_MESSAGE = "학생 추가/수정/삭제는 원장과 관리자만 가능합니다.";
 
-/**
- * Server 에 학생 DELETE 요청 + share-tokens access-code revoke (best-effort) +
- * 결과에 따라 pendingDeletes 정리 만 담당.
- *
- * - userId null (anonymous) → server 호출 skip, 바로 pendingDeletes 정리.
- * - response.ok → share-token revoke (실패해도 무시) → pendingDeletes 정리.
- * - 4xx/5xx → pendingDeletes 유지 (recovery hook 이 다음 mount 에서 재시도).
- * - network 오류 → pendingDeletes 유지.
- *
- * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
- * 2 곳 (recovery effect / deleteStudent setTimeout) 에서 동일 호출 — ADR-002 sweep #7.
- */
-async function commitStudentDeleteOnServer(
-  userId: string | null,
-  id: string,
-): Promise<boolean> {
-  if (!userId) {
-    removePendingDelete("student", id);
-    return true;
-  }
-  try {
-    const url = `/api/students/${id}?userId=${encodeURIComponent(userId)}`;
-    const response = await fetch(url, { method: "DELETE" });
-    if (!response.ok) {
-      logger.warn(
-        "학생 삭제 commit 실패 — pendingDeletes 유지, 다음 mount에 재시도",
-        { id, status: response.status },
-      );
-      return false;
-    }
-  } catch (err) {
-    logger.warn("학생 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-      id,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return false;
-  }
-  // share-tokens access-code revoke — best-effort (학생 삭제는 이미 성공)
-  try {
-    await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ studentId: id }),
-    });
-  } catch {
-    // ignore — access-code revoke 실패는 학생 삭제 성공과 무관
-  }
-  removePendingDelete("student", id);
-  return true;
+// 학생 삭제 commit + share-tokens revoke 는 hooks/utils/commitEntityDeleteOnServer
+// generic helper 사용 (ADR-002 Phase 2 Step 1 — onAfterDelete callback).
+// share-tokens revoke 는 학생 DELETE 성공 후만 발화 — best-effort (UAT 2026-05-09 race
+// window 0 보존, ADR-012).
+async function revokeStudentShareTokens(
+  userId: string,
+  studentId: string,
+): Promise<void> {
+  await fetch(`/api/share-tokens/access-codes?userId=${userId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studentId }),
+  });
 }
 
 // ===== 타입 정의 =====
@@ -192,7 +157,7 @@ export const useStudentManagementLocal =
       // commitStudentDeleteOnServer helper 호출 (ADR-002 sweep #7).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "student") continue;
-        void commitStudentDeleteOnServer(userId, p.id);
+        void commitEntityDeleteOnServer(userId, "student", p.id, { entityLabel: "학생", onAfterDelete: revokeStudentShareTokens });
         logger.info(
           "useStudentManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -205,7 +170,7 @@ export const useStudentManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("student", p.id)) return;
-          void commitStudentDeleteOnServer(userId, p.id);
+          void commitEntityDeleteOnServer(userId, "student", p.id, { entityLabel: "학생", onAfterDelete: revokeStudentShareTokens });
           logger.info(
             "useStudentManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -452,7 +417,7 @@ export const useStudentManagementLocal =
             // server DELETE await — race window 0. commitStudentDeleteOnServer helper (ADR-002 sweep #7).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              const ok = await commitStudentDeleteOnServer(userId, id);
+              const ok = await commitEntityDeleteOnServer(userId, "student", id, { entityLabel: "학생", onAfterDelete: revokeStudentShareTokens });
               if (ok) logger.info("useStudentManagementLocal - 학생 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 

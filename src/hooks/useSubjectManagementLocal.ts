@@ -44,50 +44,15 @@ import {
   removePendingDelete,
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
+import { commitEntityDeleteOnServer } from "./utils/commitEntityDeleteOnServer";
 import { useMyRole } from "./useMyRole";
 import { validateSubjectInput, validateSubjectName } from "../lib/validation/profileSchemas";
 import { getKoMessage } from "../lib/errors/messages.ko";
 
 const PERMISSION_DENIED_MESSAGE = "과목 추가/수정/삭제는 원장과 관리자만 가능합니다.";
 
-/**
- * Server 에 과목 DELETE 요청 + 결과에 따라 pendingDeletes 정리 만 담당.
- *
- * - userId null → server 호출 skip, pendingDeletes 정리.
- * - response.ok → pendingDeletes 정리.
- * - 4xx/5xx/network → pendingDeletes 유지 (recovery hook 재시도).
- *
- * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
- * 2 곳 (recovery effect / deleteSubject setTimeout) 동일 호출 — ADR-002 sweep #9.
- */
-async function commitSubjectDeleteOnServer(
-  userId: string | null,
-  id: string,
-): Promise<boolean> {
-  if (!userId) {
-    removePendingDelete("subject", id);
-    return true;
-  }
-  try {
-    const url = `/api/subjects/${id}?userId=${encodeURIComponent(userId)}`;
-    const response = await fetch(url, { method: "DELETE" });
-    if (!response.ok) {
-      logger.warn("과목 삭제 commit 실패 — pendingDeletes 유지", {
-        id,
-        status: response.status,
-      });
-      return false;
-    }
-  } catch (err) {
-    logger.warn("과목 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-      id,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return false;
-  }
-  removePendingDelete("subject", id);
-  return true;
-}
+// 과목 삭제 commit 은 hooks/utils/commitEntityDeleteOnServer generic helper 사용
+// (ADR-002 Phase 2 Step 1 — 4 hook 의 internal helper 통합).
 
 // ===== 타입 정의 =====
 
@@ -169,7 +134,7 @@ export const useSubjectManagementLocal =
       // server DELETE await — race window 0. commitSubjectDeleteOnServer helper (ADR-002 sweep #9).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "subject") continue;
-        void commitSubjectDeleteOnServer(userId, p.id);
+        void commitEntityDeleteOnServer(userId, "subject", p.id, { entityLabel: "과목" });
         logger.info(
           "useSubjectManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -182,7 +147,7 @@ export const useSubjectManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("subject", p.id)) return;
-          void commitSubjectDeleteOnServer(userId, p.id);
+          void commitEntityDeleteOnServer(userId, "subject", p.id, { entityLabel: "과목" });
           logger.info(
             "useSubjectManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -422,7 +387,7 @@ export const useSubjectManagementLocal =
             // server DELETE await — race window 0. commitSubjectDeleteOnServer helper (ADR-002 sweep #9).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              const ok = await commitSubjectDeleteOnServer(userId, id);
+              const ok = await commitEntityDeleteOnServer(userId, "subject", id, { entityLabel: "과목" });
               if (ok) logger.info("useSubjectManagementLocal - 과목 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 

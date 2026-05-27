@@ -50,47 +50,11 @@ import {
   removePendingDelete,
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
+import { commitEntityDeleteOnServer } from "./utils/commitEntityDeleteOnServer";
 import type { Teacher, TeacherRole } from "../lib/planner";
 
-/**
- * Server 에 강사 DELETE 요청 + 결과에 따라 pendingDeletes 정리 만 담당.
- *
- * - userId null (anonymous) → server 호출 skip, 바로 pendingDeletes 정리.
- * - response.ok → pendingDeletes 정리.
- * - 4xx/5xx → pendingDeletes 유지 (recovery hook 이 다음 mount 에서 재시도).
- * - network 오류 → pendingDeletes 유지.
- *
- * race window 0 — fetch await 후에만 removePendingDelete (ADR-012, UAT 2026-05-09).
- * 2 곳 (recovery effect / deleteTeacher setTimeout) 에서 동일 호출 — ADR-002 sweep #8.
- */
-async function commitTeacherDeleteOnServer(
-  userId: string | null,
-  id: string,
-): Promise<boolean> {
-  if (!userId) {
-    removePendingDelete("teacher", id);
-    return true;
-  }
-  try {
-    const url = `/api/teachers/${id}?userId=${encodeURIComponent(userId)}`;
-    const response = await fetch(url, { method: "DELETE" });
-    if (!response.ok) {
-      logger.warn("강사 삭제 commit 실패 — pendingDeletes 유지", {
-        id,
-        status: response.status,
-      });
-      return false;
-    }
-  } catch (err) {
-    logger.warn("강사 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-      id,
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return false;
-  }
-  removePendingDelete("teacher", id);
-  return true;
-}
+// 강사 삭제 commit 은 hooks/utils/commitEntityDeleteOnServer generic helper 사용
+// (ADR-002 Phase 2 Step 1 — 4 hook 의 internal helper 통합).
 
 // ===== 타입 정의 =====
 
@@ -176,7 +140,7 @@ export const useTeacherManagementLocal =
       // server DELETE await — race window 0. commitTeacherDeleteOnServer helper (ADR-002 sweep #8).
       for (const p of getExpiredPendingDeletes(now)) {
         if (p.entityType !== "teacher") continue;
-        void commitTeacherDeleteOnServer(userId, p.id);
+        void commitEntityDeleteOnServer(userId, "teacher", p.id, { entityLabel: "강사" });
         logger.info(
           "useTeacherManagementLocal - expired pending delete recovered",
           { id: p.id }
@@ -189,7 +153,7 @@ export const useTeacherManagementLocal =
         const remaining = Math.max(0, p.deadline - now);
         const timer = setTimeout(() => {
           if (!isPendingDelete("teacher", p.id)) return;
-          void commitTeacherDeleteOnServer(userId, p.id);
+          void commitEntityDeleteOnServer(userId, "teacher", p.id, { entityLabel: "강사" });
           logger.info(
             "useTeacherManagementLocal - active pending delete recovered",
             { id: p.id }
@@ -410,7 +374,7 @@ export const useTeacherManagementLocal =
             // server DELETE await — race window 0. commitTeacherDeleteOnServer helper (ADR-002 sweep #8).
             const commitTimer = setTimeout(async () => {
               if (cancelled) return;
-              const ok = await commitTeacherDeleteOnServer(userId, id);
+              const ok = await commitEntityDeleteOnServer(userId, "teacher", id, { entityLabel: "강사" });
               if (ok) logger.info("useTeacherManagementLocal - 강사 삭제 commit", { id });
             }, PENDING_DELETE_TTL_MS);
 
