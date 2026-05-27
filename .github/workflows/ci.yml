@@ -3,7 +3,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, dev]
+    # dev push CI 제거 (2026-05-27, proposal ci-hybrid-runner-setup #step-1).
+    # PR CI가 이미 동일 commit 검증 → dev push CI는 중복. dev → main PR에서 재검증 안전망.
+    branches: [main]
 
 jobs:
   check:
