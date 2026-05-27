@@ -1,4 +1,39 @@
 "use client";
+
+/**
+ * GroupSessionModal: 시간표 그리드 의 "수업 추가/수정" 모달 — 학생 picker (multi-select)
+ * + 과목 picker + 강사 picker + 시작/종료 시간 + 요일 입력 → onSubmit 으로 한 묶음 반환.
+ *
+ * 의존성:
+ *   - hooks/useModalA11y (focus trap + ESC + outside click)
+ *   - hooks/useMediaQuery (모바일 BottomSheet 분기)
+ *   - molecules/BottomSheet (모바일 layout — 데스크탑 modal 과 동일 API)
+ *   - molecules/TeacherDropdownPicker, StudentChip
+ *   - lib/duplicateLabel (동명이인 학생 부제 처리 — 성별·생년월일·학교)
+ *   - non-goal: server sync (호출부 schedule/page 책임), session collision 해결
+ *
+ * 결정 history:
+ *   - Variant E (insertBefore) preview drop UX 의 시각 피드백 — drag context 와 통합
+ *     (schedule/page 책임). 본 모달은 add/edit 입력 UI 만.
+ *   - 동명이인 학생 부제 — Turbopack chunk 분리 사고 회피 위해 helper inline 유지
+ *     (`formatStudentSubtitleExceptGrade`).
+ *   - 모바일 BottomSheet — useMediaQuery 로 분기.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI 컴포넌트, 분리는 needs-review.
+ *     docstring + sniff record only.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes 자주 (호출부 schedule/page + 입력 atom + 시간 UI 통합).
+ *   2. 시그니처 영향? — props 명확 (onSubmit / initialData / sessions 등). caller graph 명확.
+ *   3. UI/state/API 섞임? — UI 렌더 + 폼 state 다수 (학생 multi-select / 과목 / 강사 / 시간 / 요일). API 호출 X (호출부 sync 책임).
+ *   4. 도메인 둘 이상? — 한 모달 (수업 추가/수정 입력). 사용자 mental model 안 응집.
+ *   5. pure + 부수효과? — UI 위주, 폼 state local. helper (formatStudentSubtitleExceptGrade) inline pure.
+ *
+ * 분리 후보 (후속 cycle, needs-review):
+ *   - 학생/과목/강사 picker 각자 sub-component (이미 일부 atom 분리됨).
+ *   - 시간/요일 입력 sub-component.
+ *   - 진행 전: 사용자 검토 + e2e 회귀 가드 (timetable 추가 flow) 의무.
+ */
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Check, X, ChevronRight, ChevronLeft, Calendar, Clock, ChevronDown } from "lucide-react";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
