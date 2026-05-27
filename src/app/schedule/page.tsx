@@ -24,6 +24,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { useScheduleFilters } from "./_hooks/useScheduleFilters";
 import { usePdfDialog } from "./_hooks/usePdfDialog";
+import { useTemplateState } from "./_hooks/useTemplateState";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
@@ -2266,11 +2267,22 @@ function SchedulePageContent(): JSX.Element {
   // ================================
   // 🎯 템플릿 기능
   // ================================
-  const [showSavePickerModal, setShowSavePickerModal] = useState(false);
-  const [showApplyPickerModal, setShowApplyPickerModal] = useState(false);
-  const [applyConfirmTemplate, setApplyConfirmTemplate] = useState<ScheduleTemplate | null>(null);
-  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
-  const [previewTemplate, setPreviewTemplate] = useState<ScheduleTemplate | null>(null);
+  // Template dialog state — useTemplateState 로 통합 (schedule-page-split-refactor PR 3).
+  // handler (doApplyTemplate / handleApplyTemplate / handleSaveSlot / handleApplySlot / handlePreviewTemplate)
+  // 는 page 안 유지 — dependency 8+ (sessions / subjects / students / teachers / enrollments /
+  // updateData / weekFilteredSessions / currentWeekStart / showToast).
+  const {
+    showSavePickerModal,
+    showApplyPickerModal,
+    applyConfirmTemplate,
+    isApplyingTemplate,
+    previewTemplate,
+    setShowSavePickerModal,
+    setShowApplyPickerModal,
+    setApplyConfirmTemplate,
+    setIsApplyingTemplate,
+    setPreviewTemplate,
+  } = useTemplateState();
 
   const { templates, activeTemplate, isLoading: templatesLoading, isSaving: templateSaving, fetchTemplates: _fetchTemplates, saveTemplate, updateTemplate } = useTemplates(userId);
 
