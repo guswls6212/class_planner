@@ -80,7 +80,6 @@ import { showActionToast, showError, showToast } from "../../lib/toast";
 import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
-import { insertSessionAtLane } from "../../lib/laneInsert";
 import type { GroupSessionData } from "../../types/scheduleTypes";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMyRole } from "../../hooks/useMyRole";
@@ -125,6 +124,7 @@ import {
 } from "./_utils/sessionAddHelpers";
 import { planSessionUpdate } from "./_utils/updateSessionHelpers";
 import { planSessionPositionUpdate } from "./_utils/updateSessionPositionHelpers";
+import { planSessionInsertBeforeLane } from "./_utils/insertSessionHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -611,62 +611,37 @@ function SchedulePageContent(): JSX.Element {
       time: string,
       insertBeforeYPos: number,
     ) => {
-      const existing = sessions.find((s) => s.id === sessionId);
-      if (!existing) {
-        logger.error("세션을 찾을 수 없습니다 (insertBefore)", { sessionId });
+      const plan = planSessionInsertBeforeLane({
+        sessionId,
+        weekday,
+        time,
+        insertBeforeYPos,
+        sessions,
+      });
+      if (!plan.ok) {
+        logger.error("세션을 찾을 수 없습니다 (insertBefore)", {
+          sessionId: plan.sessionId,
+        });
         return;
       }
 
-      const startMinutes = timeToMinutes(existing.startsAt);
-      const endMinutes = timeToMinutes(existing.endsAt);
-      const durationMinutes = endMinutes - startMinutes;
-      const newStartMinutes = timeToMinutes(time);
-      const newEndTime = minutesToTime(newStartMinutes + durationMinutes);
+      await updateData({ sessions: plan.mergedSessions });
 
-      logger.debug("세션 명시적 lane 삽입", {
-        sessionId,
-        weekday,
-        time,
-        insertBeforeYPos,
-        durationMinutes,
-      });
-
-      const newSessions = insertSessionAtLane(
-        sessions,
-        weekday,
-        time,
-        newEndTime,
-        insertBeforeYPos,
-        sessionId,
-      );
-
-      await updateData({ sessions: newSessions });
-
-      // 서버 동기화 — 변경된 세션만. movingSession + shift 된 lane ≥ N 모두 포함.
+      // 서버 동기화 — moving session + shift 된 lane 들.
       const uid = localStorage.getItem("supabase_user_id");
-      if (uid) {
+      if (uid && plan.changedSessions.length > 0) {
         setIsSyncingSession(true);
         try {
-          const syncPromises = newSessions
-            .filter((s) => {
-              const original = sessions.find((o) => o.id === s.id);
-              return (
-                original &&
-                (original.weekday !== s.weekday ||
-                  original.startsAt !== s.startsAt ||
-                  original.endsAt !== s.endsAt ||
-                  original.yPosition !== s.yPosition)
-              );
-            })
-            .map((s) =>
+          await Promise.all(
+            plan.changedSessions.map((s) =>
               syncSessionUpdateAsync(uid, s.id, {
                 weekday: s.weekday,
                 startsAt: s.startsAt,
                 endsAt: s.endsAt,
                 yPosition: s.yPosition,
               }),
-            );
-          await Promise.all(syncPromises);
+            ),
+          );
           logger.info("세션 lane 삽입 서버 동기화 완료");
         } finally {
           setIsSyncingSession(false);
