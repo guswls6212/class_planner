@@ -102,6 +102,7 @@ jobs:
             tests/e2e/share-link.spec.ts \
             tests/e2e/multi-academy.spec.ts \
             --shard=${{ matrix.shard }}/${{ matrix.total }} \
+            --workers=4 \
             --project=chromium --reporter=list
         env:
           CI: "true"
