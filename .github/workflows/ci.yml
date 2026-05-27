@@ -7,10 +7,16 @@ on:
     # PR CI가 이미 동일 commit 검증 → dev push CI는 중복. dev → main PR에서 재검증 안전망.
     branches: [main]
 
+# Hybrid runner 분기 (2026-05-27, proposal ci-hybrid-runner-setup #step-3):
+#   - main 향 PR + push to main → ubuntu-latest (Linux production-parity)
+#   - dev 향 PR → Mac Studio docker container runner (~2-3분, minutes 0 사용, network/cpu 격리)
+# 분기 식: (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]')
+# push event 는 on.push.branches 가 [main] 이라 main 만 트리거 → 항상 ubuntu.
+
 jobs:
   check:
     name: Type check, Lint, Unit tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,7 +35,7 @@ jobs:
   build:
     name: Production build
     needs: check
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,9 +50,15 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   e2e:
-    name: E2E tests (Chromium)
+    # main 향 = ubuntu + 4 shard 병렬 (parallel coverage).
+    # dev 향   = Mac Studio + 1 shard (single fast run).
+    name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }})
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4},{"shard":2,"total":4},{"shard":3,"total":4},{"shard":4,"total":4}]' || '[{"shard":1,"total":1}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,7 +72,12 @@ jobs:
       # 이미 존재하면 password 갱신, 없으면 신규 생성.
       # 사용자 측 setup script 로컬 실행 부담 제거 + GitHub secret 변경 시 자동 반영.
       # secrets 없으면 setup script가 graceful skip (exit 0 + 경고).
+      #
+      # Step 3 추가: shard 1 만 실행 (main 향 4-shard race window 완화).
+      # 진짜 race-safe fix 는 별도 후속 — setup-e2e-test-user.ts 가 password 갱신 없이
+      # user 존재만 확인하는 모드 추가 필요.
       - name: Setup E2E test user (idempotent)
+        if: matrix.shard == 1
         run: npx tsx scripts/setup-e2e-test-user.ts
         continue-on-error: true
         env:
@@ -84,6 +101,8 @@ jobs:
             tests/e2e/schedule-viewmode.spec.ts \
             tests/e2e/share-link.spec.ts \
             tests/e2e/multi-academy.spec.ts \
+            --shard=${{ matrix.shard }}/${{ matrix.total }} \
+            --workers=4 \
             --project=chromium --reporter=list
         env:
           CI: "true"
@@ -102,11 +121,13 @@ jobs:
       # playwright.config.ts:trace='on-first-retry' + screenshot='only-on-failure' +
       # video='retain-on-failure' 로 이미 생성되지만 CI artifact 로 보존되지 않아
       # fail 후 분석 불가했음. 본 step 으로 GitHub Actions UI 에서 다운로드 가능.
+      #
+      # Step 3 변경: shard 별 artifact 분리 (matrix run 충돌 방지).
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-${{ github.job }}-${{ github.run_id }}
+          name: playwright-shard${{ matrix.shard }}-${{ github.run_id }}
           path: |
             test-results/
             playwright-report/
