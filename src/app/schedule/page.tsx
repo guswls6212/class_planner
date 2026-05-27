@@ -51,10 +51,6 @@ import { EmptyWeekState } from "../../components/molecules/EmptyWeekState";
 import { ApplyTemplateConfirm } from "../../components/molecules/ApplyTemplateConfirm";
 import { TemplatePreviewModal } from "../../components/molecules/TemplatePreviewModal";
 import { Plus } from "lucide-react";
-import { DayChipBar } from "../../components/molecules/DayChipBar";
-import { ScheduleDateNavigator } from "../../components/molecules/ScheduleDateNavigator";
-import SegmentedButton from "../../components/atoms/SegmentedButton";
-import ColorByToggle from "../../components/molecules/ColorByToggle";
 import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
 import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
 import { findClosestMatchingWeek } from "./_utils/findClosestMatchingWeek";
@@ -99,8 +95,7 @@ import SelectionBar from "@/components/atoms/SelectionBar";
 import ChipFilterPopover from "./_components/ChipFilterPopover";
 import PrimarySidebar from "./_components/PrimarySidebar";
 import ScheduleFloatingToolbar from "./_components/ScheduleFloatingToolbar";
-import StudentFilterChipBar from "./_components/StudentFilterChipBar";
-import TeacherFilterChipBar from "./_components/TeacherFilterChipBar";
+import ScheduleToolbarFilters from "./_components/ScheduleToolbarFilters";
 import TimeRangeSelector from "./_components/TimeRangeSelector";
 import {
   DEFAULT_GROUP_SESSION_DATA,
@@ -2077,78 +2072,42 @@ function SchedulePageContent(): JSX.Element {
         </div>
       </div>
 
-      {/* default 모드 — 기존 chip bar 그대로. P3 모드는 floating toolbar의 통합 필터로 이동.
-       * ADR-020 R5: colorBy="student" 모드 폐기. backup UI 의 학생 chip bar 는 mode 무관 항상 표시. */}
-      {!isP3 && (
-        <StudentFilterChipBar
-          students={students}
-          selectedStudentIds={selectedStudentIds}
-          onToggleStudent={toggleStudentFilter}
-          onClearFilter={clearStudentFilter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-      )}
-
-      {!isP3 && colorBy === "teacher" && (
-        <TeacherFilterChipBar
-          teachers={teachers}
-          selectedTeacherIds={selectedTeacherIds}
-          onToggleTeacher={toggleTeacherFilter}
-          onClearFilter={clearTeacherFilter}
-        />
-      )}
-
-      {/* 일별 뷰: 요일 칩 바 */}
-      {viewMode === "daily" && (
-        <DayChipBar
-          selectedWeekday={selectedWeekday}
-          onSelectWeekday={(wd) => {
-            const monday = new Date(selectedDate);
-            const currentWd = (monday.getDay() + 6) % 7;
-            monday.setDate(monday.getDate() - currentWd + wd);
-            setSelectedDate(monday);
-          }}
-          baseDate={selectedDate}
-        />
-      )}
-
-      {/* Row 2: 날짜 네비 + 뷰·색상 토글. P3 모드는 ScheduleFloatingToolbar로 이동. */}
-      {!isP3 && (
-        <div className="flex items-center justify-between gap-2 px-1 py-2">
-          <ScheduleDateNavigator
-            label={dateLabel}
-            onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
-            onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
-            onToday={goToToday}
-            prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
-            nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
-          />
-          <div className="flex items-center gap-2 shrink-0">
-            <SegmentedButton
-              options={VIEW_MODES}
-              value={viewMode}
-              onChange={setViewMode}
-              aria-label="뷰 모드"
-            />
-            <div className="flex items-center gap-1">
-              <ColorByToggle
-                colorBy={colorBy}
-                onChange={(mode) => {
-                  setColorBy(mode);
-                  if (mode !== "student") clearStudentFilter();
-                  if (mode !== "teacher") clearTeacherFilter();
-                }}
-              />
-              {colorBy === "teacher" && teachers.length > 0 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[rgba(167,139,250,0.15)] text-[var(--color-accent)] border border-[rgba(167,139,250,0.3)]">
-                  강사 {teachers.length}명
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ScheduleToolbarFilters
+        isP3={isP3}
+        viewMode={viewMode}
+        colorBy={colorBy}
+        students={students}
+        selectedStudentIds={selectedStudentIds}
+        onToggleStudentFilter={toggleStudentFilter}
+        onClearStudentFilter={clearStudentFilter}
+        onStudentDragStart={handleDragStart}
+        onStudentDragEnd={handleDragEnd}
+        teachers={teachers}
+        selectedTeacherIds={selectedTeacherIds}
+        onToggleTeacherFilter={toggleTeacherFilter}
+        onClearTeacherFilter={clearTeacherFilter}
+        selectedWeekday={selectedWeekday}
+        baseDate={selectedDate}
+        onSelectWeekday={(wd) => {
+          const monday = new Date(selectedDate);
+          const currentWd = (monday.getDay() + 6) % 7;
+          monday.setDate(monday.getDate() - currentWd + wd);
+          setSelectedDate(monday);
+        }}
+        dateLabel={dateLabel}
+        onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
+        onNext={viewMode === "daily" ? goToNextDay : viewMode === "weekly" ? goToNextWeek : goToNextMonth}
+        onToday={goToToday}
+        prevAriaLabel={viewMode === "daily" ? "이전 날" : viewMode === "weekly" ? "이전 주" : "이전 달"}
+        nextAriaLabel={viewMode === "daily" ? "다음 날" : viewMode === "weekly" ? "다음 주" : "다음 달"}
+        viewModes={VIEW_MODES}
+        onChangeViewMode={setViewMode}
+        onChangeColorBy={(mode) => {
+          setColorBy(mode);
+          if (mode !== "student") clearStudentFilter();
+          if (mode !== "teacher") clearTeacherFilter();
+        }}
+      />
       </div>
       {/* P3: 시간표 영역만 자체 스크롤. default 모드는 wrap만 추가. */}
       <div
