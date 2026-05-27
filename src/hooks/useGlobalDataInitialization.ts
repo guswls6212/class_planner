@@ -1,9 +1,30 @@
 /**
- * 전역 사용자 데이터 초기화 훅
+ * useGlobalDataInitialization: 로그인 사용자의 5 entity (학생/과목/세션/등록/강사)
+ * server fetch + localStorage hydration + anonymous → server conflict 해결 만 담당.
  *
- * - 세션 없음(익명): 초기화 스킵 (localStorage 쓰기 없음)
- * - 세션 있음: 기존 로직 유지 (onboarding → 서버 fetch → localStorage:userId 저장)
- *   + anonymous 데이터와의 충돌 체크 (DataConflictModal 트리거)
+ * - 익명: localStorage 그대로, 초기화 skip.
+ * - 로그인: onboarding 가드 → 5 API 병렬 fetch → pendingDeletes filter → conflict 체크.
+ *
+ * 의존성:
+ *   - supabaseClient (auth session)
+ *   - onboarding API + middleware 쿠키 (academy 매핑 검증)
+ *   - localStorageCrud (get/set/clear)
+ *   - pendingDeletes (deferred-commit 진행 중인 entity 제외)
+ *   - sync/timestamps (computeServerLastModified, decideOverwrite)
+ *   - auth/handleLoginDataMigration (conflict 분기 + applyServerChoice/applyLocalDataChoice)
+ *   - snapshots (충돌 직전 자동 백업 before_conflict)
+ *
+ * 결정 history:
+ *   - PR #319/#297/#299: pendingDeletes 패턴 (student/subject/teacher) — race window 0
+ *   - UAT 2026-05-09 강지원/박태환 부활 사고: detectPartialCorruption 제거 (false-positive
+ *     로 정상 삭제 의도 학생 부활), per-entity intentional empty 분기 도입
+ *   - UAT 2026-05-08: onboarding redirect — academy 부재 시 hard navigate /onboarding
+ *   - 2026-05-23: pathname guard (/invite/* 는 academy 없음이 정상 — redirect skip)
+ *   - PR #B-3: teachers GET 의 nested subjectIds — N+1 fetch 제거
+ *   - PR #257: 빈 학원 그대로 진입 (충돌 모달 false positive 영구 소거)
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — pendingDeletes filter 4 entity 동일 패턴
+ *     + findMostRecent debug helper 추출 (DRY). main useEffect 450L 단일 흐름은 한 도메인
+ *     (initialization workflow) 으로 유지.
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -29,8 +50,76 @@ import {
 } from "../lib/auth/handleLoginDataMigration";
 import type { MigrationResult } from "../lib/auth/handleLoginDataMigration";
 import { logger } from "../lib/logger";
-import { getPendingDeleteIds } from "../lib/pendingDeletes";
+import {
+  getPendingDeleteIds,
+  type PendingDeleteEntityType,
+} from "../lib/pendingDeletes";
 import { supabase } from "../utils/supabaseClient";
+
+/**
+ * server fetch 결과에서 pendingDeletes (deferred-commit 진행 중) 의 entity 제외.
+ *
+ * 5초 deferred-commit 진행 중인 entity 를 server fetch 결과로 재흡수하면 사용자가
+ * 본 "삭제됨" 상태가 부활하는 race 가 발생. recovery hook 이 commit timer 를 재등록
+ * 해서 동일한 흐름으로 commit 이 마무리되므로, fetch 시점에는 단순 filter 만 하면 됨.
+ *
+ * 4 entity (student/subject/session/teacher) 동일 패턴 — ADR-002 sweep #6 helper 추출.
+ */
+function filterByPendingDeletes<T extends { id: string }>(
+  items: T[],
+  entityType: PendingDeleteEntityType,
+  logLabel: string,
+): T[] {
+  const pendingIds = getPendingDeleteIds(entityType);
+  if (pendingIds.size === 0) return items;
+  const filtered = items.filter((item) => !pendingIds.has(item.id));
+  if (filtered.length !== items.length) {
+    logger.info(
+      `useGlobalDataInitialization - ${logLabel} pendingDeletes filter 적용`,
+      { excluded: items.length - filtered.length },
+    );
+  }
+  return filtered;
+}
+
+/**
+ * 배열에서 updatedAt 이 가장 최근인 entity 의 요약 (debug 로그용).
+ *
+ * "서버 데이터 max(updatedAt) 분포" 로그에서 어느 entity 카테고리/id 가 server
+ * timestamp 의 출처인지 추적 — "왜 server 가 사용자 기대보다 최신인가?" 운영
+ * 디버깅 진입점. omni-radar console_log 이벤트로 자동 캡처.
+ *
+ * Pure function — unit test 가능 (ADR-002 sweep #6).
+ */
+export function findMostRecentEntity<
+  T extends { id?: string; name?: string; updatedAt?: string | null },
+>(
+  arr: T[],
+  label: string,
+): {
+  label: string;
+  count: number;
+  mostRecentId: string | null;
+  mostRecentName: string | null;
+  mostRecentUpdatedAt: string | null;
+} {
+  let maxEntity: T | null = null;
+  let maxMs = -Infinity;
+  for (const e of arr) {
+    const ts = e?.updatedAt ? new Date(e.updatedAt).getTime() : 0;
+    if (Number.isFinite(ts) && ts > maxMs) {
+      maxEntity = e;
+      maxMs = ts;
+    }
+  }
+  return {
+    label,
+    count: arr.length,
+    mostRecentId: maxEntity?.id ?? null,
+    mostRecentName: maxEntity?.name ?? null,
+    mostRecentUpdatedAt: maxEntity?.updatedAt ?? null,
+  };
+}
 
 type ConflictState = Extract<MigrationResult, { action: "conflict" }>;
 
@@ -264,71 +353,28 @@ export const useGlobalDataInitialization = () => {
           enrollmentsResult !== null &&
           teachersResult !== null;
 
-        let students = studentsResult ?? [];
-
-        // pendingDeletes 필터 — 5초 deferred-commit 진행 중인 학생은 server에서
-        // 다시 끌어오지 않는다. recovery hook이 commit timer를 재등록하므로
-        // 동일한 흐름으로 commit이 마무리됨.
-        const pendingStudentDeleteIds = getPendingDeleteIds("student");
-        if (pendingStudentDeleteIds.size > 0) {
-          const before = students.length;
-          students = students.filter(
-            (s: { id: string }) => !pendingStudentDeleteIds.has(s.id),
-          );
-          if (students.length !== before) {
-            logger.info(
-              "useGlobalDataInitialization - pendingDeletes filter 적용",
-              { excluded: before - students.length },
-            );
-          }
-        }
-        let subjects = subjectsResult;
-        // subjects도 students와 동일 패턴 — 5초 deferred-commit 진행 중인 과목은 fetch 결과에서 제외
-        const pendingSubjectDeleteIds = getPendingDeleteIds("subject");
-        if (subjects && pendingSubjectDeleteIds.size > 0) {
-          const before = subjects.length;
-          subjects = subjects.filter(
-            (s: { id: string }) => !pendingSubjectDeleteIds.has(s.id),
-          );
-          if (subjects.length !== before) {
-            logger.info(
-              "useGlobalDataInitialization - subjects pendingDeletes filter 적용",
-              { excluded: before - subjects.length },
-            );
-          }
-        }
+        // pendingDeletes filter (5초 deferred-commit 진행 중인 entity 는 server fetch
+        // 결과에서 제외 — recovery hook 이 commit timer 재등록). ADR-002 sweep #6 helper.
+        const students = filterByPendingDeletes(
+          studentsResult ?? [],
+          "student",
+          "students",
+        );
+        const subjects = subjectsResult
+          ? filterByPendingDeletes(subjectsResult, "subject", "subjects")
+          : null;
         const subjectsFetched = subjects !== null;
-        let sessions = sessionsResult ?? [];
-        // sessions pendingDeletes 필터 — 학생/과목/강사와 동일 패턴
-        const pendingSessionDeleteIds = getPendingDeleteIds("session");
-        if (pendingSessionDeleteIds.size > 0) {
-          const before = sessions.length;
-          sessions = sessions.filter(
-            (s: { id: string }) => !pendingSessionDeleteIds.has(s.id),
-          );
-          if (sessions.length !== before) {
-            logger.info(
-              "useGlobalDataInitialization - sessions pendingDeletes filter 적용",
-              { excluded: before - sessions.length },
-            );
-          }
-        }
+        const sessions = filterByPendingDeletes(
+          sessionsResult ?? [],
+          "session",
+          "sessions",
+        );
         const enrollments = enrollmentsResult ?? [];
-        let teachers = teachersResult ?? [];
-        // teachers pendingDeletes 필터
-        const pendingTeacherDeleteIds = getPendingDeleteIds("teacher");
-        if (pendingTeacherDeleteIds.size > 0) {
-          const before = teachers.length;
-          teachers = teachers.filter(
-            (t: { id: string }) => !pendingTeacherDeleteIds.has(t.id),
-          );
-          if (teachers.length !== before) {
-            logger.info(
-              "useGlobalDataInitialization - teachers pendingDeletes filter 적용",
-              { excluded: before - teachers.length },
-            );
-          }
-        }
+        const teachers = filterByPendingDeletes(
+          teachersResult ?? [],
+          "teacher",
+          "teachers",
+        );
 
         // teachers GET 응답에 subjectIds 이미 포함 (PR #B-3 — server-side nested join).
         // N+1 fetch 제거: 강사 N명일 때 (N+5 RTT) → (5 RTT)로 단축.
@@ -346,36 +392,15 @@ export const useGlobalDataInitialization = () => {
           teachers: teachersWithSubjects,
         });
 
-        // 운영 디버깅 — 어느 entity 카테고리/id가 server timestamp의 출처인지
-        // 추적. "왜 server max(updatedAt)이 사용자 기대보다 최신인가?" 같은
-        // 의문이 들었을 때 로그에서 즉시 원인 파악 가능 (omni-radar console_log
-        // 이벤트로 자동 캡처됨).
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const findMostRecent = (arr: any[], label: string) => {
-          let maxEntity: { id?: string; name?: string; updatedAt?: string } | null = null;
-          let maxMs = -Infinity;
-          for (const e of arr) {
-            const ts = e?.updatedAt ? new Date(e.updatedAt).getTime() : 0;
-            if (Number.isFinite(ts) && ts > maxMs) {
-              maxEntity = e;
-              maxMs = ts;
-            }
-          }
-          return {
-            label,
-            count: arr.length,
-            mostRecentId: maxEntity?.id ?? null,
-            mostRecentName: maxEntity?.name ?? null,
-            mostRecentUpdatedAt: maxEntity?.updatedAt ?? null,
-          };
-        };
+        // 운영 디버깅 — 어느 entity 카테고리/id 가 server timestamp 출처인지 추적.
+        // findMostRecentEntity helper 사용 (ADR-002 sweep #6).
         logger.info("서버 데이터 max(updatedAt) 분포", {
           serverEntityLastModified,
-          students: findMostRecent(students, "students"),
-          subjects: findMostRecent(subjects ?? [], "subjects"),
-          sessions: findMostRecent(sessions, "sessions"),
-          enrollments: findMostRecent(enrollments, "enrollments"),
-          teachers: findMostRecent(teachersWithSubjects, "teachers"),
+          students: findMostRecentEntity(students, "students"),
+          subjects: findMostRecentEntity(subjects ?? [], "subjects"),
+          sessions: findMostRecentEntity(sessions, "sessions"),
+          enrollments: findMostRecentEntity(enrollments, "enrollments"),
+          teachers: findMostRecentEntity(teachersWithSubjects, "teachers"),
         });
 
         const serverData: ClassPlannerData = {
