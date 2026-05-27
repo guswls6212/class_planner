@@ -121,6 +121,7 @@ import {
   planBulkSessionCopy,
   planSingleSessionCopy,
 } from "./_utils/sessionCopyHelpers";
+import { planPdfExport } from "./_utils/pdfExportHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -2030,137 +2031,26 @@ function SchedulePageContent(): JSX.Element {
   const handlePdfExport = async (range: PdfExportRange) => {
     setIsDownloading(true);
     try {
-      // ADR-020 보강 (UAT 2026-05-21): 화면 필터 chip 활성 시 인쇄 sessions 도 사전 필터.
-      // 화면은 dim (context 보존), 인쇄는 hidden (lane 폭 회수 + 가독성).
       const allSessionsRaw = Array.from(displaySessions.values()).flat();
-      const isAnyFilter =
-        selectedStudentIds.length > 0 ||
-        selectedSubjectIds.length > 0 ||
-        selectedTeacherIds.length > 0;
-      // PR #432: range.applyFilter === false 시 (모달의 "전체 수업" 선택) 필터 무시
-      const applyFilter = range.applyFilter !== false;
-      const allSessions = isAnyFilter && applyFilter
-        ? allSessionsRaw.filter((s) =>
-            sessionMatchesFilters(
-              s,
-              enrollments,
-              selectedStudentIds,
-              selectedSubjectIds,
-              selectedTeacherIds,
-            ),
-          )
-        : allSessionsRaw;
-
-      // ADR-021 D2: data-tight + 1h padding.
-      // PR #429-fix: 강사별/학생별 분기에서는 그 강사/학생 sessions 만 기준으로
-      // 재계산 (이전 PR #429 는 allSessions 기준만 — 다른 강사 sessions 까지 grid 포함되는 사고).
-      // sessions empty 시 fallback: userTimeRange (안전망).
-      const PDF_PADDING_HOURS = 1;
-      const timeToMinLocal = (t: string) => {
-        const [h, m] = t.split(":").map(Number);
-        return h * 60 + m;
-      };
-      const computeAutoRange = (
-        scopedSessions: typeof allSessions,
-      ): { startHour: number; endHour: number } => {
-        if (!scopedSessions.length) {
-          return { startHour: timeRange.startHour, endHour: timeRange.endHour + 1 };
-        }
-        const minMin = Math.min(...scopedSessions.map((s) => timeToMinLocal(s.startsAt)));
-        const maxMin = Math.max(...scopedSessions.map((s) => timeToMinLocal(s.endsAt)));
-        return {
-          startHour: Math.max(0, Math.floor(minMin / 60) - PDF_PADDING_HOURS),
-          endHour: Math.min(24, Math.ceil(maxMin / 60) + PDF_PADDING_HOURS),
-        };
-      };
-
-      if (range.perStudent) {
-        const studentsToExport = range.selectedStudentIds?.length
-          ? students.filter((s) => range.selectedStudentIds!.includes(s.id))
-          : students;
-        for (const student of studentsToExport) {
-          const studentEnrollmentIds = new Set(
-            enrollments
-              .filter((e) => e.studentId === student.id)
-              .map((e) => e.id),
-          );
-          const studentSessions = allSessions.filter((s) =>
-            s.enrollmentIds?.some((eid) => studentEnrollmentIds.has(eid)),
-          );
-          if (studentSessions.length === 0) continue;
-          const { startHour, endHour } = computeAutoRange(studentSessions);
-          renderSchedulePdf(
-            studentSessions,
-            subjects,
-            students,
-            enrollments,
-            teachers,
-            {
-              academyName: "CLASS PLANNER",
-              title: `${student.name} 학생 시간표`,
-              filename: `${student.name}_시간표_${range.startDate}.pdf`,
-              weekRange: { startDate: range.startDate, endDate: range.endDate },
-              filterStudentId: student.id,
-              perStudent: true,
-              startHour,
-              endHour,
-            },
-          );
-        }
-      } else if (range.perTeacher) {
-        const teachersToExport = range.selectedTeacherIds?.length
-          ? teachers.filter((t) => range.selectedTeacherIds!.includes(t.id))
-          : teachers;
-        for (const teacher of teachersToExport) {
-          const teacherSessions = allSessions.filter(
-            (s) => s.teacherId === teacher.id
-          );
-          if (teacherSessions.length === 0) continue;
-          const { startHour, endHour } = computeAutoRange(teacherSessions);
-          renderSchedulePdf(
-            teacherSessions,
-            subjects,
-            students,
-            enrollments,
-            teachers,
-            {
-              academyName: "CLASS PLANNER",
-              title: `${teacher.name} 선생님 시간표`,
-              filename: `${teacher.name}_시간표_${range.startDate}.pdf`,
-              weekRange: { startDate: range.startDate, endDate: range.endDate },
-              filterTeacherId: teacher.id,
-              showStudentNames: range.showStudentNames ?? false,
-              startHour,
-              endHour,
-            }
-          );
-        }
-      } else {
-        // Determine context title based on active filter
-        let pdfTitle: string | undefined;
-        if (selectedStudentIds.length > 0) {
-          const student = students.find((s) => s.id === selectedStudentIds[0]);
-          if (student) pdfTitle = `${student.name} 학생 시간표`;
-        } else if (selectedTeacherIds.length > 0) {
-          const teacher = teachers.find((t) => t.id === selectedTeacherIds[0]);
-          if (teacher) pdfTitle = `${teacher.name} 선생님 시간표`;
-        }
-
-        const { startHour, endHour } = computeAutoRange(allSessions);
-        await renderSchedulePdf(
-          allSessions,
+      const plans = planPdfExport({
+        range,
+        allSessionsRaw,
+        enrollments,
+        students,
+        teachers,
+        selectedStudentIds,
+        selectedSubjectIds,
+        selectedTeacherIds,
+        userTimeRange: timeRange,
+      });
+      for (const plan of plans) {
+        renderSchedulePdf(
+          plan.sessions,
           subjects,
           students,
           enrollments,
           teachers,
-          {
-            academyName: "CLASS PLANNER",
-            title: pdfTitle,
-            filterStudentId: selectedStudentIds[0] ?? undefined,
-            weekRange: range,
-            startHour,
-            endHour,
-          }
+          plan.options,
         );
       }
       closePdfDialog();
