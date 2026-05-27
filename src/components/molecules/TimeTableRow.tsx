@@ -1,3 +1,28 @@
+/**
+ * TimeTableRow: 시간표 grid 의 1 weekday row 렌더 + 1 row 안 session 배치 + lane width
+ * scrollable + row-level overflow expand + droppable cell 만 담당.
+ *
+ * 의존성:
+ *   - planner type (Session/Subject/Teacher)
+ *   - SessionBlock (session 자체 렌더는 child component)
+ *   - dnd-kit useDroppable (cell 단위 droppable)
+ *   - non-goal: grid 전체 layout (TimeTableGrid 책임), session 시각 (SessionBlock 책임)
+ *
+ * 결정 history:
+ *   - row cluster expand (PR #387/388 후속): row 별 '+N'/'-' chip 으로 lane overflow 펼치기.
+ *   - dnd-kit Variant E LaneInsertSlot (cell 사이 boundary droppable).
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI molecule, 분리는 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes (TimeTableGrid + SessionBlock 연동).
+ *   2. 시그니처 영향? — props 명확.
+ *   3. UI/state/API 섞임? — UI + drag droppable. API X.
+ *   4. 도메인? — 한 도메인 (1 row layout).
+ *   5. pure + 부수효과? — 부수효과 (dnd 이벤트).
+ *
+ * 분리 후보 (needs-review): LaneInsertSlot 분리, cluster expand UI 분리.
+ */
+
 import React from "react";
 import type { Session, Subject, Teacher } from "../../lib/planner";
 import { logger } from "../../lib/logger";
