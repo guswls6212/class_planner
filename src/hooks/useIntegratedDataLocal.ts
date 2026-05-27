@@ -1,8 +1,27 @@
 /**
- * 🎣 Custom Hook - useIntegratedDataLocal (localStorage 직접 조작)
+ * useIntegratedDataLocal: localStorage SSOT classPlannerData 의 React state 동기화
+ * + session 삭제 (단일/일괄 + deferred commit + undo + ghost recovery) + enrollment
+ * 추가 (id reconcile) 만 담당.
  *
- * localStorage의 classPlannerData를 직접 조작하여 즉시 UI에 반영하고,
- * debounce로 서버와 동기화하는 초고속 통합 데이터 관리 훅입니다.
+ * 의존성:
+ *   - localStorageCrud (read/write/cascade)
+ *   - apiSync (syncEnrollmentCreateAsync, syncSessionUpdateAsync — reflow)
+ *   - pendingDeletes (deferred commit TTL + recovery)
+ *   - bulkSessionOps (reflow + restore) — dynamic import (circular dep 회피)
+ *   - toast (undo UX)
+ *   - storage event listener (다른 탭/같은 탭 변경 인지)
+ *
+ * 결정 history:
+ *   - PR #319/#297/#299: pendingDeletes 패턴 (student/subject/teacher) — race window 0
+ *   - PR #352: bulk delete + lane reflow, 2026-05-11 후속에서 syncSessionUpdateAsync (/position) 사용
+ *   - ADR-012: deferred-commit + await — race window 0 (UAT 2026-05-09 강지원 부활 사고)
+ *   - ADR-013: anonymous→로그인 마이그레이션 entity 누락 가드
+ *   - 2026-05-11 PR #352 후속: /api/sessions/[id] 일반 PUT 의 partial yPosition 400
+ *     사고 → /position endpoint 만 호출
+ *   - ADR-002 (2026-05-28): Cohesion Sweep — session delete + enrollment 두 도메인이
+ *     한 hook 에 있고 session 부분 비중 큼 (~250L). 큰 split (3 hook 분리) 은 race fix
+ *     history + signature 의무로 회귀 위험 ↑ → 보류. internal helper
+ *     `commitSessionDeleteOnServer` 만 추출 (3 곳 중복 → DRY).
  */
 
 import { useCallback, useEffect, useState } from "react";
@@ -30,6 +49,47 @@ import {
 } from "../lib/pendingDeletes";
 import { showToast, showUndoToast } from "../lib/toast";
 import type { Enrollment, Session, Student, Subject, Teacher } from "../lib/planner";
+
+/**
+ * Server에 session DELETE 요청 보내고 결과에 따라 pendingDeletes 정리만 담당.
+ *
+ * - userId null (anonymous) → server 호출 skip, 바로 pendingDeletes 정리.
+ * - response.ok → pendingDeletes 정리, true 반환.
+ * - 4xx/5xx → pendingDeletes 유지 (recovery hook 이 다음 mount 에서 재시도), false.
+ * - network 오류 → pendingDeletes 유지, false.
+ *
+ * race window 0 — fetch await 후에만 removePendingDelete (ADR-012).
+ * 3 곳 (recovery effect / single deleteSession setTimeout / bulkDeleteSessions Promise.all)
+ * 에서 동일 호출 — single source of truth (ADR-002 sweep #5).
+ */
+async function commitSessionDeleteOnServer(
+  userId: string | null,
+  id: string,
+): Promise<boolean> {
+  if (!userId) {
+    removePendingDelete("session", id);
+    return true;
+  }
+  try {
+    const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
+    const response = await fetch(url, { method: "DELETE" });
+    if (!response.ok) {
+      logger.warn("세션 삭제 commit 실패 — pendingDeletes 유지", {
+        id,
+        status: response.status,
+      });
+      return false;
+    }
+  } catch (err) {
+    logger.warn("세션 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
+      id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
+  }
+  removePendingDelete("session", id);
+  return true;
+}
 
 // ===== 타입 정의 =====
 
@@ -125,34 +185,10 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
     const now = Date.now();
 
     // server DELETE await — race window 0 (학생/강사/과목 PR #319과 동일 패턴).
-    const commitOne = async (id: string) => {
-      if (!userId) {
-        removePendingDelete("session", id);
-        return;
-      }
-      try {
-        const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
-        const response = await fetch(url, { method: "DELETE" });
-        if (!response.ok) {
-          logger.warn("세션 삭제 commit 실패 — pendingDeletes 유지", {
-            id,
-            status: response.status,
-          });
-          return;
-        }
-      } catch (err) {
-        logger.warn("세션 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-          id,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return;
-      }
-      removePendingDelete("session", id);
-    };
-
+    // commitSessionDeleteOnServer helper 호출 (ADR-002 sweep #5 추출).
     for (const p of getExpiredPendingDeletes(now)) {
       if (p.entityType !== "session") continue;
-      commitOne(p.id);
+      void commitSessionDeleteOnServer(userId, p.id);
       logger.info(
         "useIntegratedDataLocal - expired session pending delete recovered",
         { id: p.id }
@@ -165,7 +201,7 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
       const remaining = Math.max(0, p.deadline - now);
       const timer = setTimeout(() => {
         if (!isPendingDelete("session", p.id)) return;
-        commitOne(p.id);
+        void commitSessionDeleteOnServer(userId, p.id);
         logger.info(
           "useIntegratedDataLocal - active session pending delete recovered",
           { id: p.id }
@@ -314,32 +350,11 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
           const deadline = Date.now() + PENDING_DELETE_TTL_MS;
           addPendingDelete({ entityType: "session", id, deadline });
           let cancelled = false;
-          // server DELETE await — race window 0.
+          // server DELETE await — race window 0. commitSessionDeleteOnServer helper (ADR-002 sweep #5).
           const commitTimer = setTimeout(async () => {
             if (cancelled) return;
-            if (!userId) {
-              removePendingDelete("session", id);
-              return;
-            }
-            try {
-              const url = `/api/sessions/${id}?userId=${encodeURIComponent(userId)}`;
-              const response = await fetch(url, { method: "DELETE" });
-              if (!response.ok) {
-                logger.warn("세션 삭제 commit 실패 — pendingDeletes 유지", {
-                  id,
-                  status: response.status,
-                });
-                return;
-              }
-            } catch (err) {
-              logger.warn("세션 삭제 commit 네트워크 오류 — pendingDeletes 유지", {
-                id,
-                error: err instanceof Error ? err.message : String(err),
-              });
-              return;
-            }
-            removePendingDelete("session", id);
-            logger.info("useIntegratedDataLocal - 세션 삭제 commit", { id });
+            const ok = await commitSessionDeleteOnServer(userId, id);
+            if (ok) logger.info("useIntegratedDataLocal - 세션 삭제 commit", { id });
           }, PENDING_DELETE_TTL_MS);
 
           // 4) Undo toast (드래그-삭제는 없음 — 명시 클릭만 도착하므로 안전)
@@ -435,34 +450,11 @@ export const useIntegratedDataLocal = (): UseIntegratedDataLocalReturn => {
         addPendingDelete({ entityType: "session", id: s.id, deadline: bulkDeadline });
       }
       let cancelled = false;
-      // server DELETE await — race window 0. bulk도 한 건씩 응답 받고 commit.
+      // server DELETE await — race window 0. bulk도 한 건씩 응답 받고 commit (ADR-002 sweep #5 helper).
       const commitTimer = setTimeout(async () => {
         if (cancelled) return;
-        if (!userId) {
-          for (const s of deleted) removePendingDelete("session", s.id);
-          return;
-        }
         await Promise.all(
-          deleted.map(async (s) => {
-            try {
-              const url = `/api/sessions/${s.id}?userId=${encodeURIComponent(userId)}`;
-              const response = await fetch(url, { method: "DELETE" });
-              if (!response.ok) {
-                logger.warn("일괄 삭제 항목 commit 실패 — pendingDeletes 유지", {
-                  id: s.id,
-                  status: response.status,
-                });
-                return;
-              }
-            } catch (err) {
-              logger.warn("일괄 삭제 항목 commit 네트워크 오류 — pendingDeletes 유지", {
-                id: s.id,
-                error: err instanceof Error ? err.message : String(err),
-              });
-              return;
-            }
-            removePendingDelete("session", s.id);
-          })
+          deleted.map((s) => commitSessionDeleteOnServer(userId, s.id)),
         );
         logger.info("useIntegratedDataLocal - 일괄 삭제 commit", {
           count: deleted.length,
