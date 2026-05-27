@@ -126,6 +126,7 @@ import { planSessionUpdate } from "./_utils/updateSessionHelpers";
 import { planSessionPositionUpdate } from "./_utils/updateSessionPositionHelpers";
 import { planSessionInsertBeforeLane } from "./_utils/insertSessionHelpers";
 import { computeFilterCascadeAutoDeselect } from "./_utils/filterCascadeAutoDeselect";
+import { planGroupSessionAdd } from "./_utils/groupSessionAddHelpers";
 import {
   buildHandleDrop,
   buildHandleSessionClick,
@@ -1296,72 +1297,36 @@ function SchedulePageContent(): JSX.Element {
 
   // 🆕 그룹 수업 추가 함수
   const addGroupSession = async (data: GroupSessionData) => {
-    logger.debug("addGroupSession 시작", { data });
-
-    // 시간 유효성 검사 (그룹 모달용)
-    if (
-      !validateAndToastGroup(data.startTime, data.endTime, setGroupTimeError)
-    ) {
+    // 시간 유효성 검사 — validateAndToastGroup 이 invalid 시 자체 토스트 + setGroupTimeError 처리.
+    const timeValid = validateAndToastGroup(
+      data.startTime,
+      data.endTime,
+      setGroupTimeError,
+    );
+    const plan = planGroupSessionAdd({
+      data,
+      currentWeekStart,
+      timeValid,
+    });
+    if (!plan.ok) {
+      if (plan.reason === "no-subject") {
+        showToast("warning", ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
+      } else if (plan.reason === "no-students") {
+        showToast("warning", ERROR_MESSAGES.STUDENT_NOT_SELECTED);
+      }
+      // time-invalid 는 validateAndToastGroup 안에서 이미 토스트 표시.
       return;
     }
     setGroupTimeError("");
-    logger.debug("시간 유효성 검사 통과");
-
-    // 🆕 과목 선택 검증
-    if (!data.subjectId) {
-      logger.warn("과목 선택 검증 실패");
-      showToast("warning", ERROR_MESSAGES.SUBJECT_NOT_SELECTED);
-      return;
-    }
-    logger.debug("과목 선택 검증 통과");
-
-    // 🆕 학생 선택 검증
-    if (!data.studentIds || data.studentIds.length === 0) {
-      logger.warn("학생 선택 검증 실패");
-      showToast("warning", ERROR_MESSAGES.STUDENT_NOT_SELECTED);
-      return;
-    }
-    logger.debug("학생 선택 검증 통과");
-
-    logger.debug("addSession 호출 시작", {
-      subjectId: data.subjectId,
-      studentIds: data.studentIds,
-      startTime: data.startTime,
-      endTime: data.endTime,
-    });
 
     try {
-      logger.debug("addSession 함수 호출 중");
-      // 사용자가 캘린더에서 다른 주 날짜를 선택했으면 그 주 weekStartDate 를 addSession 에 forward.
-      // selectedDate 기반 fallback(getWeekStartDate(selectedDate)) 보다 우선. 동시에 setSelectedDate 로
-      // 시간표를 그 주로 navigate (EditSessionModal onMoveToWeek 패턴 미러). closure stale 회피 목적으로
-      // weekStartDate 를 addSession 에 explicit 전달.
-      const movedToOtherWeek =
-        data.weekStartDate !== undefined &&
-        data.weekStartDate !== currentWeekStart;
-      await addSession({
-        studentIds: data.studentIds,
-        subjectId: data.subjectId,
-        teacherId: data.teacherId,
-        weekday: data.weekday,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        room: data.room,
-        yPosition: data.yPosition || 1, // 🆕 yPosition 추가
-        weekStartDate: data.weekStartDate,
-      });
-      logger.debug("addSession 함수 완료");
-
-      // 다른 주에 등록 시 시간표 navigate — addSession 완료 후 호출해야
-      // weekFilteredSessions 가 새 주 기준으로 새 session 을 즉시 보여줌.
-      if (movedToOtherWeek && data.weekStartDate) {
+      await addSession(plan.addSessionInput);
+      // 다른 주에 등록 시 시간표 navigate — weekFilteredSessions 가 새 주 기준으로 표시되도록.
+      if (plan.movedToOtherWeek && data.weekStartDate) {
         setSelectedDate(new Date(`${data.weekStartDate}T12:00:00+09:00`));
       }
-
-      logger.debug("모달 닫기 중");
       setShowGroupModal(false);
       showToast("success", "수업이 추가됐습니다");
-      logger.debug("세션 추가 완료");
     } catch (error) {
       logger.error("세션 추가 실패", undefined, error as Error);
       showError("세션 추가에 실패했습니다.");
