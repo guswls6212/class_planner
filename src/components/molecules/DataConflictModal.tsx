@@ -1,5 +1,22 @@
 "use client";
 
+/**
+ * DataConflictModal: 로그인 직후 localStorage vs server 데이터 충돌 시 사용자에게
+ * 선택지(서버 유지 / 로컬 덮어쓰기 / 병합) 제공. 충돌 diff 시각화 + 선택 callback.
+ *
+ * 의존성:
+ *   - lib/planner — Student/Subject/Enrollment/Session 도메인 타입
+ *   - lib/localStorageCrud — ClassPlannerData 타입
+ *   - non-goal: 실제 conflict resolution (caller 에서 onResolve callback 처리)
+ *
+ * 결정 history:
+ *   - anonymous → 로그인 migration 시 진입 (ADR-013).
+ *   - 3 선택지 (server / local / merge) — UAT 운영자 검증.
+ *   - ADR-002 (2026-05-28): UI molecule, 분리 needs-review (diff 시각화 / 선택 footer).
+ *
+ * Sniff test: UI + 충돌 diff state. 한 모달 한 도메인 (data conflict). 분리 후보 (needs-review): diff renderer / option footer.
+ */
+
 import React, { useMemo, useState } from "react";
 import type { ClassPlannerData } from "../../lib/localStorageCrud";
 import type { Student, Subject, Enrollment, Session } from "../../lib/planner";
