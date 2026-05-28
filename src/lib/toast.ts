@@ -39,6 +39,43 @@ export const showError = (message: string) => showVariant("error", message);
 export const showSuccess = (message: string) => showVariant("success", message);
 
 /**
+ * Dev-only toast — Mockup E 채택 (2026-05-28 사용자 픽).
+ * Production (NODE_ENV !== "development" + NEXT_PUBLIC_DEBUG_TOAST !== "1") → noop.
+ *
+ * 흐름:
+ *   - Production: 사용자 0 노출
+ *   - Development:
+ *     1. In-app DEV badge toast 즉시 visible
+ *     2. omni-radar 자동 송신 (event_type=debug_toast) — history grep 가능
+ *
+ * 사용:
+ *   debugToast("info", "같은 요일 — 출결 그대로", { category: "session-drop" });
+ *   debugToast("success", "출결 N건 함께 이동", { category: "attendance-migrate" });
+ */
+export function debugToast(
+  level: "info" | "success" | "warning" | "error",
+  message: string,
+  options?: { category?: string; metadata?: Record<string, unknown> },
+) {
+  const isDev = process.env.NODE_ENV === "development";
+  const isDebugFlagOn = process.env.NEXT_PUBLIC_DEBUG_TOAST === "1";
+  if (!isDev && !isDebugFlagOn) return;
+
+  // In-app DEV badge — message 앞에 [DEV] prefix (DEV badge 시각 표지)
+  showVariant(level, `[DEV] ${message}`);
+
+  // omni-radar 자동 송신 — fire-and-forget (radar env 미설정 시 noop)
+  void import("./observability/omni-radar").then(({ sendDebugEvent }) => {
+    void sendDebugEvent({
+      level,
+      message,
+      category: options?.category,
+      metadata: options?.metadata,
+    });
+  });
+}
+
+/**
  * Toast with an "undo" action button. Used for destructive mutations
  * (delete student/subject/teacher/session) so users can recover from
  * accidental clicks within the duration window (default 5s).
