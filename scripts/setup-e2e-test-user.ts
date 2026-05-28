@@ -126,11 +126,15 @@ async function ensureOwnerAcademy(
   if (existing) {
     return existing.academy_id;
   }
-  // 옵션 A fix (2026-05-28): seedSecondAcademy 의 hardcoded "E2E Test Academy 2"
-  // 와 충돌 회피. user 2 의 owner academy 이름이 "E2E Test Academy 2" 면 spec 의
-  // seedSecondAcademy 가 owner academy 와 일치 → early return → 두 academy 안 생김
-  // → multi-academy spec fail. "E2E Owner Academy {index}" 패턴으로 격리.
-  const academyName = `E2E Owner Academy ${spec.index}`;
+  // 옵션 A 진짜 fix (2026-05-28 PR #557, trace 분석으로 RC 확정):
+  // multi-academy.spec.ts 가 owner academy button name regex /E2E Test Academy(?! 2)/ 로 찾음.
+  // helpers/auth-mock.ts 의 MemberContext seed 도 "E2E Test Academy" hardcoded.
+  // → setup script 도 "E2E Test Academy" literal 사용 의무.
+  //
+  // user 격리는 academy name 이 아닌 created_by/user_id + RLS 로 보장.
+  // academies.name unique constraint 없음 확인됨 — 6 user 가 같은 name OK.
+  // spec seed "E2E Test Academy 2" 와는 이름 다름 — 충돌 X.
+  const academyName = "E2E Test Academy";
   const { data: newAcademy, error: academyInsertError } = await sbAdmin
     .from("academies")
     .insert({ name: academyName, created_by: userId })
