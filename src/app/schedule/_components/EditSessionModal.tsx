@@ -36,6 +36,29 @@ import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
 import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
 import { StudentChip } from "../../../components/molecules/StudentChip";
+import {
+  DetailTooltip,
+  type DetailTooltipSection,
+} from "../../../components/atoms/DetailTooltip";
+
+/**
+ * 출결 row hover tooltip — 학생 상세 정보 (성별 / 생년월일 / 학교 / 학년).
+ * StudentChip 의 buildTooltipSections 와 동일 패턴 (chip 자리 제거됐어도 hover 정보 보존).
+ * 사용자 명시 (2026-05-28): 출결 row 위 hover 시 학생 학년/학교 등 노출.
+ */
+const ATTENDANCE_TOOLTIP_GENDER_LABEL: Record<string, string> = { male: "남", female: "여" };
+function buildAttendanceRowTooltipSections(
+  s: StudentOption,
+): DetailTooltipSection[] {
+  const rows: { label: string; value: string }[] = [];
+  if (s.grade) rows.push({ label: "학년", value: s.grade });
+  const gender = s.gender ? ATTENDANCE_TOOLTIP_GENDER_LABEL[s.gender] : null;
+  if (gender) rows.push({ label: "성별", value: gender });
+  if (s.birthDate) rows.push({ label: "생년월일", value: s.birthDate });
+  if (s.school) rows.push({ label: "학교", value: s.school });
+  if (rows.length === 0) return [];
+  return [{ title: "학생 정보", rows }];
+}
 
 /**
  * 학년 배지가 별도 노출되는 row variant 전용 부제 — GroupSessionModal 동일 패턴.
@@ -921,7 +944,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                   const bg = ATTENDANCE_CYCLE_BG[current];
                   const ring = ATTENDANCE_CYCLE_RING[current];
                   const isModified = bufferStatus !== undefined;
-                  return (
+                  const tooltipSections = buildAttendanceRowTooltipSections(student);
+                  // tooltip section 없으면 (학생 상세 미입력) DetailTooltip wrap 안 함 — 빈 tooltip 회피
+                  const rowContent = (
                     <div
                       key={student.id}
                       data-testid={`edit-attendance-row-${student.id}`}
@@ -985,6 +1010,19 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         <X size={14} />
                       </button>
                     </div>
+                  );
+                  // tooltip section 있으면 wrap, 없으면 그냥 row (빈 tooltip 표시 회피)
+                  if (tooltipSections.length === 0) {
+                    return (
+                      <React.Fragment key={student.id}>
+                        {rowContent}
+                      </React.Fragment>
+                    );
+                  }
+                  return (
+                    <DetailTooltip key={student.id} sections={tooltipSections}>
+                      {rowContent}
+                    </DetailTooltip>
                   );
                 })}
               </div>
