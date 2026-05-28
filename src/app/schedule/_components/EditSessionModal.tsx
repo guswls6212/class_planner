@@ -27,7 +27,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
-import { Trash2, X, ChevronDown, Calendar, Clock, AlertCircle } from "lucide-react";
+import { Trash2, X, ChevronDown, ChevronUp, UserPlus, Calendar, Clock, AlertCircle } from "lucide-react";
 import { IconButton } from "@/components/atoms/IconButton";
 import { EmptyState } from "@/components/atoms/EmptyState";
 import { useModalA11y } from "../../../hooks/useModalA11y";
@@ -303,19 +303,60 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     setPreviewColor(color);
   };
 
-  // 취소: previewColor를 원본으로 되돌리고 닫기
+  /*
+    Layer 1 V2 A (사용자 픽 2026-05-28):
+    - 출결 pill click 은 local buffer 만 (즉시 server X) → 반응 즉시
+    - 저장 시 buffer 의 변경 사항을 한 번에 markAttendance batch
+    - 취소 시 buffer 폐기 + 미저장 변경 있으면 confirm
+    - 모달 열릴 때마다 buffer reset (다른 세션 편집 시 mix 방지)
+  */
+  const [attendanceBuffer, setAttendanceBuffer] = useState<Record<string, "none" | "present" | "absent" | "late">>({});
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+
+  // 모달 열기 시 buffer reset (이전 세션 편집의 미저장 buffer 안 들고 옴)
+  useEffect(() => {
+    if (isOpen) {
+      setAttendanceBuffer({});
+      setPickerOpen(false);
+    }
+  }, [isOpen]);
+
+  // 취소: 미저장 buffer 있으면 confirm + previewColor를 원본으로 되돌리고 닫기
   const handleCancel = useCallback(() => {
+    if (Object.keys(attendanceBuffer).length > 0) {
+      const ok = window.confirm(
+        `미저장 출결 변경 ${Object.keys(attendanceBuffer).length}건이 있습니다. 그대로 닫으시겠습니까?`,
+      );
+      if (!ok) return;
+    }
     setPreviewColor(originalColor);
     setShowSwatches(false);
+    setAttendanceBuffer({});
     onCancel();
-  }, [originalColor, onCancel]);
+  }, [originalColor, onCancel, attendanceBuffer]);
 
-  // 저장: 학생 0명 가드 + 색상 변경 시 persist + onSave 호출.
+  // 저장: 학생 0명 가드 + 출결 buffer flush (batch) + 색상 변경 persist + onSave 호출.
   // 학생 0명 → onSave 호출 X (이전 사고: 0명 저장 → 빈 enrollmentIds로 세션 자동 삭제).
-  // weekStartDate가 모달 열림 시점과 다르면(= 사용자가 다른 주 날짜 클릭) 부모로 forward
-  // → 부모에서 새 주로 세션 이동 + 시간표 자동 navigate.
-  const handleSave = useCallback(() => {
+  // weekStartDate가 모달 열림 시점과 다르면(= 사용자가 다른 주 날짜 클릭) 부모로 forward.
+  // 출결 flush: buffer 의 모든 (studentId, status) 를 onMarkAttendance 병렬 호출.
+  const handleSave = useCallback(async () => {
     if (selectedStudents.length === 0) return;
+    // Layer 1 V2 A: 출결 buffer 먼저 flush (server batch)
+    const bufferEntries = Object.entries(attendanceBuffer);
+    if (bufferEntries.length > 0 && onMarkAttendance) {
+      setSavingAttendance(true);
+      try {
+        await Promise.all(
+          bufferEntries.map(([studentId, status]) =>
+            onMarkAttendance(studentId, status),
+          ),
+        );
+        setAttendanceBuffer({});
+      } finally {
+        setSavingAttendance(false);
+      }
+    }
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
@@ -324,6 +365,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     onSave(weekday, movedToOtherWeek ? selectedWeekStart : undefined);
   }, [
     selectedStudents.length,
+    attendanceBuffer,
+    onMarkAttendance,
     previewColor,
     originalColor,
     tempSubjectId,
@@ -785,118 +828,49 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           />
         </div>
 
-        {/* Students — variant D: Combobox + pinned-open dropdown.
-            검색 안 해도 미선택 학생 리스트가 항상 보임. 검색어 시 즉시 필터.
-            검색 결과 0 + 검색어 있을 때만 "+ 새 학생으로 추가" CTA 노출. */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">학생</span>
-            <span className="text-[10.5px] text-[var(--color-text-muted)]">
-              선택 <span className="text-[var(--color-text-primary)] font-semibold">{selectedStudents.length}</span>
-            </span>
-          </div>
+        {/*
+          V2 A (사용자 픽 2026-05-28, mockup edit-session-attendance-v2):
+          - 출결 섹션이 최상단 메인 (학생 picker 위)
+          - 학생 picker = collapsible (default 접힘, "학생 추가/변경" 버튼)
+          - 학생 chip 별도 영역 X — 출결 row 가 학생 이름 + pill + X 통합
+          - 출결 pill click 은 local buffer 만 (server 통신 X) → 저장 시 batch
+          - 모달 닫기 전 미저장 buffer 있으면 사용자에게 경고
+        */}
 
-          {/* Combobox trigger — chip + 검색 input */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-2 flex flex-wrap items-center gap-1.5 focus-within:border-[var(--color-accent-hover)]/50 transition-colors min-h-[44px]">
-            {selectedStudents.length === 0 && !editStudentInputValue && (
-              <span className="text-[12px] text-[var(--color-text-muted)] px-1">선택된 학생 없음</span>
-            )}
-            {selectedStudents.map((student) => (
-              <StudentChip
-                key={student.id}
-                student={student}
-                variant="compact"
-                onRemove={() => onRemoveStudent(student.id)}
-              />
-            ))}
-            <input
-              id="edit-modal-students"
-              type="text"
-              placeholder={selectedStudents.length === 0 ? "학생 검색 또는 새 이름 입력…" : "검색…"}
-              className="flex-1 min-w-[100px] bg-transparent border-0 outline-none px-1 py-1 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
-              value={editStudentInputValue}
-              onChange={(e) => onEditStudentInputChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
-              onKeyDown={onEditStudentInputKeyDown}
-              maxLength={NAME_MAX_LENGTH}
-            />
-          </div>
-
-          {/* "+ 새 학생으로 추가" CTA — 검색어 있고 매칭 결과 없을 때만 */}
-          {editStudentInputValue?.trim() && editSearchResults.length === 0 && (
-            <button
-              type="button"
-              onClick={onAddStudentClick}
-              className="self-start rounded-xl bg-[var(--color-primary)] px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 transition-opacity"
-            >
-              ＋ &lsquo;{editStudentInputValue}&rsquo; 새 학생으로 추가
-            </button>
-          )}
-
-          {/* Pinned-open dropdown — 미선택 학생 리스트 (검색어 있으면 필터된 결과).
-              overscroll-contain: nested scroll trap 회피. mouse wheel 이 outer
-              form body 로 전파되지 않고 dropdown 안에서만 동작. */}
-          {editSearchResults.length > 0 && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-lg max-h-[260px] overflow-y-auto overscroll-contain">
-              <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] sticky top-0 bg-[var(--color-bg-primary)] z-10 border-b border-[var(--color-border)]">
-                {editStudentInputValue?.trim()
-                  ? `검색 결과 (${editSearchResults.length})`
-                  : `선택 가능 (${editSearchResults.length})`}
-              </div>
-              <div className="divide-y divide-[var(--color-border)]">
-                {editSearchResults.map((student) => {
-                  const subtitle = formatStudentSubtitleExceptGrade(student, studentDupNames);
-                  return (
-                    <StudentChip
-                      key={student.id}
-                      student={student}
-                      variant="row"
-                      metaRight={subtitle || undefined}
-                      onClick={() => onSelectSearchStudent(student.id)}
-                    />
-                  );
-                })}
-              </div>
+        {/* 출결 섹션 — 최상단 메인 */}
+        {attendanceMap && onMarkAttendance && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                출결 ({selectedStudents.length}명)
+              </span>
+              <span className="text-[10.5px] text-[var(--color-text-muted)]">
+                click → 미체크 / 출석 / 결석 / 지각 cycle
+              </span>
             </div>
-          )}
-
-          {/* "더 추가할 학생 없음" — 미선택 0 + 검색어 X + 이미 1명+ 선택됨 */}
-          {!editStudentInputValue?.trim() &&
-            editSearchResults.length === 0 &&
-            selectedStudents.length > 0 && (
-              <EmptyState>더 추가할 학생이 없습니다</EmptyState>
-            )}
-
-          {/*
-            Layer 1 B — 학생별 출결 cycle pill (mockup edit-session-with-attendance).
-            caller 가 attendanceMap + onMarkAttendance 전달 시만 노출.
-            한 학생 한 pill — click 마다 cycle (미체크 → 출석 → 결석 → 지각 → 미체크).
-            canManageAttendance=false (read-only) 시 disabled.
-            기존 AttendanceSheet (별도 모달) 흐름은 그대로 유지 — 본 섹션은 편집 모달 안 inline 진입점.
-          */}
-          {attendanceMap && onMarkAttendance && selectedStudents.length > 0 && (
-            <div className="mt-2 pt-3 border-t border-[var(--color-border)] flex flex-col gap-2">
-              <div className="flex items-baseline justify-between">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                  출결
-                </span>
-                <span className="text-[10.5px] text-[var(--color-text-muted)]">
-                  클릭 시 미체크 → 출석 → 결석 → 지각 → 미체크
-                </span>
-              </div>
+            {selectedStudents.length === 0 ? (
+              <EmptyState>학생을 먼저 추가해주세요</EmptyState>
+            ) : (
               <div className="flex flex-col gap-1.5">
                 {selectedStudents.map((student) => {
-                  const current = normalizeForCycle(attendanceMap[student.id]?.status);
+                  // local buffer 우선, 없으면 server attendanceMap
+                  const bufferStatus = attendanceBuffer[student.id];
+                  const serverStatus = attendanceMap[student.id]?.status;
+                  const current = normalizeForCycle(bufferStatus ?? serverStatus);
                   const label = ATTENDANCE_CYCLE_LABEL[current];
                   const bg = ATTENDANCE_CYCLE_BG[current];
                   const ring = ATTENDANCE_CYCLE_RING[current];
+                  const isModified = bufferStatus !== undefined;
                   return (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2"
+                      data-testid={`edit-attendance-row-${student.id}`}
+                      className={`flex items-center gap-2 rounded-xl border ${
+                        isModified
+                          ? "border-amber-500/40 bg-amber-500/[0.06]"
+                          : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
+                      } pr-2`}
                     >
-                      <div className="text-[13px] text-[var(--color-text-primary)] truncate">
-                        {student.name}
-                      </div>
                       <button
                         type="button"
                         data-testid={`edit-attendance-pill-${student.id}`}
@@ -904,25 +878,175 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         disabled={!canManageAttendance}
                         onClick={() => {
                           const next = nextAttendanceCycleStatus(current);
-                          void onMarkAttendance(student.id, next);
+                          setAttendanceBuffer((prev) => ({
+                            ...prev,
+                            [student.id]: next,
+                          }));
                         }}
                         className={[
-                          "px-3 py-1 rounded-full text-[12px] font-medium text-white ring-2 transition-colors",
-                          bg,
-                          ring,
+                          "flex-1 flex items-center gap-3 px-3 py-2 rounded-l-xl text-left",
                           canManageAttendance
-                            ? "hover:opacity-90 active:opacity-80 cursor-pointer"
+                            ? "hover:bg-white/[0.02] active:bg-white/[0.04]"
                             : "opacity-60 cursor-not-allowed",
                         ].join(" ")}
-                        aria-label={`${student.name} 출결 상태: ${label}. 클릭하여 다음 상태로 변경`}
+                        aria-label={`${student.name} 출결: ${label}. 클릭하여 다음`}
                       >
-                        {label}
+                        <span className={`w-2.5 h-2.5 rounded-full ${bg} ring-2 ring-offset-2 ring-offset-[var(--color-bg-secondary)] ${ring} flex-shrink-0`} />
+                        <span className="text-[13px] text-[var(--color-text-primary)] truncate flex-1">
+                          {student.name}
+                        </span>
+                        <span
+                          className={`text-[11px] font-medium ${
+                            current === "none"
+                              ? "text-[var(--color-text-muted)]"
+                              : "text-[var(--color-text-primary)]"
+                          }`}
+                        >
+                          {label}
+                          {isModified && <span className="ml-1 text-amber-400" title="미저장 변경">●</span>}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveStudent(student.id)}
+                        className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 rounded transition-colors"
+                        aria-label={`${student.name} 제거`}
+                        data-testid={`edit-attendance-remove-${student.id}`}
+                      >
+                        <X size={14} />
                       </button>
                     </div>
                   );
                 })}
               </div>
+            )}
+            {Object.keys(attendanceBuffer).length > 0 && (
+              <p className="text-[10.5px] text-amber-400 flex items-center gap-1">
+                <AlertCircle size={11} strokeWidth={2} />
+                {Object.keys(attendanceBuffer).length}건 미저장 — '저장' 클릭 시 한 번에 전송
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 학생 picker — Collapsible (default 접힘). 출결 섹션 아래.
+            기존 chip + 검색 + dropdown 흐름 유지하되 펼침 상태에서만 노출.
+            attendanceMap 미제공 시 (legacy caller) 기본 펼침 + 출결 안 보임. */}
+        <div className="flex flex-col gap-2">
+          {attendanceMap && onMarkAttendance ? (
+            <button
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-bg-secondary)]/40 text-[12px] text-[var(--color-text-muted)] hover:border-[var(--color-accent-hover)]/50 hover:text-[var(--color-text-primary)] transition-colors"
+              aria-expanded={pickerOpen}
+              data-testid="edit-student-picker-toggle"
+            >
+              <span className="flex items-center gap-2">
+                <UserPlus size={13} />
+                학생 추가 / 변경
+                {selectedStudents.length > 0 && (
+                  <span className="text-[10.5px] opacity-70">
+                    (현재 {selectedStudents.length}명)
+                  </span>
+                )}
+              </span>
+              {pickerOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          ) : (
+            <div className="flex items-baseline justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">학생</span>
+              <span className="text-[10.5px] text-[var(--color-text-muted)]">
+                선택 <span className="text-[var(--color-text-primary)] font-semibold">{selectedStudents.length}</span>
+              </span>
             </div>
+          )}
+
+          {(!attendanceMap || !onMarkAttendance || pickerOpen) && (
+            <>
+              {/* Combobox trigger — chip + 검색 input. 출결 모드 시 chip 영역 제거 (학생 = 출결 row).
+                  Legacy mode (attendanceMap 미제공) 에선 기존 chip 표시. */}
+              {(!attendanceMap || !onMarkAttendance) ? (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-2 flex flex-wrap items-center gap-1.5 focus-within:border-[var(--color-accent-hover)]/50 transition-colors min-h-[44px]">
+                  {selectedStudents.length === 0 && !editStudentInputValue && (
+                    <span className="text-[12px] text-[var(--color-text-muted)] px-1">선택된 학생 없음</span>
+                  )}
+                  {selectedStudents.map((student) => (
+                    <StudentChip
+                      key={student.id}
+                      student={student}
+                      variant="compact"
+                      onRemove={() => onRemoveStudent(student.id)}
+                    />
+                  ))}
+                  <input
+                    id="edit-modal-students"
+                    type="text"
+                    placeholder={selectedStudents.length === 0 ? "학생 검색 또는 새 이름 입력…" : "검색…"}
+                    className="flex-1 min-w-[100px] bg-transparent border-0 outline-none px-1 py-1 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                    value={editStudentInputValue}
+                    onChange={(e) => onEditStudentInputChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
+                    onKeyDown={onEditStudentInputKeyDown}
+                    maxLength={NAME_MAX_LENGTH}
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-2 flex items-center">
+                  <input
+                    id="edit-modal-students"
+                    type="text"
+                    placeholder="학생 검색 또는 새 이름 입력…"
+                    className="flex-1 bg-transparent border-0 outline-none px-1 py-1 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                    value={editStudentInputValue}
+                    onChange={(e) => onEditStudentInputChange(e.target.value.slice(0, NAME_MAX_LENGTH))}
+                    onKeyDown={onEditStudentInputKeyDown}
+                    maxLength={NAME_MAX_LENGTH}
+                  />
+                </div>
+              )}
+
+              {/* "+ 새 학생으로 추가" CTA — 검색어 있고 매칭 결과 없을 때만 */}
+              {editStudentInputValue?.trim() && editSearchResults.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onAddStudentClick}
+                  className="self-start rounded-xl bg-[var(--color-primary)] px-3 py-2 text-[12.5px] font-semibold text-white hover:opacity-90 transition-opacity"
+                >
+                  ＋ &lsquo;{editStudentInputValue}&rsquo; 새 학생으로 추가
+                </button>
+              )}
+
+              {/* Pinned-open dropdown — 미선택 학생 리스트 (검색어 있으면 필터된 결과). */}
+              {editSearchResults.length > 0 && (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-lg max-h-[260px] overflow-y-auto overscroll-contain">
+                  <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] sticky top-0 bg-[var(--color-bg-primary)] z-10 border-b border-[var(--color-border)]">
+                    {editStudentInputValue?.trim()
+                      ? `검색 결과 (${editSearchResults.length})`
+                      : `선택 가능 (${editSearchResults.length})`}
+                  </div>
+                  <div className="divide-y divide-[var(--color-border)]">
+                    {editSearchResults.map((student) => {
+                      const subtitle = formatStudentSubtitleExceptGrade(student, studentDupNames);
+                      return (
+                        <StudentChip
+                          key={student.id}
+                          student={student}
+                          variant="row"
+                          metaRight={subtitle || undefined}
+                          onClick={() => onSelectSearchStudent(student.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* "더 추가할 학생 없음" — 미선택 0 + 검색어 X + 이미 1명+ 선택됨 */}
+              {!editStudentInputValue?.trim() &&
+                editSearchResults.length === 0 &&
+                selectedStudents.length > 0 && (
+                  <EmptyState>더 추가할 학생이 없습니다</EmptyState>
+                )}
+            </>
           )}
         </div>
 
