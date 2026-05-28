@@ -57,19 +57,26 @@ jobs:
 
   e2e:
     # main 향 = ubuntu + 4 shard 병렬 (parallel coverage) — user 1-4 각자 다른 user.
-    # dev 향   = Mac Studio + 6 shard 병렬 — user 1-6 각자 다른 user (race window 영구 해소).
+    # dev 향 (no label) = Mac Studio + 6 shard 병렬 — user 1-6 각자 다른 user (race window 영구 해소).
+    # dev 향 + `quick-pr` label = Mac Studio + 1 shard (user 1) — 자원 효율 (단일 cp-runner 점유).
     #
     # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
     # 각 shard 가 다른 supabase user 사용 → DB row 격리 → academy data race 0.
     # user_index = shard 의 user 번호 (1-6).
     # password_secret = 해당 user 의 GitHub secret 명 (USER_1 은 기존 E2E_TEST_USER_PASSWORD 활용).
+    #
+    # quick-pr label 분기 (2026-05-29, proposal claude-md-phase-3-slim follow-up #step-1):
+    # ai-pr-label-policy.md § quick-pr 의 옵션 D 적용. 작은 PR (docs/fix typo/lint fix/단일 file)
+    # 시 quick-pr label 부여 → single shard 진행 → cp-runner 1개만 점유, 다른 PR 와 동시 진행 가능.
+    # user 1 사용 — 동시 PR 의 dev full 6 shard 의 shard 1 과 user 1 충돌 가능 (운영 측정 후 mitigation).
+    # SSOT: dev-pack/docs/protocols/ai-pr-label-policy.md
     name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }} — user ${{ matrix.user_index }})
     needs: build
     runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]' || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]') }}
+        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]' || contains(github.event.pull_request.labels.*.name, 'quick-pr') && '[{"shard":1,"total":1,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"}]' || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
