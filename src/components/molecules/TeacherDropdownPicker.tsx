@@ -97,18 +97,10 @@ export default function TeacherDropdownPicker({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
-  // dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연스럽게 스크롤.
-  // Root cause (사용자 verify 2026-05-27): dropdown panel 이 position:absolute — wrap div
-  // (containerRef) 의 visual height 에 영향 X. 이전 fix (containerRef.scrollIntoView) 는
-  // button bottom 만 viewport 안 가져옴, dropdown panel 은 viewport 밖 유지. panel 자체에
-  // ref 적용해 scrollIntoView 호출 → modal scroll container 가 panel 의 위치 기반 scroll.
-  useEffect(() => {
-    if (!isOpen) return;
-    const id = window.requestAnimationFrame(() => {
-      dropdownPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [isOpen]);
+  // 강사 dropdown 펼침 시 auto-scroll 제거 (2026-05-28 사용자 명시).
+  // V3 A 헤더 통합 (과목+강사 2-col grid) 이후 dropdown 이 모달 안에서 자연 위치 →
+  // scrollIntoView 가 모달 위치를 강제 이동시키는 부작용 발생. 사용자가 "학생 추가/변경"
+  // click 시에만 스크롤 원함.
 
   const showInlineCreate = Boolean(canManage && onCreate && setInputValue);
 

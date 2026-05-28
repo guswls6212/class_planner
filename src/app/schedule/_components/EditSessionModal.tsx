@@ -334,6 +334,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   const [attendanceBuffer, setAttendanceBuffer] = useState<Record<string, "none" | "present" | "absent" | "late">>({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingAttendance, setSavingAttendance] = useState(false);
+  // "학생 추가 / 변경" toggle click 시 그 영역으로 scrollIntoView (2026-05-28 사용자 명시)
+  const studentPickerSectionRef = useRef<HTMLDivElement | null>(null);
 
   // 모달 열기 시 buffer reset (이전 세션 편집의 미저장 buffer 안 들고 옴)
   useEffect(() => {
@@ -342,6 +344,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
       setPickerOpen(false);
     }
   }, [isOpen]);
+
+  // pickerOpen 토글 → true 시 학생 picker 섹션으로 자연 스크롤
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const id = window.requestAnimationFrame(() => {
+      studentPickerSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [pickerOpen]);
 
   // 취소: 미저장 buffer 있으면 confirm + previewColor를 원본으로 되돌리고 닫기
   const handleCancel = useCallback(() => {
@@ -1056,7 +1070,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         {/* 학생 picker — Collapsible (default 접힘). 출결 섹션 아래.
             기존 chip + 검색 + dropdown 흐름 유지하되 펼침 상태에서만 노출.
             attendanceMap 미제공 시 (legacy caller) 기본 펼침 + 출결 안 보임. */}
-        <div className="flex flex-col gap-2">
+        <div ref={studentPickerSectionRef} className="flex flex-col gap-2">
           {attendanceMap && onMarkAttendance ? (
             <button
               type="button"
