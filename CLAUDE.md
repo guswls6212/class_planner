@@ -77,6 +77,30 @@
 - hotfix 예외: `main`에서 분기 → `main` + `dev` 양쪽에 PR
 - 상세: `docs/development-guide.md` § 브랜치 전략 & CI/CD
 
+### Worktree 강제 (Non-negotiable, hook 시행)
+- class-planner 모든 branch 생성은 **worktree 안에서만**. main checkout 직접 `git checkout -b` 금지.
+- 정석 명령: `bash dev-pack/scripts/worktree-new.sh class-planner <branch>`
+- 시행: `dev-pack/scripts/hooks/class-planner-branch-policy-hook.sh` (PreToolUse hook). main 에서 `git -C class-planner checkout -b X` 시도 시 자동 BLOCK + worktree 명령 제안.
+
+### Branch Prefix Convention (auto-merge 룰 통합)
+`dev-pack/.github/workflows/auto-merge.yml` 와 일치:
+
+| Prefix | 의미 | auto-merge (dev 향) |
+|---|---|---|
+| `chore/` | 잡일, 셋업, 의존성 | ✅ ON |
+| `docs/` | 문서만 | ✅ ON |
+| `refactor/` | 동일 동작 구조 개선 | ✅ ON |
+| `feat/` | 새 기능 (출시 전 ON, 출시 후 OFF 권장) | ✅ ON |
+| `fix/` | bug fix | ✅ ON |
+| `test/` | 테스트만 | ✅ ON |
+| `migration/` | DB schema (Supabase) | ❌ 수동 |
+| `infra/` | CI / Docker / runner | ❌ 수동 |
+| `security/` | auth / token / RLS | ❌ 수동 |
+| `release/` | dev → main | ❌ 수동 |
+
+- 개별 PR override: `gh pr edit <N> --add-label no-auto-merge`
+- 시행: branch-policy hook 이 미준수 prefix 생성 시 BLOCK + 권장 prefix 제시
+
 ## 테스트 전략
 | 계층 | 목표 커버리지 | 도구 |
 |------|-------------|------|
