@@ -159,6 +159,11 @@ interface TimeTableRowProps {
   /** SessionBlock 표시 모드 — share view 분기용. Default "edit". */
   presentationMode?: PresentationMode;
   /**
+   * 출결 map by sessionId (key = sessionId, value = Record<studentId, {status}>).
+   * SessionBlock 의 우하단 출결 dot 시각 계산용. 미제공 시 dot 안 보임.
+   */
+  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
+  /**
    * @deprecated weekday 전체 토글 — backward compat 용. 새 코드는 expandedRowKeys 사용.
    * 단일 cluster (weekday 에 cluster 1 개) 시나리오에서만 등가. multi-cluster 면 모든
    * cluster 일괄 expand/collapse.
@@ -218,6 +223,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   startHour = 9,
   endHour = 23,
   presentationMode = "edit",
+  attendanceMapBySession,
 }) => {
   // popover state — cluster key 기반 단일 변수 (한 번에 하나의 cluster popover 만 열림).
   const [openPopoverClusterKey, setOpenPopoverClusterKey] = React.useState<string | null>(null);
@@ -660,6 +666,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isAnyDragging={isAnyDragging}
           isCopyMode={isCopyMode}
           presentationMode={presentationMode}
+          attendanceMap={attendanceMapBySession?.[session.id]}
           overflowsTop={overflowsTop}
           overflowsBottom={overflowsBottom}
           hasLaneOverflowChip={(() => {

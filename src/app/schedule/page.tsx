@@ -1934,14 +1934,27 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [attendanceSession, enrollments, students]);
 
-  // Layer 1 B (mockup edit-session-with-attendance, 2026-05-28):
-  // 편집 모달이 열리면 본 세션의 출결을 fetch (cycle pill 의 초기 status 표시용).
-  // selectedDate 기준 — 사용자가 다른 주로 캘린더 이동 시 그 주의 출결.
+  // Layer 1 (mockup edit-session-with-attendance, 2026-05-28):
+  // 편집 모달이 열리면 본 세션의 출결을 fetch (학생 출결 섹션 초기 status 표시용).
   useEffect(() => {
     if (!userId || !editModalData || !showEditModal) return;
     const dateStr = selectedDate.toISOString().slice(0, 10);
     void fetchAttendance(editModalData.id, dateStr);
   }, [userId, editModalData, showEditModal, selectedDate, fetchAttendance]);
+
+  // SessionBlock 우하단 출결 dot 시각 (Layer 2 D, 2026-05-28 PR #547).
+  // 오늘 weekday 의 모든 session 출결을 bulk fetch — SessionBlock 이 dot 색 결정에 사용.
+  useEffect(() => {
+    if (!userId) return;
+    const now = new Date();
+    const todayDateStr = now.toISOString().slice(0, 10);
+    const todayWeekday = (now.getDay() + 6) % 7;
+    const todaySessions = sessions.filter((s) => s.weekday === todayWeekday);
+    if (todaySessions.length === 0) return;
+    void Promise.all(
+      todaySessions.map((s) => fetchAttendance(s.id, todayDateStr)),
+    );
+  }, [userId, sessions, fetchAttendance]);
 
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
@@ -2182,6 +2195,7 @@ function SchedulePageContent(): JSX.Element {
           startHour={timeRange.startHour}
           endHour={timeRange.endHour}
           fillHeight={isP3}
+          attendanceMapBySession={attendance}
           weekFilteredSessionsCount={weekFilteredSessions.length}
           hasTemplate={Boolean(activeTemplate)}
           canManage={canManage}

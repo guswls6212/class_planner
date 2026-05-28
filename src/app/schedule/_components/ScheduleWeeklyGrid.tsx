@@ -74,6 +74,7 @@ interface Props {
   startHour: number;
   endHour: number;
   fillHeight: boolean;
+  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
 
   // EmptyWeekState
   weekFilteredSessionsCount: number;
@@ -152,6 +153,7 @@ export default function ScheduleWeeklyGrid(props: Props) {
         startHour={props.startHour}
         endHour={props.endHour}
         fillHeight={props.fillHeight}
+        attendanceMapBySession={props.attendanceMapBySession}
       />
       {props.weekFilteredSessionsCount === 0 && (
         <EmptyWeekState
