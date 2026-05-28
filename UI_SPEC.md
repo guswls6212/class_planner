@@ -489,7 +489,18 @@ prop chain: `SessionBlock` ← `TimeTableRow` ← `TimeTableGrid` ← share page
 | `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
 | `ScheduleHeader` | 시간표 페이지 헤더(Row 1 좌). title prop + 로딩 상태만 렌더 (뷰/색상 토글 제거됨) |
 | `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenuV2 + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
+| `ScheduleHeaderActions` | Row 1 액션 모음 — schedule page 헤더의 모든 버튼 + 메뉴 (PR #518 cohesion sweep) |
+| `ScheduleToolbarFilters` | 툴바의 필터 컴포넌트 묶음 — colorBy / 학생 / 강사 필터 popover (PR #517 cohesion sweep) |
+| `ScheduleSecondaryModals` | schedule 페이지의 secondary modal 묶음 (확인 / 알림 / 도움말 등 — main GroupSession/EditSession 외) (PR #519 cohesion sweep) |
+| `ScheduleEditModalWrapper` | EditSessionModal 의 open/close + state wrapper (PR #520 cohesion sweep) |
+| `ScheduleWeeklyGrid` | 주간 시간표 view 의 grid component (PR #521 — 기존 weekly view 분리, sessionsForRender + lane layout 계산 통합) |
+| `ScheduleFloatingToolbar` | 모바일 floating action toolbar (탑 버튼 묶음) |
+| `PrimarySidebar` | Schedule 페이지 좌측 primary sidebar (학생/과목/강사 quick access) |
+| `TeacherFilterChipBar` | colorBy=teacher 시 표시하는 강사 멀티셀렉트 필터 칩바 |
 | `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
+| `ChipFilterPopover` / `UnifiedFilterPopover` | 필터 popover 공통 컴포넌트 (cohesion sweep step 1) |
+| `TimeRangeSelector` | 운영 시간 범위 셀렉터 (학원 settings 연동) |
+| `PdfDownloadSection` | PDF 다운로드 섹션 (옵션 모달 + 트리거) |
 | `GroupSessionModal` | 수업 추가 모달 V3 (헤더 날짜/시간 chip+popover, body 학생/과목/강사). EditSessionModal V3 패턴 미러 (PR #396) |
 | `EditSessionModal` | 개별 수업 수정 모달 V3 (헤더 날짜/요일/시간 chip+popover, body 강사/학생/색상, 다른 주 이동 + 자동 navigate PR #378) |
 
@@ -580,8 +591,9 @@ omni-radar/scripts/radar-query --target browser --keyword "드래그\|dragstart\
 
 | 훅 | 파일 | 역할 |
 |----|------|------|
-| `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync) |
-| `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync) |
+| `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #530 추출) |
+| `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #532 추출) |
+| `useTeacherManagementLocal` | `src/hooks/useTeacherManagementLocal.ts` | 강사 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #531 추출, Phase 4 강사 기능) |
 | `useScheduleView` | `src/hooks/useScheduleView.ts` | 뷰 모드(일별/주간/월별) + selectedDate 상태. goToNextDay/PrevDay/Week/PrevWeek/NextMonth/PrevMonth/Today 제공 |
 | `useTimeValidation` | `src/hooks/useTimeValidation.ts` | 시간 유효성 검사 (시작 < 종료, 범위 체크) |
 

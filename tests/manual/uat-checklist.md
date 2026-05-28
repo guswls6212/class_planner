@@ -185,33 +185,79 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 
 사용자 직접 검증은 위 자동화가 **못 잡는 시각 직감 + UX 위화감** 영역만.
 
-### 2.5 실행 순서 가이드 (10-Phase, 역할별 자연 흐름)
+### 2.5 실행 순서 가이드 (Variant D — 계정/세션 전환 최소화 + 동작 sub-그룹, 2026-05-29 개선)
 
 > **카테고리(§1~§21) 는 lookup 용, Phase 는 실행 순서.** 두 축으로 사용.
 >
 > 단일 owner 만으로는 admin/member RBAC + invite 흐름 자체 검증 불가. 2026-05-20부터 **3 계정 (owner/admin/member) + 학생·학부모 incognito view** 모델로 전환. 카테고리대로 위에서 아래 진행하면 역할 토글이 잦음 → 10-Phase 흐름으로 묶으면 **계정/상태 셋업 1회씩**으로 끝남. 시나리오는 한 번씩만 등장 (이전 사이클에서 중복 setup 반복 회피).
+>
+> **Variant D 개선 (2026-05-29)**: 큰 Phase (Phase 1 = 60분, Phase 3 = 35분) 내부에 **동작 sub-그룹** 명시. 같은 동작 패턴 (예: "추가 모달" / "검색 input") 의 일관성 한 번 학습 → 다음 페이지에서 빠른 인지. mockup SSOT: `dev-pack/internal-dashboard/.../design-explorations/class-planner/uat-grouping-refactor/` (Variant D 채택). 사용자 본 요청 (2026-05-29) "UAT 빨리 할 수 있도록 그룹별로 움직임끼리 묶어서 보여줄 수 있도록 개선".
 
 #### Phase 1 — 익명 모드 (비로그인, localStorage SSOT) — 계정 X
 - **진입**: 콘솔 `uat.clearAll()` → 새로고침 → `uat.isAnonymous() === true`
-- **시나리오 묶음**: S-1.1, S-1.4, S-2.1~2.8 학생 (P0 입력 위주), S-3.1~3.6 과목, S-4.1~4.10 강사, S-5.1~5.25 시간표 + 뷰 모드, §6 드래그/lane insert, §13 색상, S-16.1~16.3 (빈 주/도움말), S-12.1 새로고침
 - **핵심 검증**: 서버 호출 0건 (Local-First 정책). 이 Phase 끝 상태 = "학생 3 / 과목 2 / 강사 2 / 세션 다수 입력된 익명 데이터" → Phase 2 충돌 시드.
 - **소요**: 60분 (가장 큰 묶음)
 
-#### Phase 2 — 익명 → 원장 로그인 전환 (충돌 발생 + 학원 생성)
+**Sub-그룹 1A — 입력 패턴 (추가 모달 일관성, 15분)**
+
+같은 "+ 추가" 모달 패턴 한 번 학습 → 다음 페이지에서 빠른 인지 (Cohesion sweep PR #536-#545 후 모달 통일성 ↑):
+- 학생 추가: S-1.1 (로그인 리디렉트) / S-1.4 (익명 모드) / S-2.1 (학생 추가) / S-2.7 (상세 등록 모달 PR #289) / S-2.8 (빈 메타 hint ⓘ PR #290)
+- 과목 추가: S-3.1 (빠른 추가 ListFilterBar) / S-3.2 (색상 팔레트 PR #340) / S-3.5 (hex 직접 입력 PR #340)
+- 강사 추가: S-4.1 / S-4.2 (색상 자동 할당 순환) / S-4.3 (강사 색상 커스텀)
+- **회귀 가드 (PR #517-#521)**: ScheduleToolbarFilters / ScheduleHeaderActions / ScheduleSecondaryModals / ScheduleEditModalWrapper / ScheduleWeeklyGrid 5 components 분할 후 추가 모달 동작 변화 없음 확인
+
+**Sub-그룹 1B — 검색 + 편집 + 삭제 (cascade) 라이프사이클 (15분)**
+
+같은 "검색 input" + "+ 새로 추가 CTA" 패턴 (다른 페이지에서도 동일):
+- 학생: S-2.2 (검색) / S-2.3 (상세 보기) / S-2.4 (편집) / S-2.5 (삭제) / S-2.6 (0명 placeholder)
+- 과목: S-3.3 (편집) / S-3.4 (삭제 cascade — 세션 색상 갱신) / S-3.6 (토스트 중복 가드 ADR-014 PR #338-#339)
+- 강사: S-4.4-4.10 (편집 + 삭제 + 담당 과목 연결)
+- **회귀 가드 (Cohesion sweep PR #524-#532)**: useStudentManagementLocal / useSubjectManagementLocal / useTeacherManagementLocal hook 추출 후 동작 변화 없음 — fire-and-forget sync 의 retry + outbox 정상
+
+**Sub-그룹 1C — 시간표 구성 + 드래그앤드롭 (25분)**
+
+가장 visible UX. PR #521 ScheduleWeeklyGrid component 분할 후 첫 회귀 가드 의무:
+- S-5.1~5.25 시간표 입력 (세션 추가 / 그룹 세션 모달 / 일별/주간/월별 뷰)
+- §6 드래그 / lane insert (ADR-017 v2 PR #388 — 정수 yPosition 모호 해소)
+- §13 색상 (colorBy=subject / colorBy=teacher 토글)
+- **회귀 가드 (PR #521)**: weekly grid view 에서 sessionsForRender + lane layout 계산 정확. drag 후 yPosition 정상
+
+**Sub-그룹 1D — 빈 주 / 도움말 / 새로고침 (5분)**
+
+- S-16.1~16.3 빈 주 placeholder / 도움말
+- S-12.1 새로고침 시 익명 데이터 유지
+
+#### Phase 2 — 익명 → 원장 로그인 전환 (충돌 발생 + 학원 생성, 15분)
 - **진입**: Phase 1 끝 상태 그대로 → `UAT_TEST_OWNER_EMAIL` 로 password 로그인
 - **사전 셋업 (인증 데이터 미리 박아둠)**: `npm run uat:seed` (충돌 발동 보장)
 - **시나리오 묶음**:
   - **S-1.5 + S-1.5b 신규 user 케이스 (uat:teardown all 직후)**: owner 가 신규 상태일 때 첫 로그인 → /onboarding → 학원 자동 생성 (ADR-019 owner-강제). teardown 직후 시드 데이터 없이 진행.
   - **S-14.1~5 DataConflictModal** (uat:seed 후 다시 시도): 익명 데이터 + 서버 시드 데이터 충돌 → Layered Defense 검증.
   - **S-14.7 충돌 직전 자동 백업**: 머지 직후 백업 row 자동 생성.
+  - **회귀 가드 (PR #534 commitEntityDeleteOnServer)**: server commit 동작 동일 확인 (extracted utility 의 contract)
 - **끝 상태**: owner 인증 모드 (academy 1 개, 시드 데이터 머지 완료)
-- **소요**: 15분
 
-#### Phase 3 — 원장 (owner) 권한 시나리오
+#### Phase 3 — 원장 (owner) 권한 시나리오 (35분)
 - **진입**: Phase 2 끝 상태 그대로 (owner 로그인 + academy)
-- **시나리오 묶음**: §7 템플릿 (S-7.1~7.10), §8 PDF (S-8.1~8.7), §9 공유링크 + 학부모 코드 발급 (S-9.1, S-9.3 — 비로그인 접근 검증은 Phase 6), §10.1/10.2 Academy 전환, S-12.2~12.3 새로고침 강사 정보 유지, S-14.6 데이터 이력 아코디언, S-14.8~14.16 백업/마이그레이션 검증, §15 출석부 owner 마킹, §17 알림 히스토리, §18 EditSessionModal
 - **핵심 검증**: API POST/PUT 발사 + 서버 sync 정확. owner = canManage=true.
-- **소요**: 35분
+
+**Sub-그룹 3A — 템플릿 (12분)**
+
+§7 템플릿 (S-7.1~7.10) — 시간표 템플릿 저장/적용/삭제. PR #545 design-explorations docstring 영향 0.
+
+**Sub-그룹 3B — PDF + 공유 (12분)**
+
+- §8 PDF (S-8.1~8.7) — PR #542 PdfExportRangeModal docstring 후 회귀 가드 (옵션 모달 동작 동일)
+- §9 공유링크 + 학부모 코드 발급 (S-9.1, S-9.3) — 비로그인 접근 검증은 Phase 6
+- §10.1/10.2 Academy 전환
+
+**Sub-그룹 3C — 출석 + 알림 + 이력 (11분)**
+
+- §15 출석부 owner 마킹
+- §17 알림 히스토리 (PR #372 notificationCenter SSOT)
+- S-14.6 데이터 이력 아코디언 / S-14.8~14.16 백업/마이그레이션 검증
+- §18 EditSessionModal (PR #538 docstring 영향 0, PR #520 ScheduleEditModalWrapper 분할 후 회귀 가드)
+- S-12.2~12.3 새로고침 강사 정보 유지
 
 #### Phase 4 — 관리자 (admin) 권한 시나리오 — §19
 - **사전 셋업**: owner 가 admin 초대 — **UI 흐름 (S-19.1~19.4)** 직접 검증 의무. 빠른 진입은 `npm run uat:invite -- --role admin` 으로 가능 (단 invite UI 자체 검증은 별도).
