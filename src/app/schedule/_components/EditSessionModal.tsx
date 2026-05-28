@@ -819,34 +819,38 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
       {/* Form body — 과목 → 강사 → 학생 순 (Variant C 채택, 2026-05-12).
           학생 picker가 본문 비중 가장 큼 → 마지막에 배치해 위 두 필수 메타가 항상 위에 보임. */}
       <div className="px-5 py-4 flex flex-col gap-4 max-h-[55vh] overflow-y-auto">
-        {/* Subject */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="edit-modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            과목 <span className="text-[var(--color-danger)]">*</span>
-          </label>
-          <select
-            id="edit-modal-subject"
-            className={fieldClass}
-            value={tempSubjectId}
-            onChange={(e) => onSubjectChange(e.target.value)}
-          >
-            <option value="">과목 선택</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Teacher (always shown, pills) */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
-          <TeacherDropdownPicker
-            teachers={teachers}
-            selectedTeacherId={tempTeacherId || null}
-            onSelect={(id) => onTeacherChange(id ?? null)}
-            subjectId={tempSubjectId || undefined}
-            subjectName={currentSubject?.name}
-          />
+        {/*
+          V3 A 헤더 통합 (mockup 채택 2026-05-28):
+          - 과목 + 강사 = inline 한 줄 grid. label 작게, control 가로 배치 → 모달 세로 길이 ↓
+          - 글자 짧으면 공간 압축 (과목 < 10 chars / 강사 < 10 chars 대부분)
+        */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="edit-modal-subject" className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              과목 <span className="text-[var(--color-danger)]">*</span>
+            </label>
+            <select
+              id="edit-modal-subject"
+              className={fieldClass}
+              value={tempSubjectId}
+              onChange={(e) => onSubjectChange(e.target.value)}
+            >
+              <option value="">과목 선택</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
+            <TeacherDropdownPicker
+              teachers={teachers}
+              selectedTeacherId={tempTeacherId || null}
+              onSelect={(id) => onTeacherChange(id ?? null)}
+              subjectId={tempSubjectId || undefined}
+              subjectName={currentSubject?.name}
+            />
+          </div>
         </div>
 
         {/*
