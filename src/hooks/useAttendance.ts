@@ -7,7 +7,18 @@ interface AttendanceEntry {
   notes?: string | null;
 }
 
-type AttendanceMap = Record<string, Record<string, AttendanceEntry>>;
+/**
+ * State 구조 — 2 차원 key: sessionId → date(YYYY-MM-DD) → studentId → entry.
+ * 과거 일자 / 오늘 / 다른 주 출결을 동시에 유지 (이전: sessionId-only 였어서 다중 date 시 override).
+ * 사용자 명시 (2026-05-28): 과거 날짜 미체크 session 도 dot 표시 — 다중 date 동시 보존 필요.
+ */
+type AttendanceMap = Record<
+  string, // sessionId
+  Record<
+    string, // date YYYY-MM-DD
+    Record<string, AttendanceEntry> // studentId → entry
+  >
+>;
 
 interface RawAttendanceRow {
   student_id: string;
@@ -35,7 +46,10 @@ export function useAttendance(userId: string | null) {
 
     setAttendance((prev) => ({
       ...prev,
-      [sessionId]: { ...(prev[sessionId] ?? {}), ...entries },
+      [sessionId]: {
+        ...(prev[sessionId] ?? {}),
+        [date]: { ...((prev[sessionId] ?? {})[date] ?? {}), ...entries },
+      },
     }));
   };
 
@@ -63,7 +77,10 @@ export function useAttendance(userId: string | null) {
       ...prev,
       [sessionId]: {
         ...(prev[sessionId] ?? {}),
-        [row.student_id]: { status: row.status, notes: row.notes },
+        [date]: {
+          ...((prev[sessionId] ?? {})[date] ?? {}),
+          [row.student_id]: { status: row.status, notes: row.notes },
+        },
       },
     }));
   };
@@ -96,7 +113,10 @@ export function useAttendance(userId: string | null) {
 
     setAttendance((prev) => ({
       ...prev,
-      [sessionId]: { ...(prev[sessionId] ?? {}), ...entries },
+      [sessionId]: {
+        ...(prev[sessionId] ?? {}),
+        [date]: { ...((prev[sessionId] ?? {})[date] ?? {}), ...entries },
+      },
     }));
   };
 

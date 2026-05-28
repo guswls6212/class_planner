@@ -146,11 +146,14 @@ interface TimeTableGridProps {
   /** SessionBlock 표시 모드 — share view 분기. Default "edit". */
   presentationMode?: PresentationMode;
   /**
-   * 출결 map by sessionId (key = sessionId, value = Record<studentId, {status}>).
-   * SessionBlock 우하단 출결 dot 렌더용. 미제공 시 dot 안 보임.
+   * 전체 출결 — 2 차원 key (sessionId → date → studentId → entry).
    * caller (schedule/page.tsx) 가 useAttendance 의 attendance state 를 그대로 전달.
+   * TimeTableRow 가 instanceDate 기반으로 lookup.
    */
-  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
+  attendanceMapBySession?: Record<
+    string,
+    Record<string, Record<string, { status: string }>>
+  >;
 }
 
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -878,6 +881,10 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 endHour={endHour}
                 presentationMode={presentationMode}
                 attendanceMapBySession={attendanceMapBySession}
+                instanceDate={
+                  // YYYY-MM-DD — useSessionStatus date-aware mode 진입 (과거 날짜 출결 dot)
+                  `${weekDates[weekday].getFullYear()}-${String(weekDates[weekday].getMonth() + 1).padStart(2, "0")}-${String(weekDates[weekday].getDate()).padStart(2, "0")}`
+                }
                 selectedSessionIds={selectedSessionIds}
                 onSessionSelectToggle={
                   isReadOnly ? undefined : onSessionSelectToggle

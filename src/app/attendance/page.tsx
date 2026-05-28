@@ -247,7 +247,7 @@ export default function AttendancePage() {
           sessionId={activeSession.id}
           date={dateISO}
           students={activeStudents}
-          attendance={attendance[activeSession.id] ?? {}}
+          attendance={attendance[activeSession.id]?.[dateISO] ?? {}}
           onMarkAttendance={(studentId, status) =>
             markAttendance(activeSession.id, studentId, dateISO, status)
           }
