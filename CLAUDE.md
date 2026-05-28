@@ -71,11 +71,53 @@
 
 ### 브랜치 규칙 (Non-negotiable)
 - `main`/`dev` 직접 push/commit 금지
-- 모든 작업은 `dev`에서 분기한 작업 브랜치에서 진행
+- 모든 작업은 `dev`에서 분기한 작업 브랜치에서 진행 (worktree 의무 — `bash dev-pack/scripts/worktree-new.sh class-planner <prefix>/<설명>`)
 - 작업 브랜치 → `dev` PR → CI 통과 → 머지
 - `dev` → `main` PR → CI 통과 → 머지 → 자동 배포
 - hotfix 예외: `main`에서 분기 → `main` + `dev` 양쪽에 PR
 - 상세: `docs/development-guide.md` § 브랜치 전략 & CI/CD
+
+### Branch Prefix Convention (auto-merge 룰 통합, 2026-05-28 SSOT)
+
+| Prefix | 의미 | auto-merge (dev 향) |
+|---|---|---|
+| `chore/` | 잡일, 셋업, 의존성 | ✅ ON |
+| `docs/` | 문서만 | ✅ ON |
+| `refactor/` | 동일 동작 구조 개선 | ✅ ON |
+| `feat/` | 새 기능 | ✅ ON |
+| `fix/` | bug fix | ✅ ON |
+| `test/` | 테스트만 | ✅ ON |
+| `ci/` | CI workflow 변경 | ❌ 수동 review |
+| `migration/` | DB schema | ❌ 수동 |
+| `infra/` | runner / Docker | ❌ 수동 |
+| `security/` | auth / token / RLS | ❌ 수동 |
+| `release/` | dev → main | ❌ 수동 |
+
+- 시행: `dev-pack/scripts/hooks/class-planner-branch-policy-hook.sh` (PreToolUse hook)
+- override label: `no-auto-merge`, `quick-pr` (자세히 `dev-pack/docs/protocols/ai-pr-label-policy.md`)
+
+### CI 셋업 SSOT (2026-05-28)
+
+dev 향 PR 은 Mac Studio M3 Ultra 의 cp-runner Docker 6 container 에서 실행 — e2e 6 shard parallel + user 6 격리.
+
+- **상세 셋업**: `dev-pack/docs/protocols/cp-runner-ci-setup.md` (cp-runner 구성 / E2E user 6 / secret 6 / 측정 history / PR 만들 때 Claude 체크리스트 10항목)
+- **PR label 자동 판단**: `dev-pack/docs/protocols/ai-pr-label-policy.md` (quick-pr / no-auto-merge 기준 + Claude 자동 흐름)
+
+### E2E test user 6 (옵션 A, 2026-05-28)
+
+CI 의 e2e 6 shard 가 각자 다른 user 사용 → DB row 격리 → academy data race 영구 해소.
+
+- email: `e2e-test-1@class-planner.test` ~ `e2e-test-6@class-planner.test` (hardcode)
+- password: `E2E_TEST_USER_PASSWORD` (USER_1) + `E2E_USER_PASSWORD_2` ~ `_6` (GitHub secret 5 set 추가)
+- 각 user 의 owner academy = **`"E2E Test Academy"`** (literal — spec regex `/E2E Test Academy/` 매칭 의무, 6 user 같은 name 가능 — `academies.name` unique 없음)
+- setup-e2e-test-user.ts 매 CI 마다 idempotent (array 처리)
+
+### branch protection (dev branch, 2026-05-28 Step 3 적용)
+
+required status check:
+- `Type check, Lint, Unit tests`
+- `Production build`
+- **`E2E all shards required`** (summary job — e2e matrix 6 shard 중 하나라도 fail 시 PR 머지 차단)
 
 ### Worktree 강제 (Non-negotiable, hook 시행)
 - class-planner 모든 branch 생성은 **worktree 안에서만**. main checkout 직접 `git checkout -b` 금지.
