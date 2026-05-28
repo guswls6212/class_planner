@@ -837,7 +837,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           - 모달 닫기 전 미저장 buffer 있으면 사용자에게 경고
         */}
 
-        {/* 출결 섹션 — 최상단 메인 */}
+        {/*
+          출결 섹션 — 최상단 메인 (V2 A + 사용자 피드백 2026-05-28 반영):
+          - 좌측 dot 만 status 색 (우측 amber bullet 중복 제거)
+          - 미저장 row 는 좌측 border 색 + bottom amber 안내 만 사용
+          - "전원 출석" / "전원 미체크" batch 버튼 추가 (markAllPresent 활용 안 하고 buffer 일괄)
+        */}
         {attendanceMap && onMarkAttendance && (
           <div className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between">
@@ -848,12 +853,67 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 click → 미체크 / 출석 / 결석 / 지각 cycle
               </span>
             </div>
+
+            {/* 전원 batch 버튼 — 학생 ≥ 2명 일 때만 (1명이면 row 직접 click 빠름) */}
+            {selectedStudents.length >= 2 && canManageAttendance && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10.5px] text-[var(--color-text-muted)] mr-1">전원:</span>
+                <button
+                  type="button"
+                  data-testid="edit-attendance-batch-present"
+                  onClick={() => {
+                    setAttendanceBuffer((prev) => {
+                      const next = { ...prev };
+                      selectedStudents.forEach((s) => {
+                        next[s.id] = "present";
+                      });
+                      return next;
+                    });
+                  }}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-emerald-600/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/25 transition-colors"
+                >
+                  출석
+                </button>
+                <button
+                  type="button"
+                  data-testid="edit-attendance-batch-absent"
+                  onClick={() => {
+                    setAttendanceBuffer((prev) => {
+                      const next = { ...prev };
+                      selectedStudents.forEach((s) => {
+                        next[s.id] = "absent";
+                      });
+                      return next;
+                    });
+                  }}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-rose-600/15 text-rose-300 border border-rose-500/30 hover:bg-rose-600/25 transition-colors"
+                >
+                  결석
+                </button>
+                <button
+                  type="button"
+                  data-testid="edit-attendance-batch-reset"
+                  onClick={() => {
+                    setAttendanceBuffer((prev) => {
+                      const next = { ...prev };
+                      selectedStudents.forEach((s) => {
+                        next[s.id] = "none";
+                      });
+                      return next;
+                    });
+                  }}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-700/40 text-slate-300 border border-slate-600/40 hover:bg-slate-700/60 transition-colors"
+                >
+                  미체크
+                </button>
+              </div>
+            )}
+
             {selectedStudents.length === 0 ? (
               <EmptyState>학생을 먼저 추가해주세요</EmptyState>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {selectedStudents.map((student) => {
-                  // local buffer 우선, 없으면 server attendanceMap
                   const bufferStatus = attendanceBuffer[student.id];
                   const serverStatus = attendanceMap[student.id]?.status;
                   const current = normalizeForCycle(bufferStatus ?? serverStatus);
@@ -865,12 +925,20 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                     <div
                       key={student.id}
                       data-testid={`edit-attendance-row-${student.id}`}
-                      className={`flex items-center gap-2 rounded-xl border ${
+                      className={`flex items-stretch gap-0 rounded-xl border ${
                         isModified
-                          ? "border-amber-500/40 bg-amber-500/[0.06]"
+                          ? "border-amber-500/50 bg-amber-500/[0.04]"
                           : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                      } pr-2`}
+                      } overflow-hidden`}
                     >
+                      {/* 미저장 변경 좌측 amber bar (subtle) */}
+                      {isModified && (
+                        <span
+                          className="w-1 bg-amber-400 flex-shrink-0"
+                          aria-hidden="true"
+                          title="미저장 변경"
+                        />
+                      )}
                       <button
                         type="button"
                         data-testid={`edit-attendance-pill-${student.id}`}
@@ -884,14 +952,16 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           }));
                         }}
                         className={[
-                          "flex-1 flex items-center gap-3 px-3 py-2 rounded-l-xl text-left",
+                          "flex-1 flex items-center gap-3 px-3 py-2 text-left",
                           canManageAttendance
                             ? "hover:bg-white/[0.02] active:bg-white/[0.04]"
                             : "opacity-60 cursor-not-allowed",
                         ].join(" ")}
                         aria-label={`${student.name} 출결: ${label}. 클릭하여 다음`}
                       >
-                        <span className={`w-2.5 h-2.5 rounded-full ${bg} ring-2 ring-offset-2 ring-offset-[var(--color-bg-secondary)] ${ring} flex-shrink-0`} />
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full ${bg} ring-2 ring-offset-2 ring-offset-[var(--color-bg-secondary)] ${ring} flex-shrink-0`}
+                        />
                         <span className="text-[13px] text-[var(--color-text-primary)] truncate flex-1">
                           {student.name}
                         </span>
@@ -903,13 +973,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           }`}
                         >
                           {label}
-                          {isModified && <span className="ml-1 text-amber-400" title="미저장 변경">●</span>}
                         </span>
                       </button>
                       <button
                         type="button"
                         onClick={() => onRemoveStudent(student.id)}
-                        className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 rounded transition-colors"
+                        className="px-2.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
                         aria-label={`${student.name} 제거`}
                         data-testid={`edit-attendance-remove-${student.id}`}
                       >
