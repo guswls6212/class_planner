@@ -122,7 +122,9 @@ export default function SubjectDropdownPicker({
           ref={dropdownPanelRef}
           role="listbox"
           aria-label="과목 선택"
-          className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-2xl p-1 max-h-[260px] overflow-y-auto overscroll-contain"
+          data-testid="subject-dropdown-panel"
+          /* TeacherDropdownPicker 와 동일 styling — border-amber-500/30 + bg-zinc-900 + shadow-lg + p-2 + space-y-1 (2026-05-28 디자인 통일) */
+          className="absolute z-50 mt-1 w-full max-h-72 overflow-auto rounded-md border border-amber-500/30 bg-zinc-900 shadow-lg p-2 space-y-1"
         >
           {subjects.map((s) => {
             const isActive = selectedSubjectId === s.id;
