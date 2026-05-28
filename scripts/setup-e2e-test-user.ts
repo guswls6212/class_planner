@@ -126,7 +126,11 @@ async function ensureOwnerAcademy(
   if (existing) {
     return existing.academy_id;
   }
-  const academyName = `E2E Test Academy ${spec.index}`;
+  // 옵션 A fix (2026-05-28): seedSecondAcademy 의 hardcoded "E2E Test Academy 2"
+  // 와 충돌 회피. user 2 의 owner academy 이름이 "E2E Test Academy 2" 면 spec 의
+  // seedSecondAcademy 가 owner academy 와 일치 → early return → 두 academy 안 생김
+  // → multi-academy spec fail. "E2E Owner Academy {index}" 패턴으로 격리.
+  const academyName = `E2E Owner Academy ${spec.index}`;
   const { data: newAcademy, error: academyInsertError } = await sbAdmin
     .from("academies")
     .insert({ name: academyName, created_by: userId })
