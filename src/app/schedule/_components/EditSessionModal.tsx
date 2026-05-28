@@ -36,28 +36,26 @@ import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
 import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
 import { StudentChip } from "../../../components/molecules/StudentChip";
-import {
-  DetailTooltip,
-  type DetailTooltipSection,
-} from "../../../components/atoms/DetailTooltip";
 
 /**
- * 출결 row hover tooltip — 학생 상세 정보 (성별 / 생년월일 / 학교 / 학년).
- * StudentChip 의 buildTooltipSections 와 동일 패턴 (chip 자리 제거됐어도 hover 정보 보존).
- * 사용자 명시 (2026-05-28): 출결 row 위 hover 시 학생 학년/학교 등 노출.
+ * 출결 chip hover tooltip — 학생 이름 (prominent 헤더) + 상세.
+ * V3 A (2026-05-28 mockup 채택): tooltip 헤더에 학생 이름 명시 — 어느 chip 인지 명확.
+ * DetailTooltip 의 title 스타일은 작은 uppercase 라 학생 이름에 부적합 →
+ * 본 컴포넌트에서 inline tooltip 직접 구현 (CSS group-hover).
  */
 const ATTENDANCE_TOOLTIP_GENDER_LABEL: Record<string, string> = { male: "남", female: "여" };
-function buildAttendanceRowTooltipSections(
-  s: StudentOption,
-): DetailTooltipSection[] {
-  const rows: { label: string; value: string }[] = [];
+interface AttendanceTooltipRow {
+  label: string;
+  value: string;
+}
+function buildAttendanceTooltipRows(s: StudentOption): AttendanceTooltipRow[] {
+  const rows: AttendanceTooltipRow[] = [];
   if (s.grade) rows.push({ label: "학년", value: s.grade });
   const gender = s.gender ? ATTENDANCE_TOOLTIP_GENDER_LABEL[s.gender] : null;
   if (gender) rows.push({ label: "성별", value: gender });
   if (s.birthDate) rows.push({ label: "생년월일", value: s.birthDate });
   if (s.school) rows.push({ label: "학교", value: s.school });
-  if (rows.length === 0) return [];
-  return [{ title: "학생 정보", rows }];
+  return rows;
 }
 
 /**
@@ -935,7 +933,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             {selectedStudents.length === 0 ? (
               <EmptyState>학생을 먼저 추가해주세요</EmptyState>
             ) : (
-              <div className="flex flex-col gap-1.5">
+              /*
+                V3 A (사용자 픽 2026-05-28): auto-width chip + flex-wrap.
+                글자 길이에 맞춰 chip 자동 좁아짐, 다중 학생 자연 wrap.
+                tooltip: chip group-hover 시 학생 이름 prominent + 상세 (학년/학교/성별/생년월일).
+              */
+              <div className="flex flex-wrap gap-1.5">
                 {selectedStudents.map((student) => {
                   const bufferStatus = attendanceBuffer[student.id];
                   const serverStatus = attendanceMap[student.id]?.status;
@@ -944,26 +947,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                   const bg = ATTENDANCE_CYCLE_BG[current];
                   const ring = ATTENDANCE_CYCLE_RING[current];
                   const isModified = bufferStatus !== undefined;
-                  const tooltipSections = buildAttendanceRowTooltipSections(student);
-                  // tooltip section 없으면 (학생 상세 미입력) DetailTooltip wrap 안 함 — 빈 tooltip 회피
-                  const rowContent = (
+                  const tooltipRows = buildAttendanceTooltipRows(student);
+
+                  return (
                     <div
                       key={student.id}
                       data-testid={`edit-attendance-row-${student.id}`}
-                      className={`flex items-stretch gap-0 rounded-xl border ${
+                      className={`group relative inline-flex items-center gap-0 rounded-full border ${
                         isModified
-                          ? "border-amber-500/50 bg-amber-500/[0.04]"
+                          ? "border-amber-500/50 bg-amber-500/[0.06]"
                           : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                      } overflow-hidden`}
+                      } pr-1`}
                     >
-                      {/* 미저장 변경 좌측 amber bar (subtle) */}
-                      {isModified && (
-                        <span
-                          className="w-1 bg-amber-400 flex-shrink-0"
-                          aria-hidden="true"
-                          title="미저장 변경"
-                        />
-                      )}
                       <button
                         type="button"
                         data-testid={`edit-attendance-pill-${student.id}`}
@@ -977,21 +972,22 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           }));
                         }}
                         className={[
-                          "flex-1 flex items-center gap-3 px-3 py-2 text-left",
+                          "inline-flex items-center gap-2 pl-2.5 py-1.5 rounded-l-full transition-colors text-left",
                           canManageAttendance
-                            ? "hover:bg-white/[0.02] active:bg-white/[0.04]"
+                            ? "hover:bg-white/[0.03] active:bg-white/[0.06]"
                             : "opacity-60 cursor-not-allowed",
                         ].join(" ")}
                         aria-label={`${student.name} 출결: ${label}. 클릭하여 다음`}
                       >
                         <span
-                          className={`w-2.5 h-2.5 rounded-full ${bg} ring-2 ring-offset-2 ring-offset-[var(--color-bg-secondary)] ${ring} flex-shrink-0`}
+                          className={`w-2 h-2 rounded-full ${bg} ring-2 ring-offset-1 ring-offset-[var(--color-bg-secondary)] ${ring} flex-shrink-0`}
+                          aria-hidden="true"
                         />
-                        <span className="text-[13px] text-[var(--color-text-primary)] truncate flex-1">
+                        <span className="text-[13px] text-[var(--color-text-primary)] whitespace-nowrap">
                           {student.name}
                         </span>
                         <span
-                          className={`text-[11px] font-medium ${
+                          className={`text-[10.5px] font-medium whitespace-nowrap ${
                             current === "none"
                               ? "text-[var(--color-text-muted)]"
                               : "text-[var(--color-text-primary)]"
@@ -1003,26 +999,43 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                       <button
                         type="button"
                         onClick={() => onRemoveStudent(student.id)}
-                        className="px-2.5 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 transition-colors"
+                        className="px-1.5 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors rounded-r-full"
                         aria-label={`${student.name} 제거`}
                         data-testid={`edit-attendance-remove-${student.id}`}
                       >
-                        <X size={14} />
+                        <X size={11} />
                       </button>
+
+                      {/* inline tooltip — chip group-hover 시 학생 이름 prominent + 상세.
+                          미저장 chip 옆 amber 표시도 tooltip 안에서 hint. */}
+                      <div
+                        className="absolute left-0 top-full mt-1 z-50 min-w-[180px] hidden group-hover:block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-2xl p-2.5 pointer-events-none"
+                        data-testid={`edit-attendance-tooltip-${student.id}`}
+                      >
+                        <p className="text-[13px] font-semibold text-[var(--color-text-primary)] mb-1.5 pb-1 border-b border-[var(--color-border)]">
+                          {student.name}
+                          {isModified && (
+                            <span className="ml-2 text-[10.5px] text-amber-400 font-normal">
+                              · 미저장 변경
+                            </span>
+                          )}
+                        </p>
+                        {tooltipRows.length > 0 ? (
+                          <dl className="text-[11px] space-y-0.5">
+                            {tooltipRows.map((row) => (
+                              <div key={row.label} className="flex justify-between gap-3">
+                                <dt className="text-[var(--color-text-muted)]">{row.label}</dt>
+                                <dd className="text-[var(--color-text-primary)]">{row.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <p className="text-[10.5px] text-[var(--color-text-muted)] italic">
+                            학생 상세 정보 없음
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  );
-                  // tooltip section 있으면 wrap, 없으면 그냥 row (빈 tooltip 표시 회피)
-                  if (tooltipSections.length === 0) {
-                    return (
-                      <React.Fragment key={student.id}>
-                        {rowContent}
-                      </React.Fragment>
-                    );
-                  }
-                  return (
-                    <DetailTooltip key={student.id} sections={tooltipSections}>
-                      {rowContent}
-                    </DetailTooltip>
                   );
                 })}
               </div>
