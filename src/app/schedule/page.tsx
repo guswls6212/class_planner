@@ -100,7 +100,7 @@ import { getActiveAcademyId, getClassPlannerData } from "../../lib/localStorageC
 import { createSnapshot } from "../../lib/snapshots/createSnapshot";
 import { syncSubjectUpdate } from "../../lib/apiSync";
 import { logger } from "../../lib/logger";
-import { showActionToast, showError, showToast } from "../../lib/toast";
+import { debugToast, showActionToast, showError, showToast } from "../../lib/toast";
 import type { Session, Student } from "../../lib/planner";
 import { minutesToTime, timeToMinutes, weekdays } from "../../lib/planner";
 import { repositionSessions as repositionSessionsUtil } from "../../lib/sessionCollisionUtils";
@@ -298,22 +298,22 @@ function SchedulePageContent(): JSX.Element {
       const newDate = computeInstanceDate(newWeekday);
       const result = await migrateAttendance(sessionId, oldDate, newDate);
       if (!result) {
-        showToast("info", "출결 이동 — 로그인 필요");
+        debugToast("info", "출결 이동 — 로그인 필요", { category: "attendance-migrate" });
         return null;
       }
       if (result.error === "DUPLICATE_DATE") {
-        showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
+        debugToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`, { category: "attendance-migrate" });
         return null;
       }
       if (result.error === "FAIL") {
-        showToast("error", "출결 이동 실패 (서버 오류)");
+        debugToast("error", "출결 이동 실패 (서버 오류)", { category: "attendance-migrate" });
         return null;
       }
       if (result.count > 0) {
-        showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
+        debugToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`, { category: "attendance-migrate" });
         return result.count;
       }
-      showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
+      debugToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`, { category: "attendance-migrate" });
       return 0;
     },
     [currentWeekStart, migrateAttendance],
@@ -2536,22 +2536,22 @@ function SchedulePageContent(): JSX.Element {
           void (async () => {
             const result = await migrateAttendance(sessionId, oldDate, newDate);
             if (!result) {
-              showToast("info", "출결 이동 — 로그인 필요");
+              debugToast("info", "출결 이동 — 로그인 필요", { category: "attendance-migrate" });
               return;
             }
             if (result.error === "DUPLICATE_DATE") {
-              showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
+              debugToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`, { category: "attendance-migrate" });
               return;
             }
             if (result.error === "FAIL") {
-              showToast("error", "출결 이동 실패 (서버 오류)");
+              debugToast("error", "출결 이동 실패 (서버 오류)", { category: "attendance-migrate" });
               return;
             }
             if (result.count > 0) {
-              showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
+              debugToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`, { category: "attendance-migrate" });
             } else {
               // count=0 — server 에 저장된 출결 없음 (사용자가 출석 체크 안 했거나 저장 안 함)
-              showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
+              debugToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`, { category: "attendance-migrate" });
             }
           })();
         }}
