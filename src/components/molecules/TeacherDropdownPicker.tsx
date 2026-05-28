@@ -97,11 +97,8 @@ export default function TeacherDropdownPicker({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
-  // dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연스럽게 스크롤.
-  // Root cause (사용자 verify 2026-05-27): dropdown panel 이 position:absolute — wrap div
-  // (containerRef) 의 visual height 에 영향 X. 이전 fix (containerRef.scrollIntoView) 는
-  // button bottom 만 viewport 안 가져옴, dropdown panel 은 viewport 밖 유지. panel 자체에
-  // ref 적용해 scrollIntoView 호출 → modal scroll container 가 panel 의 위치 기반 scroll.
+  // 강사 dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연 스크롤.
+  // 사용자 정정 (2026-05-28): 강사 목록 길면 dropdown 잘림 — scroll 다시 유지.
   useEffect(() => {
     if (!isOpen) return;
     const id = window.requestAnimationFrame(() => {
@@ -124,7 +121,8 @@ export default function TeacherDropdownPicker({
         }}
         data-testid={`teacher-dropdown-item-${teacher.id}`}
         aria-pressed={isActive}
-        className={`w-full flex items-center gap-2 p-2 rounded transition-colors text-left ${
+        title={teacher.name}
+        className={`w-full flex items-center gap-2 p-2 rounded transition-colors text-left min-w-0 ${
           isActive
             ? "bg-amber-500/15 ring-1 ring-amber-500/30"
             : "hover:bg-white/5"
@@ -134,12 +132,13 @@ export default function TeacherDropdownPicker({
           className="w-3 h-3 rounded-full shrink-0"
           style={{ backgroundColor: teacher.color }}
         />
-        <span className="text-[12px] text-[var(--color-text-primary)]">
+        {/* 긴 이름 truncate (Variant A 채택 2026-05-28) — title 속성 hover tooltip */}
+        <span className="text-[12px] text-[var(--color-text-primary)] truncate flex-1 min-w-0">
           {teacher.name}
         </span>
-        <RoleBadge role={teacher.role} size="xs" className="ml-1" />
+        <RoleBadge role={teacher.role} size="xs" className="ml-1 flex-shrink-0" />
         {isActive && (
-          <span className="ml-auto text-[10px] text-amber-300">✓</span>
+          <span className="text-[10px] text-amber-300 flex-shrink-0">✓</span>
         )}
       </button>
     );

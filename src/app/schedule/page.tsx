@@ -2064,6 +2064,14 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [attendanceSession, enrollments, students]);
 
+  // Layer 1 (mockup edit-session-with-attendance, 2026-05-28):
+  // 편집 모달이 열리면 본 세션의 출결을 fetch (학생 출결 섹션 초기 status 표시용).
+  useEffect(() => {
+    if (!userId || !editModalData || !showEditModal) return;
+    const dateStr = selectedDate.toISOString().slice(0, 10);
+    void fetchAttendance(editModalData.id, dateStr);
+  }, [userId, editModalData, showEditModal, selectedDate, fetchAttendance]);
+
   // SessionBlock 우하단 출결 dot 시각 (Layer 2 D + past-day, 2026-05-28).
   // 본 view 의 이번 주 의 오늘 + 과거 날짜 session 출결을 bulk fetch — dot alert 정확도 향상.
   // 사용자 명시 피드백: 과거 날짜 미체크 session 도 red dot 보여야 함.
@@ -2483,6 +2491,26 @@ function SchedulePageContent(): JSX.Element {
         addEnrollment={addEnrollment}
         validateAndToastEdit={validateAndToastEdit}
         setSelectedDate={setSelectedDate}
+        attendanceMap={
+          editModalData
+            ? attendance[editModalData.id]?.[
+                selectedDate.toISOString().slice(0, 10)
+              ]
+            : undefined
+        }
+        onMarkAttendance={(studentId, status) => {
+          if (!editModalData) return;
+          // 출결 기록 날짜 — 현재 view 의 selectedDate (편집 모달 같은 컨텍스트)
+          const dateStr = selectedDate.toISOString().slice(0, 10);
+          // status="none" 은 markAttendance API 에서 미체크 복원 (또는 graceful no-op). server enum 호환.
+          return markAttendance(editModalData.id, studentId, dateStr, status);
+        }}
+        canManageAttendance={
+          // 운영자 / 관리자 — 모두 OK. 강사 (member) — 본인 수업 만.
+          role === "member"
+            ? editModalData?.teacherId === linkedTeacherId
+            : true
+        }
         onAttendanceMigrate={({
           sessionId,
           oldWeekday,

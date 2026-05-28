@@ -148,7 +148,7 @@ export function useAttendance(userId: string | null) {
   );
 
   /**
-   * session schedule 이동 시 attendance 도 새 date 로 옮김 (B move 정책, 2026-05-28).
+   * session schedule 이동 시 attendance 도 새 date 로 옮김 (B move 정책, 2026-05-28, PR #550).
    * 사용자 명시: session 이동 = "session instance 자체 이동" → 출결 fact 따라옴.
    *
    * @returns count of migrated records. null on error.
