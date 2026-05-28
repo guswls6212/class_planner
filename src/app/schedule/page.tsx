@@ -1424,19 +1424,23 @@ function SchedulePageContent(): JSX.Element {
       const oldDate = computeInstanceDate(oldWeekday);
       const newDate = computeInstanceDate(newWeekday);
       const result = await migrateAttendance(sessionId, oldDate, newDate);
-      if (!result) return null;
+      if (!result) {
+        showToast("info", "출결 이동 — 로그인 필요");
+        return null;
+      }
       if (result.error === "DUPLICATE_DATE") {
         showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
         return null;
       }
       if (result.error === "FAIL") {
-        showToast("error", "출결 이동 실패");
+        showToast("error", "출결 이동 실패 (서버 오류)");
         return null;
       }
       if (result.count > 0) {
-        showToast("success", `출결 ${result.count}건 함께 이동`);
+        showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
         return result.count;
       }
+      // count=0 — 출결 record 없음 (저장 안 함). silent — drag drop 빈도 ↑ → noise 회피.
       return 0;
     },
     [currentWeekStart, migrateAttendance],
@@ -2432,20 +2436,26 @@ function SchedulePageContent(): JSX.Element {
           const oldDate = computeInstanceDate(oldWS, oldWeekday);
           const newDate = computeInstanceDate(newWS, newWeekday);
           if (oldDate === newDate) return;
-          // fire-and-forget — modal close UX block 안 함
+          // fire-and-forget — modal close UX block 안 함. 모든 케이스 toast.
           void (async () => {
             const result = await migrateAttendance(sessionId, oldDate, newDate);
-            if (!result) return;
+            if (!result) {
+              showToast("info", "출결 이동 — 로그인 필요");
+              return;
+            }
             if (result.error === "DUPLICATE_DATE") {
               showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
               return;
             }
             if (result.error === "FAIL") {
-              showToast("error", "출결 이동 실패");
+              showToast("error", "출결 이동 실패 (서버 오류)");
               return;
             }
             if (result.count > 0) {
-              showToast("success", `출결 ${result.count}건 함께 이동`);
+              showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
+            } else {
+              // count=0 — server 에 저장된 출결 없음 (사용자가 출석 체크 안 했거나 저장 안 함)
+              showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
             }
           })();
         }}
