@@ -1934,6 +1934,24 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [attendanceSession, enrollments, students]);
 
+  // SessionBlock 우하단 출결 dot 시각 (Layer 2 D, 2026-05-28).
+  // 오늘 weekday 의 모든 session 출결을 bulk fetch — SessionBlock 이 dot 색 결정에 사용.
+  // useSessionStatus 가 weekday 매칭 시만 "upcoming/in-progress/completed" 반환 → 다른 weekday
+  // session 은 fetch 해도 사용 안 됨. 그래서 오늘 weekday 만 fetch (네트워크 비용 최소화).
+  useEffect(() => {
+    if (!userId) return;
+    const now = new Date();
+    const todayDateStr = now.toISOString().slice(0, 10);
+    const todayWeekday = (now.getDay() + 6) % 7; // 0=Mon..6=Sun (Session.weekday 컨벤션)
+    const todaySessions = sessions.filter((s) => s.weekday === todayWeekday);
+    if (todaySessions.length === 0) return;
+    // 병렬 fetch — useAttendance 가 sessionId 별 dedupe 처리 (state 갱신 idempotent).
+    void Promise.all(
+      todaySessions.map((s) => fetchAttendance(s.id, todayDateStr)),
+    );
+    // sessions 변경 빈도 ↓ (CUD 시만) — re-fetch 빈도 ↓.
+  }, [userId, sessions, fetchAttendance]);
+
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
@@ -2173,6 +2191,7 @@ function SchedulePageContent(): JSX.Element {
           startHour={timeRange.startHour}
           endHour={timeRange.endHour}
           fillHeight={isP3}
+          attendanceMapBySession={attendance}
           weekFilteredSessionsCount={weekFilteredSessions.length}
           hasTemplate={Boolean(activeTemplate)}
           canManage={canManage}

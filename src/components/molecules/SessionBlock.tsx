@@ -43,6 +43,10 @@ import {
 } from "./SessionBlock.utils";
 import { tintFromHex } from "@/lib/colors/tintFromHex";
 import { resolveSessionTone } from "./SessionCard.utils";
+import {
+  computeAttendanceDot,
+  type AttendanceMap,
+} from "./SessionBlock.attendanceDot";
 
 /**
  * 세션 블록 표시 모드.
@@ -118,6 +122,11 @@ interface SessionBlockProps {
    * Default "edit" (기존 동작 그대로).
    */
   presentationMode?: PresentationMode;
+  /**
+   * 본 세션의 출결 map (key = studentId, value = {status}). 미제공 시 dot 안 보임.
+   * Layer 2 D (mockup edit-session-with-attendance) — 우하단 dot + 시간 기반 색.
+   */
+  attendanceMap?: AttendanceMap;
 }
 
 export const validateSessionBlockProps = (
@@ -164,6 +173,7 @@ function SessionBlock({
   onContextMenuCopy,
   onContextMenuStartSelect,
   presentationMode = "edit",
+  attendanceMap,
 }: SessionBlockProps) {
   const isShareView = presentationMode !== "edit";
   const isFilteredShare = presentationMode === "filtered-share";
@@ -610,6 +620,37 @@ function SessionBlock({
           {teacher.name}
         </span>
       )}
+
+      {/*
+        Layer 2 D — 우하단 출결 dot. 시간 기반 색 + alert 규칙.
+        share/filtered-share view 에선 숨김 (운영자 전용 정보).
+        SessionBlock.attendanceDot.ts § computeAttendanceDot 참조.
+      */}
+      {!isShareView && attendanceMap && (() => {
+        const sessionStudentIds = (session.enrollmentIds ?? [])
+          .map((eId) => (enrollments || []).find((e) => e.id === eId)?.studentId)
+          .filter((id): id is string => Boolean(id));
+        const dotState = computeAttendanceDot(
+          sessionStatus,
+          attendanceMap,
+          sessionStudentIds,
+        );
+        if (!dotState) return null;
+        return (
+          <span
+            data-testid={`session-attendance-dot-${session.id}`}
+            data-attendance-color={dotState.color}
+            data-attendance-pulse={dotState.pulse ? "true" : undefined}
+            className={[
+              "absolute bottom-1 right-1 z-[3] h-2 w-2 rounded-full ring-1 ring-black/40 pointer-events-none",
+              dotState.color,
+              dotState.pulse ? "animate-pulse" : "",
+            ].filter(Boolean).join(" ")}
+            title={dotState.title}
+            aria-label={dotState.title}
+          />
+        );
+      })()}
 
       {/* 롱프레스 컨텍스트 메뉴 */}
       {contextMenuOpen && !isReadOnly && !isShareViewEarly && (
