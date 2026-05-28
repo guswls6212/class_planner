@@ -159,10 +159,19 @@ interface TimeTableRowProps {
   /** SessionBlock 표시 모드 — share view 분기용. Default "edit". */
   presentationMode?: PresentationMode;
   /**
-   * 출결 map by sessionId (key = sessionId, value = Record<studentId, {status}>).
-   * SessionBlock 의 우하단 출결 dot 시각 계산용. 미제공 시 dot 안 보임.
+   * 전체 출결 — 2 차원 key (sessionId → date → studentId → entry).
+   * SessionBlock 별로 본 row 의 instanceDate 로 lookup 후 SessionBlock 의 attendanceMap 전달.
+   * 미제공 시 dot 안 보임. (이전 PR 호환: 단일-date map 도 lookup helper 가 동시 지원)
    */
-  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
+  attendanceMapBySession?: Record<
+    string,
+    Record<string, Record<string, { status: string }>>
+  >;
+  /**
+   * 본 row 의 실 instance 날짜 (YYYY-MM-DD). TimeTableGrid 가 weekDates[weekday] 로 계산.
+   * SessionBlock → useSessionStatus 의 date-aware mode 진입 (과거 날짜 출결 dot 알림).
+   */
+  instanceDate?: string;
   /**
    * @deprecated weekday 전체 토글 — backward compat 용. 새 코드는 expandedRowKeys 사용.
    * 단일 cluster (weekday 에 cluster 1 개) 시나리오에서만 등가. multi-cluster 면 모든
@@ -224,6 +233,7 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
   endHour = 23,
   presentationMode = "edit",
   attendanceMapBySession,
+  instanceDate,
 }) => {
   // popover state — cluster key 기반 단일 변수 (한 번에 하나의 cluster popover 만 열림).
   const [openPopoverClusterKey, setOpenPopoverClusterKey] = React.useState<string | null>(null);
@@ -666,7 +676,12 @@ export const TimeTableRow: React.FC<TimeTableRowProps> = ({
           isAnyDragging={isAnyDragging}
           isCopyMode={isCopyMode}
           presentationMode={presentationMode}
-          attendanceMap={attendanceMapBySession?.[session.id]}
+          attendanceMap={
+            instanceDate
+              ? attendanceMapBySession?.[session.id]?.[instanceDate]
+              : undefined
+          }
+          instanceDate={instanceDate}
           overflowsTop={overflowsTop}
           overflowsBottom={overflowsBottom}
           hasLaneOverflowChip={(() => {

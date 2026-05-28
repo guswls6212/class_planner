@@ -1942,19 +1942,52 @@ function SchedulePageContent(): JSX.Element {
     void fetchAttendance(editModalData.id, dateStr);
   }, [userId, editModalData, showEditModal, selectedDate, fetchAttendance]);
 
-  // SessionBlock 우하단 출결 dot 시각 (Layer 2 D, 2026-05-28 PR #547).
-  // 오늘 weekday 의 모든 session 출결을 bulk fetch — SessionBlock 이 dot 색 결정에 사용.
+  // SessionBlock 우하단 출결 dot 시각 (Layer 2 D + past-day, 2026-05-28).
+  // 본 view 의 이번 주 의 오늘 + 과거 날짜 session 출결을 bulk fetch — dot alert 정확도 향상.
+  // 사용자 명시 피드백: 과거 날짜 미체크 session 도 red dot 보여야 함.
+  // 미래 (이번 주 + 다음 주) 는 fetch 안 함 — "upcoming" 이라 dot 안 나오니 의미 X.
   useEffect(() => {
     if (!userId) return;
     const now = new Date();
-    const todayDateStr = now.toISOString().slice(0, 10);
-    const todayWeekday = (now.getDay() + 6) % 7;
-    const todaySessions = sessions.filter((s) => s.weekday === todayWeekday);
-    if (todaySessions.length === 0) return;
-    void Promise.all(
-      todaySessions.map((s) => fetchAttendance(s.id, todayDateStr)),
-    );
-  }, [userId, sessions, fetchAttendance]);
+    const todayWeekday = (now.getDay() + 6) % 7; // 0=Mon..6=Sun (Session.weekday 컨벤션)
+
+    // selectedDate 기준 weekStart 계산 (이번 주 의 월요일)
+    const weekStart = new Date(selectedDate);
+    const wsDow = (weekStart.getDay() + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - wsDow);
+
+    // selectedDate 가 이번 주 인지 판정 — 이번 주가 아닐 땐 모든 weekday 의 session fetch
+    // (과거 주는 전부 completed, 미래 주는 전부 upcoming — 후자는 dot 안 나오니 fetch skip 가능)
+    const todayWeekStart = new Date(now);
+    todayWeekStart.setDate(now.getDate() - todayWeekday);
+    const isCurrentWeek =
+      weekStart.toDateString() === todayWeekStart.toDateString();
+    const isPastWeek = weekStart < todayWeekStart;
+
+    // fetch 대상 weekday: 과거 주 → 모든 7 day, 이번 주 → 0~today, 미래 주 → 없음
+    const targetWeekdays = isPastWeek
+      ? [0, 1, 2, 3, 4, 5, 6]
+      : isCurrentWeek
+        ? Array.from({ length: todayWeekday + 1 }, (_, i) => i)
+        : []; // 미래 주 — skip
+
+    if (targetWeekdays.length === 0) return;
+
+    // 각 weekday 의 instance 날짜 계산 + 그 weekday session 들 fetch
+    const fetches: Promise<unknown>[] = [];
+    for (const wd of targetWeekdays) {
+      const instanceDate = new Date(weekStart);
+      instanceDate.setDate(weekStart.getDate() + wd);
+      const dateStr = `${instanceDate.getFullYear()}-${String(instanceDate.getMonth() + 1).padStart(2, "0")}-${String(instanceDate.getDate()).padStart(2, "0")}`;
+      const wdSessions = sessions.filter((s) => s.weekday === wd);
+      for (const s of wdSessions) {
+        fetches.push(fetchAttendance(s.id, dateStr));
+      }
+    }
+    if (fetches.length === 0) return;
+    // 병렬 fetch — useAttendance 가 sessionId 별 dedupe 처리 (state 갱신 idempotent).
+    void Promise.all(fetches);
+  }, [userId, sessions, selectedDate, fetchAttendance]);
 
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
@@ -2272,7 +2305,11 @@ function SchedulePageContent(): JSX.Element {
           sessionId={attendanceSession.id}
           date={selectedDate.toISOString().slice(0, 10)}
           students={attendanceStudents}
-          attendance={attendance[attendanceSession.id] ?? {}}
+          attendance={
+            attendance[attendanceSession.id]?.[
+              selectedDate.toISOString().slice(0, 10)
+            ] ?? {}
+          }
           canManage={canManage}
           onMarkAttendance={(studentId, status) =>
             markAttendance(
@@ -2324,7 +2361,13 @@ function SchedulePageContent(): JSX.Element {
         addEnrollment={addEnrollment}
         validateAndToastEdit={validateAndToastEdit}
         setSelectedDate={setSelectedDate}
-        attendanceMap={editModalData ? attendance[editModalData.id] : undefined}
+        attendanceMap={
+          editModalData
+            ? attendance[editModalData.id]?.[
+                selectedDate.toISOString().slice(0, 10)
+              ]
+            : undefined
+        }
         onMarkAttendance={(studentId, status) => {
           if (!editModalData) return;
           // 출결 기록 날짜 — 현재 view 의 selectedDate (편집 모달 같은 컨텍스트)

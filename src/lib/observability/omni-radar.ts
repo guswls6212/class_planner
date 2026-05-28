@@ -49,6 +49,69 @@ export function isOmniRadarEnabled(): boolean {
   return getEnvConfig() !== null;
 }
 
+/**
+ * Dev debug event — Mockup E (Hybrid toast + radar 자동 송신, 2026-05-28 사용자 픽).
+ *
+ * sendErrorEvent 와 동일 fire-and-forget 흐름. event_type: "debug_toast" 로 구분.
+ * debugToast() helper 가 자동 호출 — 호출부는 의식할 필요 X.
+ *
+ * radar dashboard 에서 grep "debug_toast" → dev 시간대의 모든 in-app toast 흐름 reconstruct 가능.
+ * production 환경 (env 미설정) — noop.
+ */
+export interface DebugEventParams {
+  /** "info" | "success" | "warning" | "error" — toast level 그대로 forward */
+  level: string;
+  /** Toast 메세지 본문 */
+  message: string;
+  /** 발화 컨텍스트 (예: "attendance-migrate", "session-drop") */
+  category?: string;
+  /** 추가 metadata (sessionId / oldDate / newDate 등) */
+  metadata?: Record<string, unknown>;
+}
+
+export async function sendDebugEvent(params: DebugEventParams): Promise<void> {
+  const config = getEnvConfig();
+  if (!config) return;
+
+  const controller =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    : null;
+
+  try {
+    const payload = {
+      event_type: "debug_toast",
+      target: "browser",
+      ts: new Date().toISOString(),
+      payload: {
+        level: params.level,
+        message: truncate(params.message, MESSAGE_MAX_CHARS) ?? "(no message)",
+        category: params.category ?? "uncategorized",
+        url: typeof window !== "undefined" ? window.location.href : undefined,
+        ...(params.metadata ?? {}),
+      },
+    };
+
+    await fetch(`${config.url}/ingest`, {
+      method: "POST",
+      mode: "cors",
+      credentials: "omit",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.token}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller?.signal,
+    });
+  } catch {
+    // fire-and-forget
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export async function sendErrorEvent(params: ErrorEventParams): Promise<void> {
   const config = getEnvConfig();
   if (!config) return; // env 미설정 — noop
