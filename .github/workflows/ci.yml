@@ -49,13 +49,16 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-  # Step 1 분리 (2026-05-28, proposal ci-resource-budget-step-by-step #step-1):
-  # supabase user setup 을 별도 job 으로 분리 — e2e-slow + e2e-fast 두 job 의
-  # race window 회피 + 단일 호출로 idempotent 보장.
-  setup-e2e-user:
-    name: Setup E2E test user
+  e2e:
+    # main 향 = ubuntu + 4 shard 병렬 (parallel coverage).
+    # dev 향   = Mac Studio + 1 shard (single fast run).
+    name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }})
     needs: build
     runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4},{"shard":2,"total":4},{"shard":3,"total":4},{"shard":4,"total":4}]' || '[{"shard":1,"total":1}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,81 +66,26 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-      - run: npx tsx scripts/setup-e2e-test-user.ts
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      # PR C — Supabase test user 멱등 셋업. 매 CI마다 실행해도 안전:
+      # 이미 존재하면 password 갱신, 없으면 신규 생성.
+      # 사용자 측 setup script 로컬 실행 부담 제거 + GitHub secret 변경 시 자동 반영.
+      # secrets 없으면 setup script가 graceful skip (exit 0 + 경고).
+      #
+      # Step 3 추가: shard 1 만 실행 (main 향 4-shard race window 완화).
+      # 진짜 race-safe fix 는 별도 후속 — setup-e2e-test-user.ts 가 password 갱신 없이
+      # user 존재만 확인하는 모드 추가 필요.
+      - name: Setup E2E test user (idempotent)
+        if: matrix.shard == 1
+        run: npx tsx scripts/setup-e2e-test-user.ts
         continue-on-error: true
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
-
-  # Step 1 분리 (2026-05-28): slow 3 spec (auth/sync 무거움) 격리.
-  # multi-academy / share-link / templates-apply-delete — 각 1.5-3분, 합쳐 7-8분.
-  # main 향 = ubuntu 2 shard, dev 향 = Mac Studio 3 shard (각 1 spec 균등).
-  e2e-slow:
-    name: E2E slow (shard ${{ matrix.shard }}/${{ matrix.total }})
-    needs: setup-e2e-user
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":2},{"shard":2,"total":2}]' || '[{"shard":1,"total":3},{"shard":2,"total":3},{"shard":3,"total":3}]') }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run E2E slow specs
-        run: |
-          npx playwright test \
-            tests/e2e/multi-academy.spec.ts \
-            tests/e2e/share-link.spec.ts \
-            tests/e2e/templates-apply-delete.spec.ts \
-            --shard=${{ matrix.shard }}/${{ matrix.total }} \
-            --workers=4 \
-            --project=chromium --reporter=list
-        env:
-          CI: "true"
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      - name: Upload Playwright artifacts (slow)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-slow-shard${{ matrix.shard }}-${{ github.run_id }}
-          path: |
-            test-results/
-            playwright-report/
-          retention-days: 7
-          if-no-files-found: ignore
-
-  # Step 1 분리 (2026-05-28): fast 10 spec (가벼움).
-  # main 향 = ubuntu 2 shard, dev 향 = Mac Studio 3 shard.
-  e2e-fast:
-    name: E2E fast (shard ${{ matrix.shard }}/${{ matrix.total }})
-    needs: setup-e2e-user
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":2},{"shard":2,"total":2}]' || '[{"shard":1,"total":3},{"shard":2,"total":3},{"shard":3,"total":3}]') }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-      - run: npm ci
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-      - name: Run E2E fast specs
+      - name: Run E2E tests
         run: |
           npx playwright test \
             tests/e2e/final-working-test.spec.ts \
@@ -145,26 +93,41 @@ jobs:
             tests/e2e/schedule-sync-network.spec.ts \
             tests/e2e/auth-flow.spec.ts \
             tests/e2e/teachers-crud.spec.ts \
+            tests/e2e/templates-apply-delete.spec.ts \
             tests/e2e/schedule-conflict-auto-lane.spec.ts \
             tests/e2e/pdf-export.spec.ts \
             tests/e2e/mobile-flows.spec.ts \
             tests/e2e/offline-network.spec.ts \
             tests/e2e/schedule-viewmode.spec.ts \
+            tests/e2e/share-link.spec.ts \
+            tests/e2e/multi-academy.spec.ts \
             --shard=${{ matrix.shard }}/${{ matrix.total }} \
             --workers=4 \
             --project=chromium --reporter=list
         env:
           CI: "true"
+          # E2E_DISABLE_SW=1 제거 (이전 PR R 우회). SW timing root cause fix
+          # (sw.ts /api/* NetworkOnly + AuthGuard 7s) 후 e2e_pwa job 통합 — 모든
+          # spec이 SW 활성 환경에서 실행. 환경 충실도 = production.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # PR C — Supabase password auth로 진짜 토큰 발급. 누락 시 globalSetup이 throw,
+          # auth 의존 spec(teachers/templates/auth-flow Supabase 시나리오)만 영향.
           E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          # cleanup-test-data.ts 가 RLS 우회 위해 사용. 누락 시 cleanup 건너뜀(경고만).
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      - name: Upload Playwright artifacts (fast)
+      # T0' instrumentation (PR-α): fail 시 trace/screenshot/video/report artifact upload.
+      # playwright.config.ts:trace='on-first-retry' + screenshot='only-on-failure' +
+      # video='retain-on-failure' 로 이미 생성되지만 CI artifact 로 보존되지 않아
+      # fail 후 분석 불가했음. 본 step 으로 GitHub Actions UI 에서 다운로드 가능.
+      #
+      # Step 3 변경: shard 별 artifact 분리 (matrix run 충돌 방지).
+      - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-fast-shard${{ matrix.shard }}-${{ github.run_id }}
+          name: playwright-shard${{ matrix.shard }}-${{ github.run_id }}
           path: |
             test-results/
             playwright-report/
