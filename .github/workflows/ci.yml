@@ -56,15 +56,20 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
   e2e:
-    # main 향 = ubuntu + 4 shard 병렬 (parallel coverage).
-    # dev 향   = Mac Studio + 1 shard (single fast run).
-    name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }})
+    # main 향 = ubuntu + 4 shard 병렬 (parallel coverage) — user 1-4 각자 다른 user.
+    # dev 향   = Mac Studio + 6 shard 병렬 — user 1-6 각자 다른 user (race window 영구 해소).
+    #
+    # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
+    # 각 shard 가 다른 supabase user 사용 → DB row 격리 → academy data race 0.
+    # user_index = shard 의 user 번호 (1-6).
+    # password_secret = 해당 user 의 GitHub secret 명 (USER_1 은 기존 E2E_TEST_USER_PASSWORD 활용).
+    name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }} — user ${{ matrix.user_index }})
     needs: build
     runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4},{"shard":2,"total":4},{"shard":3,"total":4},{"shard":4,"total":4}]' || '[{"shard":1,"total":1}]') }}
+        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]' || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -83,23 +88,22 @@ jobs:
         run: npx playwright install chromium
         env:
           PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
-      # PR C — Supabase test user 멱등 셋업. 매 CI마다 실행해도 안전:
-      # 이미 존재하면 password 갱신, 없으면 신규 생성.
-      # 사용자 측 setup script 로컬 실행 부담 제거 + GitHub secret 변경 시 자동 반영.
-      # secrets 없으면 setup script가 graceful skip (exit 0 + 경고).
-      #
-      # Step 3 추가: shard 1 만 실행 (main 향 4-shard race window 완화).
-      # 진짜 race-safe fix 는 별도 후속 — setup-e2e-test-user.ts 가 password 갱신 없이
-      # user 존재만 확인하는 모드 추가 필요.
-      - name: Setup E2E test user (idempotent)
+      # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
+      # script 가 6 user 모두 idempotent 셋업. shard 1 만 실행 — 다른 shard 는 spec login 만.
+      # 모든 USER_PASSWORD_1~6 env 주입 (USER_1 은 legacy E2E_TEST_USER_PASSWORD).
+      - name: Setup E2E test users (6 idempotent)
         if: matrix.shard == 1
         run: npx tsx scripts/setup-e2e-test-user.ts
         continue-on-error: true
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
           E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          E2E_USER_PASSWORD_2: ${{ secrets.E2E_USER_PASSWORD_2 }}
+          E2E_USER_PASSWORD_3: ${{ secrets.E2E_USER_PASSWORD_3 }}
+          E2E_USER_PASSWORD_4: ${{ secrets.E2E_USER_PASSWORD_4 }}
+          E2E_USER_PASSWORD_5: ${{ secrets.E2E_USER_PASSWORD_5 }}
+          E2E_USER_PASSWORD_6: ${{ secrets.E2E_USER_PASSWORD_6 }}
       - name: Run E2E tests
         run: |
           npx playwright test \
@@ -128,10 +132,10 @@ jobs:
           # spec이 SW 활성 환경에서 실행. 환경 충실도 = production.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          # PR C — Supabase password auth로 진짜 토큰 발급. 누락 시 globalSetup이 throw,
-          # auth 의존 spec(teachers/templates/auth-flow Supabase 시나리오)만 영향.
-          E2E_TEST_USER_EMAIL: ${{ secrets.E2E_TEST_USER_EMAIL }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          # 옵션 A (2026-05-28): 각 shard 가 다른 user 로 login → DB row 격리.
+          # EMAIL hardcode (e2e-test-N@class-planner.test). PASSWORD 는 dynamic secret access.
+          E2E_TEST_USER_EMAIL: e2e-test-${{ matrix.user_index }}@class-planner.test
+          E2E_TEST_USER_PASSWORD: ${{ secrets[matrix.password_secret] }}
           # cleanup-test-data.ts 가 RLS 우회 위해 사용. 누락 시 cleanup 건너뜀(경고만).
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       # T0' instrumentation (PR-α): fail 시 trace/screenshot/video/report artifact upload.

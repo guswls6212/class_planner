@@ -1,29 +1,38 @@
 /**
- * E2E test 전용 Supabase user를 admin API로 생성하는 일회성 setup 스크립트.
+ * E2E test 전용 Supabase user 6개를 admin API로 idempotent 셋업.
  *
  * 실행:
  *   cd class-planner
  *   npx tsx scripts/setup-e2e-test-user.ts
  *
- * Prerequisites (.env.local):
- *   NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY=eyJ...  # admin API 호출용
- *   E2E_TEST_USER_EMAIL=e2e-test@class-planner.test
- *   E2E_TEST_USER_PASSWORD=<강한 password>
+ * Prerequisites (.env.local 또는 GitHub secret):
+ *   NEXT_PUBLIC_SUPABASE_URL
+ *   SUPABASE_SERVICE_ROLE_KEY
+ *   E2E_TEST_USER_PASSWORD (legacy single-user, USER_1 의 default)
+ *   E2E_USER_PASSWORD_2 ~ E2E_USER_PASSWORD_6 (옵션 A shard 분리용)
  *
  * 동작:
- * 1. Supabase admin API로 user 생성 (email_confirm: true 즉시 활성)
- * 2. 이미 존재하면 password 갱신
- * 3. 출력: user id (E2E_TEST_USER_ID로 .env.local에 추가하면 globalSetup이 더 빠름)
+ * 1. 6 user (e2e-test-1@ ~ e2e-test-6@ class-planner.test) 각각 idempotent 셋업
+ *    - 있으면 password 갱신 / 없으면 createUser
+ * 2. 각 user 의 owner academy 1 자동 생성 (cleanup race 안전)
  *
- * 멱등성: 여러 번 실행해도 안전 — 동일 email이면 password update.
+ * Race 격리 (proposal ci-shard-user-isolation 2026-05-28):
+ * shard 별 다른 user → DB row 격리 → academy data race 영구 해소.
+ *
+ * 멱등성: 여러 번 실행해도 안전.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 import path from "node:path";
 
 interface EnvFile {
   [key: string]: string;
+}
+
+interface UserSpec {
+  index: number;
+  email: string;
+  password: string;
 }
 
 function loadDotEnv(file: string): EnvFile {
@@ -48,82 +57,62 @@ function loadDotEnv(file: string): EnvFile {
   return result;
 }
 
-async function main(): Promise<void> {
-  const envLocal = loadDotEnv(path.join(process.cwd(), ".env.local"));
-  const url =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? envLocal.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? envLocal.SUPABASE_SERVICE_ROLE_KEY;
-  const email = process.env.E2E_TEST_USER_EMAIL ?? envLocal.E2E_TEST_USER_EMAIL;
-  const password =
-    process.env.E2E_TEST_USER_PASSWORD ?? envLocal.E2E_TEST_USER_PASSWORD;
+function getEnv(key: string, envLocal: EnvFile): string | undefined {
+  return process.env[key] ?? envLocal[key];
+}
 
-  if (!url || !serviceKey) {
-    console.error(
-      "❌ NEXT_PUBLIC_SUPABASE_URL 또는 SUPABASE_SERVICE_ROLE_KEY 누락. " +
-        ".env.local 또는 환경 변수 확인.",
-    );
-    process.exit(1);
-  }
-  if (!email || !password) {
-    console.error(
-      "❌ E2E_TEST_USER_EMAIL 또는 E2E_TEST_USER_PASSWORD 누락. .env.local 작성 필요.",
-    );
-    console.error("  예시:");
-    console.error("    E2E_TEST_USER_EMAIL=e2e-test@class-planner.test");
-    console.error("    E2E_TEST_USER_PASSWORD=<강한 password>");
-    process.exit(1);
-  }
-
-  const sbAdmin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
+function buildUserSpecs(envLocal: EnvFile): UserSpec[] {
+  const fallbackPassword = getEnv("E2E_TEST_USER_PASSWORD", envLocal);
+  return Array.from({ length: 6 }, (_, i) => {
+    const index = i + 1;
+    const specificPassword = getEnv(`E2E_USER_PASSWORD_${index}`, envLocal);
+    return {
+      index,
+      email: `e2e-test-${index}@class-planner.test`,
+      password: specificPassword ?? fallbackPassword ?? "",
+    };
   });
+}
 
-  console.log(`📧 Test user 셋업: ${email}`);
-
-  // 1. 기존 user 검색
-  const { data: existingUsers, error: listError } = await sbAdmin.auth.admin.listUsers();
+async function ensureUser(
+  sbAdmin: SupabaseClient,
+  spec: UserSpec,
+): Promise<string> {
+  const { data: existingUsers, error: listError } =
+    await sbAdmin.auth.admin.listUsers();
   if (listError) {
-    console.error(`❌ user 목록 조회 실패: ${listError.message}`);
-    process.exit(1);
+    throw new Error(`user list 조회 실패: ${listError.message}`);
   }
-  const existingUser = existingUsers.users.find((u) => u.email === email);
-
-  let userId: string;
-  if (existingUser) {
-    console.log(`ℹ️  이미 존재 (id=${existingUser.id}) — password 갱신`);
+  const existing = existingUsers.users.find((u) => u.email === spec.email);
+  if (existing) {
     const { error: updateError } = await sbAdmin.auth.admin.updateUserById(
-      existingUser.id,
-      { password, email_confirm: true },
+      existing.id,
+      { password: spec.password, email_confirm: true },
     );
     if (updateError) {
-      console.error(`❌ password 갱신 실패: ${updateError.message}`);
-      process.exit(1);
+      throw new Error(`password 갱신 실패 (${spec.email}): ${updateError.message}`);
     }
-    userId = existingUser.id;
-  } else {
-    const { data, error } = await sbAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { e2e_test_user: true },
-    });
-    if (error || !data.user) {
-      console.error(`❌ user 생성 실패: ${error?.message ?? "no user"}`);
-      process.exit(1);
-    }
-    userId = data.user.id;
-    console.log(`✅ 신규 user 생성 (id=${userId})`);
+    return existing.id;
   }
+  const { data, error } = await sbAdmin.auth.admin.createUser({
+    email: spec.email,
+    password: spec.password,
+    email_confirm: true,
+    user_metadata: { e2e_test_user: true, shard_index: spec.index },
+  });
+  if (error || !data.user) {
+    throw new Error(`user 생성 실패 (${spec.email}): ${error?.message ?? "no user"}`);
+  }
+  return data.user.id;
+}
 
-  // PR D — academy + owner role 자동 부여 (멱등)
-  console.log("");
-  console.log(`🏫 Academy 셋업: user ${userId.slice(0, 8)}...`);
-  // 2026-05-18 hotfix: `.maybeSingle()` 대신 `.limit(1)` — 이전 cleanup teardown 의
-  // academy_members DELETE 실패 (audit_log RESTRICT FK 등) 로 multiple owner rows 가
-  // 누적되면 maybeSingle 이 "multiple (or no) rows returned" error 로 fail → setup
-  // 전체 차단 → 모든 후속 PR 의 E2E job fail. multiple row 발견 시 첫 row 만 사용
-  // 하고 나머지는 graceful 무시 (cleanup race 영향 격리). 자세히: ci.yml E2E job log.
+async function ensureOwnerAcademy(
+  sbAdmin: SupabaseClient,
+  userId: string,
+  spec: UserSpec,
+): Promise<string> {
+  // 2026-05-18 hotfix 흐름 유지: maybeSingle 대신 limit(1).
+  // multiple owner row 누적 시 첫 row 사용 — cleanup race graceful.
   const { data: existingMemberships, error: memberSelectError } = await sbAdmin
     .from("academy_members")
     .select("academy_id")
@@ -131,55 +120,81 @@ async function main(): Promise<void> {
     .eq("role", "owner")
     .limit(1);
   if (memberSelectError) {
-    console.error(`❌ academy_members 조회 실패: ${memberSelectError.message}`);
+    throw new Error(`academy_members 조회 실패 (user ${userId.slice(0, 8)}...): ${memberSelectError.message}`);
+  }
+  const existing = existingMemberships?.[0];
+  if (existing) {
+    return existing.academy_id;
+  }
+  const academyName = `E2E Test Academy ${spec.index}`;
+  const { data: newAcademy, error: academyInsertError } = await sbAdmin
+    .from("academies")
+    .insert({ name: academyName, created_by: userId })
+    .select("id")
+    .single();
+  if (academyInsertError || !newAcademy) {
+    throw new Error(`academies INSERT 실패 (${academyName}): ${academyInsertError?.message}`);
+  }
+  const { error: memberInsertError } = await sbAdmin
+    .from("academy_members")
+    .insert({ academy_id: newAcademy.id, user_id: userId, role: "owner" });
+  if (memberInsertError) {
+    throw new Error(`academy_members INSERT 실패: ${memberInsertError.message}`);
+  }
+  return newAcademy.id;
+}
+
+async function main(): Promise<void> {
+  const envLocal = loadDotEnv(path.join(process.cwd(), ".env.local"));
+  const url = getEnv("NEXT_PUBLIC_SUPABASE_URL", envLocal);
+  const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY", envLocal);
+
+  if (!url || !serviceKey) {
+    console.error(
+      "❌ NEXT_PUBLIC_SUPABASE_URL 또는 SUPABASE_SERVICE_ROLE_KEY 누락. .env.local 또는 환경 변수 확인.",
+    );
     process.exit(1);
   }
-  const existingMembership = existingMemberships?.[0] ?? null;
 
-  let academyId: string;
-  if (existingMembership) {
-    academyId = existingMembership.academy_id;
-    console.log(`ℹ️  이미 owner인 academy 존재 (id=${academyId.slice(0, 8)}...)`);
-  } else {
-    const { data: newAcademy, error: academyInsertError } = await sbAdmin
-      .from("academies")
-      .insert({ name: "E2E Test Academy", created_by: userId })
-      .select("id")
-      .single();
-    if (academyInsertError || !newAcademy) {
-      console.error(`❌ academies INSERT 실패: ${academyInsertError?.message}`);
-      process.exit(1);
+  const userSpecs = buildUserSpecs(envLocal);
+  const missingPasswords = userSpecs.filter((s) => !s.password);
+  if (missingPasswords.length > 0) {
+    console.error("❌ 다음 user 의 password 누락:");
+    for (const s of missingPasswords) {
+      console.error(
+        `   - ${s.email} → E2E_USER_PASSWORD_${s.index} (또는 fallback E2E_TEST_USER_PASSWORD) 설정 필요`,
+      );
     }
-    academyId = newAcademy.id;
-    const { error: memberInsertError } = await sbAdmin
-      .from("academy_members")
-      .insert({ academy_id: academyId, user_id: userId, role: "owner" });
-    if (memberInsertError) {
-      console.error(`❌ academy_members INSERT 실패: ${memberInsertError.message}`);
-      process.exit(1);
-    }
-    console.log(`✅ Academy 신규 생성 (id=${academyId})`);
+    process.exit(1);
+  }
+
+  const sbAdmin = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  console.log("📧 E2E test user 6 셋업 시작 (옵션 A — shard 별 격리)");
+  console.log("");
+
+  for (const spec of userSpecs) {
+    console.log(`▶ ${spec.email} (shard ${spec.index})`);
+    const userId = await ensureUser(sbAdmin, spec);
+    const academyId = await ensureOwnerAcademy(sbAdmin, userId, spec);
+    console.log(
+      `  ✅ user id=${userId.slice(0, 8)}... / academy id=${academyId.slice(0, 8)}...`,
+    );
   }
 
   console.log("");
-  console.log("✅ Setup 완료.");
+  console.log("✅ 6 user 셋업 완료.");
   console.log("");
-  console.log("📝 다음 단계:");
-  console.log("  1. .env.local에 추가 (선택 — globalSetup이 더 빨라짐):");
-  console.log(`     E2E_TEST_USER_ID=${userId}`);
-  console.log(`     E2E_TEST_ACADEMY_ID=${academyId}`);
+  console.log("📝 GitHub Actions secrets (5 set 추가 필요 — USER_1 은 기존 E2E_TEST_USER_PASSWORD 활용):");
+  console.log("  - E2E_USER_PASSWORD_2");
+  console.log("  - E2E_USER_PASSWORD_3");
+  console.log("  - E2E_USER_PASSWORD_4");
+  console.log("  - E2E_USER_PASSWORD_5");
+  console.log("  - E2E_USER_PASSWORD_6");
   console.log("");
-  console.log("  2. GitHub Actions secrets 등록:");
-  console.log("     - NEXT_PUBLIC_SUPABASE_URL (있으면 skip)");
-  console.log("     - NEXT_PUBLIC_SUPABASE_ANON_KEY (있으면 skip)");
-  console.log("     - E2E_TEST_USER_EMAIL");
-  console.log("     - E2E_TEST_USER_PASSWORD");
-  console.log("     - SUPABASE_SERVICE_ROLE_KEY (cleanup용)");
-  console.log("");
-  console.log("  3. e2e 실행:");
-  console.log(
-    "     npm exec -- playwright test tests/e2e/teachers-crud.spec.ts --project=chromium",
-  );
+  console.log("👤 ci.yml matrix 의 user_index 가 1~6 — 각 shard 가 다른 user.");
 }
 
 main().catch((err) => {
