@@ -1534,14 +1534,36 @@ function SchedulePageContent(): JSX.Element {
         return;
       }
       if (!canManage) return;
-      // 단일 drop — attendance migration 위해 old weekday 미리 캡쳐
+      // 단일 drop — attendance migration 위해 old weekday 미리 캡쳐.
+      // 사용자 mental model 의 일관성 (2026-05-28): modal save 와 drag drop 둘 다 session
+      // weekday 변경 시 동일하게 attendance migrate 트리거.
       const movedSession = sessions.find((s) => s.id === sessionId);
       const oldWeekday = movedSession?.weekday;
+      const oldWeekStart = movedSession?.weekStartDate;
+      // Debug log (omni-radar 연동 — devtools console + Network 탭에서 확인 가능)
+      logger.info("session drop", {
+        sessionId,
+        oldWeekday,
+        newWeekday: weekday,
+        oldWeekStart,
+        currentWeekStart,
+      });
       await _handleSessionDropBase(sessionId, weekday, time, yPosition);
-      if (oldWeekday !== undefined && oldWeekday !== weekday) {
-        // weekday 변경 시만 migrate 호출. 같은 weekday (시간/lane 변경) → noop.
-        await migrateAttendanceForSessionMove(sessionId, oldWeekday, weekday);
+      if (oldWeekday === undefined) {
+        logger.warn("drop: oldWeekday not found — sessions stale?", { sessionId });
+        return;
       }
+      if (oldWeekday === weekday) {
+        // 같은 weekday — lane/time 변경. attendance 그대로.
+        // 사용자 가시 (디버그 용, 2026-05-28): 같은 요일 drag 임을 알림 — 사용자가 "왜 안 됨?" 혼동 회피
+        showToast(
+          "info",
+          `같은 요일 (${["월","화","수","목","금","토","일"][weekday]}) — 출결 그대로`,
+        );
+        return;
+      }
+      // weekday 변경 → attendance migrate 트리거 (modal save 와 동일 효과)
+      await migrateAttendanceForSessionMove(sessionId, oldWeekday, weekday);
     },
     [
       canManage,
