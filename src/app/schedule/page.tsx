@@ -2411,6 +2411,44 @@ function SchedulePageContent(): JSX.Element {
         addEnrollment={addEnrollment}
         validateAndToastEdit={validateAndToastEdit}
         setSelectedDate={setSelectedDate}
+        onAttendanceMigrate={({
+          sessionId,
+          oldWeekday,
+          oldWeekStartDate,
+          newWeekday,
+          newWeekStartDate,
+        }) => {
+          // 양 weekStart 기준으로 instance 날짜 계산. 한쪽이라도 undefined 면 currentWeekStart 로 fallback.
+          const oldWS = oldWeekStartDate || currentWeekStart;
+          const newWS = newWeekStartDate || oldWS;
+          const computeInstanceDate = (ws: string, wd: number) => {
+            const d = new Date(`${ws}T12:00:00+09:00`);
+            d.setDate(d.getDate() + wd);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${y}-${m}-${day}`;
+          };
+          const oldDate = computeInstanceDate(oldWS, oldWeekday);
+          const newDate = computeInstanceDate(newWS, newWeekday);
+          if (oldDate === newDate) return;
+          // fire-and-forget — modal close UX block 안 함
+          void (async () => {
+            const result = await migrateAttendance(sessionId, oldDate, newDate);
+            if (!result) return;
+            if (result.error === "DUPLICATE_DATE") {
+              showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
+              return;
+            }
+            if (result.error === "FAIL") {
+              showToast("error", "출결 이동 실패");
+              return;
+            }
+            if (result.count > 0) {
+              showToast("success", `출결 ${result.count}건 함께 이동`);
+            }
+          })();
+        }}
       />
 
       {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}
