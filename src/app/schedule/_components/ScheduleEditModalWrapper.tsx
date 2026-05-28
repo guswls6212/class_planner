@@ -76,6 +76,17 @@ interface Props {
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>;
   validateAndToastEdit: any;
   setSelectedDate: (date: Date) => void;
+  /**
+   * Modal save 시 weekday / weekStartDate 변경 detect 후 출석 migrate (B move 정책 2026-05-28).
+   * caller (page) 가 useAttendance.migrateAttendance + toast 호출.
+   */
+  onAttendanceMigrate?: (params: {
+    sessionId: string;
+    oldWeekday: number;
+    oldWeekStartDate: string | undefined;
+    newWeekday: number;
+    newWeekStartDate: string | undefined;
+  }) => void;
 }
 
 export default function ScheduleEditModalWrapper(props: Props) {
@@ -196,6 +207,7 @@ export default function ScheduleEditModalWrapper(props: Props) {
         setTempSubjectId: props.setTempSubjectId,
         setTempEnrollments: props.setTempEnrollments,
         onSaveComplete: () => props.setTempTeacherId(undefined),
+        onAttendanceMigrate: props.onAttendanceMigrate,
         onMoveToWeek: (weekStartDate: string) => {
           props.setSelectedDate(
             new Date(`${weekStartDate}T12:00:00+09:00`),

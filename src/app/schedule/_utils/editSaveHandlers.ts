@@ -69,6 +69,21 @@ export function buildEditOnSave(params: {
   ) => Promise<void>;
   /** 다른 주로 이동 후 시간표 navigate. weekStartDate 받음. */
   onMoveToWeek?: (weekStartDate: string) => void;
+  /**
+   * Modal save 시 session 의 weekday / weekStartDate 변경 detect 후 출결도 migrate
+   * (B move 정책 2026-05-28). signature 는 caller(page) 가 schedule weekStart context 알고 있음.
+   *   - oldWeekday / oldWeekStartDate: 모달 열기 시점의 session 메타
+   *   - newWeekday / newWeekStartDate: 저장 시 변경된 메타 (이동 미발생 시 동일)
+   *   - sessionId: migrate 대상
+   * 변경 없으면 caller 가 noop (oldDate === newDate).
+   */
+  onAttendanceMigrate?: (params: {
+    sessionId: string;
+    oldWeekday: number;
+    oldWeekStartDate: string | undefined;
+    newWeekday: number;
+    newWeekStartDate: string | undefined;
+  }) => void;
   validateAndToastEdit: (start: string, end: string) => boolean;
   setShowEditModal: (open: boolean) => void;
   setTempSubjectId: (id: string) => void;
@@ -95,6 +110,7 @@ export function buildEditOnSave(params: {
     setTempEnrollments,
     onSaveComplete,
     onMoveToWeek,
+    onAttendanceMigrate,
   } = params;
 
   return async (weekday: number, newWeekStartDate?: string) => {
@@ -171,6 +187,27 @@ export function buildEditOnSave(params: {
         ? { ...sessionData, weekStartDate: newWeekStartDate }
         : sessionData;
       await updateSession(editModalData.id, sessionDataWithWeek);
+
+      // 출결 follow (B move, 2026-05-28): weekday / weekStartDate 변경 시 attendance 도 migrate.
+      // 같은 weekday + 같은 weekStartDate → callback 안에서 oldDate === newDate noop.
+      if (onAttendanceMigrate) {
+        const oldWeekday = editModalData.weekday;
+        const oldWeekStartDate = editModalData.weekStartDate;
+        const newWeekdayResolved = weekday;
+        const newWeekStartDateResolved = newWeekStartDate ?? oldWeekStartDate;
+        if (
+          oldWeekday !== newWeekdayResolved ||
+          oldWeekStartDate !== newWeekStartDateResolved
+        ) {
+          onAttendanceMigrate({
+            sessionId: editModalData.id,
+            oldWeekday,
+            oldWeekStartDate,
+            newWeekday: newWeekdayResolved,
+            newWeekStartDate: newWeekStartDateResolved,
+          });
+        }
+      }
 
       // 상태 초기화
       setShowEditModal(false);
