@@ -154,3 +154,25 @@ jobs:
             playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Step 3 (2026-05-28, proposal ci-resource-budget-step-by-step #step-3):
+  # branch protection 의 required check 용 summary job.
+  # e2e matrix 의 모든 shard 통과 시 success, 하나라도 fail/cancel 시 fail.
+  # branch protection 에 "E2E all shards required" 1 context 만 추가하면 6 shard 모두 monitor.
+  #
+  # 배경: PR #553/#555/#556 같은 e2e fail 인데도 머지된 design issue 해소.
+  # branch protection 의 required check 가 build 만이라 e2e job 의 fail 가 머지 차단 X.
+  # matrix job 의 instance name 이 동적 (shard 1-6, user 1-6) 이라 직접 등록 어려움 → summary job 패턴.
+  e2e-all-required:
+    name: E2E all shards required
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all e2e shards passed
+        run: |
+          if [[ "${{ needs.e2e.result }}" != "success" ]]; then
+            echo "❌ e2e matrix result = ${{ needs.e2e.result }} — block merge"
+            exit 1
+          fi
+          echo "✅ all e2e shards passed"
