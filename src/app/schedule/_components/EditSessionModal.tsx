@@ -58,6 +58,13 @@ function formatStudentSubtitleExceptGrade(
   return "";
 }
 import { NAME_MAX_LENGTH } from "../../../lib/validation/profileSchemas";
+import {
+  ATTENDANCE_CYCLE_BG,
+  ATTENDANCE_CYCLE_LABEL,
+  ATTENDANCE_CYCLE_RING,
+  nextAttendanceCycleStatus,
+  normalizeForCycle,
+} from "./EditSessionModal.attendanceCycle";
 
 type StudentOption = {
   id: string;
@@ -115,6 +122,25 @@ interface EditSessionModalProps {
    * 선택 날짜 강조에 사용. 미지정 시 캘린더는 weekday-only (이전 동작 호환).
    */
   weekStartDate?: string;
+  /**
+   * Layer 1 B 출결 통합 (mockup edit-session-with-attendance, 2026-05-28).
+   * 본 session 의 출결 map (key = studentId, value = {status}).
+   * 미제공 시 출결 섹션 안 보임 (backward compat).
+   */
+  attendanceMap?: Record<string, { status: string }>;
+  /**
+   * Layer 1 B — 학생 cycle pill click 시 호출.
+   * server CUD 는 caller (Wrapper) 책임 — 본 컴포넌트는 단순 callback.
+   */
+  onMarkAttendance?: (
+    studentId: string,
+    status: "present" | "absent" | "late" | "none",
+  ) => Promise<void> | void;
+  /**
+   * Layer 1 B — 출결 기록 권한 (canManage). false 시 pill disabled (read-only).
+   * Default true (편의). admin/owner 운영자는 true, member (강사) 는 본인 수업만 true.
+   */
+  canManageAttendance?: boolean;
 }
 
 // ── 캘린더 helper (Variant V3: 1달 캘린더) ──────────────────────────
@@ -209,6 +235,9 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   onSave,
   onSubjectColorChange,
   weekStartDate,
+  attendanceMap,
+  onMarkAttendance,
+  canManageAttendance = true,
 }) => {
   const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -836,6 +865,65 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             selectedStudents.length > 0 && (
               <EmptyState>더 추가할 학생이 없습니다</EmptyState>
             )}
+
+          {/*
+            Layer 1 B — 학생별 출결 cycle pill (mockup edit-session-with-attendance).
+            caller 가 attendanceMap + onMarkAttendance 전달 시만 노출.
+            한 학생 한 pill — click 마다 cycle (미체크 → 출석 → 결석 → 지각 → 미체크).
+            canManageAttendance=false (read-only) 시 disabled.
+            기존 AttendanceSheet (별도 모달) 흐름은 그대로 유지 — 본 섹션은 편집 모달 안 inline 진입점.
+          */}
+          {attendanceMap && onMarkAttendance && selectedStudents.length > 0 && (
+            <div className="mt-2 pt-3 border-t border-[var(--color-border)] flex flex-col gap-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  출결
+                </span>
+                <span className="text-[10.5px] text-[var(--color-text-muted)]">
+                  클릭 시 미체크 → 출석 → 결석 → 지각 → 미체크
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {selectedStudents.map((student) => {
+                  const current = normalizeForCycle(attendanceMap[student.id]?.status);
+                  const label = ATTENDANCE_CYCLE_LABEL[current];
+                  const bg = ATTENDANCE_CYCLE_BG[current];
+                  const ring = ATTENDANCE_CYCLE_RING[current];
+                  return (
+                    <div
+                      key={student.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2"
+                    >
+                      <div className="text-[13px] text-[var(--color-text-primary)] truncate">
+                        {student.name}
+                      </div>
+                      <button
+                        type="button"
+                        data-testid={`edit-attendance-pill-${student.id}`}
+                        data-attendance-status={current}
+                        disabled={!canManageAttendance}
+                        onClick={() => {
+                          const next = nextAttendanceCycleStatus(current);
+                          void onMarkAttendance(student.id, next);
+                        }}
+                        className={[
+                          "px-3 py-1 rounded-full text-[12px] font-medium text-white ring-2 transition-colors",
+                          bg,
+                          ring,
+                          canManageAttendance
+                            ? "hover:opacity-90 active:opacity-80 cursor-pointer"
+                            : "opacity-60 cursor-not-allowed",
+                        ].join(" ")}
+                        aria-label={`${student.name} 출결 상태: ${label}. 클릭하여 다음 상태로 변경`}
+                      >
+                        {label}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 요일/시간 select 제거 — 헤더 chip이 SSOT (2026-05-12 Variant C 채택).

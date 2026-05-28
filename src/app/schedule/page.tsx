@@ -1934,6 +1934,15 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [attendanceSession, enrollments, students]);
 
+  // Layer 1 B (mockup edit-session-with-attendance, 2026-05-28):
+  // 편집 모달이 열리면 본 세션의 출결을 fetch (cycle pill 의 초기 status 표시용).
+  // selectedDate 기준 — 사용자가 다른 주로 캘린더 이동 시 그 주의 출결.
+  useEffect(() => {
+    if (!userId || !editModalData || !showEditModal) return;
+    const dateStr = selectedDate.toISOString().slice(0, 10);
+    void fetchAttendance(editModalData.id, dateStr);
+  }, [userId, editModalData, showEditModal, selectedDate, fetchAttendance]);
+
 
   // 🆕 학생 드래그 상태 관리 (중복 선언 제거)
   // (훅으로 대체됨)
@@ -2301,6 +2310,20 @@ function SchedulePageContent(): JSX.Element {
         addEnrollment={addEnrollment}
         validateAndToastEdit={validateAndToastEdit}
         setSelectedDate={setSelectedDate}
+        attendanceMap={editModalData ? attendance[editModalData.id] : undefined}
+        onMarkAttendance={(studentId, status) => {
+          if (!editModalData) return;
+          // 출결 기록 날짜 — 현재 view 의 selectedDate (편집 모달 같은 컨텍스트)
+          const dateStr = selectedDate.toISOString().slice(0, 10);
+          // status="none" 은 markAttendance API 에서 미체크 복원 (또는 graceful no-op). server enum 호환.
+          return markAttendance(editModalData.id, studentId, dateStr, status);
+        }}
+        canManageAttendance={
+          // 운영자 / 관리자 — 모두 OK. 강사 (member) — 본인 수업 만.
+          role === "member"
+            ? editModalData?.teacherId === linkedTeacherId
+            : true
+        }
       />
 
       {/* 세션 삭제는 즉시 + undo 토스트로 처리 — ConfirmModal 제거됨 (학생/과목/강사 일관성) */}

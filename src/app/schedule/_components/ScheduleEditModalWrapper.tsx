@@ -76,6 +76,17 @@ interface Props {
   addEnrollment: (studentId: string, subjectId: string) => Promise<boolean>;
   validateAndToastEdit: any;
   setSelectedDate: (date: Date) => void;
+
+  // Layer 1 B 출결 통합 (2026-05-28, mockup edit-session-with-attendance)
+  /** 본 세션의 출결 map (key = studentId). 미제공 시 출결 섹션 안 보임. */
+  attendanceMap?: Record<string, { status: string }>;
+  /** 학생 cycle pill click handler — caller (schedule/page.tsx) 가 markAttendance 호출. */
+  onMarkAttendance?: (
+    studentId: string,
+    status: "present" | "absent" | "late" | "none",
+  ) => Promise<void> | void;
+  /** 출결 권한 — false 시 pill disabled. caller 가 role + member-teacher 매칭 계산. */
+  canManageAttendance?: boolean;
 }
 
 export default function ScheduleEditModalWrapper(props: Props) {
@@ -202,6 +213,9 @@ export default function ScheduleEditModalWrapper(props: Props) {
           );
         },
       })}
+      attendanceMap={props.attendanceMap}
+      onMarkAttendance={props.onMarkAttendance}
+      canManageAttendance={props.canManageAttendance}
     />
   );
 }
