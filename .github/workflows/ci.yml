@@ -69,11 +69,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(
-          (github.event_name == 'push' || github.base_ref == 'main')
-            && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]'
-            || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]'
-        ) }}
+        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]' || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
