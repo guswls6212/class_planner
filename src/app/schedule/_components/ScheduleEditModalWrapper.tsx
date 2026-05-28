@@ -77,7 +77,7 @@ interface Props {
   validateAndToastEdit: any;
   setSelectedDate: (date: Date) => void;
 
-  // Layer 1 B 출결 통합 (2026-05-28, mockup edit-session-with-attendance)
+  // Layer 1 B 출결 통합 (2026-05-28, mockup edit-session-with-attendance, PR #548)
   /** 본 세션의 출결 map (key = studentId). 미제공 시 출결 섹션 안 보임. */
   attendanceMap?: Record<string, { status: string }>;
   /** 학생 cycle pill click handler — caller (schedule/page.tsx) 가 markAttendance 호출. */
@@ -87,6 +87,18 @@ interface Props {
   ) => Promise<void> | void;
   /** 출결 권한 — false 시 pill disabled. caller 가 role + member-teacher 매칭 계산. */
   canManageAttendance?: boolean;
+
+  /**
+   * Modal save 시 weekday / weekStartDate 변경 detect 후 출석 migrate (B move 정책 2026-05-28, PR #550).
+   * caller (page) 가 useAttendance.migrateAttendance + toast 호출.
+   */
+  onAttendanceMigrate?: (params: {
+    sessionId: string;
+    oldWeekday: number;
+    oldWeekStartDate: string | undefined;
+    newWeekday: number;
+    newWeekStartDate: string | undefined;
+  }) => void;
 }
 
 export default function ScheduleEditModalWrapper(props: Props) {
@@ -207,6 +219,7 @@ export default function ScheduleEditModalWrapper(props: Props) {
         setTempSubjectId: props.setTempSubjectId,
         setTempEnrollments: props.setTempEnrollments,
         onSaveComplete: () => props.setTempTeacherId(undefined),
+        onAttendanceMigrate: props.onAttendanceMigrate,
         onMoveToWeek: (weekStartDate: string) => {
           props.setSelectedDate(
             new Date(`${weekStartDate}T12:00:00+09:00`),
