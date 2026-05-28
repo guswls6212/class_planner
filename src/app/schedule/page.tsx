@@ -274,6 +274,51 @@ function SchedulePageContent(): JSX.Element {
     migrateAttendance,
   } = useAttendance(userId);
 
+  /**
+   * session 이동 시 출결도 따라 이동 (B move 정책, 2026-05-28).
+   * 3 drag drop path (drop / insertBefore / copy) + modal save 공통.
+   * omni-radar 로 발견 (2026-05-28): 사용자가 edge slot 으로 drag 시 insertBefore
+   * path 가는데 migrate 누락 → drag drop 'toast 안 나옴' 사고.
+   *
+   * weekday 변경 시 → migrate API + toast. 같은 weekday → noop.
+   */
+  const migrateAttendanceForSessionMove = useCallback(
+    async (sessionId: string, oldWeekday: number, newWeekday: number) => {
+      if (oldWeekday === newWeekday) return null;
+      const weekStartDate = new Date(`${currentWeekStart}T12:00:00+09:00`);
+      const computeInstanceDate = (wd: number) => {
+        const d = new Date(weekStartDate);
+        d.setDate(d.getDate() + wd);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const oldDate = computeInstanceDate(oldWeekday);
+      const newDate = computeInstanceDate(newWeekday);
+      const result = await migrateAttendance(sessionId, oldDate, newDate);
+      if (!result) {
+        showToast("info", "출결 이동 — 로그인 필요");
+        return null;
+      }
+      if (result.error === "DUPLICATE_DATE") {
+        showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
+        return null;
+      }
+      if (result.error === "FAIL") {
+        showToast("error", "출결 이동 실패 (서버 오류)");
+        return null;
+      }
+      if (result.count > 0) {
+        showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
+        return result.count;
+      }
+      showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
+      return 0;
+    },
+    [currentWeekStart, migrateAttendance],
+  );
+
   // Role-based UI gate — member role gets read-only schedule
   const { canManage, adminCount, role, linkedTeacherId } = useMyRole();
 
@@ -668,9 +713,21 @@ function SchedulePageContent(): JSX.Element {
       insertBeforeYPos: number,
     ) => {
       if (!canManage) return;
+      // 출결 follow (B move, 2026-05-28): insertBefore 도 drag drop path 의 하나.
+      // omni-radar 로그로 발견 — '세션 lane 삽입' 흐름이 별도. weekday 변경 시 migrate.
+      const movedSession = sessions.find((s) => s.id === sessionId);
+      const oldWeekday = movedSession?.weekday;
       await insertSessionBeforeLane(sessionId, weekday, time, insertBeforeYPos);
+      if (oldWeekday !== undefined && oldWeekday !== weekday) {
+        await migrateAttendanceForSessionMove(sessionId, oldWeekday, weekday);
+      }
     },
-    [canManage, insertSessionBeforeLane],
+    [
+      canManage,
+      insertSessionBeforeLane,
+      sessions,
+      migrateAttendanceForSessionMove,
+    ],
   );
 
   const deleteSession = useCallback(
@@ -1399,53 +1456,8 @@ function SchedulePageContent(): JSX.Element {
     [canManage, _handleDropBase]
   );
 
-  /**
-   * session 이동 시 출결도 따라 이동 (B move 정책, 2026-05-28 사용자 픽).
-   * mockup: attendance-on-move-policy.
-   *
-   * weekday 변경 detect → 본 view 의 weekStart 기준 oldDate/newDate 계산 → migrate.
-   * weekday 동일 (시간 만 변경) → noop. attendance 그대로.
-   *
-   * @returns true if attendance was migrated (caller toast).
-   */
-  const migrateAttendanceForSessionMove = useCallback(
-    async (sessionId: string, oldWeekday: number, newWeekday: number) => {
-      if (oldWeekday === newWeekday) return null; // 같은 weekday — migration 불필요
-      // currentWeekStart 가 YYYY-MM-DD (월요일). 거기에 weekday 더해 instance 날짜 계산.
-      const weekStartDate = new Date(`${currentWeekStart}T12:00:00+09:00`);
-      const computeInstanceDate = (wd: number) => {
-        const d = new Date(weekStartDate);
-        d.setDate(d.getDate() + wd);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      };
-      const oldDate = computeInstanceDate(oldWeekday);
-      const newDate = computeInstanceDate(newWeekday);
-      const result = await migrateAttendance(sessionId, oldDate, newDate);
-      if (!result) {
-        showToast("info", "출결 이동 — 로그인 필요");
-        return null;
-      }
-      if (result.error === "DUPLICATE_DATE") {
-        showToast("warning", `${newDate} 에 이미 출결 있음 — 이동 안 됨`);
-        return null;
-      }
-      if (result.error === "FAIL") {
-        showToast("error", "출결 이동 실패 (서버 오류)");
-        return null;
-      }
-      if (result.count > 0) {
-        showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
-        return result.count;
-      }
-      // count=0 — 저장된 출결 record 없음. 사용자에게 명시 안내 (silent 시 사용자 혼란).
-      showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
-      return 0;
-    },
-    [currentWeekStart, migrateAttendance],
-  );
+  // migrateAttendanceForSessionMove 는 useAttendance 호출 직후 (top) 에 정의 — 모든
+  // drop / insertBefore / copy handler 가 참조 가능하도록 (block-scoped 회피).
 
   // 🆕 세션 드롭 핸들러 (헬퍼 빌더 적용)
   const _handleSessionDropBase = useMemo(() => {
