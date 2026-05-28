@@ -883,9 +883,6 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 출결 ({selectedStudents.length}명)
               </span>
-              <span className="text-[10.5px] text-[var(--color-text-muted)]">
-                click → 미체크 / 출석 / 결석 / 지각 cycle
-              </span>
             </div>
 
             {/* 전원 batch 버튼 — 학생 ≥ 2명 일 때만 (1명이면 row 직접 click 빠름) */}
