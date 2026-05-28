@@ -69,6 +69,11 @@ type Props = {
   endHour?: number;
   /** P3 모드처럼 외부 scroll container가 있을 때 grid 자체 max-h 제거. */
   fillHeight?: boolean;
+  /**
+   * 출결 map by sessionId — SessionBlock 우하단 출결 dot 시각 계산용.
+   * caller (schedule/page.tsx) 가 useAttendance.attendance state 그대로 전달.
+   */
+  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
 };
 
 export default function ScheduleGridSection({
@@ -99,6 +104,7 @@ export default function ScheduleGridSection({
   startHour,
   endHour,
   fillHeight,
+  attendanceMapBySession,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -129,6 +135,7 @@ export default function ScheduleGridSection({
         startHour={startHour}
         endHour={endHour}
         fillHeight={fillHeight}
+        attendanceMapBySession={attendanceMapBySession}
       />
     </div>
   );
