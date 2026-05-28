@@ -74,7 +74,10 @@ interface Props {
   startHour: number;
   endHour: number;
   fillHeight: boolean;
-  attendanceMapBySession?: Record<string, Record<string, { status: string }>>;
+  attendanceMapBySession?: Record<
+    string,
+    Record<string, Record<string, { status: string }>>
+  >;
 
   // EmptyWeekState
   weekFilteredSessionsCount: number;

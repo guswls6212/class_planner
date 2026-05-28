@@ -127,6 +127,12 @@ interface SessionBlockProps {
    * Layer 2 D (mockup edit-session-with-attendance) — 우하단 dot + 시간 기반 색.
    */
   attendanceMap?: AttendanceMap;
+  /**
+   * 본 session instance 의 실 날짜 (YYYY-MM-DD). schedule page 가 currentWeekStart + weekday 로
+   * 계산해서 전달. 미제공 시 useSessionStatus 는 weekday-only mode (과거 날짜 "upcoming" 반환).
+   * 사용자 명시 (2026-05-28): 오늘 기준 과거 날짜 미체크 session 도 red dot 알림 필요.
+   */
+  instanceDate?: string;
 }
 
 export const validateSessionBlockProps = (
@@ -174,6 +180,7 @@ function SessionBlock({
   onContextMenuStartSelect,
   presentationMode = "edit",
   attendanceMap,
+  instanceDate,
 }: SessionBlockProps) {
   const isShareView = presentationMode !== "edit";
   const isFilteredShare = presentationMode === "filtered-share";
@@ -189,10 +196,12 @@ function SessionBlock({
   });
 
   // Hook must be called before any early return (Rules of Hooks).
+  // instanceDate 제공 시 date-aware mode — 과거 날짜도 "completed" 판정 (출결 dot alert).
   const sessionStatus = useSessionStatus(
     session?.startsAt ?? "00:00",
     session?.endsAt ?? "00:00",
-    session?.weekday ?? -1
+    session?.weekday ?? -1,
+    instanceDate,
   );
 
   // null/undefined 안전 처리
