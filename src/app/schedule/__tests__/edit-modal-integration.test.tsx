@@ -264,11 +264,11 @@ describe("EditSessionModal Integration Tests", () => {
     expect(screen.getByText("박민수")).toBeInTheDocument();
   });
 
-  it("과목 선택 드롭다운이 올바르게 렌더링되어야 한다", () => {
+  it("과목 선택 드롭다운이 올바르게 렌더링되어야 한다 (2026-05-28 SubjectDropdownPicker 통일)", () => {
     render(<EditSessionModal {...defaultProps} />);
-
-    const subjectSelect = screen.getByDisplayValue("수학");
-    expect(subjectSelect).toBeInTheDocument();
+    // native select → custom picker. trigger 안 선택된 과목 이름 표시.
+    const trigger = screen.getByTestId("subject-dropdown-trigger");
+    expect(trigger).toHaveTextContent("수학");
   });
 
   it("요일 chip 클릭 시 popover에 weekday 버튼들이 렌더링되어야 한다 (Variant C)", () => {

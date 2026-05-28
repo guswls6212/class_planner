@@ -66,13 +66,13 @@ describe("EditSessionModal", () => {
     expect(onRemoveStudent).toHaveBeenCalledWith("stu-1");
   });
 
-  it("과목 선택 옵션을 렌더링한다", () => {
+  it("과목 선택 dropdown 펼침 시 options 렌더 (2026-05-28 native select → SubjectDropdownPicker 통일)", () => {
     render(<EditSessionModal {...defaultProps} />);
-    const subjectSelect = screen.getByRole("combobox", { name: /과목/ });
-    const options = within(subjectSelect).getAllByRole("option");
-    const optionNames = options.map((o) => o.textContent);
-    expect(optionNames).toContain("수학");
-    expect(optionNames).toContain("영어");
+    const trigger = screen.getByTestId("subject-dropdown-trigger");
+    fireEvent.click(trigger);
+    // dropdown 펼침 후 각 과목 item 노출
+    expect(screen.getByTestId("subject-dropdown-item-sub-1")).toHaveTextContent("수학");
+    expect(screen.getByTestId("subject-dropdown-item-sub-2")).toHaveTextContent("영어");
   });
 
   it("요일 chip 클릭 시 popover에 7개 weekday 버튼이 렌더링된다 (Variant C 채택, 2026-05-12)", () => {

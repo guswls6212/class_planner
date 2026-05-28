@@ -97,10 +97,15 @@ export default function TeacherDropdownPicker({
     return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
-  // 강사 dropdown 펼침 시 auto-scroll 제거 (2026-05-28 사용자 명시).
-  // V3 A 헤더 통합 (과목+강사 2-col grid) 이후 dropdown 이 모달 안에서 자연 위치 →
-  // scrollIntoView 가 모달 위치를 강제 이동시키는 부작용 발생. 사용자가 "학생 추가/변경"
-  // click 시에만 스크롤 원함.
+  // 강사 dropdown 펼침 시 modal scroll container 가 dropdown panel 까지 자연 스크롤.
+  // 사용자 정정 (2026-05-28): 강사 목록 길면 dropdown 잘림 — scroll 다시 유지.
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = window.requestAnimationFrame(() => {
+      dropdownPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [isOpen]);
 
   const showInlineCreate = Boolean(canManage && onCreate && setInputValue);
 
@@ -116,7 +121,8 @@ export default function TeacherDropdownPicker({
         }}
         data-testid={`teacher-dropdown-item-${teacher.id}`}
         aria-pressed={isActive}
-        className={`w-full flex items-center gap-2 p-2 rounded transition-colors text-left ${
+        title={teacher.name}
+        className={`w-full flex items-center gap-2 p-2 rounded transition-colors text-left min-w-0 ${
           isActive
             ? "bg-amber-500/15 ring-1 ring-amber-500/30"
             : "hover:bg-white/5"
@@ -126,12 +132,13 @@ export default function TeacherDropdownPicker({
           className="w-3 h-3 rounded-full shrink-0"
           style={{ backgroundColor: teacher.color }}
         />
-        <span className="text-[12px] text-[var(--color-text-primary)]">
+        {/* 긴 이름 truncate (Variant A 채택 2026-05-28) — title 속성 hover tooltip */}
+        <span className="text-[12px] text-[var(--color-text-primary)] truncate flex-1 min-w-0">
           {teacher.name}
         </span>
-        <RoleBadge role={teacher.role} size="xs" className="ml-1" />
+        <RoleBadge role={teacher.role} size="xs" className="ml-1 flex-shrink-0" />
         {isActive && (
-          <span className="ml-auto text-[10px] text-amber-300">✓</span>
+          <span className="text-[10px] text-amber-300 flex-shrink-0">✓</span>
         )}
       </button>
     );

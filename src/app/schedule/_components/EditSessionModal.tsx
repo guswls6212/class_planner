@@ -35,6 +35,7 @@ import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
 import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
 import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
+import SubjectDropdownPicker from "../../../components/molecules/SubjectDropdownPicker";
 import { StudentChip } from "../../../components/molecules/StudentChip";
 
 /**
@@ -840,20 +841,14 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <label htmlFor="edit-modal-subject" className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               과목 <span className="text-[var(--color-danger)]">*</span>
             </label>
-            <select
-              id="edit-modal-subject"
-              className={fieldClass}
-              value={tempSubjectId}
-              onChange={(e) => onSubjectChange(e.target.value)}
-            >
-              <option value="">과목 선택</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <SubjectDropdownPicker
+              subjects={subjects}
+              selectedSubjectId={tempSubjectId || null}
+              onSelect={(id) => onSubjectChange(id)}
+            />
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
