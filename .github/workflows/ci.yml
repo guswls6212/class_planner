@@ -49,6 +49,19 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
+      # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
+      # .next/cache 는 Next.js 의 webpack/SWC compile artifact + fetch cache.
+      # 같은 PR 의 ts/tsx 일부만 변경되면 cache hit → incremental compile (build 1-2m → 30s-1m).
+      # key: package-lock + 모든 js/jsx/ts/tsx 의 content hash. restore-keys partial fallback.
+      # SSOT: dev-pack/proposed-tasks/class-planner/ci-resource-budget-step-by-step.md § Step 4
+      - name: Cache .next/cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.{js,jsx,ts,tsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
       - name: Build
         run: npm run build
         env:
@@ -80,6 +93,18 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
+      # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
+      # e2e job 의 webServer = `npm run build && npm run start` (playwright.config.ts) → build 재실행.
+      # build job 의 cache 를 같은 key 로 restore → incremental compile.
+      # 6 shard 모두 같은 key 로 restore (cloud cache 동시 접근 safe).
+      - name: Cache .next/cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.{js,jsx,ts,tsx}') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
       # D-lite optimization (2026-05-28, proposal ci-runner-docker-prebake #step-2):
       # cp-runner Docker image 가 mcr.microsoft.com/playwright:v*-noble 기반 — chromium-1187
       # 이 /ms-playwright 에 baked-in. PLAYWRIGHT_BROWSERS_PATH env 로 detect → skip.
