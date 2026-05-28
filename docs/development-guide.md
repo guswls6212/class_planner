@@ -503,3 +503,10 @@ git commit으로 시계열 보존. 시각화 도구 없이 markdown + grep만으
 ```bash
 bash scripts/check-stale-branches.sh
 ```
+
+## CI 셋업 SSOT (2026-05-28 도입)
+
+dev 향 PR 은 Mac Studio cp-runner 6 container 에서 e2e 6 shard parallel + user 6 격리로 실행. 자세한 셋업/측정 history/PR label 자동 판단:
+
+- `dev-pack/docs/protocols/cp-runner-ci-setup.md` — cp-runner 구성 + E2E user 6 + 측정 history
+- `dev-pack/docs/protocols/ai-pr-label-policy.md` — PR 생성 시 quick-pr / no-auto-merge 자동 판단
