@@ -1440,7 +1440,8 @@ function SchedulePageContent(): JSX.Element {
         showToast("success", `출결 ${result.count}건 함께 이동 (${oldDate} → ${newDate})`);
         return result.count;
       }
-      // count=0 — 출결 record 없음 (저장 안 함). silent — drag drop 빈도 ↑ → noise 회피.
+      // count=0 — 저장된 출결 record 없음. 사용자에게 명시 안내 (silent 시 사용자 혼란).
+      showToast("info", `${oldDate} 에 저장된 출결 없음 — 이동할 데이터 없음`);
       return 0;
     },
     [currentWeekStart, migrateAttendance],
@@ -1536,10 +1537,10 @@ function SchedulePageContent(): JSX.Element {
       // 단일 drop — attendance migration 위해 old weekday 미리 캡쳐
       const movedSession = sessions.find((s) => s.id === sessionId);
       const oldWeekday = movedSession?.weekday;
-      _handleSessionDropBase(sessionId, weekday, time, yPosition);
-      if (oldWeekday !== undefined) {
-        // fire-and-forget — drop UX block 안 함
-        void migrateAttendanceForSessionMove(sessionId, oldWeekday, weekday);
+      await _handleSessionDropBase(sessionId, weekday, time, yPosition);
+      if (oldWeekday !== undefined && oldWeekday !== weekday) {
+        // weekday 변경 시만 migrate 호출. 같은 weekday (시간/lane 변경) → noop.
+        await migrateAttendanceForSessionMove(sessionId, oldWeekday, weekday);
       }
     },
     [
