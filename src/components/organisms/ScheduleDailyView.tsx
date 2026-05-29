@@ -79,7 +79,7 @@ interface ScheduleDailyViewProps {
   readOnly?: boolean;
   /**
    * read-only 인데도 detail panel 의 액션 버튼(→ onSessionClick) 노출 + 라벨 "출결 체크".
-   * drag/copy/편집 affordance 는 readOnly 로 여전히 차단. teacher-schedule 출결 진입용. default false.
+   * drag/copy/편집 affordance 는 readOnly 로 여전히 차단. member(강사) read-only /schedule 출결 진입용. default false.
    */
   allowReadOnlySessionClick?: boolean;
   onSwipeLeft?: () => void;

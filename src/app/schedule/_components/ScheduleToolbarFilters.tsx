@@ -29,6 +29,8 @@ interface Props {
   isP3: boolean;
   viewMode: ScheduleViewMode;
   colorBy: ColorByMode;
+  /** 학생/강사 필터 chip 노출 (member 는 false — 전체 명단 노출 방지 + 본인 수업만이라 불필요). default true. */
+  showFilters?: boolean;
 
   // === Student filter ===
   students: Student[];
@@ -65,6 +67,7 @@ export default function ScheduleToolbarFilters({
   isP3,
   viewMode,
   colorBy,
+  showFilters = true,
   students,
   selectedStudentIds,
   onToggleStudentFilter,
@@ -92,7 +95,7 @@ export default function ScheduleToolbarFilters({
     <>
       {/* default 모드 — chip bar. P3 는 floating toolbar 의 통합 필터로 이동.
        * ADR-020 R5: colorBy="student" 모드 폐기. backup UI 의 학생 chip bar 는 mode 무관 항상 표시. */}
-      {!isP3 && (
+      {!isP3 && showFilters && (
         <StudentFilterChipBar
           students={students}
           selectedStudentIds={selectedStudentIds}
@@ -103,7 +106,7 @@ export default function ScheduleToolbarFilters({
         />
       )}
 
-      {!isP3 && colorBy === "teacher" && (
+      {!isP3 && showFilters && colorBy === "teacher" && (
         <TeacherFilterChipBar
           teachers={teachers}
           selectedTeacherIds={selectedTeacherIds}

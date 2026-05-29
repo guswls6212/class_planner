@@ -35,7 +35,7 @@ const TeachersPage = () => {
   // 본인 강사 entry 외 다른 강사 정보 read/edit 권한 없음 (image #4 권한 카드 spec).
   // role fetching 중 (null) 은 통과 — fetch 완료 후 'member' 이면 redirect.
   useEffect(() => {
-    if (role === "member") router.replace("/teacher-schedule");
+    if (role === "member") router.replace("/schedule");
   }, [role, router]);
   const {
     teachers,

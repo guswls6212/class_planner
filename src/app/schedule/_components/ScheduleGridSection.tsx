@@ -77,6 +77,10 @@ type Props = {
     string,
     Record<string, Record<string, { status: string }>>
   >;
+  /** member(강사) read-only — 편집/드래그/추가 차단. default false. */
+  isReadOnly?: boolean;
+  /** read-only 인데도 세션 클릭 → onSessionClick 발화 허용 (출결 모달 진입). default false. */
+  allowReadOnlySessionClick?: boolean;
 };
 
 export default function ScheduleGridSection({
@@ -108,6 +112,8 @@ export default function ScheduleGridSection({
   endHour,
   fillHeight,
   attendanceMapBySession,
+  isReadOnly,
+  allowReadOnlySessionClick,
 }: Props) {
   return (
     <div ref={containerRef}>
@@ -139,6 +145,8 @@ export default function ScheduleGridSection({
         endHour={endHour}
         fillHeight={fillHeight}
         attendanceMapBySession={attendanceMapBySession}
+        isReadOnly={isReadOnly}
+        allowReadOnlySessionClick={allowReadOnlySessionClick}
       />
     </div>
   );

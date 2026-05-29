@@ -87,6 +87,8 @@ interface Props {
   ) => Promise<void> | void;
   /** 출결 권한 — false 시 pill disabled. caller 가 role + member-teacher 매칭 계산. */
   canManageAttendance?: boolean;
+  /** member(강사) 출결-전용 모드 — 수업 메타 read-only + 저장은 출결 flush 만. caller 가 !canManage 로 계산. */
+  attendanceOnly?: boolean;
 
   /**
    * Modal save 시 weekday / weekStartDate 변경 detect 후 출석 migrate (B move 정책 2026-05-28, PR #550).
@@ -229,6 +231,7 @@ export default function ScheduleEditModalWrapper(props: Props) {
       attendanceMap={props.attendanceMap}
       onMarkAttendance={props.onMarkAttendance}
       canManageAttendance={props.canManageAttendance}
+      attendanceOnly={props.attendanceOnly}
     />
   );
 }

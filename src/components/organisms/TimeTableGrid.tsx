@@ -129,7 +129,7 @@ interface TimeTableGridProps {
   /**
    * read-only 인데도 세션 블록 클릭 → onSessionClick 발화 허용 (출결-전용 진입).
    * drag/add/edit affordance 는 isReadOnly 로 여전히 차단 — 클릭만 통과.
-   * teacher-schedule(강사 본인 시간표) 출결 모달 진입에 사용. default false (기존 동작 유지).
+   * member(강사) read-only /schedule 의 출결 모달 진입에 사용. default false (기존 동작 유지).
    */
   allowReadOnlySessionClick?: boolean;
   // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.

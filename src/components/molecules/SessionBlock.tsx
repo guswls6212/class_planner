@@ -358,8 +358,8 @@ function SessionBlock({
   // 3-tone 파스텔 톤 (pastel bg + dark fg + accent) — blockColor 변경 시만
   const tone = useMemo(() => resolveSessionTone(blockColor), [blockColor]);
 
-  // 상태 레이어 (Phase 3 SSOT): 완료 = opacity 0.55. in-progress/conflict = borderLeft accent
-  const isCompleted = sessionStatus === "completed" && !isAnyDragging && !isDragging;
+  // 상태 레이어 (Phase 3 SSOT): in-progress/conflict = borderLeft accent.
+  // (완료(과거) 세션 흐릿(opacity 0.55)은 2026-05-29 사용자 요청으로 제거 — 완료 표시는 우하단 출결 dot 이 담당.)
   const isInProgress = sessionStatus === "in-progress" && !isAnyDragging && !isDragging;
 
   // 커서 클래스
@@ -390,9 +390,7 @@ function SessionBlock({
 
   const isDragActive = isAnyDragging || isDragging;
 
-  // 비매칭만 dim. 매칭/필터 없음 → 본체 색 + opacity 1 그대로.
-  // Combined with completed session's 0.55 inner opacity, non-matching completed sessions
-  // fade to ~0.14 — intentional.
+  // 비매칭만 dim (opacity 0.25). 매칭/필터 없음 → 본체 색 + opacity 1 그대로.
   const dimGlowStyle: React.CSSProperties =
     isAnyFilterActive && !isDragActive && !sessionMatchesAllFilters
       ? { opacity: 0.25 }
@@ -436,10 +434,9 @@ function SessionBlock({
     overflow: "hidden",
     cursor: isShareView ? "default" : styles.cursor,
     pointerEvents: styles.pointerEvents,
-    // ADR-020 R5 보강 (UAT 2026-05-21): 필터 매칭 session 은 completed status 의 0.55 dim 도
-    // override. 사용자가 chip 으로 명시 선택한 session 은 시간 dim 없이 또렷하게 표시.
-    opacity:
-      isCompleted && !sessionMatchesAllFilters ? 0.55 : styles.opacity,
+    // 완료(과거) 세션 시간 dim(0.55) 제거 (2026-05-29) — 블록은 항상 또렷.
+    // 비매칭 필터 dim(0.25)은 wrapper(dimGlowStyle)가 담당.
+    opacity: styles.opacity,
     visibility: styles.visibility as React.CSSProperties["visibility"],
     transition: styles.transition,
     width: "100%",

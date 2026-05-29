@@ -168,7 +168,7 @@ interface EditSessionModalProps {
    * 출결-전용 모드 (Phase A, 2026-05-29 — teacher-attendance-access).
    * true 시: 수업 메타(과목/강사/요일/시간) read-only, 학생 picker·삭제·색상 변경·학생 제거(X) 숨김,
    * 출결 pill + 전원 batch + 저장만 활성. 저장은 출결 buffer flush 만 (onSave 미호출 — member 는 세션 PUT 권한 없음).
-   * 강사(member)가 /teacher-schedule 에서 본인 수업 블록 클릭 시 사용.
+   * 강사(member)가 /schedule(role-branch read-only)에서 본인 수업 블록 클릭 시 사용.
    */
   attendanceOnly?: boolean;
 }

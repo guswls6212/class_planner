@@ -322,13 +322,10 @@ function SchedulePageContent(): JSX.Element {
   // Role-based UI gate — member role gets read-only schedule
   const { canManage, adminCount, role, linkedTeacherId } = useMyRole();
 
-  // member 는 /teacher-schedule 로 redirect (학원 전체 view 권한 X).
-  // router 선언이 본 useEffect 보다 뒤라 window.location 사용 (single redirect, lifecycle 무관).
-  useEffect(() => {
-    if (role === "member" && typeof window !== "undefined") {
-      window.location.replace("/teacher-schedule");
-    }
-  }, [role]);
+  // member(강사) 도 /schedule 에서 role-branch (본인 수업 read-only + 출결). 2026-05-29 통합 —
+  // 별도 /teacher-schedule 페이지는 divergence(출결 dot/dimming/디자인 어긋남)로 폐기·삭제.
+  // canManage=false → 편집/드래그/추가 차단, 세션 클릭은 출결-전용 모달, 본인 teacher 수업만 표시.
+  const isMemberView = role === "member";
 
   // 활성 academy id — useScheduleMeta 가 academy 별 lastViewed 키 분리에 사용.
   // localStorage 만 source — Sidebar 의 학원 selector 가 academy 전환 시 reload
@@ -766,8 +763,29 @@ function SchedulePageContent(): JSX.Element {
   // 주간·일별 뷰용: 현재 주 세션만 weekday Map으로 변환.
   // 강사 필터는 더 이상 hide 패턴이 아니라 dim 패턴(SessionBlock + TimeTableRow의
   // sessionMatchesFilters 4-param)으로 통일됐으므로 여기서 사전 필터하지 않는다.
+  // member 는 본인 강사(linkedTeacherId) 수업만 — 미연결 member 는 빈 화면.
+  const roleScopedWeekSessions = useMemo(
+    () =>
+      isMemberView
+        ? weekFilteredSessions.filter(
+            (s) => linkedTeacherId != null && s.teacherId === linkedTeacherId
+          )
+        : weekFilteredSessions,
+    [isMemberView, linkedTeacherId, weekFilteredSessions]
+  );
+  // monthly view 용 — 주 필터 없이 전 기간 본인 수업.
+  const roleScopedAllSessions = useMemo(
+    () =>
+      isMemberView
+        ? sessions.filter(
+            (s) => linkedTeacherId != null && s.teacherId === linkedTeacherId
+          )
+        : sessions,
+    [isMemberView, linkedTeacherId, sessions]
+  );
+
   const { sessions: displaySessions } = useDisplaySessions(
-    weekFilteredSessions,
+    roleScopedWeekSessions,
     enrollments,
     ""
   );
@@ -1730,13 +1748,13 @@ function SchedulePageContent(): JSX.Element {
       setShowEditModal,
     ]
   );
-  // Gate: member role sees read-only schedule — session click is a no-op
+  // owner/admin → 풀 편집 모달, member → 출결-전용 모달 (attendanceOnly 는 ScheduleEditModalWrapper 가 role 로 분기).
+  // member 는 본인 수업만 표시되므로 클릭 대상은 항상 본인 수업. 서버도 member 세션 PUT 403 (A3).
   const handleSessionClick = useCallback(
     (...args: Parameters<typeof _handleSessionClickBase>) => {
-      if (!canManage) return;
       _handleSessionClickBase(...args);
     },
-    [canManage, _handleSessionClickBase]
+    [_handleSessionClickBase]
   );
 
   // PDF dialog state — usePdfDialog 로 통합 (schedule-page-split-refactor PR 2).
@@ -2244,6 +2262,7 @@ function SchedulePageContent(): JSX.Element {
         isP3={isP3}
         viewMode={viewMode}
         colorBy={colorBy}
+        showFilters={!isMemberView}
         students={students}
         selectedStudentIds={selectedStudentIds}
         onToggleStudentFilter={toggleStudentFilter}
@@ -2300,13 +2319,15 @@ function SchedulePageContent(): JSX.Element {
           selectedSubjectIds={selectedSubjectIds}
           selectedTeacherIds={selectedTeacherIds}
           onSessionClick={handleSessionClick}
+          readOnly={isMemberView}
+          allowReadOnlySessionClick={isMemberView}
           onSwipeLeft={goToNextDay}
           onSwipeRight={goToPrevDay}
           onAttendanceClick={handleOpenAttendance}
         />
       ) : viewMode === "monthly" ? (
         <ScheduleMonthlyView
-          sessions={sessions}
+          sessions={roleScopedAllSessions}
           subjects={subjects}
           enrollments={enrollments}
           students={students}
@@ -2511,6 +2532,8 @@ function SchedulePageContent(): JSX.Element {
             ? editModalData?.teacherId === linkedTeacherId
             : true
         }
+        // member 는 출결-전용 모달 (수업 메타 read-only + 저장은 출결 flush 만, onSave 미호출).
+        attendanceOnly={isMemberView}
         onAttendanceMigrate={({
           sessionId,
           oldWeekday,
@@ -2605,6 +2628,7 @@ function SchedulePageContent(): JSX.Element {
     {/* Option C: P3 모드의 floating toolbar — 날짜 네비 + 통합 필터 + 시간 + 뷰모드 */}
     {isP3 && (
       <ScheduleFloatingToolbar
+        showFilters={!isMemberView}
         dateLabel={dateLabel}
         dateLabelShort={dateLabelShort}
         onPrev={viewMode === "daily" ? goToPrevDay : viewMode === "weekly" ? goToPrevWeek : goToPrevMonth}
