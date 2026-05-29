@@ -2514,9 +2514,11 @@ function SchedulePageContent(): JSX.Element {
         setSelectedDate={setSelectedDate}
         attendanceMap={
           editModalData
-            ? attendance[editModalData.id]?.[
+            ? // ?? {} — fetch 전에도 출결 섹션이 학생 pill(미체크)을 즉시 렌더 (빈 모달 후 뒤늦게
+              // 채워지는 UX 제거, 2026-05-29). fetch 완료 시 status 채워짐.
+              attendance[editModalData.id]?.[
                 selectedDate.toISOString().slice(0, 10)
-              ]
+              ] ?? {}
             : undefined
         }
         onMarkAttendance={(studentId, status) => {

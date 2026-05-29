@@ -1114,7 +1114,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         left: tip.left,
                         top: tip.top,
                         transform: tip.placeAbove ? "translateY(-100%)" : undefined,
-                        zIndex: 10000,
+                        // modal-backdrop(z-20000) 위로 — 그 아래면 모달 뒤에 가려짐 (사용자 보고 2026-05-29).
+                        zIndex: 20001,
                       }}
                       className="min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-2xl p-2.5 pointer-events-none"
                       data-testid={`edit-attendance-tooltip-${tip.student.id}`}
