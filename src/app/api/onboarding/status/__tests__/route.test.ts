@@ -11,11 +11,7 @@ vi.mock("@/lib/supabaseServiceRole", () => ({
   getServiceRoleClient: () => ({
     from: () => ({
       select: () => ({
-        eq: () => ({
-          limit: () => ({
-            single: mockMemberSelect,
-          }),
-        }),
+        eq: mockMemberSelect,
       }),
     }),
   }),
@@ -36,7 +32,7 @@ describe("GET /api/onboarding/status", () => {
 
   it("academy가 있는 사용자는 hasAcademy: true + Set-Cookie를 반환한다", async () => {
     mockMemberSelect.mockResolvedValue({
-      data: { academy_id: "academy-123" },
+      data: [{ academy_id: "academy-123" }, { academy_id: "academy-456" }],
       error: null,
     });
 
@@ -47,12 +43,13 @@ describe("GET /api/onboarding/status", () => {
     const data = await res.json();
 
     expect(data.hasAcademy).toBe(true);
-    expect(data.academyId).toBe("academy-123");
+    expect(data.academyId).toBe("academy-123"); // backward compat (첫 학원)
+    expect(data.academyIds).toEqual(["academy-123", "academy-456"]); // 전체 멤버십
     expect(res.headers.get("set-cookie")).toContain("onboarded=1");
   });
 
   it("academy가 없는 사용자는 hasAcademy: false를 반환한다", async () => {
-    mockMemberSelect.mockResolvedValue({ data: null, error: { code: "PGRST116" } });
+    mockMemberSelect.mockResolvedValue({ data: [], error: null });
 
     const req = new NextRequest(
       "http://localhost:3000/api/onboarding/status?userId=new-user"

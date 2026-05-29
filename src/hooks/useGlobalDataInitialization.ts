@@ -35,6 +35,7 @@ import {
   clearUserClassPlannerData,
   getActiveAcademyId,
   getClassPlannerData,
+  setActiveAcademyId,
   setClassPlannerData,
 } from "../lib/localStorageCrud";
 import type { ClassPlannerData } from "../lib/localStorageCrud";
@@ -311,6 +312,33 @@ export const useGlobalDataInitialization = () => {
                 window.location.replace("/onboarding");
               }
               return;
+            }
+            // hasAcademy === true. Reconcile a STALE active_academy (set, but pointing to an
+            // academy the user is no longer a member of — academy deleted / left / UAT
+            // teardown→relogin) BEFORE the 5 fetches + checkLoginDataConflict below. Otherwise
+            // getStorageKey() reads the stale academy's localStorage → checkLoginDataConflict
+            // compares that old data against the (empty) current server academy → spurious
+            // upload-local that RESURRECTS the old data into the current academy, plus
+            // academy-changed re-entrancy → infinite spinner. Done here (not only in
+            // MemberContext) to close the race: MemberContext's reconcile runs concurrently and
+            // can land AFTER this conflict check. Only the STALE case is touched (active set but
+            // not a member); the unset case is left to MemberContext's first-login init.
+            const memberAcademyIds: string[] = Array.isArray(statusJson?.academyIds)
+              ? statusJson.academyIds
+              : statusJson?.academyId
+                ? [statusJson.academyId]
+                : [];
+            const activeAcademy = getActiveAcademyId(userId);
+            if (
+              activeAcademy &&
+              memberAcademyIds.length > 0 &&
+              !memberAcademyIds.includes(activeAcademy)
+            ) {
+              logger.warn(
+                "stale active_academy(init) — 멤버십 밖 → 유효 학원으로 reconcile",
+                { stale: activeAcademy, reconciledTo: memberAcademyIds[0] },
+              );
+              setActiveAcademyId(userId, memberAcademyIds[0]);
             }
           }
         } catch (statusError) {

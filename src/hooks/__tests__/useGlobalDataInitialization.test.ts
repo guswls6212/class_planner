@@ -862,3 +862,78 @@ describe("Academy 변화 재실행 (UAT 2026-05-09 회귀 가드)", () => {
     expect(vi.mocked(checkLoginDataConflict).mock.calls.length).toBe(initialCalls);
   });
 });
+
+describe("active_academy stale reconcile (A — teardown→relogin 부활/스피너 차단)", () => {
+  // localStorage 를 Map 으로 백업: setActiveAcademyId 가 실제로 값을 바꿔야 reconcile 이
+  // 수렴(다음 effect 재실행 때 valid 로 보여 추가 호출 없음). 정적 mock 이면 무한 재호출.
+  let store: Map<string, string>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    store = new Map<string, string>();
+    localStorageMock.getItem.mockImplementation((k: string) => store.get(k) ?? null);
+    localStorageMock.setItem.mockImplementation((k: string, v: string) => {
+      store.set(k, v);
+    });
+    localStorageMock.removeItem.mockImplementation((k: string) => {
+      store.delete(k);
+    });
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { user: { id: "user-stale", email: "u@test.com" } } },
+      error: null,
+    } as any);
+    vi.mocked(checkLoginDataConflict).mockReturnValue({ action: "use-server" });
+  });
+
+  function mockStatusFetch(academyIds: string[]) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (String(url).includes("/api/onboarding/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              hasAcademy: true,
+              academyId: academyIds[0],
+              academyIds,
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: [] }),
+      });
+    }) as unknown as typeof fetch;
+  }
+
+  it("active_academy 가 멤버십 밖(stale)이면 conflict 체크 전에 유효 학원으로 교체", async () => {
+    store.set("active_academy:user-stale", "deleted-old-academy");
+    mockStatusFetch(["new-academy"]);
+
+    renderHook(() => useGlobalDataInitialization());
+
+    await waitFor(() =>
+      expect(store.get("active_academy:user-stale")).toBe("new-academy"),
+    );
+  });
+
+  it("active_academy 가 유효 멤버십이면 교체하지 않는다 (멋대로 학원 전환 X)", async () => {
+    store.set("active_academy:user-stale", "valid-academy");
+    mockStatusFetch(["valid-academy", "other-academy"]);
+
+    renderHook(() => useGlobalDataInitialization());
+
+    await waitFor(() =>
+      expect(
+        (global.fetch as ReturnType<typeof vi.fn>).mock.calls.some((c) =>
+          String(c[0]).includes("/api/onboarding/status"),
+        ),
+      ).toBe(true),
+    );
+    const activeSets = localStorageMock.setItem.mock.calls.filter((c: unknown[]) =>
+      String(c[0]).startsWith("active_academy:"),
+    );
+    expect(activeSets.length).toBe(0);
+    expect(store.get("active_academy:user-stale")).toBe("valid-academy");
+  });
+});
