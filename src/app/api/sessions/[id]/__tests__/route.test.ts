@@ -184,6 +184,31 @@ describe("Sessions ID API Routes", () => {
     expect(response.status).toBe(403);
   });
 
+  it("PUT: requireRole에 member를 허용 역할로 넘기지 않는다 (강사 세션 편집 차단)", async () => {
+    // 실제 보호선 검증 — 허용 역할 목록에 member 가 없어야 함.
+    // (mock reject 만 검증하면 route 가 ["owner","admin","member"] 로 넘겨도 통과하는 false-positive)
+    const request = new NextRequest(
+      "http://localhost:3000/api/sessions/test-id?userId=owner-user",
+      {
+        method: "PUT",
+        headers: {
+          origin: "http://localhost:3000",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          subjectId: "subject-1",
+          startsAt: "09:00",
+          endsAt: "10:00",
+          enrollmentIds: ["e-1"],
+          weekday: 0,
+        }),
+      }
+    );
+
+    await PUT(request, { params: Promise.resolve({ id: "test-id" }) });
+    expect(mockRequireRole).toHaveBeenCalledWith("owner-user", ["owner", "admin"]);
+  });
+
   it("DELETE 요청이 에러 없이 처리되어야 한다 (owner)", async () => {
     const request = new NextRequest(
       "http://localhost:3000/api/sessions/test-id?userId=owner-user",

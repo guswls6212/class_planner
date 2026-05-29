@@ -9,6 +9,24 @@ export function formatLocalISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * weekStart (YYYY-MM-DD, 월요일) + weekday(0=월 … 6=일) → 그 occurrence 의 날짜 (YYYY-MM-DD).
+ *
+ * 순수 calendar 산술 — YYYY-MM-DD 문자열을 local 달력 날짜로 파싱 후 +weekday 일.
+ * `new Date(y, m-1, d)` (local 자정) + setDate + formatLocalISO 는 round-trip 이라 timezone
+ * 무관하게 입력 달력값 + N일을 돌려준다 (KST instant 앵커 + local getter 의 category 오류 회피).
+ * teacher-schedule(출결 모달)·/attendance(주별) 가 같은 date key 를 쓰도록 공유.
+ */
+export function instanceDateFromWeekStart(
+  weekStartISO: string,
+  weekday: number
+): string {
+  const [y, m, d] = weekStartISO.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  date.setDate(date.getDate() + weekday);
+  return formatLocalISO(date);
+}
+
 export function getWeekStart(date: Date): Date {
   const d = toLocalMidnight(date);
   const dow = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat

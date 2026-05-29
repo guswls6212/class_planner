@@ -155,3 +155,70 @@ describe("ScheduleDailyView — 필터 dim parity", () => {
     ).not.toBe("0.25");
   });
 });
+
+// --- read-only 출결 진입 (teacher-schedule, allowReadOnlySessionClick) ---
+
+describe("ScheduleDailyView — read-only 출결 진입", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("readOnly + allowReadOnlySessionClick: '출결 체크' 버튼 노출 + 클릭 시 onSessionClick", () => {
+    const onSessionClick = vi.fn();
+    render(
+      <ScheduleDailyView
+        {...defaultProps}
+        onSessionClick={onSessionClick}
+        readOnly
+        allowReadOnlySessionClick
+      />,
+    );
+    const btn = screen.getByTestId("detail-attendance-btn");
+    expect(btn).toHaveTextContent("출결 체크");
+    expect(screen.queryByTestId("detail-edit-btn")).not.toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(onSessionClick).toHaveBeenCalledWith(session1);
+  });
+
+  it("readOnly (allow 없음): footer 액션 버튼 없음 (공유 view)", () => {
+    render(<ScheduleDailyView {...defaultProps} readOnly />);
+    expect(
+      screen.queryByTestId("detail-attendance-btn"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("detail-edit-btn")).not.toBeInTheDocument();
+  });
+
+  it("readOnly: 내부 메모(internalNote)를 숨긴다 (강사/공유 view)", () => {
+    const sessionWithNote: Session = {
+      ...session1,
+      internalNote: "운영자 전용 메모",
+    };
+    render(
+      <ScheduleDailyView
+        {...defaultProps}
+        sessions={new Map([[1, [sessionWithNote]]])}
+        readOnly
+        allowReadOnlySessionClick
+      />,
+    );
+    expect(
+      screen.queryByTestId("detail-internal-note"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("비-readOnly: 내부 메모를 표시한다 (운영자)", () => {
+    const sessionWithNote: Session = {
+      ...session1,
+      internalNote: "운영자 전용 메모",
+    };
+    render(
+      <ScheduleDailyView
+        {...defaultProps}
+        sessions={new Map([[1, [sessionWithNote]]])}
+      />,
+    );
+    expect(screen.getByTestId("detail-internal-note")).toHaveTextContent(
+      "운영자 전용 메모",
+    );
+  });
+});

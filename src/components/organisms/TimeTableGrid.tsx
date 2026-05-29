@@ -126,6 +126,12 @@ interface TimeTableGridProps {
   teachers?: Teacher[];
   colorBy?: ColorByMode;
   isReadOnly?: boolean;
+  /**
+   * read-only 인데도 세션 블록 클릭 → onSessionClick 발화 허용 (출결-전용 진입).
+   * drag/add/edit affordance 는 isReadOnly 로 여전히 차단 — 클릭만 통과.
+   * teacher-schedule(강사 본인 시간표) 출결 모달 진입에 사용. default false (기존 동작 유지).
+   */
+  allowReadOnlySessionClick?: boolean;
   // 주간 헤더 날짜 표시용. 없으면 오늘 기준으로 fallback.
   baseDate?: Date;
   /** 다중 선택된 세션 id Set. 비어있거나 undefined이면 일반 모드. */
@@ -182,6 +188,7 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
       teachers = [],
       colorBy = "subject",
       isReadOnly = false,
+      allowReadOnlySessionClick = false,
       baseDate,
       selectedSessionIds,
       onSessionSelectToggle,
@@ -855,7 +862,11 @@ const TimeTableGrid = forwardRef<HTMLDivElement, TimeTableGridProps>(
                 subjects={subjects}
                 enrollments={enrollments}
                 students={students}
-                onSessionClick={isReadOnly ? () => {} : onSessionClick}
+                onSessionClick={
+                  isReadOnly && !allowReadOnlySessionClick
+                    ? () => {}
+                    : onSessionClick
+                }
                 onSessionDelete={isReadOnly ? undefined : onSessionDelete}
                 onDrop={isReadOnly ? () => {} : onDrop}
                 onSessionDrop={isReadOnly ? undefined : onSessionDrop}

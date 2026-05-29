@@ -134,6 +134,38 @@ describe("TimeTableGrid", () => {
     }
   });
 
+  it("isReadOnly + allowReadOnlySessionClick: 세션 클릭 시 onSessionClick 호출 (출결 진입)", () => {
+    const onSessionClick = vi.fn();
+    render(
+      <TimeTableGrid
+        {...defaultProps}
+        onSessionClick={onSessionClick}
+        isReadOnly
+        allowReadOnlySessionClick
+      />
+    );
+    const els = screen.queryAllByText("수학");
+    expect(els.length).toBeGreaterThan(0);
+    fireEvent.click(els[0]);
+    expect(onSessionClick).toHaveBeenCalled();
+  });
+
+  it("isReadOnly (allow 없음): 세션 클릭이 no-op — onSessionClick 미호출", () => {
+    const onSessionClick = vi.fn();
+    render(
+      <TimeTableGrid
+        {...defaultProps}
+        onSessionClick={onSessionClick}
+        isReadOnly
+      />
+    );
+    const els = screen.queryAllByText("수학");
+    if (els.length > 0) {
+      fireEvent.click(els[0]);
+    }
+    expect(onSessionClick).not.toHaveBeenCalled();
+  });
+
   it("그리드 스타일이 올바르게 적용된다", () => {
     const { container } = render(<TimeTableGrid {...defaultProps} />);
 

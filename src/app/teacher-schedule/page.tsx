@@ -13,6 +13,11 @@ import TimeTableGrid from "../../components/organisms/TimeTableGrid";
 import ScheduleFloatingToolbar from "../schedule/_components/ScheduleFloatingToolbar";
 import { renderSchedulePdf } from "@/lib/pdf/PdfRenderer";
 import { getWeekStartDate } from "../../lib/weekStart";
+import { useAttendance } from "../../hooks/useAttendance";
+import { buildSelectedStudents } from "../schedule/_utils/scheduleSelectors";
+import { weekdays } from "../../lib/planner";
+import type { Session } from "../../lib/planner";
+import { instanceDateFromWeekStart } from "../../lib/dateUtils";
 
 const PDFDownloadButton = dynamic(
   () => import("../../components/molecules/PDFDownloadButton"),
@@ -29,6 +34,11 @@ const ScheduleDailyView = dynamic(
 );
 const ScheduleMonthlyView = dynamic(
   () => import("../../components/organisms/ScheduleMonthlyView"),
+  { ssr: false, loading: () => null }
+);
+// 출결-전용 모드로 재사용 (attendanceOnly). 수업 메타 read-only + 출결 pill 만.
+const EditSessionModal = dynamic(
+  () => import("../schedule/_components/EditSessionModal"),
   { ssr: false, loading: () => null }
 );
 
@@ -87,6 +97,11 @@ function TeacherScheduleContent() {
   const myTeacherId = findMyTeacherId(teachers, userId);
   const myTeacher = teachers.find((t) => t.id === myTeacherId) ?? null;
 
+  // 출결-전용 모달 (강사 본인 수업 블록/액션 클릭 시). null 이면 닫힘.
+  const { attendance, fetchAttendance, markAttendance } = useAttendance(userId);
+  const [attendanceSession, setAttendanceSession] = useState<Session | null>(null);
+  const handleSessionClick = (s: Session) => setAttendanceSession(s);
+
   // 일/주/월 view + 날짜 네비게이션 (schedule 페이지와 동일 hook 재사용).
   const {
     viewMode,
@@ -124,6 +139,25 @@ function TeacherScheduleContent() {
     () => filterValidTeacherSessions(sessions, enrollments, myTeacherId),
     [sessions, enrollments, myTeacherId]
   );
+
+  // 출결 모달 대상 세션의 실제 날짜 (YYYY-MM-DD) — fetch/mark key.
+  const attendanceDateISO = useMemo(
+    () =>
+      attendanceSession
+        ? instanceDateFromWeekStart(
+            attendanceSession.weekStartDate ?? selectedWeekStart,
+            attendanceSession.weekday
+          )
+        : null,
+    [attendanceSession, selectedWeekStart]
+  );
+
+  // 모달 열릴 때 해당 (session, date) 출결 fetch (useAttendance 가 dedup).
+  useEffect(() => {
+    if (attendanceSession && attendanceDateISO && userId) {
+      void fetchAttendance(attendanceSession.id, attendanceDateISO);
+    }
+  }, [attendanceSession, attendanceDateISO, userId, fetchAttendance]);
 
   const { colorBy } = useColorBy();
   const timeRange = useTimeRange({ sessions: weekSessions, userId });
@@ -243,8 +277,9 @@ function TeacherScheduleContent() {
             teachers={teachers}
             selectedWeekday={selectedWeekday}
             colorBy={colorBy}
-            onSessionClick={() => {}}
+            onSessionClick={handleSessionClick}
             readOnly
+            allowReadOnlySessionClick
             onSwipeLeft={goToNextDay}
             onSwipeRight={goToPrevDay}
           />
@@ -275,7 +310,8 @@ function TeacherScheduleContent() {
             teachers={teachers}
             colorBy={colorBy}
             isReadOnly={true}
-            onSessionClick={() => {}}
+            allowReadOnlySessionClick
+            onSessionClick={handleSessionClick}
             onDrop={() => {}}
             onEmptySpaceClick={() => {}}
             startHour={timeRange.startHour}
@@ -298,6 +334,68 @@ function TeacherScheduleContent() {
         viewMode={viewMode}
         onChangeViewMode={setViewMode}
       />
+
+      {/* 출결-전용 모달 — EditSessionModal(attendanceOnly) 재사용. 수업 메타 read-only.
+          teacher-schedule 의 모든 표시 세션은 본인(myTeacherId) 수업 → canManageAttendance 항상 true.
+          저장은 출결 buffer flush 만 (메타 PUT 없음) — 서버도 member 세션 PUT 403 (A3). */}
+      {attendanceSession && attendanceDateISO && (
+        <EditSessionModal
+          isOpen
+          attendanceOnly
+          selectedStudents={buildSelectedStudents(
+            attendanceSession.enrollmentIds,
+            enrollments,
+            [],
+            students
+          )}
+          subjects={subjects.map((s) => ({
+            id: s.id,
+            name: s.name,
+            color: s.color,
+          }))}
+          teachers={[]}
+          tempSubjectId={
+            attendanceSession.subjectId ||
+            enrollments.find(
+              (e) => e.id === (attendanceSession.enrollmentIds?.[0] ?? "")
+            )?.subjectId ||
+            ""
+          }
+          tempTeacherId={attendanceSession.teacherId ?? ""}
+          weekdays={weekdays}
+          defaultWeekday={attendanceSession.weekday}
+          weekStartDate={attendanceSession.weekStartDate ?? selectedWeekStart}
+          startTime={attendanceSession.startsAt}
+          endTime={attendanceSession.endsAt}
+          timeError=""
+          attendanceMap={
+            attendance[attendanceSession.id]?.[attendanceDateISO] ?? {}
+          }
+          onMarkAttendance={(studentId, status) =>
+            markAttendance(
+              attendanceSession.id,
+              studentId,
+              attendanceDateISO,
+              status
+            )
+          }
+          canManageAttendance
+          onCancel={() => setAttendanceSession(null)}
+          onRemoveStudent={() => {}}
+          editStudentInputValue=""
+          onEditStudentInputChange={() => {}}
+          onEditStudentInputKeyDown={() => {}}
+          onAddStudentClick={() => {}}
+          editSearchResults={[]}
+          onSelectSearchStudent={() => {}}
+          onSubjectChange={() => {}}
+          onTeacherChange={() => {}}
+          onStartTimeChange={() => {}}
+          onEndTimeChange={() => {}}
+          onDelete={() => {}}
+          onSave={() => {}}
+        />
+      )}
     </div>
   );
 }

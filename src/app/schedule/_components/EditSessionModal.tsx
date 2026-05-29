@@ -163,6 +163,13 @@ interface EditSessionModalProps {
    * Default true (편의). admin/owner 운영자는 true, member (강사) 는 본인 수업만 true.
    */
   canManageAttendance?: boolean;
+  /**
+   * 출결-전용 모드 (Phase A, 2026-05-29 — teacher-attendance-access).
+   * true 시: 수업 메타(과목/강사/요일/시간) read-only, 학생 picker·삭제·색상 변경·학생 제거(X) 숨김,
+   * 출결 pill + 전원 batch + 저장만 활성. 저장은 출결 buffer flush 만 (onSave 미호출 — member 는 세션 PUT 권한 없음).
+   * 강사(member)가 /teacher-schedule 에서 본인 수업 블록 클릭 시 사용.
+   */
+  attendanceOnly?: boolean;
 }
 
 // ── 캘린더 helper (Variant V3: 1달 캘린더) ──────────────────────────
@@ -260,6 +267,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   attendanceMap,
   onMarkAttendance,
   canManageAttendance = true,
+  attendanceOnly = false,
 }) => {
   const { containerRef } = useModalA11y({ isOpen, onClose: onCancel });
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -377,7 +385,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // weekStartDate가 모달 열림 시점과 다르면(= 사용자가 다른 주 날짜 클릭) 부모로 forward.
   // 출결 flush: buffer 의 모든 (studentId, status) 를 onMarkAttendance 병렬 호출.
   const handleSave = useCallback(async () => {
-    if (selectedStudents.length === 0) return;
+    // 0명 가드는 메타 저장(onSave) 경로에만 — attendanceOnly 는 출결 flush + close 만이라 통과.
+    if (!attendanceOnly && selectedStudents.length === 0) return;
     // Layer 1 V2 A: 출결 buffer 먼저 flush (server batch)
     const bufferEntries = Object.entries(attendanceBuffer);
     if (bufferEntries.length > 0 && onMarkAttendance) {
@@ -393,6 +402,12 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         setSavingAttendance(false);
       }
     }
+    // 출결-전용 모드: 메타 저장(onSave) 없이 출결 flush 만 하고 닫는다.
+    // member 는 /api/sessions PUT 권한 없음 (서버 403) — onSave/색상 persist 자체 차단.
+    if (attendanceOnly) {
+      onCancel();
+      return;
+    }
     if (previewColor !== originalColor && tempSubjectId && onSubjectColorChange) {
       onSubjectColorChange(tempSubjectId, previewColor);
     }
@@ -403,6 +418,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     selectedStudents.length,
     attendanceBuffer,
     onMarkAttendance,
+    attendanceOnly,
+    onCancel,
     previewColor,
     originalColor,
     tempSubjectId,
@@ -481,7 +498,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
   // ── Validation ─────────────────────────────────────────────────────
   // 학생 0명 시 저장 차단 — 기존 사고(0명 저장 → 세션 자동 삭제) 방지.
   const studentCount = selectedStudents.length;
-  const isSaveDisabled = studentCount === 0;
+  // attendanceOnly 는 0명이어도 저장(=닫기) 허용 — 메타 저장이 없어 0명 세션 자동삭제 사고와 무관.
+  const isSaveDisabled = !attendanceOnly && studentCount === 0;
 
   // ── 색상 선택 패널 ──────────────────────────────────────────────
   const colorPanel = onSubjectColorChange && tempSubjectId ? (
@@ -603,32 +621,56 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                   whitespace-nowrap으로 wrap 방지 (modal max-w-lg + 우상단 3 button과 함께 한 줄 확정). */}
               <button
                 type="button"
-                onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
-                aria-label={`요일: ${weekdays[weekday]}, 클릭해서 변경`}
-                aria-expanded={openPopover === "weekday"}
+                disabled={attendanceOnly}
+                onClick={
+                  attendanceOnly
+                    ? undefined
+                    : () => setOpenPopover(openPopover === "weekday" ? null : "weekday")
+                }
+                aria-label={
+                  attendanceOnly
+                    ? `요일: ${weekdays[weekday]}`
+                    : `요일: ${weekdays[weekday]}, 클릭해서 변경`
+                }
+                aria-expanded={attendanceOnly ? undefined : openPopover === "weekday"}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
                   openPopover === "weekday"
                     ? "border-[#fbbf24] bg-[rgba(245,158,11,0.18)]"
-                    : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
+                    : attendanceOnly
+                      ? "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] cursor-default"
+                      : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
                 }`}
               >
                 <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
                 <span className="text-[13px] font-bold text-[#fbbf24] whitespace-nowrap">
                   {formatChipLabel(selectedWeekStart, weekday, weekdays)}
                 </span>
-                <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
+                {!attendanceOnly && (
+                  <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
+                )}
               </button>
 
               {/* Time chip */}
               <button
                 type="button"
-                onClick={() => setOpenPopover(openPopover === "time" ? null : "time")}
-                aria-label={`수업 시간: ${startTime}부터 ${endTime}까지, 클릭해서 변경`}
-                aria-expanded={openPopover === "time"}
+                disabled={attendanceOnly}
+                onClick={
+                  attendanceOnly
+                    ? undefined
+                    : () => setOpenPopover(openPopover === "time" ? null : "time")
+                }
+                aria-label={
+                  attendanceOnly
+                    ? `수업 시간: ${startTime}부터 ${endTime}까지`
+                    : `수업 시간: ${startTime}부터 ${endTime}까지, 클릭해서 변경`
+                }
+                aria-expanded={attendanceOnly ? undefined : openPopover === "time"}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
                   openPopover === "time"
                     ? "border-[var(--color-accent-hover)] bg-white/[0.08]"
-                    : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
+                    : attendanceOnly
+                      ? "border-[var(--color-border)] bg-white/[0.04] cursor-default"
+                      : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
                 }`}
               >
                 <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
@@ -638,12 +680,14 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 {duration && (
                   <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5 whitespace-nowrap">· {duration}</span>
                 )}
-                <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
+                {!attendanceOnly && (
+                  <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
+                )}
               </button>
 
               {/* Weekday popover — V3 month calendar (사용자 결정 2026-05-12).
                   weekStartDate prop이 있으면 month grid. 없으면 fallback으로 7-grid. */}
-              {openPopover === "weekday" && (
+              {!attendanceOnly && openPopover === "weekday" && (
                 <div
                   className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
                   style={{ minWidth: weekStartObj ? 280 : 240 }}
@@ -782,7 +826,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               )}
 
               {/* Time popover — controlled inputs(부모로 즉시 위임), timeError도 함께 표시 */}
-              {openPopover === "time" && (
+              {!attendanceOnly && openPopover === "time" && (
                 <div
                   className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
                   style={{ minWidth: 280 }}
@@ -816,14 +860,16 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {colorPanel}
-            <IconButton
-              aria-label="수업 삭제"
-              variant="danger"
-              onClick={onDelete}
-            >
-              <Trash2 size={14} strokeWidth={2} />
-            </IconButton>
+            {!attendanceOnly && colorPanel}
+            {!attendanceOnly && (
+              <IconButton
+                aria-label="수업 삭제"
+                variant="danger"
+                onClick={onDelete}
+              >
+                <Trash2 size={14} strokeWidth={2} />
+              </IconButton>
+            )}
             <IconButton aria-label="닫기" onClick={handleCancel}>
               <X size={15} strokeWidth={2} />
             </IconButton>
@@ -839,28 +885,30 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
           - 과목 + 강사 = inline 한 줄 grid. label 작게, control 가로 배치 → 모달 세로 길이 ↓
           - 글자 짧으면 공간 압축 (과목 < 10 chars / 강사 < 10 chars 대부분)
         */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-              과목 <span className="text-[var(--color-danger)]">*</span>
-            </label>
-            <SubjectDropdownPicker
-              subjects={subjects}
-              selectedSubjectId={tempSubjectId || null}
-              onSelect={(id) => onSubjectChange(id)}
-            />
+        {!attendanceOnly && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                과목 <span className="text-[var(--color-danger)]">*</span>
+              </label>
+              <SubjectDropdownPicker
+                subjects={subjects}
+                selectedSubjectId={tempSubjectId || null}
+                onSelect={(id) => onSubjectChange(id)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
+              <TeacherDropdownPicker
+                teachers={teachers}
+                selectedTeacherId={tempTeacherId || null}
+                onSelect={(id) => onTeacherChange(id ?? null)}
+                subjectId={tempSubjectId || undefined}
+                subjectName={currentSubject?.name}
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">강사</label>
-            <TeacherDropdownPicker
-              teachers={teachers}
-              selectedTeacherId={tempTeacherId || null}
-              onSelect={(id) => onTeacherChange(id ?? null)}
-              subjectId={tempSubjectId || undefined}
-              subjectName={currentSubject?.name}
-            />
-          </div>
-        </div>
+        )}
 
         {/*
           V2 A (사용자 픽 2026-05-28, mockup edit-session-attendance-v2):
@@ -967,7 +1015,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         isModified
                           ? "border-amber-500/50 bg-amber-500/[0.06]"
                           : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
-                      } pr-1`}
+                      } ${attendanceOnly ? "" : "pr-1"}`}
                     >
                       <button
                         type="button"
@@ -982,7 +1030,8 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           }));
                         }}
                         className={[
-                          "inline-flex items-center gap-2 pl-2.5 py-1.5 rounded-l-full transition-colors text-left",
+                          "inline-flex items-center gap-2 pl-2.5 py-1.5 transition-colors text-left",
+                          attendanceOnly ? "rounded-full pr-2.5" : "rounded-l-full",
                           canManageAttendance
                             ? "hover:bg-white/[0.03] active:bg-white/[0.06]"
                             : "opacity-60 cursor-not-allowed",
@@ -1006,15 +1055,17 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           {label}
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onRemoveStudent(student.id)}
-                        className="px-1.5 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors rounded-r-full"
-                        aria-label={`${student.name} 제거`}
-                        data-testid={`edit-attendance-remove-${student.id}`}
-                      >
-                        <X size={11} />
-                      </button>
+                      {!attendanceOnly && (
+                        <button
+                          type="button"
+                          onClick={() => onRemoveStudent(student.id)}
+                          className="px-1.5 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-danger)] transition-colors rounded-r-full"
+                          aria-label={`${student.name} 제거`}
+                          data-testid={`edit-attendance-remove-${student.id}`}
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
 
                       {/* inline tooltip — chip group-hover 시 학생 이름 prominent + 상세.
                           미저장 chip 옆 amber 표시도 tooltip 안에서 hint. */}
@@ -1062,6 +1113,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         {/* 학생 picker — Collapsible (default 접힘). 출결 섹션 아래.
             기존 chip + 검색 + dropdown 흐름 유지하되 펼침 상태에서만 노출.
             attendanceMap 미제공 시 (legacy caller) 기본 펼침 + 출결 안 보임. */}
+        {!attendanceOnly && (
         <div ref={studentPickerSectionRef} className="flex flex-col gap-2">
           {attendanceMap && onMarkAttendance ? (
             <button
@@ -1179,6 +1231,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
             </>
           )}
         </div>
+        )}
 
         {/* 요일/시간 select 제거 — 헤더 chip이 SSOT (2026-05-12 Variant C 채택).
             기존 weekday/time select는 헤더 chip + popover로 이전됨. */}
@@ -1214,7 +1267,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 : "bg-[var(--color-primary)] text-white hover:opacity-90"
             }`}
           >
-            저장
+            {attendanceOnly ? "출결 저장" : "저장"}
           </button>
         </div>
       </div>
@@ -1223,7 +1276,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
   if (!isDesktop && isOpen) {
     return (
-      <BottomSheet isOpen={isOpen} onClose={handleCancel} title="수업 편집" aria-labelledby="edit-session-modal-title">
+      <BottomSheet isOpen={isOpen} onClose={handleCancel} title={attendanceOnly ? "출결 체크" : "수업 편집"} aria-labelledby="edit-session-modal-title">
         {formContent}
       </BottomSheet>
     );
@@ -1242,7 +1295,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
         ref={containerRef}
       >
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-[0_25px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)] backdrop-blur-xl overflow-hidden">
-          <h4 id="edit-session-modal-title" className="sr-only">수업 편집</h4>
+          <h4 id="edit-session-modal-title" className="sr-only">{attendanceOnly ? "출결 체크" : "수업 편집"}</h4>
           {formContent}
         </div>
       </div>
