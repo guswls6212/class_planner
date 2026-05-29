@@ -95,3 +95,5 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
   // 트레이드오프: academy/academy_members row 누적되나 setup 의 limit(1) graceful 처리.
   // (academies DELETE 의 audit_log FK RESTRICT throw 문제도 함께 사라짐.)
 }
+
+// concurrent-verify-b: teardown-fix 동시 검증용 trivial 변경 (2026-05-29)
