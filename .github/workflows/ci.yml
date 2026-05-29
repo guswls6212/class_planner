@@ -13,6 +13,14 @@ on:
 # 분기 식: (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]')
 # push event 는 on.push.branches 가 [main] 이라 main 만 트리거 → 항상 ubuntu.
 
+# Concurrency 가드 (2026-05-29, RCA ci-self-hosted-cache-stall):
+# 같은 PR(또는 ref)에 새 commit push 시 in-flight run 즉시 취소 → cp-runner 슬롯 즉시 해제.
+# 없으면 superseded commit 의 run 이 6-runner pool 을 계속 점유 → 후속 run queue.
+# head_ref(PR source branch) 우선, push 시 ref fallback.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     name: Type check, Lint, Unit tests
@@ -25,7 +33,11 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          cache: "npm"
+          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
+          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
+          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
+          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
+          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
@@ -47,7 +59,11 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          cache: "npm"
+          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
+          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
+          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
+          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
+          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
       - run: npm ci
       # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
       # .next/cache 는 Next.js 의 webpack/SWC compile artifact + fetch cache.
@@ -55,6 +71,9 @@ jobs:
       # key: package-lock + 모든 js/jsx/ts/tsx 의 content hash. restore-keys partial fallback.
       # SSOT: dev-pack/proposed-tasks/class-planner/ci-resource-budget-step-by-step.md § Step 4
       - name: Cache .next/cache
+        # RCA 2026-05-29: self-hosted 에선 .next/cache blob(WAN) 도 동일 stall 부류 + build step
+        # 자체가 이미 ~25s (cache 무관) → ubuntu(main 향) 에서만 활성.
+        if: github.event_name == 'push' || github.base_ref == 'main'
         uses: actions/cache@v4
         with:
           path: .next/cache
@@ -98,13 +117,20 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          cache: "npm"
+          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
+          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
+          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
+          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
+          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
       - run: npm ci
       # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
       # e2e job 의 webServer = `npm run build && npm run start` (playwright.config.ts) → build 재실행.
       # build job 의 cache 를 같은 key 로 restore → incremental compile.
       # 6 shard 모두 같은 key 로 restore (cloud cache 동시 접근 safe).
       - name: Cache .next/cache
+        # RCA 2026-05-29: self-hosted 에선 .next/cache blob(WAN) 도 동일 stall 부류 + build step
+        # 자체가 이미 ~25s (cache 무관) → ubuntu(main 향) 에서만 활성.
+        if: github.event_name == 'push' || github.base_ref == 'main'
         uses: actions/cache@v4
         with:
           path: .next/cache
