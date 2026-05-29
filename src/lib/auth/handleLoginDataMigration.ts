@@ -80,11 +80,18 @@ export function applyServerChoice(): void {
   logger.info("handleLoginDataMigration - 서버 데이터 선택, anonymous 삭제");
 }
 
+export interface LocalDataChoiceResult {
+  /** 정책 위반 등으로 서버 동기화 실패한 레코드 — caller 가 toast 로 표면화. */
+  failed: { entity: string; message: string }[];
+  /** 서버에 동기화된 핵심 엔티티 수 (students+subjects+enrollments+sessions). */
+  totalSynced: number;
+}
+
 export async function applyLocalDataChoice(
   userId: string,
   serverData: ClassPlannerData
-): Promise<void> {
-  if (typeof window === "undefined") return;
+): Promise<LocalDataChoiceResult> {
+  if (typeof window === "undefined") return { failed: [], totalSynced: 0 };
 
   // anonymous 키 우선, 없으면 userId 키 데이터를 소스로 사용
   const anonymousData = getAnonymousData();
@@ -95,16 +102,24 @@ export async function applyLocalDataChoice(
 
   // 1. 전체 마이그레이션 파이프라인 실행
   const result = await migrateLocalDataToServer(userId, localData, serverData);
+  const totalSynced =
+    result.syncedCounts.students +
+    result.syncedCounts.subjects +
+    result.syncedCounts.enrollments +
+    result.syncedCounts.sessions;
   logger.info("handleLoginDataMigration - 마이그레이션 결과", {
     success: result.success,
     syncedCounts: result.syncedCounts,
     errorCount: result.errors.length,
   });
 
-  if (!result.success) {
-    const failedEntities = result.errors.map((e) => `${e.entity}: ${e.message}`).join(", ");
-    throw new Error(`데이터 동기화에 실패했습니다: ${failedEntities}`);
-  }
+  // 부분 실패여도 throw 하지 않는다.
+  // (이전: !result.success 면 throw → 아래 step 2-5 미실행 → step 5 의 anonymous 정리
+  //  도달 못함. 정책상 영원히 실패하는 레코드가 매 로그인 재flood + 무한 spinner 유발.
+  //  2026-05-29 migration-partial-failure-resilience 사고 — 방아쇠는 강사 미배정 세션이었고
+  //  그 정책[/api/sessions POST teacher_id 필수]은 같은 cycle 에서 완화됐지만, 다른 영구
+  //  실패 레코드[필수 필드 누락 등]도 같은 lock 을 유발하므로 회복력 자체를 유지한다.)
+  // 대신 성공분은 서버 기준으로 반영하고, 실패 레코드는 caller 로 반환해 toast 로 알린다.
 
   // 2. 서버에서 최신 데이터 re-fetch (병렬)
   const [studentsRes, subjectsRes, sessionsRes, enrollmentsRes, teachersRes] =
@@ -147,12 +162,9 @@ export async function applyLocalDataChoice(
   });
 
   // 5. anonymous 키 삭제 — userId 키 소스인 경우 삭제 불필요 (서버 데이터로 이미 갱신됨)
+  //    1개라도 동기화됐으면 삭제해 재flood loop 를 끊는다. 0개(전부 실패)면 보존 —
+  //    transient(네트워크) 전체 실패일 수 있어 다음 로그인 재시도 여지를 남긴다.
   if (anonymousData) {
-    const totalSynced =
-      result.syncedCounts.students +
-      result.syncedCounts.subjects +
-      result.syncedCounts.enrollments +
-      result.syncedCounts.sessions;
     if (totalSynced > 0 || anonymousData.students.length === 0) {
       localStorage.removeItem(ANONYMOUS_STORAGE_KEY);
     } else {
@@ -162,5 +174,14 @@ export async function applyLocalDataChoice(
     }
   }
 
-  logger.info("handleLoginDataMigration - 로컬 데이터 선택 완료", { userId });
+  logger.info("handleLoginDataMigration - 로컬 데이터 선택 완료", {
+    userId,
+    totalSynced,
+    failedCount: result.errors.length,
+  });
+
+  return {
+    failed: result.errors.map((e) => ({ entity: e.entity, message: e.message })),
+    totalSynced,
+  };
 }

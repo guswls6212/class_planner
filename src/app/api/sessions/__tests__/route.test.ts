@@ -227,7 +227,9 @@ describe("/api/sessions API Routes", () => {
       );
     });
 
-    it("teacherId가 없으면 400 SESSION_TEACHER_ID_REQUIRED 반환 (attendance-permission-fix Phase 1)", async () => {
+    // 2026-05-29 정책 완화 (migration-partial-failure-resilience): 강사 미배정 세션 허용.
+    // UI optional + DB nullable + PUT 허용 + 일간뷰 "강사 미배정" 과 일관. 익명 데이터 동기화 누락 해소.
+    it("teacherId가 없어도 201 — 강사 미배정 세션 허용", async () => {
       const request = new NextRequest(
         "http://localhost:3000/api/sessions?userId=test-user",
         {
@@ -247,9 +249,9 @@ describe("/api/sessions API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error.code).toBe("SESSION_TEACHER_ID_REQUIRED");
-      expect(mockAddSession).not.toHaveBeenCalled();
+      expect(response.status).toBe(201);
+      expect(data.success).toBe(true);
+      expect(mockAddSession).toHaveBeenCalled();
     });
   });
 
