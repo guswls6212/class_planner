@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import { useTeacherDisplaySessions } from "../../hooks/useTeacherDisplaySessions";
@@ -61,7 +61,17 @@ function formatWeekRange(weekStart: string): string {
   return `${WEEK_LABEL_FORMATTER.format(start)} — ${WEEK_LABEL_FORMATTER.format(end)}`;
 }
 
+// Suspense 경계: TeacherScheduleContent 내부 useTimeRange 의 useSearchParams 가
+// Next.js 15 Static Generation 빌드에서 CSR-bailout 경계를 요구 (/schedule 과 동일 패턴).
 export default function TeacherSchedulePage() {
+  return (
+    <Suspense fallback={null}>
+      <TeacherScheduleContent />
+    </Suspense>
+  );
+}
+
+function TeacherScheduleContent() {
   const router = useRouter();
   const {
     data: { sessions, enrollments, subjects, students, teachers },
