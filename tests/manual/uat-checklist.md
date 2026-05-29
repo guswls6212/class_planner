@@ -268,8 +268,8 @@ UAT 자체가 매 PR 60분이면 1인 환경 부담 → **자동화 가능 영�
 
 #### Phase 5 — 멤버=강사 (member) 권한 시나리오 — §20
 - **사전 셋업**: owner 가 teacher 생성 후 member 초대 (UI 또는 `npm run uat:invite -- --role member`). teacher.user_id 가 member 와 link 되는 흐름이 핵심.
-- **진입**: 로그아웃 → `UAT_TEST_MEMBER_EMAIL` 로 로그인 → middleware 가 admin-only 라우트 차단 → `/teacher-schedule` 로 redirect
-- **시나리오 묶음**: §20 전체 (S-20.1~20.8 — invite 수락 + teacher link + /teacher-schedule view + RBAC 차단 + AttendanceSheet read-only + 본인 강사 session 의 public_description 만 PUT 허용)
+- **진입**: 로그아웃 → `UAT_TEST_MEMBER_EMAIL` 로 로그인 → middleware 가 admin-only 라우트 차단 → `/schedule` 로 redirect (member 는 /schedule role-branch read-only view — 2026-05-29 통합, /teacher-schedule 페이지 삭제)
+- **시나리오 묶음**: §20 전체 (S-20.1~20.8 — invite 수락 + teacher link + /schedule role-branch view(본인 강사 세션만) + RBAC 차단 + 본인수업 출결 마킹(attendanceOnly 모달) + 세션 메타 PUT 전면 403)
 - **핵심 검증**: middleware route guard (user_role 쿠키), useMyRole.canManage=false, FAB/+ 새 강사/+ 새 학생 버튼 미렌더 (S-5.15), 데이터 이력 섹션 미렌더 (S-14.13).
 - **소요**: 15분
 
@@ -399,7 +399,7 @@ UAT_TEST_MEMBER_PASSWORD=<강한-password>
 |---|---|---|
 | OWNER | owner (학원장) | S-1.5 첫 학원 생성, Phase 3 owner 권한 전체 |
 | ADMIN | admin (관리자) | Phase 4 §19 — invite 4-state + admin CUD + owner 강등 차단 |
-| MEMBER | member (멤버=강사 본인) | Phase 5 §20 — invite + teacher link + /teacher-schedule + RBAC 차단 |
+| MEMBER | member (멤버=강사 본인) | Phase 5 §20 — invite + teacher link + /schedule role-branch + RBAC 차단 |
 
 > **학생/학부모 view = 계정 X.** 별도 incognito 창 + share-link / 6자리 access-code 로 검증 (Phase 6 §21).
 
@@ -439,7 +439,7 @@ npm run uat:teardown                            # 3 계정 모두 reset
 
 > **uat:invite vs UI 초대 — 둘 다 필요한 이유:**
 > - **UI 초대 (S-19.1, S-20.1)**: 초대 발급 + 4-state 페이지 + accept 자체의 회귀 가드. **이 흐름은 매 Release UAT 직접 검증 의무.**
-> - **uat:invite 스크립트**: 그 외 시나리오 (admin RBAC 권한 / member /teacher-schedule view) 빠른 진입용 alt path. invite UI 흐름과 독립.
+> - **uat:invite 스크립트**: 그 외 시나리오 (admin RBAC 권한 / member /schedule role-branch view) 빠른 진입용 alt path. invite UI 흐름과 독립.
 
 > **OAuth 시나리오 (S-1.2)**: UAT 3 계정은 모두 password auth 로 진입. OAuth 흐름 자체 검증은 본인 Google 계정으로 별도 1회 (Release UAT 만). Kakao OAuth 는 미구현이라 UAT 제외.
 
@@ -2517,7 +2517,7 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 - state-b (이메일 일치) → 수락 성공
 - `academy_members.role = "member"` INSERT
 - `teachers.user_id` 가 member user_id 로 UPDATE (이전 NULL → set). UNIQUE INDEX `uniq_teachers_academy_user` 위반 시 응답 409 `TEACHER_ALREADY_LINKED` (race condition)
-- 수락 후 middleware 가 member role 인지 → `/teacher-schedule` 로 redirect (학생/과목/강사 페이지 직접 접근 시도하면 차단)
+- 수락 후 middleware 가 member role 인지 → admin-only 페이지(학생/과목/강사) 직접 접근 시 `/schedule` 로 redirect (member 는 /schedule role-branch read-only view 사용)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-20.3 member RBAC — middleware route guard [P0]
@@ -2528,7 +2528,7 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 3. 주소창에 `/teachers` 직접 입력
 4. `/schedule` 직접 입력 → middleware 동작 확인
 **Expected:**
-- middleware (`src/middleware.ts`) 가 `user_role` 쿠키 검사 → member 면 admin-only path (`/students` `/subjects` `/teachers`) 차단 → `/teacher-schedule` 로 redirect
+- middleware (`src/middleware.ts`) 가 `user_role` 쿠키 검사 → member 면 admin-only path (`/students` `/subjects` `/teachers`) 차단 → `/schedule?toast=permission_denied` 로 redirect
 - `/schedule` 은 차단 X (member 도 시간표 read-only 접근 가능) — 단 FAB/+ 새 학생/+ 새 강사 등 CUD UI 미렌더
 - 주의: middleware 는 UX 가이드일 뿐 보안 경계 X — 실제 API 권한은 `requireRole` 이 책임
 **Result:** [ ] Pass [ ] Fail — note: ___
@@ -2544,45 +2544,48 @@ uat.seed();                     // 익명 학생 3 / 과목 2 / 세션 3
 **Expected:**
 - ScheduleActionBar 의 템플릿/PDF/공유 버튼 disabled 또는 미렌더
 - FAB 자체 미렌더 (canManage=false)
-- EditSessionModal 진입은 가능하지만 저장 버튼 disabled (학생 0명 가드 외 read-only)
+- EditSessionModal 진입 가능 — member 는 attendanceOnly 모드(메타 필드 read-only + 출결 pill 활성, S-20.7). 메타 저장 버튼 미렌더
 - "＋" 과목 추가 / "＋ 새 강사" pill 모두 미렌더 (S-5.15 동일 동작 검증)
-- 사이드바: 시간표 / 출석부 만 / 학생·과목·강사 메뉴 미렌더
+- 사이드바: 시간표 만 노출 / 학생·과목·강사 메뉴 미렌더 (출결 전용 nav 는 2026-05-29 전체 제거 — 출결은 시간표 블록 클릭 진입)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-20.5 member `/teacher-schedule` view — 본인 강사 세션만 [P0]
+### S-20.5 member `/schedule` role-branch view — 본인 강사 세션만 [P0]
 **Pre:** member 로 로그인 + owner 가 미리 "강사_uat" 배정한 session 3개 + 다른 강사 ("김선생") 배정한 session 2개 보유
 **Steps:**
-1. `/teacher-schedule` 진입
-2. 시간표 + 세션 카드 시각 확인
+1. `/schedule` 진입 (member role-branch — `isMemberView`)
+2. 시간표 + 세션 블록 시각 확인
 **Expected:**
 - 본인 (teachers.user_id = member_user_id) 강사 의 세션 3개만 표시
-- 다른 강사 세션 2개는 시간표에서 hidden (`/api/sessions?teacherId=<self>` 필터링)
-- 헤더에 "강사: 강사_uat" 표시
-- 본인 세션 카드의 `public_description` 필드 편집 가능 — 다른 강사 세션은 PUT 시도해도 server 가 `requireOwnTeacher` 로 403
+- 다른 강사 세션 2개는 시간표에서 hidden (client filter `s.teacherId === linkedTeacherId`, schedule/page.tsx) — 미연결 member 는 빈 화면
+- canManage=false → FAB/추가/드래그/메타 편집 UI 미렌더 (read-only)
+- 세션 블록 클릭 → 출결-전용 EditSessionModal(`attendanceOnly`): 과목/시간/학생/강사 read-only + 출결 pill 만 활성 (S-20.7 참조)
+- 세션 메타 PUT(`/api/sessions/[id]`)은 owner/admin only → member 는 public_description 포함 모든 필드 403 (route.ts:120-126, 이전 public_description 허용 gap 마감)
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-20.6 member 의 public_description 자기 강사 한정 [P1]
-**Pre:** S-20.5 상태
+### S-20.6 member 세션 메타 PUT 전면 차단 (public_description 포함) [P1]
+**Pre:** S-20.5 상태. (2026-05-29 보안 강화 — 이전엔 member 가 본인 강사 session 의 public_description 만 PUT 허용했으나, subject/time/teacher 재배정 우회 gap 으로 member 세션 메타 PUT 경로를 전면 차단. route.ts:120-126.)
 **Steps:**
-1. 본인 강사의 session card → public_description 영역에 "오늘 진도: 미적분 5단원" 입력
-2. 다른 강사의 session card 에 대해 DevTools 로 `PATCH /api/sessions/{id}` body `{ public_description: "..." }` 강제 전송
+1. 본인 강사 session 에 DevTools 로 `PUT /api/sessions/{id}` body `{ public_description: "오늘 진도: 미적분 5단원" }` 강제 전송
+2. 다른 강사 session 에도 동일하게 강제 전송
+3. body 를 `{ subjectId }` / `{ weekday }` / `{ startsAt }` 등 메타 필드로 바꿔 강제 전송
 **Expected:**
-- 본인 강사 session: 저장 성공, 시간표 refresh 시에도 유지, 학부모 share-link 로 보면 public_description 노출
-- 다른 강사 session 강제 PUT: 403 `requireOwnTeacher` 차단
-- public_description 외 필드 (weekday/시간/학생 등) 는 member 가 어떤 session 도 변경 불가
+- 본인/타 강사 무관 모든 session 메타 PUT → 403 (`requireRole(["owner","admin"])`, route.ts:126)
+- public_description 도 더 이상 member 편집 불가 (gap 마감) — public_description 설정은 owner/admin 만
+- member 의 정당한 쓰기 경로는 출결(`POST /api/attendance`, 본인 teacher 수업만 `assertAttendancePermission`) 뿐
 **Result:** [ ] Pass [ ] Fail — note: ___
 
-### S-20.7 member 의 AttendanceSheet read-only [P1]
-**Pre:** S-20.5 본인 강사 session 의 출석 진입
+### S-20.7 member 본인 수업 출결 마킹 (attendanceOnly 모달) [P1]
+**Pre:** S-20.5 — member `/schedule` 에 본인 강사 session 표시됨 (PR #571)
 **Steps:**
-1. 본인 session card → 출석 아이콘 클릭 → AttendanceSheet 열림
-2. 임의 학생 status 버튼 클릭 시도
-3. "전체 출석" 버튼 시각 확인
+1. 본인 강사 session 블록 클릭 → 출결-전용 EditSessionModal(`attendanceOnly`) 열림
+2. 학생 출결 pill 클릭 (출석/결석/지각/사유) → 다른 상태로 토글
+3. 과목/시간/학생/강사 필드가 read-only(disabled)인지 시각 확인
+4. 모달 닫기 → 블록 우하단 출결 dot 갱신 확인
 **Expected:**
-- canManage=false → 4-state 버튼 모두 disabled (cursor-not-allowed, opacity 70%) — `if (canManage) onMarkAttendance(...)` 가드
-- "전체 출석" 버튼 자체 미렌더
-- 기존 마킹 표시는 정상 노출 (read-only view)
-- S-15.5 와 동일 검증
+- 출결 pill 활성 — 본인 수업 출결 마킹 성공 (`POST /api/attendance`, `assertAttendancePermission` 가 member 본인 teacher 수업만 허용)
+- 과목/시간/학생/강사 메타 필드 read-only — 메타 저장 버튼 미렌더 (attendanceOnly 는 출결 flush + close)
+- 닫고 재진입 시 방금 마킹한 출결 유지 (occurrence date key = `instanceDateFromWeekStart`)
+- 타 강사 수업은 화면에 안 보임(S-20.5 필터) → 출결 진입 불가. 직접 `POST /api/attendance` 로 타 강사 수업 마킹 시도 시 권한 거부
 **Result:** [ ] Pass [ ] Fail — note: ___
 
 ### S-20.8 member 의 데이터 이력 섹션 미렌더 [P2]
@@ -2927,3 +2930,8 @@ npm run uat:teardown
   - **정책확인 4건 명시화** (사용자 요청 "어떻게 동작하는게 맞는건지 정확하게 기재"): S-3.4 과목 cascade 삭제 (deferred-commit + enrollment/session 동시 정리), S-4.6 teacher-subject 그룹화 (필터링 아님 — 두 그룹 정렬), S-6.6 드래그 충돌 (lane 자동 분할, modal 없음), S-15.3 "전체 출석" 일괄 덮어쓰기 (확인 모달 X, 기존 status 모두 present 로 upsert). 각 시나리오에 "의도" + "실제 동작 (소스 참조)" 두 줄 형식.
   - **총 P0**: 41 → 50 (§19 +3, §20 +4, §21 +2, §10 −0 — S-10.3~10.7 이동만이라 카운트 무관).
   - **회귀 가드**: scripts/ 11개 파일 type-check pass. cleanup helper invites→invite_tokens fix 가 잠재 사고 차단.
+- 2026-05-29: **§20 멤버=강사 시나리오 갱신 — /teacher-schedule → /schedule role-branch 통합 + 출결 writable + 세션 메타 PUT 전면 차단** (PR #571, attendance-ux-redesign Phase A). 위 2026-05-20 (2) 의 §20 기재는 도입 시점 스냅샷으로 보존하고, 현재 동작 기준으로 다음을 갱신:
+  - **진입 통합**: `/teacher-schedule` 페이지 삭제 → member 는 `/schedule` role-branch(`isMemberView` — 본인 강사 세션만 `teacherId===linkedTeacherId` 필터, canManage=false read-only) 사용. middleware redirect 대상 `/teacher-schedule` → `/schedule`(차단된 admin-only 접근은 `/schedule?toast=permission_denied`). 출결 전용 nav 도 전체 제거 — 출결은 시간표 블록 클릭 진입.
+  - **출결 writable**: member 가 본인 수업 출결을 **마킹 가능**(블록 클릭 → attendanceOnly EditSessionModal, `POST /api/attendance` + `assertAttendancePermission` 본인 teacher 수업만). 이전 "AttendanceSheet read-only" 폐기 → **S-20.7 재작성**. occurrence date key = `instanceDateFromWeekStart`.
+  - **세션 메타 PUT 전면 403**: `/api/sessions/[id]` PUT/PATCH 가 owner/admin only(`requireRole`, route.ts:120-126) → member 는 public_description 포함 어떤 메타 필드도 403. 이전 "public_description 본인 강사 한정" 폐기(subject/time/teacher 재배정 우회 gap 마감) → **S-20.6 재작성**.
+  - **갱신 위치**: §0 Phase 5 진입(진입 route + 시나리오 묶음), 계정 표, uat:invite 안내, S-20.2/20.3 redirect 대상, S-20.4 모달/사이드바 문구, S-20.5 view route + 권한, S-20.6/S-20.7 재작성. P0/P1 designation·총 P0 카운트 무변(재작성만).
