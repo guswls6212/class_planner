@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 
 export interface AcademyMembership {
   id: string;
@@ -273,9 +274,24 @@ export function MemberProvider({ children }: { children: ReactNode }) {
                 "@/lib/localStorageCrud"
               );
               const currentActive = getActiveAcademyId(userId);
-              if (!currentActive && list && list.length > 0) {
-                // First entry is owner-priority sorted by /api/academies/mine.
-                setActiveAcademyId(userId, list[0].id);
+              const validIds = (list ?? []).map((a) => a.id);
+              if (list && list.length > 0) {
+                // Reconcile active_academy. First entry is owner-priority sorted by
+                // /api/academies/mine. Set it when missing, OR replace it when it points to
+                // an academy the user is no longer a member of (academy deleted / user removed /
+                // UAT teardown→relogin). A stale id makes getStorageKey() read the wrong scoped
+                // localStorage → useGlobalDataInitialization compares old local data against a
+                // fresh empty server academy → spurious upload-local → academy-changed
+                // re-entrancy loop → infinite "사용자 데이터를 불러오는 중" spinner.
+                if (!currentActive) {
+                  setActiveAcademyId(userId, list[0].id);
+                } else if (!validIds.includes(currentActive)) {
+                  logger.warn(
+                    "stale active_academy 감지 — 멤버십에 없는 학원 → 유효 학원으로 reconcile",
+                    { stale: currentActive, reconciledTo: list[0].id },
+                  );
+                  setActiveAcademyId(userId, list[0].id);
+                }
               }
             }
           }
