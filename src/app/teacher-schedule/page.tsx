@@ -240,7 +240,7 @@ export default function TeacherSchedulePage() {
           />
         </div>
       ) : viewMode === "monthly" ? (
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-24">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <ScheduleMonthlyView
             sessions={monthSessions}
             subjects={subjects}
@@ -256,7 +256,7 @@ export default function TeacherSchedulePage() {
           />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-24">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <TimeTableGrid
             sessions={displaySessions}
             subjects={subjects}
