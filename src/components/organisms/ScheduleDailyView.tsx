@@ -639,9 +639,6 @@ function DailyDetailPanel({
         >
           <ChevronLeft size={12} /> 이전
         </button>
-        <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">
-          J · K
-        </span>
         <button
           onClick={onNext}
           disabled={!hasNext}

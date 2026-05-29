@@ -240,6 +240,30 @@ describe("EditSessionModal", () => {
       expect(screen.queryByRole("button", { name: "수" })).not.toBeInTheDocument();
     });
 
+    it("출결 row hover 시 학생 상세 tooltip(portal)을 띄우고 mouseLeave 시 숨긴다", () => {
+      render(
+        <EditSessionModal
+          {...attendanceProps}
+          selectedStudents={[
+            { id: "stu-1", name: "김철수", grade: "고1", school: "서울고" },
+          ]}
+          attendanceMap={{ "stu-1": { status: "none" } }}
+        />
+      );
+      // hover 전엔 tooltip 없음 (portal 은 hover 시에만 렌더 — clip 회피)
+      expect(
+        screen.queryByTestId("edit-attendance-tooltip-stu-1")
+      ).not.toBeInTheDocument();
+      fireEvent.mouseEnter(screen.getByTestId("edit-attendance-row-stu-1"));
+      const tip = screen.getByTestId("edit-attendance-tooltip-stu-1");
+      expect(tip).toHaveTextContent("김철수");
+      expect(tip).toHaveTextContent("고1");
+      fireEvent.mouseLeave(screen.getByTestId("edit-attendance-row-stu-1"));
+      expect(
+        screen.queryByTestId("edit-attendance-tooltip-stu-1")
+      ).not.toBeInTheDocument();
+    });
+
     it("출결 pill 변경 후 저장 시 onMarkAttendance만 호출하고 onSave는 호출하지 않는다", async () => {
       const onMarkAttendance = vi.fn().mockResolvedValue(undefined);
       const onSave = vi.fn();

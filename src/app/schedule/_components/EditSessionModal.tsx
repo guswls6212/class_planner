@@ -27,6 +27,7 @@
  */
 
 import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Trash2, X, ChevronDown, ChevronUp, UserPlus, Calendar, Clock, AlertCircle } from "lucide-react";
 import { IconButton } from "@/components/atoms/IconButton";
 import { EmptyState } from "@/components/atoms/EmptyState";
@@ -341,6 +342,13 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     - 모달 열릴 때마다 buffer reset (다른 세션 편집 시 mix 방지)
   */
   const [attendanceBuffer, setAttendanceBuffer] = useState<Record<string, "none" | "present" | "absent" | "late">>({});
+  // 출결 chip hover tooltip — portal(fixed) 로 렌더해 모달 overflow clip 회피.
+  const [attendanceHoverTip, setAttendanceHoverTip] = useState<{
+    student: StudentOption;
+    left: number;
+    top: number;
+    placeAbove: boolean;
+  } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [savingAttendance, setSavingAttendance] = useState(false);
   // "학생 추가 / 변경" toggle click 시 그 영역으로 scrollIntoView (2026-05-28 사용자 명시)
@@ -351,6 +359,7 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
     if (isOpen) {
       setAttendanceBuffer({});
       setPickerOpen(false);
+      setAttendanceHoverTip(null);
     }
   }, [isOpen]);
 
@@ -1005,13 +1014,23 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                   const bg = ATTENDANCE_CYCLE_BG[current];
                   const ring = ATTENDANCE_CYCLE_RING[current];
                   const isModified = bufferStatus !== undefined;
-                  const tooltipRows = buildAttendanceTooltipRows(student);
 
                   return (
                     <div
                       key={student.id}
                       data-testid={`edit-attendance-row-${student.id}`}
-                      className={`group relative inline-flex items-center gap-0 rounded-full border ${
+                      onMouseEnter={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        const placeAbove = r.bottom + 170 > window.innerHeight;
+                        setAttendanceHoverTip({
+                          student,
+                          left: Math.max(8, Math.min(r.left, window.innerWidth - 200)),
+                          top: placeAbove ? r.top - 6 : r.bottom + 6,
+                          placeAbove,
+                        });
+                      }}
+                      onMouseLeave={() => setAttendanceHoverTip(null)}
+                      className={`relative inline-flex items-center gap-0 rounded-full border ${
                         isModified
                           ? "border-amber-500/50 bg-amber-500/[0.06]"
                           : "border-[var(--color-border)] bg-[var(--color-bg-secondary)]"
@@ -1066,36 +1085,6 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           <X size={11} />
                         </button>
                       )}
-
-                      {/* inline tooltip — chip group-hover 시 학생 이름 prominent + 상세.
-                          미저장 chip 옆 amber 표시도 tooltip 안에서 hint. */}
-                      <div
-                        className="absolute left-0 top-full mt-1 z-50 min-w-[180px] hidden group-hover:block rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-2xl p-2.5 pointer-events-none"
-                        data-testid={`edit-attendance-tooltip-${student.id}`}
-                      >
-                        <p className="text-[13px] font-semibold text-[var(--color-text-primary)] mb-1.5 pb-1 border-b border-[var(--color-border)]">
-                          {student.name}
-                          {isModified && (
-                            <span className="ml-2 text-[10.5px] text-amber-400 font-normal">
-                              · 미저장 변경
-                            </span>
-                          )}
-                        </p>
-                        {tooltipRows.length > 0 ? (
-                          <dl className="text-[11px] space-y-0.5">
-                            {tooltipRows.map((row) => (
-                              <div key={row.label} className="flex justify-between gap-3">
-                                <dt className="text-[var(--color-text-muted)]">{row.label}</dt>
-                                <dd className="text-[var(--color-text-primary)]">{row.value}</dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : (
-                          <p className="text-[10.5px] text-[var(--color-text-muted)] italic">
-                            학생 상세 정보 없음
-                          </p>
-                        )}
-                      </div>
                     </div>
                   );
                 })}
@@ -1107,6 +1096,56 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
                 {Object.keys(attendanceBuffer).length}건 미저장 — '저장' 클릭 시 한 번에 전송
               </p>
             )}
+
+            {/* 출결 chip hover tooltip — portal 로 document.body 에 fixed 렌더.
+                모달 body(overflow-y-auto) + dialog(overflow-hidden) 의 clip 회피
+                (학생 위 마우스오버 시 tooltip 잘림 + 스크롤-chase 해소). */}
+            {attendanceHoverTip &&
+              typeof document !== "undefined" &&
+              createPortal(
+                (() => {
+                  const tip = attendanceHoverTip;
+                  const rows = buildAttendanceTooltipRows(tip.student);
+                  const modified = attendanceBuffer[tip.student.id] !== undefined;
+                  return (
+                    <div
+                      style={{
+                        position: "fixed",
+                        left: tip.left,
+                        top: tip.top,
+                        transform: tip.placeAbove ? "translateY(-100%)" : undefined,
+                        zIndex: 10000,
+                      }}
+                      className="min-w-[180px] rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-2xl p-2.5 pointer-events-none"
+                      data-testid={`edit-attendance-tooltip-${tip.student.id}`}
+                    >
+                      <p className="text-[13px] font-semibold text-[var(--color-text-primary)] mb-1.5 pb-1 border-b border-[var(--color-border)]">
+                        {tip.student.name}
+                        {modified && (
+                          <span className="ml-2 text-[10.5px] text-amber-400 font-normal">
+                            · 미저장 변경
+                          </span>
+                        )}
+                      </p>
+                      {rows.length > 0 ? (
+                        <dl className="text-[11px] space-y-0.5">
+                          {rows.map((row) => (
+                            <div key={row.label} className="flex justify-between gap-3">
+                              <dt className="text-[var(--color-text-muted)]">{row.label}</dt>
+                              <dd className="text-[var(--color-text-primary)]">{row.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <p className="text-[10.5px] text-[var(--color-text-muted)] italic">
+                          학생 상세 정보 없음
+                        </p>
+                      )}
+                    </div>
+                  );
+                })(),
+                document.body
+              )}
           </div>
         )}
 
