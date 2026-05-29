@@ -87,6 +87,41 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
+  # E2E test user 6 셋업 — 전용 job (2026-05-29, RCA ci-self-hosted-cache-stall).
+  # 배경: 기존엔 e2e matrix 의 `if: matrix.shard == 1` step 이 6 user 를 셋업했는데,
+  # shard 1 의 setup 이 끝나기 전에 다른 shard 의 globalSetup 이 academy_members 를
+  # 읽는 race 가 있었다. cache stall(setup-node 8-10m)이 우연히 buffer 를 제공해
+  # 가려져 있었으나, cache OFF 후 모든 shard 가 ~동시 시작하며 race 표면화
+  # (shard 5 가 shard 1 setup 보다 73초 먼저 globalSetup → academy_members 부재 fail).
+  # → 셋업을 별도 job 으로 분리하고 e2e 가 needs 로 의존 → 모든 shard 시작 전 완료 보장.
+  setup-users:
+    name: Setup E2E test users
+    needs: build
+    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # RCA 2026-05-29: self-hosted npm cache OFF (WAN blob stall 회피). 본 job § Build 참조.
+          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
+      - run: npm ci
+      # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
+      # script 가 6 user (e2e-test-1~6@class-planner.test) 모두 idempotent 셋업.
+      # continue-on-error: secrets 누락 시 graceful skip (globalSetup 이 명확한 error 표면화).
+      - name: Setup E2E test users (6 idempotent)
+        run: npx tsx scripts/setup-e2e-test-user.ts
+        continue-on-error: true
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
+          E2E_USER_PASSWORD_2: ${{ secrets.E2E_USER_PASSWORD_2 }}
+          E2E_USER_PASSWORD_3: ${{ secrets.E2E_USER_PASSWORD_3 }}
+          E2E_USER_PASSWORD_4: ${{ secrets.E2E_USER_PASSWORD_4 }}
+          E2E_USER_PASSWORD_5: ${{ secrets.E2E_USER_PASSWORD_5 }}
+          E2E_USER_PASSWORD_6: ${{ secrets.E2E_USER_PASSWORD_6 }}
+
   e2e:
     # main 향 = ubuntu + 4 shard 병렬 (parallel coverage) — user 1-4 각자 다른 user.
     # dev 향 (no label) = Mac Studio + 6 shard 병렬 — user 1-6 각자 다른 user (race window 영구 해소).
@@ -103,7 +138,10 @@ jobs:
     # user 1 사용 — 동시 PR 의 dev full 6 shard 의 shard 1 과 user 1 충돌 가능 (운영 측정 후 mitigation).
     # SSOT: dev-pack/docs/protocols/ai-pr-label-policy.md
     name: E2E tests (shard ${{ matrix.shard }}/${{ matrix.total }} — user ${{ matrix.user_index }})
-    needs: build
+    # needs: setup-users 추가 (2026-05-29, RCA) — 모든 shard 가 user 6 셋업 완료 후 시작.
+    # 기존 `if: matrix.shard == 1` in-job setup 의 race 제거 (shard 5 가 shard 1 setup 전
+    # globalSetup 실행 → academy_members 부재 fail. cache stall 이 가렸다가 cache OFF 후 표면화).
+    needs: [build, setup-users]
     runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
     strategy:
       fail-fast: false
@@ -146,22 +184,8 @@ jobs:
         run: npx playwright install chromium
         env:
           PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
-      # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
-      # script 가 6 user 모두 idempotent 셋업. shard 1 만 실행 — 다른 shard 는 spec login 만.
-      # 모든 USER_PASSWORD_1~6 env 주입 (USER_1 은 legacy E2E_TEST_USER_PASSWORD).
-      - name: Setup E2E test users (6 idempotent)
-        if: matrix.shard == 1
-        run: npx tsx scripts/setup-e2e-test-user.ts
-        continue-on-error: true
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          E2E_TEST_USER_PASSWORD: ${{ secrets.E2E_TEST_USER_PASSWORD }}
-          E2E_USER_PASSWORD_2: ${{ secrets.E2E_USER_PASSWORD_2 }}
-          E2E_USER_PASSWORD_3: ${{ secrets.E2E_USER_PASSWORD_3 }}
-          E2E_USER_PASSWORD_4: ${{ secrets.E2E_USER_PASSWORD_4 }}
-          E2E_USER_PASSWORD_5: ${{ secrets.E2E_USER_PASSWORD_5 }}
-          E2E_USER_PASSWORD_6: ${{ secrets.E2E_USER_PASSWORD_6 }}
+      # E2E test user 6 셋업은 별도 setup-users job 으로 이동 (2026-05-29, RCA).
+      # e2e 가 needs: setup-users 로 의존 → 모든 shard 시작 전 user 데이터 보장 (race 제거).
       - name: Run E2E tests
         run: |
           npx playwright test \
