@@ -78,6 +78,7 @@ import { buildApplyTemplatePayload } from "./_utils/buildApplyTemplate";
 import { sanitizeStudentIds } from "./_utils/sanitizeStudentIds";
 import { sanitizeTempEnrollments } from "./_utils/sanitizeTempEnrollments";
 import { getWeekStartDate } from "../../lib/weekStart";
+import { instanceDateFromWeekStart } from "../../lib/dateUtils";
 import { Plus } from "lucide-react";
 import { sessionMatchesFilters } from "../../components/molecules/SessionBlock.utils";
 import { cascadeFilterOptions } from "./_utils/cascadeFilterOptions";
@@ -2082,13 +2083,27 @@ function SchedulePageContent(): JSX.Element {
     });
   }, [attendanceSession, enrollments, students]);
 
+  // 편집 모달 출결 날짜 = 그 세션의 실제 occurrence (weekStart + weekday) — SessionBlock dot 과 동일 key.
+  // selectedDate(보고 있는 날)가 아니라 세션 요일 기준이라야 주간 view 에서 다른 요일 세션도 정확.
+  // (이전: selectedDate.toISOString() → 저장 날짜 ≠ dot 조회 날짜 → '저장해도 dot red' 사고. 2026-05-29)
+  const editModalInstanceDate = useMemo(
+    () =>
+      editModalData
+        ? instanceDateFromWeekStart(
+            editModalData.weekStartDate ?? currentWeekStart,
+            editModalData.weekday
+          )
+        : null,
+    [editModalData, currentWeekStart]
+  );
+
   // Layer 1 (mockup edit-session-with-attendance, 2026-05-28):
   // 편집 모달이 열리면 본 세션의 출결을 fetch (학생 출결 섹션 초기 status 표시용).
   useEffect(() => {
-    if (!userId || !editModalData || !showEditModal) return;
-    const dateStr = selectedDate.toISOString().slice(0, 10);
-    void fetchAttendance(editModalData.id, dateStr);
-  }, [userId, editModalData, showEditModal, selectedDate, fetchAttendance]);
+    if (!userId || !editModalData || !showEditModal || !editModalInstanceDate)
+      return;
+    void fetchAttendance(editModalData.id, editModalInstanceDate);
+  }, [userId, editModalData, showEditModal, editModalInstanceDate, fetchAttendance]);
 
   // SessionBlock 우하단 출결 dot 시각 (Layer 2 D + past-day, 2026-05-28).
   // 본 view 의 이번 주 의 오늘 + 과거 날짜 session 출결을 bulk fetch — dot alert 정확도 향상.
@@ -2516,17 +2531,20 @@ function SchedulePageContent(): JSX.Element {
           editModalData
             ? // ?? {} — fetch 전에도 출결 섹션이 학생 pill(미체크)을 즉시 렌더 (빈 모달 후 뒤늦게
               // 채워지는 UX 제거, 2026-05-29). fetch 완료 시 status 채워짐.
-              attendance[editModalData.id]?.[
-                selectedDate.toISOString().slice(0, 10)
-              ] ?? {}
+              // key = editModalInstanceDate (occurrence) — dot 과 동일 날짜라야 저장 후 dot 갱신됨.
+              attendance[editModalData.id]?.[editModalInstanceDate ?? ""] ?? {}
             : undefined
         }
         onMarkAttendance={(studentId, status) => {
-          if (!editModalData) return;
-          // 출결 기록 날짜 — 현재 view 의 selectedDate (편집 모달 같은 컨텍스트)
-          const dateStr = selectedDate.toISOString().slice(0, 10);
+          if (!editModalData || !editModalInstanceDate) return;
+          // 출결 기록 날짜 = 세션 occurrence (weekStart+weekday) — dot 조회 날짜와 일치해야 저장 후 dot 갱신.
           // status="none" 은 markAttendance API 에서 미체크 복원 (또는 graceful no-op). server enum 호환.
-          return markAttendance(editModalData.id, studentId, dateStr, status);
+          return markAttendance(
+            editModalData.id,
+            studentId,
+            editModalInstanceDate,
+            status
+          );
         }}
         canManageAttendance={
           // 운영자 / 관리자 — 모두 OK. 강사 (member) — 본인 수업 만.

@@ -1091,9 +1091,18 @@ const EditSessionModal: React.FC<EditSessionModalProps> = ({
               </div>
             )}
             {Object.keys(attendanceBuffer).length > 0 && (
-              <p className="text-[10.5px] text-amber-400 flex items-center gap-1">
-                <AlertCircle size={11} strokeWidth={2} />
-                {Object.keys(attendanceBuffer).length}건 미저장 — '저장' 클릭 시 한 번에 전송
+              <p className="text-[11px] text-[var(--color-text-secondary)] flex items-center gap-1.5">
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0"
+                  aria-hidden="true"
+                />
+                <span>
+                  출결 {Object.keys(attendanceBuffer).length}명 바꿨어요 —{" "}
+                  <span className="font-semibold text-[var(--color-text-primary)]">
+                    {attendanceOnly ? "출결 저장" : "저장"}
+                  </span>{" "}
+                  버튼을 눌러야 저장돼요
+                </span>
               </p>
             )}
 

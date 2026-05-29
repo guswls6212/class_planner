@@ -221,7 +221,9 @@ describe("EditSessionModal", () => {
 
     it("저장 버튼 라벨이 '출결 저장'이고 출결 pill은 보인다", () => {
       render(<EditSessionModal {...attendanceProps} />);
-      expect(screen.getByText("출결 저장")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "출결 저장" })
+      ).toBeInTheDocument();
       expect(screen.getByTestId("edit-attendance-pill-stu-1")).toBeInTheDocument();
     });
 
@@ -278,7 +280,7 @@ describe("EditSessionModal", () => {
       );
       // none → present (cycle 1회)
       fireEvent.click(screen.getByTestId("edit-attendance-pill-stu-1"));
-      fireEvent.click(screen.getByText("출결 저장"));
+      fireEvent.click(screen.getByRole("button", { name: "출결 저장" }));
 
       await waitFor(() =>
         expect(onMarkAttendance).toHaveBeenCalledWith("stu-1", "present")
