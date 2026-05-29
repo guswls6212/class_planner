@@ -115,9 +115,10 @@ export async function applyLocalDataChoice(
 
   // 부분 실패여도 throw 하지 않는다.
   // (이전: !result.success 면 throw → 아래 step 2-5 미실행 → step 5 의 anonymous 정리
-  //  도달 못함. 정책상 영원히 실패하는 레코드[강사 미배정 세션 = /api/sessions 400
-  //  SESSION_TEACHER_ID_REQUIRED]가 매 로그인 재flood + 무한 spinner 유발.
-  //  2026-05-29 migration-partial-failure-resilience 사고.)
+  //  도달 못함. 정책상 영원히 실패하는 레코드가 매 로그인 재flood + 무한 spinner 유발.
+  //  2026-05-29 migration-partial-failure-resilience 사고 — 방아쇠는 강사 미배정 세션이었고
+  //  그 정책[/api/sessions POST teacher_id 필수]은 같은 cycle 에서 완화됐지만, 다른 영구
+  //  실패 레코드[필수 필드 누락 등]도 같은 lock 을 유발하므로 회복력 자체를 유지한다.)
   // 대신 성공분은 서버 기준으로 반영하고, 실패 레코드는 caller 로 반환해 toast 로 알린다.
 
   // 2. 서버에서 최신 데이터 re-fetch (병렬)
