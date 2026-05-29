@@ -157,6 +157,8 @@ export default function ScheduleWeeklyGrid(props: Props) {
         endHour={props.endHour}
         fillHeight={props.fillHeight}
         attendanceMapBySession={props.attendanceMapBySession}
+        isReadOnly={!props.canManage}
+        allowReadOnlySessionClick={!props.canManage}
       />
       {props.weekFilteredSessionsCount === 0 && (
         <EmptyWeekState

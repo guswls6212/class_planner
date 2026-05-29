@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import EditSessionModal from "../EditSessionModal";
 
@@ -194,6 +194,101 @@ describe("EditSessionModal", () => {
       render(<EditSessionModal {...defaultProps} />);
       fireEvent.click(screen.getByRole("button", { name: /수업 시간:/ }));
       expect(screen.getByLabelText("종료 시간")).toBeInTheDocument();
+    });
+  });
+
+  // attendanceOnly = 강사(member)가 /teacher-schedule 에서 본인 수업 클릭 시 쓰는
+  // 출결-전용 모드. 수업 메타 read-only + 출결 pill 만 편집.
+  describe("attendanceOnly 모드", () => {
+    const attendanceProps = {
+      ...defaultProps,
+      attendanceOnly: true,
+      attendanceMap: {
+        "stu-1": { status: "none" },
+        "stu-2": { status: "none" },
+      } as Record<string, { status: string }>,
+      onMarkAttendance: vi.fn(),
+    };
+
+    it("수업 삭제 / 과목 dropdown / 학생 picker 토글을 숨긴다", () => {
+      render(<EditSessionModal {...attendanceProps} />);
+      expect(
+        screen.queryByRole("button", { name: "수업 삭제" })
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("subject-dropdown-trigger")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("edit-student-picker-toggle")).not.toBeInTheDocument();
+    });
+
+    it("저장 버튼 라벨이 '출결 저장'이고 출결 pill은 보인다", () => {
+      render(<EditSessionModal {...attendanceProps} />);
+      expect(
+        screen.getByRole("button", { name: "출결 저장" })
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("edit-attendance-pill-stu-1")).toBeInTheDocument();
+    });
+
+    it("학생 제거(X) 버튼을 숨긴다 (member는 enrollment 편집 불가)", () => {
+      render(<EditSessionModal {...attendanceProps} />);
+      expect(
+        screen.queryByTestId("edit-attendance-remove-stu-1")
+      ).not.toBeInTheDocument();
+    });
+
+    it("요일 chip은 read-only — 클릭해도 popover가 열리지 않는다", () => {
+      render(<EditSessionModal {...attendanceProps} />);
+      const weekdayChip = screen.getByRole("button", { name: /요일:/ });
+      fireEvent.click(weekdayChip);
+      // popover 의 개별 요일 버튼("수")이 없어야 함 — 비활성 chip
+      expect(screen.queryByRole("button", { name: "수" })).not.toBeInTheDocument();
+    });
+
+    it("출결 row hover 시 학생 상세 tooltip(portal)을 띄우고 mouseLeave 시 숨긴다", () => {
+      render(
+        <EditSessionModal
+          {...attendanceProps}
+          selectedStudents={[
+            { id: "stu-1", name: "김철수", grade: "고1", school: "서울고" },
+          ]}
+          attendanceMap={{ "stu-1": { status: "none" } }}
+        />
+      );
+      // hover 전엔 tooltip 없음 (portal 은 hover 시에만 렌더 — clip 회피)
+      expect(
+        screen.queryByTestId("edit-attendance-tooltip-stu-1")
+      ).not.toBeInTheDocument();
+      fireEvent.mouseEnter(screen.getByTestId("edit-attendance-row-stu-1"));
+      const tip = screen.getByTestId("edit-attendance-tooltip-stu-1");
+      expect(tip).toHaveTextContent("김철수");
+      expect(tip).toHaveTextContent("고1");
+      fireEvent.mouseLeave(screen.getByTestId("edit-attendance-row-stu-1"));
+      expect(
+        screen.queryByTestId("edit-attendance-tooltip-stu-1")
+      ).not.toBeInTheDocument();
+    });
+
+    it("출결 pill 변경 후 저장 시 onMarkAttendance만 호출하고 onSave는 호출하지 않는다", async () => {
+      const onMarkAttendance = vi.fn().mockResolvedValue(undefined);
+      const onSave = vi.fn();
+      const onCancel = vi.fn();
+      render(
+        <EditSessionModal
+          {...attendanceProps}
+          onMarkAttendance={onMarkAttendance}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      );
+      // none → present (cycle 1회)
+      fireEvent.click(screen.getByTestId("edit-attendance-pill-stu-1"));
+      fireEvent.click(screen.getByRole("button", { name: "출결 저장" }));
+
+      await waitFor(() =>
+        expect(onMarkAttendance).toHaveBeenCalledWith("stu-1", "present")
+      );
+      // 메타 저장(onSave)은 호출되지 않음 — member 는 세션 PUT 권한 없음
+      expect(onSave).not.toHaveBeenCalled();
+      // flush 후 모달 닫힘
+      await waitFor(() => expect(onCancel).toHaveBeenCalled());
     });
   });
 });

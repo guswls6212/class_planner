@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
  * 권한 강제는 API 계층의 requireRole이 담당).
  */
 
-const GUARDED_PATHS = ["/students", "/subjects", "/teachers", "/schedule", "/teacher-schedule"];
+const GUARDED_PATHS = ["/students", "/subjects", "/teachers", "/schedule"];
 const ADMIN_ONLY_PATHS = ["/students", "/subjects", "/teachers"];
 const DESIGN_EXPLORATIONS_PREFIX = "/design-explorations";
 
@@ -90,7 +90,6 @@ export const config = {
     "/subjects/:path*",
     "/teachers/:path*",
     "/schedule/:path*",
-    "/teacher-schedule/:path*",
     "/design-explorations/:path*",
   ],
 };

@@ -6,6 +6,7 @@ import {
   formatWeekRangeLabel,
   getMonthWeekRange,
   getWeekStart,
+  instanceDateFromWeekStart,
 } from "../dateUtils";
 
 // 모든 날짜 비교는 로컬 시간 기준 YYYY-MM-DD 문자열로 수행 (UTC offset 무관)
@@ -69,6 +70,30 @@ describe("formatLocalISO", () => {
   it("로컬 시간 기준 YYYY-MM-DD 반환", () => {
     const d = new Date(2026, 3, 13); // 4월 13일 (로컬)
     expect(formatLocalISO(d)).toBe("2026-04-13");
+  });
+});
+
+describe("instanceDateFromWeekStart (출결 date key — teacher-schedule ↔ /attendance 공유)", () => {
+  it("월요일(weekday=0)은 weekStart 그대로", () => {
+    expect(instanceDateFromWeekStart("2026-05-18", 0)).toBe("2026-05-18");
+  });
+  it("수요일(weekday=2)은 +2일", () => {
+    expect(instanceDateFromWeekStart("2026-05-18", 2)).toBe("2026-05-20");
+  });
+  it("일요일(weekday=6)은 +6일", () => {
+    expect(instanceDateFromWeekStart("2026-05-18", 6)).toBe("2026-05-24");
+  });
+  it("월말 경계를 넘어간다", () => {
+    // 2026-05-29(금) 주 월요일 = 2026-05-25, +6 → 2026-05-31(일)
+    expect(instanceDateFromWeekStart("2026-05-25", 6)).toBe("2026-05-31");
+    // 2026-06-29(월) 주, weekday=2 → 2026-07-01
+    expect(instanceDateFromWeekStart("2026-06-29", 2)).toBe("2026-07-01");
+  });
+  it("순수 calendar 산술 — 입력 weekStart + weekday 로 결정적 (instant/timezone 비의존)", () => {
+    // getWeekStart 와 round-trip 일치: 임의 날짜의 주 월요일 + 그 날 weekday = 원본 날짜
+    const d = new Date(2026, 4, 22); // 5월 22일 (금) = weekday 4
+    const weekStartISO = formatLocalISO(getWeekStart(d));
+    expect(instanceDateFromWeekStart(weekStartISO, 4)).toBe(formatLocalISO(d));
   });
 });
 

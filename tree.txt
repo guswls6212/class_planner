@@ -250,7 +250,6 @@ src/app/students/page.tsx
 src/app/subjects/__tests__/page.test.tsx
 src/app/subjects/page.tsx
 src/app/sw.ts
-src/app/teacher-schedule/page.tsx
 src/app/teachers/page.tsx
 src/app/~offline/page.tsx
 src/application/__tests__/index.test.ts

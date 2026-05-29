@@ -66,6 +66,6 @@ describe("getTourStepsForRole", () => {
     expect(exportSteps[0].id).toBe("export-admin");
     expect(exportSteps[0].targetPath).toBe("/schedule");
     expect(exportSteps[1].id).toBe("export-teacher");
-    expect(exportSteps[1].targetPath).toBe("/teacher-schedule");
+    expect(exportSteps[1].targetPath).toBe("/schedule");
   });
 });

@@ -77,6 +77,11 @@ interface ScheduleDailyViewProps {
   onSessionClick: (session: Session) => void;
   /** read-only(강사 본인 시간표 등) — 편집 버튼 + drag/copy affordance 숨김. default false */
   readOnly?: boolean;
+  /**
+   * read-only 인데도 detail panel 의 액션 버튼(→ onSessionClick) 노출 + 라벨 "출결 체크".
+   * drag/copy/편집 affordance 는 readOnly 로 여전히 차단. member(강사) read-only /schedule 출결 진입용. default false.
+   */
+  allowReadOnlySessionClick?: boolean;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   /** @deprecated 출석은 별도 detail 또는 후속 view 에서 처리 — daily view 에서 노출 X */
@@ -103,6 +108,7 @@ export function ScheduleDailyView({
   selectedTeacherIds,
   onSessionClick,
   readOnly = false,
+  allowReadOnlySessionClick = false,
   onSwipeLeft,
   onSwipeRight,
 }: ScheduleDailyViewProps) {
@@ -277,6 +283,7 @@ export function ScheduleDailyView({
             }
             onEdit={() => selectedSession && onSessionClick(selectedSession)}
             readOnly={readOnly}
+            allowReadOnlySessionClick={allowReadOnlySessionClick}
           />
         </div>
       </div>
@@ -550,6 +557,7 @@ interface DetailPanelProps {
   hasNext: boolean;
   onEdit: () => void;
   readOnly?: boolean;
+  allowReadOnlySessionClick?: boolean;
 }
 
 function DailyDetailPanel({
@@ -566,6 +574,7 @@ function DailyDetailPanel({
   hasNext,
   onEdit,
   readOnly = false,
+  allowReadOnlySessionClick = false,
 }: DetailPanelProps) {
   if (!session) {
     return (
@@ -630,9 +639,6 @@ function DailyDetailPanel({
         >
           <ChevronLeft size={12} /> 이전
         </button>
-        <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">
-          J · K
-        </span>
         <button
           onClick={onNext}
           disabled={!hasNext}
@@ -721,8 +727,8 @@ function DailyDetailPanel({
         </div>
       </div>
 
-      {/* Notes */}
-      {(session.publicDescription || session.internalNote) && (
+      {/* Notes — internalNote(운영자 전용)는 read-only(강사/공유 view)에서 숨김. */}
+      {(session.publicDescription || (session.internalNote && !readOnly)) && (
         <div className="mb-4 space-y-2">
           {session.publicDescription && (
             <div>
@@ -737,7 +743,7 @@ function DailyDetailPanel({
               </p>
             </div>
           )}
-          {session.internalNote && (
+          {session.internalNote && !readOnly && (
             <div>
               <div className="text-[10px] uppercase text-[var(--color-accent)]/70 tracking-wider mb-1.5 flex items-center gap-1">
                 <MessageCircle size={11} /> 내부 메모
@@ -753,16 +759,16 @@ function DailyDetailPanel({
         </div>
       )}
 
-      {/* Footer */}
-      {!readOnly && (
+      {/* Footer — 편집(운영자) 또는 출결 체크(강사 read-only 진입). */}
+      {(!readOnly || allowReadOnlySessionClick) && (
         <div className="mt-auto pt-3 border-t border-[var(--color-border)]">
           <button
             type="button"
             onClick={onEdit}
             className="w-full px-3 py-2 text-xs rounded bg-[var(--color-accent)] hover:opacity-90 text-white font-bold"
-            data-testid="detail-edit-btn"
+            data-testid={readOnly ? "detail-attendance-btn" : "detail-edit-btn"}
           >
-            편집
+            {readOnly ? "출결 체크" : "편집"}
           </button>
         </div>
       )}

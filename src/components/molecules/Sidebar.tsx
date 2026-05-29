@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   CalendarDays,
-  ClipboardCheck,
   GraduationCap,
   LogIn,
   MessageSquare,
@@ -34,10 +33,8 @@ interface SidebarItem {
 
 const topItems: SidebarItem[] = [
   { href: "/schedule", icon: CalendarDays, label: "시간표" },
-  // phase1-release-readiness rank 6 (발견성) — 출결을 시간표 다음에 배치하여
-  // mental model 통합 (시간표 ↔ 출결). 단순 wrap 페이지 (오늘/이번 주 sessions
-  // list + AttendanceSheet modal). 상세: /strategy/discoverability-attendance-recovery
-  { href: "/attendance", icon: ClipboardCheck, label: "출결" },
+  // 출결 전용 페이지(/attendance)는 nav 에서 제거 (2026-05-29 사용자 결정) —
+  // 출결은 시간표(일/주) 블록 클릭으로 진입 (schedule + teacher-schedule). 페이지는 URL 직접 진입만 유지.
   { href: "/students", icon: Users, label: "학생", adminOnly: true },
   { href: "/subjects", icon: BookOpen, label: "과목", adminOnly: true },
   { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
@@ -138,14 +135,11 @@ export function Sidebar() {
   // re-render; clicking them lands on the middleware redirect with a toast.
   const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
-  // member 는 시간표 link 를 /teacher-schedule 로 분기 (학원 전체 view 권한 X).
-  const visibleTopItems = topItems
-    .filter((item) => !item.adminOnly || !isMember)
-    .map((item) =>
-      item.label === "시간표" && isMember
-        ? { ...item, href: "/teacher-schedule" }
-        : item,
-    );
+  // member 도 /schedule 사용 (2026-05-29 통합 — role-branch read-only + 출결). teacher-schedule 분기 제거.
+  // adminOnly 항목(학생/과목/강사)은 member 에게 계속 숨김.
+  const visibleTopItems = topItems.filter(
+    (item) => !item.adminOnly || !isMember,
+  );
 
   // Login state — AuthContext에서 단일 source로 받음.
   const { session } = useAuth();

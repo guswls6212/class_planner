@@ -117,17 +117,13 @@ export async function PUT(
       );
     }
 
+    // 세션 메타 편집은 owner/admin 만 (permissions.ts § member: sessions read-only).
+    // member(강사)는 출결만 /api/attendance 로 가능 (assertAttendancePermission 본인 수업 강제).
+    // teacher-schedule 은 read-only — member 의 정당한 PUT 경로 없음.
+    // (이전: member 허용 + public_description 만 차단 → subject/time/teacher 재배정 우회 가능했던 gap 마감)
     // requireRole verifies academy membership; academyId is threaded to the service
     // so the repository scopes the UPDATE to the correct academy_id row.
-    const { academyId, role } = await requireRole(userId, ["owner", "admin", "member"]);
-
-    // public_description은 owner/admin만 편집 가능
-    if (role === "member" && public_description != null) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden: only owner/admin may set public_description" },
-        { status: 403 }
-      );
-    }
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
 
     const updatedSession = await getSessionService().updateSession(id, {
       enrollmentIds,

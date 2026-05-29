@@ -75,7 +75,7 @@ export const CORE_STEPS: TourStep[] = [
   {
     id: "export-teacher",
     targetSelector: '[data-tour="export"]',
-    targetPath: "/teacher-schedule",
+    targetPath: "/schedule",
     title: "본인 시간표 PDF",
     description: "본인 수업만 모은 시간표를 PDF 한 장으로 인쇄할 수 있어요.",
     placement: "auto",
