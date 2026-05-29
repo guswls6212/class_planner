@@ -75,6 +75,8 @@ interface ScheduleDailyViewProps {
   selectedTeacherIds?: string[];
   /** detail panel 의 "편집" 버튼 클릭 시 호출 — 기존 EditSessionModal 진입점 호환 */
   onSessionClick: (session: Session) => void;
+  /** read-only(강사 본인 시간표 등) — 편집 버튼 + drag/copy affordance 숨김. default false */
+  readOnly?: boolean;
   onSwipeLeft?: () => void;
   onSwipeRight?: () => void;
   /** @deprecated 출석은 별도 detail 또는 후속 view 에서 처리 — daily view 에서 노출 X */
@@ -100,6 +102,7 @@ export function ScheduleDailyView({
   selectedSubjectIds,
   selectedTeacherIds,
   onSessionClick,
+  readOnly = false,
   onSwipeLeft,
   onSwipeRight,
 }: ScheduleDailyViewProps) {
@@ -251,6 +254,7 @@ export function ScheduleDailyView({
             startHour={startHour}
             endHour={endHour}
             nowMin={nowMin}
+            readOnly={readOnly}
           />
         </div>
         <div className="flex-[1] min-w-[280px] overflow-y-auto bg-[var(--color-bg-secondary)]/40 hidden md:block">
@@ -272,6 +276,7 @@ export function ScheduleDailyView({
               daySessions.length - 1
             }
             onEdit={() => selectedSession && onSessionClick(selectedSession)}
+            readOnly={readOnly}
           />
         </div>
       </div>
@@ -299,6 +304,7 @@ interface TimelineProps {
   startHour: number;
   endHour: number;
   nowMin: number;
+  readOnly?: boolean;
 }
 
 const HOUR_HEIGHT = 64;
@@ -319,6 +325,7 @@ function DailyTimeline({
   startHour,
   endHour,
   nowMin,
+  readOnly = false,
 }: TimelineProps) {
   const totalHeight = (endHour - startHour) * HOUR_HEIGHT;
 
@@ -484,18 +491,20 @@ function DailyTimeline({
                     return enrollment && sub.id === enrollment.subjectId;
                   })?.name ?? "과목 없음"}
                 </span>
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 shrink-0">
-                  <GripVertical
-                    size={10}
-                    className="text-[var(--color-text-secondary)] cursor-grab"
-                    aria-label="드래그"
-                  />
-                  <Copy
-                    size={10}
-                    className="text-[var(--color-text-secondary)]"
-                    aria-label="복제"
-                  />
-                </div>
+                {!readOnly && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 shrink-0">
+                    <GripVertical
+                      size={10}
+                      className="text-[var(--color-text-secondary)] cursor-grab"
+                      aria-label="드래그"
+                    />
+                    <Copy
+                      size={10}
+                      className="text-[var(--color-text-secondary)]"
+                      aria-label="복제"
+                    />
+                  </div>
+                )}
               </div>
               <div className="text-[9px] text-[var(--color-text-muted)] truncate">
                 {s.startsAt}
@@ -540,6 +549,7 @@ interface DetailPanelProps {
   hasPrev: boolean;
   hasNext: boolean;
   onEdit: () => void;
+  readOnly?: boolean;
 }
 
 function DailyDetailPanel({
@@ -555,6 +565,7 @@ function DailyDetailPanel({
   hasPrev,
   hasNext,
   onEdit,
+  readOnly = false,
 }: DetailPanelProps) {
   if (!session) {
     return (
@@ -642,24 +653,26 @@ function DailyDetailPanel({
           >
             {subject?.name ?? "과목 없음"}
           </h4>
-          <div className="flex gap-1 shrink-0">
-            <button
-              type="button"
-              className="p-1.5 rounded hover:bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]"
-              title="드래그로 시간 이동 (후속 PR)"
-              aria-label="드래그"
-            >
-              <GripVertical size={14} />
-            </button>
-            <button
-              type="button"
-              className="p-1.5 rounded hover:bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]"
-              title="복제 (후속 PR)"
-              aria-label="복제"
-            >
-              <Copy size={14} />
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="flex gap-1 shrink-0">
+              <button
+                type="button"
+                className="p-1.5 rounded hover:bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]"
+                title="드래그로 시간 이동 (후속 PR)"
+                aria-label="드래그"
+              >
+                <GripVertical size={14} />
+              </button>
+              <button
+                type="button"
+                className="p-1.5 rounded hover:bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]"
+                title="복제 (후속 PR)"
+                aria-label="복제"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+          )}
         </div>
         <div className="text-xs text-[var(--color-text-muted)]">
           {session.startsAt} – {session.endsAt}
@@ -741,16 +754,18 @@ function DailyDetailPanel({
       )}
 
       {/* Footer */}
-      <div className="mt-auto pt-3 border-t border-[var(--color-border)]">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="w-full px-3 py-2 text-xs rounded bg-[var(--color-accent)] hover:opacity-90 text-white font-bold"
-          data-testid="detail-edit-btn"
-        >
-          편집
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="mt-auto pt-3 border-t border-[var(--color-border)]">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="w-full px-3 py-2 text-xs rounded bg-[var(--color-accent)] hover:opacity-90 text-white font-bold"
+            data-testid="detail-edit-btn"
+          >
+            편집
+          </button>
+        </div>
+      )}
     </div>
   );
 }

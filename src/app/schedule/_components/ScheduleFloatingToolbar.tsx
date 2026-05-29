@@ -27,21 +27,24 @@ export interface ScheduleFloatingToolbarProps {
 
   // Filter (학생 + 과목 + 강사 통합)
   // students/subjects/teachers 는 cascading 적용된 narrowed list. total* 은 cascading 이전 전체.
-  students: FilterItem[];
-  totalStudents: number;
-  selectedStudentIds: string[];
-  onToggleStudent: (id: string) => void;
-  subjects: FilterItem[];
-  totalSubjects: number;
-  selectedSubjectIds: string[];
-  onToggleSubject: (id: string) => void;
-  teachers: FilterItem[];
-  totalTeachers: number;
-  selectedTeacherIds: string[];
-  onToggleTeacher: (id: string) => void;
-  onClearAllFilters: () => void;
-  onExpandToSidebar: () => void;
-  colorBy: ColorByMode;
+  // showFilters=false (read-only teacher view 등) 일 때 전부 생략 가능 — 아래 props optional.
+  /** 필터 팝오버 표시 여부. default true. false 시 UnifiedFilterPopover 미렌더 + filter props 불필요. */
+  showFilters?: boolean;
+  students?: FilterItem[];
+  totalStudents?: number;
+  selectedStudentIds?: string[];
+  onToggleStudent?: (id: string) => void;
+  subjects?: FilterItem[];
+  totalSubjects?: number;
+  selectedSubjectIds?: string[];
+  onToggleSubject?: (id: string) => void;
+  teachers?: FilterItem[];
+  totalTeachers?: number;
+  selectedTeacherIds?: string[];
+  onToggleTeacher?: (id: string) => void;
+  onClearAllFilters?: () => void;
+  onExpandToSidebar?: () => void;
+  colorBy?: ColorByMode;
 
   // Time range
   timeRange: TimeRange;
@@ -66,21 +69,22 @@ export default function ScheduleFloatingToolbar({
   onToday,
   prevAriaLabel = "이전",
   nextAriaLabel = "다음",
-  students,
-  totalStudents,
-  selectedStudentIds,
-  onToggleStudent,
-  subjects,
-  totalSubjects,
-  selectedSubjectIds,
-  onToggleSubject,
-  teachers,
-  totalTeachers,
-  selectedTeacherIds,
-  onToggleTeacher,
-  onClearAllFilters,
-  onExpandToSidebar,
-  colorBy,
+  showFilters = true,
+  students = [],
+  totalStudents = 0,
+  selectedStudentIds = [],
+  onToggleStudent = () => {},
+  subjects = [],
+  totalSubjects = 0,
+  selectedSubjectIds = [],
+  onToggleSubject = () => {},
+  teachers = [],
+  totalTeachers = 0,
+  selectedTeacherIds = [],
+  onToggleTeacher = () => {},
+  onClearAllFilters = () => {},
+  onExpandToSidebar = () => {},
+  colorBy = "subject",
   timeRange,
   userId,
   viewMode,
@@ -130,25 +134,28 @@ export default function ScheduleFloatingToolbar({
       >
         오늘
       </button>
-      <Divider />
-
-      <UnifiedFilterPopover
-        students={students}
-        totalStudents={totalStudents}
-        selectedStudentIds={selectedStudentIds}
-        onToggleStudent={onToggleStudent}
-        subjects={subjects}
-        totalSubjects={totalSubjects}
-        selectedSubjectIds={selectedSubjectIds}
-        onToggleSubject={onToggleSubject}
-        teachers={teachers}
-        totalTeachers={totalTeachers}
-        selectedTeacherIds={selectedTeacherIds}
-        onToggleTeacher={onToggleTeacher}
-        onClearAll={onClearAllFilters}
-        onExpandToSidebar={onExpandToSidebar}
-        colorBy={colorBy}
-      />
+      {showFilters && (
+        <>
+          <Divider />
+          <UnifiedFilterPopover
+            students={students}
+            totalStudents={totalStudents}
+            selectedStudentIds={selectedStudentIds}
+            onToggleStudent={onToggleStudent}
+            subjects={subjects}
+            totalSubjects={totalSubjects}
+            selectedSubjectIds={selectedSubjectIds}
+            onToggleSubject={onToggleSubject}
+            teachers={teachers}
+            totalTeachers={totalTeachers}
+            selectedTeacherIds={selectedTeacherIds}
+            onToggleTeacher={onToggleTeacher}
+            onClearAll={onClearAllFilters}
+            onExpandToSidebar={onExpandToSidebar}
+            colorBy={colorBy}
+          />
+        </>
+      )}
 
       {/* ADR-020 보강 (UAT 2026-05-21, Variant A): time range 는 weekly view 전용.
         * daily 는 시간 list 형태라 의미 적음, monthly 는 시간 단위 X 라 의미 없음.
