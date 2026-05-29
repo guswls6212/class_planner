@@ -358,8 +358,23 @@ function SessionBlock({
   // 3-tone 파스텔 톤 (pastel bg + dark fg + accent) — blockColor 변경 시만
   const tone = useMemo(() => resolveSessionTone(blockColor), [blockColor]);
 
-  // 상태 레이어 (Phase 3 SSOT): in-progress/conflict = borderLeft accent.
-  // (완료(과거) 세션 흐릿(opacity 0.55)은 2026-05-29 사용자 요청으로 제거 — 완료 표시는 우하단 출결 dot 이 담당.)
+  // 상태 레이어 (Phase 3 SSOT): 완료 = opacity 0.55 dim, in-progress/conflict = borderLeft accent.
+  // 과거 *날짜* 세션은 dim 안 함 — opacity dim 은 "오늘 + 시간 지남" 만 (7bbcf1e 복구, 2026-05-29).
+  //   회귀 경위: 7bbcf1e 가 미머지 브랜치(feat/attendance-dot-past-day)에만 있어 dev 에 누락 →
+  //   dot 의 instanceDate(과거 dim 유발)만 머지됨. 본 PR 에서 fix 재적용 + 회귀 테스트 추가.
+  // instanceDate 제공 시 그 날짜가 오늘인지 비교. 미제공(legacy weekday-only)이면 기존 동작.
+  // dot(computeAttendanceDot)의 sessionStatus 는 그대로 'completed' 유지 — 과거 미체크 alert 보존.
+  const isInstanceToday = (() => {
+    if (!instanceDate) return true; // legacy mode — weekday-only (오늘만 completed)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return instanceDate === todayStr;
+  })();
+  const isCompleted =
+    sessionStatus === "completed" &&
+    !isAnyDragging &&
+    !isDragging &&
+    isInstanceToday;
   const isInProgress = sessionStatus === "in-progress" && !isAnyDragging && !isDragging;
 
   // 커서 클래스
@@ -434,9 +449,10 @@ function SessionBlock({
     overflow: "hidden",
     cursor: isShareView ? "default" : styles.cursor,
     pointerEvents: styles.pointerEvents,
-    // 완료(과거) 세션 시간 dim(0.55) 제거 (2026-05-29) — 블록은 항상 또렷.
-    // 비매칭 필터 dim(0.25)은 wrapper(dimGlowStyle)가 담당.
-    opacity: styles.opacity,
+    // 완료 dim: 오늘 끝난 수업만 0.55 (과거 날짜는 isInstanceToday=false 라 제외 — 7bbcf1e 복구).
+    // 필터 매칭 session 은 dim override (chip 명시 선택은 또렷). 비매칭 필터 dim(0.25)은 wrapper 담당.
+    opacity:
+      isCompleted && !sessionMatchesAllFilters ? 0.55 : styles.opacity,
     visibility: styles.visibility as React.CSSProperties["visibility"],
     transition: styles.transition,
     width: "100%",
