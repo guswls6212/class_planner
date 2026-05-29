@@ -79,20 +79,19 @@ export async function cleanupTestUserData(opts?: { userId?: string }): Promise<v
     }
   }
 
-  // academy_members + academies 마지막
-  await sbAdmin.from("academy_members").delete().eq("user_id", userId);
-  for (const aid of academyIds) {
-    const { error } = await sbAdmin.from("academies").delete().eq("id", aid);
-    if (error) {
-      // T0' fix: silent warn → throw. academies DELETE fail 시 orphan academy_members
-      // 가 잔존 → 다음 cycle DB 혼란 → e2e flaky. fail-fast 가 진단 + 회복 측면에서 정공.
-      // FK RESTRICT 는 academyScopedTables 누락 신호이므로 먼저 list 보강 시도 후에도
-      // fail 하면 schema 변경 필요.
-      throw new Error(
-        `[cleanupTestUserData] academies (${aid}) 삭제 실패: ${error.message}. ` +
-          `academyScopedTables 에 누락된 academy_id FK 보유 table 존재 가능. ` +
-          `Supabase schema 의 information_schema.referential_constraints 에서 delete_rule 확인 필요.`,
-      );
-    }
-  }
+  // 2026-05-29 (proposal ci-concurrent-e2e-user-collision): academy 껍데기
+  // (academies + academy_members)는 **삭제하지 않는다**. 위 academyScopedTables
+  // (자식 데이터)만 비운다.
+  //
+  // 근본 원인 fix: 기존엔 teardown 이 academy_members + academies 를 DELETE 했다.
+  // shard↔user 고정(e2e-test-1~6)이라 동시 PR 2건이 같은 user 공유 시, PR-A teardown 이
+  // academy 삭제 직후 PR-B globalSetup(academy_members 조회)이 '부재' throw → 동시 e2e
+  // 전멸 (2026-05-29 PR570+PR572 동시 실행 실측).
+  //
+  // setup(setup-e2e-test-user.ts ensureOwnerAcademy)은 'academy_members 있으면 재사용,
+  // 없으면 생성'(limit(1), idempotent). academy 껍데기를 남기면:
+  //   (a) 동시 PR 이 같은 academy 안전 공유(재사용 — destructive 동작 0) → 충돌 구조적 제거,
+  //   (b) 자식 데이터는 매 teardown 에서 비워져 다음 run leakage 없음 (teardown 본래 목적 유지).
+  // 트레이드오프: academy/academy_members row 누적되나 setup 의 limit(1) graceful 처리.
+  // (academies DELETE 의 audit_log FK RESTRICT throw 문제도 함께 사라짐.)
 }
