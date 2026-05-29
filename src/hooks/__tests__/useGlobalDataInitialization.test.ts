@@ -23,7 +23,7 @@ vi.mock("../../lib/logger", () => ({
 vi.mock("../../lib/auth/handleLoginDataMigration", () => ({
   checkLoginDataConflict: vi.fn(() => ({ action: "use-server" })),
   applyServerChoice: vi.fn(),
-  applyLocalDataChoice: vi.fn(),
+  applyLocalDataChoice: vi.fn().mockResolvedValue({ failed: [], totalSynced: 1 }),
 }));
 
 vi.mock("sonner", () => ({

@@ -191,7 +191,13 @@ export const useGlobalDataInitialization = () => {
           setClassPlannerData(pendingServerData);
         } else {
           setIsMigrating(true);
-          await applyLocalDataChoice(pendingUserId, pendingServerData);
+          const { failed } = await applyLocalDataChoice(pendingUserId, pendingServerData);
+          if (failed.length > 0) {
+            toast.warning("일부 데이터 동기화 안 됨", {
+              description: `${failed.length}개 항목이 동기화되지 않았습니다 (강사 미배정 수업 등). 강사 지정 후 다시 추가해주세요.`,
+              duration: 8000,
+            });
+          }
         }
         setConflictState(null);
         setPendingUserId(null);
@@ -203,7 +209,9 @@ export const useGlobalDataInitialization = () => {
             ? error.message
             : "데이터 동기화 중 오류가 발생했습니다.";
         setMigrationError(msg);
-        // 오류 시 모달을 닫지 않음 — 사용자가 재시도 가능
+        // 오류 시 모달을 닫지 않음 — 사용자가 재시도 가능. 단 init gate(isInitialized)는
+        // 해제해 앱 진입을 막지 않는다 (총 실패 시도 무한 spinner 회피).
+        setIsInitialized(true);
       } finally {
         setIsMigrating(false);
       }
@@ -436,13 +444,18 @@ export const useGlobalDataInitialization = () => {
 
         if (migrationResult.action === "upload-local") {
           // 자동 경로 — conflictState가 없어 DataConflictModal이 뜨지 않으므로
-          // 실패를 모달 안에서 표시할 수 없다. throw가 외부 useEffect.catch에 잡혀
-          // logger.error만 찍히고 사용자가 인지하지 못하면 다음 로그인에서 충돌
-          // false positive cascade로 이어짐 (UAT 2026-05-08 사고).
-          // 사용자가 즉시 알 수 있도록 toast로 표면화하고 anonymous 데이터를 보존한
-          // 채 앱 진입을 허용한다 (다음 로그인 시 재시도).
+          // 실패를 toast로 표면화한다 (UAT 2026-05-08).
+          // 부분 실패(정책상 영원히 실패하는 레코드 등)는 applyLocalDataChoice가
+          // 성공분만 서버 기준 반영 + anonymous 정리(totalSynced>0)로 재flood loop를 끊는다
+          // (2026-05-29 migration-partial-failure-resilience). 진짜 infra 실패만 throw.
           try {
-            await applyLocalDataChoice(userId, serverData);
+            const { failed } = await applyLocalDataChoice(userId, serverData);
+            if (failed.length > 0) {
+              toast.warning("일부 데이터 동기화 안 됨", {
+                description: `${failed.length}개 항목이 동기화되지 않았습니다 (강사 미배정 수업 등). 강사 지정 후 다시 추가해주세요.`,
+                duration: 8000,
+              });
+            }
           } catch (error) {
             const msg =
               error instanceof Error
