@@ -47,10 +47,11 @@ describe("Landing Page", () => {
     render(<LandingPage />);
 
     expect(screen.getByText("이렇게 만들어집니다")).toBeInTheDocument();
-    expect(screen.getByText("3단계면 시간표 완성")).toBeInTheDocument();
+    expect(screen.getByText("등록부터 학부모 공유까지, 4단계")).toBeInTheDocument();
     expect(screen.getByText("학생·과목 등록")).toBeInTheDocument();
     expect(screen.getByText("시간표에 배치")).toBeInTheDocument();
     expect(screen.getByText("PDF로 출력")).toBeInTheDocument();
+    expect(screen.getByText("학부모에게 공유")).toBeInTheDocument();
   });
 
   it("BottomCTA가 렌더링되어야 한다", () => {

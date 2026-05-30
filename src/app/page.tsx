@@ -152,7 +152,7 @@ function HeroSection() {
 }
 
 function StepsSection() {
-  const steps = [
+  const steps: { n: number; title: string; desc: string; share?: boolean }[] = [
     {
       n: 1,
       title: "학생·과목 등록",
@@ -166,7 +166,13 @@ function StepsSection() {
     {
       n: 3,
       title: "PDF로 출력",
-      desc: "PDF로 출력해 인쇄하고, 공유 링크·학부모 접속코드로 바로 전송하세요.",
+      desc: "한 장으로 깔끔하게 인쇄해 학원에 게시하세요.",
+    },
+    {
+      n: 4,
+      title: "학부모에게 공유",
+      desc: "공유 링크 또는 6자리 접속코드를 만들어 카톡으로 전송. 학부모가 언제든 시간표를 확인해요.",
+      share: true,
     },
   ];
 
@@ -180,13 +186,13 @@ function StepsSection() {
           이렇게 만들어집니다
         </h2>
         <p className="text-label text-center text-[--color-text-muted] mb-10">
-          3단계면 시간표 완성
+          등록부터 학부모 공유까지, 4단계
         </p>
-        <div className="flex flex-col md:flex-row gap-6">
-          {steps.map(({ n, title, desc }) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {steps.map(({ n, title, desc, share }) => (
             <div
               key={n}
-              className="flex-1 bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-7"
+              className="flex flex-col bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-6"
             >
               <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center font-[800] text-admin-ink text-base mb-4">
                 {n}
@@ -197,6 +203,16 @@ function StepsSection() {
               <p className="text-label text-[--color-text-muted] leading-relaxed">
                 {desc}
               </p>
+              {share ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="text-caption rounded-full border border-[--color-border] bg-[--color-bg-secondary] px-2 py-0.5 text-[--color-text-muted]">
+                    🔗 공유 링크
+                  </span>
+                  <span className="text-caption rounded-full border border-[--color-border] bg-[--color-bg-secondary] px-2 py-0.5 font-mono font-bold tracking-wider text-[--color-text-primary]">
+                    8F3K2D
+                  </span>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
