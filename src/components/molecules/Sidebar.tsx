@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
   CalendarDays,
+  CircleHelp,
   GraduationCap,
   LogIn,
   MessageSquare,
@@ -22,6 +23,7 @@ import { useSidebar } from "@/contexts/SidebarContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationDropdown } from "../molecules/NotificationDropdown";
 import CreateAcademyModal from "./CreateAcademyModal";
+import { TOUR_START_EVENT } from "@/lib/tour-steps";
 
 interface SidebarItem {
   href: string;
@@ -375,6 +377,28 @@ export function Sidebar() {
       </div>
 
       <div className={`mt-auto flex flex-col gap-1 ${expanded ? "w-full px-2" : ""}`}>
+        {/* 도움말 — 튜토리얼 다시 보기. 익명·로그인·데스크톱 모두 노출 (투어 재시작 진입점).
+            window event → useTour 가 localStorage flag 무시하고 강제 시작. */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent(TOUR_START_EVENT))}
+          aria-label="도움말 — 튜토리얼 다시 보기"
+          title="도움말 — 튜토리얼 다시 보기"
+          data-testid="sidebar-help"
+          className={`group relative flex items-center h-10 rounded-admin-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-overlay-light)] ${
+            expanded ? "w-full px-3 gap-3" : "justify-center w-10"
+          }`}
+        >
+          <CircleHelp size={22} strokeWidth={1.5} className="flex-shrink-0" />
+          {expanded ? (
+            <span className="text-sm font-medium whitespace-nowrap">도움말</span>
+          ) : (
+            <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-admin-sm bg-[var(--color-bg-secondary)] px-2 py-1 text-caption text-[var(--color-text-primary)] opacity-0 group-hover:opacity-100 transition-opacity shadow-admin-sm z-50">
+              도움말
+            </span>
+          )}
+        </button>
+
         {/* 피드백 보내기 — design-exploration feedback-channel-design Variant A 채택 (2026-05-24).
             학원 멤버 (owner/admin/member) 만 노출. share-token viewer 차단. Phase 1 =
             개발자 (HYUNJIN) 수신 only (proposal phase1-production-release Step 1.1 Option E). */}
