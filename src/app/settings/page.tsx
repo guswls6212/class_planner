@@ -1240,16 +1240,10 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Phase 1: 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택/자동갱신은 Phase 2 Premium. */}
             <div className="mb-5">
               <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">만료 기간</label>
-              <Select
-                value={shareExpiresInDays}
-                onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
-              >
-                {/* Phase 1: Free 만료 최대 30일. 90일/1년은 Phase 2 Premium(자동갱신) 옵션으로 재노출 예정. */}
-                <option value={7}>7일</option>
-                <option value={30}>30일</option>
-              </Select>
+              <p className="text-[13px] text-[var(--color-text-muted)]">30일 후 자동 만료돼요. (만료되면 링크가 막혀 안전해요)</p>
             </div>
 
             <div className="flex gap-3">

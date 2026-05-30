@@ -6,6 +6,8 @@ import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy, Plus, RefreshCw, X
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import { InfoHint } from "@/components/atoms/InfoHint";
+import { PARENT_CODE_TOOLTIP } from "@/lib/shareCopy";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { Select } from "@/components/atoms/Select";
 import { IconButton } from "@/components/atoms/IconButton";
@@ -191,8 +193,9 @@ export function StudentDetailPanel({
       )}
       {canManage && accessCodesReady && (
         <section className="bg-[var(--color-bg-secondary)] rounded-md p-4">
-          <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2">
+          <h3 className="text-[13px] font-semibold text-[var(--color-text-secondary)] mb-2 flex items-center gap-1.5">
             학부모 접속 코드
+            <InfoHint text={PARENT_CODE_TOOLTIP} label="학부모 접속 코드 설명" />
           </h3>
 
           {accessCode ? (
