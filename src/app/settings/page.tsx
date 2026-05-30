@@ -131,7 +131,8 @@ export default function SettingsPage() {
   const [shareExpanded, setShareExpanded] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLabel, setShareLabel] = useState("");
-  const [shareExpiresInDays, setShareExpiresInDays] = useState(30);
+  // Phase 1: 공유 링크 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택은 Phase 2 Premium.
+  const shareExpiresInDays = 30;
   const [shareStudentId, setShareStudentId] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
