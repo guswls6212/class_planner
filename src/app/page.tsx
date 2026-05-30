@@ -78,7 +78,7 @@ function HeroSection() {
       <div className="flex flex-col md:flex-row items-center gap-12 max-w-7xl mx-auto">
         <div className="flex-1">
           <p className="text-caption text-accent font-[600] tracking-[0.1em] uppercase mb-3">
-            무료 시간표 관리 도구
+            학원 시간표 관리 도구
           </p>
           <h1 className="text-hero font-[800] tracking-[-0.035em] leading-[1.15] mb-4 text-[--color-text-primary]">
             학생이 바뀔 때마다
@@ -96,7 +96,7 @@ function HeroSection() {
               href="/schedule"
               className="bg-accent hover:bg-accent-hover text-admin-ink font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
             >
-              무료로 시작하기
+              바로 시작하기
             </Link>
             <a
               href="#how-it-works"
@@ -105,9 +105,6 @@ function HeroSection() {
               자세히 보기 ↓
             </a>
           </div>
-          <p className="text-caption text-[--color-text-muted] mt-3">
-            회원가입 없이 30초면 시작 · 100% 무료
-          </p>
         </div>
         <div className="flex-[1.2] w-full">
           {/* make → share: 드래그로 만들고(데모 cue) → 학부모에게 공유. 실제 드래그/PDF 영상은 follow-up 캡처 */}
@@ -228,13 +225,13 @@ function BottomCTA() {
         지금 바로 시작하세요
       </h2>
       <p className="text-sm text-[--color-text-muted] mb-6">
-        회원가입 없이 바로 사용할 수 있습니다. 무료.
+        회원가입 없이 바로 사용할 수 있습니다.
       </p>
       <Link
         href="/schedule"
         className="inline-block bg-accent hover:bg-accent-hover text-admin-ink font-bold px-9 py-3.5 rounded-admin-md shadow-admin-md transition-colors"
       >
-        무료로 시작하기
+        바로 시작하기
       </Link>
     </section>
   );

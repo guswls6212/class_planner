@@ -56,6 +56,8 @@ interface StudentsPageLayoutProps {
   onRevokeCodeForStudent?: (studentId: string, studentName?: string) => void;
   /** Academy access URL (e.g. /academy/<slug>) — used for "자녀 시간표 링크 복사" */
   academyUrl?: string;
+  /** True when viewer is anonymous (not logged in) — student detail shows a login prompt for parent codes */
+  isAnonymous?: boolean;
 }
 
 export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
@@ -301,6 +303,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onCreateCode={props.onCreateCodeForStudent}
             onRenewCode={props.onRenewCodeForStudent}
             onRevokeCode={props.onRevokeCodeForStudent}
+            isAnonymous={props.isAnonymous}
           />
         </div>
       ) : (

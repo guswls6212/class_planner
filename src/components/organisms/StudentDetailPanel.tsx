@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Pencil, Trash2, ArrowLeft, BookOpen, Calendar, Copy, Plus, RefreshCw, XCircle } from "lucide-react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import type { AccessCodeEntry } from "@/hooks/useAccessCodes";
@@ -43,12 +44,14 @@ interface StudentDetailPanelProps {
   onRenewCode?: (studentId: string, studentName?: string) => void;
   /** Per-student: revoke (expire) — user-confirmed in handler */
   onRevokeCode?: (studentId: string, studentName?: string) => void;
+  /** True when viewer is anonymous (not logged in) — empty-state shows login prompt instead of code-create */
+  isAnonymous?: boolean;
 }
 
 export function StudentDetailPanel({
   student, subjects, enrollments, sessions, onUpdate, onDelete, onBack,
   canManage = true, accessCode, accessCodesReady = true, academyUrl,
-  onCreateCode, onRenewCode, onRevokeCode,
+  onCreateCode, onRenewCode, onRevokeCode, isAnonymous = false,
 }: StudentDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editFields, setEditFields] = useState({
@@ -239,6 +242,18 @@ export function StudentDetailPanel({
                 )}
               </div>
             </>
+          ) : isAnonymous ? (
+            <div>
+              <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                로그인하면 학부모에게 시간표를 공유할 수 있어요.
+              </p>
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-accent text-[var(--color-admin-ink)] font-semibold hover:opacity-90 transition-opacity"
+              >
+                로그인하고 시작하기
+              </Link>
+            </div>
           ) : (
             <div>
               <p className="text-xs text-[var(--color-text-muted)] mb-3">

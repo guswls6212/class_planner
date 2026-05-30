@@ -21,13 +21,15 @@ function StudentsPageContent() {
 
   // Auth + active academy resolution (for academy URL + access code fetching)
   const [userId, setUserId] = useState<string | null>(null);
+  const [authResolved, setAuthResolved] = useState(false);
   const [activeAcademyId, setActiveAcademyId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => setUserId(session?.user?.id ?? null))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setAuthResolved(true));
   }, []);
 
   useEffect(() => {
@@ -146,6 +148,7 @@ function StudentsPageContent() {
       onRenewCodeForStudent={handleRenewForStudent}
       onRevokeCodeForStudent={handleRevokeForStudent}
       academyUrl={academyUrl}
+      isAnonymous={authResolved && !userId}
     />
   );
 }
