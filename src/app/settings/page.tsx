@@ -89,6 +89,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
+  // Phase 1: 데이터 복구(스냅샷/이력)는 미제공 — Phase 2 Premium 예정. true 로 바꾸면 재노출.
+  const SHOW_DATA_HISTORY = false;
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
   const [academyId, setAcademyId] = useState<string | null>(null);
@@ -1354,7 +1356,7 @@ export default function SettingsPage() {
           DataHistorySection 위에 amber hint 카드 추가하여 사용자가 데이터
           복구 기능 존재를 사고 발생 전 인지. mockup:
           /strategy/discoverability-attendance-recovery § E */}
-      {userId && canManage && (
+      {SHOW_DATA_HISTORY && userId && canManage && (
         <section
           className="bg-amber-500/[0.07] border border-amber-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
           data-testid="data-recovery-hint"
@@ -1374,8 +1376,8 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
-      {userId && (
+      {/* 데이터 이력 섹션 — Phase 1 미제공 (데이터 복구는 Phase 2 Premium 예정) */}
+      {SHOW_DATA_HISTORY && userId && (
         <div data-tour="data-history">
           <DataHistorySection userId={userId} />
         </div>

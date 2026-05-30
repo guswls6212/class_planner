@@ -145,16 +145,8 @@ export const LOGIN_STEPS: TourStep[] = [
     placement: "right",
     segment: "login",
   },
-  {
-    id: "data-history",
-    targetSelector: '[data-tour="data-history"]',
-    targetPath: "/settings",
-    title: "데이터 복구",
-    description: "실수로 삭제한 학생이나 수업도 시점별로 되돌릴 수 있어요. 30일 자동 백업.",
-    placement: "auto",
-    segment: "login",
-    roles: ["owner", "admin"],
-  },
+  // 데이터 복구(data-history) step 은 Phase 1 미제공이라 제거 — settings 섹션 hide 와 동기.
+  //   Phase 2 재노출 시: settings/page.tsx SHOW_DATA_HISTORY=true + 본 step 복원.
 ];
 
 export const ALL_STEPS: TourStep[] = [...CORE_STEPS, ...LOGIN_STEPS];
