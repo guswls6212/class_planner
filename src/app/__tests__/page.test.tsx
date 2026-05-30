@@ -25,7 +25,7 @@ describe("Landing Page", () => {
     render(<LandingPage />);
 
     expect(screen.getByText("무료 시간표 관리 도구")).toBeInTheDocument();
-    expect(screen.getByText(/5분이면 충분합니다/)).toBeInTheDocument();
+    expect(screen.getByText(/시간표 다시 짜지 마세요/)).toBeInTheDocument();
   });
 
   it("메인 CTA '무료로 시작하기' 링크가 있어야 한다", () => {

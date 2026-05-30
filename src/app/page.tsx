@@ -81,16 +81,17 @@ function HeroSection() {
             무료 시간표 관리 도구
           </p>
           <h1 className="text-hero font-[800] tracking-[-0.035em] leading-[1.15] mb-4 text-[--color-text-primary]">
-            수업 시간표,
+            학생이 바뀔 때마다
             <br />
-            5분이면 충분합니다
+            시간표 다시 짜지 마세요
           </h1>
           <p className="text-[15px] leading-relaxed text-[--color-text-muted] mb-8">
-            학생 등록부터 시간표 완성, PDF 출력까지.
+            끌어다 놓으면 시간표 완성. 학생이 바뀌어도{" "}
+            <strong className="text-[--color-text-primary] font-semibold">5분이면 다시 완성</strong>하고,
             <br />
-            복잡한 설정 없이 바로 시작하세요.
+            PDF·링크로 학부모에게 바로 공유하세요.
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link
               href="/schedule"
               className="bg-accent hover:bg-accent-hover text-admin-ink font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
@@ -104,13 +105,46 @@ function HeroSection() {
               자세히 보기 ↓
             </a>
           </div>
+          <p className="text-caption text-[--color-text-muted] mt-3">
+            회원가입 없이 30초면 시작 · 100% 무료
+          </p>
         </div>
         <div className="flex-[1.2] w-full">
-          <SchedulePreview
-            data={LANDING_DEMO_DATA}
-            times={["15:00", "16:00", "17:00", "18:00"]}
-            size="sm"
-          />
+          {/* make → share: 드래그로 만들고(데모 cue) → 학부모에게 공유. 실제 드래그/PDF 영상은 follow-up 캡처 */}
+          <div className="relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-admin-ink text-white text-caption px-2.5 py-1 rounded-full shadow-admin-md animate-bounce whitespace-nowrap">
+              ↕ 드래그로 수업 이동
+            </div>
+            <SchedulePreview
+              data={LANDING_DEMO_DATA}
+              times={["15:00", "16:00", "17:00", "18:00"]}
+              size="sm"
+            />
+            <div className="mt-3">
+              <p className="text-caption text-[--color-text-muted] mb-1.5">
+                완성한 시간표, 학부모에게 바로
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-admin-md border border-[--color-border] bg-[--color-bg-secondary] px-3 py-2">
+                  <div className="text-caption text-[--color-text-muted] mb-0.5">공유 링크</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-label text-[--color-text-muted] truncate font-mono">
+                      …/share/a1b2c3
+                    </span>
+                    <span className="text-caption bg-accent text-admin-ink rounded px-1.5 py-0.5 font-semibold shrink-0">
+                      복사
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-admin-md border border-[--color-border] bg-[--color-bg-secondary] px-3 py-2 text-center">
+                  <div className="text-caption text-[--color-text-muted] mb-0.5">학부모 접속 코드</div>
+                  <span className="font-mono font-bold tracking-[0.2em] text-[--color-text-primary]">
+                    8F3K2D
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -127,12 +161,12 @@ function StepsSection() {
     {
       n: 2,
       title: "시간표에 배치",
-      desc: "요일과 시간을 선택하고 수업을 추가. 한눈에 보이는 주간 시간표가 완성됩니다.",
+      desc: "요일·시간을 선택하거나 드래그로 옮기면 끝. 학생이 바뀌어도 5분이면 다시 완성됩니다.",
     },
     {
       n: 3,
       title: "PDF로 출력",
-      desc: "완성된 시간표를 PDF로 다운로드. 바로 인쇄해서 학원에 게시할 수 있습니다.",
+      desc: "PDF로 출력해 인쇄하고, 공유 링크·학부모 접속코드로 바로 전송하세요.",
     },
   ];
 
