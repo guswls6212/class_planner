@@ -1,9 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { SUBJECT_NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import SubjectListItem from "../SubjectListItem";
 
-describe("SubjectListItem - 6글자 제한", () => {
-  it("편집 시 6글자 초과 입력을 잘라내고 저장한다", () => {
+describe("SubjectListItem - 과목명 글자수 제한", () => {
+  it(`편집 시 ${SUBJECT_NAME_MAX_LENGTH}글자 초과 입력을 잘라내고 저장한다`, () => {
     const onUpdate = vi.fn();
     render(
       <SubjectListItem
@@ -17,10 +18,12 @@ describe("SubjectListItem - 6글자 제한", () => {
 
     fireEvent.click(screen.getByText("편집"));
     const input = screen.getByRole("textbox") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "초등수학사회역" } }); // 6글자 초과
+    const longName = "가".repeat(SUBJECT_NAME_MAX_LENGTH + 1);
+    const expected = "가".repeat(SUBJECT_NAME_MAX_LENGTH);
+    fireEvent.change(input, { target: { value: longName } });
     fireEvent.click(screen.getByTitle("저장"));
 
-    expect(onUpdate).toHaveBeenCalledWith("sub-1", "초등수학사회", "#000");
+    expect(onUpdate).toHaveBeenCalledWith("sub-1", expected, "#000");
   });
 });
 /**

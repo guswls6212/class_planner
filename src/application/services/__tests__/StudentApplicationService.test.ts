@@ -7,6 +7,7 @@ import { StudentApplicationServiceImpl } from "../StudentApplicationService";
 // Mock Repository
 const mockStudentRepository: StudentRepository = {
   getAll: vi.fn(),
+  getAllPaginated: vi.fn(),
   getById: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
@@ -76,18 +77,17 @@ describe("StudentApplicationService", () => {
       );
     });
 
-    it("중복 이름 추가 시 STUDENT_NAME_DUPLICATE AppError를 throw해야 한다", async () => {
-      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([
-        Student.create("박민수"),
-      ]);
+    it("중복 이름 추가 시 idempotent — 기존 학생 반환 (throw 안 함)", async () => {
+      // Idempotent get-or-create 패턴: localStorage-server sync race에서 중복 row
+      // 생성 차단. 새 row create 안 하고 기존 반환.
+      const existing = Student.create("박민수");
+      vi.spyOn(mockStudentRepository, "getAll").mockResolvedValue([existing]);
+      const createSpy = vi.spyOn(mockStudentRepository, "create");
 
-      const error = await service
-        .addStudent({ name: "박민수" }, "test-academy-id")
-        .catch((e) => e);
+      const result = await service.addStudent({ name: "박민수" }, "test-academy-id");
 
-      expect(error).toBeInstanceOf(AppError);
-      expect(error.code).toBe("STUDENT_NAME_DUPLICATE");
-      expect(error.statusHint).toBe(409);
+      expect(result).toBe(existing);
+      expect(createSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -104,7 +104,7 @@ describe("StudentApplicationService", () => {
 
       // Assert
       expect(result?.name).toBe("김철수");
-      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId);
+      expect(mockStudentRepository.getById).toHaveBeenCalledWith(studentId, undefined);
     });
 
     it("존재하지 않는 학생 ID로 조회 시 null을 반환해야 한다", async () => {

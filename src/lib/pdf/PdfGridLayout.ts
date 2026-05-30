@@ -60,17 +60,20 @@ export function getCellPosition(
   weekday: number,
   startsAt: string,
   endsAt: string,
-  startHour: number = 9
+  startHour: number = 9,
+  laneIndex: number = 0,
+  totalLanes: number = 1
 ): CellPosition {
   const [sh, sm] = startsAt.split(":").map(Number);
   const [eh, em] = endsAt.split(":").map(Number);
   const startSlot = (sh - startHour) * 2 + sm / 30;
   const endSlot = (eh - startHour) * 2 + em / 30;
+  const laneWidth = dims.dayColWidth / totalLanes;
 
   return {
-    x: dims.margin.left + dims.timeColWidth + weekday * dims.dayColWidth,
+    x: dims.margin.left + dims.timeColWidth + weekday * dims.dayColWidth + laneIndex * laneWidth,
     y: dims.gridTop + startSlot * dims.slotHeight,
-    width: dims.dayColWidth,
+    width: laneWidth,
     height: (endSlot - startSlot) * dims.slotHeight,
   };
 }
@@ -104,23 +107,38 @@ export function drawGridLines(
   }
 
   // Horizontal lines (time slots) + time labels
+  // 정시: 실선 진하게 / 30분: 점선 연하게 + 점(·)으로 표시 (스타일 A)
   const totalSlots = (endHour - startHour) * 2;
   for (let slot = 0; slot <= totalSlots; slot++) {
     const y = gridTop + slot * slotHeight;
+    const isHour = slot % 2 === 0;
+
+    if (isHour) {
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.25);
+      doc.setLineDashPattern([], 0);
+    } else {
+      doc.setDrawColor(215, 215, 215);
+      doc.setLineWidth(0.15);
+      doc.setLineDashPattern([0.8, 1.5], 0);
+    }
     doc.line(
       margin.left + timeColWidth,
       y,
       margin.left + timeColWidth + weekdays.length * dayColWidth,
       y
     );
+    doc.setLineDashPattern([], 0); // 실선 복원
 
-    if (slot % 2 === 0) {
+    if (isHour) {
       const hour = startHour + slot / 2;
       doc.setFontSize(7);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`${hour}:00`, margin.left + timeColWidth - 1, y + 1, {
-        align: "right",
-      });
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${hour}:00`, margin.left + timeColWidth - 1, y + 1, { align: "right" });
+    } else {
+      doc.setFontSize(8);
+      doc.setTextColor(200, 200, 200);
+      doc.text("·", margin.left + timeColWidth - 1, y + 1, { align: "right" });
     }
   }
 

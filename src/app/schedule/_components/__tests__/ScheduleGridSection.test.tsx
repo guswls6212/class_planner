@@ -26,6 +26,7 @@ describe("ScheduleGridSection", () => {
     onEmptySpaceClick: vi.fn(),
     selectedStudentIds: ["stu-1"],
     isStudentDragging: false,
+    baseDate: new Date("2026-04-26"),
   };
 
   it("TimeTableGrid를 렌더링한다", () => {

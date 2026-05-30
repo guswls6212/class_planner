@@ -1,12 +1,26 @@
 /**
- * 🗄️ localStorage CRUD 유틸리티
+ * localStorageCrud: classPlannerData (학생/과목/강사/세션/등록) 의 localStorage SSOT
+ * CRUD + cross-entity cascade reconcile 만 담당.
  *
- * classPlannerData를 안전하고 효율적으로 조작하는 핵심 유틸리티입니다.
- * 원자성, 일관성, 에러 처리를 보장합니다.
+ * 의존성:
+ *   - storage: window.localStorage (SSR 안전 — typeof window 가드)
+ *   - 동기화: storage event → in-module cache invalidate
+ *   - 호출 흐름: useXxxLocal hooks → 이 파일 → window.localStorage
+ *   - non-goal: server API 호출 (apiSync.ts 책임)
+ *
+ * 결정 history:
+ *   - ADR-013: anonymous → 로그인 마이그레이션 entity 누락 가드
+ *   - ADR-002 (2026-05-27): Cohesion Sweep — sub-domain 분리 검토 후 보류
+ *     (cross-entity cascade invariant 가 강해 같이 두는 게 자연스러움)
+ *   - UAT 2026-05-09: deferred-commit + await — race window 0 (ADR-012)
+ *   - UAT 2026-05-10: 중복 검사 정책 (이름+성별+생년월일 / 이름+이메일+전화)
+ *   - 2026-05-27 admin 첫 로그인: setActiveAcademyId setTimeout 0 microtask
+ *     (same-tab localStorage.setItem 의 storage event 발화 X 가드)
  */
 
 import { logger } from "./logger";
-import type { Enrollment, Session, Student, Subject, Teacher } from "./planner";
+import { migrateLocalSessionsIfNeeded } from "./migrateLocalSessions";
+import type { Enrollment, Session, Student, Subject, Teacher, TeacherRole } from "./planner";
 
 // ===== 타입 정의 =====
 
@@ -30,10 +44,74 @@ export interface CrudResult<T> {
 
 export const ANONYMOUS_STORAGE_KEY = "classPlannerData:anonymous";
 
-function getStorageKey(): string {
+// Active academy management
+const ACTIVE_ACADEMY_KEY_PREFIX = "active_academy";
+
+export function getActiveAcademyId(userId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
+}
+
+export function setActiveAcademyId(userId: string, academyId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`, academyId);
+  // Same-tab race window 회피 (2026-05-27 admin 첫 로그인 사고):
+  // localStorage.setItem 은 same-tab storage event 발화 X. useIntegratedDataLocal /
+  // useGlobalDataInitialization 등 listener 들이 active_academy 변화 인지 못해 stale
+  // legacy fallback key data 유지 → 사용자 화면에 "수업 없음" 노출 (새로고침으로만 회복).
+  // setTimeout 0 으로 microtask 분리 — test 의 sync expect 영향 X, 사용자 perceive X (ms 단위).
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+    window.dispatchEvent(new CustomEvent("classPlannerDataChanged"));
+  }, 0);
+}
+
+export function clearActiveAcademy(userId: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(`${ACTIVE_ACADEMY_KEY_PREFIX}:${userId}`);
+  // Same-tab race 회피 (위 setActiveAcademyId 와 동일 이유, setTimeout 0 microtask 분리)
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent("class-planner:academy-changed"));
+    window.dispatchEvent(new CustomEvent("classPlannerDataChanged"));
+  }, 0);
+}
+
+export function getStorageKey(academyId?: string): string {
   if (typeof window === "undefined") return ANONYMOUS_STORAGE_KEY;
   const userId = localStorage.getItem("supabase_user_id");
-  return userId ? `classPlannerData:${userId}` : ANONYMOUS_STORAGE_KEY;
+  if (!userId) return ANONYMOUS_STORAGE_KEY;
+
+  const activeAcademyId = academyId ?? getActiveAcademyId(userId);
+  if (activeAcademyId) {
+    return `classPlannerData:${userId}:${activeAcademyId}`;
+  }
+  // Legacy fallback (single-academy era — still works)
+  return `classPlannerData:${userId}`;
+}
+
+// ===== In-module memoization cache =====
+// classPlannerData는 51 호출처에서 매번 localStorage.getItem + JSON.parse(K바이트).
+// 같은 mount 동안 set/clear 시점에서만 invalidate되도록 module-level Map 캐시.
+// 다른 tab의 변경은 window 'storage' event로 감지하여 invalidate.
+//
+// Cache key는 storage key 그대로 (academy/anonymous 자동 분리).
+const dataCache = new Map<string, ClassPlannerData>();
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    // 다른 tab이 같은 key를 변경하면 cache invalidate (다음 read에서 fresh load)
+    if (e.key && e.key.startsWith("classPlannerData:")) {
+      dataCache.delete(e.key);
+    }
+  });
+}
+
+/**
+ * Test-only: in-module cache 전체 비우기.
+ * 단위 테스트의 beforeEach에서 호출. production 코드에서 사용 금지.
+ */
+export function __resetCacheForTest(): void {
+  dataCache.clear();
 }
 
 function migrateUnkeyedStorage(): void {
@@ -61,15 +139,43 @@ const createDefaultData = (): ClassPlannerData => ({
 /**
  * localStorage에서 classPlannerData 안전하게 읽기
  */
-export const getClassPlannerData = (): ClassPlannerData => {
+export const getClassPlannerData = (academyId?: string): ClassPlannerData => {
   try {
     if (typeof window === "undefined") {
       logger.debug("localStorageCrud - SSR 환경, 기본 데이터 반환");
       return createDefaultData();
     }
 
+    // Cache hit short-circuit — set/clear/storage-event 외엔 invalidate 없음.
+    const cacheKey = getStorageKey(academyId);
+    const cached = dataCache.get(cacheKey);
+    if (cached) return cached;
+
     migrateUnkeyedStorage();
-    const stored = localStorage.getItem(getStorageKey());
+
+    const newKey = getStorageKey(academyId);
+    const userId = localStorage.getItem("supabase_user_id");
+
+    // One-time migration: if new scoped key is empty but legacy key has data, copy it
+    if (userId && academyId) {
+      const legacyKey = `classPlannerData:${userId}`;
+      const hasNewData = !!localStorage.getItem(newKey);
+      if (!hasNewData) {
+        const legacyRaw = localStorage.getItem(legacyKey);
+        if (legacyRaw) {
+          localStorage.setItem(newKey, legacyRaw);
+          // Keep legacy key — don't delete (safe rollback)
+          logger.info("localStorageCrud - academy 스코프 마이그레이션 실행", {
+            userId,
+            academyId,
+            legacyKey,
+            newKey,
+          });
+        }
+      }
+    }
+
+    const stored = localStorage.getItem(newKey);
     if (!stored) {
       logger.debug("localStorageCrud - 저장된 데이터 없음, 기본 데이터 반환");
       return createDefaultData();
@@ -84,20 +190,21 @@ export const getClassPlannerData = (): ClassPlannerData => {
     }
 
     // 기본 구조 확인 및 마이그레이션
+    const migrated = migrateLocalSessionsIfNeeded(parsed);
     const result: ClassPlannerData = {
-      students: parsed.students || [],
-      subjects: parsed.subjects || [],
-      sessions: parsed.sessions || [],
-      enrollments: parsed.enrollments || [],
-      teachers: parsed.teachers || [],
-      version: parsed.version || "1.0",
-      lastModified: parsed.lastModified || new Date().toISOString(),
+      students: migrated.students || [],
+      subjects: migrated.subjects || [],
+      sessions: migrated.sessions || [],
+      enrollments: migrated.enrollments || [],
+      teachers: migrated.teachers || [],
+      version: migrated.version || "1.0",
+      lastModified: migrated.lastModified || new Date().toISOString(),
     };
 
     // lastModified가 없으면 추가하고 저장
     if (!parsed.lastModified) {
       logger.info("localStorageCrud - lastModified 마이그레이션 실행");
-      setClassPlannerData(result);
+      setClassPlannerData(result, academyId);
     }
 
     logger.debug("localStorageCrud - 데이터 로드 성공", {
@@ -107,6 +214,8 @@ export const getClassPlannerData = (): ClassPlannerData => {
       enrollmentCount: result.enrollments.length,
     });
 
+    // Cache populate — 다음 호출은 short-circuit (set/clear 시 invalidate)
+    dataCache.set(cacheKey, result);
     return result;
   } catch (error) {
     logger.error(
@@ -121,19 +230,33 @@ export const getClassPlannerData = (): ClassPlannerData => {
 /**
  * localStorage에 classPlannerData 안전하게 저장
  */
-export const setClassPlannerData = (data: ClassPlannerData): boolean => {
+export const setClassPlannerData = (data: ClassPlannerData, academyId?: string): boolean => {
   try {
     if (typeof window === "undefined") {
       logger.debug("localStorageCrud - SSR 환경, 저장 건너뜀");
       return false;
     }
 
-    // 데이터 저장 준비
-    const dataToSave = {
+    // 데이터 저장 준비.
+    // sub-array도 새 reference로 만들어 cache에 저장한다. dataCache(2bad68f)가
+    // 같은 reference를 반환하기 때문에, 호출자가 push/splice로 mutate한 array가
+    // cache에 그대로 남으면 다음 setData(localData) 시 React.memo가 sub-array
+    // reference 동일로 판정 → DOM 미갱신 회귀 (T8 e2e 사고, ADR-013).
+    // 1-level shallow copy면 충분 — sub-array 안의 entity 객체 reference는 보존
+    // (immutable 사용 가정). entity 자체 mutate는 별개 책임.
+    const dataToSave: ClassPlannerData = {
       ...data,
+      students: [...data.students],
+      subjects: [...data.subjects],
+      sessions: [...data.sessions],
+      enrollments: [...data.enrollments],
+      teachers: [...data.teachers],
     };
 
-    localStorage.setItem(getStorageKey(), JSON.stringify(dataToSave));
+    const writeKey = getStorageKey(academyId);
+    localStorage.setItem(writeKey, JSON.stringify(dataToSave));
+    // Cache update — 다음 read는 cache에서 (다른 tab은 storage event로 자체 invalidate)
+    dataCache.set(writeKey, dataToSave);
 
     logger.debug("localStorageCrud - 데이터 저장 성공", {
       studentCount: dataToSave.students.length,
@@ -168,13 +291,15 @@ export const setClassPlannerData = (data: ClassPlannerData): boolean => {
 /**
  * localStorage 데이터 초기화
  */
-export const clearClassPlannerData = (): boolean => {
+export const clearClassPlannerData = (academyId?: string): boolean => {
   try {
     if (typeof window === "undefined") {
       return false;
     }
 
-    localStorage.removeItem(getStorageKey());
+    const clearKey = getStorageKey(academyId);
+    localStorage.removeItem(clearKey);
+    dataCache.delete(clearKey);
     logger.info("localStorageCrud - 데이터 초기화 완료");
 
     // 초기화 이벤트 발생 (실패해도 무시)
@@ -218,12 +343,19 @@ export const addStudentToLocal = (
       ...(options?.phone !== undefined && { phone: options.phone }),
     };
 
-    // 중복 이름 검사
-    const isDuplicate = data.students.some((s) => s.name === newStudent.name);
+    // 중복 검사 (UAT 2026-05-10): 이름+성별+생년월일 모두 일치 시에만 동일인.
+    // 한 필드라도 다르면 동명이인 → 새 학생 등록 허용. server idempotent와 일관.
+    const norm = (v: string | null | undefined) => (v ?? "").trim();
+    const isDuplicate = data.students.some(
+      (s) =>
+        norm(s.name).toLowerCase() === norm(newStudent.name).toLowerCase() &&
+        norm(s.gender) === norm(newStudent.gender) &&
+        norm(s.birthDate) === norm(newStudent.birthDate),
+    );
     if (isDuplicate) {
       return {
         success: false,
-        error: "이미 같은 이름의 학생이 존재합니다.",
+        error: "이미 동일한 학생(이름·성별·생년월일 일치)이 존재합니다.",
       };
     }
 
@@ -278,15 +410,27 @@ export const updateStudentInLocal = (
       };
     }
 
-    // 중복 이름 검사 (자기 자신 제외)
-    if (updates.name) {
+    // 중복 검사 — 변경 후 식별 조합이 다른 학생과 충돌하는지 (UAT 2026-05-10).
+    {
+      const current = data.students[studentIndex];
+      const merged = {
+        name: updates.name !== undefined ? updates.name.trim() : current.name,
+        gender: updates.gender !== undefined ? updates.gender : current.gender,
+        birthDate:
+          updates.birthDate !== undefined ? updates.birthDate : current.birthDate,
+      };
+      const norm = (v: string | null | undefined) => (v ?? "").trim();
       const isDuplicate = data.students.some(
-        (s, index) => s.name === updates.name!.trim() && index !== studentIndex
+        (s, index) =>
+          index !== studentIndex &&
+          norm(s.name).toLowerCase() === norm(merged.name).toLowerCase() &&
+          norm(s.gender) === norm(merged.gender) &&
+          norm(s.birthDate) === norm(merged.birthDate),
       );
       if (isDuplicate) {
         return {
           success: false,
-          error: "이미 같은 이름의 학생이 존재합니다.",
+          error: "이미 동일한 학생(이름·성별·생년월일 일치)이 존재합니다.",
         };
       }
     }
@@ -461,8 +605,10 @@ export const addSubjectToLocal = (
       color: color,
     };
 
-    // 중복 이름 검사
-    const isDuplicate = data.subjects.some((s) => s.name === newSubject.name);
+    // 중복 검사 (UAT 2026-05-10): lowercase trim 일치 (server 정책 일관).
+    const isDuplicate = data.subjects.some(
+      (s) => s.name.trim().toLowerCase() === newSubject.name.trim().toLowerCase(),
+    );
     if (isDuplicate) {
       return {
         success: false,
@@ -522,10 +668,12 @@ export const updateSubjectInLocal = (
       };
     }
 
-    // 중복 이름 검사 (자기 자신 제외)
+    // 중복 검사 (자기 자신 제외) — lowercase trim 일치
     if (updates.name) {
+      const target = updates.name.trim().toLowerCase();
       const isDuplicate = data.subjects.some(
-        (s, index) => s.name === updates.name!.trim() && index !== subjectIndex
+        (s, index) =>
+          index !== subjectIndex && s.name.trim().toLowerCase() === target,
       );
       if (isDuplicate) {
         return {
@@ -679,16 +827,30 @@ export const getAllSubjectsFromLocal = (): Subject[] => {
 export const addTeacherToLocal = (
   name: string,
   color: string,
-  userId?: string | null
+  userId?: string | null,
+  profile?: {
+    email?: string | null;
+    phone?: string | null;
+    role?: TeacherRole | null;
+    notes?: string | null;
+    subjectIds?: string[];
+  }
 ): CrudResult<Teacher> => {
   try {
     const data = getClassPlannerData();
 
-    const isDuplicate = data.teachers.some((t) => t.name === name.trim());
+    // 중복 검사 (UAT 2026-05-10): 이름+이메일+전화 모두 일치 시에만 동일인.
+    const normT = (v: string | null | undefined) => (v ?? "").trim();
+    const isDuplicate = data.teachers.some(
+      (t) =>
+        normT(t.name).toLowerCase() === normT(name).toLowerCase() &&
+        normT(t.email) === normT(profile?.email) &&
+        normT(t.phone) === normT(profile?.phone),
+    );
     if (isDuplicate) {
       return {
         success: false,
-        error: "이미 같은 이름의 강사가 존재합니다.",
+        error: "이미 동일한 강사(이름·이메일·전화 일치)가 존재합니다.",
       };
     }
 
@@ -697,6 +859,11 @@ export const addTeacherToLocal = (
       name: name.trim(),
       color,
       userId: userId ?? null,
+      ...(profile?.email !== undefined && { email: profile.email }),
+      ...(profile?.phone !== undefined && { phone: profile.phone }),
+      role: profile?.role !== undefined ? profile.role : "member",
+      ...(profile?.notes !== undefined && { notes: profile.notes }),
+      ...(profile?.subjectIds !== undefined && { subjectIds: profile.subjectIds }),
     };
 
     data.teachers.push(newTeacher);
@@ -724,7 +891,16 @@ export const addTeacherToLocal = (
  */
 export const updateTeacherInLocal = (
   id: string,
-  updates: { name?: string; color?: string; userId?: string | null }
+  updates: {
+    name?: string;
+    color?: string;
+    userId?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    role?: TeacherRole | null;
+    notes?: string | null;
+    subjectIds?: string[];
+  }
 ): CrudResult<Teacher> => {
   try {
     const data = getClassPlannerData();
@@ -734,12 +910,27 @@ export const updateTeacherInLocal = (
       return { success: false, error: "강사를 찾을 수 없습니다." };
     }
 
-    if (updates.name) {
+    // 중복 검사 — 변경 후 식별 조합이 다른 강사와 충돌하는지 (UAT 2026-05-10).
+    {
+      const current = data.teachers[teacherIndex];
+      const normT = (v: string | null | undefined) => (v ?? "").trim();
+      const merged = {
+        name: updates.name !== undefined ? updates.name : current.name,
+        email: updates.email !== undefined ? updates.email : current.email,
+        phone: updates.phone !== undefined ? updates.phone : current.phone,
+      };
       const isDuplicate = data.teachers.some(
-        (t, index) => t.name === updates.name!.trim() && index !== teacherIndex
+        (t, index) =>
+          index !== teacherIndex &&
+          normT(t.name).toLowerCase() === normT(merged.name).toLowerCase() &&
+          normT(t.email) === normT(merged.email) &&
+          normT(t.phone) === normT(merged.phone),
       );
       if (isDuplicate) {
-        return { success: false, error: "이미 같은 이름의 강사가 존재합니다." };
+        return {
+          success: false,
+          error: "이미 동일한 강사(이름·이메일·전화 일치)가 존재합니다.",
+        };
       }
     }
 
@@ -748,6 +939,11 @@ export const updateTeacherInLocal = (
       ...(updates.name !== undefined && { name: updates.name.trim() }),
       ...(updates.color !== undefined && { color: updates.color }),
       ...(updates.userId !== undefined && { userId: updates.userId }),
+      ...(updates.email !== undefined && { email: updates.email }),
+      ...(updates.phone !== undefined && { phone: updates.phone }),
+      ...(updates.role !== undefined && { role: updates.role }),
+      ...(updates.notes !== undefined && { notes: updates.notes }),
+      ...(updates.subjectIds !== undefined && { subjectIds: updates.subjectIds }),
     };
 
     data.teachers[teacherIndex] = updatedTeacher;
@@ -832,6 +1028,45 @@ export const getAllTeachersFromLocal = (): Teacher[] => {
   } catch (error) {
     logger.error("localStorageCrud - 강사 목록 조회 실패:", undefined, error as Error);
     return [];
+  }
+};
+
+export const addTeacherSubjectToLocal = (
+  teacherId: string,
+  subjectId: string
+): CrudResult<boolean> => {
+  try {
+    const data = getClassPlannerData();
+    const teacher = data.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return { success: false, error: "강사를 찾을 수 없습니다." };
+    if (!teacher.subjectIds) teacher.subjectIds = [];
+    if (!teacher.subjectIds.includes(subjectId)) {
+      teacher.subjectIds.push(subjectId);
+      data.lastModified = new Date().toISOString();
+      if (!setClassPlannerData(data)) return { success: false, error: "localStorage 저장 실패" };
+    }
+    return { success: true, data: true };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사-과목 추가 실패:", undefined, error as Error);
+    return { success: false, error: error instanceof Error ? error.message : "강사-과목 추가 실패" };
+  }
+};
+
+export const removeTeacherSubjectFromLocal = (
+  teacherId: string,
+  subjectId: string
+): CrudResult<boolean> => {
+  try {
+    const data = getClassPlannerData();
+    const teacher = data.teachers.find((t) => t.id === teacherId);
+    if (!teacher) return { success: false, error: "강사를 찾을 수 없습니다." };
+    teacher.subjectIds = (teacher.subjectIds ?? []).filter((id) => id !== subjectId);
+    data.lastModified = new Date().toISOString();
+    if (!setClassPlannerData(data)) return { success: false, error: "localStorage 저장 실패" };
+    return { success: true, data: true };
+  } catch (error) {
+    logger.error("localStorageCrud - 강사-과목 삭제 실패:", undefined, error as Error);
+    return { success: false, error: error instanceof Error ? error.message : "강사-과목 삭제 실패" };
   }
 };
 
@@ -1122,12 +1357,205 @@ export const deleteEnrollmentFromLocal = (id: string): CrudResult<boolean> => {
   }
 };
 
+/**
+ * Enrollment id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`enrollments[].id` + 모든 `sessions[].enrollmentIds`) 를 한 번에 갱신.
+ *
+ * Why: 클라이언트 localStorage의 enrollment id 가 server enrollment id 와 다른 케이스
+ * (anonymous → 로그인, 머신 간 sync 등에서 발생). reconcile 안 하면 후속 session POST
+ * 가 잘못된 enrollmentIds 로 가서 session_enrollments FK 위반 → 500 → outbox 무한 retry.
+ *
+ * 멱등: oldId === newId 또는 oldId가 enrollments에 없으면 no-op + true.
+ */
+export const replaceEnrollmentId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.enrollments.find((e) => e.id === oldId);
+    if (!target) return true; // 이미 정리됨 — 멱등
+
+    // 새 id가 이미 enrollments에 있으면 (예: 같은 (student, subject) 로 별도 row 존재)
+    // oldId entry 제거 + sessions[].enrollmentIds 만 newId로 교체 (중복 제거).
+    const newAlreadyPresent = data.enrollments.some((e) => e.id === newId);
+
+    if (newAlreadyPresent) {
+      data.enrollments = data.enrollments.filter((e) => e.id !== oldId);
+    } else {
+      data.enrollments = data.enrollments.map((e) =>
+        e.id === oldId ? { ...e, id: newId } : e
+      );
+    }
+
+    data.sessions = data.sessions.map((session) => {
+      if (!session.enrollmentIds || !session.enrollmentIds.includes(oldId)) {
+        return session;
+      }
+      const replaced = session.enrollmentIds.map((eId) =>
+        eId === oldId ? newId : eId
+      );
+      // 중복 제거 (newId가 이미 배열에 있으면 oldId→newId 변환 후 dedupe)
+      const deduped = Array.from(new Set(replaced));
+      return { ...session, enrollmentIds: deduped };
+    });
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - enrollment id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error(
+      "localStorageCrud - enrollment id 교체 실패:",
+      undefined,
+      error as Error
+    );
+    return false;
+  }
+};
+
+/**
+ * Student id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`students[].id` + 모든 `enrollments[].studentId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 students에 없으면 no-op + true.
+ */
+export const replaceStudentId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.students.find((s) => s.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.students.some((s) => s.id === newId);
+    if (newAlreadyPresent) {
+      data.students = data.students.filter((s) => s.id !== oldId);
+    } else {
+      data.students = data.students.map((s) =>
+        s.id === oldId ? { ...s, id: newId } : s
+      );
+    }
+
+    data.enrollments = data.enrollments.map((e) =>
+      e.studentId === oldId ? { ...e, studentId: newId } : e
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - student id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - student id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
+/**
+ * Subject id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`subjects[].id` + 모든 `enrollments[].subjectId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 subjects에 없으면 no-op + true.
+ */
+export const replaceSubjectId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.subjects.find((s) => s.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.subjects.some((s) => s.id === newId);
+    if (newAlreadyPresent) {
+      data.subjects = data.subjects.filter((s) => s.id !== oldId);
+    } else {
+      data.subjects = data.subjects.map((s) =>
+        s.id === oldId ? { ...s, id: newId } : s
+      );
+    }
+
+    data.enrollments = data.enrollments.map((e) =>
+      e.subjectId === oldId ? { ...e, subjectId: newId } : e
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - subject id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - subject id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
+/**
+ * Teacher id 교체 — server idempotent create가 *기존 row의 id*를 반환했을 때
+ * localStorage 측 (`teachers[].id` + 모든 `sessions[].teacherId`) 를 갱신.
+ *
+ * 멱등: oldId === newId 또는 oldId가 teachers에 없으면 no-op + true.
+ */
+export const replaceTeacherId = (oldId: string, newId: string): boolean => {
+  try {
+    if (oldId === newId) return true;
+    const data = getClassPlannerData();
+    const target = data.teachers.find((t) => t.id === oldId);
+    if (!target) return true;
+
+    const newAlreadyPresent = data.teachers.some((t) => t.id === newId);
+    if (newAlreadyPresent) {
+      data.teachers = data.teachers.filter((t) => t.id !== oldId);
+    } else {
+      data.teachers = data.teachers.map((t) =>
+        t.id === oldId ? { ...t, id: newId } : t
+      );
+    }
+
+    data.sessions = data.sessions.map((session) =>
+      session.teacherId === oldId ? { ...session, teacherId: newId } : session
+    );
+
+    data.lastModified = new Date().toISOString();
+
+    if (setClassPlannerData(data)) {
+      logger.info("localStorageCrud - teacher id 교체 성공", {
+        oldId,
+        newId,
+        newAlreadyPresent,
+      });
+      return true;
+    }
+    return false;
+  } catch (error) {
+    logger.error("localStorageCrud - teacher id 교체 실패:", undefined, error as Error);
+    return false;
+  }
+};
+
 // ===== 사용자별 데이터 삭제 =====
 
 export const clearUserClassPlannerData = (userId: string): boolean => {
   try {
     if (typeof window === "undefined") return false;
-    localStorage.removeItem(`classPlannerData:${userId}`);
+    const legacyKey = `classPlannerData:${userId}`;
+    localStorage.removeItem(legacyKey);
+    dataCache.delete(legacyKey);
     logger.info("localStorageCrud - 사용자 데이터 삭제 완료", { userId });
     return true;
   } catch (error) {

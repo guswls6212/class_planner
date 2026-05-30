@@ -24,6 +24,8 @@ interface AttendanceSheetProps {
   attendance: Record<string, AttendanceRecord>;
   onMarkAttendance: (studentId: string, status: AttendanceStatus) => void;
   onMarkAllPresent: () => void;
+  /** When false, bulk-mark and per-student buttons are disabled (read-only view). Default: true */
+  canManage?: boolean;
 }
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
@@ -43,6 +45,7 @@ export default function AttendanceSheet({
   attendance,
   onMarkAttendance,
   onMarkAllPresent,
+  canManage = true,
 }: AttendanceSheetProps) {
   if (!isOpen) return null;
 
@@ -59,9 +62,11 @@ export default function AttendanceSheet({
             <p className="text-xs text-[--color-text-tertiary] mt-0.5">{date}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="small" onClick={onMarkAllPresent}>
-              전체 출석
-            </Button>
+            {canManage && (
+              <Button variant="secondary" size="small" onClick={onMarkAllPresent}>
+                전체 출석
+              </Button>
+            )}
             <button
               aria-label="닫기"
               className="p-1.5 rounded-lg text-[--color-text-secondary] hover:bg-[--color-bg-secondary] transition-colors"
@@ -92,13 +97,15 @@ export default function AttendanceSheet({
                         key={status}
                         aria-label={STATUS_LABELS[status]}
                         aria-pressed={current === status}
+                        disabled={!canManage}
                         className={[
                           "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                          !canManage ? "cursor-default opacity-70" : "",
                           current === status
                             ? "bg-[--color-primary] text-white border-[--color-primary]"
-                            : "bg-transparent text-[--color-text-secondary] border-[--color-border] hover:border-[--color-primary] hover:text-[--color-primary]",
+                            : "bg-transparent text-[--color-text-secondary] border-[--color-border]" + (canManage ? " hover:border-[--color-primary] hover:text-[--color-primary]" : ""),
                         ].join(" ")}
-                        onClick={() => onMarkAttendance(student.id, status)}
+                        onClick={() => { if (canManage) onMarkAttendance(student.id, status); }}
                       >
                         {STATUS_LABELS[status]}
                       </button>

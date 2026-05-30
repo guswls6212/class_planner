@@ -1,5 +1,5 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
-import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
+import { assertAttendancePermission } from "@/lib/auth/attendancePermission";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "sessionId is required" }, { status: 400 });
     }
 
-    const { academyId } = await resolveAcademyMembership(userId);
+    const { academyId } = await assertAttendancePermission(userId, sessionId);
     const client = getServiceRoleClient();
 
     let query = client
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "sessionId, studentId, date are required" }, { status: 400 });
     }
 
-    const { academyId } = await resolveAcademyMembership(userId);
+    const { academyId } = await assertAttendancePermission(userId, sessionId);
     const client = getServiceRoleClient();
 
     const { data, error } = await client

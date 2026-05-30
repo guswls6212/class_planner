@@ -98,6 +98,28 @@ describe("checkLoginDataConflict", () => {
     expect(result.action).toBe("use-server");
   });
 
+  // userId 키 보호 케이스 (온보딩 전 로그인 상태에서 입력한 데이터)
+  it("anonymous 없고 userId 키에 데이터 있고 서버 비어있으면 upload-local", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(localData);
+    const result = checkLoginDataConflict(emptyData);
+    expect(result.action).toBe("upload-local");
+  });
+
+  it("anonymous 없고 userId 키에 데이터 있고 서버도 있으면 use-server (이전 동기화 데이터, 충돌 불필요)", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(localData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("use-server");
+  });
+
+  it("anonymous 없고 userId 키도 비어있으면 use-server", () => {
+    storage["supabase_user_id"] = "user-local";
+    storage["classPlannerData:user-local"] = JSON.stringify(emptyData);
+    const result = checkLoginDataConflict(serverData);
+    expect(result.action).toBe("use-server");
+  });
+
   it("anon에 subjects만 9개 있고 students/sessions/enrollments는 0 → use-server", () => {
     const subjectsOnlyData: ClassPlannerData = {
       students: [],
@@ -156,11 +178,38 @@ describe("applyLocalDataChoice", () => {
     });
   });
 
-  it("anonymous 데이터 없으면 에러 throw", async () => {
+  it("anonymous도 없고 userId 키도 없으면 에러 throw", async () => {
+    storage["supabase_user_id"] = "user-999";
+    // userId 키 데이터도 없는 상태
     await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
       "로컬 데이터를 찾을 수 없습니다"
     );
-    expect(storage["classPlannerData:user-999"]).toBeUndefined();
+  });
+
+  it("userId 키 데이터로 마이그레이션 — anonymous 키 삭제 안 함", async () => {
+    // anonymous 없음, userId 키에 데이터 있음 (온보딩 전 로그인 상태)
+    storage["supabase_user_id"] = "user-999";
+    storage["classPlannerData:user-999"] = JSON.stringify(localData);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await applyLocalDataChoice("user-999", emptyData);
+
+    // anonymous 키가 원래 없었으니 삭제 시도 없음 (anonymous 키 없음 유지)
+    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
+    // supabase_user_id 설정 확인
+    expect(storage["supabase_user_id"]).toBe("user-999");
+    // re-fetch 5번 호출 (students, subjects, sessions, enrollments, teachers)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+
+    vi.unstubAllGlobals();
   });
 
   it("마이그레이션 완료 후 anonymous 키 삭제, supabase_user_id 설정", async () => {
@@ -182,28 +231,70 @@ describe("applyLocalDataChoice", () => {
     expect(storage["classPlannerData:anonymous"]).toBeUndefined();
     // supabase_user_id 설정 확인
     expect(storage["supabase_user_id"]).toBe("user-999");
-    // re-fetch 4번 호출 확인 (students, subjects, sessions, enrollments)
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // re-fetch 5번 호출 확인 (students, subjects, sessions, enrollments, teachers)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
 
     vi.unstubAllGlobals();
   });
 
-  it("마이그레이션 실패 시 에러 throw 및 anonymous 키 보존", async () => {
+  // 부분 실패(일부만 동기화) → throw 안 함 + anonymous 삭제로 재flood loop 차단.
+  // 2026-05-29 migration-partial-failure-resilience (강사 미배정 세션 400 → 무한 spinner 사고).
+  it("부분 실패 — throw 안 함, anonymous 삭제(loop 차단), 실패 레코드 반환", async () => {
     storage["classPlannerData:anonymous"] = JSON.stringify(localData);
 
-    // mock: 실패 — 에러 발생
+    migrateLocalDataToServerMock.mockResolvedValueOnce({
+      success: false,
+      syncedCounts: { students: 1, subjects: 0, enrollments: 0, sessions: 0 }, // 1개 성공
+      errors: [{ entity: "session", localId: "anon-sess1", message: "강사 미배정" }],
+    });
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await applyLocalDataChoice("user-999", emptyData);
+
+    // totalSynced>0 → anonymous 삭제 (다음 로그인 재flood 차단)
+    expect(storage["classPlannerData:anonymous"]).toBeUndefined();
+    // re-fetch 실행됨 (throw 안 함)
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // 실패 레코드 caller 로 반환
+    expect(result.failed).toEqual([{ entity: "session", message: "강사 미배정" }]);
+    expect(result.totalSynced).toBe(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("전체 실패(0 동기화) — throw 안 함, anonymous 보존(transient 재시도 여지), 실패 반환", async () => {
+    storage["classPlannerData:anonymous"] = JSON.stringify(localData);
+
     migrateLocalDataToServerMock.mockResolvedValueOnce({
       success: false,
       syncedCounts: { students: 0, subjects: 0, enrollments: 0, sessions: 0 },
       errors: [{ entity: "student", localId: "anon-s1", message: "네트워크 오류" }],
     });
 
-    // throw하므로 fetch(re-fetch)는 호출되지 않음
-    await expect(applyLocalDataChoice("user-999", emptyData)).rejects.toThrow(
-      "데이터 동기화에 실패했습니다"
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: true, data: [] }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
 
-    // anonymous 키는 throw 전에 삭제되지 않으므로 보존됨
+    const result = await applyLocalDataChoice("user-999", emptyData);
+
+    // totalSynced=0 + anonymous.students>0 → 보존
     expect(storage["classPlannerData:anonymous"]).toBe(JSON.stringify(localData));
+    expect(result.failed).toHaveLength(1);
+    expect(result.totalSynced).toBe(0);
+
+    vi.unstubAllGlobals();
   });
 });

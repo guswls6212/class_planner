@@ -1,18 +1,24 @@
 /**
  * 로컬 데이터를 서버에 전체 동기화하는 파이프라인.
  *
- * 실행 순서: Students → Subjects → Enrollments → Sessions
+ * 실행 순서: Students → Subjects → Teachers → Enrollments → Sessions
  * 각 단계에서 ID 매핑 테이블을 구축하여 다음 단계에 전달한다.
  * 중복은 서버 데이터 기준으로 유지하며, API 오류 발생 시 에러 배열에 누적 후 계속 진행한다.
+ *
+ * Teachers는 enrollment/session에 직접 의존성은 없지만, session.teacherId가 있을 때
+ * mapped server ID로 reconcile하기 위해 Sessions 전에 마이그레이션한다.
  */
 
 import type { ClassPlannerData } from "../localStorageCrud";
 import {
   findDuplicateStudent,
   findDuplicateSubject,
+  findDuplicateTeacher,
   findDuplicateEnrollment,
   findDuplicateSession,
 } from "./deduplication";
+import { getWeekStartDate } from "../weekStart";
+import { notifySelfSync } from "../apiSync";
 import { logger } from "../logger";
 
 
@@ -21,11 +27,27 @@ export type MigrationSyncResult = {
   syncedCounts: {
     students: number;
     subjects: number;
+    teachers: number;
     enrollments: number;
     sessions: number;
   };
   errors: { entity: string; localId: string; message: string }[];
 };
+
+// API의 통일된 에러 응답({ success: false, error: { code, message } })에서
+// 사람이 읽을 수 있는 메시지만 안전하게 추출. 객체가 그대로 string concat에
+// 흘러들어 [object Object]가 되는 회귀를 막는 단일 출입구.
+function extractErrorMessage(json: unknown, fallback: string): string {
+  if (typeof json !== "object" || json === null) return fallback;
+  const j = json as { error?: { message?: string } };
+  return j.error?.message ?? fallback;
+}
+
+function getErrorCode(json: unknown): string | undefined {
+  if (typeof json !== "object" || json === null) return undefined;
+  const j = json as { error?: { code?: string } };
+  return j.error?.code;
+}
 
 export async function migrateLocalDataToServer(
   userId: string,
@@ -34,9 +56,10 @@ export async function migrateLocalDataToServer(
 ): Promise<MigrationSyncResult> {
   const studentIdMap = new Map<string, string>();
   const subjectIdMap = new Map<string, string>();
+  const teacherIdMap = new Map<string, string>();
   const enrollmentIdMap = new Map<string, string>();
 
-  const syncedCounts = { students: 0, subjects: 0, enrollments: 0, sessions: 0 };
+  const syncedCounts = { students: 0, subjects: 0, teachers: 0, enrollments: 0, sessions: 0 };
   const errors: { entity: string; localId: string; message: string }[] = [];
 
   // ── Step 1: Students ────────────────────────────────────────────────────────
@@ -72,11 +95,12 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        // 이름 중복 오류 → 서버에서 같은 이름 학생 찾아 ID 재사용
+        // 이름 중복 오류 → 서버에서 같은 이름 학생 찾아 ID 재사용.
+        // code 기반 검사 — toErrorResponse가 항상 { error: { code } }로 직렬화하므로
+        // message 텍스트 매칭(언어/문구 변경에 취약)에 의존하지 않는다.
         const isNameConflict =
           res.status === 409 &&
-          typeof json.message === "string" &&
-          json.message.includes("이미 존재하는 학생 이름");
+          getErrorCode(json) === "STUDENT_NAME_DUPLICATE";
         if (isNameConflict) {
           const fallback = serverData.students.find(
             (s) => s.name === student.name
@@ -91,7 +115,7 @@ export async function migrateLocalDataToServer(
             continue;
           }
         }
-        const message = json.message ?? json.error ?? "학생 업로드 실패";
+        const message = extractErrorMessage(json, "학생 업로드 실패");
         errors.push({ entity: "student", localId: student.id, message });
         logger.warn("fullDataMigration - 학생 업로드 실패", {
           localId: student.id,
@@ -137,7 +161,7 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "과목 업로드 실패";
+        const message = extractErrorMessage(json, "과목 업로드 실패");
         errors.push({ entity: "subject", localId: subject.id, message });
         logger.warn("fullDataMigration - 과목 업로드 실패", {
           localId: subject.id,
@@ -151,7 +175,62 @@ export async function migrateLocalDataToServer(
     }
   }
 
-  // ── Step 3: Enrollments ─────────────────────────────────────────────────────
+  // ── Step 3: Teachers ────────────────────────────────────────────────────────
+  // Sessions에서 teacherId를 server ID로 reconcile하기 위해 Sessions 전에 마이그레이션.
+  // anonymous 모드에서 schedule 인라인 추가로 만들어진 강사가 server에 누락되는
+  // 회귀 (UAT 2026-05-09 강사 사라짐 사고) 방지.
+  // teacher.subjectIds (강사-과목 N:M)는 별도 endpoint이며 본 단계에서 다루지 않는다.
+  for (const teacher of localData.teachers) {
+    const serverTeacher = findDuplicateTeacher(teacher, serverData.teachers);
+    if (serverTeacher) {
+      teacherIdMap.set(teacher.id, serverTeacher.id);
+      syncedCounts.teachers++;
+      logger.debug("fullDataMigration - 강사 중복, 서버 ID 재사용", {
+        localId: teacher.id,
+        serverId: serverTeacher.id,
+      });
+      continue;
+    }
+
+    try {
+      const res = await fetch(`/api/teachers?userId=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: teacher.name,
+          color: teacher.color || "#6366f1",
+          userId: teacher.userId ?? null,
+          email: teacher.email ?? null,
+          phone: teacher.phone ?? null,
+          role: teacher.role ?? null,
+          notes: teacher.notes ?? null,
+        }),
+      });
+      const json = await res.json();
+
+      if (json.success && json.data?.id) {
+        teacherIdMap.set(teacher.id, json.data.id);
+        syncedCounts.teachers++;
+        logger.debug("fullDataMigration - 강사 업로드 성공", {
+          localId: teacher.id,
+          serverId: json.data.id,
+        });
+      } else {
+        const message = extractErrorMessage(json, "강사 업로드 실패");
+        errors.push({ entity: "teacher", localId: teacher.id, message });
+        logger.warn("fullDataMigration - 강사 업로드 실패", {
+          localId: teacher.id,
+          message,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "네트워크 오류";
+      errors.push({ entity: "teacher", localId: teacher.id, message });
+      logger.error("fullDataMigration - 강사 업로드 네트워크 오류", undefined, err as Error);
+    }
+  }
+
+  // ── Step 4: Enrollments ─────────────────────────────────────────────────────
   for (const enrollment of localData.enrollments) {
     const serverEnrollment = findDuplicateEnrollment(
       enrollment,
@@ -200,7 +279,7 @@ export async function migrateLocalDataToServer(
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "수강 업로드 실패";
+        const message = extractErrorMessage(json, "수강 업로드 실패");
         errors.push({ entity: "enrollment", localId: enrollment.id, message });
         logger.warn("fullDataMigration - 수강 업로드 실패", {
           localId: enrollment.id,
@@ -214,7 +293,7 @@ export async function migrateLocalDataToServer(
     }
   }
 
-  // ── Step 4: Sessions ─────────────────────────────────────────────────────────
+  // ── Step 5: Sessions ─────────────────────────────────────────────────────────
   for (const session of localData.sessions) {
     const serverSession = findDuplicateSession(
       session,
@@ -267,6 +346,21 @@ export async function migrateLocalDataToServer(
       continue;
     }
 
+    // 마이그레이션 시점에 weekStartDate가 비어있는 anonymous 데이터에 대비한 fallback.
+    // API는 YYYY-MM-DD 형식을 요구하므로 빈 값일 경우 "지금 시점이 속한 주의 월요일(KST)"로 채운다.
+    const sessionWeekStartDate =
+      session.weekStartDate || getWeekStartDate(new Date());
+
+    // session.teacherId가 있으면 teacherIdMap으로 server ID reconcile.
+    // 매핑 누락(강사 mig 실패 등) 시 local id를 그대로 보내면 FK 위반 가능 →
+    // 보수적으로 teacherId 자체를 빼고 보냄 (강사 없는 session으로 등록).
+    // 이게 없던 게 anonymous→로그인 mig에서 session-강사 연결이 끊기는 별개 회귀였음.
+    const localTeacherId = session.teacherId;
+    const mappedTeacherId =
+      localTeacherId != null && localTeacherId !== ""
+        ? (teacherIdMap.get(localTeacherId) ?? null)
+        : null;
+
     try {
       const res = await fetch(`/api/sessions?userId=${userId}`, {
         method: "POST",
@@ -275,22 +369,28 @@ export async function migrateLocalDataToServer(
           subjectId,
           enrollmentIds: newEnrollmentIds,
           weekday: session.weekday,
+          weekStartDate: sessionWeekStartDate,
           startsAt: session.startsAt,
           endsAt: session.endsAt,
           room: session.room,
           yPosition: session.yPosition,
+          ...(mappedTeacherId !== null && { teacherId: mappedTeacherId }),
         }),
       });
       const json = await res.json();
 
       if (json.success && json.data?.id) {
         syncedCounts.sessions++;
+        // sessions INSERT는 server-side trigger로 academies.schedule_updated_at을 bump.
+        // useScheduleMeta polling이 이 변화를 "다른 admin 변경"으로 오인해 토스트 발화하는
+        // 회귀 방지 — apiSync 우회 경로(직접 fetch)에서도 본인 변경 신호 dispatch.
+        notifySelfSync();
         logger.debug("fullDataMigration - 수업 업로드 성공", {
           localId: session.id,
           serverId: json.data.id,
         });
       } else {
-        const message = json.message ?? json.error ?? "수업 업로드 실패";
+        const message = extractErrorMessage(json, "수업 업로드 실패");
         errors.push({ entity: "session", localId: session.id, message });
         logger.warn("fullDataMigration - 수업 업로드 실패", {
           localId: session.id,

@@ -54,20 +54,30 @@ export function forceClearDragStateAfterDrop(delayMs: number = 100) {
   }, delayMs);
 }
 
+/** 모달이 열릴 때 setGroupModalData 로 세팅되는 데이터 형태. weekStartDate 는 옵션 —
+ *  부모(page.tsx) 의 currentWeekStart 를 전달하면 모달 캘린더 popover 가 month grid 로
+ *  렌더되어 다른 주 날짜 선택 가능 (EditSessionModal V3 패턴 미러). 미지정 시 weekday-only fallback. */
+type GroupModalInitData = {
+  studentIds: string[];
+  subjectId: string;
+  weekday: number;
+  startTime: string;
+  endTime: string;
+  yPosition: number;
+  weekStartDate?: string;
+};
+
 export function buildOpenGroupModalHandler(
-  setGroupModalData: (data: {
-    studentIds: string[];
-    subjectId: string;
-    weekday: number;
-    startTime: string;
-    endTime: string;
-    yPosition: number;
-  }) => void,
+  setGroupModalData: (data: GroupModalInitData) => void,
   setShowGroupModal: (open: boolean) => void,
-  getNextHour: (time: string) => string
+  getNextHour: (time: string) => string,
+  /** 현재 시간표 주의 월요일 YYYY-MM-DD (KST). 호출 시점에 read 하여 모달 초기 weekStartDate 로 사용.
+   *  미지정 시 모달 캘린더는 weekday-only fallback (이전 동작 호환). */
+  getCurrentWeekStart?: () => string | undefined,
 ) {
   return (weekday: number, time: string, yPosition?: number) => {
-    logger.debug("그룹 수업 모달 열기", { weekday, time, yPosition });
+    const weekStartDate = getCurrentWeekStart?.();
+    logger.debug("그룹 수업 모달 열기", { weekday, time, yPosition, weekStartDate });
     setGroupModalData({
       studentIds: [],
       subjectId: "",
@@ -75,6 +85,7 @@ export function buildOpenGroupModalHandler(
       startTime: time,
       endTime: getNextHour(time),
       yPosition: yPosition || 1,
+      weekStartDate,
     });
     setShowGroupModal(true);
     logger.debug("모달 상태 설정 완료", { showGroupModal: true });
@@ -85,16 +96,12 @@ export function buildHandleDrop(params: {
   students: { id: string; name: string }[];
   enrollments: { id: string; studentId: string; subjectId: string }[];
   setIsStudentDragging: (v: boolean) => void;
-  setGroupModalData: (data: {
-    studentIds: string[];
-    subjectId: string;
-    weekday: number;
-    startTime: string;
-    endTime: string;
-    yPosition: number;
-  }) => void;
+  setGroupModalData: (data: GroupModalInitData) => void;
   setShowGroupModal: (open: boolean) => void;
   getNextHour: (time: string) => string;
+  /** 현재 시간표 주의 월요일 YYYY-MM-DD (KST). drop 으로 모달이 열릴 때 캘린더 popover 가
+   *  다른 주 날짜를 선택 가능하도록 초기 weekStartDate 로 세팅. */
+  getCurrentWeekStart?: () => string | undefined;
 }) {
   const {
     students,
@@ -103,6 +110,7 @@ export function buildHandleDrop(params: {
     setGroupModalData,
     setShowGroupModal,
     getNextHour,
+    getCurrentWeekStart,
   } = params;
 
   return (
@@ -118,6 +126,7 @@ export function buildHandleDrop(params: {
       yPosition,
     });
     setIsStudentDragging(false);
+    const weekStartDate = getCurrentWeekStart?.();
 
     if (enrollmentId.startsWith("student:")) {
       const studentId = enrollmentId.replace("student:", "");
@@ -134,6 +143,7 @@ export function buildHandleDrop(params: {
         startTime: time,
         endTime: getNextHour(time),
         yPosition: yPosition || 1,
+        weekStartDate,
       });
       setShowGroupModal(true);
       return;
@@ -152,6 +162,7 @@ export function buildHandleDrop(params: {
       startTime: time,
       endTime: getNextHour(time),
       yPosition: yPosition || 1,
+      weekStartDate,
     });
     setShowGroupModal(true);
 

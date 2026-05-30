@@ -17,7 +17,24 @@
 - **시간표** — 드래그앤드롭 수업 배치, 그룹 수업 지원, 충돌 자동 감지/재배치
 - **익명 우선** — 로그인 없이 바로 사용. 로그인 시 데이터 자동 동기화
 - **PDF 다운로드** — 시간표를 A4 PDF로 인쇄
+- **PWA** — 홈 화면 설치 + 오프라인 동작 (학부모/학생 모바일 PWA)
 - **다크/라이트 테마**
+
+## PWA (홈 화면 설치 + 오프라인)
+
+PR Q~S(#235~239) 도입. 학부모/학생이 `/share/{token}` URL을 모바일 브라우저에서 열고 "홈 화면에 추가" → standalone 앱처럼 동작.
+
+- **manifest** — `src/app/manifest.ts` (Next.js 15 metadata API → `/manifest.webmanifest` 자동)
+- **icon** — `src/app/icon1.tsx` (192×192) / `icon2.tsx` (512×512) / `apple-icon.tsx` (180×180) — `ImageResponse` 동적 생성
+- **Service Worker** — `@serwist/next` 기반 (`src/app/sw.ts`). production build에서만 활성 (dev는 disable)
+- **오프라인** — 캐시된 라우트는 그대로 mount (localStorage 데이터로 시간표 그림). 캐시 미존재 시 `/~offline` fallback
+
+홈 화면 추가 흐름:
+- **iPhone Safari**: 공유 → "홈 화면에 추가" → standalone 모드 진입 (`apple-icon` 표시, status bar 반투명)
+- **Android Chrome**: 자동 install prompt (manifest 유효성 통과 시)
+- **Desktop Chrome**: 주소창 우측 install 아이콘 → "Class Planner 설치"
+
+상세: `docs/adr/006-pwa-adoption.md`, `docs/adr/007-sw-timing-fix.md`.
 
 ## 기술 스택
 

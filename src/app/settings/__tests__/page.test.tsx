@@ -5,14 +5,12 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-vi.mock("../../../utils/supabaseClient", () => ({
-  supabase: {
-    auth: {
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "user-1" } } },
-      }),
-    },
-  },
+vi.mock("../../../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    session: { user: { id: "user-1" } },
+    user: { id: "user-1" },
+    loading: false,
+  }),
 }));
 
 global.fetch = vi.fn();
@@ -20,10 +18,10 @@ global.fetch = vi.fn();
 describe("Settings Page", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("페이지 제목이 렌더된다", async () => {
+  it("페이지 제목이 렌더된다 (hasAcademy:true)", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
-      json: async () => ({ success: true, data: [] }),
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
     });
 
     const { default: SettingsPage } = await import("../page");
@@ -34,7 +32,30 @@ describe("Settings Page", () => {
     });
   });
 
-  it("초대하기 버튼이 존재한다", async () => {
+  it("학원이 없는 사용자에게 '학원 만들기' CTA를 표시한다", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/api/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true, data: [], hasAcademy: false }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, data: [] }),
+      });
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("아직 등록된 학원이 없습니다.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "학원 만들기" })).toBeInTheDocument();
+    });
+  });
+
+  it("멤버 초대 버튼이 존재한다", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/api/members")) {
         return Promise.resolve({
@@ -55,7 +76,103 @@ describe("Settings Page", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("+ 초대하기")).toBeInTheDocument();
+      expect(screen.getByText(/멤버 초대/)).toBeInTheDocument();
     });
+  });
+
+  it("slug 섹션은 owner에게만 표시된다", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/api/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            hasAcademy: true,
+            academyName: "테스트 학원",
+            academyId: "acad-1",
+            academySlug: "test-slug",
+            data: [{ userId: "user-1", role: "owner", email: "test@test.com", name: "테스트", joinedAt: "2026-04-01" }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, data: [] }),
+      });
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("학부모 접속 URL")).toBeInTheDocument();
+    });
+  });
+
+  it("slug 섹션은 admin에게 표시되지 않는다", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/api/members")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            hasAcademy: true,
+            academyName: "테스트 학원",
+            academyId: "acad-1",
+            academySlug: "test-slug",
+            data: [{ userId: "user-1", role: "admin", email: "test@test.com", name: "테스트", joinedAt: "2026-04-01" }],
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ success: true, data: [] }),
+      });
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText("학부모 접속 URL")).not.toBeInTheDocument();
+    });
+  });
+
+  it("'튜토리얼 다시 보기' 카드가 로그인 사용자에게 렌더된다 (rank 5-A)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tutorial-restart-card")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("tutorial-restart-button")).toBeInTheDocument();
+  });
+
+  it("'다시 보기' 버튼 click 시 class-planner:start-tour custom event 발화", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
+    });
+
+    const listener = vi.fn();
+    window.addEventListener("class-planner:start-tour", listener);
+
+    const { default: SettingsPage } = await import("../page");
+    const { fireEvent } = await import("@testing-library/react");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tutorial-restart-button")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tutorial-restart-button"));
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    window.removeEventListener("class-planner:start-tour", listener);
   });
 });

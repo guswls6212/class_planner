@@ -1,178 +1,132 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { logger } from "../../lib/logger";
-import { SESSION_CELL_HEIGHT } from "@/shared/constants/sessionConstants";
-
-import type { Session } from "../../lib/planner";
-
-interface DragPreviewState {
-  draggedSession: Session | null;
-  targetWeekday: number | null;
-  targetTime: string | null;
-  targetYPosition: number | null;
-}
+import React from "react";
+import { useDroppable } from "@dnd-kit/core";
 
 interface TimeTableCellProps {
   weekday: number;
   time: string;
-  yPosition?: number; // logical y-position (1-based) for this cell row — default 1
+  yPosition?: number;
   onDrop: (weekday: number, time: string, enrollmentId: string) => void;
-  onSessionDrop?: (sessionId: string, weekday: number, time: string, yPosition: number) => void;
   onEmptySpaceClick: (weekday: number, time: string) => void;
-  onDragOver?: (weekday: number, time: string, yPosition: number) => void;
   style?: React.CSSProperties;
-  // drag state
-  isAnyDragging?: boolean;
-  isDragging?: boolean;
-  dragPreview?: DragPreviewState | null;
   isReadOnly?: boolean;
+  /**
+   * drag 중일 때 true — cell 을 left/right half 두 `insertBefore` droppable 로
+   * 분할 (Variant E). cursor 가 cell 의 어느 절반 위에 있든 자동으로 가까운 lane
+   * boundary insert 의도로 매핑된다 — 사용자가 "이 lane 앞/뒤로 끼우기" 의도를
+   * 가운데 hover 만으로도 표현 가능.
+   *
+   * left half  → `weekday|time|insertBefore:${yPosition}`
+   * right half → `weekday|time|insertBefore:${yPosition + 1}`
+   *
+   * 평소 (false) 엔 기존 lane occupy droppable (`weekday|time|yPosition`) 사용 —
+   * 빈 시간대 empty space click + enrollment HTML5 drop 도 그대로 동작.
+   *
+   * Cmd/Ctrl 복사 drag 시엔 호출부에서 false 유지 — 복사 의도는 lane reorder 와
+   * 무관 (T10b 회귀 가드).
+   *
+   * NOTE: cell 은 hit-test droppable 만 담당. amber overlay ("여기 삽입") 의 시각
+   * 렌더는 TimeTableRow 가 ghost 좌표 (laidOutSessions) 기반으로 그린다.
+   * dnd-visual-feedback.md § 3 데이터 흐름 참조.
+   */
+  insertMode?: boolean;
 }
 
 /**
- * TimeTableCell — absorbs DropZone drag handling logic.
- * Replaces the standalone DropZone component.
+ * TimeTableCell — dnd-kit drop zone for session drag + HTML5 drop for enrollment.
  * One cell = one (time, yPosition) slot within a weekday column.
+ *
+ * Session drops: handled by DndContext.onDragEnd (id format: "weekday|time|yPosition"
+ * 또는 insertMode 일 때 "weekday|time|insertBefore:N").
+ * Enrollment drops: handled here via HTML5 onDrop (student chip drag).
  */
 export default function TimeTableCell({
   weekday,
   time,
   yPosition = 1,
   onDrop,
-  onSessionDrop,
   onEmptySpaceClick,
-  onDragOver,
   style,
-  isAnyDragging = false,
-  isDragging = false,
-  dragPreview = null,
   isReadOnly = false,
+  insertMode = false,
 }: TimeTableCellProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
+  // 일반 lane occupy droppable — drag 안 할 때 (또는 복사 drag) 만 활성.
+  const laneDrop = useDroppable({
+    id: `${weekday}|${time}|${yPosition}`,
+    disabled: insertMode,
+  });
+  // insertMode 시 left/right half 분할 — cell 가운데 hover 만으로도 가까운 boundary insert.
+  // id 는 cell 좌표 + half 명시로 unique. parse 측에서 leftHalf→insertBefore:yPos,
+  // rightHalf→insertBefore:yPos+1 매핑. 같은 insertBeforeYPos 가 인접 cell 두 곳
+  // (이 cell 의 right half + 다음 cell 의 left half) 에서 같은 droppable id 로
+  // 등록되면 dnd-kit collision detection 가 한 곳만 인식해 cursor 위치와 overlay
+  // 표시 mismatch 회귀 (사용자 보고 2026-05-14: rightmost lane drop hint 가 다음
+  // lane 으로 표시).
+  const leftHalfDrop = useDroppable({
+    id: `${weekday}|${time}|${yPosition}|leftHalf`,
+    disabled: !insertMode,
+  });
+  const rightHalfDrop = useDroppable({
+    id: `${weekday}|${time}|${yPosition}|rightHalf`,
+    disabled: !insertMode,
+  });
 
-  // Reset drag-over state when global drag ends
-  useEffect(() => {
-    if (!isAnyDragging) {
-      setIsDragOver(false);
-    }
-  }, [isAnyDragging]);
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    logger.debug("TimeTableCell handleDragEnter", { weekday, time, yPosition });
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-    if (e.dataTransfer) {
-      if (e.dataTransfer.effectAllowed === "move") {
-        e.dataTransfer.dropEffect = "move";
-      } else {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-    if (e.dataTransfer) {
-      if (e.dataTransfer.effectAllowed === "move") {
-        e.dataTransfer.dropEffect = "move";
-      } else {
-        e.dataTransfer.dropEffect = "copy";
-      }
-    }
-    if (onDragOver) {
-      const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
-      onDragOver(weekday, time, pixelYPosition);
-    }
-  };
-
+  // HTML5 drop kept for enrollment (student chip) drag only
   const handleDrop = (e: React.DragEvent) => {
-    logger.debug("TimeTableCell handleDrop", { weekday, time, yPosition });
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(false);
-
     if (isReadOnly) return;
-
     const data = e.dataTransfer?.getData("text/plain");
-    logger.debug("TimeTableCell 드롭 데이터", { data });
-
+    // session: prefix is handled by DndContext.onDragEnd — ignore here
+    if (!data || data.startsWith("session:")) return;
     if (e.dataTransfer && typeof e.dataTransfer.clearData === "function") {
       e.dataTransfer.clearData();
     }
+    onDrop(weekday, time, data);
+  };
 
-    if (data) {
-      if (data.startsWith("session:")) {
-        // Session drag: "session:{sessionId}"
-        const sessionId = data.replace("session:", "");
-        logger.debug("세션 드롭 처리", { sessionId });
-        const pixelYPosition = (yPosition - 1) * SESSION_CELL_HEIGHT;
-        if (onSessionDrop) {
-          onSessionDrop(sessionId, weekday, time, pixelYPosition);
-        }
-      } else {
-        // Enrollment drag
-        logger.debug("enrollment 드롭 처리", { data });
-        if (onDrop) {
-          onDrop(weekday, time, data);
-        }
-      }
-    } else {
-      logger.debug("TimeTableCell: 드롭 데이터가 없음");
-    }
-
-    try {
-      (document.activeElement as HTMLElement)?.blur?.();
-    } catch {
-      // ignore
-    }
+  // Required so browser accepts HTML5 enrollment drops
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleClick = () => {
-    if (isReadOnly) return;
-    if (onEmptySpaceClick) {
-      onEmptySpaceClick(weekday, time);
-    }
-  };
-
-  const showBorder = isDragOver;
-
-  const styles: React.CSSProperties = {
-    ...style,
-    border: showBorder
-      ? "2px dashed var(--color-primary)"
-      : "1px dashed transparent",
-    backgroundColor: showBorder
-      ? "var(--color-primary-light)"
-      : style?.backgroundColor || "transparent",
-    cursor: "pointer",
-    pointerEvents: "auto" as const,
-    ...(isDragging &&
-      !showBorder && {
-        backgroundColor: "var(--color-bg-secondary)",
-      }),
+    if (isReadOnly || insertMode) return;
+    onEmptySpaceClick(weekday, time);
   };
 
   return (
     <div
-      style={styles}
+      ref={insertMode ? undefined : laneDrop.setNodeRef}
+      style={{ ...style, cursor: "pointer", pointerEvents: "auto" as const, position: style?.position ?? "absolute" }}
       data-testid={`time-table-cell-${weekday}-${time}`}
       data-drop-zone="true"
       data-weekday={weekday}
       data-time={time}
       data-y-position={yPosition}
       draggable={false}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
-    />
+    >
+      {insertMode && (
+        <>
+          {/* hit area — left half (this lane 앞으로) / right half (this lane 뒤로).
+              cursor 위치로 의도 분기. amber overlay 시각 렌더는 TimeTableRow 가
+              ghost 좌표 (laidOutSessions) 기반으로 그린다 — 본 cell 은 hit-test 만. */}
+          <div
+            ref={leftHalfDrop.setNodeRef}
+            data-insert-half="left"
+            style={{ position: "absolute", inset: 0, right: "50%" }}
+          />
+          <div
+            ref={rightHalfDrop.setNodeRef}
+            data-insert-half="right"
+            style={{ position: "absolute", inset: 0, left: "50%" }}
+          />
+        </>
+      )}
+    </div>
   );
 }

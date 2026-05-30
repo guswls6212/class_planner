@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import PDFDownloadButton from "../../../components/molecules/PDFDownloadButton";
-import { HelpTooltip } from "../../../components/molecules/HelpTooltip";
 
 interface Props {
   viewLabel: string;
@@ -10,66 +8,47 @@ interface Props {
   isDownloading: boolean;
   onDownloadStart: () => void;
   onDownloadEnd: () => void;
-  userId: string | null;
-  onSaveTemplate: () => void;
-  onApplyTemplate: () => void;
-  isSaving: boolean;
+  /**
+   * 현재 view 모드 — PDF 다운로드 button 은 weekly view 에서만 표시.
+   * daily/monthly 의 PDF 는 별도 PR 에서 전용 layout 으로 구현 예정.
+   */
+  viewMode?: "daily" | "weekly" | "monthly";
+  /** @deprecated dropdown 제거 후 미사용 — page-level call site 호환용 */
+  onOpenPdfPerTeacher?: () => void;
+  /** @deprecated 동일 */
+  onOpenPdfPerStudent?: () => void;
+  /** @deprecated 동일 */
+  onOpenPdfAllPrint?: () => void;
+  /** @deprecated 동일 */
+  hasAnyFilter?: boolean;
+  /** @deprecated 동일 */
+  filteredCount?: number;
+  /** @deprecated 동일 */
+  totalCount?: number;
+  /** @deprecated Retained to keep the page-level call site unchanged. TemplateMenuV2 owns this action now. */
+  onSaveTemplate?: () => void;
+  /** @deprecated 동일 사유. */
+  onApplyTemplate?: () => void;
+  /** @deprecated 동일 사유. */
+  isSaving?: boolean;
 }
 
 export default function ScheduleActionBar({
   viewLabel,
   onOpenPdfDialog,
   isDownloading,
-  onDownloadStart,
-  onDownloadEnd,
-  userId,
-  onSaveTemplate,
-  onApplyTemplate,
-  isSaving,
+  viewMode = "weekly",
 }: Props) {
+  const showPdf = viewMode === "weekly";
+
   return (
-    <div className="flex items-center gap-2 flex-wrap py-2">
-      <PDFDownloadButton
-        onDownload={onOpenPdfDialog}
-        isDownloading={isDownloading}
-        onDownloadStart={onDownloadStart}
-        onDownloadEnd={onDownloadEnd}
-        viewLabel={viewLabel}
-      />
-      {userId && (
-        <>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onSaveTemplate}
-              disabled={isSaving}
-              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors disabled:opacity-50"
-            >
-              현재 주를 템플릿으로 저장
-            </button>
-            <HelpTooltip
-              label="템플릿 저장 도움말"
-              content="이번 주의 수업 배치를 템플릿으로 저장합니다. 나중에 같은 배치를 다른 주에 빠르게 적용할 수 있습니다."
-            />
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onApplyTemplate}
-              className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
-            >
-              저장된 템플릿 적용하기
-            </button>
-            <HelpTooltip
-              label="템플릿 적용 도움말"
-              content="반복되는 시간표를 저장해두고 다른 주에 동일한 배치를 한 번에 적용합니다. 예: 매주 같은 요일에 같은 학생이 같은 수업을 듣는 경우."
-            />
-          </div>
-          <Link
-            href="/settings"
-            className="px-3 py-1.5 text-xs border border-[var(--color-border)] text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors"
-          >
-            공유 링크
-          </Link>
-        </>
+    <div className="flex items-center gap-2" data-tour="export">
+      {showPdf && (
+        <PDFDownloadButton
+          onDownload={onOpenPdfDialog}
+          isDownloading={isDownloading}
+          viewLabel={viewLabel}
+        />
       )}
     </div>
   );

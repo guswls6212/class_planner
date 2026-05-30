@@ -17,9 +17,11 @@ function makePostResponse(id: string) {
   );
 }
 
-function makeErrorResponse(message: string, status = 400) {
+// API 통일 응답 포맷: { success: false, error: { code, message } }
+// (src/lib/errors/httpErrors.ts toErrorResponse 와 일치)
+function makeErrorResponse(code: string, message: string, status = 400) {
   return Promise.resolve(
-    new Response(JSON.stringify({ success: false, message }), {
+    new Response(JSON.stringify({ success: false, error: { code, message } }), {
       status,
       headers: { "Content-Type": "application/json" },
     })
@@ -53,6 +55,7 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -90,6 +93,63 @@ describe("migrateLocalDataToServer — happy path (no server data)", () => {
     const sessionBody = JSON.parse(sessionCall[1].body);
     expect(sessionBody.enrollmentIds).toContain("srv-en1");
     expect(sessionBody.subjectId).toBe("srv-sub1"); // API 필수 필드
+    // weekStartDate는 API 필수. 빈 문자열 입력이면 fallback이 채워야 한다.
+    expect(sessionBody.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ── Test 1b: session weekStartDate fallback (회귀 가드) ──────────────────────
+// anonymous에서 만든 session이 weekStartDate=""인 채 마이그레이션될 때 API
+// validation(YYYY-MM-DD required)을 통과해야 한다. 회귀 시 errorCount cascade로
+// 이어져 ID 매핑 누락 폭발이 발생함 (UAT 2026-05-08 사고).
+describe("migrateLocalDataToServer — session weekStartDate fallback", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("session.weekStartDate가 비어있으면 현재 주의 월요일(KST, YYYY-MM-DD)로 fallback하여 POST한다", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "홍길동", gender: "male", birthDate: "2010-01-01" }],
+      subjects: [{ id: "loc-sub1", name: "수학", color: "#ff0000" }],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 3,
+          startsAt: "11:00",
+          endsAt: "12:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+        },
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.sessions).toBe(1);
+
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // 월요일이어야 한다 — getWeekStartDate(KST)가 보장
+    const wd = new Date(`${sessionBody.weekStartDate}T12:00:00+09:00`).getUTCDay();
+    // KST noon → UTC 03:00 → 같은 날짜 유지. 월요일=1
+    expect(wd).toBe(1);
 
     vi.unstubAllGlobals();
   });
@@ -110,6 +170,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
       weekday: 1,
       startsAt: "09:00",
       endsAt: "10:00",
+      weekStartDate: "",
       enrollmentIds: ["srv-en1"],
     };
 
@@ -133,6 +194,7 @@ describe("migrateLocalDataToServer — all duplicates", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -178,6 +240,7 @@ describe("migrateLocalDataToServer — student upload error cascades", () => {
           weekday: 1,
           startsAt: "09:00",
           endsAt: "10:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -188,7 +251,7 @@ describe("migrateLocalDataToServer — student upload error cascades", () => {
 
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce(() => makeErrorResponse("서버 오류"))    // student fails
+      .mockImplementationOnce(() => makeErrorResponse("INTERNAL_ERROR", "서버 오류", 500))    // student fails
       .mockImplementationOnce(() => makePostResponse("srv-sub1"));    // subject OK
 
     vi.stubGlobal("fetch", fetchMock);
@@ -224,6 +287,7 @@ describe("migrateLocalDataToServer — empty local data", () => {
     expect(result.success).toBe(true);
     expect(result.syncedCounts.students).toBe(0);
     expect(result.syncedCounts.subjects).toBe(0);
+    expect(result.syncedCounts.teachers).toBe(0);
     expect(result.syncedCounts.enrollments).toBe(0);
     expect(result.syncedCounts.sessions).toBe(0);
     expect(result.errors).toHaveLength(0);
@@ -245,6 +309,7 @@ describe("migrateLocalDataToServer — session with unmapped enrollments", () =>
           weekday: 2,
           startsAt: "14:00",
           endsAt: "15:00",
+          weekStartDate: "",
           enrollmentIds: ["orphan-en1"], // 매핑 테이블에 없음
         },
       ],
@@ -302,18 +367,11 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "이미 존재하는 학생 이름입니다.",
-            }),
-            {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        )
+        makeErrorResponse(
+          "STUDENT_NAME_DUPLICATE",
+          "이미 존재하는 학생 이름입니다.",
+          409,
+        ),
       );
 
     vi.stubGlobal("fetch", fetchMock);
@@ -361,11 +419,14 @@ describe("migrateLocalDataToServer — student name-conflict with server fallbac
     const fetchMock = vi.fn(async (url: string, options?: RequestInit) => {
       callCount++;
       if (callCount === 1) {
-        // 학생 POST: 409 name-conflict
+        // 학생 POST: 409 name-conflict (통일 에러 포맷)
         return new Response(
           JSON.stringify({
             success: false,
-            message: "이미 존재하는 학생 이름입니다.",
+            error: {
+              code: "STUDENT_NAME_DUPLICATE",
+              message: "이미 존재하는 학생 이름입니다.",
+            },
           }),
           { status: 409, headers: { "Content-Type": "application/json" } }
         );
@@ -423,6 +484,7 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
           weekday: 2,
           startsAt: "14:00",
           endsAt: "15:00",
+          weekStartDate: "",
           enrollmentIds: ["loc-en1"],
         },
       ],
@@ -434,19 +496,12 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     const fetchMock = vi
       .fn()
       .mockImplementationOnce(() =>
-        // 학생 POST: 409 name-conflict 오류
-        Promise.resolve(
-          new Response(
-            JSON.stringify({
-              success: false,
-              message: "이미 존재하는 학생 이름입니다.",
-            }),
-            {
-              status: 409,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        )
+        // 학생 POST: 409 name-conflict 오류 (통일 에러 포맷)
+        makeErrorResponse(
+          "STUDENT_NAME_DUPLICATE",
+          "이미 존재하는 학생 이름입니다.",
+          409,
+        ),
       )
       .mockImplementationOnce(() => makePostResponse("srv-sub1"));    // 과목 OK
 
@@ -469,6 +524,222 @@ describe("migrateLocalDataToServer — student name-conflict without server fall
     expect(result.errors.some((e) => e.entity === "student" && e.localId === "loc-s1")).toBe(true);
     expect(result.errors.some((e) => e.entity === "enrollment" && e.localId === "loc-en1")).toBe(true);
     expect(result.errors.some((e) => e.entity === "session" && e.localId === "loc-sess1")).toBe(true);
+
+    // [object Object] 회귀 가드 (UAT 2026-05-08 사고) — error 객체가 그대로 message에
+    // 누적되면 사용자 모달에 "student: [object Object]"로 보인다. extractErrorMessage가
+    // error.message 만 추출하는지 확인.
+    const studentError = result.errors.find((e) => e.entity === "student");
+    expect(studentError?.message).toBe("이미 존재하는 학생 이름입니다.");
+    expect(studentError?.message).not.toContain("[object Object]");
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ── Test 8: Teachers — anonymous → server 마이그레이션 (UAT 2026-05-09 회귀) ──
+// anonymous 모드에서 schedule 인라인으로 추가한 강사가 로그인 후 server에 누락되어
+// 사라지던 사고를 막는 회귀 가드. session.teacherId도 함께 reconcile돼야 한다.
+describe("migrateLocalDataToServer — teachers anonymous→server (UAT 2026-05-09)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("강사 + session.teacherId 함께 마이그레이션 — server ID로 reconcile된 채 session POST", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [
+        { id: "loc-t1", name: "김학성", color: "#6366f1", role: "member" },
+      ],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // 순서: student → subject → teacher → enrollment → session
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-t1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.teachers).toBe(1);
+    expect(result.syncedCounts.sessions).toBe(1);
+    expect(result.errors).toHaveLength(0);
+
+    // teacher POST가 일어났는지 + body에 name/color 포함
+    const teacherCall = fetchMock.mock.calls[2];
+    expect(teacherCall[0]).toContain("/api/teachers");
+    const teacherBody = JSON.parse(teacherCall[1].body);
+    expect(teacherBody.name).toBe("김학성");
+    expect(teacherBody.color).toBe("#6366f1");
+    expect(teacherBody.role).toBe("member");
+
+    // session POST의 teacherId가 server ID로 reconcile됐는지
+    const sessionCall = fetchMock.mock.calls[4];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBe("srv-t1");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("server에 같은 이름 강사 존재 시 POST 안 호출, idMap으로 reconcile해 session.teacherId가 server ID로 전송", async () => {
+    const serverData: ClassPlannerData = {
+      students: [],
+      subjects: [],
+      teachers: [{ id: "srv-existing-t", name: "김학성", color: "#000" }],
+      enrollments: [],
+      sessions: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [
+        { id: "loc-t1", name: "김학성", color: "#6366f1" }, // server에 같은 이름 존재
+      ],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // teacher POST는 호출 안 됨 (중복) → student/subject/enrollment/session 4번
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, serverData);
+
+    expect(result.success).toBe(true);
+    expect(result.syncedCounts.teachers).toBe(1); // 중복도 카운트 (mapping 성공)
+    expect(fetchMock).toHaveBeenCalledTimes(4); // teacher POST 호출 안 됨
+
+    // session POST의 teacherId가 server existing teacher id로 전송됐는지
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBe("srv-existing-t");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("강사 mig 실패 시 session.teacherId 매핑 누락 → session POST body에서 teacherId 제외 (FK 보호)", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [{ id: "loc-t1", name: "김학성", color: "#6366f1" }],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          teacherId: "loc-t1",
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    // teacher POST 500 실패, 나머지 OK
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makeErrorResponse("INTERNAL_ERROR", "서버 오류", 500))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    expect(result.success).toBe(false);
+    expect(result.syncedCounts.teachers).toBe(0);
+    expect(result.errors.some((e) => e.entity === "teacher" && e.localId === "loc-t1")).toBe(true);
+
+    // session은 그대로 등록됐지만 teacherId는 매핑 누락이므로 body에서 제외 — FK 위반 방지
+    const sessionCall = fetchMock.mock.calls[4];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect(sessionBody.teacherId).toBeUndefined();
+    expect(result.syncedCounts.sessions).toBe(1);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("session.teacherId가 없으면 session POST body에 teacherId 키 자체가 없음", async () => {
+    const localData: ClassPlannerData = {
+      students: [{ id: "loc-s1", name: "이현진" }],
+      subjects: [{ id: "loc-sub1", name: "공업수학", color: "#3b82f6" }],
+      teachers: [],
+      enrollments: [{ id: "loc-en1", studentId: "loc-s1", subjectId: "loc-sub1" }],
+      sessions: [
+        {
+          id: "loc-sess1",
+          weekday: 1,
+          startsAt: "09:00",
+          endsAt: "10:00",
+          weekStartDate: "",
+          enrollmentIds: ["loc-en1"],
+          // teacherId 없음
+        },
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    };
+
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => makePostResponse("srv-s1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sub1"))
+      .mockImplementationOnce(() => makePostResponse("srv-en1"))
+      .mockImplementationOnce(() => makePostResponse("srv-sess1"));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await migrateLocalDataToServer("user-1", localData, emptyServerData);
+
+    const sessionCall = fetchMock.mock.calls[3];
+    const sessionBody = JSON.parse(sessionCall[1].body);
+    expect("teacherId" in sessionBody).toBe(false);
 
     vi.unstubAllGlobals();
   });

@@ -1,15 +1,155 @@
 "use client";
-import React from "react";
-import Button from "../../../components/atoms/Button";
-import Label from "../../../components/atoms/Label";
+
+/**
+ * GroupSessionModal: 시간표 그리드 의 "수업 추가/수정" 모달 — 학생 picker (multi-select)
+ * + 과목 picker + 강사 picker + 시작/종료 시간 + 요일 입력 → onSubmit 으로 한 묶음 반환.
+ *
+ * 의존성:
+ *   - hooks/useModalA11y (focus trap + ESC + outside click)
+ *   - hooks/useMediaQuery (모바일 BottomSheet 분기)
+ *   - molecules/BottomSheet (모바일 layout — 데스크탑 modal 과 동일 API)
+ *   - molecules/TeacherDropdownPicker, StudentChip
+ *   - lib/duplicateLabel (동명이인 학생 부제 처리 — 성별·생년월일·학교)
+ *   - non-goal: server sync (호출부 schedule/page 책임), session collision 해결
+ *
+ * 결정 history:
+ *   - Variant E (insertBefore) preview drop UX 의 시각 피드백 — drag context 와 통합
+ *     (schedule/page 책임). 본 모달은 add/edit 입력 UI 만.
+ *   - 동명이인 학생 부제 — Turbopack chunk 분리 사고 회피 위해 helper inline 유지
+ *     (`formatStudentSubtitleExceptGrade`).
+ *   - 모바일 BottomSheet — useMediaQuery 로 분기.
+ *   - ADR-002 (2026-05-28): Cohesion Sweep Phase 2 — UI 컴포넌트, 분리는 needs-review.
+ *     docstring + sniff record only.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes 자주 (호출부 schedule/page + 입력 atom + 시간 UI 통합).
+ *   2. 시그니처 영향? — props 명확 (onSubmit / initialData / sessions 등). caller graph 명확.
+ *   3. UI/state/API 섞임? — UI 렌더 + 폼 state 다수 (학생 multi-select / 과목 / 강사 / 시간 / 요일). API 호출 X (호출부 sync 책임).
+ *   4. 도메인 둘 이상? — 한 모달 (수업 추가/수정 입력). 사용자 mental model 안 응집.
+ *   5. pure + 부수효과? — UI 위주, 폼 state local. helper (formatStudentSubtitleExceptGrade) inline pure.
+ *
+ * 분리 후보 (후속 cycle, needs-review):
+ *   - 학생/과목/강사 picker 각자 sub-component (이미 일부 atom 분리됨).
+ *   - 시간/요일 입력 sub-component.
+ *   - 진행 전: 사용자 검토 + e2e 회귀 가드 (timetable 추가 flow) 의무.
+ */
+
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, X, ChevronRight, ChevronLeft, Calendar, Clock, ChevronDown } from "lucide-react";
 import type { GroupSessionData } from "../../../types/scheduleTypes";
 import { useModalA11y } from "../../../hooks/useModalA11y";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { BottomSheet } from "../../../components/molecules/BottomSheet";
+import TeacherDropdownPicker from "../../../components/molecules/TeacherDropdownPicker";
+import { StudentChip } from "../../../components/molecules/StudentChip";
+import { buildDuplicateNameSet } from "../../../lib/duplicateLabel";
+
+/**
+ * 학년 배지가 별도 노출되는 row variant 전용 부제 — 동명이인이면 성별·생년월일,
+ * 그 외엔 학교. helper 를 별도 export 로 두지 않는 이유: Turbopack 이 dynamic
+ * import chain 안의 helper 모듈을 별도 청크로 분리해 RSC stream 시점에 미로드
+ * 상태가 발생하던 사고 (검증 시 발견). 호출부 내 inline 으로 chunk 분리 회피.
+ */
+function formatStudentSubtitleExceptGrade(
+  s: StudentOption,
+  dupSet: Set<string>,
+): string {
+  const isDup = dupSet.has(s.name);
+  if (isDup) {
+    const identity: string[] = [];
+    if (s.gender === "male") identity.push("남");
+    else if (s.gender === "female") identity.push("여");
+    if (s.birthDate) identity.push(s.birthDate);
+    if (identity.length > 0) return identity.join(" · ");
+  }
+  if (s.school) return s.school;
+  return "";
+}
+import {
+  NAME_MAX_LENGTH,
+  SUBJECT_NAME_MAX_LENGTH,
+} from "../../../lib/validation/profileSchemas";
+
+// ── 캘린더 helper (EditSessionModal V3 calendar 패턴 미러) ─────────────
+// 별도 모듈로 export 하지 않고 호출부 inline 으로 둠 — Turbopack 이 dynamic
+// import chain 의 helper 모듈을 분리한 청크가 RSC stream 시점에 미로드 상태인
+// 사고 회피 (2026-05-10 학습). EditSessionModal 과 동일 5개 함수 중복.
+function parseWeekStart(weekStartDate: string | undefined): Date | null {
+  if (!weekStartDate) return null;
+  try {
+    return new Date(`${weekStartDate}T12:00:00+09:00`);
+  } catch {
+    return null;
+  }
+}
+
+function addDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(d.getDate() + n);
+  return r;
+}
+
+/** JS getDay()(일=0) → class-planner weekday (월=0, …, 일=6). */
+function getWeekdayFromDate(d: Date): number {
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 6 : jsDay - 1;
+}
+
+function formatChipLabel(
+  weekStartDate: string | undefined,
+  weekday: number,
+  weekdaysLabels: string[],
+): string {
+  const week = parseWeekStart(weekStartDate);
+  if (!week) return weekdaysLabels[weekday] ?? "";
+  const d = addDays(week, weekday);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekdaysLabels[weekday]})`;
+}
+
+/** 임의 Date → 그 주 월요일의 YYYY-MM-DD (KST). class-planner의 getWeekStartDate와 동일 로직. */
+function dateToWeekStart(d: Date): string {
+  const weekday = getWeekdayFromDate(d);
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - weekday);
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const day = String(monday.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** 시간 차이 → "8시간", "1시간 30분", "30분" 등. invalid (start ≥ end) 시 빈 문자열. */
+function formatDuration(start: string, end: string): string {
+  if (!start || !end) return "";
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return "";
+  const diff = eh * 60 + em - (sh * 60 + sm);
+  if (diff <= 0) return "";
+  const hours = Math.floor(diff / 60);
+  const mins = diff % 60;
+  if (hours === 0) return `${mins}분`;
+  if (mins === 0) return `${hours}시간`;
+  return `${hours}시간 ${mins}분`;
+}
 
 type SubjectOption = { id: string; name: string; color?: string };
-type StudentOption = { id: string; name: string };
-type TeacherOption = { id: string; name: string; color: string };
+type StudentOption = {
+  id: string;
+  name: string;
+  gender?: string | null;
+  birthDate?: string | null;
+  grade?: string | null;
+  school?: string | null;
+};
+type TeacherOption = {
+  id: string;
+  name: string;
+  color: string;
+  role?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  subjectIds?: string[];
+};
 
 interface GroupSessionModalProps {
   isOpen: boolean;
@@ -34,7 +174,31 @@ interface GroupSessionModalProps {
   onCreateStudent: () => void;
   studentCreating: boolean;
   studentCreateError: string;
+  /** 신규 학생/강사/과목 인라인 추가 CTA 노출 여부. owner/admin 만 true. 미지정 시 true. */
+  canManage?: boolean;
+  // 강사·과목 인라인 추가 (학생 패턴 미러링) — 기존 호출처/테스트 호환 위해 optional
+  subjectInputValue?: string;
+  setSubjectInputValue?: (val: string) => void;
+  /** 성공 시 true 반환 — true 받으면 과목 인라인 row 자동 닫힘 + 새 과목 자동 select. */
+  onCreateSubject?: () => Promise<boolean>;
+  subjectCreating?: boolean;
+  subjectCreateError?: string;
+  teacherInputValue?: string;
+  setTeacherInputValue?: (val: string) => void;
+  /** 성공 시 true 반환 — TeacherPillPicker 인라인 row 자동 닫힘 + 새 강사 자동 선택. */
+  onCreateTeacher?: () => Promise<boolean>;
+  teacherCreating?: boolean;
+  teacherCreateError?: string;
+  /**
+   * 현재 주 시작 날짜 (YYYY-MM-DD KST 월요일). Step 1 의 요일/날짜 chip popover 가
+   * 1달 캘린더로 렌더되어 다른 주 날짜 선택 가능. 미지정 시 캘린더는 weekday-only
+   * fallback (이전 동작 호환). 사용자가 다른 주 날짜 선택 시 groupModalData.weekStartDate
+   * 에 그 주 월요일이 저장됨 — 부모 (addGroupSession) 가 forward 처리.
+   */
+  weekStartDate?: string;
 }
+
+const STEPS = ["학생", "과목 & 시간", "확인"];
 
 const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   isOpen,
@@ -59,7 +223,106 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   onCreateStudent,
   studentCreating,
   studentCreateError,
+  canManage = true,
+  subjectInputValue = "",
+  setSubjectInputValue = () => {},
+  onCreateSubject = async () => false,
+  subjectCreating = false,
+  subjectCreateError = "",
+  teacherInputValue = "",
+  setTeacherInputValue = () => {},
+  onCreateTeacher = async () => false,
+  teacherCreating = false,
+  teacherCreateError = "",
+  weekStartDate,
 }) => {
+  const [step, setStep] = useState(0);
+  const [subjectExpanding, setSubjectExpanding] = useState(false);
+  const subjectInputRef = useRef<HTMLInputElement>(null);
+
+  // ── 헤더 chip popover state (EditSessionModal V3 calendar 패턴 미러) ──
+  // 한 번에 하나만 열림. chip 클릭 toggle, 다른 chip 클릭 시 자동 close.
+  // weekday/weekStartDate 는 groupModalData (부모 SSOT) 를 통해 read/write.
+  const [openPopover, setOpenPopover] = useState<"weekday" | "time" | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // 캘린더 — selectedWeekStart = groupModalData.weekStartDate (부모 SSOT).
+  const weekStartObj = useMemo(
+    () => parseWeekStart(groupModalData.weekStartDate),
+    [groupModalData.weekStartDate],
+  );
+  // 선택된 날짜 = 그 주의 weekday 위치
+  const selectedDate = useMemo(
+    () => (weekStartObj ? addDays(weekStartObj, groupModalData.weekday) : null),
+    [weekStartObj, groupModalData.weekday],
+  );
+  // viewMonth — 캘린더가 보여줄 달. open 때마다 selected 의 달로 sync.
+  const [viewMonth, setViewMonth] = useState<Date>(() =>
+    selectedDate ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1) : new Date(),
+  );
+  useEffect(() => {
+    if (openPopover === "weekday" && selectedDate) {
+      setViewMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openPopover]);
+
+  // popover 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!openPopover) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setOpenPopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [openPopover]);
+
+  // 모달 열림 시 popover 닫기 + 부모 weekStartDate prop 으로 강제 sync.
+  // 부모 buildOpenGroupModalHandler / buildHandleDrop 가 setGroupModalData 호출 시
+  // weekStartDate 를 currentWeekStart 로 미리 세팅하면 이 sync 는 reference identity 로 skip.
+  // 안전망 역할 — 사용자가 다른 주 선택 후 모달 닫고 재열 시 currentWeekStart 로 reset.
+  useEffect(() => {
+    if (!isOpen) return;
+    setOpenPopover(null);
+    if (weekStartDate !== undefined) {
+      setGroupModalData((prev) =>
+        prev.weekStartDate === weekStartDate ? prev : { ...prev, weekStartDate },
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Reset step when modal opens
+  useEffect(() => {
+    if (isOpen) setStep(0);
+  }, [isOpen]);
+
+  // Subject inline row — auto focus + ESC close
+  useEffect(() => {
+    if (subjectExpanding) subjectInputRef.current?.focus();
+  }, [subjectExpanding]);
+
+  useEffect(() => {
+    if (!subjectExpanding) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSubjectExpanding(false);
+        setSubjectInputValue("");
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [subjectExpanding, setSubjectInputValue]);
+
+  const handleCreateSubjectInline = async () => {
+    const trimmed = subjectInputValue.trim();
+    if (!trimmed || subjectCreating) return;
+    const success = await onCreateSubject();
+    if (success) setSubjectExpanding(false);
+  };
+
   const { containerRef } = useModalA11y({
     isOpen,
     onClose: () => setShowGroupModal(false),
@@ -69,274 +332,679 @@ const GroupSessionModal: React.FC<GroupSessionModalProps> = ({
   const selectableStudents = filteredStudentsForModal.filter(
     (st) => !groupModalData.studentIds.includes(st.id)
   );
-
+  // ADR-015: 동명이인 학생 부제 — 같은 이름이 list에 2명+이면 식별 정보 노출.
+  const studentDupNames = useMemo(
+    () => buildDuplicateNameSet(filteredStudentsForModal),
+    [filteredStudentsForModal],
+  );
+  // 선택된 학생 (step 1 pills + step 3 confirm chips 공통 데이터).
+  // step 1보다 위에 정의해야 temporal dead zone 회피.
+  // 동명이인 식별은 StudentChip 내부 호버 툴팁이 담당 — selected 칩에서는 학년+이름만 본문 노출.
+  const selectedStudents = groupModalData.studentIds
+    .map((id) => students.find((s) => s.id === id))
+    .filter((s): s is StudentOption => Boolean(s));
   const studentExistsExact = students.some(
     (s) => s.name.toLowerCase() === studentInputValue.toLowerCase()
   );
 
-  const formContent = (
-    <>
-      <div className="mb-4 flex-1 overflow-y-auto pr-2">
-        <div className="form-group">
-          <Label htmlFor="modal-student" required>
-            학생
-          </Label>
-          <div className="mb-2 flex min-h-[32px] flex-wrap gap-2 rounded border border-[--color-border] bg-[--color-bg-secondary] p-1">
-            {groupModalData.studentIds.map((studentId) => {
-              const student = students.find((s) => s.id === studentId);
-              return student ? (
-                <span key={studentId} className="inline-flex items-center gap-1.5 rounded-full bg-[--color-primary] px-2 py-1 text-xs font-medium text-white">
-                  {student.name}
+  const canProceedStep0 = groupModalData.studentIds.length > 0;
+  const canProceedStep1 =
+    !!groupModalData.subjectId &&
+    !!groupModalData.teacherId &&
+    !!groupModalData.startTime &&
+    !!groupModalData.endTime &&
+    !groupTimeError;
+
+  // ── Step bar ──────────────────────────────────────────────────────────
+  const stepBar = (
+    <div className="px-6 pt-5 pb-3">
+      <div className="flex items-center">
+        {STEPS.map((label, idx) => (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  idx < step
+                    ? "bg-[var(--color-accent-hover)] text-[var(--color-bg-primary)]"
+                    : idx === step
+                      ? "border-2 border-[var(--color-accent-hover)] text-[var(--color-accent-hover)] bg-transparent"
+                      : "border-2 border-[var(--color-border)] text-[var(--color-text-muted)] bg-transparent"
+                }`}
+              >
+                {idx < step ? <Check size={13} strokeWidth={3} /> : idx + 1}
+              </div>
+              <span
+                className={`text-[10px] font-medium leading-none ${
+                  idx === step
+                    ? "text-[var(--color-accent-hover)]"
+                    : idx < step
+                      ? "text-[var(--color-text-secondary)]"
+                      : "text-[var(--color-text-muted)]"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+            {idx < STEPS.length - 1 && (
+              <div
+                className={`flex-1 h-[2px] mx-2 mt-[-10px] rounded-full transition-colors ${
+                  idx < step
+                    ? "bg-[var(--color-accent-hover)]"
+                    : "bg-[var(--color-border)]"
+                }`}
+              />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ── Step 0: 학생 ──────────────────────────────────────────────────────
+  const step0Content = (
+    <div className="flex flex-col gap-3">
+      <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+        수업에 참여할 학생을 추가하세요
+      </p>
+
+      {/* Selected chips */}
+      <div className="min-h-[40px] flex flex-wrap gap-2 items-center rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2">
+        {groupModalData.studentIds.length === 0 && (
+          <span className="text-[12px] text-[var(--color-text-muted)]">선택된 학생 없음</span>
+        )}
+        {groupModalData.studentIds.map((studentId) => {
+          const student = students.find((s) => s.id === studentId);
+          if (!student) return null;
+          // 컴팩트 영역 — 학년 배지 + 이름. 부가정보(성별/생년월일/학교)는 호버 툴팁.
+          // 동명이인 식별 정보도 툴팁(StudentChip 내부)으로 위임 — 본문은 학년+이름으로 단순.
+          return (
+            <StudentChip
+              key={studentId}
+              student={student}
+              variant="compact"
+              onRemove={() => removeStudent(studentId)}
+            />
+          );
+        })}
+      </div>
+
+      {/* Search input */}
+      <div className="flex gap-2">
+        <input
+          id="modal-student-input"
+          type="text"
+          className="flex-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent-hover)]/50 transition-colors"
+          placeholder="학생 이름 검색..."
+          value={studentInputValue}
+          onChange={(e) => setStudentInputValue(e.target.value.slice(0, NAME_MAX_LENGTH))}
+          onKeyDown={handleStudentInputKeyDown}
+          maxLength={NAME_MAX_LENGTH}
+        />
+        <button
+          type="button"
+          className="flex-shrink-0 rounded-xl bg-[var(--color-primary)] px-4 py-2.5 text-[13px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
+          onClick={addStudentFromInput}
+          disabled={!studentInputValue.trim()}
+        >
+          추가
+        </button>
+      </div>
+
+      {/* Student list / autocomplete dropdown — list-first UX:
+          입력 전에도 학생 목록을 보여 줌. selectableStudents 가 있으면 항상 렌더,
+          없을 때만 입력값에 따라 안내 메시지 또는 새 학생 CTA. */}
+      {selectableStudents.length > 0 ? (
+        // 단일 스크롤 컨테이너 (모달 step content)에 위임 — 이전엔 여기에도
+        // max-h-60 overflow-y-auto 가 있어 중첩 스크롤로 사용자가 학생
+        // 리스트를 스크롤 못 하던 버그. 모달 외곽이 max-h-[55vh] 로 cap.
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg divide-y divide-[var(--color-border)]">
+          {selectableStudents.map((student) => {
+            // 공간 충분 영역 — 학년 배지 + 이름 + 부가정보 인라인 노출.
+            const subtitle = formatStudentSubtitleExceptGrade(student, studentDupNames);
+            return (
+              <StudentChip
+                key={student.id}
+                student={student}
+                variant="row"
+                metaRight={subtitle || undefined}
+                onClick={() => addStudent(student.id)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        studentInputValue && (
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] overflow-hidden shadow-lg">
+            <div className="p-3 text-center text-[12px] text-[var(--color-text-secondary)]">
+              {studentExistsExact ? (
+                <span>이미 추가된 학생입니다</span>
+              ) : canManage ? (
+                <div className="flex flex-col gap-2">
                   <button
                     type="button"
-                    className="flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 text-sm font-bold text-white transition-colors duration-200 hover:bg-white/20"
-                    onClick={() => removeStudent(studentId)}
+                    className="w-full min-h-[44px] rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-left text-[13px] font-medium text-white hover:enabled:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                    onClick={onCreateStudent}
+                    disabled={studentCreating}
                   >
-                    ×
+                    {studentCreating
+                      ? "추가 중..."
+                      : `＋ '${studentInputValue.trim()}' 새 학생으로 추가`}
                   </button>
-                </span>
-              ) : null;
-            })}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="modal-student-input"
-              type="text"
-              className="form-input flex-1"
-              placeholder="학생 이름을 입력하세요"
-              value={studentInputValue}
-              onChange={(e) => setStudentInputValue(e.target.value)}
-              onKeyDown={handleStudentInputKeyDown}
-            />
-            <button
-              type="button"
-              className="cursor-pointer whitespace-nowrap rounded border-none bg-[--color-primary] px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:enabled:bg-[--color-primary-dark] disabled:cursor-not-allowed disabled:bg-gray-400"
-              onClick={
-                selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
-                  ? onCreateStudent
-                  : addStudentFromInput
-              }
-              disabled={!studentInputValue.trim() || studentCreating}
-            >
-              {selectableStudents.length === 0 && !studentExistsExact && studentInputValue.trim()
-                ? "새 학생 추가"
-                : "추가"}
-            </button>
-          </div>
-          {studentInputValue && (
-            <div className="mt-2 max-h-[200px] overflow-y-auto rounded border border-[--color-border] bg-[--color-bg-primary]">
-              {selectableStudents.length === 0 ? (
-                <div className="flex flex-col gap-1 p-3 text-center text-sm text-[--color-text-secondary]">
-                  {studentExistsExact ? (
-                    <span>이미 추가된 학생입니다</span>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="block w-full min-h-[44px] cursor-pointer rounded border-none bg-[--color-primary] px-4 py-2.5 text-left text-sm font-medium text-white transition-colors duration-200 hover:enabled:bg-[--color-primary-dark] disabled:cursor-not-allowed disabled:bg-gray-400 disabled:opacity-70"
-                        onClick={onCreateStudent}
-                        disabled={studentCreating}
-                      >
-                        {studentCreating
-                          ? "추가 중..."
-                          : `＋ '${studentInputValue.trim()}' 새 학생으로 추가`}
-                      </button>
-                      {studentCreateError && (
-                        <p className="mt-1.5 text-xs text-[--color-danger]">
-                          {studentCreateError}
-                        </p>
-                      )}
-                    </>
+                  {studentCreateError && (
+                    <p className="text-[11px] text-[var(--color-danger)]">{studentCreateError}</p>
                   )}
                 </div>
               ) : (
-                selectableStudents.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    className="block w-full cursor-pointer border-0 border-b border-solid border-b-[--color-border-light] bg-transparent px-3 py-2 text-left text-[--color-text-primary] transition-colors duration-200 last:border-b-0 hover:bg-[--color-bg-secondary]"
-                    onClick={() => addStudent(student.id)}
-                  >
-                    {student.name}
-                  </button>
-                ))
+                <span>일치하는 학생이 없습니다</span>
+              )}
+            </div>
+          </div>
+        )
+      )}
+    </div>
+  );
+
+  // ── Step 1: 과목 & 시간 ───────────────────────────────────────────────
+  const step1Content = (
+    <div className="flex flex-col gap-4">
+      <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+        과목과 수업 일정을 설정하세요
+      </p>
+
+      {/* Subject */}
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="modal-subject" className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          과목 <span className="text-[var(--color-danger)]">*</span>
+        </label>
+        <div className="flex gap-2">
+          <select
+            id="modal-subject"
+            className="flex-1 appearance-none rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2.5 text-[13px] text-[var(--color-text-primary)] outline-none focus:border-[var(--color-accent-hover)]/50 disabled:opacity-40 transition-colors"
+            value={groupModalData.subjectId}
+            onChange={(e) => setGroupModalData((prev) => ({ ...prev, subjectId: e.target.value }))}
+            disabled={groupModalData.studentIds.length === 0}
+          >
+            <option value="">과목을 선택하세요</option>
+            {subjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>{subject.name}</option>
+            ))}
+          </select>
+          {canManage && !subjectExpanding && (
+            <button
+              type="button"
+              onClick={() => setSubjectExpanding(true)}
+              aria-label="새 과목 추가"
+              className="flex-shrink-0 rounded-xl border border-dashed border-[var(--color-accent)] px-3 py-2.5 text-[14px] font-semibold text-[var(--color-accent)] hover:bg-[var(--color-overlay-light)] transition-colors"
+            >
+              ＋
+            </button>
+          )}
+        </div>
+        {canManage && subjectExpanding && (
+          <div className="flex flex-col gap-1.5 mt-1">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] px-2 py-1.5">
+              <input
+                ref={subjectInputRef}
+                type="text"
+                value={subjectInputValue}
+                onChange={(e) => setSubjectInputValue(e.target.value.slice(0, SUBJECT_NAME_MAX_LENGTH))}
+                onKeyDown={(e) => {
+                  // IME composing 가드 — 한글 마지막 음절 누적 회귀 방지 (UAT 2026-05-10)
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    handleCreateSubjectInline();
+                  }
+                }}
+                placeholder="새 과목 이름"
+                disabled={subjectCreating}
+                maxLength={SUBJECT_NAME_MAX_LENGTH}
+                className="flex-1 bg-transparent text-[13px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none px-2 py-1"
+              />
+              <button
+                type="button"
+                onClick={handleCreateSubjectInline}
+                disabled={!subjectInputValue.trim() || subjectCreating}
+                className="flex-shrink-0 rounded-lg bg-[var(--color-primary)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
+              >
+                {subjectCreating ? "생성 중..." : "생성"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSubjectExpanding(false);
+                  setSubjectInputValue("");
+                }}
+                aria-label="닫기"
+                className="flex-shrink-0 rounded-lg border border-[var(--color-border)] p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+              >
+                <X size={14} strokeWidth={2} />
+              </button>
+            </div>
+            {subjectCreateError && (
+              <p className="text-[11px] text-[var(--color-danger)] px-2" role="alert">
+                {subjectCreateError}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 수업 일정 — 요일 chip + 시간 chip + popover (EditSessionModal V3 패턴 미러).
+          기존 weekday select + time input 두 섹션을 chip 묶음 1줄 + popover 로 통합.
+          chip 이 SSOT — popover 에서 변경 → groupModalData 즉시 갱신. */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          수업 일정 <span className="text-[var(--color-danger)]">*</span>
+        </span>
+        <div className="inline-flex items-center gap-1.5 relative flex-wrap" ref={popoverRef}>
+          {/* Weekday/date chip */}
+          <button
+            type="button"
+            onClick={() => setOpenPopover(openPopover === "weekday" ? null : "weekday")}
+            aria-label={`요일/날짜: ${formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}, 클릭해서 변경`}
+            aria-expanded={openPopover === "weekday"}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
+              openPopover === "weekday"
+                ? "border-[#fbbf24] bg-[rgba(245,158,11,0.18)]"
+                : "border-[var(--color-border)] bg-[rgba(245,158,11,0.12)] hover:bg-[rgba(245,158,11,0.18)]"
+            }`}
+          >
+            <Calendar size={12} strokeWidth={2} className="text-[#fbbf24]" />
+            <span className="text-[13px] font-bold text-[#fbbf24] whitespace-nowrap">
+              {formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}
+            </span>
+            <ChevronDown size={11} className="text-[#fbbf24] opacity-60" />
+          </button>
+
+          {/* Time chip */}
+          <button
+            type="button"
+            onClick={() => setOpenPopover(openPopover === "time" ? null : "time")}
+            aria-label={`수업 시간: ${groupModalData.startTime || "미설정"}부터 ${groupModalData.endTime || "미설정"}까지, 클릭해서 변경`}
+            aria-expanded={openPopover === "time"}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-colors whitespace-nowrap ${
+              openPopover === "time"
+                ? "border-[var(--color-accent-hover)] bg-white/[0.08]"
+                : "border-[var(--color-border)] bg-white/[0.04] hover:bg-white/[0.08]"
+            }`}
+          >
+            <Clock size={12} strokeWidth={2} className="text-[var(--color-text-muted)]" />
+            <span className="text-[13px] font-bold text-[var(--color-text-primary)] tabular-nums whitespace-nowrap">
+              {groupModalData.startTime || "--:--"} – {groupModalData.endTime || "--:--"}
+            </span>
+            {formatDuration(groupModalData.startTime, groupModalData.endTime) && (
+              <span className="text-[11px] text-[var(--color-text-muted)] ml-0.5 whitespace-nowrap">
+                · {formatDuration(groupModalData.startTime, groupModalData.endTime)}
+              </span>
+            )}
+            <ChevronDown size={11} className="text-[var(--color-text-muted)] opacity-60" />
+          </button>
+
+          {/* Weekday popover — V3 month calendar (weekStartDate 있을 때) 또는 7-grid (fallback). */}
+          {openPopover === "weekday" && (
+            <div
+              className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+              style={{ minWidth: weekStartObj ? 280 : 240 }}
+            >
+              {weekStartObj ? (
+                <>
+                  {/* Month navigation header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))
+                      }
+                      aria-label="이전 달"
+                      className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      ‹
+                    </button>
+                    <div className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+                      {viewMonth.getFullYear()}년 {viewMonth.getMonth() + 1}월
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))
+                      }
+                      aria-label="다음 달"
+                      className="w-7 h-7 rounded text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] hover:text-[var(--color-text-primary)] transition-colors"
+                    >
+                      ›
+                    </button>
+                  </div>
+
+                  {/* Weekday header */}
+                  <div className="grid grid-cols-7 gap-0.5 mb-1">
+                    {weekdays.map((label) => (
+                      <div
+                        key={label}
+                        className="text-[10px] text-[var(--color-text-muted)] text-center py-1"
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Month grid cells */}
+                  <div className="grid grid-cols-7 gap-0.5">
+                    {(() => {
+                      const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+                      const firstWeekday = getWeekdayFromDate(firstDay);
+                      const daysInMonth = new Date(
+                        viewMonth.getFullYear(),
+                        viewMonth.getMonth() + 1,
+                        0,
+                      ).getDate();
+                      const cells: { date: Date | null; label: number | null }[] = [];
+                      for (let i = 0; i < firstWeekday; i++) cells.push({ date: null, label: null });
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        cells.push({
+                          date: new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day),
+                          label: day,
+                        });
+                      }
+                      while (cells.length < 42) cells.push({ date: null, label: null });
+
+                      const today = new Date();
+                      const todayString = today.toDateString();
+                      const selectedString = selectedDate?.toDateString();
+
+                      return cells.map((cell, idx) => {
+                        if (!cell.date) return <div key={idx} className="h-8" />;
+                        const isToday = cell.date.toDateString() === todayString;
+                        const isSelected =
+                          selectedString && cell.date.toDateString() === selectedString;
+                        let cls = "text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]";
+                        if (isSelected) {
+                          cls = "bg-[#fbbf24] text-[var(--color-admin-ink)] font-bold";
+                        } else if (isToday) {
+                          cls = "ring-1 ring-[#fbbf24] text-[#fbbf24] hover:bg-[var(--color-overlay-light)]";
+                        }
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              // 클릭한 날짜 = 그 주 월요일 + weekday 둘 다 갱신.
+                              // 다른 주 날짜 → weekStartDate 가 그 주 월요일로 변경.
+                              // 부모 addGroupSession 이 weekStartDate 받아 addSession 으로 forward
+                              // + setSelectedDate 로 시간표 자동 navigate (EditSessionModal onMoveToWeek 패턴).
+                              setGroupModalData((prev) => ({
+                                ...prev,
+                                weekday: getWeekdayFromDate(cell.date!),
+                                weekStartDate: dateToWeekStart(cell.date!),
+                              }));
+                              setOpenPopover(null);
+                            }}
+                            className={`h-8 rounded text-[12px] transition-colors ${cls}`}
+                          >
+                            {cell.label}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                  <div className="mt-2 text-[10px] text-[var(--color-text-muted)] text-center">
+                    다른 날짜 클릭 → 그 날짜로 등록 (저장 시 시간표가 그 주로 이동)
+                  </div>
+                </>
+              ) : (
+                // Fallback — weekStartDate prop 없을 때 기존 7-grid (이전 동작 호환).
+                <>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                    요일 선택
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {weekdays.map((label, idx) => {
+                      const isActive = idx === groupModalData.weekday;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setGroupModalData((prev) => ({ ...prev, weekday: idx }));
+                            setOpenPopover(null);
+                          }}
+                          className={`h-9 rounded-lg text-[13px] font-semibold transition-colors ${
+                            isActive
+                              ? "bg-[#fbbf24] text-[var(--color-admin-ink)]"
+                              : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-overlay-light)]"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Time popover — controlled inputs (handleStartTimeChange/handleEndTimeChange 부모로 위임), groupTimeError 표시 */}
+          {openPopover === "time" && (
+            <div
+              className="absolute left-0 top-full mt-2 z-[60] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-3"
+              style={{ minWidth: 280 }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-0.5">
+                수업 시간
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="modal-start-time"
+                  type="time"
+                  aria-label="시작 시간"
+                  className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                  value={groupModalData.startTime}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
+                />
+                <span className="text-[var(--color-text-muted)]">—</span>
+                <input
+                  id="modal-end-time"
+                  type="time"
+                  aria-label="종료 시간"
+                  className="flex-1 bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 text-[13px] border border-[var(--color-border)] outline-none focus:border-[var(--color-accent-hover)]/50"
+                  value={groupModalData.endTime}
+                  onChange={(e) => handleEndTimeChange(e.target.value)}
+                />
+              </div>
+              {groupTimeError && (
+                <p className="mt-2 text-[11px] text-[var(--color-danger)]" role="alert">{groupTimeError}</p>
               )}
             </div>
           )}
         </div>
-
-        <div className="form-group">
-          <Label htmlFor="modal-subject" required>
-            과목
-          </Label>
-          <select
-            id="modal-subject"
-            className="form-select"
-            value={groupModalData.subjectId}
-            onChange={(e) =>
-              setGroupModalData((prev) => ({
-                ...prev,
-                subjectId: e.target.value,
-              }))
-            }
-            disabled={groupModalData.studentIds.length === 0}
-          >
-            <option value="">
-              {groupModalData.studentIds.length === 0
-                ? "먼저 학생을 선택하세요"
-                : "과목을 선택하세요"}
-            </option>
-            {groupModalData.studentIds.length > 0 &&
-              subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>
-                  {subject.name}
-                </option>
-              ))}
-          </select>
-        </div>
-
-        {teachers.length > 0 && (
-          <div className="form-group">
-            <Label htmlFor="modal-teacher">강사</Label>
-            <select
-              id="modal-teacher"
-              className="form-select"
-              value={groupModalData.teacherId || ""}
-              onChange={(e) =>
-                setGroupModalData((prev) => ({
-                  ...prev,
-                  teacherId: e.target.value || undefined,
-                }))
-              }
-            >
-              <option value="">강사 선택 (선택사항)</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* popover 밖에서도 timeError 노출 — popover 닫힌 상태에서 시간 에러 인지 가능 */}
+        {groupTimeError && openPopover !== "time" && (
+          <p className="text-[11px] text-[var(--color-danger)]" role="alert">{groupTimeError}</p>
         )}
-
-        <div className="form-group">
-          <Label htmlFor="modal-weekday" required>
-            요일
-          </Label>
-          <select
-            id="modal-weekday"
-            className="form-select"
-            value={groupModalData.weekday}
-            onChange={(e) =>
-              setGroupModalData((prev) => ({
-                ...prev,
-                weekday: Number(e.target.value),
-              }))
-            }
-          >
-            {weekdays.map((w, idx) => (
-              <option key={idx} value={idx}>
-                {w}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-group">
-          <Label htmlFor="modal-start-time" required>
-            시작 시간
-          </Label>
-          <input
-            id="modal-start-time"
-            type="time"
-            className="form-input"
-            value={groupModalData.startTime}
-            onChange={(e) => handleStartTimeChange(e.target.value)}
-          />
-        </div>
-
-        <div className="form-group">
-          <Label htmlFor="modal-end-time" required>
-            종료 시간
-          </Label>
-          <input
-            id="modal-end-time"
-            type="time"
-            className="form-input"
-            value={groupModalData.endTime}
-            onChange={(e) => handleEndTimeChange(e.target.value)}
-          />
-        </div>
-
-        {groupTimeError && (
-          <div className="form-error" role="alert">
-            {groupTimeError}
-          </div>
-        )}
-
-        <div className="form-group">
-          <Label htmlFor="modal-room">강의실</Label>
-          <input
-            id="modal-room"
-            type="text"
-            className="form-input"
-            placeholder="강의실 (선택사항)"
-            value={groupModalData.room || ""}
-            onChange={(e) =>
-              setGroupModalData((prev) => ({
-                ...prev,
-                room: e.target.value,
-              }))
-            }
-          />
-        </div>
       </div>
 
-      <div className="mt-auto flex shrink-0 items-center justify-between gap-2">
-        <Button
-          variant="transparent"
-          onClick={() => setShowGroupModal(false)}
-        >
-          취소
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => addGroupSession(groupModalData)}
-          disabled={
-            groupModalData.studentIds.length === 0 ||
-            !groupModalData.subjectId ||
-            !groupModalData.startTime ||
-            !groupModalData.endTime
-          }
-        >
-          추가
-        </Button>
+      {/* Teacher (always shown, pills) */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+          강사
+        </label>
+        <TeacherDropdownPicker
+          teachers={teachers}
+          selectedTeacherId={groupModalData.teacherId ?? null}
+          onSelect={(id) => setGroupModalData((prev) => ({ ...prev, teacherId: id ?? undefined }))}
+          canManage={canManage}
+          inputValue={teacherInputValue}
+          setInputValue={setTeacherInputValue}
+          onCreate={onCreateTeacher}
+          creating={teacherCreating}
+          createError={teacherCreateError}
+          subjectId={groupModalData.subjectId || undefined}
+          subjectName={subjects.find((s) => s.id === groupModalData.subjectId)?.name}
+        />
       </div>
-    </>
+
+    </div>
   );
 
+  // ── Step 2: 확인 ──────────────────────────────────────────────────────
+  const selectedSubject = subjects.find((s) => s.id === groupModalData.subjectId);
+  const selectedTeacher = teachers.find((t) => t.id === groupModalData.teacherId);
+  // selectedStudents + selectedStudentDupNames는 위(step 1 pills 위치)에서 정의됨 — 재사용.
+
+  const step2Content = (
+    <div className="flex flex-col gap-3">
+      <p className="text-[13px] font-semibold text-[var(--color-text-primary)]">
+        아래 내용으로 수업을 추가합니다
+      </p>
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] overflow-hidden">
+        {/* Subject accent header */}
+        <div
+          className="px-4 py-3 flex items-center gap-2"
+          style={{ backgroundColor: selectedSubject?.color ? `${selectedSubject.color}22` : "transparent", borderBottom: `1px solid ${selectedSubject?.color ?? "var(--color-border)"}33` }}
+        >
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: selectedSubject?.color ?? "var(--color-accent-hover)" }} />
+          <span className="font-bold text-[15px] text-[var(--color-text-primary)]">
+            {selectedSubject?.name ?? "—"}
+          </span>
+          {selectedTeacher && (
+            <span className="ml-auto text-[12px] text-[var(--color-text-secondary)]">
+              {selectedTeacher.name} 선생님
+            </span>
+          )}
+        </div>
+
+        {/* Details */}
+        <div className="divide-y divide-[var(--color-border)]/50">
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">학생</span>
+            <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
+              {selectedStudents.map((student) => (
+                <StudentChip
+                  key={student.id}
+                  student={student}
+                  variant="compact"
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">일정</span>
+            <span className="text-[13px] text-[var(--color-text-primary)] font-medium">
+              {formatChipLabel(groupModalData.weekStartDate, groupModalData.weekday, weekdays)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <span className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wide font-semibold">시간</span>
+            <span className="text-[13px] text-[var(--color-text-primary)] font-semibold tabular-nums">
+              {groupModalData.startTime} — {groupModalData.endTime}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const stepContents = [step0Content, step1Content, step2Content];
+
+  // ── Footer ────────────────────────────────────────────────────────────
+  const footer = (
+    <div className="flex items-center justify-between gap-3 pt-4 border-t border-[var(--color-border)]">
+      <span className="text-[11px] text-[var(--color-text-muted)] tabular-nums select-none">
+        {step + 1} / {STEPS.length}
+      </span>
+      <div className="flex gap-2">
+        {step > 0 && (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s - 1)}
+            className="flex items-center gap-1 rounded-xl border border-[var(--color-border)] px-4 py-2 text-[13px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] transition-colors"
+          >
+            <ChevronLeft size={14} />이전
+          </button>
+        )}
+        {step < STEPS.length - 1 ? (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s + 1)}
+            disabled={(step === 0 && !canProceedStep0) || (step === 1 && !canProceedStep1)}
+            className="flex items-center gap-1 rounded-xl bg-[var(--color-accent-hover)] px-5 py-2 text-[13px] font-semibold text-[var(--color-bg-primary)] disabled:opacity-35 disabled:cursor-not-allowed hover:enabled:opacity-90 transition-opacity"
+          >
+            다음<ChevronRight size={14} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => addGroupSession(groupModalData)}
+            className="rounded-xl bg-[var(--color-accent-hover)] px-6 py-2 text-[13px] font-semibold text-[var(--color-bg-primary)] hover:opacity-90 transition-opacity"
+          >
+            수업 추가
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── Mobile (BottomSheet) ──────────────────────────────────────────────
   if (!isDesktop && isOpen) {
     return (
-      <BottomSheet isOpen={isOpen} onClose={() => setShowGroupModal(false)} title="수업 추가" aria-labelledby="group-session-modal-title">
-        {formContent}
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={() => setShowGroupModal(false)}
+        title="수업 추가"
+        aria-labelledby="group-session-modal-title"
+      >
+        <div className="flex flex-col gap-4">
+          {stepBar}
+          <div className="px-4 pb-2">{stepContents[step]}</div>
+          <div className="px-4 pb-4">{footer}</div>
+        </div>
       </BottomSheet>
     );
   }
 
   if (!isOpen) return null;
 
+  // ── Desktop (Glass Card) ──────────────────────────────────────────────
   return (
     <div className="modal-backdrop">
-      <div className="fixed left-1/2 top-1/2 z-[9999] flex min-w-[320px] max-w-[90vw] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-[--color-border] bg-[--color-bg-primary] p-4 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.3),0_10px_10px_-5px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.1)] backdrop-blur-[10px]">
-        <div
-          className="flex h-full flex-col overflow-hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="group-session-modal-title"
-          ref={containerRef}
-        >
-          <h4 id="group-session-modal-title" className="mb-4 shrink-0 text-lg font-semibold text-[--color-text-primary]">수업 추가</h4>
-          {formContent}
+      <div
+        className="fixed left-1/2 top-1/2 z-[9999] -translate-x-1/2 -translate-y-1/2 w-full max-w-md"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="group-session-modal-title"
+        ref={containerRef}
+      >
+        <div className="flex flex-col rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-[0_25px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.05)] backdrop-blur-xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 pt-5">
+            <h4
+              id="group-session-modal-title"
+              className="text-[17px] font-bold text-[var(--color-text-primary)]"
+            >
+              수업 추가
+            </h4>
+            <button
+              type="button"
+              onClick={() => setShowGroupModal(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:bg-[var(--color-border)] transition-colors"
+              aria-label="닫기"
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Step bar */}
+          {stepBar}
+
+          {/* Step content */}
+          <div className="px-6 pb-2 max-h-[55vh] overflow-y-auto">
+            {stepContents[step]}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 pb-5 pt-2">
+            {footer}
+          </div>
         </div>
       </div>
     </div>

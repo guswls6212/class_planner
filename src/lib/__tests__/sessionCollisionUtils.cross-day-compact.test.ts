@@ -25,6 +25,7 @@ function sess(
     weekday,
     startsAt: start,
     endsAt: end,
+    weekStartDate: "",
     yPosition: y,
     room: "",
     enrollmentIds: eids,

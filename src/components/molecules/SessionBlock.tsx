@@ -1,7 +1,36 @@
-import React, { useCallback, useRef, useState } from "react";
+/**
+ * SessionBlock: 시간표 grid cell 의 1 session 시각 표현 — 색상 (subject/teacher),
+ * 학생 chip, 시간 라벨, drag handle, context menu (mobile long-press), share view 분기 만 담당.
+ *
+ * 의존성:
+ *   - dnd-kit useDraggable (drag source)
+ *   - SessionBlock.utils (resolveSessionColor, sessionMatchesFilters, resolveSessionTone)
+ *   - molecules/StudentChip + duplicateLabel (학생 표시 + 동명이인 부제)
+ *   - PresentationMode type (edit | share | pdf — 각 분기)
+ *   - non-goal: drag drop coordination (TimeTableGrid 책임), session CRUD
+ *
+ * 결정 history:
+ *   - colorBy mode (subject / teacher) — 시각 차별화.
+ *   - dnd-kit useDraggable + activation distance 5px (modifier-aware).
+ *   - mobile long-press context menu — 복사/선택 시작.
+ *   - share/pdf 분기 — read-only + 학생 이름 부분 마스킹.
+ *   - ADR-002 (2026-05-28): UI molecule, 분리 needs-review.
+ *
+ * Sniff test (자기 답변, 2026-05-28):
+ *   1. 다른 파일 같이 수정? — yes (color util + chip + drag controller).
+ *   2. 시그니처? — props 명확. caller = TimeTableRow.
+ *   3. UI/state/API 섞임? — UI + drag state. API X.
+ *   4. 도메인? — 한 도메인 (1 session 시각).
+ *   5. pure + 부수효과? — UI 위주.
+ *
+ * 분리 후보 (needs-review): share view 분기 sub-component, context menu hook.
+ */
+
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { Users } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import { logger } from "../../lib/logger";
 import { useSessionStatus } from "../../hooks/useSessionStatus";
-import SubjectChip from "@/components/common/SubjectChip";
 import type { Session, Subject } from "@/lib/planner";
 import {
   type ColorByMode,
@@ -10,7 +39,28 @@ import {
   getSessionBlockStyles,
   getSessionSubject,
   resolveSessionColor,
+  sessionMatchesFilters,
 } from "./SessionBlock.utils";
+import { tintFromHex } from "@/lib/colors/tintFromHex";
+import { resolveSessionTone } from "./SessionCard.utils";
+import {
+  computeAttendanceDot,
+  type AttendanceMap,
+} from "./SessionBlock.attendanceDot";
+
+/**
+ * 세션 블록 표시 모드.
+ * - "edit": 기본. 모든 기능 + drag + cursor:pointer.
+ * - "share": 공유 view. cursor:default + 시간 HH:MM. 학생 정보/사람 chip 유지 (강사 공유 등).
+ * - "filtered-share": 학생 본인 공유 (filter_student_id 있음). share + 학생 이름/사람 chip 제거 + 강사 이름 chip 표시.
+ */
+export type PresentationMode = "edit" | "share" | "filtered-share";
+
+function formatSessionTime(time: string, shorten: boolean): string {
+  if (!shorten) return time;
+  // "HH:MM:SS" -> "HH:MM". 더 짧은 형식은 그대로 (이미 정상).
+  return time.length >= 5 ? time.slice(0, 5) : time;
+}
 
 interface SessionBlockProps {
   session: Session;
@@ -22,17 +72,67 @@ interface SessionBlockProps {
   left: number;
   width: number;
   yOffset: number;
+  yPosition?: number;
+  height?: number;
+  /** 평클릭 핸들러. modifier(Shift/Ctrl/Meta) 클릭은 onSelectToggle로 분기됨. */
   onClick: () => void;
-  onDragStart?: (e: React.DragEvent, session: Session) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
   selectedStudentIds?: string[];
+  /** 과목 필터 — 학생과 AND 결합 + 매칭 시 ring glow / 비매칭 시 dim. */
+  selectedSubjectIds?: string[];
+  /** 강사 필터 — 위와 동일 패턴. session.teacherId로 매칭. */
+  selectedTeacherIds?: string[];
   isMobile?: boolean;
   isDragging?: boolean;
   draggedSessionId?: string;
   isAnyDragging?: boolean;
+  /**
+   * Ctrl/Meta+drag 복사 모드 — true이면 dragged session 원본을 흐리게 하지 않음
+   * (사용자 멘탈 모델: "원본은 그대로, preview만 위치 표시"). 일반 이동은 false.
+   */
+  isCopyMode?: boolean;
+  /** 시간 범위 lower bound를 넘어 위쪽으로 잘린 세션 — 상단에 그라데이션 cap 표시 */
+  overflowsTop?: boolean;
+  /** 시간 범위 upper bound를 넘어 아래쪽으로 잘린 세션 — 하단에 그라데이션 cap 표시 */
+  overflowsBottom?: boolean;
+  /**
+   * 같은 row에 lane overflow `+N` chip(TimeTableRow가 z-index:115로 그림)이 표시되고
+   * 이 세션이 마지막 visible lane(yPosition===effectiveLanes)에 있어 chip과 우상단이
+   * 시각 충돌하는 경우 true. 학생수 배지를 시간 라인 inline으로 자동 이동.
+   */
+  hasLaneOverflowChip?: boolean;
   hasConflict?: boolean;
   onDelete?: () => void;
   isReadOnly?: boolean;
+  /** 다중 선택 상태 — true이면 amber outline + ✓ 체크마크 */
+  selected?: boolean;
+  /** Shift/Ctrl/Meta + click 시 호출. undefined이면 modifier click도 onClick으로 fall through. */
+  onSelectToggle?: () => void;
+  /**
+   * 모바일 long-press 메뉴 확장 — "이 세션 복사" 항목.
+   * 데스크톱은 Ctrl/Meta+drag로 충분. 모바일은 modifier 키 없으므로 menu에서.
+   */
+  onContextMenuCopy?: () => void;
+  /**
+   * 모바일 long-press 메뉴 확장 — "선택 시작" 항목.
+   * 모드 진입 + 이 세션이 즉시 selected 상태로.
+   */
+  onContextMenuStartSelect?: () => void;
+  /**
+   * 표시 모드 — share view에서 학생 정보/cursor/시간 format 분기.
+   * Default "edit" (기존 동작 그대로).
+   */
+  presentationMode?: PresentationMode;
+  /**
+   * 본 세션의 출결 map (key = studentId, value = {status}). 미제공 시 dot 안 보임.
+   * Layer 2 D (mockup edit-session-with-attendance) — 우하단 dot + 시간 기반 색.
+   */
+  attendanceMap?: AttendanceMap;
+  /**
+   * 본 session instance 의 실 날짜 (YYYY-MM-DD). schedule page 가 currentWeekStart + weekday 로
+   * 계산해서 전달. 미제공 시 useSessionStatus 는 weekday-only mode (과거 날짜 "upcoming" 반환).
+   * 사용자 명시 (2026-05-28): 오늘 기준 과거 날짜 미체크 session 도 red dot 알림 필요.
+   */
+  instanceDate?: string;
 }
 
 export const validateSessionBlockProps = (
@@ -57,27 +157,51 @@ function SessionBlock({
   left,
   width,
   yOffset,
+  yPosition = 1,
+  height,
   onClick,
-  onDragStart,
-  onDragEnd,
   selectedStudentIds,
+  selectedSubjectIds,
+  selectedTeacherIds,
   isMobile = false,
   isDragging = false,
   draggedSessionId,
   isAnyDragging = false,
+  isCopyMode = false,
+  overflowsTop = false,
+  overflowsBottom = false,
+  hasLaneOverflowChip = false,
   hasConflict = false,
   onDelete,
   isReadOnly = false,
+  selected = false,
+  onSelectToggle,
+  onContextMenuCopy,
+  onContextMenuStartSelect,
+  presentationMode = "edit",
+  attendanceMap,
+  instanceDate,
 }: SessionBlockProps) {
+  const isShareView = presentationMode !== "edit";
+  const isFilteredShare = presentationMode === "filtered-share";
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchMovedRef = useRef(false);
 
+  const isShareViewEarly = presentationMode !== "edit";
+  const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({
+    id: session?.id ?? "__null__",
+    disabled: isReadOnly || isShareViewEarly || !session,
+    data: { session },
+  });
+
   // Hook must be called before any early return (Rules of Hooks).
+  // instanceDate 제공 시 date-aware mode — 과거 날짜도 "completed" 판정 (출결 dot alert).
   const sessionStatus = useSessionStatus(
     session?.startsAt ?? "00:00",
     session?.endsAt ?? "00:00",
-    session?.weekday ?? -1
+    session?.weekday ?? -1,
+    instanceDate,
   );
 
   // null/undefined 안전 처리
@@ -85,27 +209,42 @@ function SessionBlock({
     return null;
   }
 
-  // 과목과 학생 정보 가져오기
-  const subject = getSessionSubject(session, enrollments || [], subjects || []);
-  const studentNames = getGroupStudentNames(
-    session,
-    enrollments || [],
-    students || [],
-    selectedStudentIds?.[0]
+  // 과목과 학생 정보 가져오기 — props 변경 시만 재계산 (drag jitter 핫패스)
+  const subject = useMemo(
+    () => getSessionSubject(session, enrollments || [], subjects || []),
+    [session, enrollments, subjects],
+  );
+  const studentNames = useMemo(
+    () =>
+      getGroupStudentNames(
+        session,
+        enrollments || [],
+        students || [],
+        selectedStudentIds,
+      ),
+    [session, enrollments, students, selectedStudentIds],
   );
 
   // colorBy에 따라 블록 색상 결정
-  const blockColor = resolveSessionColor(
-    session,
-    colorBy,
-    enrollments || [],
-    subjects || [],
-    students || [],
-    teachers
+  const blockColor = useMemo(
+    () =>
+      resolveSessionColor(
+        session,
+        colorBy,
+        enrollments || [],
+        subjects || [],
+        students || [],
+        teachers,
+        selectedStudentIds,
+      ),
+    [session, colorBy, enrollments, subjects, students, teachers, selectedStudentIds],
   );
 
   // 강사 정보
-  const teacher = teachers.find((t) => t.id === session.teacherId);
+  const teacher = useMemo(
+    () => teachers.find((t) => t.id === session.teacherId),
+    [teachers, session.teacherId],
+  );
 
   if (!subject) {
     logger.warn("SessionBlock: 과목 정보 없음", {
@@ -121,16 +260,19 @@ function SessionBlock({
     left,
     width,
     yOffset,
+    yPosition,
     blockColor,
     isDragging,
     session.id === draggedSessionId,
-    isAnyDragging
+    isAnyDragging,
+    height,
+    isCopyMode,
   );
 
   // 롱프레스 핸들러 (300ms 터치 홀드 → 컨텍스트 메뉴)
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (isReadOnly) return;
+      if (isReadOnly || isShareViewEarly) return;
       touchMovedRef.current = false;
       longPressTimerRef.current = setTimeout(() => {
         if (!touchMovedRef.current) {
@@ -139,7 +281,7 @@ function SessionBlock({
         }
       }, 300);
     },
-    [isReadOnly]
+    [isReadOnly, isShareViewEarly]
   );
 
   const handleTouchMove = useCallback(() => {
@@ -180,6 +322,13 @@ function SessionBlock({
   );
 
   const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isReadOnly || isShareViewEarly) return;
+    // Shift/Ctrl/Cmd + click → 다중 선택 toggle (Edit modal 안 열림)
+    if ((e.shiftKey || e.ctrlKey || e.metaKey) && onSelectToggle) {
+      onSelectToggle();
+      return;
+    }
     logger.info("SessionBlock clicked", {
       sessionId: session.id,
       subjectName: subject?.name,
@@ -190,49 +339,12 @@ function SessionBlock({
       width,
       yOffset,
     });
-    e.stopPropagation();
-    if (!isReadOnly && onClick) {
+    if (onClick) {
       onClick();
     }
   };
 
-  const handleDragStart = (e: React.DragEvent) => {
-    try {
-      e.dataTransfer.setData("text/plain", `session:${session.id}`);
-      e.dataTransfer.effectAllowed = "move";
-      logger.info("드래그 데이터 설정 완료", { sessionId: session.id });
-    } catch (error) {
-      logger.error("드래그 데이터 설정 실패", undefined, error as Error);
-    }
-    try {
-      e.dataTransfer.setDragImage(e.currentTarget, 0, 0);
-    } catch (_) {
-      // jsdom 등 setDragImage 미지원 환경에서 안전하게 무시
-    }
-    if (onDragStart) {
-      onDragStart(e, session);
-    }
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    logger.info("SessionBlock 드래그 종료", {
-      sessionId: session.id,
-      dropEffect: e.dataTransfer?.dropEffect,
-    });
-    if (onDragEnd) {
-      onDragEnd(e);
-    }
-  };
-
   const isDraggedSession = session.id === draggedSessionId;
-
-  const isFiltered =
-    selectedStudentIds != null &&
-    selectedStudentIds.length > 0 &&
-    !(session.enrollmentIds ?? []).some((eid) => {
-      const enrollment = enrollments.find((e) => e.id === eid);
-      return enrollment != null && selectedStudentIds.includes(enrollment.studentId);
-    });
 
   const weekdayLabel =
     ["월", "화", "수", "목", "금", "토", "일"][session.weekday] ?? "";
@@ -243,23 +355,61 @@ function SessionBlock({
     `${session.startsAt}–${session.endsAt}`,
   ].join(" ");
 
-  // 상태 레이어 Tailwind 클래스 계산
-  const statusClassName = (() => {
-    if (isAnyDragging || isDragging) return "";
-    if (sessionStatus === "completed") return "opacity-[0.55]";
-    if (sessionStatus === "in-progress")
-      return "ring-1 ring-amber-400/50 shadow-[0_0_8px_rgba(251,191,36,0.35)]";
-    return "";
-  })();
+  // 3-tone 파스텔 톤 (pastel bg + dark fg + accent) — blockColor 변경 시만
+  const tone = useMemo(() => resolveSessionTone(blockColor), [blockColor]);
 
-  // 충돌 상태 클래스
-  const conflictClassName = hasConflict
-    ? "border-l-[3px] border-l-[#EF4444]"
-    : "";
+  // 상태 레이어 (Phase 3 SSOT): 완료 = opacity 0.55 dim, in-progress/conflict = borderLeft accent.
+  // 과거 *날짜* 세션은 dim 안 함 — opacity dim 은 "오늘 + 시간 지남" 만 (7bbcf1e 복구, 2026-05-29).
+  //   회귀 경위: 7bbcf1e 가 미머지 브랜치(feat/attendance-dot-past-day)에만 있어 dev 에 누락 →
+  //   dot 의 instanceDate(과거 dim 유발)만 머지됨. 본 PR 에서 fix 재적용 + 회귀 테스트 추가.
+  // instanceDate 제공 시 그 날짜가 오늘인지 비교. 미제공(legacy weekday-only)이면 기존 동작.
+  // dot(computeAttendanceDot)의 sessionStatus 는 그대로 'completed' 유지 — 과거 미체크 alert 보존.
+  const isInstanceToday = (() => {
+    if (!instanceDate) return true; // legacy mode — weekday-only (오늘만 completed)
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return instanceDate === todayStr;
+  })();
+  const isCompleted =
+    sessionStatus === "completed" &&
+    !isAnyDragging &&
+    !isDragging &&
+    isInstanceToday;
+  const isInProgress = sessionStatus === "in-progress" && !isAnyDragging && !isDragging;
 
   // 커서 클래스
   const cursorClassName =
     isDragging && isDraggedSession ? "cursor-grabbing" : "cursor-move";
+
+  // ADR-020 R5: "학생" 모드 selector 폐기. label/뱃지 의미는 학생 chip 활성으로 결정.
+  // (colorBy === "student" 입력은 useColorBy 가 subject 로 정규화하므로 사실상 dead path)
+  const isStudentModeActive =
+    (selectedStudentIds?.length ?? 0) > 0;
+
+  // 필터 매칭 dim 일반화 — 학생/과목/강사 중 하나라도 활성이면 매칭/비매칭에 따라 opacity 대비.
+  // ADR-020 R5: ring 표시 폐기 → 비매칭만 opacity 0.25 dim. 매칭은 본체 색 그대로 유지.
+  const isAnyFilterActive =
+    (selectedStudentIds?.length ?? 0) > 0 ||
+    (selectedSubjectIds?.length ?? 0) > 0 ||
+    (selectedTeacherIds?.length ?? 0) > 0;
+
+  const sessionMatchesAllFilters =
+    isAnyFilterActive &&
+    sessionMatchesFilters(
+      session,
+      enrollments ?? [],
+      selectedStudentIds ?? [],
+      selectedSubjectIds ?? [],
+      selectedTeacherIds ?? [],
+    );
+
+  const isDragActive = isAnyDragging || isDragging;
+
+  // 비매칭만 dim (opacity 0.25). 매칭/필터 없음 → 본체 색 + opacity 1 그대로.
+  const dimGlowStyle: React.CSSProperties =
+    isAnyFilterActive && !isDragActive && !sessionMatchesAllFilters
+      ? { opacity: 0.25 }
+      : {};
 
   const wrapperStyle: React.CSSProperties = {
     position: "absolute",
@@ -268,21 +418,41 @@ function SessionBlock({
     width: styles.width,
     height: styles.height,
     zIndex: styles.zIndex,
+    transition: "opacity 0.2s ease, box-shadow 0.2s ease",
+    ...dimGlowStyle,
   };
 
+  const accentColor = hasConflict
+    ? "#EF4444"
+    : isInProgress
+      ? tone.accent
+      : undefined;
+
+  // Gradient background for session button
+  const buttonBg = (() => {
+    const isValidHex6 = /^#[0-9a-fA-F]{6}$/.test(tone.bg);
+    if (!isValidHex6) return tone.bg;
+    return `linear-gradient(180deg, ${tintFromHex(tone.bg, 0.08)} 0%, ${tone.bg} 100%)`;
+  })();
+
   const buttonStyle: React.CSSProperties = {
-    background: styles.background,
-    color: styles.color,
-    borderRadius: styles.borderRadius,
-    padding: styles.padding,
-    fontSize: styles.fontSize,
-    display: styles.display,
-    alignItems: styles.alignItems,
-    overflow: styles.overflow,
-    border: styles.border,
-    cursor: styles.cursor,
+    background: buttonBg,
+    color: tone.fg,
+    borderRadius: 4,
+    borderLeft: accentColor
+      ? `3px solid ${accentColor}`
+      : /^#[0-9a-fA-F]{6}$/.test(tone.bg) ? "3px solid rgba(0,0,0,0.2)" : undefined,
+    padding: 0,
+    fontSize: 12,
+    display: "flex",
+    alignItems: "stretch",
+    overflow: "hidden",
+    cursor: isShareView ? "default" : styles.cursor,
     pointerEvents: styles.pointerEvents,
-    opacity: styles.opacity,
+    // 완료 dim: 오늘 끝난 수업만 0.55 (과거 날짜는 isInstanceToday=false 라 제외 — 7bbcf1e 복구).
+    // 필터 매칭 session 은 dim override (chip 명시 선택은 또렷). 비매칭 필터 dim(0.25)은 wrapper 담당.
+    opacity:
+      isCompleted && !sessionMatchesAllFilters ? 0.55 : styles.opacity,
     visibility: styles.visibility as React.CSSProperties["visibility"],
     transition: styles.transition,
     width: "100%",
@@ -290,55 +460,60 @@ function SessionBlock({
     position: "relative",
   };
 
-  // SubjectChip label — primary label based on colorBy
+  // Primary label based on colorBy
   const primaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? studentNames[0] || "학생 없음"
       : colorBy === "teacher"
         ? teacher?.name || "강사 없음"
         : subject?.name || "과목 없음";
 
-  // SubjectChip subLabel — secondary info based on colorBy
+  // Secondary info based on colorBy
   const secondaryLabel =
-    colorBy === "student"
+    isStudentModeActive
       ? subject?.name || ""
       : getImprovedStudentDisplayText(studentNames);
 
-  // SubjectChip badge — in-progress glow indicator dot
-  const statusBadge =
-    sessionStatus === "in-progress" && !hasConflict ? (
-      <span
-        className="w-1.5 h-1.5 rounded-full bg-white/80 shadow animate-pulse flex-shrink-0"
-        aria-label="진행 중"
-      />
-    ) : undefined;
-
-  const extraStudentCount = (() => {
-    if (colorBy !== "student" || !selectedStudentIds || selectedStudentIds.length === 0) return 0;
+  const totalStudentCount = useMemo(() => {
     const allStudentIds = (session.enrollmentIds ?? []).flatMap((eid) => {
       const enrollment = enrollments.find((e) => e.id === eid);
       return enrollment ? [enrollment.studentId] : [];
     });
-    const selectedInSession = allStudentIds.filter((id) => selectedStudentIds.includes(id));
-    // Only show +N badge if at least one selected student is in this session
-    if (selectedInSession.length === 0) return 0;
-    return allStudentIds.length - selectedInSession.length;
-  })();
+    // 학생 필터 활성 + 비매칭 세션은 dim 처리되므로 배지도 숨김(0 반환).
+    // 평소(필터 비활성)에는 전체 학생 수 노출 — Variant A 항시 표시.
+    if (isStudentModeActive && selectedStudentIds?.length) {
+      const hasSelectedInSession = allStudentIds.some((id) =>
+        selectedStudentIds.includes(id),
+      );
+      if (!hasSelectedInSession) return 0;
+    }
+    return allStudentIds.length;
+  }, [isStudentModeActive, selectedStudentIds, session.enrollmentIds, enrollments]);
+
+  // 동적 회피 — 우상단 배지가 가려질 수 있는 두 케이스에서 시간 라인 옆 inline으로 이동:
+  //   1) overflowsTop: 잘려서 visible 영역 밖
+  //   2) hasLaneOverflowChip: TimeTableRow의 +N chip(z-index:115)과 같은 좌표
+  // hasConflict ⚠는 같은 button 내부 z-layer라 right 오프셋만으로 분리 가능.
+  const showStudentBadgeInline =
+    (overflowsTop || hasLaneOverflowChip) && totalStudentCount >= 2;
 
   return (
     <div
+      ref={setDragRef}
       style={wrapperStyle}
       data-testid={`session-block-${session.id}`}
       data-session-id={session.id}
       data-starts-at={session.startsAt}
       data-ends-at={session.endsAt}
       data-status={sessionStatus}
+      data-selected={selected ? "true" : undefined}
+      data-overflows-top={overflowsTop ? "true" : undefined}
+      data-overflows-bottom={overflowsBottom ? "true" : undefined}
       aria-label={ariaLabel}
-      draggable={!isMobile && !isReadOnly}
-      onDragStart={!isMobile && !isReadOnly ? handleDragStart : undefined}
-      onDragEnd={!isMobile && !isReadOnly ? handleDragEnd : undefined}
-      className={isFiltered ? "opacity-30" : ""}
+      aria-pressed={selected ? true : undefined}
     >
+      {/* Bug2 fix: setNodeRef(setDragRef)는 outer wrapper에 — dnd-kit이 전체 블록 rect를 충돌 감지에 사용.
+          grip div는 listeners만 보유(activation handle). attributes는 grip에 유지(aria 접근성). */}
       <button
         type="button"
         style={buttonStyle}
@@ -347,55 +522,160 @@ function SessionBlock({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         className={[
-          "session-block",
-          "hover:-translate-y-0.5 hover:shadow-lg transition-all duration-150",
-          statusClassName,
-          conflictClassName,
-          cursorClassName,
+          "session-block group",
+          "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-white/30 transition-all duration-150",
+          selected ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
+        {selected && (
+          <span
+            aria-hidden="true"
+            data-testid="session-selected-check"
+            className="absolute -top-1 -right-1 z-[3] flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-bold text-amber-950 shadow-sm"
+          >
+            ✓
+          </span>
+        )}
+        {/* 드래그 핸들 — listeners + attributes만. setNodeRef는 outer div에.
+            share view (presentationMode !== "edit")에서도 숨김 (cursor-grab 노출 방지) */}
+        {!isReadOnly && !isShareViewEarly && (
+          <div
+            {...attributes}
+            {...listeners}
+            onClick={(e) => e.stopPropagation()}
+            data-testid="session-drag-handle"
+            className="absolute top-1 left-0.5 z-[2] flex flex-col gap-[2px] p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            aria-label="드래그하여 이동"
+          >
+            {/* 6-dot grip icon */}
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="flex gap-[2px]">
+                {[0, 1].map((col) => (
+                  <div key={col} className="w-[3px] h-[3px] rounded-full bg-current opacity-80" />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* 충돌 경고 아이콘 */}
         {hasConflict && (
           <span
-            className="absolute top-0.5 right-0.5 text-[10px] text-red-500 leading-none"
+            className="absolute top-0.5 right-1 text-[10px] text-[#EF4444] leading-none"
             aria-label="시간 충돌"
           >
-            ⚠️
+            ⚠
           </span>
         )}
 
-        {/* SubjectChip — visual primitive for label/color rendering */}
-        <div className="flex flex-col w-full h-full justify-between overflow-hidden p-0">
-          <SubjectChip
-            label={primaryLabel}
-            color={blockColor}
-            variant="fill"
-            size="sm"
-            subLabel={`${session.startsAt}-${session.endsAt}`}
-            badge={statusBadge}
-            className="!flex-col w-full h-full justify-center !items-start !rounded-[6px] overflow-hidden"
+        {/* 시간 범위 경계 overflow 표지 — 잘린 끝에 그라데이션 cap으로 "이어짐" 시각화. */}
+        {overflowsTop && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-top"
+            className="session-overflow-top absolute top-0 left-0 right-0 h-2 pointer-events-none rounded-t-[4px] z-[1]"
           />
-          {secondaryLabel && (
-            <div className="text-white/90 text-right text-[12px] tracking-[-0.3px] leading-[1.1] overflow-hidden text-ellipsis whitespace-nowrap px-1 pb-0.5">
+        )}
+        {overflowsBottom && (
+          <span
+            aria-hidden="true"
+            data-testid="session-overflow-bottom"
+            className="session-overflow-bottom absolute bottom-0 left-0 right-0 h-2 pointer-events-none rounded-b-[4px] z-[1]"
+          />
+        )}
+
+        <div className="flex flex-col w-full h-full justify-center overflow-hidden px-1.5 py-0.5 text-left">
+          <div className="font-semibold truncate text-[13px] leading-tight">
+            {primaryLabel}
+          </div>
+          <div
+            className={[
+              "text-[10px] opacity-75 leading-tight [font-feature-settings:'tnum']",
+              showStudentBadgeInline ? "flex items-center gap-1.5" : "truncate",
+            ].join(" ")}
+          >
+            <span className={showStudentBadgeInline ? "truncate" : undefined}>
+              {formatSessionTime(session.startsAt, isShareView)}-{formatSessionTime(session.endsAt, isShareView)}
+            </span>
+            {showStudentBadgeInline && !isFilteredShare && (
+              <span
+                aria-label={`총 ${totalStudentCount}명`}
+                className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-sm session-overlay-pill backdrop-blur-sm px-1 py-px text-[9px] font-semibold text-white"
+              >
+                <Users className="h-2 w-2" strokeWidth={2.5} aria-hidden="true" />
+                {totalStudentCount}
+              </span>
+            )}
+          </div>
+          {secondaryLabel && !isFilteredShare && (
+            <div className="text-[10px] opacity-[0.85] truncate leading-tight">
               {secondaryLabel}
             </div>
           )}
         </div>
       </button>
 
-      {extraStudentCount > 0 && (
+      {totalStudentCount >= 2 && !showStudentBadgeInline && !isFilteredShare && (
         <span
-          className="absolute top-0.5 right-0.5 text-[9px] font-bold text-white/80 bg-black/25 rounded-full px-1 leading-4 pointer-events-none"
-          aria-label={`외 ${extraStudentCount}명`}
+          className={[
+            "absolute top-1 inline-flex items-center gap-0.5 rounded-md session-overlay-pill backdrop-blur-sm px-1 py-px text-[10px] font-semibold text-white pointer-events-none",
+            hasConflict ? "right-[18px]" : "right-1",
+          ].join(" ")}
+          aria-label={`총 ${totalStudentCount}명`}
         >
-          +{extraStudentCount}
+          <Users className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />
+          {totalStudentCount}
         </span>
       )}
 
+      {/* 학생 본인 공유 (filtered-share) — 사람 chip 자리에 강사 이름 chip */}
+      {isFilteredShare && teacher && (
+        <span
+          className={[
+            "absolute top-1 inline-flex items-center rounded-md session-overlay-pill backdrop-blur-sm px-1.5 py-px text-[10px] font-semibold text-white pointer-events-none max-w-[60%] truncate",
+            hasConflict ? "right-[18px]" : "right-1",
+          ].join(" ")}
+          aria-label={`강사: ${teacher.name}`}
+        >
+          {teacher.name}
+        </span>
+      )}
+
+      {/*
+        Layer 2 D — 우하단 출결 dot. 시간 기반 색 + alert 규칙.
+        share/filtered-share view 에선 숨김 (운영자 전용 정보).
+        SessionBlock.attendanceDot.ts § computeAttendanceDot 참조.
+      */}
+      {!isShareView && attendanceMap && (() => {
+        const sessionStudentIds = (session.enrollmentIds ?? [])
+          .map((eId) => (enrollments || []).find((e) => e.id === eId)?.studentId)
+          .filter((id): id is string => Boolean(id));
+        const dotState = computeAttendanceDot(
+          sessionStatus,
+          attendanceMap,
+          sessionStudentIds,
+        );
+        if (!dotState) return null;
+        return (
+          <span
+            data-testid={`session-attendance-dot-${session.id}`}
+            data-attendance-color={dotState.color}
+            data-attendance-pulse={dotState.pulse ? "true" : undefined}
+            className={[
+              "absolute bottom-1 right-1 z-[3] h-2 w-2 rounded-full ring-1 ring-black/40 pointer-events-none",
+              dotState.color,
+              dotState.pulse ? "animate-pulse" : "",
+            ].filter(Boolean).join(" ")}
+            title={dotState.title}
+            aria-label={dotState.title}
+          />
+        );
+      })()}
+
       {/* 롱프레스 컨텍스트 메뉴 */}
-      {contextMenuOpen && !isReadOnly && (
+      {contextMenuOpen && !isReadOnly && !isShareViewEarly && (
         <>
           {/* 백드롭 — 외부 클릭 시 메뉴 닫기 */}
           <div
@@ -417,6 +697,36 @@ function SessionBlock({
             >
               편집
             </button>
+            {onContextMenuCopy && (
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenuOpen(false);
+                  onContextMenuCopy();
+                }}
+                data-testid="session-context-copy"
+              >
+                복사
+              </button>
+            )}
+            {onContextMenuStartSelect && (
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] active:bg-[var(--color-bg-secondary)]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setContextMenuOpen(false);
+                  onContextMenuStartSelect();
+                }}
+                data-testid="session-context-select"
+              >
+                선택 시작
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"

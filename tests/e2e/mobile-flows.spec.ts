@@ -1,0 +1,154 @@
+/**
+ * Mobile flows e2e — viewport 375×667에서 schedule 핵심 동작 회귀 가드.
+ *
+ * 모바일 트리거 동작:
+ * - useScheduleView 모바일 default = "daily" (window.innerWidth < 768)
+ * - DayChipBar 자동 표시 (일별 모드)
+ * - SessionBlock의 long-press / tap 동작 (단순화 — 시각 검증만)
+ *
+ * Anonymous mode OK — 모든 시나리오 auth 없이 동작.
+ */
+import { expect, test, type Page } from "@playwright/test";
+
+const TEST_USER_ID = "05b3e2dd-3b64-4d45-b8fd-a0ce90c48391";
+
+/**
+ * PR N — page.clock.install로 브라우저 시간 고정 (KST 12:00 정오).
+ * - schedule/page.tsx:211 `currentWeekStart = getWeekStartDate(selectedDate)` (KST 기반)
+ * - useScheduleView selectedDate = useState(() => new Date()) — page.clock 영향
+ * - DayChipBar onSelectWeekday handler가 (selectedDate.getDay() + 6) % 7로 weekday 계산
+ * - 시간 고정 → UTC/KST timezone 변수 제거 → seed weekStartDate와 정확 일치
+ *
+ * FIXED_DATE = 2026-05-04 03:00 UTC = 2026-05-04 12:00 KST (월요일 정오)
+ * → currentWeekStart = '2026-05-04', sess-mon weekStartDate = '2026-05-04' 일치
+ */
+const FIXED_DATE_UTC = new Date("2026-05-04T03:00:00Z");
+const WEEK = "2026-05-04"; // KST 기준 월요일
+
+test.use({ viewport: { width: 375, height: 667 } });
+
+async function seedScheduleMobile(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ uid, week }) => {
+      const payload = {
+        students: [
+          { id: "stu-1", name: "학생 A" },
+          { id: "stu-2", name: "학생 B" },
+        ],
+        subjects: [{ id: "sub-1", name: "수학", color: "#7DD3FC" }],
+        teachers: [],
+        enrollments: [
+          { id: "enr-1", studentId: "stu-1", subjectId: "sub-1" },
+          { id: "enr-2", studentId: "stu-2", subjectId: "sub-1" },
+        ],
+        sessions: [
+          {
+            id: "sess-mon",
+            subjectId: "sub-1",
+            weekday: 0,
+            startsAt: "09:00",
+            endsAt: "10:00",
+            weekStartDate: week,
+            enrollmentIds: ["enr-1"],
+            yPosition: 1,
+          },
+          {
+            id: "sess-wed",
+            subjectId: "sub-1",
+            weekday: 2,
+            startsAt: "14:00",
+            endsAt: "15:00",
+            weekStartDate: week,
+            enrollmentIds: ["enr-2"],
+            yPosition: 1,
+          },
+        ],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      };
+      localStorage.setItem("supabase_user_id", uid);
+      localStorage.setItem(`classPlannerData:${uid}`, JSON.stringify(payload));
+    },
+    { uid: TEST_USER_ID, week: WEEK },
+  );
+}
+
+test.describe("mobile schedule flows (375×667)", () => {
+  test.beforeEach(async ({ page }) => {
+    // PR N — 시간 고정으로 KST/UTC timezone 변수 제거. monChip click 시 selectedDate
+    // 변환이 안정적으로 KST monday로 정렬 → seed weekStartDate와 일치.
+    await page.clock.install({ time: FIXED_DATE_UTC });
+  });
+
+  test("모바일 viewport에서 schedule 페이지가 정상 로드된다 — viewMode default=daily", async ({
+    page,
+  }) => {
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    // useScheduleView: mobile (<768px) default = "daily".
+    // P3 default 승격(ADR-010) 이후 view 버튼은 ScheduleFloatingToolbar 안에 있고,
+    // 식별은 data-testid="view-mode-{daily|weekly|monthly}"로 안정적으로 한다.
+    await expect(page.getByTestId("view-mode-daily")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+      { timeout: 5000 },
+    );
+  });
+
+  test("일별 모드에서 DayChipBar가 표시된다", async ({ page }) => {
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    // DayChipBar — 0=월, 6=일 (data-testid는 PR A에서 추가)
+    await expect(page.getByTestId("day-chip-0")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("day-chip-6")).toBeVisible({ timeout: 5000 });
+  });
+
+  test("DayChipBar에서 다른 요일 클릭 → 활성 chip 변경", async ({ page }) => {
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    // 수요일 (idx=2) chip 클릭
+    const wedChip = page.getByTestId("day-chip-2");
+    await expect(wedChip).toBeVisible({ timeout: 5000 });
+    await wedChip.click();
+
+    // data-active=true 속성으로 활성 검증 (CSS class 결합도 ↓)
+    await expect(wedChip).toHaveAttribute("data-active", "true", { timeout: 3000 });
+  });
+
+  test("모바일에서 '주간' 모드로 변경 → SegmentedButton 변경 가능", async ({ page }) => {
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    await page.getByTestId("view-mode-weekly").click();
+
+    await expect(page.getByTestId("view-mode-weekly")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("모바일에서 일별 → 월별 → 일별 토글이 정상 동작", async ({ page }) => {
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    await page.getByTestId("view-mode-monthly").click();
+    await expect(page.getByTestId("view-mode-monthly")).toHaveAttribute("aria-pressed", "true");
+
+    await page.getByTestId("view-mode-daily").click();
+    await expect(page.getByTestId("view-mode-daily")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("모바일 일별 모드에서 SessionCard visible — sess-mon (월요일 09:00)", async ({ page }) => {
+    // PR P — 진짜 원인: ScheduleDailyView는 SessionBlock이 아닌 SessionCard variant="row"
+    // 사용 (organisms/ScheduleDailyView.tsx:113-127). data-testid는 `daily-session-${id}`.
+    // 3 cycle(E/L/N) 모두 wrong selector(`session-block-...`) — 코드 read 1번이면 진단 가능했음.
+    await seedScheduleMobile(page);
+    await page.goto("/schedule");
+
+    const monChip = page.getByTestId("day-chip-0");
+    await expect(monChip).toBeVisible({ timeout: 5000 });
+    await monChip.click();
+
+    await expect(page.getByTestId("daily-session-sess-mon")).toBeVisible({ timeout: 10000 });
+  });
+});

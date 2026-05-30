@@ -7,9 +7,9 @@ interface ColorByToggleProps {
   onChange: (mode: ColorByMode) => void;
 }
 
+// ADR-020 R5: "학생" 모드 selector 제거. 학생 필터링은 chip + dim contrast 로만 동작.
 const MODES = [
   { label: "과목", value: "subject" as ColorByMode },
-  { label: "학생", value: "student" as ColorByMode },
   { label: "강사", value: "teacher" as ColorByMode },
 ] as const;
 

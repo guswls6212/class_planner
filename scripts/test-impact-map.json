@@ -1,0 +1,90 @@
+{
+  "_meta": {
+    "description": "vitest --related(import 그래프)이 잡지 못하는 cross-cutting 테스트 의존 관계",
+    "maintained_by": "AI — Documentation Sync Protocol 6번째 단계: 파일 추가/이동/삭제 시 업데이트",
+    "last_updated": "2026-04-30"
+  },
+
+  "src/components/organisms/TimeTableGrid.tsx": [
+    "src/hooks/__tests__/useDragController.test.ts",
+    "src/app/schedule/_utils/__tests__/dndHelpers.test.ts",
+    "src/components/molecules/__tests__/TimeTableRow.test.tsx"
+  ],
+  "src/components/molecules/TimeTableRow.tsx": [
+    "src/hooks/__tests__/useDragController.test.ts",
+    "src/lib/__tests__/sessionCollisionUtils.test.ts"
+  ],
+  "src/components/molecules/TimeTableCell.tsx": [
+    "src/hooks/__tests__/useDragController.test.ts",
+    "src/app/schedule/_utils/__tests__/dndHelpers.test.ts"
+  ],
+  "src/components/molecules/SessionBlock.tsx": [
+    "src/hooks/__tests__/useDragController.test.ts",
+    "src/components/molecules/__tests__/TimeTableRow.test.tsx"
+  ],
+  "src/hooks/useDragController.ts": [
+    "src/components/molecules/__tests__/TimeTableRow.test.tsx",
+    "src/components/organisms/__tests__/TimeTableGrid.test.tsx"
+  ],
+  "src/app/schedule/_utils/dndHelpers.ts": [
+    "src/hooks/__tests__/useDragController.test.ts",
+    "src/components/molecules/__tests__/TimeTableRow.test.tsx"
+  ],
+  "src/lib/sessionCollisionUtils.ts": [
+    "src/components/organisms/__tests__/TimeTableGrid.test.tsx",
+    "src/components/molecules/__tests__/TimeTableRow.test.tsx"
+  ],
+  "src/app/schedule/page.tsx": [
+    "src/app/schedule/_components/__tests__/ScheduleHeader.test.tsx",
+    "src/app/schedule/_components/__tests__/ScheduleActionBar.test.tsx"
+  ],
+  "src/lib/apiSync.ts": [
+    "src/app/api/sessions/[id]/position/__tests__/route.test.ts"
+  ],
+  "src/app/api/sessions/[id]/position/route.ts": [
+    "src/app/schedule/_utils/__tests__/dndHelpers.test.ts"
+  ],
+  "src/hooks/useGlobalDataInitialization.ts": [
+    "src/hooks/__tests__/useGlobalDataInitialization.test.ts",
+    "src/hooks/__tests__/useGlobalDataInitialization.conflict.test.ts"
+  ],
+  "src/components/molecules/SessionBlock.utils.ts": [
+    "src/components/molecules/__tests__/SessionBlock.utils.test.ts",
+    "src/components/organisms/__tests__/ScheduleDailyView.test.tsx",
+    "src/components/molecules/__tests__/MonthDayCell.test.tsx"
+  ],
+  "src/hooks/useNowMinute.ts": [
+    "src/hooks/__tests__/useNowMinute.test.ts",
+    "src/components/organisms/__tests__/TimeTableGrid.timeline.test.tsx"
+  ],
+  "src/lib/colors/hexToRgba.ts": [
+    "src/components/molecules/__tests__/SessionBlock.test.tsx"
+  ],
+  "src/lib/weekStart.ts": [
+    "src/lib/__tests__/weekStart.test.ts",
+    "src/lib/__tests__/migrateLocalSessions.test.ts"
+  ],
+  "src/lib/migrateLocalSessions.ts": [
+    "src/lib/__tests__/migrateLocalSessions.test.ts",
+    "src/lib/localStorageCrud.ts"
+  ],
+  "src/components/molecules/TemplateMenuV2.tsx": [
+    "src/components/molecules/__tests__/TemplateMenuV2.test.tsx",
+    "src/app/schedule/page.tsx"
+  ],
+  "src/components/molecules/EmptyWeekState.tsx": [
+    "src/components/molecules/__tests__/EmptyWeekState.test.tsx",
+    "src/app/schedule/page.tsx"
+  ],
+  "src/components/molecules/ApplyTemplateConfirm.tsx": [
+    "src/components/molecules/__tests__/ApplyTemplateConfirm.test.tsx",
+    "src/app/schedule/page.tsx"
+  ],
+  "src/components/molecules/TemplatePreviewModal.tsx": [
+    "src/components/molecules/__tests__/TemplatePreviewModal.test.tsx",
+    "src/app/schedule/page.tsx"
+  ],
+  "src/hooks/useTemplates.ts": [
+    "src/app/schedule/page.tsx"
+  ]
+}

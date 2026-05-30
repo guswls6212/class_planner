@@ -32,6 +32,7 @@ export function BottomTabBar() {
           <Link
             key={href}
             href={href}
+            data-tour={href.startsWith("/") ? href.slice(1) : href}
             className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 min-h-[56px] transition-colors ${
               isActive
                 ? "text-accent"

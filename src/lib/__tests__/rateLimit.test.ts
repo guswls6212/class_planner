@@ -69,3 +69,79 @@ describe("checkRateLimit", () => {
     expect(checkRateLimit("10.0.0.2", 30, 60_000).allowed).toBe(true);
   });
 });
+
+describe("lockout (checkLockout / recordFailure / resetFailures)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("실패 기록 없으면 잠금 없음", async () => {
+    const { checkLockout } = await import("../rateLimit");
+    expect(checkLockout("academy-A:1.2.3.4")).toBe(false);
+  });
+
+  it("maxFailures 미만 실패는 잠금 안 됨", async () => {
+    const { checkLockout, recordFailure } = await import("../rateLimit");
+    const key = "academy-B:1.2.3.4";
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    // 4번째까지는 잠금 없음 (5번 초과 필요)
+    expect(checkLockout(key)).toBe(false);
+  });
+
+  it("maxFailures 초과하면 잠금됨", async () => {
+    const { checkLockout, recordFailure } = await import("../rateLimit");
+    const key = "academy-C:1.2.3.4";
+    for (let i = 0; i < 5; i++) {
+      recordFailure(key, 5, 3_600_000);
+    }
+    expect(checkLockout(key)).toBe(true);
+  });
+
+  it("잠금 만료 후 다시 허용됨", async () => {
+    const { checkLockout, recordFailure } = await import("../rateLimit");
+    const key = "academy-D:1.2.3.4";
+    for (let i = 0; i < 5; i++) {
+      recordFailure(key, 5, 3_600_000);
+    }
+    expect(checkLockout(key)).toBe(true);
+
+    // 1시간 경과
+    vi.advanceTimersByTime(3_600_001);
+    expect(checkLockout(key)).toBe(false);
+  });
+
+  it("성공 시 resetFailures로 카운트 초기화됨", async () => {
+    const { checkLockout, recordFailure, resetFailures } =
+      await import("../rateLimit");
+    const key = "academy-E:1.2.3.4";
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    resetFailures(key);
+    // 리셋 후 maxFailures 채워도 이전 카운트 없음
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    recordFailure(key, 5, 3_600_000);
+    expect(checkLockout(key)).toBe(false);
+  });
+
+  it("키별로 독립적으로 잠금 관리됨", async () => {
+    const { checkLockout, recordFailure } = await import("../rateLimit");
+    const keyA = "academy-F:1.2.3.4";
+    const keyB = "academy-G:1.2.3.4";
+    for (let i = 0; i < 5; i++) {
+      recordFailure(keyA, 5, 3_600_000);
+    }
+    expect(checkLockout(keyA)).toBe(true);
+    expect(checkLockout(keyB)).toBe(false);
+  });
+});

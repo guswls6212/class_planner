@@ -1,0 +1,35 @@
+name: Auto-merge by branch prefix
+
+# 출시 전 빠른 흐름 — safe prefix (chore/docs/refactor/feat/fix/test) → dev 향 PR
+# 자동 머지 enable. 위험 prefix (migration/infra/security/release) 는 수동 머지.
+# 'no-auto-merge' label 붙으면 강제 OFF (per-PR override).
+#
+# 출시 후: feat/ 줄 삭제 권장 (사람 1회 검토 가치 ↑)
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    if: |
+      (startsWith(github.head_ref, 'chore/') ||
+       startsWith(github.head_ref, 'docs/') ||
+       startsWith(github.head_ref, 'refactor/') ||
+       startsWith(github.head_ref, 'feat/') ||
+       startsWith(github.head_ref, 'fix/') ||
+       startsWith(github.head_ref, 'test/')) &&
+      !contains(github.event.pull_request.labels.*.name, 'no-auto-merge') &&
+      github.base_ref == 'dev'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto --merge --delete-branch \
+            --repo ${{ github.repository }} || echo "auto-merge enable skipped (already enabled or merge blocked)"

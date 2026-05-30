@@ -14,10 +14,18 @@
 /coverage
 /playwright-report
 /test-results
+playwright/.auth/
 
 # next.js
 /.next/
 /out/
+
+# Serwist (PWA — service worker build artifacts in public/)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+public/workbox-*.js
+public/workbox-*.js.map
 
 # production
 /build
@@ -34,6 +42,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -54,3 +63,14 @@ next-env.d.ts
 migration/backups/
 .superpowers/
 .claude/
+
+# Local scratch — orphaned worktrees, screenshots, throwaway artifacts
+.scratch/
+screenshots/
+tmp/
+
+# Supabase CLI temp files
+supabase/.temp/
+
+*storybook.log
+storybook-static

@@ -9,6 +9,19 @@ export default defineConfig({
   workers: 1, // 단일 워커로 안정성 최대화
   timeout: 60000, // E2E 테스트 타임아웃을 1분으로 더 단축
   reporter: [["html", { open: "never" }], ["list"]],
+  // Supabase password auth로 e2e 전용 test user 로그인 → playwright/.auth/session.json 저장.
+  // 각 spec이 helpers/auth-mock.ts injectRealSession()으로 inject. PR C 도입.
+  // E2E_TEST_USER_EMAIL/PASSWORD env 누락 시 globalSetup이 throw — auth 의존 spec만 영향.
+  // string path — Playwright가 cwd 기반으로 resolve. ESM eslint no-undef(`require`) 회피.
+  globalSetup:
+    process.env.E2E_TEST_USER_EMAIL && process.env.E2E_TEST_USER_PASSWORD
+      ? "./tests/e2e/global-setup.ts"
+      : undefined,
+  // PR M — 모든 e2e 끝난 후 cleanupTestUserData 자동 호출 → 환경 누적 영구 차단.
+  // SUPABASE_SERVICE_ROLE_KEY 없으면 cleanup 건너뜀(graceful).
+  globalTeardown: process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? "./tests/e2e/global-teardown.ts"
+    : undefined,
   use: {
     baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
     trace: "on-first-retry",

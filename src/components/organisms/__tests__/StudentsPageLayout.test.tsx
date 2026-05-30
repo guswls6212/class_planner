@@ -2,6 +2,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import StudentsPageLayout from "../StudentsPageLayout";
 
+// Mock toast — 검색 0건 시 showActionToast의 onAction을 자동 실행해
+// 기존 테스트(onAddStudent 호출 expect)와 호환.
+vi.mock("@/lib/toast", () => ({
+  showSuccess: vi.fn(),
+  showActionToast: vi.fn((opts: { onAction: () => void }) => {
+    opts.onAction();
+    return "mock-toast-id";
+  }),
+}));
+
 // Mock props
 const mockStudents = [
   { id: "1", name: "김철수" },
@@ -31,7 +41,7 @@ describe("StudentsPageLayout Component", () => {
     render(<StudentsPageLayout {...mockProps} />);
 
     expect(screen.getByTestId("students-page")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("학생 이름 (검색 가능)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("학생 이름으로 검색")).toBeInTheDocument();
     // 선택된 학생(김철수)은 목록+상세 양쪽에 표시될 수 있으므로 getAllByText 사용
     expect(screen.getAllByText("김철수").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("이영희")).toBeInTheDocument();
@@ -55,22 +65,20 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("학생이 없을 때 빈 상태 메시지가 표시되어야 한다", () => {
+  it("학생이 없을 때 EmptyStateCTA 카드가 표시되어야 한다", () => {
     const emptyProps = { ...mockProps, students: [] };
 
     render(<StudentsPageLayout {...emptyProps} />);
 
-    expect(screen.getByText(/학생을 추가해주세요/)).toBeInTheDocument();
+    // D Empty state CTA (phase1-production-release Step 1.4) — inline 텍스트 →
+    // EmptyStateCTA molecule 으로 교체 (2026-05-25).
+    expect(screen.getByTestId("empty-students-cta")).toBeInTheDocument();
+    expect(screen.getByText(/아직 등록된 학생이 없어요/)).toBeInTheDocument();
+    expect(screen.getByTestId("empty-students-add")).toBeInTheDocument();
   });
 
-  it("에러 메시지가 표시되어야 한다", () => {
-    const errorMessage = "이미 존재하는 학생 이름입니다.";
-    const errorProps = { ...mockProps, errorMessage };
-
-    render(<StudentsPageLayout {...errorProps} />);
-
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
-  });
+  // errorMessage 배너 제거됨 (ADR-014 D3) — 토스트가 SSOT, 인라인 배너 표시 안 함.
+  // 토스트 발화는 useStudentManagementLocal hook의 책임 (별도 단위 테스트).
 
   it("학생 추가 버튼이 렌더링되어야 한다", () => {
     render(<StudentsPageLayout {...mockProps} />);
@@ -81,7 +89,7 @@ describe("StudentsPageLayout Component", () => {
 
   it("학생 추가 — 입력 후 버튼 클릭 시 onAddStudent가 호출된다", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
     const addButton = screen.getByRole("button", { name: /학생 추가/ });
 
     fireEvent.change(input, { target: { value: "박민수" } });
@@ -92,29 +100,26 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
-  it("학생 추가 — Enter 키 입력 시 onAddStudent가 호출된다", async () => {
+  it("학생 추가 — Enter 키는 onAddStudent 호출 X, 추가 버튼 클릭만 호출한다 (C 패턴)", async () => {
     render(<StudentsPageLayout {...mockProps} />);
-    const input = screen.getByPlaceholderText("학생 이름 (검색 가능)");
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
 
     fireEvent.change(input, { target: { value: "최지수" } });
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(mockProps.onAddStudent).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "학생 추가" }));
 
     await waitFor(() => {
       expect(mockProps.onAddStudent).toHaveBeenCalledWith("최지수");
     });
   });
 
-  it("검색창이 렌더링되어야 한다", () => {
-    render(<StudentsPageLayout {...mockProps} />);
-
-    expect(screen.getByPlaceholderText("이름으로 검색")).toBeInTheDocument();
-  });
-
-  it("검색어 입력 시 목록이 필터링된다", async () => {
+  it("검색어 입력 시 목록이 필터링된다 (통합 input)", async () => {
     // 선택된 학생 없이 렌더링하여 상세 패널 노출 없음
     const noSelectionProps = { ...mockProps, selectedStudentId: "" };
     render(<StudentsPageLayout {...noSelectionProps} />);
-    const searchInput = screen.getByPlaceholderText("이름으로 검색");
+    const searchInput = screen.getByPlaceholderText("학생 이름으로 검색");
 
     fireEvent.change(searchInput, { target: { value: "김" } });
 
@@ -124,9 +129,63 @@ describe("StudentsPageLayout Component", () => {
     });
   });
 
+  it("권한 없을 때 추가 버튼이 렌더되지 않는다", () => {
+    render(<StudentsPageLayout {...mockProps} canManage={false} />);
+    expect(screen.queryByRole("button", { name: /학생 추가/ })).toBeNull();
+  });
+
+  it("권한 없을 때 엔터 입력이 onAddStudent를 호출하지 않는다", () => {
+    render(<StudentsPageLayout {...mockProps} canManage={false} />);
+    const input = screen.getByPlaceholderText("학생 이름으로 검색");
+    fireEvent.change(input, { target: { value: "박민수" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mockProps.onAddStudent).not.toHaveBeenCalled();
+  });
+
   it("컴포넌트가 올바르게 렌더링되어야 한다", () => {
     expect(() => {
       render(<StudentsPageLayout {...mockProps} />);
     }).not.toThrow();
+  });
+});
+
+describe("StudentsPageLayout — 빈 메타 hint (Phase 2-C)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("gender/birthDate 둘 다 비어있는 학생만 정보 보강 hint가 표시된다", () => {
+    const students = [
+      { id: "incomplete", name: "박미완" },
+      {
+        id: "complete",
+        name: "박완전",
+        gender: "male",
+        birthDate: "2010-01-01",
+      },
+    ];
+    render(
+      <StudentsPageLayout
+        {...mockProps}
+        students={students}
+        selectedStudentId=""
+      />,
+    );
+    expect(screen.getByTestId("student-meta-hint-incomplete")).toBeInTheDocument();
+    expect(screen.queryByTestId("student-meta-hint-complete")).toBeNull();
+  });
+
+  it("gender만 있고 birthDate 없는 학생도 hint 표시 (부분 채움도 보강 권장)", () => {
+    const students = [
+      { id: "partial", name: "박부분", gender: "male" },
+    ];
+    render(
+      <StudentsPageLayout
+        {...mockProps}
+        students={students}
+        selectedStudentId=""
+      />,
+    );
+    expect(screen.getByTestId("student-meta-hint-partial")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,14 @@ import { Student } from "@/domain/entities/Student";
 import type { StudentRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import {
+  PAGINATION_DEFAULT_LIMIT,
+  decodeCursor,
+  encodeCursor,
+  type PaginationOptions,
+  type PaginationResult,
+} from "../../lib/pagination";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseStudentRepository implements StudentRepository {
   private createServiceRoleClient() {
@@ -22,6 +30,18 @@ export class SupabaseStudentRepository implements StudentRepository {
     });
   }
 
+  private rowToStudent(row: Record<string, unknown>): Student {
+    return Student.restore(row.id as string, row.name as string, {
+      gender: (row.gender as string | null) ?? undefined,
+      birthDate: (row.birth_date as string | null) ?? undefined,
+      grade: (row.grade as string | null) ?? undefined,
+      school: (row.school as string | null) ?? undefined,
+      phone: (row.phone as string | null) ?? undefined,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
+    });
+  }
+
   async getAll(academyId: string): Promise<Student[]> {
     try {
       const client = this.createServiceRoleClient();
@@ -37,20 +57,75 @@ export class SupabaseStudentRepository implements StudentRepository {
         return [];
       }
 
-      return (data ?? []).map((row) =>
-        Student.restore(row.id, row.name, {
-          gender: row.gender ?? undefined,
-          birthDate: row.birth_date ?? undefined,
-          grade: row.grade ?? undefined,
-          school: row.school ?? undefined,
-          phone: row.phone ?? undefined,
-          createdAt: new Date(row.created_at),
-          updatedAt: new Date(row.updated_at),
-        })
+      return mapRowsSafely(
+        data ?? [],
+        (row) => this.rowToStudent(row),
+        { entity: "학생", idField: "id" }
       );
     } catch (error) {
       logger.error("학생 데이터 조회 중 오류:", undefined, error as Error);
       return [];
+    }
+  }
+
+  async getAllPaginated(
+    academyId: string,
+    options: PaginationOptions,
+  ): Promise<PaginationResult<Student>> {
+    try {
+      const client = this.createServiceRoleClient();
+      let query = client
+        .from("students")
+        .select("*")
+        .eq("academy_id", academyId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (options.q) {
+        query = query.ilike("name", `%${options.q}%`);
+      }
+
+      if (options.cursor) {
+        const decoded = decodeCursor(options.cursor);
+        if (decoded) {
+          // (created_at, id) > (cursor.createdAt, cursor.id) — tie-break 안전
+          query = query.or(
+            `created_at.gt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.gt.${decoded.id})`,
+          );
+        }
+      }
+
+      const limit = options.limit ?? PAGINATION_DEFAULT_LIMIT;
+      query = query.limit(limit + 1); // +1로 hasMore 판정
+
+      const { data, error } = await query;
+      if (error) {
+        logger.error("학생 페이징 조회 실패:", undefined, error as Error);
+        return { items: [], nextCursor: null };
+      }
+
+      const rows = data ?? [];
+      const hasMore = rows.length > limit;
+      const itemRows = hasMore ? rows.slice(0, limit) : rows;
+      const items = mapRowsSafely(
+        itemRows,
+        (row) => this.rowToStudent(row),
+        { entity: "학생", idField: "id" }
+      );
+
+      let nextCursor: string | null = null;
+      if (hasMore && itemRows.length > 0) {
+        const last = itemRows[itemRows.length - 1];
+        nextCursor = encodeCursor({
+          createdAt: last.created_at as string,
+          id: last.id as string,
+        });
+      }
+
+      return { items, nextCursor };
+    } catch (error) {
+      logger.error("학생 페이징 조회 중 오류:", undefined, error as Error);
+      return { items: [], nextCursor: null };
     }
   }
 
@@ -85,23 +160,28 @@ export class SupabaseStudentRepository implements StudentRepository {
   }
 
   async create(
-    studentData: { name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
+    studentData: { id?: string; name: string; gender?: string; birthDate?: string; grade?: string; school?: string; phone?: string },
     academyId: string
   ): Promise<Student> {
     try {
       const client = this.createServiceRoleClient();
 
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전).
+      // id 충돌 시 onConflict:"id" → 같은 row 그대로 반환 (의미적 get-or-create).
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        name: studentData.name,
+        gender: studentData.gender ?? null,
+        birth_date: studentData.birthDate ?? null,
+        grade: studentData.grade ?? null,
+        school: studentData.school ?? null,
+        phone: studentData.phone ?? null,
+      };
+      if (studentData.id) insertPayload.id = studentData.id;
+
       const { data, error } = await client
         .from("students")
-        .insert({
-          academy_id: academyId,
-          name: studentData.name,
-          gender: studentData.gender ?? null,
-          birth_date: studentData.birthDate ?? null,
-          grade: studentData.grade ?? null,
-          school: studentData.school ?? null,
-          phone: studentData.phone ?? null,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

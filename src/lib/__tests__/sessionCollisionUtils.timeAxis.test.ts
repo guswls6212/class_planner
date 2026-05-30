@@ -72,6 +72,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 1,
           enrollmentIds: ["e1"],
           room: "",
+          weekStartDate: "",
         },
         {
           id: "english",
@@ -81,6 +82,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 2,
           enrollmentIds: ["e2"],
           room: "",
+          weekStartDate: "",
         },
       ];
 
@@ -122,6 +124,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 1,
           enrollmentIds: ["e1"],
           room: "",
+          weekStartDate: "",
         },
         {
           id: "english",
@@ -131,6 +134,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 1,
           enrollmentIds: ["e2"],
           room: "",
+          weekStartDate: "",
         },
         {
           id: "science",
@@ -140,6 +144,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 1,
           enrollmentIds: ["e3"],
           room: "",
+          weekStartDate: "",
         },
       ];
 
@@ -178,6 +183,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 1,
           enrollmentIds: ["e1"],
           room: "",
+          weekStartDate: "",
         },
         {
           id: "english",
@@ -187,6 +193,7 @@ describe("시간축 관련 테스트", () => {
           yPosition: 2,
           enrollmentIds: ["e2"],
           room: "",
+          weekStartDate: "",
         },
       ];
 

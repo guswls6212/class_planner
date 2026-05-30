@@ -5,25 +5,37 @@ import { AppError } from "@/lib/errors/AppError";
 export class SessionApplicationServiceImpl {
   constructor(private sessionRepository: SessionRepository) {}
 
-  async getAllSessions(academyId: string): Promise<Session[]> {
-    return this.sessionRepository.getAll(academyId);
+  async getAllSessions(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]> {
+    return this.sessionRepository.getAll(academyId, opts);
   }
 
-  async getSessionById(id: string): Promise<Session | null> {
-    return this.sessionRepository.getById(id);
+  async getSessionById(id: string, academyId?: string): Promise<Session | null> {
+    return this.sessionRepository.getById(id, academyId);
   }
 
   async addSession(
     sessionData: {
+      /** Local-first: client가 생성한 UUID. 미제공 시 DB가 생성. */
+      id?: string;
       subjectId: string;
       startsAt: string;
       endsAt: string;
       enrollmentIds: string[];
       weekday: number;
+      weekStartDate?: string;
+      teacherId?: string | null;
+      public_description?: string | null;
+      internal_note?: string | null;
+      /** lane 위치 (1-based). 미제공 시 Repository 가 default 1 (멀티선택 복사 후
+       *  새로고침 시 lane 1 stack 회귀 가드 — 사용자 보고 2026-05-16). */
+      yPosition?: number;
     },
     academyId: string
   ): Promise<Session> {
-    return this.sessionRepository.create(sessionData, academyId);
+    return this.sessionRepository.create(
+      { ...sessionData, weekStartDate: sessionData.weekStartDate ?? "" },
+      academyId
+    );
   }
 
   async updateSession(
@@ -34,10 +46,18 @@ export class SessionApplicationServiceImpl {
       endsAt: string;
       enrollmentIds: string[];
       weekday: number;
+      /** YYYY-MM-DD (KST). 다른 주로 세션 이동 시 forward. 미지정 시 기존 값 유지. */
+      weekStartDate?: string;
       room?: string;
-    }
+      teacherId?: string | null;
+      public_description?: string | null;
+      internal_note?: string | null;
+      /** lane 위치 — modal 편집 등에서 변경 가능. drag 전용 /position 엔드포인트와 별개. */
+      yPosition?: number;
+    },
+    academyId?: string
   ): Promise<Session> {
-    return this.sessionRepository.update(id, sessionData);
+    return this.sessionRepository.update(id, sessionData, academyId);
   }
 
   async updateSessionPosition(
@@ -58,7 +78,7 @@ export class SessionApplicationServiceImpl {
     });
   }
 
-  async deleteSession(id: string): Promise<void> {
-    return this.sessionRepository.delete(id);
+  async deleteSession(id: string, academyId?: string): Promise<void> {
+    return this.sessionRepository.delete(id, academyId);
   }
 }

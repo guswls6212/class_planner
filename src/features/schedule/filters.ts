@@ -16,3 +16,14 @@ export function filterSessionsByStudents(
     })
   );
 }
+
+export function filterSessionsByTeachers(
+  sessions: Session[],
+  selectedTeacherIds: string[]
+): Session[] {
+  if (selectedTeacherIds.length === 0) return sessions;
+  const selectedSet = new Set(selectedTeacherIds);
+  return sessions.filter(
+    (session) => session.teacherId != null && selectedSet.has(session.teacherId)
+  );
+}

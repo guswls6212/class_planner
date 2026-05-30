@@ -2,6 +2,7 @@ import type { SessionRepository } from "@/infrastructure/interfaces";
 import { Session } from "@/shared/types/DomainTypes";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseSessionRepository implements SessionRepository {
   private createServiceRoleClient() {
@@ -40,18 +41,22 @@ export class SupabaseSessionRepository implements SessionRepository {
       weekday: row.weekday,
       startsAt: this.toTimeString(row.starts_at),
       endsAt: this.toTimeString(row.ends_at),
+      weekStartDate: row.week_start_date ?? "",
       room: row.room ?? "",
       yPosition: row.y_position ?? undefined,
+      teacherId: row.teacher_id ?? undefined,
+      public_description: row.public_description ?? null,
+      internal_note: row.internal_note ?? null,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     };
   }
 
-  async getAll(academyId: string): Promise<Session[]> {
+  async getAll(academyId: string, opts?: { weekStartDate?: string }): Promise<Session[]> {
     try {
       const client = this.createServiceRoleClient();
 
-      const { data, error } = await client
+      let q = client
         .from("sessions")
         .select(`
           *,
@@ -60,26 +65,35 @@ export class SupabaseSessionRepository implements SessionRepository {
             enrollments(subject_id)
           )
         `)
-        .eq("academy_id", academyId)
-        .order("created_at");
+        .eq("academy_id", academyId);
+
+      if (opts?.weekStartDate) {
+        q = q.eq("week_start_date", opts.weekStartDate);
+      }
+
+      const { data, error } = await q.order("created_at");
 
       if (error) {
         logger.error("세션 데이터 조회 실패:", undefined, error as Error);
         return [];
       }
 
-      return (data ?? []).map((row: any) => this.rowToSession(row));
+      return mapRowsSafely(
+        data ?? [],
+        (row: any) => this.rowToSession(row),
+        { entity: "세션", idField: "id" }
+      );
     } catch (error) {
       logger.error("세션 데이터 조회 중 오류:", undefined, error as Error);
       return [];
     }
   }
 
-  async getById(id: string): Promise<Session | null> {
+  async getById(id: string, academyId?: string): Promise<Session | null> {
     try {
       const client = this.createServiceRoleClient();
 
-      const { data, error } = await client
+      let query = client
         .from("sessions")
         .select(`
           *,
@@ -88,8 +102,13 @@ export class SupabaseSessionRepository implements SessionRepository {
             enrollments(subject_id)
           )
         `)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
+
+      if (academyId) {
+        query = query.eq("academy_id", academyId);
+      }
+
+      const { data, error } = await query.single();
 
       if (error || !data) {
         return null;
@@ -103,23 +122,35 @@ export class SupabaseSessionRepository implements SessionRepository {
   }
 
   async create(
-    sessionData: Omit<Session, "id" | "createdAt" | "updatedAt">,
+    sessionData: Omit<Session, "id" | "createdAt" | "updatedAt"> & {
+      id?: string;
+    },
     academyId: string
   ): Promise<Session> {
     try {
       const client = this.createServiceRoleClient();
 
-      // 1. sessions 테이블에 INSERT
+      // 1. sessions 테이블에 UPSERT (local-first: client UUID 그대로 사용 + 중복 시 idempotent)
+      // - client가 id를 제공하면 그대로 사용 → PUT /position의 id 매칭 보장
+      // - client id 미제공 시 DB의 default uuid_generate_v4()가 생성
+      // - 같은 id로 재시도(outbox replay 등) 발생 시 onConflict("id")로 idempotent
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        weekday: sessionData.weekday,
+        starts_at: sessionData.startsAt,
+        ends_at: sessionData.endsAt,
+        week_start_date: sessionData.weekStartDate || "",
+        room: sessionData.room ?? "",
+        y_position: sessionData.yPosition ?? 1,
+        teacher_id: sessionData.teacherId ?? null,
+        public_description: sessionData.public_description ?? null,
+        internal_note: sessionData.internal_note ?? null,
+      };
+      if (sessionData.id) insertPayload.id = sessionData.id;
+
       const { data, error } = await client
         .from("sessions")
-        .insert({
-          academy_id: academyId,
-          weekday: sessionData.weekday,
-          starts_at: sessionData.startsAt,
-          ends_at: sessionData.endsAt,
-          room: sessionData.room ?? "",
-          y_position: sessionData.yPosition ?? 1,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 
@@ -157,23 +188,28 @@ export class SupabaseSessionRepository implements SessionRepository {
 
   async update(
     id: string,
-    sessionData: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>
+    sessionData: Partial<Omit<Session, "id" | "createdAt" | "updatedAt">>,
+    academyId?: string
   ): Promise<Session> {
     try {
       const client = this.createServiceRoleClient();
 
       const updates: Record<string, unknown> = {};
       if (sessionData.weekday !== undefined) updates.weekday = sessionData.weekday;
+      // weekStartDate: 다른 주로 세션 이동 시 forward. 미지정이면 컬럼 미변경.
+      if (sessionData.weekStartDate !== undefined) updates.week_start_date = sessionData.weekStartDate;
       if (sessionData.startsAt !== undefined) updates.starts_at = sessionData.startsAt;
       if (sessionData.endsAt !== undefined) updates.ends_at = sessionData.endsAt;
       if (sessionData.room !== undefined) updates.room = sessionData.room;
       if (sessionData.yPosition !== undefined) updates.y_position = sessionData.yPosition;
+      if ("teacherId" in sessionData) updates.teacher_id = (sessionData.teacherId as string | null | undefined) ?? null;
+      if (sessionData.public_description !== undefined) updates.public_description = sessionData.public_description;
+      if (sessionData.internal_note !== undefined) updates.internal_note = sessionData.internal_note;
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await client
-          .from("sessions")
-          .update(updates)
-          .eq("id", id);
+        let q = client.from("sessions").update(updates).eq("id", id);
+        if (academyId) q = q.eq("academy_id", academyId);
+        const { error } = await q;
 
         if (error) {
           logger.error("세션 업데이트 실패:", undefined, error as Error);
@@ -221,15 +257,14 @@ export class SupabaseSessionRepository implements SessionRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, academyId?: string): Promise<void> {
     try {
       const client = this.createServiceRoleClient();
 
       // session_enrollments는 ON DELETE CASCADE로 자동 삭제됨
-      const { error } = await client
-        .from("sessions")
-        .delete()
-        .eq("id", id);
+      let q = client.from("sessions").delete().eq("id", id);
+      if (academyId) q = q.eq("academy_id", academyId);
+      const { error } = await q;
 
       if (error) {
         logger.error("세션 삭제 실패:", undefined, error as Error);

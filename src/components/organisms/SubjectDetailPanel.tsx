@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, ArrowLeft, Users, Calendar } from "lucide-react";
+import { Pencil, Trash2, ArrowLeft, Users, Calendar, Palette } from "lucide-react";
 import type { Subject, Student, Enrollment, Session } from "@/lib/planner";
+import { ColorPicker } from "@/components/molecules/ColorPicker";
+import { DEFAULT_SUBJECT_COLORS } from "@/lib/subjectColors";
+import { IconButton } from "@/components/atoms/IconButton";
 
 interface SubjectDetailPanelProps {
   subject: Subject;
@@ -12,10 +15,13 @@ interface SubjectDetailPanelProps {
   onUpdate: (id: string, name: string, color: string) => Promise<boolean | void>;
   onDelete: (id: string) => void;
   onBack?: () => void;
+  /** When false, edit/delete buttons are hidden (member role). Default: true */
+  canManage?: boolean;
 }
 
 export function SubjectDetailPanel({
   subject, students, enrollments, sessions, onUpdate, onDelete, onBack,
+  canManage = true,
 }: SubjectDetailPanelProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(subject.name);
@@ -41,13 +47,6 @@ export function SubjectDetailPanel({
 
   const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 
-  // Predefined palette colors
-  const COLOR_PALETTE = [
-    "#a78bfa", "#86efac", "#fca5a5", "#fcd34d",
-    "#67e8f9", "#f9a8d4", "#6ee7b7", "#fb923c",
-    "#818cf8", "#34d399",
-  ];
-
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6">
       {/* Header */}
@@ -71,22 +70,20 @@ export function SubjectDetailPanel({
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)] truncate">{subject.name}</h2>
           <p className="text-[11px] text-[var(--color-text-muted)]">{enrolledStudents.length}명 등록</p>
         </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setIsEditing((v) => !v)}
-            className="p-2 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="편집"
-          >
-            <Pencil size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => onDelete(subject.id)}
-            className="p-2 rounded-md text-red-500 hover:bg-[var(--color-overlay-light)] transition-colors"
-            aria-label="삭제"
-          >
-            <Trash2 size={16} strokeWidth={1.5} />
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex gap-1.5">
+            <IconButton aria-label="편집" onClick={() => setIsEditing((v) => !v)}>
+              <Pencil size={16} strokeWidth={1.5} />
+            </IconButton>
+            <IconButton
+              aria-label="삭제"
+              variant="danger"
+              onClick={() => onDelete(subject.id)}
+            >
+              <Trash2 size={16} strokeWidth={1.5} />
+            </IconButton>
+          </div>
+        )}
       </div>
 
       {/* Summary */}
@@ -155,23 +152,16 @@ export function SubjectDetailPanel({
               className="flex-1 border border-[var(--color-border)] rounded-md px-2 py-1 text-sm bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <div>
-            <p className="text-[11px] text-[var(--color-text-muted)] mb-2">색상</p>
-            <div className="flex flex-wrap gap-2">
-              {COLOR_PALETTE.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => setEditColor(color)}
-                  className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ring-offset-1 ${
-                    editColor === color
-                      ? "ring-2 ring-[var(--color-text-primary)]"
-                      : "ring-0"
-                  }`}
-                  style={{ backgroundColor: color }}
-                  aria-label={`색상 ${color}`}
-                />
-              ))}
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] text-[var(--color-text-muted)] flex items-center gap-1">
+              <Palette size={11} strokeWidth={1.5} />
+              색상
+            </label>
+            <ColorPicker
+              value={editColor}
+              onChange={setEditColor}
+              palette={DEFAULT_SUBJECT_COLORS}
+            />
           </div>
           <div className="flex gap-2">
             <button

@@ -224,7 +224,7 @@
 - [x] B-2: Daily/Monthly 뷰에 `data-surface="surface"` 적용 (주간 뷰와 통일)
 - [x] B-3a: `SessionBlock` 내부 리라이트 — SubjectChip을 시각 프리미티브로 사용, 모든 공개 API 계약 보존
 - [x] B-3b: Weekly 그리드 내부 리라이트 — `TimeTableCell` 신설(DropZone 대체), `TimeTableRow` 간소화, `DropZone.tsx` 삭제, `TimeTableGrid` 루트에 `data-surface="surface"` 추가, Q Pastel 그리드 토큰 적용. 20개 공개 API, data-testid, virtual-scrollbar, schedule_scroll_position 계약 보존.
-- [x] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Monthly/Daily/Landing 공유 완성)
+- [x] B-3: `SubjectChip` 기존 뷰(Monthly/Daily) 전면 적용 완성 (Phase 6에서 SubjectChip → SessionCard로 대체하며 완료)
 - [x] B-4: `:root` 레거시 토큰 감사 및 제거 (`@theme` SSOT 단일화)
 
 ### P5-C — /schedule UX Polish ✅
@@ -233,6 +233,24 @@
 - [x] C-3: 그룹수업 학생 필터 로직 (멀티셀렉트, OR 로직, +N 뱃지, useStudentFilter)
 - [x] C-4: 템플릿 affordance (라벨 명확화 + i 버튼 툴팁)
 - [x] C-5: PDF 고급 스코프 (범위 선택 다이얼로그)
+
+---
+
+## Phase 6 — Schedule Body Unification ✅ (2026-04-18)
+> 스펙: `docs/superpowers/specs/2026-04-17-schedule-body-unification-design.md`
+> Weekly/Daily/Monthly/Landing/PDF 5개 surface를 SessionCard primitive로 통일. 3-tone 파스텔 색, D-hybrid 겹침, CSS Grid 세로 시간축.
+
+| 서브페이즈 | PR | 내용 | 상태 |
+|---|---|---|---|
+| A | #77 | `tintFromHex` util + `SessionCard` 4-variant primitive + `SessionOverflowPopover` | ✅ |
+| G | #78 | `HelpTooltip` viewport flip + `AccountMenu` compact anchor | ✅ |
+| B1 | #79 | `SessionBlock` 3-tone 파스텔 (resolveSessionTone, accent 바) | ✅ |
+| B2 | #80 | Weekly 그리드 CSS Grid transpose (rows=시간, cols=요일) | ✅ |
+| B3 | #81 | D-hybrid overlap (≤3 균등, ≥4 cap-2 + overflow pill) | ✅ |
+| D | #82 | `MonthDayCell` → `SessionCard chip` | ✅ |
+| E | #83 | `SchedulePreview` → `SessionCard preview` | ✅ |
+| F | #84 | PDF `lightenColor` → `tintFromHex` 공유 전환 | ✅ |
+| C | #85 | `ScheduleDailyView` → `SessionCard row` | ✅ |
 
 ---
 
@@ -252,6 +270,132 @@
 ### Deferred / 백로그
 - 학원장용 활동 히스토리 (audit_events 테이블) + 개발자 공지 시스템 — 별도 Phase 예정
   (app_logs는 개발자 전용으로 재정의. 학원장이 필요한 것은 멤버 초대/등급 변경 등의 audit log)
+
+## Phase H — 드래그 미리보기 Drop 버그 (재설계)
+
+> **배경:** Phase E (PR #91, pointer-events:none 시도) → Phase F (PR #92, 되돌림) → Phase G (PR #93, hasDragTarget 조건부 none → 같은 회귀 재발) → Phase G revert (hotfix).
+> 교훈: 드래그 소스 요소의 pointer-events를 드래그 도중 변경하면 Chrome이 네이티브 drag를 취소함. 합성 DragEvent로는 재현 불가 — **실측 마우스 드래그 필수**.
+
+### 해결해야 할 현상 (Phase D+F 조합에서도 남는 동작)
+- `computeTentativeLayout`이 드래그 대상 세션을 target 위치로 이동 렌더.
+- 이 미리보기 SessionBlock은 `pointer-events: auto` 유지 중 → drop을 흡수 → 데이터 갱신 실패(no-op).
+- 즉, "미리보기 블록 위에서 release"하면 실제 데이터가 안 바뀜. 옆 cell로 살짝 비켜서 놓으면 정상.
+
+### 후보 접근 — Ghost Div 전략
+**핵심:** 미리보기 렌더를 SessionBlock이 아닌 별도 "ghost" div로 분리.
+1. `computeTentativeLayout`을 되돌려 원본 `sessions` Map을 그대로 전달 (드래그 대상은 목록에 그대로 남음 — opacity 0.4로만 표시).
+2. `TimeTableGrid`에 target 위치 기준 `<div data-testid="drag-ghost" style={{ pointer-events: none, ... }}>` 렌더.
+3. Ghost는 항상 `pointer-events: none` — drop이 밑 cell로 투과.
+4. 드래그 소스 SessionBlock은 `pointer-events` 절대 변경 안 함 (Chrome 드래그 취소 방지).
+
+### 대안 — 완전 포기
+"같은 자리 drop = no-op" UX를 의도된 "취소" 동작으로 수용하고 Phase H를 영구 보류. Phase D 픽스로 다른 cell 이동은 이미 정상.
+
+### 검증 필수 조건 (Phase F 교훈)
+- Playwright 합성 이벤트만으로 통과시키지 말 것. 반드시 아래 중 하나로 확인:
+  1. 실제 마우스 드래그 + Console 로그 파일 캡처 (Phase I 로그 인프라 완성 후)
+  2. `mcp__playwright__browser_drag` (실제 mouse path 시뮬레이션)
+  3. computer-use 실측 (Chrome이 read-tier라 Claude-in-Chrome extension 필요)
+
+### 착수 조건
+- Phase I (로그 인프라) 완료 후 진행. 실측 드래그 로그를 파일로 자동 저장할 수 있어야 회귀 검증 가능.
+
+## Phase J — Schedule UX 전면 개선 ✅
+> 2026-04-26 완료 (PR#96, #97, #98 → dev 머지)
+
+### J-1. ScheduleDateNavigator ✅ (PR#96)
+- [x] `ScheduleDateNavigator` molecule 신설 — 좌우 화살표(lucide ChevronLeft/Right) + 중앙 라벨 + 오늘 버튼
+- [x] 일별 뷰: ‹/› → ±1일, 라벨 = "YYYY년 M월 D일 (요)"
+- [x] 주간 뷰: ‹/› → ±1주(`goToNextWeek`/`goToPrevWeek` 훅 추가), 라벨 = "YYYY년 M월 D일 — M월 D일"
+- [x] 월별 뷰: 기존 인라인 네비 → 공통 컴포넌트로 교체, 라벨 = "YYYY년 M월"
+- [x] 월별 뷰 화살표 크기 확대 (`p-2` + 아이콘)
+
+### J-2. 주간 시간표 헤더 개선 ✅ (PR#97)
+- [x] `TimeTableGrid`에 `baseDate?: Date` prop 추가 (`page.tsx → ScheduleGridSection` 체인)
+- [x] 헤더 Stacked Circle 디자인: 요일명(10px) + 날짜 숫자(22px bold)
+- [x] 오늘 컬럼: amber 원 배지(36px) + 컬럼 배경 amber tint + 현재 시각 선(amber 2px + 좌측 dot)
+- [x] 수평 시간선 overlay: 정시(:00) `rgba(255,255,255,0.09)` / 30분(:30) `rgba(255,255,255,0.04)`
+- [x] headerRowHeight 40 → 60px
+
+### J-3. FAB 전 뷰 공통화 + 모달 재설계 ✅ (PR#98)
+- [x] FAB(`+` 버튼)을 `ScheduleDailyView`에서 `page.tsx`로 이동 → 일별/주간/월별 모두 표시
+- [x] `GroupSessionModal` Glass Stepper 3-step wizard 재설계
+  - Step 1: 학생 선택 (amber chip + 아바타 autocomplete)
+  - Step 2: 과목/강사(2열) + 요일 + 통합 시간 range 입력
+  - Step 3: 확인 카드 (과목 색상 accent 헤더 + 구조화 요약)
+  - Footer: step indicator "N/3" + 이전/다음/수업 추가 버튼
+
+## Phase I — Browser Console Log Capture 인프라
+
+> **배경:** Phase E/G 모두 Playwright 합성 DragEvent로는 통과했으나 실측에서 실패. 사용자가 매번 DevTools 콘솔 복붙 제공해야 디버깅 가능 → Claude가 직접 로그 파일 읽을 수 있어야 반복 회귀 방지.
+
+### 목표
+브라우저에서 발생한 `logger.*` 호출을 프로젝트 로컬 파일(`class-planner/logs/browser-YYYYMMDD.jsonl`)에 자동 수집. Claude가 `Grep` / `tail`로 직접 조회.
+
+### 제안 구성 (MVP)
+1. `src/app/api/dev/log/route.ts` — dev 전용 POST 엔드포인트. `NODE_ENV !== "development"`이면 404. body = `LogRecord[]`, `logs/browser-YYYYMMDD.jsonl`에 append.
+2. `src/lib/logger.ts` — dev 모드에서 메모리 버퍼에 누적, 1초 debounce로 `/api/dev/log`에 fire-and-forget POST (sendBeacon 우선, fallback fetch).
+3. `logs/.gitignore` — 로그 파일 git 제외.
+4. `docs/debugging-guide.md` — "Claude가 실측 드래그 로그 확인하는 법" 절차화.
+
+### 확장 (omni-radar 연동)
+로컬 파일 방식 검증 후 omni-radar HTTP ingest endpoint로 전환 고려. dev-pack CLAUDE.md에 이미 예고된 경로 ("API 레이어에 radar hook 주입, 또는 omni-radar HTTP endpoint로 이벤트 전송"). 전사 관측 인프라 통합이 목적이면 이 경로.
+
+## Phase K — Teacher Invite 리디자인 + 보안 강화 (2026-05)
+
+**PR #152-161 | 완료**
+
+### K-1: Teacher Invite 흐름 재설계 (Plan A)
+- [x] migration 032 (teachers 컬럼 확장), 035 (audit_log), 036 (teachers RLS)
+- [x] PATCH /api/teachers/[id] — M1 field-level guard (name/color는 owner/admin만)
+- [x] GET /api/teachers — invite/share status join (active/invite_pending/invite_expired/share_only/none)
+- [x] Settings 통합 강사 리스트 + TeacherStatusPill (6-state)
+- [x] GET /api/audit-log — 변경 이력
+
+### K-2: Teacher Invite 흐름 + 학부모 접속 코드 (Plan B)
+- [x] migration 037 (invite_tokens.email), 038 (share_tokens.teacher_id + watermark_meta)
+- [x] /invite/[token] 4-state 재구성 (A:비로그인 B:수락 C:이메일불일치 D:이미멤버)
+- [x] POST /api/invites/accept — 이메일 매칭 검증 (403 email_mismatch)
+- [x] POST /api/share-tokens/from-invite — "링크만 받기" 엔드포인트
+- [x] TeacherAddModal Smart CTA (이메일 유무에 따른 버튼 adaptive)
+- [x] InviteModal defaultTeacherId pre-selection
+
+### K-3: 권한 강화 + 세션 노트 (Plan C)
+- [x] migration 039 (sessions.public_description + internal_note)
+- [x] sessions API — public_description owner/admin only, internal_note all staff
+- [x] PATCH /api/members/[userId] — 역할 변경 (owner only, 403 for admin)
+
+### K-4: 학부모 접속 코드 시스템
+- [x] migration 040 (share_tokens.access_code)
+- [x] POST /api/share/code — 코드 검증 → share token 반환
+- [x] /academy/[identifier] — 공개 코드 입력 페이지
+- [x] POST /api/share-tokens/access-codes — 일괄 생성/갱신
+- [x] Settings "학부모 접속 코드" 섹션 (생성/복사/만료 관리)
+
+### K-5: Member RBAC UX 정비
+- [x] useMyRole 초기값 canManage: false (Flash of Unauthorized UI 제거)
+- [x] Sidebar nav 필터링 — member는 시간표+설정만
+- [x] middleware route guard — /students /subjects /teachers → member redirect
+- [x] ScheduleActionBar share 버튼 member 숨김
+- [x] Settings 팀 멤버 이메일 비공개 (member에게)
+
+### K-6: UX 개선 — 링크 자동복사 + 드래그 핸들
+- [x] InviteModal: 강사 행에서 열 때 defaultTeacherId pre-select
+- [x] 링크 생성 후 즉시 클립보드 자동 복사 + 모달 닫힘
+- [x] Dead-end ⋯ 메뉴 항목 disabled 처리
+- [x] EditSessionModal weekday controlled input 버그 수정
+- [x] SessionForm room 필드 제거 (DB 미연결 필드)
+
+### K-7: Academy Slug + Multi-academy
+- [x] migration 041 (academies.slug UNIQUE)
+- [x] /academy/[identifier] — UUID/slug 모두 지원, UUID → slug 301 redirect
+- [x] GET /api/academies/check-slug, PATCH /api/academies/slug
+- [x] Settings slug 편집기 (실시간 중복 확인 + 변경 영향 경고)
+- [x] localStorage per-academy scope: classPlannerData:{userId}:{academyId}
+- [x] Academy Switcher — 사이드바 상단 로고 클릭 → 드롭다운 전환
+- [x] GET /api/academies/mine, POST /api/auth/set-active-academy
+
+---
 
 ## 변경 이력
 | 날짜 | 내용 |
@@ -279,5 +423,19 @@
 | 2026-04-17 | P5-D 완료 — 데이터 충돌 false positive 수정(PR#64), Pretendard 폰트 + PDF 뷰 라벨(PR#65) |
 | 2026-04-17 | P5-A 완료 — AccountMenu + TopBar/Sidebar 탑재(PR#67), ScheduleActionBar(PR#66), HelpDrawer + HelpTooltip(PR#68) |
 | 2026-04-17 | P5-B 완료(B-4) — :root 레거시 토큰 감사: 5개 grid-* 삭제, --color-danger-dark + --color-success-dark 정의, --color-warning 삭제 |
+| 2026-04-18 | Phase 6 완료 — SessionCard 4-variant + tintFromHex + D-hybrid overlap + Weekly CSS Grid transpose + Daily/Monthly/Landing/PDF 통일 (PR#77~#85 → dev 머지) |
 | 2026-04-17 | P5-C C-5 완료 — PDF 범위 선택 다이얼로그(PdfExportRangeModal), PdfRenderer multi-week, dateUtils 신설 |
-| 2026-04-17 | P5-B 종결 — B-3 체크, MonthDayCell/ScheduleDailyView 로컬 getSessionSubject 제거 → canonical util 사용 |
+| 2026-04-24 | 드래그 UX Phase D/F 완료 · Phase E(#91)/G(#93) revert (hotfix). Phase H(ghost-div 재설계) + Phase I(브라우저 로그 캡처) 백로그 등록 |
+| 2026-04-26 | Phase J: Schedule UX 전면 개선 — PR#96 ScheduleDateNavigator(일별/주간/월별 ‹›오늘), PR#97 주간 헤더 Stacked Circle+날짜+now-line+수평 시간선, PR#98 FAB 전 뷰 공통화+GroupSessionModal 3-step Glass Stepper 재설계 |
+| 2026-05-02 | Phase K: Teacher Invite 리디자인 + 보안 강화 — PR#152-161. migrations 032-041, TeacherStatusPill, TeacherAddModal, InviteModal pre-select, Member RBAC UX, Academy Slug + Multi-academy, 학부모 접속 코드 시스템 |
+| 2026-05-08 | UAT 사고 fix Phase 1·2 — PR #286-#290. sessions migration safety net, dedup graceful matching, upload-local toast 표면화, StudentAddDetailModal/TeacherAddDetailModal, 빈 메타 hint chip |
+| 2026-05-10 | UAT 사고 일괄 fix + 정책-스키마 일관성 — PR #338-#340, ADR-014. migration 043(teachers_unique_name 제거), 토스트 중복 차단, GradeBadge, serializeCause, SubjectAddDetailModal |
+| 2026-05-11 | 입력 검증 정책 (4-layer SSOT) — `lib/validation/profileSchemas.ts` (학생/강사 6 / 과목 12 / 학원 30), 4-Phase 진행 (PR #326부터). 디자인 시스템 atomic — chip atomic, 모달 헤더 variant C, 학생 picker variant D, 글로벌 Glassmorphic scrollbar (PR #347) |
+| 2026-05-12 | Phase L Notification History — PR #372. `notificationCenter` SSOT, `useNotificationCenter`, `NotificationBell`/`NotificationDropdown`/`NotificationItem`, Sidebar academy 영역 inline + TopBar compact, InfoTrigger 동심원 fix. EditSessionModal 재설계 — PR #375-#377. 헤더 chip + V1-disabled validation + V3 month calendar + body chip 1줄. design-explorations production guard (PR #374) |
+| 2026-05-13 | drag-drop lane stack + Variant E lane insert — PR #387-#390. `LaneInsertSlot`, `useDragController` mode-aware lane-highlight, 3 시각 피드백 SSOT, anchor stack 회귀 가드. EditSessionModal 다른 주 이동 (PR #378, paradigm 영구화). 모달 stale studentId reconcile — PR #385/#386 `sanitizeStudentIds`/`sanitizeTempEnrollments` |
+| 2026-05-14 | Phase F perf — PR #379-#383. `MemberContext` Context dedup (useMyRole/useMyTeacher 공유), `useIntegratedDataLocal` server fetch 제거, repository `mapRowsSafely` row-level skip, `useDisplaySessions` warn 폭주 차단, migration 044(sessions_enrollment_ids drop) |
+| 2026-05-15 | Row-level overflow expand + chip 일괄 — PR #392 + #399. `sessionClusters.ts`, `TimeTableRow` +N/− chip. group-shift bulk move 회귀 가드 — PR #397 (ADR-017 v2 Option D 폐기) |
+| 2026-05-17 | API session yPosition persist — PR #394. /api/sessions POST/PUT yPosition 누락 fix, SessionApplicationService 전면 검증. E2E multi-academy 안정화 — PR #400/#401. auth-mock pre-seed academyId, seedSecondAcademy 멱등성 |
+| 2026-05-18 | 수업 추가 모달 V3 chip+popover — PR #396. GroupSessionModal 요일/날짜 + 시간 chip+popover (EditSessionModal V3 미러), weekStartDate prop. Hotfix E2E global-setup graceful — PR #395 |
+| 2026-05-19 | Test harness — flaky 8 원칙 가드 자동화 — PR #403-#410. `no-floating-promises` warn, setupTests `afterEach(clearAllMocks)`, E2E waitForTimeout → 조건 기반 wait (P0), `docs/test-authoring-guide.md` + PreToolUse hook (auto-inject), modal-transition spec (P2 회귀 가드). flaky root cause fix — PR #410 `gotoAuthenticated` helper (1주일 share-link/teachers-crud/templates 산발적 fail 해소). ADR-018 + supabase-usage-tracking future-work doc |
+| 2026-05-20 | ADR-019 first-user owner-강제 + Academy Singularity — PR #413. `/onboarding/page.tsx` 역할 라디오 3개 제거 (Variant E) → amber Crown 안내 + "원장으로 학원 만들기" + secondary "초대 받았어요" link. `/api/onboarding` body.role 무시 + hardcoded owner. Sidebar "+ 새 학원" tooltip "본인 학원 1개 제한". 정책 영구화: owner 1 + invited 1 = 최대 2학원, 학원 추가 기능 deferred. design-explorations/onboarding-role 5 variants 영구 보존. UAT S-1.5 갱신 + S-1.5b 신설 (escape hatch). 회귀 가드: onboarding/__tests__/page.test.tsx (8 case) + route.test.ts +3 |

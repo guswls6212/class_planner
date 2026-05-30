@@ -32,7 +32,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-2", name: "이영희" },
       ]);
@@ -48,7 +48,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-3", name: "박민수" },
       ]);
@@ -68,7 +68,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(3);
-      expect(result).toEqual([
+      expect(result).toMatchObject([
         { id: "student-1", name: "김철수" },
         { id: "student-2", name: "이영희" },
         { id: "student-3", name: "박민수" },
@@ -105,7 +105,7 @@ describe("scheduleSelectors", () => {
       );
 
       expect(result).toHaveLength(1);
-      expect(result).toEqual([{ id: "student-1", name: "김철수" }]);
+      expect(result).toMatchObject([{ id: "student-1", name: "김철수" }]);
     });
 
     it("tempEnrollments의 id가 빈 문자열이어서는 안 된다 - 핵심 테스트", () => {
@@ -139,7 +139,7 @@ describe("scheduleSelectors", () => {
       );
 
       // 올바른 id로는 매칭되어야 함
-      expect(result).toEqual([{ id: "student-3", name: "박민수" }]);
+      expect(result).toMatchObject([{ id: "student-3", name: "박민수" }]);
     });
 
     it("학생을 찾을 수 없는 enrollment는 null로 처리되어야 한다", () => {
@@ -169,10 +169,12 @@ describe("scheduleSelectors", () => {
         "이",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
-      expect(result).toEqual([{ id: "student-2", name: "이영희" }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-2", name: "이영희" });
     });
 
     it("대소문자 구분 없이 매칭되어야 한다", () => {
@@ -180,10 +182,12 @@ describe("scheduleSelectors", () => {
         "박",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
-      expect(result).toEqual([{ id: "student-3", name: "박민수" }]);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-3", name: "박민수" });
     });
 
     it("빈 쿼리일 때 이미 추가되지 않은 학생들만 반환해야 한다", () => {
@@ -191,14 +195,13 @@ describe("scheduleSelectors", () => {
         "",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
       // 김철수(student-1)는 이미 추가되어 있으므로 제외
-      expect(result).toEqual([
-        { id: "student-2", name: "이영희" },
-        { id: "student-3", name: "박민수" },
-      ]);
+      expect(result).toHaveLength(2);
+      expect(result.map((s) => s.id)).toEqual(["student-2", "student-3"]);
     });
 
     it("매칭되는 학생이 없을 때 빈 배열을 반환해야 한다", () => {
@@ -206,9 +209,40 @@ describe("scheduleSelectors", () => {
         "존재하지않는학생",
         mockEditModalData,
         mockEnrollments,
+        [],
         mockStudents
       );
 
+      expect(result).toEqual([]);
+    });
+
+    // tempEnrollments(이번 모달 세션에서 신규 추가한 enrollment)에 있는 학생도
+    // dropdown에서 제외되어야 함 — buildSelectedStudents와 비대칭으로 인한 버그 가드.
+    it("tempEnrollments에 있는 학생도 dropdown에서 제외되어야 한다", () => {
+      const result = filterEditableStudents(
+        "",
+        mockEditModalDataWithTemp,
+        mockEnrollments,
+        mockTempEnrollments,
+        mockStudents
+      );
+
+      // 김철수(student-1, enrollments), 박민수(student-3, tempEnrollments) 둘 다 추가됨
+      // → 이영희(student-2)만 dropdown에 남아야 함
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "student-2", name: "이영희" });
+    });
+
+    it("tempEnrollments에 있는 학생을 쿼리로 검색해도 제외되어야 한다", () => {
+      const result = filterEditableStudents(
+        "박",
+        mockEditModalDataWithTemp,
+        mockEnrollments,
+        mockTempEnrollments,
+        mockStudents
+      );
+
+      // 박민수는 tempEnrollments에 있으므로 검색 결과에서도 제외
       expect(result).toEqual([]);
     });
   });
@@ -220,6 +254,18 @@ const mockEditModalData = {
   startsAt: "09:00",
   endsAt: "10:00",
   weekday: 0,
+  weekStartDate: "",
   room: "A101",
   enrollmentIds: ["enrollment-1"],
+};
+
+// enrollments(영구) + tempEnrollments(임시) 모두 참조하는 케이스용 mock
+const mockEditModalDataWithTemp = {
+  id: "session-2",
+  startsAt: "09:00",
+  endsAt: "10:00",
+  weekday: 0,
+  weekStartDate: "",
+  room: "A101",
+  enrollmentIds: ["enrollment-1", "temp-enrollment-1"],
 };

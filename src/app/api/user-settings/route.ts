@@ -1,5 +1,7 @@
 import { logger } from "@/lib/logger";
 import { getKSTTimestampForDB } from "@/lib/timeUtils";
+import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateUserSettingsInput } from "@/lib/validation/profileSchemas";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -135,6 +137,14 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const { theme, language, timezone, notifications, privacy_settings } = body;
+
+    // Phase 6: server-side validation — theme/language enum + IANA timezone
+    try {
+      const v = validateUserSettingsInput({ theme, language, timezone });
+      if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    } catch (e) {
+      return toErrorResponse(e);
+    }
 
     // Service Role 클라이언트로 직접 데이터 업데이트 (upsert 대신 update 사용)
     const { data, error } = await serviceRoleClient

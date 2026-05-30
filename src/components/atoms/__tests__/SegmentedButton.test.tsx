@@ -46,4 +46,24 @@ describe("SegmentedButton", () => {
     );
     expect(screen.getByRole("group", { name: "뷰 모드" })).toBeInTheDocument();
   });
+
+  it("mobileLabel이 있으면 desktop/mobile 두 span 모두 렌더 (CSS로 분기)", () => {
+    const OPTS = [
+      { label: "일별", mobileLabel: "일", value: "daily" },
+      { label: "주간", mobileLabel: "주", value: "weekly" },
+    ] as const;
+    render(<SegmentedButton options={OPTS} value="daily" onChange={vi.fn()} />);
+    // desktop 라벨 (sm: 이상에서만 visible)
+    const desktopLabel = screen.getByText("일별");
+    expect(desktopLabel.className).toContain("hidden sm:inline");
+    // mobile 라벨 (sm: 미만에서만 visible)
+    const mobileLabel = screen.getByText("일");
+    expect(mobileLabel.className).toContain("sm:hidden");
+  });
+
+  it("mobileLabel 없으면 단일 label만 렌더", () => {
+    render(<SegmentedButton options={OPTIONS} value="daily" onChange={vi.fn()} />);
+    const dailyBtn = screen.getByText("일별").closest("button")!;
+    expect(dailyBtn.querySelectorAll("span")).toHaveLength(0);
+  });
 });

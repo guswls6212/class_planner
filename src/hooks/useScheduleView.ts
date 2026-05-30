@@ -12,6 +12,8 @@ interface UseScheduleViewReturn {
   selectedWeekday: number; // 0=Mon, 1=Tue, ... 6=Sun
   goToNextDay: () => void;
   goToPrevDay: () => void;
+  goToNextWeek: () => void;
+  goToPrevWeek: () => void;
   goToToday: () => void;
   setSelectedDate: (date: Date) => void;
   goToNextMonth: () => void;
@@ -50,6 +52,22 @@ export function useScheduleView(): UseScheduleViewReturn {
     setSelectedDate(new Date());
   }, []);
 
+  const goToNextWeek = useCallback(() => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 7);
+      return next;
+    });
+  }, []);
+
+  const goToPrevWeek = useCallback(() => {
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() - 7);
+      return next;
+    });
+  }, []);
+
   const goToNextMonth = useCallback(() => {
     setSelectedDate((prev) => {
       const next = new Date(prev);
@@ -77,6 +95,8 @@ export function useScheduleView(): UseScheduleViewReturn {
     selectedWeekday,
     goToNextDay,
     goToPrevDay,
+    goToNextWeek,
+    goToPrevWeek,
     goToToday,
     setSelectedDate,
     goToNextMonth,

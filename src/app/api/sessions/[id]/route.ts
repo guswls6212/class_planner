@@ -1,4 +1,6 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
+import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
@@ -24,7 +26,18 @@ export async function GET(
       );
     }
 
-    const session = await getSessionService().getSessionById(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const academyId = await resolveAcademyId(userId);
+    const session = await getSessionService().getSessionById(id, academyId);
 
     if (!session) {
       return NextResponse.json(
@@ -53,15 +66,41 @@ export async function PUT(
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
-    const { enrollmentIds, subjectId, weekday, startTime, endTime, room } = body;
+    const {
+      enrollmentIds,
+      subjectId,
+      weekday,
+      weekStartDate,
+      startTime,
+      endTime,
+      startsAt: startsAtBody,
+      endsAt: endsAtBody,
+      room,
+      teacherId,
+      public_description,
+      internal_note,
+    } = body;
+    const resolvedStart = startTime ?? startsAtBody;
+    const resolvedEnd = endTime ?? endsAtBody;
 
     if (
       !enrollmentIds ||
+      !Array.isArray(enrollmentIds) ||
       !subjectId ||
       weekday === undefined ||
-      !startTime ||
-      !endTime
+      !resolvedStart ||
+      !resolvedEnd
     ) {
       return NextResponse.json(
         { success: false, error: "Required fields are missing" },
@@ -69,14 +108,36 @@ export async function PUT(
       );
     }
 
+    // 빈 배열 거부 — session_enrollments 전부 DELETE만 일어나서 dangling이 되는
+    // 경로 차단 (2026-05-12 테스트학원 사고).
+    if (enrollmentIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "enrollmentIds must be non-empty" },
+        { status: 400 }
+      );
+    }
+
+    // 세션 메타 편집은 owner/admin 만 (permissions.ts § member: sessions read-only).
+    // member(강사)는 출결만 /api/attendance 로 가능 (assertAttendancePermission 본인 수업 강제).
+    // teacher-schedule 은 read-only — member 의 정당한 PUT 경로 없음.
+    // (이전: member 허용 + public_description 만 차단 → subject/time/teacher 재배정 우회 가능했던 gap 마감)
+    // requireRole verifies academy membership; academyId is threaded to the service
+    // so the repository scopes the UPDATE to the correct academy_id row.
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+
     const updatedSession = await getSessionService().updateSession(id, {
       enrollmentIds,
       subjectId,
       weekday,
-      startsAt: startTime,
-      endsAt: endTime,
+      startsAt: resolvedStart,
+      endsAt: resolvedEnd,
       room,
-    });
+      // weekStartDate: 다른 주로 이동 시 forward. 미지정 시 기존 값 유지.
+      ...(weekStartDate !== undefined && { weekStartDate }),
+      ...(teacherId !== undefined && { teacherId: teacherId ?? null }),
+      ...(public_description !== undefined && { public_description }),
+      ...(internal_note !== undefined && { internal_note }),
+    }, academyId);
 
     return NextResponse.json({
       success: true,
@@ -102,7 +163,20 @@ export async function DELETE(
       );
     }
 
-    await getSessionService().deleteSession(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // requireRole verifies academy membership; academyId is threaded to the service
+    // so the repository scopes the DELETE to the correct academy_id row.
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
+    await getSessionService().deleteSession(id, academyId);
     return NextResponse.json({
       success: true,
       message: "Session deleted successfully",
@@ -111,4 +185,3 @@ export async function DELETE(
     return toErrorResponse(error);
   }
 }
-

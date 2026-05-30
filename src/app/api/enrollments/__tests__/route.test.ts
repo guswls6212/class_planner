@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors/AppError";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST } from "../route";
@@ -8,6 +9,17 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
 vi.mock("@/lib/resolveAcademyId", () => ({
   resolveAcademyId: vi.fn().mockResolvedValue("test-academy-id"),
+}));
+
+const mockRequireRole = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ academyId: "test-academy-id", role: "owner" })
+);
+
+vi.mock("@/lib/auth/permissions", () => ({
+  requireRole: mockRequireRole,
+  requireOwnTeacher: vi.fn().mockResolvedValue("test-teacher-id"),
+  pickAllowedFields: (body: Record<string, unknown>, fields: string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
 }));
 
 vi.mock("@/application/services/ServiceFactory", () => ({
@@ -29,6 +41,7 @@ vi.mock("@/application/services/ServiceFactory", () => ({
 describe("/api/enrollments API Routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireRole.mockResolvedValue({ academyId: "test-academy-id", role: "owner" });
   });
 
   describe("GET /api/enrollments", () => {
@@ -59,7 +72,9 @@ describe("/api/enrollments API Routes", () => {
   });
 
   describe("POST /api/enrollments", () => {
-    it("올바른 응답 구조를 반환해야 한다", async () => {
+    // status 200: idempotent — repo가 새로 만들었든 (student_id, subject_id) 충돌로
+    // 기존 row를 반환했든 동일 응답. 클라이언트는 data.id로 localStorage reconcile.
+    it("올바른 응답 구조를 반환해야 한다 (idempotent 200)", async () => {
       const request = new NextRequest(
         "http://localhost:3000/api/enrollments?userId=test-user",
         {
@@ -75,9 +90,31 @@ describe("/api/enrollments API Routes", () => {
       const response = await POST(request);
       const data = await response.json();
 
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(200);
       expect(data).toHaveProperty("success", true);
       expect(data).toHaveProperty("data");
+      expect(data.data).toHaveProperty("id");
+    });
+
+    it("member role은 POST에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/enrollments?userId=member-user",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            studentId: "test-student-id",
+            subjectId: "test-subject-id",
+          }),
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const response = await POST(request);
+      expect(response.status).toBe(403);
     });
 
     it("studentId가 없으면 400 에러를 반환해야 한다", async () => {
@@ -153,6 +190,20 @@ describe("/api/enrollments API Routes", () => {
       expect(response.status).toBe(200);
       expect(data).toHaveProperty("success", true);
       expect(data).toHaveProperty("message");
+    });
+
+    it("member role은 DELETE에 403을 반환해야 한다", async () => {
+      mockRequireRole.mockRejectedValueOnce(
+        new AppError("FORBIDDEN", { statusHint: 403 })
+      );
+
+      const request = new NextRequest(
+        "http://localhost:3000/api/enrollments?id=enrollment-1&userId=member-user",
+        { method: "DELETE" }
+      );
+
+      const response = await DELETE(request);
+      expect(response.status).toBe(403);
     });
 
     it("id가 없으면 400 에러를 반환해야 한다", async () => {

@@ -17,6 +17,7 @@ mockSessions.set(0, [
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
     yPosition: 1,
   },
 ]);
@@ -105,10 +106,12 @@ describe("TimeTableGrid", () => {
     render(<TimeTableGrid {...defaultProps} />);
 
     // 9:00부터 24:00까지 30분 단위로 시간 슬롯이 있는지 확인
-    expect(screen.getByText("09:00")).toBeInTheDocument();
-    expect(screen.getByText("09:30")).toBeInTheDocument();
-    expect(screen.getByText("10:00")).toBeInTheDocument();
-    expect(screen.getByText("23:30")).toBeInTheDocument();
+    // 현재 시각 indicator가 시간 슬롯에 동일 텍스트로 추가 렌더 가능 (KST 23:30대 등) →
+    // getAllByText로 1개 이상이면 통과 (시간 의존 fragile 회피)
+    expect(screen.getAllByText("09:00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("09:30").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("10:00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("23:30").length).toBeGreaterThan(0);
   });
 
   it("요일 라벨이 올바르게 표시된다", () => {
@@ -131,12 +134,44 @@ describe("TimeTableGrid", () => {
     }
   });
 
+  it("isReadOnly + allowReadOnlySessionClick: 세션 클릭 시 onSessionClick 호출 (출결 진입)", () => {
+    const onSessionClick = vi.fn();
+    render(
+      <TimeTableGrid
+        {...defaultProps}
+        onSessionClick={onSessionClick}
+        isReadOnly
+        allowReadOnlySessionClick
+      />
+    );
+    const els = screen.queryAllByText("수학");
+    expect(els.length).toBeGreaterThan(0);
+    fireEvent.click(els[0]);
+    expect(onSessionClick).toHaveBeenCalled();
+  });
+
+  it("isReadOnly (allow 없음): 세션 클릭이 no-op — onSessionClick 미호출", () => {
+    const onSessionClick = vi.fn();
+    render(
+      <TimeTableGrid
+        {...defaultProps}
+        onSessionClick={onSessionClick}
+        isReadOnly
+      />
+    );
+    const els = screen.queryAllByText("수학");
+    if (els.length > 0) {
+      fireEvent.click(els[0]);
+    }
+    expect(onSessionClick).not.toHaveBeenCalled();
+  });
+
   it("그리드 스타일이 올바르게 적용된다", () => {
     const { container } = render(<TimeTableGrid {...defaultProps} />);
 
-    // The outermost element has data-testid="time-table-grid" and data-surface="surface"
+    // The outermost element has data-testid="time-table-grid" (admin views use dark theme, no data-surface)
     const rootElement = screen.getByTestId("time-table-grid");
-    expect(rootElement.getAttribute("data-surface")).toBe("surface");
+    expect(rootElement).toBeTruthy();
 
     // The inner scrollable grid div carries the grid-specific Tailwind classes
     const innerGrid = container.querySelector(".time-table-grid") as HTMLElement;
@@ -163,5 +198,24 @@ describe("TimeTableGrid", () => {
     expect(scrollbarThumb?.className).toContain("virtual-scrollbar-thumb");
     // Dynamic positioning is still inline
     expect(scrollbarThumb).toHaveStyle({ left: "0px" });
+  });
+
+  it("baseDate 제공 시 헤더에 날짜 숫자가 표시된다", () => {
+    // 2026-04-20 (월요일) 기준
+    const baseDate = new Date("2026-04-20T12:00:00");
+    render(<TimeTableGrid {...defaultProps} baseDate={baseDate} />);
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("26")).toBeInTheDocument();
+  });
+
+  it("오늘 날짜의 헤더 숫자는 둥근 배지로 렌더된다", () => {
+    const today = new Date();
+    const monday = new Date(today);
+    const dow = (monday.getDay() + 6) % 7;
+    monday.setDate(monday.getDate() - dow);
+    render(<TimeTableGrid {...defaultProps} baseDate={monday} />);
+    const todayNum = today.getDate().toString();
+    const badge = screen.getByText(todayNum);
+    expect(badge).toHaveClass("rounded-full");
   });
 });

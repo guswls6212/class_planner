@@ -1,10 +1,37 @@
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 // import { logger } from "../../../lib/logger";
 import { describe, expect, it, vi } from "vitest";
+import type { Session } from "../../../lib/planner";
 import SessionBlock, {
   shouldShowSubjectName,
   validateSessionBlockProps,
 } from "../SessionBlock";
+
+// useSessionStatus returns time-based values; mock to "upcoming" to make
+// tests deterministic regardless of the day/time tests run.
+vi.mock("../../../hooks/useSessionStatus", () => ({
+  useSessionStatus: () => "upcoming",
+}));
+
+// Mock @dnd-kit/core so useDraggable works outside a real DndContext
+vi.mock("@dnd-kit/core", () => ({
+  useDraggable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: () => {},
+  }),
+  DndContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PointerSensor: class {},
+  TouchSensor: class {},
+  MouseSensor: class {},
+  KeyboardSensor: class {},
+  useSensor: () => ({}),
+  useSensors: (...args: unknown[]) => args,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  closestCenter: () => null,
+  closestCorners: () => null,
+}));
 
 // Mock console.log to avoid noise in tests
 const originalConsoleLog = console.log;
@@ -30,6 +57,7 @@ describe("SessionBlock Component", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
     room: "A101",
   };
 
@@ -206,14 +234,28 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toBeInTheDocument();
   });
 
-  it("기본 border 스타일이 올바르게 적용되어야 한다", () => {
+  it("기본 상태에서 좌측 accent 바는 subtle stripe(rgba 0.2)이어야 한다", () => {
     render(<SessionBlock {...defaultProps} />);
 
-    // border style is on the inner button, not the outer wrapper div
     const button = screen.getByRole("button");
-    expect(button).toHaveStyle(
-      "border: 1px solid rgba(255, 255, 255, 0.2)"
-    );
+    // 기본 상태: in-progress/conflict 아님이지만 유효한 6자리 hex tone.bg → subtle accent stripe 표시
+    expect(button.style.borderLeft).toBe("3px solid rgba(0, 0, 0, 0.2)");
+  });
+
+  it("파스텔 tone이 버튼 배경에 적용되어야 한다 (#FF0000 → tintFromHex 0.8)", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const button = screen.getByRole("button");
+    // #FF0000 → resolveSessionTone → tone.bg = tintFromHex(#FF0000, 0.8) → pastel pink
+    // buttonBg applies linear-gradient over tone.bg, so background contains "linear-gradient"
+    expect(button.style.background).toMatch(/^linear-gradient\(180deg,/);
+  });
+
+  it("유효한 6자리 hex 과목 색상일 때 버튼 background가 linear-gradient이어야 한다", () => {
+    render(<SessionBlock {...defaultProps} />);
+
+    const button = screen.getByRole("button");
+    expect(button.style.background).toContain("linear-gradient");
   });
 
   it("드래그 중이 아닐 때 opacity는 1.0이어야 한다", () => {
@@ -224,7 +266,7 @@ describe("SessionBlock Component", () => {
     expect(button).toHaveStyle({ opacity: "1" });
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 0.3이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션이 아닐 때 opacity는 1이어야 한다", () => {
     render(
       <SessionBlock
         {...defaultProps}
@@ -236,10 +278,10 @@ describe("SessionBlock Component", () => {
 
     // opacity is on the inner button element
     const button = screen.getByRole("button");
-    expect(button).toHaveStyle({ opacity: "0.3" });
+    expect(button).toHaveStyle({ opacity: "1" });
   });
 
-  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0이어야 한다", () => {
+  it("isAnyDragging이 true이고 드래그된 세션일 때 opacity는 0.4이고 visible이어야 한다", () => {
     render(
       <SessionBlock
         {...defaultProps}
@@ -249,11 +291,9 @@ describe("SessionBlock Component", () => {
       />
     );
 
-    // opacity and visibility are on the inner button element
-    // use hidden: true because visibility:hidden removes it from the accessibility tree
-    const button = screen.getByRole("button", { hidden: true });
-    expect(button).toHaveStyle({ opacity: "0" });
-    expect(button).toHaveStyle({ visibility: "hidden" });
+    const button = screen.getByRole("button");
+    expect(button).toHaveStyle({ opacity: "0.4" });
+    expect(button).toHaveStyle({ visibility: "visible" });
   });
 
   // 엣지 케이스 테스트
@@ -571,31 +611,21 @@ describe("SessionBlock Component", () => {
     expect(sessionBlock).toHaveTextContent("외 1명");
   });
 
-  it("onDragStart가 드래그 시작 시 호출되어야 한다", () => {
-    const onDragStart = vi.fn();
-    render(
-      <SessionBlock {...defaultProps} onDragStart={onDragStart} isReadOnly={false} />
-    );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragStart(block);
-    expect(onDragStart).toHaveBeenCalledTimes(1);
+  it("drag handle이 렌더되고 포인터 이벤트를 받을 수 있다", () => {
+    render(<SessionBlock {...defaultProps} isReadOnly={false} />);
+    const handle = screen.getByTestId("session-drag-handle");
+    expect(handle).toBeInTheDocument();
+    // dnd-kit useDraggable uses pointer events — no HTML5 draggable attribute
+    expect(handle).not.toHaveAttribute("draggable", "true");
   });
 
-  it("onDragEnd가 드래그 종료 시 호출되어야 한다", () => {
-    const onDragEnd = vi.fn();
-    render(
-      <SessionBlock {...defaultProps} onDragEnd={onDragEnd} isReadOnly={false} />
-    );
-    const block = screen.getByTestId(`session-block-${mockSession.id}`);
-    fireEvent.dragEnd(block);
-    expect(onDragEnd).toHaveBeenCalledTimes(1);
-  });
-
-  it("hasConflict=true 일 때 충돌 표시가 렌더되어야 한다", () => {
+  it("hasConflict=true 일 때 빨간 borderLeft + ⚠ 아이콘이 렌더되어야 한다", () => {
     render(<SessionBlock {...defaultProps} hasConflict={true} />);
-    // The red border class is applied to the inner button element
     const button = screen.getByRole("button");
-    expect(button.className).toContain("border-l");
+    // 충돌: 좌측 3px 빨강 accent 바 (inline style) — jsdom이 hex를 rgb로 정규화
+    expect(button.style.borderLeft).toBe("3px solid rgb(239, 68, 68)");
+    // ⚠ 경고 아이콘
+    expect(screen.getByLabelText("시간 충돌")).toBeInTheDocument();
   });
 
   it("isReadOnly=true 일 때 onClick이 호출되지 않아야 한다", () => {
@@ -616,6 +646,7 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
     weekday: 0,
     startsAt: "09:00",
     endsAt: "10:00",
+    weekStartDate: "",
   };
   const contextMenuSubjects = [
     { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
@@ -699,6 +730,300 @@ describe("컨텍스트 메뉴 — onDelete prop", () => {
   });
 });
 
+describe("student mode + no chip selected → subject mode fallback", () => {
+  const mockSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: [
+      "550e8400-e29b-41d4-a716-446655440301",
+      "550e8400-e29b-41d4-a716-446655440302",
+    ],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+  const mockSubjects = [
+    { id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#FF0000" },
+  ];
+  const mockEnrollments = [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440301",
+      studentId: "550e8400-e29b-41d4-a716-446655440001",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440302",
+      studentId: "550e8400-e29b-41d4-a716-446655440002",
+      subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    },
+  ];
+  const mockStudents = [
+    { id: "550e8400-e29b-41d4-a716-446655440001", name: "김철수" },
+    { id: "550e8400-e29b-41d4-a716-446655440002", name: "이영희" },
+  ];
+
+  const baseProps = {
+    session: mockSession,
+    subjects: mockSubjects,
+    enrollments: mockEnrollments,
+    students: mockStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+  };
+
+  it("colorBy='student' + selectedStudentIds=[] → primaryLabel은 과목명, secondaryLabel은 학생 이름들", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={[]}
+      />
+    );
+    // primaryLabel should be subject name (not student name)
+    expect(screen.getByText("수학")).toBeInTheDocument();
+    // secondaryLabel should include student names
+    expect(screen.getByText(/김철수/)).toBeInTheDocument();
+    expect(screen.getByText(/이영희/)).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + selectedStudentIds=undefined → subject mode 동일 동작", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={undefined}
+      />
+    );
+    expect(screen.getByText("수학")).toBeInTheDocument();
+  });
+
+  it("colorBy='student' + chip 선택됨 → primaryLabel은 학생명", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        colorBy="student"
+        selectedStudentIds={["550e8400-e29b-41d4-a716-446655440001"]}
+      />
+    );
+    // In student mode with chip selected, primaryLabel = first student name
+    expect(screen.getByText("김철수")).toBeInTheDocument();
+  });
+});
+
+describe("student mode dim/glow on session blocks", () => {
+  const glowSession = {
+    id: "550e8400-e29b-41d4-a716-446655440201",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440301"],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+  const otherSession = {
+    id: "550e8400-e29b-41d4-a716-446655440202",
+    enrollmentIds: ["550e8400-e29b-41d4-a716-446655440302"],
+    weekday: 1,
+    startsAt: "10:00",
+    endsAt: "11:00",
+    weekStartDate: "",
+  };
+  const glowSubjects = [
+    { id: "sub-1", name: "수학", color: "#FF0000" },
+  ];
+  const glowEnrollments = [
+    { id: "550e8400-e29b-41d4-a716-446655440301", studentId: "student-A", subjectId: "sub-1" },
+    { id: "550e8400-e29b-41d4-a716-446655440302", studentId: "student-B", subjectId: "sub-1" },
+  ];
+  const glowStudents = [
+    { id: "student-A", name: "학생A" },
+    { id: "student-B", name: "학생B" },
+  ];
+  const baseGlowProps = {
+    subjects: glowSubjects,
+    enrollments: glowEnrollments,
+    students: glowStudents,
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+    colorBy: "student" as const,
+  };
+
+  it("student chip selected + session CONTAINS selected student → no dim (matched, ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로. dim/boxShadow 모두 없음.
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
+  });
+
+  it("student mode + chip selected + session does NOT contain selected student → wrapper has opacity 0.25 (dim)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // opacity should be 0.25 (dim)
+    expect(wrapper.style.opacity).toBe("0.25");
+    // no box-shadow
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isDragging → no dim/glow (drag logic takes over)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isDragging={true}
+        draggedSessionId={otherSession.id}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed — no opacity 0.25 on wrapper, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + chip selected + isAnyDragging → no dim/glow (drag bypass)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={otherSession}
+        selectedStudentIds={["student-A"]}
+        isAnyDragging={true}
+        draggedSessionId="different-session-id"
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${otherSession.id}`);
+    // dim/glow bypassed when any drag is in progress — no opacity 0.25, no box-shadow
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("student mode + no chip selected → no dim/glow (existing behavior)", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        session={glowSession}
+        selectedStudentIds={[]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).not.toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  // 변경 3: 강사/과목 필터 dim 통일 — 학생과 동일 패턴.
+  it("teacher mode + chip selected + session.teacherId 매칭 → no dim (ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로.
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="teacher"
+        session={{ ...glowSession, teacherId: "tch-1" } as any}
+        teachers={teachers}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
+  });
+
+  it("teacher mode + chip selected + session.teacherId 비매칭 → opacity 0.25 dim", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="teacher"
+        session={{ ...glowSession, teacherId: "tch-9" } as any}
+        teachers={teachers}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+    expect(wrapper.style.boxShadow).toBe("");
+  });
+
+  it("subject mode + chip selected + session에 subject 매칭 → no dim (ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 매칭 session 은 본체 색 + opacity 1.0 그대로.
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={glowSession}
+        selectedSubjectIds={["sub-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
+  });
+
+  it("subject mode + chip selected + 비매칭 → opacity 0.25 dim", () => {
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={glowSession}
+        selectedSubjectIds={["sub-9"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+  });
+
+  it("3 entity 동시 활성 + 모두 매칭 → no dim (AND 결합, ADR-020 R5)", () => {
+    // ADR-020 R5: ring 폐기. 다중 type 매칭도 본체 색 + opacity 1.0 그대로.
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={{ ...glowSession, teacherId: "tch-1" } as any}
+        teachers={teachers}
+        selectedStudentIds={["student-A"]}
+        selectedSubjectIds={["sub-1"]}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.boxShadow).toBe("");
+    expect(wrapper.style.opacity).not.toBe("0.25");
+  });
+
+  it("3 entity 동시 활성 + 강사만 비매칭 → opacity 0.25 dim (AND fail)", () => {
+    const teachers = [{ id: "tch-1", name: "홍", color: "#0011AA" }];
+    render(
+      <SessionBlock
+        {...baseGlowProps}
+        colorBy="subject"
+        session={{ ...glowSession, teacherId: "tch-9" } as any}
+        teachers={teachers}
+        selectedStudentIds={["student-A"]}
+        selectedSubjectIds={["sub-1"]}
+        selectedTeacherIds={["tch-1"]}
+      />
+    );
+    const wrapper = screen.getByTestId(`session-block-${glowSession.id}`);
+    expect(wrapper.style.opacity).toBe("0.25");
+  });
+});
+
 describe("SessionBlock Utility Functions", () => {
   describe("validateSessionBlockProps", () => {
     it("유효한 props일 때 true를 반환해야 한다", () => {
@@ -736,5 +1061,320 @@ describe("SessionBlock Utility Functions", () => {
     it("과목명이 null일 때 false를 반환해야 한다", () => {
       expect(shouldShowSubjectName(null as any)).toBe(false);
     });
+  });
+});
+
+describe("학생 필터 뱃지 — Users 아이콘 + 총 인원 (Option B)", () => {
+  const sid1 = "550e8400-e29b-41d4-a716-446655440001";
+  const sid2 = "550e8400-e29b-41d4-a716-446655440002";
+  const sid3 = "550e8400-e29b-41d4-a716-446655440003";
+
+  const eid1 = "550e8400-e29b-41d4-a716-446655440301";
+  const eid2 = "550e8400-e29b-41d4-a716-446655440302";
+  const eid3 = "550e8400-e29b-41d4-a716-446655440303";
+
+  const sessionId = "550e8400-e29b-41d4-a716-446655440201";
+
+  const session3 = {
+    id: sessionId,
+    enrollmentIds: [eid1, eid2, eid3],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const session2 = {
+    id: sessionId,
+    enrollmentIds: [eid1, eid2],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const session1 = {
+    id: sessionId,
+    enrollmentIds: [eid1],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+  };
+
+  const enrollments3 = [
+    { id: eid1, studentId: sid1, subjectId: "sub-1" },
+    { id: eid2, studentId: sid2, subjectId: "sub-1" },
+    { id: eid3, studentId: sid3, subjectId: "sub-1" },
+  ];
+
+  const enrollments2 = enrollments3.slice(0, 2);
+  const enrollments1 = enrollments3.slice(0, 1);
+
+  const students = [
+    { id: sid1, name: "이현진" },
+    { id: sid2, name: "김요섭" },
+    { id: sid3, name: "강지원" },
+  ];
+
+  const subjects = [{ id: "sub-1", name: "수학", color: "#FF0000" }];
+
+  const baseProps = {
+    subjects,
+    enrollments: enrollments3,
+    students,
+    teachers: [],
+    left: 100,
+    width: 200,
+    yOffset: 0,
+    onClick: vi.fn(),
+    colorBy: "student" as const,
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("학생 3명 세션에서 selectedStudentIds=[sid1] → aria-label='총 3명' 뱃지 노출", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("학생 3명 세션에서 selectedStudentIds=[sid1] → 뱃지 텍스트가 '3'", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    const badge = screen.getByLabelText("총 3명");
+    expect(badge).toHaveTextContent("3");
+  });
+
+  it("학생 2명 세션에서 selectedStudentIds=[sid1] → aria-label='총 2명' 뱃지 노출", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.getByLabelText("총 2명")).toBeInTheDocument();
+  });
+
+  it("학생 1명만 있는 세션에서 selectedStudentIds=[sid1] → 뱃지 미표시 (1명은 카운트 불필요)", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session1}
+        enrollments={enrollments1}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("selectedStudentIds=[] (비필터 모드) → 학생 수 뱃지 항시 표시 (Variant A)", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[]}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("selectedStudentIds=undefined → 학생 수 뱃지 항시 표시 (Variant A)", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={undefined}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("비매칭 세션 (선택한 학생이 미포함) → 뱃지 미표시", () => {
+    const sessionOnlySid2 = { ...session1, enrollmentIds: [eid2] };
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={sessionOnlySid2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1]}
+      />
+    );
+    expect(screen.queryByLabelText(/총 \d+명/)).not.toBeInTheDocument();
+  });
+
+  it("멀티셀렉트 [sid1, sid2]: 세션에 sid1·sid2·sid3 → 총 3명 뱃지", () => {
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={session3}
+        selectedStudentIds={[sid1, sid2]}
+      />
+    );
+    expect(screen.getByLabelText("총 3명")).toBeInTheDocument();
+  });
+
+  it("멀티셀렉트 [sid1, sid2]: 세션에 sid2만 → primaryLabel이 '이현진'이 아닌 '김요섭'", () => {
+    const sessionOnlySid2 = { ...session1, enrollmentIds: [eid2] };
+    render(
+      <SessionBlock
+        {...baseProps}
+        session={sessionOnlySid2}
+        enrollments={enrollments2}
+        selectedStudentIds={[sid1, sid2]}
+      />
+    );
+    expect(screen.getByText("김요섭")).toBeInTheDocument();
+    expect(screen.queryByText("학생 없음")).not.toBeInTheDocument();
+  });
+
+  // 학생수 배지 동적 회피 — 우상단 absolute 배지가 가려질 수 있는 케이스에서
+  // 시간 라인 옆 inline으로 자동 이동. (PR #351-#352 후속)
+  describe("동적 회피 — overflowsTop / hasLaneOverflowChip / hasConflict", () => {
+    it("overflowsTop=true && totalStudentCount>=2 → 시간 라인 inline 배지 (잘림 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          overflowsTop={true}
+        />
+      );
+      // 배지는 여전히 1개만 (inline 모드라도 aria-label은 동일)
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // inline 모드: 시간 라인 안에 위치 (시간 텍스트 옆 형제 element)
+      // 우상단 absolute 배지(rounded-md)와 달리 rounded-sm 작은 캡슐
+      expect(badge.className).toContain("rounded-sm");
+      expect(badge.className).not.toContain("absolute");
+    });
+
+    it("hasLaneOverflowChip=true && totalStudentCount>=2 → 시간 라인 inline (lane overflow +N 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          hasLaneOverflowChip={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // overflowsTop과 동일한 inline 처리
+      expect(badge.className).toContain("rounded-sm");
+      expect(badge.className).not.toContain("absolute");
+    });
+
+    it("hasConflict=true && !overflowsTop → 우상단 배지 right:[18px] 오프셋 (⚠ 회피)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          hasConflict={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge).toBeInTheDocument();
+      // 우상단 absolute 모드 유지 + right 오프셋
+      expect(badge.className).toContain("absolute");
+      expect(badge.className).toContain("right-[18px]");
+    });
+
+    it("기본(아무 회피 조건 X) → 우상단 absolute right:1 기본 위치", () => {
+      render(<SessionBlock {...baseProps} session={session3} />);
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge.className).toContain("absolute");
+      expect(badge.className).toContain("right-1");
+      expect(badge.className).not.toContain("right-[18px]");
+    });
+
+    it("overflowsTop + hasConflict 동시 → inline 우선 (잘림이 더 critical)", () => {
+      render(
+        <SessionBlock
+          {...baseProps}
+          session={session3}
+          overflowsTop={true}
+          hasConflict={true}
+        />
+      );
+      const badge = screen.getByLabelText("총 3명");
+      expect(badge.className).toContain("rounded-sm"); // inline
+      expect(badge.className).not.toContain("absolute");
+    });
+  });
+});
+
+// ===================================================================
+// 2C: 드래그 핸들 (grip) 회귀 테스트
+// ===================================================================
+describe("2C 드래그 핸들 — grip 영역만 draggable", () => {
+  const baseSession: Session = {
+    id: "handle-test-session",
+    subjectId: "550e8400-e29b-41d4-a716-446655440101",
+    enrollmentIds: [],
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    weekStartDate: "",
+    yPosition: 1,
+  };
+  const baseProps = {
+    session: baseSession,
+    subjects: [{ id: "550e8400-e29b-41d4-a716-446655440101", name: "수학", color: "#3B82F6" }],
+    enrollments: [],
+    students: [],
+    left: 0,
+    width: 120,
+    yOffset: 0,
+    yPosition: 1,
+    height: 64,
+    isReadOnly: false,
+    isMobile: false,
+    isDragging: false,
+    isAnyDragging: false,
+    onClick: vi.fn(),
+  };
+
+  it("desktop + not readOnly: drag-handle 요소가 렌더된다", () => {
+    render(<SessionBlock {...baseProps} />);
+    expect(screen.getByTestId("session-drag-handle")).toBeInTheDocument();
+  });
+
+  it("drag-handle은 HTML5 draggable 속성 없이 dnd-kit으로 동작한다", () => {
+    render(<SessionBlock {...baseProps} />);
+    const handle = screen.getByTestId("session-drag-handle");
+    expect(handle).toBeInTheDocument();
+    // dnd-kit useDraggable uses pointer events — no HTML5 draggable attribute
+    expect(handle).not.toHaveAttribute("draggable", "true");
+  });
+
+  it("main button은 draggable이 아니다", () => {
+    render(<SessionBlock {...baseProps} />);
+    const button = screen.getByRole("button");
+    // draggable 속성이 없거나 false이어야 함
+    const draggable = button.getAttribute("draggable");
+    expect(draggable === null || draggable === "false").toBe(true);
+  });
+
+  it("isReadOnly=true 시 drag-handle이 렌더되지 않는다", () => {
+    render(<SessionBlock {...baseProps} isReadOnly={true} />);
+    expect(screen.queryByTestId("session-drag-handle")).not.toBeInTheDocument();
+  });
+
+  // isMobile 게이트 제거됨 (Tier 3): TouchSensor가 모바일 드래그를 처리하므로
+  // grip은 isMobile=true 시에도 렌더된다.
+  it("isMobile=true 시에도 drag-handle이 렌더된다 (TouchSensor 처리)", () => {
+    render(<SessionBlock {...baseProps} isMobile={true} />);
+    expect(screen.getByTestId("session-drag-handle")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { Subject } from "@/domain/entities/Subject";
 import type { SubjectRepository } from "@/infrastructure/interfaces";
 import { createClient } from "@supabase/supabase-js";
 import { logger } from "../../lib/logger";
+import { mapRowsSafely } from "./_helpers/mapRowsSafely";
 
 export class SupabaseSubjectRepository implements SubjectRepository {
   private createServiceRoleClient() {
@@ -37,9 +38,17 @@ export class SupabaseSubjectRepository implements SubjectRepository {
         return [];
       }
 
-      return (data ?? []).map((row: any) =>
-        Subject.restore(row.id, row.name, row.color ?? "#000000",
-          new Date(row.created_at), new Date(row.updated_at))
+      return mapRowsSafely(
+        (data ?? []) as Array<Record<string, unknown>>,
+        (row) =>
+          Subject.restore(
+            row.id as string,
+            row.name as string,
+            (row.color as string | null) ?? "#000000",
+            new Date(row.created_at as string),
+            new Date(row.updated_at as string)
+          ),
+        { entity: "과목", idField: "id" }
       );
     } catch (error) {
       logger.error("과목 데이터 조회 중 오류:", undefined, error as Error);
@@ -71,19 +80,23 @@ export class SupabaseSubjectRepository implements SubjectRepository {
   }
 
   async create(
-    subjectData: { name: string; color: string },
+    subjectData: { id?: string; name: string; color: string },
     academyId: string
   ): Promise<Subject> {
     try {
       const client = this.createServiceRoleClient();
 
+      // Local-first: client UUID 그대로 upsert + idempotent (재시도 안전).
+      const insertPayload: Record<string, unknown> = {
+        academy_id: academyId,
+        name: subjectData.name,
+        color: subjectData.color,
+      };
+      if (subjectData.id) insertPayload.id = subjectData.id;
+
       const { data, error } = await client
         .from("subjects")
-        .insert({
-          academy_id: academyId,
-          name: subjectData.name,
-          color: subjectData.color,
-        })
+        .upsert(insertPayload, { onConflict: "id", ignoreDuplicates: false })
         .select()
         .single();
 

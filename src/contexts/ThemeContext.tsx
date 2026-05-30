@@ -38,7 +38,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         setTheme(savedTheme);
       }
     }
-  }, []); // 의존성 배열을 빈 배열로 변경하여 한 번만 실행
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 인증 상태 캐싱은 현재 사용하지 않음 (향후 확장을 위해 주석으로 유지)
 

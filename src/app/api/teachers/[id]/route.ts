@@ -1,11 +1,157 @@
 import { ServiceFactory } from "@/application/services/ServiceFactory";
-import { toErrorResponse } from "@/lib/errors";
+import { AppError, toErrorResponse } from "@/lib/errors";
 import { logger } from "@/lib/logger";
-import { resolveAcademyId } from "@/lib/resolveAcademyId";
+import { requireRole, requireOwnTeacher, pickAllowedFields } from "@/lib/auth/permissions";
+import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
+import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { validateTeacherInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+
+// Fields any owner/admin can update
+const PUBLIC_FIELDS = ["name", "color"] as const;
+// Fields owner/admin can always update; member can update only on their own teacher
+const PRIVATE_FIELDS = ["email", "phone", "notes"] as const;
+// All allowed fields combined (used to filter unknown/readonly fields)
+const ALL_ALLOWED_FIELDS = [...PUBLIC_FIELDS, ...PRIVATE_FIELDS] as const;
+type AllowedField = (typeof ALL_ALLOWED_FIELDS)[number];
 
 function getTeacherService() {
   return ServiceFactory.createTeacherService();
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
+    }
+
+    const { academyId, role } = await resolveAcademyMembership(userId);
+
+    const client = getServiceRoleClient();
+
+    // Fetch current teacher row to verify existence and ownership
+    const { data: teacher, error: fetchError } = await client
+      .from("teachers")
+      .select("id, name, color, email, phone, notes, user_id, academy_id")
+      .eq("id", id)
+      .eq("academy_id", academyId)
+      .single();
+
+    if (fetchError || !teacher) {
+      return NextResponse.json({ success: false, error: "Teacher not found" }, { status: 404 });
+    }
+
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+
+    // Filter to only fields that exist in the allowed set
+    const requestedFields = Object.keys(body).filter((k): k is AllowedField =>
+      (ALL_ALLOWED_FIELDS as readonly string[]).includes(k)
+    );
+
+    if (requestedFields.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "No valid fields provided" },
+        { status: 400 }
+      );
+    }
+
+    // Field-level permission check for members
+    if (role === "member") {
+      const hasPublicFields = requestedFields.some((f) =>
+        (PUBLIC_FIELDS as readonly string[]).includes(f)
+      );
+
+      if (hasPublicFields) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: members cannot update name or color" },
+          { status: 403 }
+        );
+      }
+
+      // Private fields allowed only for own teacher
+      if (teacher.user_id !== userId) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: members can only update their own teacher profile" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Phase 4: server-side validation (UI/sync 우회 방지)
+    const v = validateTeacherInput(
+      {
+        name: body.name as string | undefined,
+        email: body.email as string | null | undefined,
+        phone: body.phone as string | null | undefined,
+      },
+      { partial: true },
+    );
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+
+    // Build updates object with only the requested allowed fields (검증된 값 우선)
+    const updates: Record<string, unknown> = {};
+    for (const field of requestedFields) {
+      if (field === "name" && v.data.name !== undefined) {
+        updates[field] = v.data.name;
+      } else {
+        updates[field] = body[field];
+      }
+    }
+
+    // Build before snapshot (only changed fields)
+    const before: Record<string, unknown> = {};
+    for (const field of requestedFields) {
+      before[field] = (teacher as Record<string, unknown>)[field] ?? null;
+    }
+
+    // Execute update
+    const { data: updated, error: updateError } = await client
+      .from("teachers")
+      .update(updates)
+      .eq("id", id)
+      .eq("academy_id", academyId)
+      .select()
+      .single();
+
+    if (updateError || !updated) {
+      logger.error("PATCH /api/teachers/[id] update failed", { id, userId }, updateError as Error);
+      return NextResponse.json(
+        { success: false, error: "Failed to update teacher" },
+        { status: 500 }
+      );
+    }
+
+    // Write audit log entry (fire-and-forget — do not block response on failure)
+    client
+      .from("audit_log")
+      .insert({
+        academy_id: academyId,
+        actor_id: userId,
+        action: "teacher.updated",
+        target_type: "teacher",
+        target_id: id,
+        before,
+        after: updates,
+      })
+      .then(({ error: auditError }) => {
+        if (auditError) {
+          logger.error("audit_log insert failed", { id, userId }, auditError as Error);
+        }
+      });
+
+    logger.info("PATCH /api/teachers/[id]", { id, userId, fields: requestedFields });
+
+    return NextResponse.json({ success: true, teacher: updated });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
 }
 
 export async function PUT(
@@ -14,8 +160,8 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
-    const { name, color, userId: bodyUserId } = body;
+    let body = await request.json();
+    const { name, color, userId: bodyUserId, email, phone, role: bodyRole, notes } = body;
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 
@@ -35,10 +181,50 @@ export async function PUT(
 
     logger.debug("API PUT /api/teachers/[id]", { id, userId });
 
-    const academyId = await resolveAcademyId(userId);
+    const membership = await resolveAcademyMembership(userId);
+    const { academyId } = membership;
+
+    const VALID_ROLES = ["owner", "admin", "member"] as const;
+    const role = membership.role as (typeof VALID_ROLES)[number] | string;
+    if (!VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
+      return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    }
+
+    if (role === "member") {
+      // Member can only update their own teacher's private contact fields
+      await requireOwnTeacher(userId, id);
+      body = pickAllowedFields(body, ["email", "phone", "notes"]);
+      if (Object.keys(body).length === 0) {
+        return NextResponse.json({ error: "FORBIDDEN: no editable fields" }, { status: 403 });
+      }
+    }
+    // owner/admin: body unchanged
+
+    // Phase 4: server-side validation (UI/sync 우회 방지)
+    const v = validateTeacherInput(
+      { name: body.name, email: body.email, phone: body.phone },
+      { partial: true },
+    );
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
+    if (v.data.name !== undefined) body.name = v.data.name;
+
     const updated = await getTeacherService().updateTeacher(
       id,
-      { name, color, userId: "userId" in body ? bodyUserId : undefined },
+      role === "member"
+        ? {
+            email: "email" in body ? (body.email ?? null) : undefined,
+            phone: "phone" in body ? (body.phone ?? null) : undefined,
+            notes: "notes" in body ? (body.notes ?? null) : undefined,
+          }
+        : {
+            name,
+            color,
+            userId: "userId" in body ? bodyUserId : undefined,
+            email: "email" in body ? (email ?? null) : undefined,
+            phone: "phone" in body ? (phone ?? null) : undefined,
+            role: "role" in body ? (bodyRole ?? null) : undefined,
+            notes: "notes" in body ? (notes ?? null) : undefined,
+          },
       academyId
     );
     return NextResponse.json({ success: true, data: updated });
@@ -72,7 +258,7 @@ export async function DELETE(
 
     logger.debug("API DELETE /api/teachers/[id]", { id, userId });
 
-    const academyId = await resolveAcademyId(userId);
+    const { academyId } = await requireRole(userId, ["owner", "admin"]);
     await getTeacherService().deleteTeacher(id, academyId);
     return NextResponse.json({ success: true, message: "Teacher deleted successfully" });
   } catch (error) {

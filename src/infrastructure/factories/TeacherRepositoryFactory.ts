@@ -18,6 +18,10 @@ class MockTeacherRepository implements TeacherRepository {
     return [];
   }
 
+  async getAllPaginated(): Promise<{ items: Teacher[]; nextCursor: string | null }> {
+    return { items: [], nextCursor: null };
+  }
+
   async getById(): Promise<Teacher | null> {
     return null;
   }
@@ -38,4 +42,12 @@ class MockTeacherRepository implements TeacherRepository {
   }
 
   async delete(): Promise<void> {}
+
+  async getSubjectIds(): Promise<string[]> {
+    return [];
+  }
+
+  async addSubject(): Promise<void> {}
+
+  async removeSubject(): Promise<void> {}
 }

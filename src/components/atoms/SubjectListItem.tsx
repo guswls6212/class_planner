@@ -1,4 +1,5 @@
 import type { Subject } from "@/shared/types/DomainTypes";
+import { SUBJECT_NAME_MAX_LENGTH } from "@/lib/validation/profileSchemas";
 import React, { useState } from "react";
 import ConfirmModal from "../molecules/ConfirmModal";
 import Button from "./Button";
@@ -31,7 +32,7 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
 
   const handleSave = () => {
     if (editName.trim()) {
-      const name = editName.trim().slice(0, 6);
+      const name = editName.trim().slice(0, SUBJECT_NAME_MAX_LENGTH);
       onUpdate(subject.id, name, editColor);
       setIsEditing(false);
     }
@@ -44,7 +45,7 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
       handleSave();
     } else if (e.key === "Escape") {
       handleCancel();
@@ -83,11 +84,11 @@ const SubjectListItem: React.FC<SubjectListItemProps> = ({
               <input
                 type="text"
                 value={editName}
-                onChange={(e) => setEditName(e.target.value.slice(0, 6))}
+                onChange={(e) => setEditName(e.target.value.slice(0, SUBJECT_NAME_MAX_LENGTH))}
                 onKeyDown={handleKeyDown}
                 className="flex-1 rounded border border-[--color-border] bg-[--color-bg-primary] px-1.5 py-0.5 text-sm text-[--color-text-primary] focus:border-[--color-primary] focus:shadow-[0_0_0_1px_var(--color-primary)] focus:outline-none"
                 autoFocus
-                maxLength={6}
+                maxLength={SUBJECT_NAME_MAX_LENGTH}
               />
               <input
                 type="color"

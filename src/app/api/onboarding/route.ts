@@ -9,6 +9,7 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
+import { validateAcademyName } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
 
 const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
@@ -49,25 +50,27 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    // 2. 요청 본문에서 academyName, role 추출
+    // 2. 요청 본문에서 academyName 추출
+    // ADR-019: client가 보내는 role은 무시. 첫 학원 생성자는 server-side에서
+    // 무조건 owner 강제 (owner-less 유령 학원 차단 + 1+1 학원 단일성 정책).
+    // admin/member 역할은 초대 수락(`/invite/[token]`) 경로로만 부여.
     const body = await request.json().catch(() => ({}));
-    const { academyName, role } = body as { academyName?: string; role?: string };
+    const { academyName } = body as { academyName?: string };
 
-    if (!academyName || academyName.trim().length < 2) {
-      return NextResponse.json(
-        { success: false, error: "학원명은 2글자 이상 입력해주세요." },
-        { status: 400 }
-      );
-    }
+    // Phase 4: server-side validation — required/min(NAME_MIN_LENGTH=2)/max
+    // 모두 SSOT helper(validateAcademyName)가 강제. PR #360 centralization 이후
+    // 추가 inline check 불필요. ACADEMY_NAME_TOO_SHORT/REQUIRED/TOO_LONG 모두
+    // AppError로 변환되어 client에 ko 메시지 노출.
+    const v = validateAcademyName(academyName ?? "");
+    if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
 
-    const validRoles = ["owner", "admin", "member"];
-    const selectedRole = validRoles.includes(role ?? "") ? role! : "owner";
+    const selectedRole = "owner"; // ADR-019: hardcoded — body.role 무시.
 
     // 3. academy INSERT
     const { data: academy, error: academyError } = await client
       .from("academies")
       .insert({
-        name: academyName.trim(),
+        name: v.value,
         created_by: userId,
       })
       .select("id")
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
     logger.info("온보딩 완료 - 신규 academy 생성", {
       userId,
       academyId: academy.id,
-      academyName: academyName.trim(),
+      academyName: v.value,
     });
 
     const response = NextResponse.json(

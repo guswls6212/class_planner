@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors/AppError";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,8 +10,19 @@ const { mockMembership, mockFrom } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
 }));
 
+const mockRequireRole = vi.hoisted(() =>
+  vi.fn().mockResolvedValue({ academyId: "acad-1", role: "owner" })
+);
+
 vi.mock("@/lib/resolveAcademyMembership", () => ({
   resolveAcademyMembership: mockMembership,
+}));
+
+vi.mock("@/lib/auth/permissions", () => ({
+  requireRole: mockRequireRole,
+  requireOwnTeacher: vi.fn().mockResolvedValue("test-teacher-id"),
+  pickAllowedFields: (body: Record<string, unknown>, fields: string[]) =>
+    Object.fromEntries(Object.entries(body).filter(([k]) => fields.includes(k))),
 }));
 
 vi.mock("@/lib/supabaseServiceRole", () => ({
@@ -33,7 +45,10 @@ const SAMPLE_ATTENDANCE = {
 };
 
 describe("GET /api/attendance", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireRole.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+  });
 
   it("sessionId + date로 출석 목록을 조회할 수 있다", async () => {
     mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
@@ -76,10 +91,13 @@ describe("GET /api/attendance", () => {
 });
 
 describe("POST /api/attendance", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequireRole.mockResolvedValue({ academyId: "acad-1", role: "owner" });
+  });
 
-  it("출석 기록을 upsert할 수 있다", async () => {
-    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
+  it("출석 기록을 upsert할 수 있다 (owner)", async () => {
+    mockRequireRole.mockResolvedValue({ academyId: "acad-1", role: "owner" });
     mockFrom.mockReturnValue({
       upsert: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
@@ -105,8 +123,25 @@ describe("POST /api/attendance", () => {
     expect(body.data.status).toBe("present");
   });
 
+  it("member role은 POST에 403을 반환해야 한다", async () => {
+    mockRequireRole.mockRejectedValueOnce(
+      new AppError("FORBIDDEN", { statusHint: 403 })
+    );
+
+    const req = new NextRequest("http://localhost/api/attendance?userId=member-user", {
+      method: "POST",
+      body: JSON.stringify({
+        sessionId: "sess-1",
+        studentId: "stu-1",
+        date: "2026-04-17",
+        status: "present",
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+  });
+
   it("필수 필드 없으면 400", async () => {
-    mockMembership.mockResolvedValue({ academyId: "acad-1", role: "member" });
     const req = new NextRequest("http://localhost/api/attendance?userId=user-1", {
       method: "POST",
       body: JSON.stringify({ sessionId: "sess-1" }), // studentId, date 누락

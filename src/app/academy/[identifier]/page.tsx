@@ -1,0 +1,141 @@
+'use client'
+
+import { use, useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { isUUID } from '@/lib/slug'
+
+export default function AcademyAccessPage({
+  params,
+}: {
+  params: Promise<{ identifier: string }>
+}) {
+  const { identifier: rawIdentifier } = use(params)
+  // Next.js 15 client component의 use(params)는 URL을 percent-decode하지 않은
+  // raw 값을 반환한다(예: "%ED%98%84%EC%A7%84%ED%95%99%EC%9B%90"). 이 상태로
+  // 서버 fetch body에 넣으면 slug lookup이 percent-encoded 문자열을 비교
+  // 대상으로 사용 → academy 못 찾음 → 학부모 코드 입력 페이지 404 사고.
+  // 1) decodeURIComponent로 percent-decode  2) NFC 정규화로 한글 자모 결합
+  // 양쪽 모두 적용해야 안전.
+  const identifier = (() => {
+    try {
+      return decodeURIComponent(rawIdentifier).normalize('NFC')
+    } catch {
+      return rawIdentifier.normalize('NFC')
+    }
+  })()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [academyName, setAcademyName] = useState<string>('')
+  const [code, setCode] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  // Auto-submit guard — prevents re-firing on re-render or after error
+  const autoSubmittedRef = useRef(false)
+
+  useEffect(() => {
+    fetch(`/api/academy/${identifier}/public`)
+      .then((r) => r.json())
+      .then((d) => {
+        setAcademyName(d.name ?? '학원')
+        // UUID로 접속했고 slug가 있으면 slug URL로 redirect
+        if (d.slug && isUUID(identifier)) {
+          router.replace(`/academy/${d.slug}`)
+        }
+      })
+      .catch(() => setAcademyName('학원'))
+  }, [identifier, router])
+
+  const submitCode = useCallback(
+    async (raw: string) => {
+      // .normalize('NFC'): macOS clipboard가 Korean을 NFD로 변환하는 경우 대응.
+      // DB는 NFC로 저장하므로 NFD 문자열은 .eq() 매칭 실패 → 항상 404.
+      // (이전엔 학원장이 코드 복사 → 부모가 paste 시 NFD로 바뀌면서 invalidate.)
+      const trimmed = raw.trim().toUpperCase().normalize("NFC")
+      if (!trimmed) return
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const res = await fetch('/api/share/code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: trimmed, academyId: identifier }),
+        })
+
+        if (!res.ok) {
+          setError('코드가 올바르지 않습니다. 다시 확인해주세요.')
+          setLoading(false)
+          return
+        }
+
+        const { token } = await res.json()
+        router.push(`/share/${token}`)
+      } catch {
+        setError('일시적인 오류가 발생했습니다. 다시 시도해주세요.')
+        setLoading(false)
+      }
+    },
+    [identifier, router],
+  )
+
+  // Auto-fill + auto-submit when arriving via /academy/{slug}?code=XYZ link
+  // (학원장이 보내준 단일 링크 클릭 한 번으로 시간표까지 도달)
+  useEffect(() => {
+    if (autoSubmittedRef.current) return
+    const codeParam = searchParams.get('code')
+    if (!codeParam) return
+    const cleaned = codeParam.trim().toUpperCase()
+    if (cleaned.length < 6) return
+    autoSubmittedRef.current = true
+    setCode(cleaned)
+    void submitCode(cleaned)
+  }, [searchParams, submitCode])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    void submitCode(code)
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <div className="mb-2 text-2xl font-bold text-slate-100">
+            {academyName || '...'}
+          </div>
+          <p className="text-sm text-slate-400">
+            자녀의 접속 코드를 입력해 시간표를 확인하세요
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="접속 코드 입력 (예: 이현3K7P)"
+            maxLength={6}
+            className="mb-3 w-full rounded-xl border-2 border-slate-700 bg-slate-800 px-4 py-4 text-center text-2xl font-bold tracking-widest text-slate-100 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+            autoComplete="off"
+          />
+
+          {error && (
+            <p className="mb-3 text-center text-sm text-red-400">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || code.trim().length < 6}
+            className="w-full rounded-xl bg-amber-500 py-3 text-base font-bold text-gray-900 hover:bg-amber-400 disabled:opacity-40 transition-colors"
+          >
+            {loading ? '확인 중...' : '시간표 보기 →'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-xs text-slate-600">
+          접속 코드는 학원에서 받은 서류 또는 원장에게 문의하세요
+        </p>
+      </div>
+    </div>
+  )
+}

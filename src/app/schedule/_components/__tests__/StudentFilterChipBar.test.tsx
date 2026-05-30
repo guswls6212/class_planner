@@ -55,4 +55,43 @@ describe("StudentFilterChipBar", () => {
     fireEvent.click(screen.getByLabelText("학생 검색"));
     expect(screen.getByPlaceholderText("학생 이름 검색...")).toBeInTheDocument();
   });
+
+  describe("variant=active-only (P3)", () => {
+    it("선택된 학생만 칩으로 표시 + '+N명 (검색)' chip", () => {
+      render(
+        <StudentFilterChipBar
+          {...defaultProps}
+          selectedStudentIds={["stu1"]}
+          variant="active-only"
+        />,
+      );
+      expect(screen.getByText("김민준")).toBeInTheDocument();
+      expect(screen.queryByText("이서연")).not.toBeInTheDocument();
+      expect(screen.queryByText("박지호")).not.toBeInTheDocument();
+      expect(screen.getByText("+ 2명 (검색)")).toBeInTheDocument();
+    });
+
+    it("선택 0명일 때 chip 0개 + '+3명 (검색)' chip", () => {
+      render(
+        <StudentFilterChipBar {...defaultProps} variant="active-only" />,
+      );
+      expect(screen.queryByText("김민준")).not.toBeInTheDocument();
+      expect(screen.getByText("+ 3명 (검색)")).toBeInTheDocument();
+    });
+
+    it("검색어 입력 시 매칭 학생 chip 추가 표시", () => {
+      render(
+        <StudentFilterChipBar
+          {...defaultProps}
+          selectedStudentIds={["stu1"]}
+          variant="active-only"
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("학생 검색"));
+      const input = screen.getByPlaceholderText("학생 이름 검색...");
+      fireEvent.change(input, { target: { value: "이서" } });
+      expect(screen.getByText("이서연")).toBeInTheDocument();
+      expect(screen.queryByText("+ 2명 (검색)")).not.toBeInTheDocument();
+    });
+  });
 });

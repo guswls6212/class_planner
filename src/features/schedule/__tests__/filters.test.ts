@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterSessionsByStudents } from "../filters";
+import { filterSessionsByStudents, filterSessionsByTeachers } from "../filters";
 import type { Session } from "@/lib/planner";
 
 const makeEnrollment = (id: string, studentId: string, subjectId = "s1") => ({
@@ -17,6 +17,17 @@ const makeSession = (id: string, enrollmentIds: string[]): Session =>
     enrollmentIds,
     yPosition: 0,
   } as Session);
+
+const makeSessionWithTeacher = (id: string, teacherId: string | undefined): Session =>
+  ({
+    id,
+    weekday: 0,
+    startsAt: "09:00",
+    endsAt: "10:00",
+    enrollmentIds: [],
+    yPosition: 0,
+    teacherId,
+  } as unknown as Session);
 
 const enrollments = [
   makeEnrollment("e1", "stu1"),
@@ -56,5 +67,39 @@ describe("filterSessionsByStudents", () => {
     const result = filterSessionsByStudents(sessions, ["stu2"], enrollments);
     const ids = result.map((s) => s.id);
     expect(ids).toContain("sess3");
+  });
+});
+
+describe("filterSessionsByTeachers", () => {
+  const teacherSessions = [
+    makeSessionWithTeacher("ts1", "tch1"),
+    makeSessionWithTeacher("ts2", "tch2"),
+    makeSessionWithTeacher("ts3", "tch1"),
+    makeSessionWithTeacher("ts4", undefined),
+  ];
+
+  it("빈 selectedTeacherIds면 전체 세션 반환", () => {
+    const result = filterSessionsByTeachers(teacherSessions, []);
+    expect(result).toHaveLength(4);
+  });
+
+  it("tch1 선택 시 tch1 세션만 반환", () => {
+    const result = filterSessionsByTeachers(teacherSessions, ["tch1"]);
+    expect(result.map((s) => s.id).sort()).toEqual(["ts1", "ts3"]);
+  });
+
+  it("tch1+tch2 선택 시 OR 로직으로 반환", () => {
+    const result = filterSessionsByTeachers(teacherSessions, ["tch1", "tch2"]);
+    expect(result.map((s) => s.id).sort()).toEqual(["ts1", "ts2", "ts3"]);
+  });
+
+  it("일치 없는 teacherId면 빈 배열 반환", () => {
+    const result = filterSessionsByTeachers(teacherSessions, ["unknown"]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("teacherId가 없는 세션은 필터링에서 제외된다", () => {
+    const result = filterSessionsByTeachers(teacherSessions, ["tch1"]);
+    expect(result.map((s) => s.id)).not.toContain("ts4");
   });
 });

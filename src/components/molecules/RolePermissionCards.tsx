@@ -1,0 +1,65 @@
+"use client";
+
+import { Check, X } from "lucide-react";
+import {
+  ROLE_DESCRIPTORS,
+  ROLE_ICONS,
+  ROLE_KEYS_ORDERED,
+  getRolePermissionsPreview,
+} from "@/lib/rolePermissions";
+
+/**
+ * RolePermissionCards — 팀 섹션 상단 3-role 권한 카드 (Variant F).
+ *
+ * 사용자가 owner/admin/member 가 각각 무엇을 할 수 있는지 한눈에 파악하도록.
+ * 모바일에서는 1열 stack, 데스크탑은 3열 grid.
+ *
+ * 색·아이콘 SSOT: `ROLE_DESCRIPTORS[role].colors` + `ROLE_ICONS[role]` 사용.
+ * hardcoded 토큰 없음 — 정책 변경 시 `lib/rolePermissions.ts` 한 곳만 수정.
+ */
+export function RolePermissionCards() {
+  return (
+    <div data-testid="role-permission-cards" className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
+      {ROLE_KEYS_ORDERED.map((roleKey) => {
+        const descriptor = ROLE_DESCRIPTORS[roleKey];
+        const colors = descriptor.colors;
+        const Icon = ROLE_ICONS[roleKey];
+        // 권한 미리보기 SSOT — InviteModal 등 모든 preview UI 와 동일 항목.
+        // 직접 slice 호출 금지 (lib/rolePermissions.ts §getRolePermissionsPreview).
+        const previewPermissions = getRolePermissionsPreview(roleKey);
+
+        return (
+          <div
+            key={roleKey}
+            data-testid={`role-card-${roleKey}`}
+            className={`rounded-xl border bg-gradient-to-br p-3 ${colors.gradient} ${colors.border}`}
+          >
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Icon className={`w-3.5 h-3.5 ${colors.text}`} strokeWidth={2} />
+              <span className={`font-bold text-xs ${colors.text}`}>
+                {descriptor.label}
+              </span>
+            </div>
+            <p className="text-[11px] text-[var(--color-text-muted)] mb-2">
+              {descriptor.shortDescription}
+            </p>
+            <ul className="space-y-1 text-[10px] text-[var(--color-text-secondary)]">
+              {previewPermissions.map((p, i) => (
+                <li key={i} className="flex items-start gap-1">
+                  {p.ok ? (
+                    <Check className="w-2.5 h-2.5 text-emerald-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <X className="w-2.5 h-2.5 text-[var(--color-text-muted)] mt-0.5 shrink-0" />
+                  )}
+                  <span className={p.ok ? "" : "line-through opacity-60"}>
+                    {p.text}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

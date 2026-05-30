@@ -1,7 +1,14 @@
-// 간단한 hover 스타일 존재 여부 스모크 테스트 + 버튼 컴포넌트 테스트
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Button, { Button as NamedButton } from "../Button";
+
+vi.mock("@/lib/toast", () => ({
+  showSuccess: vi.fn(),
+  showError: vi.fn(),
+  showWarning: vi.fn(),
+  showInfo: vi.fn(),
+  showToast: vi.fn(),
+}));
 
 describe("Button hover styles - transparency variant", () => {
   it("transparent 버튼 렌더링 스모크", () => {
@@ -9,6 +16,7 @@ describe("Button hover styles - transparency variant", () => {
     expect(container.firstChild).toBeDefined();
   });
 });
+
 describe("Button Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,6 +49,21 @@ describe("Button Component", () => {
       expect(screen.getByRole("button").className).toContain("bg-[--color-danger]");
     });
 
+    it("tonal variant가 accent 배경 클래스를 가져야 한다", () => {
+      render(<Button variant="tonal">복사</Button>);
+      expect(screen.getByRole("button").className).toContain("bg-accent/10");
+    });
+
+    it("ghost variant가 투명 배경 클래스를 가져야 한다", () => {
+      render(<Button variant="ghost">취소</Button>);
+      expect(screen.getByRole("button").className).toContain("bg-transparent");
+    });
+
+    it("accent variant가 accent 배경 클래스를 가져야 한다", () => {
+      render(<Button variant="accent">초대하기</Button>);
+      expect(screen.getByRole("button").className).toContain("bg-accent");
+    });
+
     it("다양한 size가 올바르게 적용되어야 한다", () => {
       const { rerender } = render(<Button size="small">Small</Button>);
       expect(screen.getByRole("button").className).toContain("min-h-[28px]");
@@ -50,6 +73,11 @@ describe("Button Component", () => {
 
       rerender(<Button size="large">Large</Button>);
       expect(screen.getByRole("button").className).toContain("min-h-[44px]");
+    });
+
+    it("press 피드백 클래스(active:enabled:scale)가 포함되어야 한다", () => {
+      render(<Button>버튼</Button>);
+      expect(screen.getByRole("button").className).toContain("active:enabled:scale-[0.97]");
     });
   });
 
@@ -89,6 +117,55 @@ describe("Button Component", () => {
     });
   });
 
+  describe("feedback prop — inline", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("feedback=inline 클릭 후 successLabel이 표시되어야 한다", async () => {
+      render(
+        <Button feedback="inline" successLabel="복사됨">
+          복사
+        </Button>
+      );
+      const button = screen.getByRole("button");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(screen.getByText("복사됨")).toBeInTheDocument();
+    });
+
+    it("feedback=inline feedbackDuration 이후 원래 레이블로 돌아와야 한다", async () => {
+      render(
+        <Button feedback="inline" successLabel="복사됨" feedbackDuration={800}>
+          복사
+        </Button>
+      );
+      const button = screen.getByRole("button");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(screen.getByText("복사됨")).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(screen.getByText("복사")).toBeInTheDocument();
+    });
+
+    it("feedback=toast 클릭 시 showSuccess가 호출되어야 한다", async () => {
+      const { showSuccess } = await import("@/lib/toast");
+      render(
+        <Button feedback="toast" toastMessage="복사되었습니다">
+          복사
+        </Button>
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button"));
+      });
+      expect(showSuccess).toHaveBeenCalledWith("복사되었습니다");
+    });
+  });
+
   describe("접근성", () => {
     it("aria-label이 올바르게 설정되어야 한다", () => {
       render(<Button aria-label="저장 버튼">저장</Button>);
@@ -119,6 +196,11 @@ describe("Button Component", () => {
       const button = screen.getByRole("button", { name: "로딩 중" });
       expect(button).toBeInTheDocument();
     });
+
+    it("loading 상태에서 aria-busy가 true여야 한다", () => {
+      render(<Button loading>로딩 중</Button>);
+      expect(screen.getByRole("button")).toHaveAttribute("aria-busy", "true");
+    });
   });
 
   describe("로딩 상태", () => {
@@ -128,7 +210,6 @@ describe("Button Component", () => {
       const button = screen.getByRole("button");
       expect(button.className).toContain("cursor-not-allowed");
 
-      // 스피너 아이콘이 있는지 확인 (실제 구현에 따라 조정)
       const spinner = button.querySelector('[data-testid="spinner"]');
       expect(spinner).toBeInTheDocument();
     });

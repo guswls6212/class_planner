@@ -49,7 +49,11 @@ export function drawHeader(
   );
 }
 
-export function drawFooter(doc: jsPDF, dims: GridDimensions): void {
+export interface FooterOptions {
+  meta?: string;
+}
+
+export function drawFooter(doc: jsPDF, dims: GridDimensions, options?: FooterOptions): void {
   const { margin, pageWidth, pageHeight, footerHeight } = dims;
   const y = pageHeight - margin.bottom - footerHeight / 2;
 
@@ -60,4 +64,12 @@ export function drawFooter(doc: jsPDF, dims: GridDimensions): void {
     align: "center",
     baseline: "middle",
   });
+
+  if (options?.meta) {
+    doc.setFontSize(6);
+    doc.text(options.meta, pageWidth - margin.right, y, {
+      align: "right",
+      baseline: "middle",
+    });
+  }
 }

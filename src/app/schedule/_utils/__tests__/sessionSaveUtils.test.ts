@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Enrollment } from "../../../../lib/planner";
 import type { TempEnrollment } from "../sessionSaveUtils";
-import { processTempEnrollments } from "../sessionSaveUtils";
+import { buildSessionSaveData, processTempEnrollments } from "../sessionSaveUtils";
 
 describe("sessionSaveUtils", () => {
   let mockAddEnrollment: ReturnType<typeof vi.fn>;
@@ -160,6 +160,23 @@ describe("sessionSaveUtils", () => {
       expect(mockAddEnrollment).toHaveBeenCalledTimes(2);
       expect(result.allEnrollments).toEqual(existingEnrollments);
       expect(result.currentEnrollmentIds).toEqual([]);
+    });
+  });
+
+  describe("buildSessionSaveData", () => {
+    it("teacherId가 null이면 payload에 teacherId: null key가 포함된다", () => {
+      const result = buildSessionSaveData(
+        ["e-1"], ["s-1"], "sub-1", 0, "09:00", "10:00", "", null
+      );
+      expect("teacherId" in result).toBe(true);
+      expect(result.teacherId).toBeNull();
+    });
+
+    it("teacherId가 undefined이면 payload에 teacherId key가 없다", () => {
+      const result = buildSessionSaveData(
+        ["e-1"], ["s-1"], "sub-1", 0, "09:00", "10:00", "", undefined
+      );
+      expect("teacherId" in result).toBe(false);
     });
   });
 });

@@ -70,6 +70,21 @@
 
 /* ===== 전역 CSS - 디자인 시스템 및 유틸리티 ===== */
 
+/* session-overlay-pill: 세션 블록 위 배지/칩 — 어떤 과목 색상 위에서도 가독성 보장 */
+@utility session-overlay-pill {
+  background: var(--color-session-overlay-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5), inset 0 0 0 1px var(--color-session-overlay-ring);
+}
+
+/* session-overflow-top/bottom: 시간 범위 경계를 넘어 잘린 세션의 위/아래 cap.
+   "이 블록이 화면 밖으로도 이어진다"는 시각 단서. 어두워지는 그라데이션이 잘림을 명시. */
+@utility session-overflow-top {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent);
+}
+@utility session-overflow-bottom {
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.45), transparent);
+}
+
 /* 색상 변수 */
 :root {
   /* 기본 색상 */
@@ -96,6 +111,12 @@
   --color-overlay-light: rgba(255, 255, 255, 0.05);
   --color-overlay-medium: rgba(255, 255, 255, 0.15);
   --color-overlay-heavy: rgba(0, 0, 0, 0.9);
+
+  /* 세션 블록 위 오버레이 — 어떤 과목 색상 위에서도 가독성 보장 */
+  /* 사용처: 학생 필터 뱃지, overflow +N 칩 등 색상 블록 위 표시 요소 */
+  --color-session-overlay-bg: rgba(15, 23, 42, 0.82);
+  --color-session-overlay-ring: rgba(255, 255, 255, 0.18);
+  --color-cluster-overflow-bg: rgba(15, 23, 42, 0.85);
 
   /* 간격 */
   --spacing-xs: 4px;
@@ -170,6 +191,9 @@
   --color-scrollbar-button-border:#bbbbbb;
   --color-scrollbar-button-alt:   #cccccc;
   --color-bg-deep:                #111827;
+  /* Overflow Cluster */
+  --color-cluster-overflow-bg: rgba(255, 255, 255, 0.06);
+  --color-cluster-overflow-ring: var(--color-accent);
 }
 
 /* 리스트 불릿 완전 제거 */
@@ -222,6 +246,16 @@ li::after {
   --color-border-grid: #6b7280;
   --color-border-grid-light: #9ca3af;
   --color-border-grid-lighter: #d1d5db;
+
+  /* 스크롤바 색상 - 다크모드 (기본값은 라이트라 흰줄로 보이는 문제 방지) */
+  --color-scrollbar-track:        #374151;
+  --color-scrollbar-track-border: #4b5563;
+  --color-scrollbar-thumb:        #6b7280;
+  --color-scrollbar-thumb-hover:  #9ca3af;
+  --color-scrollbar-thumb-active: #d1d5db;
+  --color-scrollbar-button:       #4b5563;
+  --color-scrollbar-button-border:#6b7280;
+  --color-scrollbar-button-alt:   #374151;
 }
 
 /* Surface Mode — schedule grid + PDF output.
@@ -286,23 +320,63 @@ body {
   left: 100%;
 }
 
-/* 커스텀 스크롤바 스타일 */
+/* =================================================================
+ * Global Scrollbar — Glassmorphic 8px (class-planner 통일)
+ *
+ * 모든 overflow 영역에 자동 적용. WebKit(Chrome/Edge/Safari)는
+ * ::-webkit-scrollbar pseudo-element, Firefox는 scrollbar-width/color
+ * 두 trackform 같이 정의해 cross-browser 일관성.
+ *
+ * 적용 범위: *(전역). 특정 영역 opt-out 시 `.list-scroll-reveal` 처럼
+ * 자체 reset CSS 추가.
+ *
+ * 모바일(iOS Safari, Android Chrome)은 OS overlay scrollbar 우선이라
+ * 이 스타일이 거의 무시됨 — 데스크탑 영역만 실질 영향.
+ * ================================================================= */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.20) rgba(255, 255, 255, 0.03);
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  margin: 4px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.20);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background 0.15s ease;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Legacy .custom-scrollbar 클래스 — 글로벌 적용으로 사실상 obsolete.
+   기존 호출자(현재 없음)와의 호환을 위해 정의 유지. 새 코드에선 클래스
+   부여 불필요 — 글로벌 스타일이 자동 적용된다. */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.20);
+  border-radius: 8px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-light);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 /* 리스트 컴포넌트: 기본 스크롤바 숨김, 호버 시 얇은 스크롤바 표시 */
@@ -549,6 +623,134 @@ body {
   backdrop-filter: blur(3px);
 }
 
+/* ===================================================
+   Onboarding (Vercel-style Premium Dark)
+   user theme 무관 — dark 강제 적용 (special first-impression).
+   외곽 검정 + amber radial glow + frosted glass 카드 + neon 버튼.
+   상세 사양: docs/mockups/onboarding-options.html (option 2)
+   =================================================== */
+.onboarding-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251, 191, 36, 0.12), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(168, 85, 247, 0.08), transparent 60%),
+    #000;
+}
+
+.onboarding-card {
+  background: rgba(10, 10, 12, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+.onboarding-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.4),
+    transparent 30%,
+    transparent 70%,
+    rgba(251, 191, 36, 0.2)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.onboarding-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.15s;
+}
+.onboarding-input::placeholder { color: #52525b; }
+.onboarding-input:focus {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+}
+.onboarding-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+.onboarding-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.onboarding-radio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.onboarding-radio:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.onboarding-radio.selected {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+}
+
+.onboarding-radio-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #52525b;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.onboarding-radio.selected .onboarding-radio-dot {
+  background: #fbbf24;
+  border-color: #fbbf24;
+  box-shadow: inset 0 0 0 3px #18181b;
+}
+
+.onboarding-btn {
+  width: 100%;
+  padding: 13px 20px;
+  background: linear-gradient(180deg, #fbbf24, #f59e0b);
+  color: #18181b;
+  font-weight: 700;
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(251, 191, 36, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.15s;
+}
+.onboarding-btn:hover:not(:disabled) {
+  box-shadow:
+    0 6px 20px rgba(251, 191, 36, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.onboarding-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .text-left {
   text-align: left;
 }
@@ -743,6 +945,13 @@ body {
   box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
+@media (max-width: 767px) {
+  .form-input,
+  .form-select {
+    font-size: 16px;
+  }
+}
+
 .modal-actions {
   display: flex;
   justify-content: space-between;
@@ -816,8 +1025,8 @@ body {
   /* 강제로 가로 스크롤바가 항상 보이도록 설정 */
   -webkit-overflow-scrolling: touch !important;
 
-  /* 가로 스크롤바는 항상 표시, 세로는 필요할 때만 */
-  overflow-x: scroll !important;
+  /* overflow-x는 TimeTableGrid.tsx의 Tailwind `overflow-x-auto`에 위임
+     (이전엔 `overflow-x: scroll !important`로 강제 → Tailwind와 충돌해 가로 스크롤바 2개 발생) */
   overflow-y: auto !important;
 
   /* 추가 강제 설정 - macOS 시스템 설정 무시 */
@@ -1042,4 +1251,85 @@ body {
 }
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+}
+
+/* Cluster overflow dot-track entrance */
+@keyframes clusterDotIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+.cluster-dot-enter { animation: clusterDotIn 200ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .cluster-dot-enter { animation: none; } }
+.cluster-dot-enter:hover {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25),
+              0 0 0 1.5px var(--color-cluster-overflow-ring),
+              inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+/* ===== ConfirmModal — Refined Elevation entrance ===== */
+@keyframes confirm-modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes confirm-modal-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.confirm-modal-fade-in { animation: confirm-modal-fade-in 140ms ease-out; }
+.confirm-modal-pop-in  { animation: confirm-modal-pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .confirm-modal-fade-in,
+  .confirm-modal-pop-in { animation: none; }
+}
+
+/* P3 layout 활성 시 viewport-level 가로 scroll 차단 (page outer scrollbar 발생 X) */
+body:has(.schedule-p3-scroll) {
+  overflow-x: hidden;
+}
+
+/* P3 모드에서 grid의 native scrollbar hide — virtual scrollbar (sticky bottom)
+   하나만 visible. 사용자가 native + virtual 두 개 겹쳐 보이는 issue 해결. */
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar,
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar-track,
+.time-table-grid.schedule-p3-scroll::-webkit-scrollbar-thumb {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.time-table-grid.schedule-p3-scroll {
+  scrollbar-width: none !important;
+}
+
+/* P3 모드에서 virtual scrollbar의 우측 padding — FAB(bottom-20 right-4)
+   영역 회피. scrollbar가 FAB까지 안 늘어나 visual 겹침 X. */
+.time-table-grid.schedule-p3-scroll .virtual-scrollbar-container {
+  right: 80px !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+/* ===== Schedule P3 — Always-visible thin scrollbar (Linear/Vercel/Stripe 트렌드) =====
+   사용자 가로 scroll 미리 인지 (Windows 사용자 친화). 매우 thin (5px) +
+   dimmed (rgba 0.2)로 시야 가림 최소화. hover/active 시 더 진해짐 (clear
+   feedback). floating toolbar는 bottom-14로 scrollbar 위 충분한 여유. */
+.schedule-p3-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+}
+.schedule-p3-scroll::-webkit-scrollbar {
+  height: 5px;
+  width: 5px;
+}
+.schedule-p3-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 3px;
+  transition: background 150ms ease-out;
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+.schedule-p3-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(148, 163, 184, 0.7);
 }

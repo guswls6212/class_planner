@@ -32,11 +32,9 @@ test.describe("E2E 테스트 - 학생 관리", () => {
         // 사용자 ID 설정
         localStorage.setItem("supabase_user_id", config.TEST_USER_ID);
 
-        // 실제 Supabase 인증 토큰 설정 (우회 플래그 없이)
-        localStorage.setItem(
-          config.SUPABASE_TOKEN_KEY,
-          JSON.stringify(authData)
-        );
+        // Supabase 인증 토큰 미설정 → 익명 사용자로 실행
+        // 익명 사용자는 canManage: true (Anonymous-First 원칙)
+        // CI 환경에서 TEST_USER_ID의 academy_members 행이 없어도 정상 동작
 
         // 기본 데이터 설정
         localStorage.setItem("classPlannerData", JSON.stringify(defaultData));
@@ -59,6 +57,11 @@ test.describe("E2E 테스트 - 학생 관리", () => {
       timeout: E2E_CONFIG.TIMEOUTS.AUTH_WAIT,
     });
 
+    // Wait for role check to complete (canManage resolves after /api/members call)
+    await page.waitForSelector('[data-testid="students-page"][data-role-loading="false"]', {
+      timeout: 10000,
+    });
+
     console.log("✅ E2E 인증 및 페이지 로드 완료");
   });
 
@@ -69,12 +72,12 @@ test.describe("E2E 테스트 - 학생 관리", () => {
 
     // 학생 이름 입력
     const nameInput = page.locator(
-      'input[placeholder="학생 이름 (검색 가능)"]'
+      'input[placeholder="학생 이름으로 검색"]'
     );
     await nameInput.fill(studentName);
 
-    // 추가 버튼 클릭
-    const addButton = page.locator('button:has-text("추가")');
+    // 추가 버튼 클릭 — "+ 상세 추가" 버튼(헤더)과 구분하기 위해 ListFilterBar의 aria-label 사용
+    const addButton = page.locator('button[aria-label="학생 추가"]');
     await addButton.click();
 
     // 브라우저별 적절한 대기 시간
@@ -114,10 +117,10 @@ test.describe("E2E 테스트 - 학생 관리", () => {
     // 먼저 학생 추가
     const studentName = `삭제테스트${Date.now()}`;
     const nameInput = page.locator(
-      'input[placeholder="학생 이름 (검색 가능)"]'
+      'input[placeholder="학생 이름으로 검색"]'
     );
     await nameInput.fill(studentName);
-    await page.locator('button:has-text("추가")').click();
+    await page.locator('button[aria-label="학생 추가"]').click();
     await page.waitForTimeout(2000);
 
     try {
@@ -169,7 +172,7 @@ test.describe("E2E 테스트 - 학생 관리", () => {
 
     // 과목 이름 입력
     const nameInput = page.locator(
-      'input[placeholder="과목 이름 (검색 가능)"]'
+      'input[placeholder="과목 이름으로 검색"]'
     );
     await nameInput.fill(subjectName);
 

@@ -44,6 +44,30 @@ describe("CORS 미들웨어", () => {
 
       expect(origins).toContain("http://localhost:3000");
     });
+
+    it("ALLOWED_ORIGINS env가 설정되면 NODE_ENV보다 우선한다", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv(
+        "ALLOWED_ORIGINS",
+        "https://custom-a.example.com,https://custom-b.example.com"
+      );
+
+      const origins = getAllowedOrigins();
+
+      expect(origins).toEqual([
+        "https://custom-a.example.com",
+        "https://custom-b.example.com",
+      ]);
+      expect(origins).not.toContain("https://class-planner.info365.studio");
+    });
+
+    it("ALLOWED_ORIGINS env의 공백을 trim한다", () => {
+      vi.stubEnv("ALLOWED_ORIGINS", " https://a.com , https://b.com ");
+
+      const origins = getAllowedOrigins();
+
+      expect(origins).toEqual(["https://a.com", "https://b.com"]);
+    });
   });
 
   describe("corsMiddleware", () => {

@@ -21,7 +21,6 @@ interface SessionFormProps {
     startTime?: string;
     endTime?: string;
     studentIds?: string[];
-    room?: string;
     yPosition?: number;
   };
 }
@@ -40,7 +39,6 @@ export default function SessionForm({
     startTime: initialData?.startTime || "09:00",
     endTime: initialData?.endTime || "10:00",
     studentIds: initialData?.studentIds || [],
-    room: initialData?.room || "",
     yPosition: initialData?.yPosition || 1,
   });
 
@@ -200,18 +198,6 @@ export default function SessionForm({
               {errorMessage}
             </div>
           )}
-
-          {/* 강의실 */}
-          <div className="form-group">
-            <Label htmlFor="room">강의실</Label>
-            <Input
-              value={formData.room}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, room: e.target.value }))
-              }
-              placeholder="강의실 (선택사항)"
-            />
-          </div>
 
           {/* 학생 선택 */}
           <div className="form-group">

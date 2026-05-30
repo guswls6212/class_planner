@@ -4,20 +4,31 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  __resetCacheForTest,
   addStudentToLocal,
   addSubjectToLocal,
+  addTeacherToLocal,
+  clearActiveAcademy,
   clearClassPlannerData,
   clearUserClassPlannerData,
   deleteStudentFromLocal,
   deleteSubjectFromLocal,
+  ANONYMOUS_STORAGE_KEY,
   getAllStudentsFromLocal,
   getAllSubjectsFromLocal,
+  getActiveAcademyId,
   getClassPlannerData,
   getStudentFromLocal,
   getSubjectFromLocal,
+  replaceEnrollmentId,
+  replaceStudentId,
+  replaceSubjectId,
+  replaceTeacherId,
+  setActiveAcademyId,
   setClassPlannerData,
   updateStudentInLocal,
   updateSubjectInLocal,
+  updateTeacherInLocal,
 } from "../localStorageCrud";
 
 // Mock dependencies
@@ -73,6 +84,9 @@ describe("localStorage CRUD 유틸리티", () => {
 
     // storage 내용 초기화
     Object.keys(storage).forEach((key) => delete storage[key]);
+
+    // module-level dataCache 비우기 (B-2 cache 도입 후 stale 방지)
+    __resetCacheForTest();
 
     // 모의 구현 리셋 (이전 테스트에서 덮어쓴 구현 복원)
     localStorageMock.getItem.mockImplementation(
@@ -186,11 +200,22 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(localStorageMock.setItem).toHaveBeenCalled();
     });
 
-    it("중복 이름 학생 추가 시 에러를 반환해야 한다", () => {
-      const result = addStudentToLocal("김철수"); // 이미 존재하는 이름
+    it("동명이인 등록 허용 — 이름만 같으면 동일인 X (UAT 2026-05-10)", () => {
+      // 기존 김철수는 성별/생년월일 빈 값. 새 김철수에 성별/생년월일 채워 추가 → 다른 사람 등록 허용.
+      const result = addStudentToLocal("김철수", { gender: "male", birthDate: "2010-03-15" });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("김철수");
+    });
+
+    it("이름·성별·생년월일 모두 일치 시 차단", () => {
+      // 먼저 식별 필드 모두 채운 김철수 만들기 (기존 fixture는 이름만 있음)
+      // → updateStudent로 식별 필드 채움 후, 같은 식별 필드로 새 김철수 추가 시 차단
+      updateStudentInLocal("student-1", { gender: "male", birthDate: "2010-03-15" });
+      const result = addStudentToLocal("김철수", { gender: "male", birthDate: "2010-03-15" });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe("이미 같은 이름의 학생이 존재합니다.");
+      expect(result.error).toContain("이미 동일한 학생");
     });
 
     it("학생을 성공적으로 수정해야 한다", () => {
@@ -407,6 +432,80 @@ describe("localStorage CRUD 유틸리티", () => {
       expect(subjects).toHaveLength(2);
       expect(subjects[0].name).toBe("수학");
       expect(subjects[1].name).toBe("영어");
+    });
+  });
+
+  describe("Teachers CRUD", () => {
+    beforeEach(() => {
+      localStorageMock.getItem.mockReturnValue(
+        JSON.stringify({
+          students: [],
+          subjects: [],
+          sessions: [],
+          enrollments: [],
+          teachers: [
+            { id: "teacher-1", name: "김강사", color: "#ff0000", userId: null, role: "member" },
+          ],
+          version: "1.0",
+          lastModified: new Date().toISOString(),
+        })
+      );
+    });
+
+    it("강사를 성공적으로 추가해야 한다", () => {
+      const result = addTeacherToLocal("이선생", "#0000ff", null);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("이선생");
+      expect(result.data?.color).toBe("#0000ff");
+    });
+
+    it("role이 제공되지 않으면 기본값 member로 저장해야 한다", () => {
+      const result = addTeacherToLocal("박선생", "#00ff00", null);
+
+      expect(result.success).toBe(true);
+      expect(result.data?.role).toBe("member");
+    });
+
+    it("이름+이메일+전화 모두 일치 시 차단 (UAT 2026-05-10)", () => {
+      // fixture의 김강사는 email/phone 필드 미설정(빈 값). 같은 빈 값 식별로 추가 시 차단.
+      const result = addTeacherToLocal("김강사", "#ff0000", null);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("이미 동일한 강사");
+    });
+
+    it("이름은 같지만 이메일/전화 다르면 동명이인 등록 허용", () => {
+      const result = addTeacherToLocal("김강사", "#ff0000", null, {
+        email: "kim@academy.com",
+        phone: "010-1234-5678",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.name).toBe("김강사");
+    });
+
+    it("강사 수정 시 식별 필드(이름·이메일·전화) 모두 일치하는 강사와만 충돌", () => {
+      localStorageMock.getItem.mockReturnValue(
+        JSON.stringify({
+          students: [],
+          subjects: [],
+          sessions: [],
+          enrollments: [],
+          teachers: [
+            { id: "teacher-1", name: "김강사", color: "#ff0000", userId: null, role: "member" },
+            { id: "teacher-2", name: "이선생", color: "#0000ff", userId: null, role: "member" },
+          ],
+          version: "1.0",
+          lastModified: new Date().toISOString(),
+        })
+      );
+
+      // teacher-2를 김강사 이름으로 수정. teacher-1과 이름+이메일(빈)+전화(빈) 모두 일치 → 차단.
+      const result = updateTeacherInLocal("teacher-2", { name: "김강사" });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("이미 동일한 강사");
     });
   });
 
@@ -658,6 +757,7 @@ describe("getStorageKey / scoped storage", () => {
 describe("migrateUnkeyedStorage", () => {
   beforeEach(() => {
     localStorageMock.clear();
+    __resetCacheForTest();
   });
 
   it("레거시 classPlannerData가 있으면 현재 스코프 키로 마이그레이션", () => {
@@ -701,5 +801,585 @@ describe("clearUserClassPlannerData", () => {
     clearUserClassPlannerData("user-456");
     expect(localStorageMock.getItem("classPlannerData:user-456")).toBeNull();
     expect(localStorageMock.getItem("classPlannerData:anonymous")).not.toBeNull();
+  });
+});
+
+// ===== Active academy management =====
+
+describe("active academy management", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+  });
+
+  it("active academy를 설정하고 조회할 수 있다", () => {
+    setActiveAcademyId("user-1", "academy-abc");
+    expect(getActiveAcademyId("user-1")).toBe("academy-abc");
+  });
+
+  it("active academy를 초기화하면 null 반환", () => {
+    setActiveAcademyId("user-1", "academy-abc");
+    clearActiveAcademy("user-1");
+    expect(getActiveAcademyId("user-1")).toBeNull();
+  });
+
+  it("사용자별 active academy가 격리된다", () => {
+    setActiveAcademyId("user-1", "academy-a");
+    setActiveAcademyId("user-2", "academy-b");
+    expect(getActiveAcademyId("user-1")).toBe("academy-a");
+    expect(getActiveAcademyId("user-2")).toBe("academy-b");
+  });
+
+  it("설정하지 않은 userId는 null 반환", () => {
+    expect(getActiveAcademyId("user-never-set")).toBeNull();
+  });
+});
+
+// ===== getStorageKey with academyId =====
+
+describe("getStorageKey per-academy scoping", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+  });
+
+  it("academyId 포함 시 userId:academyId 스코프 키에 저장", () => {
+    storage["supabase_user_id"] = "user-123";
+    setActiveAcademyId("user-123", "acad-xyz");
+    setClassPlannerData(
+      {
+        students: [{ id: "s1", name: "Test" }],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        teachers: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      },
+      "acad-xyz"
+    );
+    expect(
+      localStorageMock.getItem("classPlannerData:user-123:acad-xyz")
+    ).not.toBeNull();
+    // 기존 user-scoped 키에는 저장 안 됨
+    expect(localStorageMock.getItem("classPlannerData:user-123")).toBeNull();
+  });
+
+  it("academyId 없으면 active academy 키로 자동 라우팅", () => {
+    storage["supabase_user_id"] = "user-123";
+    setActiveAcademyId("user-123", "acad-xyz");
+    // active academy가 설정된 상태에서 academyId 미전달
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    // active academy 기반 키로 저장됨
+    expect(
+      localStorageMock.getItem("classPlannerData:user-123:acad-xyz")
+    ).not.toBeNull();
+  });
+
+  it("userId 없으면 academyId가 있어도 anonymous 키에 저장", () => {
+    // supabase_user_id 없음
+    setClassPlannerData(
+      {
+        students: [],
+        subjects: [],
+        sessions: [],
+        enrollments: [],
+        teachers: [],
+        version: "1.0",
+        lastModified: new Date().toISOString(),
+      },
+      "some-academy"
+    );
+    expect(
+      localStorageMock.getItem(ANONYMOUS_STORAGE_KEY)
+    ).not.toBeNull();
+  });
+});
+
+// ===== One-time migration: legacy key → academy-scoped key =====
+
+describe("getClassPlannerData per-academy migration", () => {
+  beforeEach(() => {
+    localStorageMock.clear();
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    __resetCacheForTest();
+  });
+
+  it("새 스코프 키가 비어있고 레거시 키에 데이터가 있으면 첫 조회 시 복사", () => {
+    const legacyData = JSON.stringify({
+      students: [{ id: "s1", name: "LegacyStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    storage["supabase_user_id"] = "user-111";
+    storage["classPlannerData:user-111"] = legacyData;
+
+    const result = getClassPlannerData("academy-new");
+
+    expect(result.students[0].name).toBe("LegacyStudent");
+    // 새 스코프 키에 복사됨
+    expect(
+      localStorageMock.getItem("classPlannerData:user-111:academy-new")
+    ).not.toBeNull();
+    // 레거시 키는 삭제 안 됨 (안전한 롤백)
+    expect(
+      localStorageMock.getItem("classPlannerData:user-111")
+    ).not.toBeNull();
+  });
+
+  it("새 스코프 키에 이미 데이터가 있으면 레거시 데이터를 덮어쓰지 않는다", () => {
+    storage["supabase_user_id"] = "user-111";
+    storage["classPlannerData:user-111"] = JSON.stringify({
+      students: [{ id: "s-legacy", name: "LegacyStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+    storage["classPlannerData:user-111:academy-new"] = JSON.stringify({
+      students: [{ id: "s-new", name: "NewStudent" }],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    const result = getClassPlannerData("academy-new");
+
+    // 기존 새 스코프 데이터 유지
+    expect(result.students[0].name).toBe("NewStudent");
+  });
+
+  it("userId 없이 academyId만 넘겨도 마이그레이션 없이 anonymous 기본값 반환", () => {
+    // no supabase_user_id in storage
+    const result = getClassPlannerData("academy-orphan");
+    expect(result.students).toHaveLength(0);
+    // anonymous 키에만 접근
+    expect(
+      localStorageMock.getItem("classPlannerData:academy-orphan")
+    ).toBeNull();
+  });
+});
+
+describe("replaceEnrollmentId — server idempotent reconciliation", () => {
+  beforeEach(() => {
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    vi.clearAllMocks();
+  });
+
+  it("enrollments[].id 와 sessions[].enrollmentIds 를 함께 교체한다", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [
+        {
+          id: "ses-1",
+          enrollmentIds: ["old-id", "other-id"],
+          weekday: 0,
+          startsAt: "10:00",
+          endsAt: "11:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+      ],
+      enrollments: [
+        { id: "old-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+        { id: "other-id", studentId: "stu-2", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    const ok = replaceEnrollmentId("old-id", "new-server-id");
+    expect(ok).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.enrollments.find((e) => e.id === "old-id")).toBeUndefined();
+    expect(after.enrollments.find((e) => e.id === "new-server-id")).toBeDefined();
+    expect(after.sessions[0].enrollmentIds).toEqual(["new-server-id", "other-id"]);
+  });
+
+  it("oldId === newId 면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [
+        { id: "same-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("same-id", "same-id");
+    expect(ok).toBe(true);
+    expect(getClassPlannerData().enrollments).toHaveLength(1);
+  });
+
+  it("oldId가 enrollments에 없으면 no-op + true (멱등)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("missing", "any");
+    expect(ok).toBe(true);
+  });
+
+  it("newId가 이미 enrollments에 있으면 oldId entry 제거 + sessions의 oldId만 newId로 교체 (중복 제거)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [
+        {
+          id: "ses-1",
+          enrollmentIds: ["old-id", "new-id"], // 둘 다 이미 참조 — 교체 후 dedupe
+          weekday: 0,
+          startsAt: "10:00",
+          endsAt: "11:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+      ],
+      enrollments: [
+        { id: "old-id", studentId: "stu-1", subjectId: "sub-1" } as any,
+        { id: "new-id", studentId: "stu-1", subjectId: "sub-2" } as any, // 다른 subject
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    const ok = replaceEnrollmentId("old-id", "new-id");
+    expect(ok).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.enrollments).toHaveLength(1);
+    expect(after.enrollments[0].id).toBe("new-id");
+    expect(after.sessions[0].enrollmentIds).toEqual(["new-id"]); // dedupe
+  });
+});
+
+describe("replaceStudentId — server idempotent reconciliation", () => {
+  beforeEach(() => {
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    vi.clearAllMocks();
+  });
+
+  it("students[].id 와 enrollments[].studentId 를 함께 교체한다", () => {
+    setClassPlannerData({
+      students: [
+        { id: "old-stu", name: "테스트학생" } as any,
+        { id: "stu-2", name: "다른학생" } as any,
+      ],
+      subjects: [],
+      sessions: [],
+      enrollments: [
+        { id: "enr-1", studentId: "old-stu", subjectId: "sub-1" } as any,
+        { id: "enr-2", studentId: "stu-2", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    const ok = replaceStudentId("old-stu", "new-server-id");
+    expect(ok).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.students.find((s) => s.id === "old-stu")).toBeUndefined();
+    expect(after.students.find((s) => s.id === "new-server-id")).toBeDefined();
+    expect(after.enrollments[0].studentId).toBe("new-server-id");
+    expect(after.enrollments[1].studentId).toBe("stu-2"); // 무관 entry 영향 없음
+  });
+
+  it("oldId === newId 면 no-op + true", () => {
+    setClassPlannerData({
+      students: [{ id: "same", name: "x" } as any],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    expect(replaceStudentId("same", "same")).toBe(true);
+    expect(getClassPlannerData().students).toHaveLength(1);
+  });
+
+  it("oldId가 students에 없으면 no-op + true (멱등)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    expect(replaceStudentId("missing", "any")).toBe(true);
+  });
+
+  it("newId가 이미 students에 있으면 oldId entry 제거 + enrollments의 oldId만 newId로 교체", () => {
+    setClassPlannerData({
+      students: [
+        { id: "old-stu", name: "x" } as any,
+        { id: "new-stu", name: "x" } as any, // 이름 같아도 됨 — server가 같은 row로 reconcile
+      ],
+      subjects: [],
+      sessions: [],
+      enrollments: [
+        { id: "enr-1", studentId: "old-stu", subjectId: "sub-1" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+
+    expect(replaceStudentId("old-stu", "new-stu")).toBe(true);
+    const after = getClassPlannerData();
+    expect(after.students).toHaveLength(1);
+    expect(after.students[0].id).toBe("new-stu");
+    expect(after.enrollments[0].studentId).toBe("new-stu");
+  });
+});
+
+describe("replaceSubjectId — server idempotent reconciliation", () => {
+  beforeEach(() => {
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    vi.clearAllMocks();
+  });
+
+  it("subjects[].id 와 enrollments[].subjectId 를 함께 교체한다", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [
+        { id: "old-sub", name: "수학", color: "#000" } as any,
+        { id: "sub-2", name: "영어", color: "#fff" } as any,
+      ],
+      sessions: [],
+      enrollments: [
+        { id: "enr-1", studentId: "stu-1", subjectId: "old-sub" } as any,
+        { id: "enr-2", studentId: "stu-1", subjectId: "sub-2" } as any,
+      ],
+      teachers: [],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    expect(replaceSubjectId("old-sub", "new-sub")).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.subjects.find((s) => s.id === "old-sub")).toBeUndefined();
+    expect(after.subjects.find((s) => s.id === "new-sub")).toBeDefined();
+    expect(after.enrollments[0].subjectId).toBe("new-sub");
+    expect(after.enrollments[1].subjectId).toBe("sub-2");
+  });
+
+  it("oldId === newId 면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [{ id: "same", name: "x", color: "#000" } as any],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    expect(replaceSubjectId("same", "same")).toBe(true);
+  });
+
+  it("oldId가 subjects에 없으면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    expect(replaceSubjectId("missing", "any")).toBe(true);
+  });
+});
+
+describe("replaceTeacherId — server idempotent reconciliation", () => {
+  beforeEach(() => {
+    Object.keys(storage).forEach((k) => delete storage[k]);
+    vi.clearAllMocks();
+  });
+
+  it("teachers[].id 와 sessions[].teacherId 를 함께 교체한다", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [
+        {
+          id: "ses-1",
+          teacherId: "old-tea",
+          enrollmentIds: [],
+          weekday: 0,
+          startsAt: "10:00",
+          endsAt: "11:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+        {
+          id: "ses-2",
+          teacherId: "tea-2",
+          enrollmentIds: [],
+          weekday: 1,
+          startsAt: "11:00",
+          endsAt: "12:00",
+          weekStartDate: "2026-05-04",
+        } as any,
+      ],
+      enrollments: [],
+      teachers: [
+        { id: "old-tea", name: "이강사", color: "#000" } as any,
+        { id: "tea-2", name: "박강사", color: "#fff" } as any,
+      ],
+      version: "1.0",
+      lastModified: new Date().toISOString(),
+    });
+
+    expect(replaceTeacherId("old-tea", "new-tea")).toBe(true);
+
+    const after = getClassPlannerData();
+    expect(after.teachers.find((t) => t.id === "old-tea")).toBeUndefined();
+    expect(after.teachers.find((t) => t.id === "new-tea")).toBeDefined();
+    expect(after.sessions[0].teacherId).toBe("new-tea");
+    expect(after.sessions[1].teacherId).toBe("tea-2");
+  });
+
+  it("oldId === newId 면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [{ id: "same", name: "x", color: "#000" } as any],
+      version: "1.0",
+      lastModified: "x",
+    });
+    expect(replaceTeacherId("same", "same")).toBe(true);
+  });
+
+  it("oldId가 teachers에 없으면 no-op + true", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    expect(replaceTeacherId("missing", "any")).toBe(true);
+  });
+});
+
+// ── setClassPlannerData sub-array reference safety (T8 회귀 가드) ────────────
+// dataCache(2bad68f) memoization으로 같은 reference를 반환하기 때문에, 호출자가
+// push/splice/sort 등으로 sub-array를 mutate하면 다음 setData(localData) 시
+// React.memo가 sub-array reference 동일로 판정 → DOM 미갱신 회귀 (T8 사고).
+// setClassPlannerData가 sub-array를 1-level shallow copy로 cache에 저장하는
+// 흐름이 root cause guard.
+describe("setClassPlannerData — sub-array reference safety", () => {
+  beforeEach(() => {
+    __resetCacheForTest();
+    localStorage.clear();
+    localStorage.setItem("supabase_user_id", "test-user");
+  });
+
+  it("저장 직후 getClassPlannerData가 input과 다른 sub-array reference를 반환한다", () => {
+    const inputSessions = [{ id: "s1" }] as never[];
+    const inputStudents = [{ id: "stu1", name: "A" }] as never[];
+    setClassPlannerData({
+      students: inputStudents,
+      subjects: [],
+      sessions: inputSessions,
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    const fetched = getClassPlannerData();
+
+    // 같은 element 내용이지만 array reference는 달라야 함
+    expect(fetched.sessions).toEqual(inputSessions);
+    expect(fetched.sessions).not.toBe(inputSessions);
+    expect(fetched.students).toEqual(inputStudents);
+    expect(fetched.students).not.toBe(inputStudents);
+  });
+
+  it("input array를 외부에서 mutate해도 cache에 저장된 데이터에는 영향 없음", () => {
+    const inputSessions = [{ id: "s1" }] as never[];
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: inputSessions,
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    // 외부 array에 직접 mutate
+    (inputSessions as { id: string }[]).push({ id: "s2" });
+
+    // cache는 영향 없어야 함 (1개 그대로)
+    const fetched = getClassPlannerData();
+    expect(fetched.sessions).toHaveLength(1);
+    expect((fetched.sessions[0] as { id: string }).id).toBe("s1");
+  });
+
+  it("연속 setClassPlannerData 호출 시 매번 새 sub-array reference 발급 (React.memo 정상 인지 보장)", () => {
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [{ id: "s1" }] as never[],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "x",
+    });
+    const first = getClassPlannerData();
+
+    // 동일 내용 재저장 — sub-array는 매 호출마다 새 reference여야 React가 변화 인지 가능
+    setClassPlannerData({
+      students: [],
+      subjects: [],
+      sessions: [{ id: "s1" }, { id: "s2" }] as never[],
+      enrollments: [],
+      teachers: [],
+      version: "1.0",
+      lastModified: "y",
+    });
+    const second = getClassPlannerData();
+
+    expect(first.sessions).not.toBe(second.sessions);
+    expect(second.sessions).toHaveLength(2);
   });
 });

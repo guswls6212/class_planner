@@ -1,5 +1,8 @@
 import { logger } from "./logger";
 
+// Duplicated from domain entity — planner.ts must not import from domain layer
+export type TeacherRole = 'owner' | 'admin' | 'member';
+
 export type Student = {
   id: string;
   name: string;
@@ -15,6 +18,13 @@ export type Teacher = {
   name: string;
   color: string;
   userId?: string | null;
+  // New profile fields (Phase 2)
+  email?: string | null;
+  phone?: string | null;
+  role?: TeacherRole | null;
+  notes?: string | null;
+  // Subject associations (from teacher_subjects join table)
+  subjectIds?: string[];
 };
 
 export type Subject = {
@@ -32,13 +42,19 @@ export type Enrollment = {
 
 export type Session = {
   id: string; // 세션 고유 식별자
+  subjectId?: string; // 과목 ID (선택적 — session_enrollments에서 파생)
   enrollmentIds?: string[]; // 여러 수강신청 ID (그룹 수업 지원)
   weekday: number; // 요일 (0: 월요일, 1: 화요일, ..., 6: 일요일)
   startsAt: string; // 시작 시간 (HH:MM 형식)
   endsAt: string; // 종료 시간 (HH:MM 형식)
+  weekStartDate: string; // 주 월요일 ISO date "YYYY-MM-DD" (KST 기준)
   room?: string; // 강의실 (선택적)
   yPosition?: number; // 사용자 정의 Y축 위치 (논리적 위치: 1, 2, 3...)
-  teacherId?: string; // 담당 강사 ID (선택적)
+  teacherId?: string | null; // 담당 강사 ID (선택적, null = 강사 없음)
+  // migration 039 — sessions.public_description / internal_note column.
+  // public_description 은 학생/학부모 share view 에 노출. internal_note 는 운영자 전용.
+  publicDescription?: string | null;
+  internalNote?: string | null;
 };
 
 // 🆕 그룹 수업 판단을 위한 헬퍼 타입
@@ -158,6 +174,7 @@ export function createGroupSession(
     weekday: candidate.weekday,
     startsAt: candidate.startsAt,
     endsAt: candidate.endsAt,
+    weekStartDate: "",
     room: candidate.room,
   };
 }

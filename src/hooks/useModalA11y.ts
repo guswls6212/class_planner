@@ -8,6 +8,21 @@ interface UseModalA11yOptions {
 export function useModalA11y({ isOpen, onClose }: UseModalA11yOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Body scroll lock — prevents background page (e.g. /schedule timetable)
+  // from scrolling when modal is open. Without this, mouse-wheel inside
+  // the modal can propagate to the underlying page once internal scroll
+  // is exhausted (or never engages if modal content fits).
+  // Common across all useModalA11y consumers (ConfirmModal, GroupSessionModal, etc.).
+  useEffect(() => {
+    if (!isOpen) return;
+    if (typeof document === "undefined") return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;

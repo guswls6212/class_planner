@@ -1,15 +1,21 @@
 import React, { useMemo } from "react";
 import MonthDayCell from "../molecules/MonthDayCell";
-import type { Enrollment, Session, Subject } from "../../lib/planner";
+import type { Enrollment, Session, Student, Subject, Teacher } from "../../lib/planner";
+import { getWeekStartDate } from "../../lib/weekStart";
+import type { ColorByMode } from "@/hooks/useColorBy";
 
 interface ScheduleMonthlyViewProps {
-  sessions: Map<number, Session[]>;
+  sessions: Session[];
   subjects: Subject[];
   enrollments: Enrollment[];
+  students?: Student[];
+  teachers?: Teacher[];
+  colorBy?: ColorByMode;
+  // ADR-020 R5 Full Parity: 학생/과목/강사 모두 dim contrast 적용 (UAT 2026-05-21)
+  selectedStudentIds?: string[];
+  selectedSubjectIds?: string[];
+  selectedTeacherIds?: string[];
   currentDate: Date;
-  goToNextMonth: () => void;
-  goToPrevMonth: () => void;
-  goToToday: () => void;
   onDayClick: (date: Date) => void;
 }
 
@@ -39,13 +45,15 @@ export default function ScheduleMonthlyView({
   sessions,
   subjects,
   enrollments,
+  students = [],
+  teachers = [],
+  colorBy = "subject",
+  selectedStudentIds,
+  selectedSubjectIds,
+  selectedTeacherIds,
   currentDate,
-  goToNextMonth,
-  goToPrevMonth,
-  goToToday,
   onDayClick,
 }: ScheduleMonthlyViewProps) {
-  const monthLabel = `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월`;
   const today = useMemo(() => new Date(), []);
 
   const calendarDays = useMemo(() => buildCalendarDays(currentDate), [currentDate]);
@@ -61,38 +69,7 @@ export default function ScheduleMonthlyView({
   }
 
   return (
-    <div data-surface="surface" className="flex flex-col gap-2">
-      {/* Month navigation */}
-      <div className="flex items-center justify-between px-1">
-        <button
-          type="button"
-          aria-label="이전 달"
-          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToPrevMonth}
-        >
-          ‹
-        </button>
-        <span className="text-base font-semibold text-[var(--color-text-primary)]">
-          {monthLabel}
-        </span>
-        <button
-          type="button"
-          aria-label="다음 달"
-          className="rounded p-1 text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToNextMonth}
-        >
-          ›
-        </button>
-        <button
-          type="button"
-          aria-label="오늘"
-          className="ml-2 rounded border border-[var(--color-border)] px-2 py-0.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-          onClick={goToToday}
-        >
-          오늘
-        </button>
-      </div>
-
+    <div className="flex flex-col gap-2">
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAY_LABELS.map((label) => (
@@ -107,7 +84,10 @@ export default function ScheduleMonthlyView({
         {/* Day cells */}
         {calendarDays.map((date, idx) => {
           const weekday = (date.getDay() + 6) % 7; // Mon=0
-          const daySessions = sessions.get(weekday) ?? [];
+          const weekStart = getWeekStartDate(date);
+          const daySessions = sessions.filter(
+            (s) => s.weekday === weekday && s.weekStartDate === weekStart
+          );
           return (
             <MonthDayCell
               key={idx}
@@ -115,6 +95,12 @@ export default function ScheduleMonthlyView({
               sessions={daySessions}
               subjects={subjects}
               enrollments={enrollments}
+              students={students}
+              teachers={teachers}
+              colorBy={colorBy}
+              selectedStudentIds={selectedStudentIds}
+              selectedSubjectIds={selectedSubjectIds}
+              selectedTeacherIds={selectedTeacherIds}
               isToday={isSameDay(date, today)}
               isCurrentMonth={date.getMonth() === currentMonth}
               onDayClick={onDayClick}

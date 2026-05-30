@@ -75,106 +75,225 @@ RootLayout
 
 ### 2.2 시간표 (`/schedule`)
 
-**컴포넌트 트리:**
+**3가지 뷰 모드:** 일별(daily) / 주간(weekly) / 월별(monthly). `localStorage` 저장.
+
+**기본 Layout (ADR-010, 2026-05-08 부터):** **P3** — Hide-on-Scroll 헤더 + 좌하단 fixed `ScheduleFloatingToolbar` (`data-testid="schedule-floating-toolbar"`: 날짜 네비 + 통합 필터 popover + TimeRangeSelector + viewMode 단축 버튼 "일/주/월" — `data-testid="view-mode-{daily|weekly|monthly}"`) + 좌측 `PrimarySidebar`. 백출은 `?layout=default` query 또는 localStorage `class_planner_schedule_layout = "default"` (`useScheduleLayout` 훅).
+
+**컴포넌트 트리 (현행):**
 ```
-SchedulePage (AuthGuard 미사용 — 익명 허용)
-  ├── ScheduleHeader (_components/ScheduleHeader.tsx)
-  │     └── 타이틀 + 현재 날짜 + PDF 다운로드 버튼
-  ├── ScheduleGridSection (_components/ScheduleGridSection.tsx)
-  │     └── TimeTableGrid (organisms)
-  │           ├── 좌측: 요일 헤더 (월~일)
-  │           ├── 상단: 시간 헤더 (09:00~23:30, 30분 단위)
-  │           └── 셀: SessionBlock (molecules) × N
-  ├── StudentPanelSection (_components/StudentPanelSection.tsx)
-  │     └── StudentPanel (organisms) — 플로팅, 드래그 이동 가능
-  ├── PdfDownloadSection (_components/PdfDownloadSection.tsx)
-  ├── GroupSessionModal (_components/GroupSessionModal.tsx)
-  └── EditSessionModal (_components/EditSessionModal.tsx)
+SchedulePage
+  ├── [Row 1: flex justify-between, border-b]
+  │     ├── ScheduleHeader (_components/) — 타이틀("일별/주간/월별 시간표") + 로딩 상태
+  │     └── ScheduleActionBar (_components/) — PDF Primary CTA + TemplateMenuV2▼ + 공유 아이콘
+  │           └── TemplateMenuV2 (molecules) — 드롭다운: "템플릿 적용하기" / "시간표 비우기" / "현재 주를 템플릿으로 저장" / "미리보기"
+  │                 → SlotPickerModal (save/apply mode, ADR-008 multi-slot)
+  ├── StudentFilterChipBar (_components/) — ?layout=default 백출 + colorBy=student 시만. P3 default에서는 ScheduleFloatingToolbar의 UnifiedFilterPopover로 통합.
+  ├── DayChipBar (molecules) — 일별 뷰만, 주 7일 칩
+  ├── [Row 2: flex justify-between, 그리드 직전]
+  │     ├── ScheduleDateNavigator (molecules) — ‹/›(±1일/주/월) + 오늘 버튼
+  │     └── SegmentedButton(뷰 전환) + ColorByToggle + HelpTooltip(색상 기준, 1개)
+  ├── [viewMode === "daily"]
+  │     └── ScheduleDailyView (organisms) — 수업 카드 리스트 + 스와이프 제스처
+  ├── [viewMode === "weekly"]
+  │     └── ScheduleGridSection (_components/)
+  │           └── TimeTableGrid (organisms)
+  │                 ├── 헤더: Stacked Circle(요일명+날짜, 오늘=amber 배지)
+  │                 └── 셀: TimeTableRow(molecules) × 7 + row-level cluster expand chip (+N/−, PR #392/#399)
+  │                       ├── 수평 시간선 overlay
+  │                       ├── now-line (오늘 컬럼만)
+  │                       ├── TimeTableCell (drop zone) × 30
+  │                       ├── LaneInsertSlot (boundary droppable, Variant E PR #388) × N
+  │                       └── SessionBlock × N
+  ├── [viewMode === "monthly"]
+  │     └── ScheduleMonthlyView (organisms) — 달력 셀(MonthDayCell) × N
+  ├── FAB (`+` button, fixed bottom-right, z-40) — 전 뷰 공통
+  ├── GroupSessionModal (_components/) — V3 chip+popover (헤더 날짜/시간 chip + body 학생/과목/강사, PR #396)
+  └── EditSessionModal (_components/)
 ```
 
-**레이아웃:**
-- 전체 화면 활용, `paddingBottom: 60px` (footer 공간)
-- TimeTableGrid: 가로/세로 스크롤, `max-height: 80vh`
-- StudentPanel: `position: fixed`, 드래그로 위치 이동, 기본 280px 너비
+**ScheduleDateNavigator 상세:**
+- 위치: Row 2 좌측 (그리드 바로 위, 뷰 컨트롤과 같은 행)
+- 좌: `ChevronLeft` 버튼(이전 날/주/월) + 라벨 + `ChevronRight` 버튼
+- 우: "오늘" 버튼 — `selectedDate`를 현재 시각으로 reset
+- 라벨 포맷: 일별="YYYY년 M월 D일 (요)", 주간="YYYY년 M월 D일 — M월 D일", 월별="YYYY년 M월"
 
-**TimeTableGrid 상세:**
-- 그리드 칼럼: `80px (요일) + 30 × 100px (시간슬롯)`
-- 시간 범위: 09:00 ~ 23:30 (30분 단위, 30슬롯)
-- 요일: 월~일 (7행), 높이는 `yPosition × SESSION_CELL_HEIGHT` (동적)
-- 시간 헤더: sticky top, `z-index: 999`
-- 가상 스크롤바: 하단 12px 높이 (dark/light 모두)
+**TimeTableGrid 상세 (주간 뷰):**
+- 그리드 칼럼: `56px(시간 라벨) + weekdayWidths[7]` (lane 수 × laneWidth px 동적)
+- 시간 범위: 사용자 customizable (`TimeRangeSelector` — `?range=auto|default|HH-HH` query / localStorage `class_planner_{userId}_time_range` / default 9-23). 30분 단위, `SLOT_HEIGHT_PX=32px` per slot.
+- **시간 범위 경계 걸침 세션** (예: 11:30-16:30 + 7-13 모드): strict overlap 검사로 양쪽 모드 모두에서 표시. `TimeTableRow.weekdaySessions` 필터 = `startMin < upperBound && endMin > lowerBound`. `laidOutSessions`에서 visStart/visEnd로 clamp + `overflowsTop`/`overflowsBottom` flag → `SessionBlock` 상/하단 그라데이션 cap (`session-overflow-top/bottom` Tailwind utility, `globals.css`).
+- 헤더 높이: 60px. Stacked Circle: 요일명(10px) 위 + 날짜 숫자(22px bold, w-9 h-9 rounded-full) 아래
+- 오늘: amber 원 배지(`var(--color-accent-hover)`) + 컬럼 배경 `rgba(245,158,11,0.025)` + now-line
+- 수평 시간선: 정시 `rgba(255,255,255,0.09)` / 30분 `rgba(255,255,255,0.04)`, pointer-events:none
+- 가상 스크롤바: 하단 12px
 - 스크롤 위치 localStorage 보존: 키 `schedule_scroll_position`, 5분 TTL
 
-**SessionBlock 상세:**
-```
-┌─────────────────────────┐
-│ 과목명(좌)    HH:MM-HH:MM(우) │
-│                              │
-│            학생명들(우하단)   │
-└─────────────────────────┘
-```
-- 배경색: 해당 과목 color
-- 폰트 크기 동적 조정: 3명 이하 14px → 9명+ 5px
-- 학생명 최대 표시: 8명 (`이름1, 이름2... 외 N명`)
-- 드래그 가능 (`draggable=true`), 이동 시 `cursor: move`, 드래그 중 `opacity: 0.5`
+**GroupSessionModal 상세 (V3 chip+popover, EditSessionModal V3 미러, PR #396):**
+- 데스크톱: 중앙 `rounded-2xl` 카드, `backdrop-blur-xl`, max-w-md
+- 모바일: BottomSheet (기존 유지)
+- **헤더**: 날짜 chip + 시간 chip 1줄 표시 (편집 모달 V3 패턴 미러).
+  - 날짜 chip 클릭 → 월별 캘린더 popover → 다른 주 날짜 선택 시 chip label 즉시 갱신 (`5월 27일 (화)`).
+  - 시간 chip 클릭 → 시간 popover (시작/종료 시간 선택).
+  - 저장 후 시간표가 선택한 주(weekStartDate)로 자동 navigate.
+- **Body** (구 Step 1~2 통합):
+  - 학생 — amber chip 태그 + 검색 input + 아바타(초성) autocomplete
+  - 과목 — select + "＋" 인라인 추가(자동 색상 할당, canManage gate)
+  - 강사 — `TeacherPillPicker` + "＋ 새 강사" 인라인 추가 (성공 시 자동 닫힘 + 새 항목 자동 선택)
+  - 강의실 — text input
+- **Footer**: V1-disabled validation + helper text(누락 필드 표시) + "수업 추가" 버튼
+- **`GroupSessionData.weekStartDate?: string`** + `SessionCreateInput.weekStartDate` (PR #396)
+- 회귀 가드: `tests/e2e/modal-transition.spec.ts` modalFadeIn 0.2s keyframe (PR #409), `__tests__/GroupSessionModal.test.tsx` chip+popover 셋업
 
-**StudentPanel 상세:**
-- 플로팅 패널 (position fixed)
-- 헤더: "수강생 리스트" — 드래그로 패널 위치 이동
-- 검색: 실시간 이름 필터
-- 학생 아이템: 드래그 시작 → 시간표 셀에 드롭하여 수업 추가
-- 선택된 학생: 하이라이트 표시, 해당 학생의 수업 블록 강조
+**FAB 상세:**
+- `fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 z-40`
+- 클릭 → `openGroupModal(selectedWeekday, currentTime, 1)` (전 뷰 동일)
+- `bg-accent` (amber) + 흰색 `Plus` 아이콘(24px)
+
+**SessionCard (Phase 6 공유 primitive) 상세:**
+- Weekly는 SessionBlock 유지. Daily/Monthly/Landing은 SessionCard로 통일.
+- `data-variant`: `block`(weekly) / `row`(daily) / `chip`(monthly) / `preview`(landing)
+- `data-state`: `default` / `ongoing` / `done` / `conflict`
+- 3-tone 파스텔 색: bg=`tintFromHex(color, 0.8)`, fg=어두운 텍스트, accent=원색 좌 3px 바
+- 겹침 D-hybrid: ≤3개 균등 분할, ≥4개 앞 3개 표시, 4+는 inline +N 칩 클릭 시 모든 세션 표시 (토글 가능)
+
+**StudentFilterChipBar (?layout=default 백출):**
+- 학생 칩 멀티셀렉트 필터 — 선택 시 해당 학생 수업만 강조 (dim contrast)
+- 학생 칩을 SessionBlock에 드롭 → 해당 수업에 학생 추가(드래그앤드롭)
+- P3 default 에서는 `ScheduleFloatingToolbar` 의 `UnifiedFilterPopover` 로 통합 (chip bar 미렌더)
+
+**ColorBy 모드 동작 — 필터-색 일치 (ADR-020 R5, 2026-05-21):**
+- session 본체 색 = `colorBy="teacher"` 면 강사 색, 그 외 ("subject" 또는 legacy "student") 는 과목 색. **고정** — 필터 chip 선택은 본체 색에 영향 X.
+- 활성 필터 type 모두를 만족하는 세션 (AND 결합, `sessionMatchesFilters(session, enrollments, studentIds, subjectIds, teacherIds)`) → 본체 색 그대로 유지 (opacity 1.0).
+- 비매칭 세션 → `opacity: 0.25` dim. 학생/과목/강사 모두 동일.
+- **Ring 표시 폐기** — ADR-020 R5 에서 ADR-003 Decision 2 의 "학생색 outer glow ring" 제거. dim contrast 만 사용. (`pickRingHex` 함수 삭제됨)
+- 강사 매칭은 `session.teacherId` 단일 필드 비교 (enrollment 통하지 않음).
+- `colorBy` 자동 전환: 단일 강사 필터 활성 → "teacher"; 그 외 → "subject" fallback. **"student" 모드 selector 제거** (ADR-020 D1).
+- Lane reorder: yPosition 기반 고정. 필터 영향 X (ADR-020 D2 — PR #284 의 weekday-wide reorder 정정). cluster 내부 visible 결정 시 매칭 우선만 유지 (overflow `+N` 처리).
+- 칩 선택 + 세션 총 인원 ≥ 2명 → 블록 우측 상단에 `Users 아이콘 + 총 N명` 뱃지 노출 (`aria-label="총 N명"`). 비매칭 dim 블록에는 뱃지 미표시.
+- `getGroupStudentNames` 시그니처: `selectedStudentIds?: string[]` — multi-select 시 매칭된 모든 학생명 반환.
+- 드래그 중 dim 비활성 (포인터 인터랙션 우선).
+- 이 동작은 weekly / daily / monthly 뷰 전체에 동일하게 적용 (Full Parity).
+- 구현: 부모(`ScheduleDailyView`, `MonthDayCell`)에서 `resolvedColor`/`isDimmed` 계산 → `SessionCard`에 `overrideColor`/`dimmed`/`highlighted` props 전달. Weekly는 `SessionBlock`이 자체적으로 `isAnyFilterActive` 체크.
+
+**Session Overflow — Row-level cluster expand (PR #392/#399):**
+- 겹침 세션 ≥ 4개: 최대 3개 인라인 표시 + `+N` 인라인 chip 버튼
+- `+N` chip 클릭 → **그 weekday의 모든 cluster 일괄 expand** (단일 시간대만 아닌, row-level). 시간대별 toggle은 PR #392에서 도입했고 PR #399에서 weekday 일괄로 통일.
+- 다시 `−` chip 클릭하면 모두 collapse.
+- 다른 weekday의 cluster는 영향 없음 — `sessionClusters.ts`의 weekday별 cluster 계산.
+- 구현: `lib/sessionClusters.ts` (시간대별 cluster) + `TimeTableRow` (+N/− chip 렌더) + `TimeTableGrid` (cluster expand 상태 hoist).
+- Portal/popover 없음 — PDF 인쇄·드래그 동작 보존
+- ≤ 3개: 균등 분할 표시 (변경 없음)
+
+**Lane Insert UX — Edge Hover Slot (Variant E, PR #388):**
+- 시간표 cell 좌/우 edge hover 시 dashed overlay + "여기 삽입" 텍스트 노출 (`LaneInsertSlot` molecule).
+- drag 중 다른 lane 사이 boundary droppable 활성화 → drop 시 그 boundary에 lane 새로 끼워짐 (기존 lane들은 contiguous yPosition 재계산).
+- 빈 시간대 hover 시 overlay 숨김 (cell unique id 보호, PR #389).
+- Cmd-drag (복사 모드) + multi-select drag 시 lane insert slot 비활성 (T9 회귀 가드).
+- 구현: `LaneInsertSlot` + `lib/laneInsert.ts` (compaction + preview parity) + `useDragController` mode-aware lane-highlight.
+
+**Drag 3 시각 피드백 SSOT 통일 (PR #389/#390):**
+- 모드별 시각 피드백: ① lane-highlight (현재 lane row), ② drop target overlay (이동: dashed / insert: dashed + "여기 삽입"), ③ drop preview (이동 후 SessionCard 위치).
+- `compactYPositions` artifact (lane 사이 빈 공간) 차단 — `lib/sessionCollisionUtils.ts`.
+- mode-aware lane-highlight: insert 모드에선 lane row가 아닌 boundary 강조.
+
+**현재 시각 타임라인 (now-line):**
+- `useNowMinute` hook: 분 boundary에 동기화 (`setTimeout` → 60초 `setInterval` + `visibilitychange` resync)
+- 업데이트 주기: 매 분 경계에 정확히 동기화 (탭 비활성화 복귀 시 즉시 재동기화)
+- z-index: 150 (세션 블록 z-index 상위, 클릭 포인터 이벤트는 none)
+- 시각: 2px amber(`var(--color-accent)`) 수평선 + 좌측 `HH:MM` amber pill
+- 이동 애니메이션: `transition: top 0.5s ease-out`
+
+**SessionBlock 시각 디자인 (Editorial Polish):**
+- 배경: gradient — `tintFromHex(color, 0.08)` (연한) → `color` (진한), `hexToRgba` 유틸 활용
+- 좌측 accent stripe: 3px solid `rgba(0,0,0,0.2)` (유효한 hex 색상에만 적용)
+- 타이포: 주 라벨 13px / font-weight 600; 시간 표시 `tabular-nums`; 보조 텍스트 opacity 0.85
+- hover: ring 효과 (주 색상 기반)
+- Today 컬럼 배경: amber wash gradient `rgba(251,191,36,0.04)` → `rgba(251,191,36,0.02)`
+- 시간 라벨 계층화: 정시(`:00`) `font-semibold`, 반시(`:30`) `font-normal opacity-60`
 
 ### 2.3 학생 관리 (`/students`)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (Phase 3 Admin Amber, organism 단일 파일):**
 ```
 StudentsPage
-  └── StudentsPageLayout
-        └── StudentManagementSection (좌측 340px 고정)
-              ├── StudentInputSection (molecule) — 이름 입력 + 추가 버튼
-              └── StudentList (molecule) — 학생 목록
-                    └── StudentListItem (atom) × N
+  └── StudentsPageLayout          # 좌측 목록 + 우측 상세 2패널
+        └── StudentDetailPanel   # 선택된 학생 상세 (우측)
 ```
 
 **레이아웃:**
-- 2열 그리드: `340px | 1fr` (현재 우측 영역 미사용)
-- padding: 16px
+- 좌측 패널: `lg:w-[360px]` 고정, 모바일에서 `showDetail` state로 토글
+- 우측 패널: `flex-1`, 미선택 시 "학생을 선택하세요" placeholder
 
-**StudentInputSection:**
-- 이름 텍스트 입력 (placeholder: "학생 이름 입력")
-- IME 한글 조합 중 Enter 방지 (`composing` 상태 체크)
-- 이미 존재하는 이름 입력 시 에러 메시지
-- `+` 버튼 또는 Enter 키로 추가
+**좌측 패널:**
+- 헤더: "학생 목록"
+- 추가 폼: input (placeholder: "학생 이름 (검색 가능)") + `+ 추가` 앰버 버튼. Enter 키 지원.
+- 검색: `Search` 아이콘 + 이름으로 검색 input
+- 학생 리스트: Amber 아바타(이니셜) + **학년 chip(amber, `student-grade-chip-{id}`, `student.grade` 입력 시에만 노출)** + 이름 + 메타(학년·학교 또는 "프로필 미입력", 동명이인일 땐 성별·생년월일). 선택 시 `border-l-2 border-l-accent`. 학년 chip 상세는 §5.4.1.1.
 
-**StudentList:**
-- 학생 아이템 클릭 → 선택 상태 (highlight)
-- 선택된 학생 → 삭제 버튼 노출 → ConfirmModal 확인 후 삭제
+**우측 패널 (StudentDetailPanel):**
+- 헤더: 아바타(48px Amber 원형) + 이름 + 메타 + 편집(`Pencil`) / 삭제(`Trash2`) 버튼
+- Summary Cards (2열 grid): "등록 과목" (enrollments 카운트) / "주간 수업" (sessions 카운트)
+- 수업 일정: subject 색 dot + 과목명 + 요일 + 시간 리스트
+- 프로필: 보기 모드(`<dl>`) / 편집 모드(name/grade/school/phone/gender/birthDate input 목록)
 
-### 2.4 과목 관리 (`/subjects`)
+### 2.4 강사 관리 (`/teachers`)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (Phase 3 Admin Amber, organism 단일 파일):**
+```
+TeachersPage
+  └── TeachersPageLayout          # 좌측 목록 + 우측 상세 2패널 (학생과 동일 구조)
+        └── TeacherDetailPanel   # 선택된 강사 상세 (우측)
+```
+
+**레이아웃:**
+- 학생 화면과 동일 구조. 좌측 `lg:w-[360px]` / 우측 `flex-1`.
+
+**좌측 패널:**
+- 헤더: "강사 목록"
+- 추가 폼: input (placeholder: "강사 이름 (검색 가능)") + `+ 추가` 앰버 버튼. 색상은 `DEFAULT_TEACHER_COLORS`에서 자동 순환 할당.
+- 검색: `Search` 아이콘 + 이름으로 검색 input
+- 강사 리스트: `teacher.color` 배경 12px 색상 dot + 이름 + "주간 N회". 선택 시 `border-l-2 border-l-accent`
+
+**우측 패널 (TeacherDetailPanel):**
+- 헤더: 강사 색상 배경 아바타(48px, 이니셜 흰색) + 이름 + 메타("주간 N회 · 담당 M명") + 편집/삭제 버튼
+- Summary Cards (2열 grid): "담당 학생" (`Session.teacherId` → `Enrollment.studentId` join으로 unique 수) / "주간 수업" (sessions 카운트)
+- 수업 일정: subject 색 dot + 과목명 + 요일 + 시간 리스트
+- 프로필 (보기/편집):
+  - 보기: 이름 + 색상 dot
+  - 편집: 이름 input + 8색 팔레트(`DEFAULT_TEACHER_COLORS`) + `<input type="color">` 직접 선택 + 저장/취소 버튼
+
+**색상 상수:** `src/lib/teacherColors.ts` — `DEFAULT_TEACHER_COLORS` (8색, 인디고/시안/에메랄드/앰버/레드/바이올렛/핑크/틸)
+
+### 2.5 과목 관리 (`/subjects`)
+
+**컴포넌트 트리 (학생/강사와 동일한 2패널 구조):**
 ```
 SubjectsPage
-  └── SubjectsPageLayout
-        └── SubjectManagementSection (좌측 340px 고정)
-              ├── SubjectInputSection (molecule) — 이름 + 색상 + 추가 버튼
-              └── SubjectList (molecule) — 과목 목록
-                    └── SubjectListItem (atom) × N
+  └── SubjectsPageLayout       # 좌측 목록 + 우측 상세
+        ├── ListFilterBar      # 검색 + "+ 추가" 빠른 등록 (이름만, DEFAULT 색상 자동)
+        ├── SubjectAddDetailModal  # 헤더 "+ 상세 등록" 진입 (이름 + 색상 9색 팔레트 + hex)
+        └── SubjectDetailPanel  # 선택된 과목 상세 (우측, 편집/삭제)
 ```
 
-**SubjectInputSection:**
-- 이름 텍스트 입력
-- 색상 선택 (색상 팔레트)
-- 기본 제공 색상 9개 (초등수학 ~ 고등국어 매핑)
+**좌측 패널:**
+- 헤더: "과목 목록" + (canManage 시) `+ 상세 등록` 버튼 (헤더 우측, `aria-label="과목 상세 등록"`)
+- 빠른 추가: ListFilterBar — 이름만 입력 + Enter 또는 `+ 추가` → `SUBJECT_DEFAULT_COLOR` 자동 할당
+  - 0건 → 단순 추가 + 성공 토스트 (`'<name>' 과목을 추가했습니다.`)
+  - 1건+ → 첫 매치 select + 안내 토스트 (과목은 동명이인 개념 없음)
+- 과목 리스트: 9px 색상 dot + 과목명. 선택 시 `border-l-2 border-l-accent`
 
-**SubjectList / SubjectListItem:**
-- 색상 도트 + 과목명 표시
-- 클릭 → 선택 (편집 모드)
+**상세 등록 (SubjectAddDetailModal):**
+- 진입: 헤더 우측 `+ 상세 등록` 버튼
+- 필드: 이름(필수, max 12자) + 색상(9색 팔레트 + native color picker + hex 입력)
+- 9색 팔레트: `src/lib/subjectColors.ts` `DEFAULT_SUBJECT_COLORS` (blue/emerald/amber/red/violet/pink/teal/indigo/orange)
+- 잘못된 hex 입력 시 alert role 에러
+- onSubmit(name, color) → handleAddDetail → onAddSubject + 성공 토스트
+
+**우측 패널 (SubjectDetailPanel):**
+- 헤더: 과목 색상 dot + 이름 + 편집/삭제 버튼
 - 편집 모드: 이름/색상 수정, 저장/취소
-- 삭제 버튼 → ConfirmModal 확인 후 삭제
+- 삭제: ConfirmModal 확인 후 삭제
 
-### 2.5 소개 (`/about`)
+### 2.6 소개 (`/about`)
 
 **컴포넌트 트리:**
 ```
@@ -188,7 +307,7 @@ AboutPage
 - 정적 마케팅 페이지
 - 인증 불필요, 익명 접근 가능
 
-### 2.6 로그인 (`/login`)
+### 2.7 로그인 (`/login`)
 
 **컴포넌트 트리:**
 ```
@@ -211,17 +330,22 @@ LoginPage (src/app/login/page.tsx, 309줄)
 - 미로그인 상태: "로그인" 버튼 → `/login`으로 이동
 - 로그인 상태: 프로필 아바타 버튼 → 클릭 시 드롭다운 (이름/이메일 + 로그아웃 버튼)
 
-### 2.7 온보딩 (`/onboarding`)
+### 2.8 온보딩 (`/onboarding`) — Variant E (ADR-019)
 
-**컴포넌트 트리:**
+**컴포넌트 트리 (PR #413, 2026-05-20):**
 ```
 OnboardingPage (src/app/onboarding/page.tsx)
   └── 카드형 중앙 정렬 UI (login과 동일 스타일)
         ├── "학원 정보 설정" 타이틀
         ├── 환영 메시지 (사용자 이름)
         ├── 학원명 입력 (필수, 2글자 이상, placeholder: "예: 해피수학학원")
-        ├── 역할 선택 (라디오: 원장/강사/직원)
-        └── "시작하기" 버튼 → /students 리디렉트
+        ├── amber Crown 안내 박스 (role="note"): "원장으로 등록됩니다 / 관리자·강사는 학원 생성 후 초대로 추가"
+        ├── "원장으로 학원 만들기" CTA → /students 리디렉트
+        └── secondary section ("초대 받았어요" toggle)
+              └── 클릭 시 invite 코드 input 열림
+                    ├── 초대 코드 input (URL 전체 또는 토큰 부분 모두 허용)
+                    ├── "초대 확인" → /invite/<token> redirect (URL 입력 시 path 마지막 segment 추출)
+                    └── "닫기" → 메인 폼 복귀
 ```
 
 **동작:**
@@ -229,6 +353,60 @@ OnboardingPage (src/app/onboarding/page.tsx)
 - 이미 온보딩 완료 사용자 → `/schedule` 리디렉트
 - 제출 성공 → `onboarded=1` 쿠키 설정 (서버) + `/students` 이동
 - Middleware(`src/middleware.ts`)가 `/students`, `/subjects`, `/schedule` 접근 시 쿠키 없는 로그인 사용자를 이 페이지로 가드
+
+**ADR-019 정책 (PR #413):**
+- **역할 라디오 제거** (이전 owner/admin/member 3-선택 → owner-less 유령 학원 위험 + 멤버 초대 RLS 차단 사용자 stuck)
+- **`/api/onboarding`**: client body 의 `role` 키 무시 + 무조건 `role: "owner"` 강제 (서버 안전망 — attacker 가 body 로 admin/member 보내도 owner INSERT)
+- **Academy Singularity (1+1)**: owner 1개 + invited(admin|member) 1개 = 최대 2학원. admin/member 는 초대 수락만으로 부여.
+- **학원 추가 기능 deferred**: `POST /api/academies` + sidebar "+ 새 학원" 의도적 미구현 (정책 5 트리거 도달 시 도입). Sidebar 의 "+ 새 학원 만들기" 는 disabled placeholder + tooltip "본인 학원 1개 제한 (ADR-019)".
+- design-explorations: `/design-explorations/onboarding-role` (5 variants — A/B/C/D/E 비교 + 권한 매트릭스 + 결정 표 영구 보존, production middleware 404 가드)
+- 회귀 가드: `src/app/onboarding/__tests__/page.test.tsx` (8 case), `src/app/api/onboarding/__tests__/route.test.ts` +3 (body.role={admin,member,absent} 모두 owner)
+
+---
+
+### 2.9 학부모/학생/강사 공유 (`/share/{token}`) — 모바일 우선 PWA 페이지
+
+**Public route** (인증 불필요). 학부모/학생/강사가 token URL로 진입해 시간표 확인.
+
+#### 레이아웃 (PR #441 단순화 후, 2026-05-22)
+- `flex h-dvh` 기반 (PWA standalone 모드 + iPhone notch 고려 — `viewport-fit=cover` + `env(safe-area-inset-*)`)
+- 상단: 학원/강사 정보 + 주간 네비게이터 (`< 5월 18일 — 5월 24일 > [오늘]`)
+- 본문: `TimeTableGrid` 주간 view 단일 (일별/월별 view 제거 — 트래픽 안전망 + UX 단순화)
+- 변경 배지: `ScheduleChangeBanner` — `hasChanges=true && lastViewedAt !== null` 일 때만 (최초 방문 미표시)
+- SyncStatusDot 미표시 (anonymous 사용자, sync 없음)
+
+#### SessionBlock `presentationMode` 분기 (PR #441)
+`SessionBlock`에 새 prop `presentationMode: "edit" | "share" | "filtered-share"` 도입. share 페이지에서 API 응답의 `filterStudentId` 기반 분기:
+
+| mode | trigger | cursor | 시간 format | 학생 이름 (블록 내) | 사람 chip | 강사 이름 chip |
+|------|---------|--------|-------------|---------------------|-----------|----------------|
+| `edit` (default) | owner/admin/member 화면 | pointer + drag handle 표시 | `HH:MM:SS` | ✓ | ✓ (학생 ≥ 2명) | – |
+| `share` (강사·일반 공유) | `filterStudentId` 없음 | default | `HH:MM` | ✓ | ✓ | – |
+| `filtered-share` (학생 본인 공유) | `filterStudentId` 있음 | default | `HH:MM` | ✗ | ✗ | ✓ (사람 chip 자리) |
+
+prop chain: `SessionBlock` ← `TimeTableRow` ← `TimeTableGrid` ← share page. owner/admin/member 화면은 default `"edit"` 이라 기존 동작 보존.
+
+#### 트래픽 안전망 (PR #441)
+- **Polling 60초 간격** (`POLL_INTERVAL_MS = 60_000`). 30s → 60s 변경으로 서버 부담 1/2.
+- **Page Visibility API**: tab 비활성 시 polling 정지 (`document.hidden`), 활성화 시 즉시 fetch + 재개. 학부모 백그라운드 tab 8시간 → 실제 보는 시간만 (~97% 절감).
+- IP rate limit (`route.ts`): 분당 30회 (`checkRateLimit`).
+
+#### 핵심 컴포넌트
+- `TimeTableGrid` (주간 view, `presentationMode` prop 전달)
+- `ScheduleChangeBanner`
+- `RefreshCw` / `ChevronLeft` / `ChevronRight` / `Calendar` (lucide icons)
+
+#### PWA 설치 안내 (선택, 미구현)
+- `display-mode: standalone` 미감지 + 첫 N번째 방문 시 "홈 화면에 추가" 권유 prompt 후보 (ADR-006 기각된 alternative)
+
+#### 검증
+- `tests/e2e/share-mobile.spec.ts` — Mobile Chrome 375×667 viewport
+- 시나리오: 페이지 로드 + 주간 view 단일 (SegmentedButton/DayChipBar 미노출) + `TimeTableGrid` 표시
+- iPhone Safari "홈 화면에 추가" 후 standalone 모드 진입 — manual smoke
+
+#### Mockup 학습 자료
+- `/design-explorations/share-page-improvements` — Before/After 시각 비교 + polling timeline + scope 옵션 (PR #441)
+- `/design-explorations/share-url-and-expiry` — share URL helper + 만료 env + reverse proxy 시각 explainer (PR #440)
 
 ---
 
@@ -239,13 +417,24 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | 컴포넌트 | 파일 | 주요 Props | 설명 |
 |----------|------|-----------|------|
 | `AuthGuard` | `AuthGuard.tsx` | `children` | 인증된 사용자만 접근 허용. 미인증 시 로그인 안내 렌더 |
-| `Button` | `Button.tsx` | `variant: primary\|secondary\|transparent`, `type`, `disabled` | 공통 버튼 원자 |
+| `Button` | `Button.tsx` | `variant: primary\|secondary\|danger\|transparent\|accent\|tonal\|ghost`, `size`, `loading`, `feedback: inline\|toast\|both\|none`, `successLabel`, `toastMessage` | 공통 버튼 원자. `feedback="inline"` 시 클릭 후 ✓ 라벨 swap (1.5s). 모든 variant에 press state(scale+shadow) 내장. `accent`=amber 주 액션, `tonal`=옅은 accent(복사 등), `ghost`=배경 없음(취소 등) |
 | `ErrorBoundary` | `ErrorBoundary.tsx` | `children`, `fallback?` | React 에러 경계. 전체 앱 감쌈 |
 | `Input` | `Input.tsx` | `type`, `value`, `onChange`, `placeholder` | 공통 텍스트 입력 |
 | `Label` | `Label.tsx` | `htmlFor`, `children` | 폼 레이블 |
+| `SegmentedButton` | `SegmentedButton.tsx` | `options: Option<T>[]` (`label`, `value`, optional `mobileLabel`), `value: T`, `onChange` | 3-N개 탭/모드 선택 atom. `mobileLabel` 옵션 — `<640px`에서 짧은 라벨로 자동 swap (`<span hidden sm:inline>{label}</span>` + `<span sm:hidden>{mobileLabel}</span>` 패턴, useMediaQuery 회피로 hydration mismatch 방지). PR #238 atoms로 이동. 사용처: `/schedule` 뷰 전환 (`/share/{token}` 사용처는 PR #441에서 제거 — 주간 view 단일로 단순화) |
+| `InfoTrigger` | `InfoTrigger.tsx` | `label`, `onClick`, `size: sm\|md` | 정보 아이콘 버튼. lucide Info SVG 자체 원만 사용 (button border 제거 — 동심원 2겹 회피, PR #372). `sm`(24×24, icon 14) / `md`(32×32, icon 18) |
+| `NotificationBell` | `NotificationBell.tsx` | `unread`, `pulse?`, `onClick`, `active?`, `size?: "sm"\|"md"\|"nav"`, `compact?` (deprecated) | 알림 트리거 atom. unread 배지(에러+경고만) + `motion-safe:animate-ping` pulse. size: `sm`(w-8 h-8 icon16, TopBar) / `md`(w-9 h-9 icon18, Sidebar expanded inline) / `nav`(w-10 h-10 icon22, Sidebar collapsed nav-style). NotificationDropdown 안에서만 사용. (PR #372 + 후속 PR size 확장) |
 | `StudentListItem` | `StudentListItem.tsx` | `student`, `isSelected`, `onClick`, `onDelete` | 학생 목록 단일 아이템. 선택/삭제 기능 |
 | `SubjectListItem` | `SubjectListItem.tsx` | `subject`, `isSelected`, `onSelect`, `onDelete`, `onEdit` | 과목 목록 단일 아이템. 색상 도트 + 편집/삭제 |
+| `SyncStatusDot` | `SyncStatusDot.tsx` | `userId?: string \| null` | Sync 상태 시각화 점. ScheduleHeader 옆에 렌더. userId 있으면 활성 (sync 진행/성공/실패), null이면 회색 유휴. PR #237 이후 모바일에서 라벨도 함께 표시 (이전 `hidden sm:block` 제거) |
 | `ThemeToggle` | `ThemeToggle.tsx` | `size: small\|medium`, `variant: icon\|both` | 다크/라이트 테마 전환 토글 |
+| `DetailTooltip` | `DetailTooltip.tsx` | `label`, `children`, `placement?` | Detail panel 항목 hint tooltip atom |
+| `EmptyState` | `EmptyState.tsx` | `icon?`, `title`, `description?`, `cta?` | 데이터 없음 상태 표시 (학생/강사/세션 list) |
+| `GradeBadge` | `GradeBadge.tsx` | `grade` | 학생 학년 amber chip (`student-grade-chip-{id}`, PR #338 동명이인 분기 보강) |
+| `IconButton` | `IconButton.tsx` | `icon`, `label`(`aria-label`), `onClick`, `variant?` | 아이콘 전용 버튼 primitive (kebab/X/edit 등 통일) |
+| `Modal` | `Modal.tsx` | `isOpen`, `onClose`, `children`, `aria-labelledby?` | Headless 모달 primitive (focus trap + ESC + backdrop click). `modalFadeIn` 0.2s 키프레임 회귀 가드: `tests/e2e/modal-transition.spec.ts` (PR #409) |
+| `SectionHeader` | `SectionHeader.tsx` | `title`, `actions?: ReactNode` | Detail panel 섹션 제목 + 우측 actions 슬롯 |
+| `Select` | `Select.tsx` | `options`, `value`, `onChange`, `placeholder?` | 단일 선택 dropdown primitive (요일/시간 선택 등) |
 
 ### 3.2 Molecules (`src/components/molecules/`)
 
@@ -253,15 +442,26 @@ OnboardingPage (src/app/onboarding/page.tsx)
 |----------|------|-----------|------|
 | `ConfirmModal` | `ConfirmModal.tsx` | `isOpen`, `title`, `message`, `onConfirm`, `onCancel` | 삭제 확인 등 이진 선택 모달 |
 | `DataConflictModal` | `DataConflictModal.tsx` | `localData`, `serverData`, `onSelectServer`, `onSelectLocal`, `isMigrating?`, `migrationError?` | 로그인 시 로컬/서버 데이터 충돌 해결 모달. 데스크탑: 사이드바이사이드 카드 + 라디오. 모바일: 탭. 섹션(학생/과목/수업) 접기/펼치기 |
+| `NotificationDropdown` | `NotificationDropdown.tsx` | `compact?`, `size?: "sm"\|"md"\|"nav"` | 알림 히스토리 패널. `NotificationBell` trigger + 헤더 요약 + 필터 chip(전체/에러/경고/성공/정보) + 시간 그룹(오늘/어제/이전) + `NotificationItem` 리스트 + 풋터 카운트. outside-click·ESC 닫기. Sidebar academy 영역(Expanded inline / Collapsed stack) + TopBar(`compact`) 둘 다에서 layout-level 마운트. `size` prop으로 trigger 크기 결정. spec SSOT: [`docs/notification-history-spec.md`](docs/notification-history-spec.md). (PR #372 + 후속 PR) |
+| `NotificationItem` | `NotificationItem.tsx` | `entry`, `now`, `onMarkRead`, `onDismiss` | 알림 히스토리 단일 항목. level 아이콘(AlertCircle/AlertTriangle/CheckCircle2/Info) + 메시지 + chip + relative time. unread + error/warning만 좌측 amber bar + NEW + bold. hover 시 우측 X. (PR #372) |
 | `DropZone` | `DropZone.tsx` | `onDrop`, `weekday`, `time` | 시간표 셀의 드롭 수신 영역 |
 | `PDFDownloadButton` | `PDFDownloadButton.tsx` | `targetRef` | html2canvas + jsPDF로 시간표 PDF 생성 후 다운로드 |
-| `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 시간표 셀 내 수업 블록. 과목색 배경, 과목명+시간+학생명 표시, 드래그 이동 가능 |
+| `SessionCard` | `SessionCard.tsx` + `SessionCard.types.ts` + `SessionCard.utils.ts` | `subject`, `studentNames?`, `timeRange?`, `variant`, `state?`, `overlapCount?`, `overlapIndex?`, `onClick?` | 4-variant 수업 카드 primitive. `data-variant`(`block`/`row`/`chip`/`preview`) + `data-state`(`default`/`ongoing`/`done`/`conflict`) 계약. Daily/Monthly/Landing에서 소비. |
+| `SessionBlock` | `SessionBlock.tsx` + `SessionBlock.utils.ts` | `session`, `subjects`, `enrollments`, `students`, `yPosition`, `left`, `width`, `yOffset`, `onClick`, `isDragging?`, `draggedSessionId?` | 주간 시간표 전용 수업 블록. 드래그 이동 가능. Phase 6 이후 Daily/Monthly/Landing은 SessionCard로 대체됨. |
 | `SessionForm` | `SessionForm.tsx` | `subjects`, `students`, `isOpen`, `onClose`, `onSubmit`, `initialData?` | 수업 추가/수정 폼. 과목·요일·시간·강의실·학생 선택 |
-| `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 |
+| `StudentAddDetailModal` | `StudentAddDetailModal.tsx` | `isOpen`, `onClose`, `onSubmit(name, options)`, `existingNames` | `/students` 페이지 헤더 "+ 상세 등록" 진입점. 이름 필수 + 성별/생년월일 "권장" 라벨 + 안내 문구. 동명이인 식별과 마이그레이션 dedup 정확도를 위한 메타 입력 (PR #289) |
+| `StudentInputSection` | `StudentInputSection.tsx` | `newStudentName`, `onNameChange`, `onAdd`, `errorMessage?` | 학생 추가 입력 영역 (legacy — 현재 schedule 모달의 인라인 추가 흐름에서만 사용) |
 | `StudentList` | `StudentList.tsx` | `students`, `selectedStudentId`, `onSelect`, `onDelete` | 학생 목록 (StudentListItem 반복) |
 | `SubjectInputSection` | `SubjectInputSection.tsx` | `onAdd`, `errorMessage?` | 과목 추가 입력 + 색상 선택 |
 | `SubjectList` | `SubjectList.tsx` | `subjects`, `selectedSubjectId`, `onSelect`, `onDelete`, `onUpdate` | 과목 목록 (SubjectListItem 반복) |
-| `TimeTableRow` | `TimeTableRow.tsx` | `weekday`, `height`, `sessions`, `subjects`, `enrollments`, `students`, ... | TimeTableGrid 내 1개 요일 행. SessionBlock + DropZone 조합 |
+| `TeacherAddDetailModal` | `TeacherAddDetailModal.tsx` | `isOpen`, `onClose`, `onSubmit(name, profile)`, `existingNames` | `/teachers` 페이지 헤더 "+ 상세 등록" 진입점. 이름 필수 + 이메일/전화번호 "권장" 라벨 + 이메일 형식 검증. 운영 정보 충실성 목적 (PR #289). settings 페이지의 `TeacherAddModal`(invite/share 다중 액션)과 별개. |
+| `TimeTableRow` | `TimeTableRow.tsx` | `weekday`, `height`, `sessions`, `subjects`, `enrollments`, `students`, ... | TimeTableGrid 내 1개 요일 행. SessionBlock + TimeTableCell + LaneInsertSlot 조합. row-level cluster expand chip (+N/−) 렌더 — `sessionClusters.ts` 기반 (PR #392/#399) |
+| `TimeTableCell` | `TimeTableCell.tsx` | `weekday`, `time`, `onSessionDrop`, `isDropTarget` | 시간표 단위 drop zone + 빈 셀 클릭 처리 (기존 DropZone 대체). cell half droppable id unique 화 (PR #389) |
+| `LaneInsertSlot` | `LaneInsertSlot.tsx` | `weekday`, `time`, `laneIndex`, `side: "left"\|"right"`, `disabled?` | Variant E lane insert UX — cell 좌/우 edge boundary droppable. drag hover 시 dashed overlay + "여기 삽입" 텍스트. Cmd-drag/multi-select drag 시 비활성. (PR #388) |
+| `ColorPicker` | `ColorPicker.tsx` | `colors`, `value`, `onChange`, `allowCustom?` | 6/8/9색 grid palette + selected ring. SubjectAddDetailModal·TeacherAddDetailModal·SubjectDetailPanel 공유 |
+| `StudentChip` / `TeacherChip` | 동명 파일 | `id`, `name`, `color?`, `removable?`, `onRemove?` | 선택된 학생/강사 chip representation. `TeacherChip`은 PR Q `TeacherColorPicker` 교체본 (chip 패턴 통일) |
+| `SubjectAddDetailModal` | `SubjectAddDetailModal.tsx` | `isOpen`, `onClose`, `onSubmit(name, color)` | `/subjects` 헤더 "+ 상세 등록" 진입점 (PR #340). 이름 + 색상 9색 팔레트 + native color picker + hex |
+| `SlotPickerModal` | `SlotPickerModal.tsx` | `mode: "save"\|"apply"`, `slots`, `onSelect` | 시간표 템플릿 슬롯 picker. ADR-008 multi-slot UI |
 
 > `ScheduleHeader`는 `src/components/molecules/`에 없음 — `src/app/schedule/_components/`에만 존재 (§3.4 참조)
 
@@ -272,11 +472,12 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | `AboutPageLayout` | `AboutPageLayout.tsx` | /about 페이지 전체 레이아웃 |
 | `LoginButton` | `LoginButton.tsx` + `.module.css` | Nav bar 로그인 버튼. 모달로 Google OAuth 트리거. 로그인 시 아바타+드롭다운 |
 | `StudentManagementSection` | `StudentManagementSection.tsx` | /students 메인 섹션. StudentInputSection + StudentList 조합 |
-| `StudentPanel` | `StudentPanel.tsx` | 시간표 플로팅 패널. 학생 리스트, 검색, 드래그 소스 |
+| `ScheduleDailyView` | `ScheduleDailyView.tsx` | 일별 수업 목록. SessionCard(row variant) + 스와이프 제스처 |
+| `ScheduleMonthlyView` | `ScheduleMonthlyView.tsx` | 월별 달력. MonthDayCell × N, 날짜 클릭 → 일별 뷰 이동 |
 | `StudentsPageLayout` | `StudentsPageLayout.tsx` | /students 페이지 레이아웃. 2열 그리드 (340px \| 1fr) |
 | `SubjectManagementSection` | `SubjectManagementSection.tsx` | /subjects 메인 섹션. SubjectInputSection + SubjectList 조합 |
 | `SubjectsPageLayout` | `SubjectsPageLayout.tsx` | /subjects 페이지 레이아웃. 2열 그리드 (340px \| 1fr) |
-| `TimeTableGrid` | `TimeTableGrid.tsx` | 주간 시간표 그리드. 드래그앤드롭, 스크롤 보존, 가상 스크롤바 포함 |
+| `TimeTableGrid` | `TimeTableGrid.tsx` | 주간 시간표 그리드. Stacked Circle 헤더(요일+날짜), 수평 시간선, now-line, 드래그앤드롭, 스크롤 보존, 가상 스크롤바 |
 | `about/FeatureCard` | `about/FeatureCard.tsx` | 소개 페이지 기능 카드 |
 | `about/FeatureDetail` | `about/FeatureDetail.tsx` | 소개 페이지 기능 상세 설명 |
 | `about/HeroSection` | `about/HeroSection.tsx` | 소개 페이지 히어로 섹션 |
@@ -285,12 +486,94 @@ OnboardingPage (src/app/onboarding/page.tsx)
 
 | 컴포넌트 | 설명 |
 |----------|------|
-| `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트 |
-| `StudentPanelSection` | StudentPanel을 감싸는 섹션 컴포넌트 |
-| `PdfDownloadSection` | PDF 다운로드 버튼 섹션 |
-| `ScheduleHeader` | 시간표 페이지 헤더 (타이틀, 날짜) |
-| `GroupSessionModal` | 그룹 수업 생성/수정 모달 |
-| `EditSessionModal` | 개별 수업 수정 모달 (학생 추가/제거, 시간 변경, 삭제) |
+| `ScheduleGridSection` | TimeTableGrid를 감싸는 섹션 컴포넌트. `baseDate` prop 통과 |
+| `ScheduleHeader` | 시간표 페이지 헤더(Row 1 좌). title prop + 로딩 상태만 렌더 (뷰/색상 토글 제거됨) |
+| `ScheduleActionBar` | Row 1 우측. PDFDownloadButton + TemplateMenuV2 + 공유 아이콘(Share2). 로그인 시만 템플릿/공유 노출 |
+| `ScheduleHeaderActions` | Row 1 액션 모음 — schedule page 헤더의 모든 버튼 + 메뉴 (PR #518 cohesion sweep) |
+| `ScheduleToolbarFilters` | 툴바의 필터 컴포넌트 묶음 — colorBy / 학생 / 강사 필터 popover (PR #517 cohesion sweep) |
+| `ScheduleSecondaryModals` | schedule 페이지의 secondary modal 묶음 (확인 / 알림 / 도움말 등 — main GroupSession/EditSession 외) (PR #519 cohesion sweep) |
+| `ScheduleEditModalWrapper` | EditSessionModal 의 open/close + state wrapper (PR #520 cohesion sweep) |
+| `ScheduleWeeklyGrid` | 주간 시간표 view 의 grid component (PR #521 — 기존 weekly view 분리, sessionsForRender + lane layout 계산 통합) |
+| `ScheduleFloatingToolbar` | 모바일 floating action toolbar (탑 버튼 묶음) |
+| `PrimarySidebar` | Schedule 페이지 좌측 primary sidebar (학생/과목/강사 quick access) |
+| `TeacherFilterChipBar` | colorBy=teacher 시 표시하는 강사 멀티셀렉트 필터 칩바 |
+| `StudentFilterChipBar` | colorBy=student 시 표시하는 학생 멀티셀렉트 필터 칩바 |
+| `ChipFilterPopover` / `UnifiedFilterPopover` | 필터 popover 공통 컴포넌트 (cohesion sweep step 1) |
+| `TimeRangeSelector` | 운영 시간 범위 셀렉터 (학원 settings 연동) |
+| `PdfDownloadSection` | PDF 다운로드 섹션 (옵션 모달 + 트리거) |
+| `GroupSessionModal` | 수업 추가 모달 V3 (헤더 날짜/시간 chip+popover, body 학생/과목/강사). EditSessionModal V3 패턴 미러 (PR #396) |
+| `EditSessionModal` | 개별 수업 수정 모달 V3 (헤더 날짜/요일/시간 chip+popover, body 강사/학생/색상, 다른 주 이동 + 자동 navigate PR #378) |
+
+### 3.4.1 Drag-Drop SSOT 선언 (Non-negotiable)
+
+> schedule 페이지의 모든 drag 상태는 `src/hooks/useDragController.ts`의 `useDragController` 훅에서만 관리한다.
+> 다른 컴포넌트가 `useState`/`useRef`로 drag 정보를 보관하면 PR 거절 사유.
+>
+> **이유:** 이전에 drag 상태가 `TimeTableGrid.dragPreview`, `useScheduleDragAndDrop`(dead code),
+> `TimeTableCell.isDragOver`, `SessionBlock.isDragging` 등 5곳에 분산되어
+> fix가 항상 다른 파일에 쌓이고 서로 상쇄됐다. 단일 SSOT로 "fix는 항상 useDragController.ts 한 곳"을 보장.
+
+### 3.4.2 Drag State Machine
+
+| Phase | 의미 | 전이 트리거 |
+|-------|------|-------------|
+| `idle` | 드래그 없음 | — |
+| `dragging` | 세션/학생 드래그 중, target 없음 | dragstart → `startSessionDrag` / `startStudentDrag` |
+| `hovering` | 드래그 중, 특정 cell 위에 있음 | dragover → `hoverTarget` |
+| (→ `idle`) | 드래그 종료 | drop → `completeDrop` / dragend → `cancelDrag` |
+
+**컴포넌트별 drag 책임:**
+- `useDragController` (TimeTableGrid 내부): 상태 SSOT, 모든 전이 관리
+- `SessionBlock`: drag 소스 (`onDragStart`, `onDragEnd` 이벤트 발생 → 콜백 전달)
+- `TimeTableCell`: drop 수신 (`onDragOver`에서 `preventDefault`, `onDrop`에서 `onSessionDrop` 호출)
+- `TimeTableGrid`: orchestrator — `useDragController` 호출, `sessionsForRender` 계산, props 분배
+
+### 3.4.3 Drag Event Flow
+
+```
+SessionBlock.button --dragstart--> onDragStart(e, session) ---> TimeTableGrid.handleDragStart
+                                                                  --> dragController.startSessionDrag(session)
+
+TimeTableCell --dragover(e.preventDefault())--> onDragOver(weekday, time, yPos)
+                                                  --> TimeTableGrid.handleDragOver
+                                                    --> dragController.hoverTarget(weekday, time, yPos)
+                                                      --> sessionsForRender 재계산 (computeTentativeLayout)
+                                                        --> 드래그 세션이 target 좌표로 이동 (opacity:0.65, pointer-events:none)
+
+TimeTableCell --drop--> onSessionDrop(sessionId, weekday, time, yPos)
+                          --> updateSessionPosition --> repositionSessions --> updateData (localStorage WRITE)
+                          --> dragController.completeDrop() (TimeTableGrid.handleDragEnd 경유)
+```
+
+### 3.4.4 Drag Failure Modes (점검 체크리스트)
+
+"drop 이벤트가 발화하지 않을 때" 점검 순서:
+
+1. `TimeTableCell`의 `onDragOver`에서 `e.preventDefault()` 호출하는가?
+2. drop target 위에 `pointer-events: auto`인 다른 요소가 덮고 있는가? (드래그 세션 본체가 `pointer-events: none`인지 `SessionBlock.utils.ts`에서 확인)
+3. dragImage(`setDragImage(e.currentTarget)`)가 설정됐는데 본체 DOM이 동일 프레임에 이동해 dragend가 즉시 발화하는가?
+4. wrapper에 `onDrop`만 있고 `onDragOver`가 없는가? (drop target 등록 실패 — 표준 요구사항)
+5. `dataTransfer.clearData`가 dragstart 이전 다른 핸들러에서 호출되는가?
+6. omni-radar 로그에서 `dragenter`는 보이는데 `handleDrop`이 없다면 → 2번 우선 점검.
+
+**omni-radar로 진단:**
+```bash
+omni-radar/scripts/radar-query --target browser --keyword handleDrop --since 5m
+omni-radar/scripts/radar-query --target browser --keyword "드래그\|dragstart\|dragenter\|drop" --since 5m
+```
+
+### 3.4.5 Drag Naming Glossary
+
+| 이름 | 의미 | Owner |
+|------|------|-------|
+| `dragController.draggedSession` | 현재 드래그 중인 세션 객체. null = idle. | `useDragController` |
+| `dragController.targetWeekday/Time/YPosition` | hover 중인 target 좌표. null = dragging phase. | `useDragController` |
+| `dragController.isAnyDragging()` | 드래그가 진행 중인지 (phase !== "idle") | `useDragController` |
+| `dragController.isDraggingSession(id)` | 특정 세션이 드래그 대상인지 | `useDragController` |
+| `dragRole: "self" \| "other-dragging" \| "idle"` | SessionBlock에 전달되는 selector 결과 (향후 B4 리팩터링 시 도입 목표) | `TimeTableGrid` |
+
+**Deprecated (코드에서 제거됨):**
+- `useScheduleDragAndDrop` — dead code 삭제 (`useDragController`로 대체)
 
 ---
 
@@ -308,9 +591,10 @@ OnboardingPage (src/app/onboarding/page.tsx)
 
 | 훅 | 파일 | 역할 |
 |----|------|------|
-| `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync) |
-| `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync) |
-| `useStudentPanel` | `src/hooks/useStudentPanel.ts` | StudentPanel 상태 관리 (검색, 선택, 드래그 소스) |
+| `useStudentManagementLocal` | `src/hooks/useStudentManagementLocal.ts` | 학생 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #530 추출) |
+| `useSubjectManagementLocal` | `src/hooks/useSubjectManagementLocal.ts` | 과목 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #532 추출) |
+| `useTeacherManagementLocal` | `src/hooks/useTeacherManagementLocal.ts` | 강사 CRUD (Local-first + fire-and-forget sync, cohesion sweep PR #531 추출, Phase 4 강사 기능) |
+| `useScheduleView` | `src/hooks/useScheduleView.ts` | 뷰 모드(일별/주간/월별) + selectedDate 상태. goToNextDay/PrevDay/Week/PrevWeek/NextMonth/PrevMonth/Today 제공 |
 | `useTimeValidation` | `src/hooks/useTimeValidation.ts` | 시간 유효성 검사 (시작 < 종료, 범위 체크) |
 
 ### 4.3 Schedule 전용
@@ -318,8 +602,9 @@ OnboardingPage (src/app/onboarding/page.tsx)
 | 훅 | 파일 | 역할 |
 |----|------|------|
 | `useScheduleSessionManagement` | `src/hooks/useScheduleSessionManagement.ts` | 세션 CRUD + 충돌 해결 (repositionSessions 연동) |
-| `useScheduleDragAndDrop` | `src/hooks/useScheduleDragAndDrop.ts` | 드래그앤드롭 이벤트 처리, DragPreview, 위치 계산 |
+| `useDragController` | `src/hooks/useDragController.ts` | **Drag SSOT.** 드래그 상태 단일 reducer (idle/dragging/hovering). 모든 drag 상태의 유일한 소유자. |
 | `useDisplaySessions` | `src/hooks/useDisplaySessions.ts` | 표시용 세션 데이터 가공 (필터링, 정렬, yPosition 계산) |
+| `useNowMinute` | `src/hooks/useNowMinute.ts` | 현재 시각(분 단위) 실시간 제공. 분 boundary `setTimeout` 동기화 + 60s interval + `visibilitychange` resync. TimeTableGrid now-line에서 소비. |
 | `useEditModalState` | `src/app/schedule/_hooks/useEditModalState.ts` | EditSessionModal 열기/닫기 상태 |
 | `useUiState` | `src/app/schedule/_hooks/useUiState.ts` | Schedule 페이지 UI 상태 (선택, 하이라이트 등) |
 
@@ -337,7 +622,7 @@ SchedulePage
   ├── useGlobalDataInitialization()  → 초기화 + 충돌 감지
   ├── useIntegratedDataLocal()       → students, subjects, enrollments, sessions
   ├── useScheduleSessionManagement() → 세션 CRUD
-  ├── useScheduleDragAndDrop()       → 드래그앤드롭
+  ├── useDragController()            → 드래그앤드롭 SSOT (TimeTableGrid 내부에서 호출)
   ├── useDisplaySessions()           → 표시용 세션 가공
   └── useStudentPanel()              → 패널 상태
 ```
@@ -350,21 +635,29 @@ SchedulePage
 
 ### 5.1 수업 추가 Flow (Golden Path)
 
+**FAB 경로 (주 경로):**
 ```
-1. /schedule 접속
-2. StudentPanel에서 학생 클릭 → 학생 하이라이트
-3. 학생 아이템을 시간표 셀로 드래그 → 드롭
-   → GroupSessionModal 오픈 (과목/시간 pre-fill)
-4. 과목 선택 + 시간 확인 → "추가" 클릭
-   → localStorage 즉시 반영 → 시간표에 SessionBlock 렌더
+1. 우하단 FAB(+) 클릭 (일별/주간/월별 전 뷰)
+   → GroupSessionModal Step 1 오픈 (selectedWeekday, currentTime pre-fill)
+2. Step 1 — 학생 이름 검색 → 자동완성 클릭으로 추가 → amber chip 표시 → "다음"
+3. Step 2 — 과목 선택 + 요일/시간 설정 → "다음"
+4. Step 3 — 확인 카드 검토 → "수업 추가"
+   → localStorage 즉시 반영 → 시간표에 세션 렌더
    → 서버 동기화 (fire-and-forget, apiSync.ts)
 ```
 
-**대안 경로 — 빈 셀 클릭:**
+**대안 경로 — 빈 셀 클릭 (주간 뷰):**
 ```
-1. 빈 시간표 셀 클릭
-   → GroupSessionModal 오픈 (요일/시간 pre-fill)
-2. 학생 선택 + 과목 선택 → "추가"
+1. 빈 TimeTableCell 클릭
+   → GroupSessionModal Step 1 오픈 (weekday/time pre-fill)
+2. Step 1~3 동일
+```
+
+**대안 경로 — 학생 드래그앤드롭 (주간 뷰):**
+```
+1. StudentFilterChipBar 학생 칩 → 시간표 셀로 드래그 → 드롭
+   → GroupSessionModal 오픈 (학생 pre-fill)
+2. Step 2부터 진행
 ```
 
 ### 5.2 수업 수정/삭제
@@ -389,12 +682,113 @@ SchedulePage
 
 ### 5.4 학생 추가 (학생 페이지)
 
+학생 페이지(`/students`)는 **두 진입점**을 제공한다:
+
+**A. 빠른 추가 (ListFilterBar — 검색+추가 통합 흐름)**
 ```
 1. 이름 입력 → Enter 또는 "+" 버튼 클릭
 2. IME 조합 중 Enter: 한글 입력 완료 후에만 추가 (composing 체크)
 3. 중복 이름: 에러 메시지 표시, 추가 안 됨
 4. 성공: 목록에 즉시 추가 → 서버 동기화
 ```
+신학기 일괄 등록처럼 이름만으로 빠르게 추가하는 흐름 (메타 입력 마찰 회피).
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → StudentAddDetailModal)** — PR #289
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수) + 성별 / 생년월일 ("권장" 라벨)
+3. 안내: "성별/생년월일은 동명이인 식별과 정확한 데이터 동기화에 사용됩니다. 비워두고 나중에 채워도 됩니다."
+4. "추가" 클릭 → onSubmit(name, { gender?, birthDate? }) → 모달 닫힘
+5. 빈 이름: "추가" 버튼 disabled
+6. 중복 이름 / 4글자 초과: alert role 에러 메시지
+```
+메타 정보를 함께 등록할 운영자를 위한 진입점. detail panel의 편집을 거치지 않고 한 번에 입력.
+
+### 5.4.1 빈 메타 보강 hint (학생 목록) — PR #290
+
+```
+학생 목록 행에서:
+- gender || birthDate 비어있는 학생 → 이름 옆에 ⓘ 인디고 칩 표시
+- title="성별/생년월일을 추가하면 동명이인 식별과 데이터 동기화가 더 정확해집니다"
+- aria-label="프로필 정보 보강 가능"
+- data-testid="student-meta-hint-{id}"
+- 양쪽 메타가 모두 채워지면 hint 자연 사라짐
+```
+발견형 UX — 강제하지 않고 운영자 인지 시 detail panel에서 보강.
+
+### 5.4.1.1 학년 chip (학생 목록) — PR #338
+
+```
+학생 목록 행 좌측, Amber 아바타 옆에 학년 chip (amber tone):
+- student.grade 입력된 학생 → 아바타와 이름 사이에 chip 노출
+- 학년 미입력 학생 → chip 미렌더 (자리 차지 X)
+- data-testid="student-grade-chip-{id}"
+- aria-/title 미부여(시각 정보만 — 학년 텍스트가 그대로 보임)
+- 동명이인 분기에서 subtitle이 "성별 · 생년월일"로 바뀌어 학년이 사라지던
+  회귀를 시각적으로 보완. chip이 학년 prefix 역할.
+```
+입력 경로: StudentDetailPanel 편집 모드의 `학년` input (자유 입력, 예: "고3", "초5"). StudentAddDetailModal에는 학년 입력 X — 등록 후 detail에서 보강하는 흐름.
+
+### 5.4.2 강사 추가 (강사 페이지) — PR #289, PR #290
+
+학생 페이지와 동일한 두 진입점 패턴:
+
+**A. 빠른 추가 (ListFilterBar)**
+```
+1. 이름 입력 → Enter 또는 "+" 버튼 → 자동 색상 할당으로 강사 추가
+2. 대소문자 무관 중복 검사: 이미 존재 시 추가 안 됨
+3. IME composing 가드 적용
+```
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → TeacherAddDetailModal)**
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수) + 이메일 / 전화번호 ("권장" 라벨)
+3. 이메일 형식 검증: 비워둠 OK, 입력 시 /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 매칭
+4. 안내: "이메일/전화번호는 운영 정보로 사용됩니다. 비워두고 나중에 채워도 됩니다."
+5. "추가" 클릭 → onAddTeacher(name, color, { email?, phone? }) → 모달 닫힘
+```
+
+**C. 빈 메타 hint (강사 목록)**
+```
+- email || phone 비어있는 강사 → 이름 옆 ⓘ 인디고 칩
+- title="이메일/전화번호를 추가하면 운영 정보가 충실해집니다"
+- aria-label="연락처 정보 보강 가능"
+- data-testid="teacher-meta-hint-{id}"
+```
+
+> settings 페이지의 `TeacherAddModal`(invite/share 다중 액션)과는 별개 — `/teachers` 페이지는 학원 운영의 강사 카탈로그 등록, settings는 강사 계정 초대/공유.
+
+### 5.4.3 과목 상세 등록 (과목 페이지) — PR #340
+
+학생/강사 페이지와 동일한 두 진입점 패턴 (UAT 2026-05-10 후속, ADR-014).
+
+**A. 빠른 추가 (ListFilterBar)**
+```
+1. 이름 입력 → Enter 또는 "+" 버튼 → SUBJECT_DEFAULT_COLOR 자동 할당으로 과목 추가
+2. 과목은 동명이인 개념 없음 — 1건+ 매치 시 첫 매치 select + 안내 토스트
+3. IME composing 가드 적용
+```
+
+**B. 상세 등록 (헤더 "+ 상세 등록" → SubjectAddDetailModal)**
+```
+1. 헤더 "+ 상세 등록" 클릭 → 모달 표시
+2. 이름 (필수, max 12자) + 색상 (9색 팔레트 + native color picker + hex 직접 입력)
+3. 잘못된 hex 형식 → alert role 에러
+4. "추가" → onAddSubject(name, color) → 모달 닫힘 + 성공 토스트
+```
+
+**색상 상수:** `src/lib/subjectColors.ts` — `DEFAULT_SUBJECT_COLORS` (9색: blue/emerald/amber/red/violet/pink/teal/indigo/orange) / `SUBJECT_DEFAULT_COLOR = #3b82f6`.
+
+### 5.4.4 토스트 SSOT — Layout 책임 (ADR-014)
+
+학생/강사/과목 추가 흐름에서 토스트 발화 책임은 **layout(`XxxPageLayout.handleAdd` / `handleAddDetail`)**이다. `useXxxManagementLocal` hook은 **localStorage write + 서버 sync + 로깅만** 담당하고 `showToast` 호출 금지.
+
+이유:
+- Hook이 토스트를 띄우면 layout의 분기 메시지(0건/1건+, 빠른 추가/상세 모달)와 중복 (UAT 2026-05-10 보고)
+- 메시지 컨텍스트(예: "고등과학 과목을 추가했습니다." vs "고등과학 과목을 선택했습니다.")는 호출부만 알 수 있음
+
+신규 entity hook 작성 시 `showToast` import 자체를 두지 말 것 (회귀 가드).
 
 ### 5.5 Data Conflict Resolution (로그인 시)
 
@@ -402,11 +796,13 @@ SchedulePage
 1. 로그인 완료
    → useGlobalDataInitialization: 서버 데이터 fetch
    → checkLoginDataConflict: 로컬 vs 서버 비교
-2. 충돌 있으면 → DataConflictModal 표시
+2. 충돌 있으면 → DataConflictModal 표시 (백드롭 `bg-black/85` + `backdrop-blur-sm` — 시간표 그리드와 명확히 분리)
    - 좌측 카드: "이 기기의 데이터" (로컬 localStorage)
    - 우측 카드: "내 계정의 데이터" (서버)
    - 각 카드: 학생/과목/수업 섹션 접기/펼치기 가능
+   - **각 카드 하단에 "선택 시 손실" 인라인 표기** (잃을 학생/과목/수업 카운트, `computeLossDiff`로 계산)
 3. 라디오 선택 → "선택한 데이터로 시작" 클릭
+   - **Layered Defense 임계치**: 수업 ≥5개 또는 학생/과목 ≥3개 손실 시 → 모달 하단 빨간 banner + 버튼 빨간색 + 라벨 "(위험)" + 클릭 시 별도 ConfirmModal("정말 이 데이터로 덮어쓸까요?") 발동. 작은 손실은 즉시 진행.
    - 서버 선택: localStorage에 서버 데이터 덮어쓰기
    - 로컬 선택: 로컬 데이터를 서버에 업로드 (fullDataMigration)
      → isMigrating=true → 로딩 오버레이
@@ -417,16 +813,41 @@ SchedulePage
 
 ```
 익명 (비로그인) 상태:
-- localStorage 키: "class_planner_anonymous"
+- localStorage 키: "classPlannerData:anonymous" (`ANONYMOUS_STORAGE_KEY`, src/lib/localStorageCrud.ts:32)
 - 모든 기능 사용 가능 (시간표/학생/과목 CRUD)
-- 기본 과목 9개 자동 시딩 (초등수학 ~ 고등국어)
+- 과목은 빈 배열로 시작 — GroupSessionModal step 2 인라인 "+" 버튼으로 첫 과목 추가 (자동 색상 할당)
 
 로그인 후:
-- localStorage 키: "class_planner_{userId}"
+- localStorage 키: "classPlannerData:{userId}:{academyId}" (multi-academy scoped, getStorageKey)
+  - academy 미선택(legacy single-academy era) fallback: "classPlannerData:{userId}"
 - handleLoginDataMigration.ts 실행
   → 충돌 없으면 서버 데이터 사용
-  → 로컬에만 데이터 있으면 서버에 업로드
+  → 로컬에만 데이터 있으면 서버에 업로드 (upload-local 자동 경로)
   → 양쪽 모두 데이터 있으면 DataConflictModal
+```
+
+**마이그레이션 안전망 (UAT 2026-05-08 사고 fix)**:
+- **PR #286** — `fullDataMigration`의 sessions POST에 `weekStartDate` fallback (`getWeekStartDate(new Date())`, KST 월요일). API 통일 에러 응답 (`{success:false, error:{code, message}}`)에 맞춘 폴백 로직 + `extractErrorMessage` helper로 `[object Object]` 회귀 차단.
+- **PR #287** — `upload-local` 자동 경로 throw 시 `toast.error("자동 동기화 실패", { description })` + `setMigrationError` + `setIsInitialized(true)` (앱 진입 보장, anonymous 데이터 보존).
+- **PR #288** — `findDuplicateStudent` graceful 매칭 (academy 단위 격리 가정 → 동명이인 0명이고 한쪽이라도 빈 메타면 이름만으로 매칭, 동명이인 다수일 때만 strict 비교).
+- **PR #294 (UAT 2026-05-09)** — `useGlobalDataInitialization`이 academy 변화에 반응하도록 `[academyVersion]` deps 추가. 첫 로그인 시 `hasAcademy=false` 가드로 early return된 후 onboarding 완료 시 SPA navigation(`router.push`)으로 schedule 진입해도 hook이 재마운트되지 않아 마이그가 트리거되지 않던 결함 fix. `class-planner:academy-changed` custom event + `storage` 이벤트(`active_academy:{userId}` 키 변경)가 `academyVersion`을 bump → mig effect 재실행. onboarding 완료 시 `window.dispatchEvent(new CustomEvent("class-planner:academy-changed"))`. Sidebar의 academy switcher는 이미 `window.location.reload()`로 우회 중이라 별도 dispatch 불필요.
+- **PR #295 (UAT 2026-05-09 후속)** — `fullDataMigration`의 sessions INSERT 직후 `notifySelfSync()` 호출 (`apiSync.ts`에서 `export` 노출). apiSync 우회 경로(직접 `fetch`)에서도 본인 변경 신호를 dispatch하므로 `useScheduleMeta` polling이 `academies.schedule_updated_at` bump를 본인 변경으로 인식 → 자동 ack (토스트 발화 안 함). + `schedule/page.tsx` 가드를 `adminCount <= 1`로 strict하게 (0도 suppress — `useMyRole` fetch race 보호).
+
+### 5.6.1 Academy Switcher (Sidebar)
+
+```
+isLoggedIn 시에만 렌더 (anonymous-first 정책 — 익명 모드는 학원 개념 무의미).
+
+학원 전환 클릭:
+1. POST /api/auth/set-active-academy { userId, academyId } → active_academy_id 쿠키 set
+2. setActiveAcademyId(userId, academyId) → localStorage active_academy:{userId} 갱신
+3. window.location.reload() — React state 전체 reset, 새 academy의 storage 키로 진입
+
+"+ 새 학원 만들기" 버튼:
+- 현재 disabled (추후 업데이트 예정). 다중 학원 워크플로우(데이터 격리, 학원별 권한,
+  결제 연동 등) 미완성 상태라 의도적 차단.
+- 활성화 시점: 다중 학원 spec 합의 후 (ADR 별도).
+- UAT 시나리오에는 미포함 (동작 검증 불필요).
 ```
 
 ---
@@ -493,25 +914,88 @@ SchedulePage
 
 ## 8. 반응형 & 접근성
 
-### 7.1 뷰포트 기준
+### 8.1 뷰포트 기준
+
+640px (Tailwind `sm` breakpoint) 기준. CSS 분기는 항상 `sm:` modifier 사용.
 
 | 범위 | 설명 |
 |------|------|
 | 640px 이상 (desktop) | 기본 레이아웃. TimeTableGrid 풀 사이즈, StudentPanel 플로팅 |
 | 640px 미만 (mobile) | DataConflictModal 탭 뷰 전환. TimeTableGrid 가로 스크롤. StudentPanel 접힘 |
 
-### 7.2 주요 반응형 동작
+분기 패턴:
+- Hidden on mobile: `hidden sm:inline` (또는 `hidden sm:block`)
+- Visible on mobile only: `sm:hidden`
+
+### 8.2 주요 반응형 동작
 
 - **DataConflictModal**: 640px 미만에서 `.cardsGrid` 숨김 → `.tabsContainer` 표시 (탭 전환 + 선택 버튼)
 - **TimeTableGrid**: 가로 스크롤, 가상 스크롤바
+- **SegmentedButton**: `mobileLabel` prop 시 모바일에서 짧은 라벨 (예: "일별/주간/월별" → "일/주/월")
 
-### 7.3 접근성
+### 8.3 접근성
 
 - ConfirmModal, DataConflictModal: `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
 - DataConflictModal 섹션: `role="button"`, `aria-expanded` (접기/펼치기)
 - 에러 배너: `role="alert"`, 안내 배너: `role="note"`
 - Navigation: `<nav>` 사용
 - 폼 입력: `<label>` + `htmlFor` 연결
+
+### 8.4 모바일 UI 가이드라인 (PWA baseline 이후)
+
+PR Q~S(#235~239) PWA 도입 + PR #237 모바일 갭 fix + PR #238 share 모바일 후 정착된 모바일 UI 규약.
+
+#### 반응형 라벨 축약 (mobileLabel pattern)
+
+```tsx
+// SegmentedButton 사용
+<SegmentedButton
+  options={[
+    { label: "일별", mobileLabel: "일", value: "daily" },
+    { label: "주간", mobileLabel: "주", value: "weekly" },
+    { label: "월별", mobileLabel: "월", value: "monthly" },
+  ]}
+  value={viewMode}
+  onChange={setViewMode}
+/>
+
+// 내부 렌더 (atoms/SegmentedButton.tsx:41-48)
+{opt.mobileLabel ? (
+  <>
+    <span className="hidden sm:inline">{opt.label}</span>
+    <span className="sm:hidden">{opt.mobileLabel}</span>
+  </>
+) : (
+  opt.label
+)}
+```
+
+- **CSS-only 분기** (Tailwind `hidden sm:inline` + `sm:hidden`) — `useMediaQuery` 회피로 SSR/hydration mismatch 방지
+- 사용처: `/share/{token}` 페이지 뷰 전환. `/schedule` 페이지는 데스크톱 우선이라 기존 label 그대로 (mobileLabel 미사용)
+
+#### Touch target 최소값 (Apple HIG 44×44px)
+
+- 모든 버튼/탭/링크 최소 `min-h-[44px]` (≥44×44px)
+- OAuth 버튼 (`/login`, `/onboarding`): `min-h-[44px]` 추가 (이전 `py-3 + text-sm` ≈ 38px 미달 → 46px)
+- 회귀 가드: `tests/e2e/login-mobile.spec.ts` 가 `boundingBox().height >= 44` 검증
+
+#### iOS input 자동 zoom 방지
+
+```css
+/* src/app/globals.css */
+@media (max-width: 767px) {
+  .form-input,
+  .form-select { font-size: 16px; }
+}
+```
+
+iOS Safari는 `font-size < 16px` 인 input focus 시 자동 zoom 발생 → 16px 이상 유지로 방지. Desktop은 14px 유지 (가독성 + 폼 밀도).
+
+#### SyncStatusDot 모바일 가시성
+
+- ScheduleHeader 의 `scheduleUpdatedAt` 라벨: 모바일에서도 `text-[10px]` 로 표시 (이전 `hidden sm:block` 제거 — PR #237)
+- 라벨 + SyncStatusDot 조합으로 sync 상태 컨텍스트 제공
+- 모바일 사용자 (학생/학부모)가 "MM월 DD일 HH:mm 수정" 텍스트 보임 — sync 신뢰도 ↑
 
 ---
 
@@ -530,7 +1014,8 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/app/onboarding/**` | `/onboarding` |
 | `src/middleware.ts` | `/students`, `/subjects`, `/schedule` (가드 동작) |
 | `src/app/layout.tsx` | 모든 페이지 (nav, footer) |
-| `src/components/molecules/SessionBlock*` | `/schedule` |
+| `src/components/molecules/SessionBlock*` | `/schedule` (weekly 전용) |
+| `src/components/molecules/SessionCard*` | `/schedule` (daily/monthly), `/` (landing) |
 | `src/components/molecules/ScheduleChangeBanner*` | `/share/{token}` (변경 배지) |
 | `src/components/molecules/DataConflictModal*` | 로그인 + 충돌 시나리오 |
 | `src/components/molecules/ConfirmModal*` | `/students`, `/subjects` (삭제 흐름) |
@@ -538,10 +1023,14 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | `src/components/organisms/StudentPanel*` | `/schedule` |
 | `src/components/organisms/LoginButton*` | 모든 페이지 (nav bar) |
 | `src/components/atoms/**` | 관련된 모든 페이지 |
+| `src/app/share/[token]/**` | `/share/{token}` (Mobile Chrome 375×667 viewport 권장) |
+| `src/components/atoms/SegmentedButton*` | `/share/{token}` (mobileLabel) + `/schedule` (뷰 전환) |
+| `src/components/atoms/SyncStatusDot*` | `/schedule` (ScheduleHeader 우측, 모바일 가시) |
+| `src/app/globals.css` (form-input 16px) | `/login`, `/onboarding`, `/students`, `/subjects` (iOS Safari 검증) |
 
 ---
 
-## 9. 알려진 제약 & 주의 사항
+## 10. 알려진 제약 & 주의 사항
 
 | 항목 | 내용 |
 |------|------|
@@ -549,7 +1038,6 @@ UI 파일 변경 시 아래 라우트를 확인하세요.
 | SessionBlock 폰트 크기 | 학생 수에 따라 동적 계산. 기준: 세션 셀 너비 ~72px, 이름 4글자 가정 |
 | 스크롤 위치 보존 | `localStorage: schedule_scroll_position`, 5분 TTL, 드래그앤드롭 후 자동 복원 |
 | 충돌 감지 | `repositionSessions` (sessionCollisionUtils.ts): 겹치는 세션 yPosition 밀어내기 |
-| 기본 과목 | `DEFAULT_SUBJECTS` 9개 (초등수학~고등국어). 사용자 추가 과목과 구분하여 DataConflictModal에서 표시 |
 | PDF | A4 종이 인쇄 최적화. html2canvas 캡처 → jsPDF |
 | 로그아웃 | 현재 `supabase.auth.signOut()` 대신 localStorage 토큰 수동 삭제. 개선 예정 (TASKS.md) |
 | 공유 페이지 변경 배지 | `/share/{token}` 페이지 상단. `hasChanges=true && lastViewedAt !== null`일 때만 `ScheduleChangeBanner` 렌더. 최초 방문(lastViewedAt=null)은 배너 미표시. 배지 표시 후 페이지 갱신 시 자동 사라짐 (last_viewed_at 갱신됨). |
