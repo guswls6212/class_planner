@@ -169,15 +169,30 @@ export function clearOutbox(userId: string): void {
  *
  * @returns { sent, failed, expired }
  */
-export async function flushOutbox(userId: string): Promise<{
-  sent: number;
-  failed: number;
-  expired: number;
-}> {
+type FlushResult = { sent: number; failed: number; expired: number };
+
+// userId 별 in-flight flush 가드 — mount 자동 flush + 수동 [모두 재시도] 가 동시에
+// 호출돼도 같은 promise 를 공유 → 중복 POST / 두 flush 의 writeOutbox 상호 clobber 차단.
+const flushInFlight = new Map<string, Promise<FlushResult>>();
+
+export async function flushOutbox(userId: string): Promise<FlushResult> {
   if (!userId || typeof window === "undefined") {
     return { sent: 0, failed: 0, expired: 0 };
   }
 
+  const existing = flushInFlight.get(userId);
+  if (existing) return existing;
+
+  const run = doFlush(userId);
+  flushInFlight.set(userId, run);
+  try {
+    return await run;
+  } finally {
+    flushInFlight.delete(userId);
+  }
+}
+
+async function doFlush(userId: string): Promise<FlushResult> {
   const initial = readOutbox(userId);
   if (initial.length === 0) return { sent: 0, failed: 0, expired: 0 };
 
