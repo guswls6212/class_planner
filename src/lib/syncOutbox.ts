@@ -9,6 +9,7 @@
  */
 
 import { logger } from "./logger";
+import { getActiveAcademyId } from "./localStorageCrud";
 
 const MAX_ENTRIES = 100;
 const TTL_MS = 24 * 60 * 60 * 1000;
@@ -30,21 +31,52 @@ export interface OutboxEntry {
   lastError?: string;
 }
 
-function storageKey(userId: string): string {
+/** pre-academy-scope 시절 키 (academyId 미포함). 마이그레이션 source. */
+function legacyStorageKey(userId: string): string {
   return `class_planner_${userId}_sync_outbox`;
+}
+
+/**
+ * academy-scoped outbox 키. 각 entry 는 적재 시점의 active academy 키에 들어가고,
+ * 그 academy 가 active 일 때만 flush 됨 → 서버 resolveAcademyId(active) 가 항상
+ * 옳은 academy 로 해석 (cross-academy leak 차단). academyId 없으면 legacy 키 fallback.
+ */
+function storageKey(userId: string): string {
+  const academyId = getActiveAcademyId(userId);
+  return academyId
+    ? `class_planner_${userId}_${academyId}_sync_outbox`
+    : legacyStorageKey(userId);
+}
+
+function parseEntries(raw: string | null): OutboxEntry[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as OutboxEntry[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 function readOutbox(userId: string): OutboxEntry[] {
   if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(storageKey(userId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as OutboxEntry[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
+  const key = storageKey(userId);
+  const entries = parseEntries(window.localStorage.getItem(key));
+
+  // 1회 마이그레이션 — academy-scope 도입 전 legacy 키 entries 를 현재 active 키로 이동.
+  // legacy entry 는 academy 정보가 없어 active 로 best-effort (구 코드도 active 로 flush 했음
+  // — strictly no-worse). 단일 academy 사용자는 정확. fallback 키와 동일하면 skip.
+  const legacyKey = legacyStorageKey(userId);
+  if (key !== legacyKey) {
+    const legacy = parseEntries(window.localStorage.getItem(legacyKey));
+    if (legacy.length > 0) {
+      const merged = [...legacy, ...entries].slice(-MAX_ENTRIES);
+      window.localStorage.removeItem(legacyKey);
+      window.localStorage.setItem(key, JSON.stringify(merged));
+      return merged;
+    }
   }
+  return entries;
 }
 
 function writeOutbox(userId: string, entries: OutboxEntry[]): void {
