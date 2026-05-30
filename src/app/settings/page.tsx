@@ -1245,10 +1245,9 @@ export default function SettingsPage() {
                 value={shareExpiresInDays}
                 onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
               >
+                {/* Phase 1: Free 만료 최대 30일. 90일/1년은 Phase 2 Premium(자동갱신) 옵션으로 재노출 예정. */}
                 <option value={7}>7일</option>
                 <option value={30}>30일</option>
-                <option value={90}>90일</option>
-                <option value={365}>1년</option>
               </Select>
             </div>
 
