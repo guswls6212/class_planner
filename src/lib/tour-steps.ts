@@ -120,6 +120,16 @@ export const LOGIN_STEPS: TourStep[] = [
     roles: ["owner", "admin"],
   },
   {
+    id: "parent-code",
+    targetSelector: '[data-tour="parent-code"]',
+    targetPath: "/students",
+    title: "학부모 접속 코드",
+    description: "학생 목록 하단 바에서 학생별 6자리 접속 코드를 만들어 학부모에게 전달하면, 학부모가 코드만으로 자녀 시간표를 확인할 수 있어요.",
+    placement: "auto",
+    segment: "login",
+    roles: ["owner", "admin"],
+  },
+  {
     id: "academy-switch",
     targetSelector: '[data-tour="academy-switch"]',
     title: "다른 학원 전환",
