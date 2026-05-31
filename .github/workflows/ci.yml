@@ -178,12 +178,13 @@ jobs:
             ${{ runner.os }}-nextjs-
       # D-lite optimization (2026-05-28, proposal ci-runner-docker-prebake #step-2):
       # cp-runner Docker image 가 mcr.microsoft.com/playwright:v*-noble 기반 — chromium-1187
-      # 이 /ms-playwright 에 baked-in. PLAYWRIGHT_BROWSERS_PATH env 로 detect → skip.
-      # --with-deps 제거 — image 안 system deps 이미 있음. ubuntu (main 향) 에선 매번 download.
+      # 이 /ms-playwright 에 baked-in (self-hosted/dev 향 → detect+재사용).
+      # ubuntu (main 향) 에선 /ms-playwright 가 root 소유 → mkdir EACCES. 쓰기 가능한
+      # runner 홈 캐시로 download (2026-05-30 fix — dev→main 첫 릴리즈서 표면화).
       - name: Install Playwright browsers
         run: npx playwright install chromium
         env:
-          PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+          PLAYWRIGHT_BROWSERS_PATH: ${{ (github.event_name == 'push' || github.base_ref == 'main') && '/home/runner/.cache/ms-playwright' || '/ms-playwright' }}
       # E2E test user 6 셋업은 별도 setup-users job 으로 이동 (2026-05-29, RCA).
       # e2e 가 needs: setup-users 로 의존 → 모든 shard 시작 전 user 데이터 보장 (race 제거).
       - name: Run E2E tests
@@ -208,7 +209,8 @@ jobs:
         env:
           CI: "true"
           # D-lite (2026-05-28): image 의 chromium-1187 활용. playwright runtime 도 동일 path detect.
-          PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+          # 설치 step 과 동일 경로 (ubuntu=runner 홈 캐시, self-hosted=/ms-playwright). 2026-05-30 fix.
+          PLAYWRIGHT_BROWSERS_PATH: ${{ (github.event_name == 'push' || github.base_ref == 'main') && '/home/runner/.cache/ms-playwright' || '/ms-playwright' }}
           # E2E_DISABLE_SW=1 제거 (이전 PR R 우회). SW timing root cause fix
           # (sw.ts /api/* NetworkOnly + AuthGuard 7s) 후 e2e_pwa job 통합 — 모든
           # spec이 SW 활성 환경에서 실행. 환경 충실도 = production.
