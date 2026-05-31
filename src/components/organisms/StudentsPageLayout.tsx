@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/atoms/Skeleton";
 import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
 import ParentCodeStickyBar from "@/components/molecules/ParentCodeStickyBar";
+import AcademyShareBar from "@/components/molecules/AcademyShareBar";
 import StudentAddDetailModal from "@/components/molecules/StudentAddDetailModal";
 import { Plus, Users } from "lucide-react";
 import { GradeBadge } from "@/components/atoms/GradeBadge";
@@ -56,6 +57,14 @@ interface StudentsPageLayoutProps {
   onRevokeCodeForStudent?: (studentId: string, studentName?: string) => void;
   /** Academy access URL (e.g. /academy/<slug>) — used for "자녀 시간표 링크 복사" */
   academyUrl?: string;
+  /** True when viewer is anonymous (not logged in) — student detail shows a login prompt for parent codes */
+  isAnonymous?: boolean;
+  /** 학원 전체 공유 링크 (/share/<token> 절대 URL) — 없으면 생성 버튼 */
+  academyShareUrl?: string | null;
+  academyShareExpiresAt?: string | null;
+  onCreateAcademyShare?: () => void;
+  onCopyAcademyShare?: () => void;
+  creatingAcademyShare?: boolean;
 }
 
 export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
@@ -173,6 +182,18 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
           placeholder="학생 이름으로 검색"
           ariaLabelAdd="학생 추가"
         />
+
+        {/* 학원 전체 공유 링크 바 (A 통합, 2026-05-30) — 로그인 admin + academy URL 있을 때만.
+            학부모 개별 코드는 학생 행/상세에서, 학원 전체 링크는 여기서 (공유 한 곳 통합). */}
+        {codeUiCapable && (
+          <AcademyShareBar
+            shareUrl={props.academyShareUrl ?? null}
+            expiresAt={props.academyShareExpiresAt ?? null}
+            onCreate={() => props.onCreateAcademyShare?.()}
+            onCopy={() => props.onCopyAcademyShare?.()}
+            busy={props.creatingAcademyShare}
+          />
+        )}
 
         {/* Student list */}
         <ul className="flex-1 overflow-y-auto">
@@ -301,6 +322,7 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
             onCreateCode={props.onCreateCodeForStudent}
             onRenewCode={props.onRenewCodeForStudent}
             onRevokeCode={props.onRevokeCodeForStudent}
+            isAnonymous={props.isAnonymous}
           />
         </div>
       ) : (

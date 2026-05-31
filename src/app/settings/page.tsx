@@ -89,6 +89,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
+  // Phase 1: 데이터 복구(스냅샷/이력)는 미제공 — Phase 2 Premium 예정. true 로 바꾸면 재노출.
+  const SHOW_DATA_HISTORY = false;
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
   const [academyId, setAcademyId] = useState<string | null>(null);
@@ -129,7 +131,8 @@ export default function SettingsPage() {
   const [shareExpanded, setShareExpanded] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLabel, setShareLabel] = useState("");
-  const [shareExpiresInDays, setShareExpiresInDays] = useState(30);
+  // Phase 1: 공유 링크 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택은 Phase 2 Premium.
+  const shareExpiresInDays = 30;
   const [shareStudentId, setShareStudentId] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
@@ -724,7 +727,6 @@ export default function SettingsPage() {
         setShowShareModal(false);
         setShareLabel("");
         setShareStudentId("");
-        setShareExpiresInDays(30);
         await fetchData();
       } else {
         showError(data.error ?? "공유 링크 생성에 실패했습니다.");
@@ -1237,17 +1239,10 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Phase 1: 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택/자동갱신은 Phase 2 Premium. */}
             <div className="mb-5">
               <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">만료 기간</label>
-              <Select
-                value={shareExpiresInDays}
-                onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
-              >
-                <option value={7}>7일</option>
-                <option value={30}>30일</option>
-                <option value={90}>90일</option>
-                <option value={365}>1년</option>
-              </Select>
+              <p className="text-[13px] text-[var(--color-text-muted)]">30일 후 자동 만료돼요. (만료되면 링크가 막혀 안전해요)</p>
             </div>
 
             <div className="flex gap-3">
@@ -1354,7 +1349,7 @@ export default function SettingsPage() {
           DataHistorySection 위에 amber hint 카드 추가하여 사용자가 데이터
           복구 기능 존재를 사고 발생 전 인지. mockup:
           /strategy/discoverability-attendance-recovery § E */}
-      {userId && canManage && (
+      {SHOW_DATA_HISTORY && userId && canManage && (
         <section
           className="bg-amber-500/[0.07] border border-amber-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
           data-testid="data-recovery-hint"
@@ -1374,8 +1369,8 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
-      {userId && (
+      {/* 데이터 이력 섹션 — Phase 1 미제공 (데이터 복구는 Phase 2 Premium 예정) */}
+      {SHOW_DATA_HISTORY && userId && (
         <div data-tour="data-history">
           <DataHistorySection userId={userId} />
         </div>

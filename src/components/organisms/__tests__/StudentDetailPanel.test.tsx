@@ -48,6 +48,27 @@ describe("StudentDetailPanel", () => {
     expect(screen.getAllByText(/중2/).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("anonymous viewer sees a login prompt instead of the code-create button", () => {
+    render(
+      <StudentDetailPanel
+        student={mockStudent}
+        subjects={mockSubjects}
+        enrollments={mockEnrollments}
+        sessions={mockSessions}
+        onUpdate={vi.fn().mockResolvedValue(true)}
+        onDelete={vi.fn()}
+        onCreateCode={vi.fn()}
+        isAnonymous
+      />
+    );
+    expect(
+      screen.getByText("로그인하면 학부모에게 시간표를 공유할 수 있어요.")
+    ).toBeInTheDocument();
+    const loginLink = screen.getByText("로그인하고 시작하기");
+    expect(loginLink.getAttribute("href")).toBe("/login");
+    expect(screen.queryByText("이 학생 코드 생성")).not.toBeInTheDocument();
+  });
+
   it("shows stats cards with correct counts", () => {
     render(
       <StudentDetailPanel

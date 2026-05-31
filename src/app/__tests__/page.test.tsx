@@ -24,14 +24,14 @@ describe("Landing Page", () => {
   it("HeroSection이 렌더링되어야 한다", () => {
     render(<LandingPage />);
 
-    expect(screen.getByText("무료 시간표 관리 도구")).toBeInTheDocument();
-    expect(screen.getByText(/5분이면 충분합니다/)).toBeInTheDocument();
+    expect(screen.getByText("학원 시간표 관리 도구")).toBeInTheDocument();
+    expect(screen.getByText(/시간표 다시 짜지 마세요/)).toBeInTheDocument();
   });
 
   it("메인 CTA '무료로 시작하기' 링크가 있어야 한다", () => {
     render(<LandingPage />);
 
-    const ctaLinks = screen.getAllByText("무료로 시작하기");
+    const ctaLinks = screen.getAllByText("바로 시작하기");
     expect(ctaLinks.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -47,10 +47,11 @@ describe("Landing Page", () => {
     render(<LandingPage />);
 
     expect(screen.getByText("이렇게 만들어집니다")).toBeInTheDocument();
-    expect(screen.getByText("3단계면 시간표 완성")).toBeInTheDocument();
+    expect(screen.getByText("등록부터 학부모 공유까지, 4단계")).toBeInTheDocument();
     expect(screen.getByText("학생·과목 등록")).toBeInTheDocument();
     expect(screen.getByText("시간표에 배치")).toBeInTheDocument();
     expect(screen.getByText("PDF로 출력")).toBeInTheDocument();
+    expect(screen.getByText("학부모에게 공유")).toBeInTheDocument();
   });
 
   it("BottomCTA가 렌더링되어야 한다", () => {
@@ -58,7 +59,7 @@ describe("Landing Page", () => {
 
     expect(screen.getByText("지금 바로 시작하세요")).toBeInTheDocument();
     expect(
-      screen.getByText("회원가입 없이 바로 사용할 수 있습니다. 무료.")
+      screen.getByText("회원가입 없이 바로 사용할 수 있습니다.")
     ).toBeInTheDocument();
   });
 
@@ -80,7 +81,7 @@ describe("Landing Page", () => {
     // null 렌더링 시 랜딩 콘텐츠가 없어야 함
     expect(container.querySelector("#how-it-works")).toBeNull();
     expect(
-      screen.queryByText("무료 시간표 관리 도구")
+      screen.queryByText("학원 시간표 관리 도구")
     ).not.toBeInTheDocument();
   });
 });
