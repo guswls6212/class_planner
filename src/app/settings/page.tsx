@@ -727,7 +727,6 @@ export default function SettingsPage() {
         setShowShareModal(false);
         setShareLabel("");
         setShareStudentId("");
-        setShareExpiresInDays(30);
         await fetchData();
       } else {
         showError(data.error ?? "공유 링크 생성에 실패했습니다.");
