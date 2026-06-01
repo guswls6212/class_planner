@@ -71,3 +71,12 @@ export function isHidden(key: FeatureKey): boolean {
 export function isVisible(key: FeatureKey): boolean {
   return !isHidden(key);
 }
+
+/**
+ * dev 모드를 무시한 "정적" 가시성 — 설정 파일(HIDDEN)만 본다.
+ * SSR + 클라이언트 첫 렌더에 사용해 hydration mismatch 를 회피하고,
+ * mount 이후에만 isVisible(dev 모드 반영)로 전환한다 (useFeatureGate / useHasMounted).
+ */
+export function featureVisibleStatic(key: FeatureKey): boolean {
+  return !HIDDEN[key];
+}

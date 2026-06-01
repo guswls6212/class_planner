@@ -25,7 +25,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationDropdown } from "../molecules/NotificationDropdown";
 import CreateAcademyModal from "./CreateAcademyModal";
 import { TOUR_START_EVENT } from "@/lib/tour-steps";
-import { isVisible, type FeatureKey } from "@/config/features";
+import { featureVisibleStatic, isVisible, type FeatureKey } from "@/config/features";
+import { useHasMounted } from "@/hooks/useHasMounted";
 
 interface SidebarItem {
   href: string;
@@ -143,10 +144,13 @@ export function Sidebar() {
   // re-render; clicking them lands on the middleware redirect with a toast.
   const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
+  // features.ts 가시성 — SSR + 첫 렌더는 정적값(dev 무시), mount 후 dev 모드 반영(hydration mismatch 회피).
+  const mounted = useHasMounted();
+  const featVisible = (f: FeatureKey) => (mounted ? isVisible(f) : featureVisibleStatic(f));
   // member 도 /schedule 사용 (2026-05-29 통합 — role-branch read-only + 출결). teacher-schedule 분기 제거.
   // adminOnly 항목(학생/과목/강사)은 member 에게 계속 숨김.
   const visibleTopItems = topItems.filter(
-    (item) => (!item.adminOnly || !isMember) && (!item.feature || isVisible(item.feature)),
+    (item) => (!item.adminOnly || !isMember) && (!item.feature || featVisible(item.feature)),
   );
 
   // Login state — AuthContext에서 단일 source로 받음.
@@ -255,7 +259,7 @@ export function Sidebar() {
           >
         <button
           type="button"
-          onClick={() => isVisible("multiAcademy") && setShowSwitcher((v) => !v)}
+          onClick={() => featVisible("multiAcademy") && setShowSwitcher((v) => !v)}
           aria-label={activeAcademy?.name ?? "학원"}
           aria-expanded={showSwitcher}
           title={activeAcademy?.name ?? "학원"}
@@ -280,7 +284,7 @@ export function Sidebar() {
             : (activeAcademy ? activeAcademy.name.slice(0, 2) : "CP")}
         </button>
 
-        {showSwitcher && isVisible("multiAcademy") && (
+        {showSwitcher && featVisible("multiAcademy") && (
           <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
             {isLoading ? (
               <div className="px-3 py-3 text-[11px] text-slate-500 text-center">

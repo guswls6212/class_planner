@@ -424,12 +424,18 @@ describe("Sidebar — User Bottom Section", () => {
 describe("Sidebar — Anonymous Mode + Loading State", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 기본 로그인 복원 — useHasMounted 재렌더로 useAuth 가 2회 호출되므로 persistent mockReturnValue 사용.
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-test", email: "test@test.com" } },
+      user: { id: "user-test", email: "test@test.com" },
+      loading: false,
+    });
     mockGetActiveAcademyId.mockReturnValue(null);
     window.localStorage.getItem = vi.fn(() => null);
   });
 
   it("비로그인 사용자는 academy switcher 영역이 미렌더된다", async () => {
-    mockUseAuth.mockReturnValueOnce({ session: null, user: null, loading: false });
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
     mockUseMyRole.mockReturnValue({
       role: null,

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
-import { isVisible } from "@/config/features";
+import { featureVisibleStatic, isVisible } from "@/config/features";
+import { useHasMounted } from "@/hooks/useHasMounted";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
@@ -107,8 +108,10 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   // Sticky bar (URL + 일괄 메뉴) needs admin privilege + academy URL + bulk handler.
   // While initial fetch is in flight, we show a thin skeleton in the same slot
   // to prevent layout shift when codes arrive.
+  // features.ts 가시성 — SSR/첫 렌더 정적값, mount 후 dev 반영(hydration mismatch 회피).
+  const mounted = useHasMounted();
   const codeUiCapable =
-    isVisible("parentAccessCodes") &&
+    (mounted ? isVisible("parentAccessCodes") : featureVisibleStatic("parentAccessCodes")) &&
     canManage &&
     Boolean(props.onCreateCodes) &&
     Boolean(academyUrl);
