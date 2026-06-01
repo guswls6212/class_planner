@@ -7,6 +7,7 @@ import TimeTableGrid from "@/components/organisms/TimeTableGrid";
 import ScheduleChangeBanner from "@/components/molecules/ScheduleChangeBanner";
 import { getWeekStartDate } from "@/lib/weekStart";
 import type { Session, Student, Subject, Enrollment, Teacher } from "@/lib/planner";
+import { useHiddenRedirect } from "@/hooks/useHiddenRedirect";
 
 const POLL_INTERVAL_MS = 60_000;
 
@@ -70,6 +71,12 @@ function getWeekStart(date: Date): Date {
 }
 
 export default function SharePage({ params }: { params: Promise<{ token: string }> }) {
+  const hidden = useHiddenRedirect("scheduleSharing");
+  if (hidden) return null;
+  return <SharePageInner params={params} />;
+}
+
+function SharePageInner({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [data, setData] = useState<ShareData | null>(null);
   const [error, setError] = useState<string | null>(null);
