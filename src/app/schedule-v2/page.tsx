@@ -30,7 +30,11 @@ import {
   previousWeekWithData,
 } from "./_data/weekCarry";
 import { planSessionAdd } from "../schedule/_utils/sessionAddHelpers";
-import { planSessionUpdate } from "../schedule/_utils/updateSessionHelpers";
+import {
+  planStudentBlockEdit,
+  planStudentBlockDelete,
+  buildSessionSyncPayload,
+} from "../schedule/_utils/studentBlockEditHelpers";
 import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../../lib/apiSync";
 import { getWeekStartDate } from "../../lib/weekStart";
 import { readStoredRange, type StoredTimeRange } from "../../hooks/useTimeRange";
@@ -71,11 +75,13 @@ function ScheduleV2Content() {
     useIntegratedDataLocal();
   const [view, setView] = useState<View>("grid");
   const [modal, setModal] = useState<
-    { mode: "add" } | { mode: "edit"; sessionId: string; initial: SessionFormInitial } | null
+    | { mode: "add" }
+    | { mode: "edit"; sessionId: string; enrollmentId: string; initial: SessionFormInitial }
+    | null
   >(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [popover, setPopover] = useState<
-    { sessionId: string; anchor: DOMRect; initial: SessionFormInitial } | null
+    { sessionId: string; enrollmentId: string; anchor: DOMRect; initial: SessionFormInitial } | null
   >(null);
 
   // 주 이동 — todayMonday(고정) + weekOffset → viewedMonday(보는 주).
@@ -240,11 +246,13 @@ function ScheduleV2Content() {
     await bulkDeleteSessions(ids);
   }, [viewedWeekSessions, bulkDeleteSessions, markEmptyWeek]);
 
-  // 편집: 친구 핵심(시간/요일/강사)만. 학생/과목 변경은 삭제+재추가(enrollment 재조정 회피).
-  const editSession = useCallback(
-    async (sessionId: string, input: SessionFormInput) => {
-      const plan = planSessionUpdate({
+  // 편집(split-on-edit): 블록은 (sessionId, enrollmentId) 쌍. 세션이 2명+면 그 학생을
+  // 1인 세션으로 분리(나머지 유지), 1명이면 제자리. proposal: per-student-block-split.
+  const editStudentBlock = useCallback(
+    async (sessionId: string, enrollmentId: string, input: SessionFormInput) => {
+      const plan = planStudentBlockEdit({
         sessionId,
+        enrollmentId,
         input: {
           startTime: input.startTime,
           endTime: input.endTime,
@@ -254,20 +262,46 @@ function ScheduleV2Content() {
         sessions: data.sessions,
         enrollments: data.enrollments,
         subjects: data.subjects,
+        genId: () => crypto.randomUUID(),
       });
       await updateData({ sessions: plan.mergedSessions });
       const uidForSync = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
-      if (plan.changedSession) {
-        void syncSessionUpdate(uidForSync, sessionId, {
-          startsAt: plan.changedSession.startsAt,
-          endsAt: plan.changedSession.endsAt,
-          weekday: plan.changedSession.weekday,
-          teacherId: plan.changedSession.teacherId,
-        });
+      // PUT 은 full payload 필수(buildSessionSyncPayload). split 이면 원본 갱신 + 신규 create.
+      if (plan.didSplit) {
+        if (plan.updatedOriginal)
+          void syncSessionUpdate(uidForSync, plan.updatedOriginal.id, buildSessionSyncPayload(plan.updatedOriginal, data.enrollments));
+        if (plan.newSession) void syncSessionCreate(uidForSync, plan.newSession);
+      } else if (plan.inPlaceSession) {
+        void syncSessionUpdate(uidForSync, plan.inPlaceSession.id, buildSessionSyncPayload(plan.inPlaceSession, data.enrollments));
       }
       setModal(null);
+      setPopover(null);
     },
     [data.sessions, data.enrollments, data.subjects, updateData]
+  );
+
+  // 삭제(split-on-delete): 세션이 2명+면 그 enrollment 만 제거(세션 유지), 1명이면 세션 통째 삭제.
+  const deleteStudentBlock = useCallback(
+    async (sessionId: string, enrollmentId: string) => {
+      const plan = planStudentBlockDelete({
+        sessionId,
+        enrollmentId,
+        sessions: data.sessions,
+        enrollments: data.enrollments,
+      });
+      if (plan.shouldDeleteSession) {
+        await deleteSession(sessionId);
+      } else {
+        await updateData({ sessions: plan.mergedSessions });
+        const uidForSync = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+        if (plan.updatedOriginal)
+          void syncSessionUpdate(uidForSync, plan.updatedOriginal.id, buildSessionSyncPayload(plan.updatedOriginal, data.enrollments));
+        showToast("success", "이 학생만 시간표에서 뺐어요");
+      }
+      setModal(null);
+      setPopover(null);
+    },
+    [data.sessions, data.enrollments, updateData, deleteSession]
   );
 
   // 블록 클릭 → 그 자리에 빠른 편집 팝오버(C). anchor = 블록 DOMRect. (blockId = "sessionId:enrollmentId")
@@ -281,6 +315,7 @@ function ScheduleV2Content() {
       const subject = enr ? data.subjects.find((s) => s.id === enr.subjectId) : undefined;
       setPopover({
         sessionId: sid,
+        enrollmentId: eid,
         anchor,
         initial: {
           studentId: enr?.studentId ?? "",
@@ -296,12 +331,6 @@ function ScheduleV2Content() {
     },
     [data.sessions, data.enrollments, data.students, data.subjects]
   );
-
-  const removeCurrentSession = useCallback(async () => {
-    if (modal?.mode !== "edit") return;
-    await deleteSession(modal.sessionId);
-    setModal(null);
-  }, [modal, deleteSession]);
 
   const isEmpty = !loading && vm.blocks.length === 0;
   const showCarryPrompt =
@@ -451,10 +480,10 @@ function ScheduleV2Content() {
           teachers={data.teachers}
           onSubmit={(input) =>
             modal.mode === "edit"
-              ? void editSession(modal.sessionId, input)
+              ? void editStudentBlock(modal.sessionId, modal.enrollmentId, input)
               : void addSession(input)
           }
-          onDelete={modal.mode === "edit" ? () => void removeCurrentSession() : undefined}
+          onDelete={modal.mode === "edit" ? () => void deleteStudentBlock(modal.sessionId, modal.enrollmentId) : undefined}
           onClose={() => setModal(null)}
         />
       )}
@@ -474,11 +503,11 @@ function ScheduleV2Content() {
           anchor={popover.anchor}
           teachers={data.teachers}
           onSave={(input) => {
-            void editSession(popover.sessionId, input);
+            void editStudentBlock(popover.sessionId, popover.enrollmentId, input);
             setPopover(null);
           }}
           onDelete={() => {
-            void deleteSession(popover.sessionId);
+            void deleteStudentBlock(popover.sessionId, popover.enrollmentId);
             setPopover(null);
           }}
           onClose={() => setPopover(null)}
