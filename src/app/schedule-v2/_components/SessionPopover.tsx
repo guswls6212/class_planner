@@ -11,7 +11,7 @@ import { timeToMinutes, weekdays, type Teacher } from "@/lib/planner";
 import type { SessionFormInitial, SessionFormInput } from "./SessionFormModal";
 
 const POPOVER_W = 232;
-const POPOVER_H_EST = 188;
+const POPOVER_H_EST = 220; // 강사 이름 칩(줄바꿈) 고려
 const MARGIN = 8;
 
 /** anchor(블록 DOMRect) 아래에 배치, 화면 넘치면 위/안쪽으로 clamp. */
@@ -91,16 +91,16 @@ export default function SessionPopover({
           <span className="text-[var(--color-text-muted)]">· {weekdays[initial.weekday]} · {initial.subjectName}</span>
         </div>
 
-        {/* 강사 색 dots */}
+        {/* 강사 — 이름 칩(색 dot + 이름). 색만으론 누군지 모르니 이름 노출 (V1, 2026-06-01 픽) */}
         <div className="mb-2">
           <div className="mb-1 text-[10px] text-[var(--color-text-muted)]">강사</div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1">
             <button
               type="button"
               onClick={() => setTeacherId("")}
               aria-label="강사 없음"
               aria-pressed={teacherId === ""}
-              className={`h-5 rounded-full border px-2 text-[10px] ${teacherId === "" ? "border-[var(--color-accent)] text-[var(--color-text-primary)]" : "border-[var(--color-border)] text-[var(--color-text-muted)]"}`}
+              className={`rounded-full border px-2 py-0.5 text-[11px] transition ${teacherId === "" ? "border-[var(--color-accent)] text-[var(--color-text-primary)]" : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"}`}
             >
               없음
             </button>
@@ -111,10 +111,11 @@ export default function SessionPopover({
                 onClick={() => setTeacherId(t.id)}
                 aria-label={t.name}
                 aria-pressed={teacherId === t.id}
-                title={t.name}
-                className={`h-5 w-5 rounded-full transition ${teacherId === t.id ? "ring-2 ring-white" : "opacity-50 hover:opacity-90"}`}
-                style={{ backgroundColor: t.color }}
-              />
+                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition ${teacherId === t.id ? "border-[var(--color-accent)] text-[var(--color-text-primary)]" : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)]"}`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                {t.name}
+              </button>
             ))}
           </div>
         </div>
