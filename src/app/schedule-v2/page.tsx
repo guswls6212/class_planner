@@ -23,6 +23,8 @@ import { planSessionUpdate } from "../schedule/_utils/updateSessionHelpers";
 import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../../lib/apiSync";
 import { getWeekStartDate } from "../../lib/weekStart";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
+import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
+import SessionPopover from "./_components/SessionPopover";
 
 type View = "grid" | "table";
 
@@ -31,6 +33,10 @@ function ScheduleV2Content() {
   const [view, setView] = useState<View>("grid");
   const [modal, setModal] = useState<
     { mode: "add" } | { mode: "edit"; sessionId: string; initial: SessionFormInitial } | null
+  >(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [popover, setPopover] = useState<
+    { sessionId: string; anchor: DOMRect; initial: SessionFormInitial } | null
   >(null);
 
   const vm = useMemo(() => {
@@ -42,7 +48,7 @@ function ScheduleV2Content() {
   const legend = useMemo(() => {
     const map = new Map<string, string>();
     for (const b of vm.blocks) {
-      if (!map.has(b.color)) map.set(b.color, b.teacherName ?? b.subjectName);
+      if (!map.has(b.color)) map.set(b.color, b.subjectName);
     }
     return Array.from(map, ([color, label]) => ({ color, label }));
   }, [vm.blocks]);
@@ -69,6 +75,43 @@ function ScheduleV2Content() {
       for (const enr of plan.newEnrollments) void syncEnrollmentCreate(uid, enr);
       void syncSessionCreate(uid, plan.newSession);
       setModal(null);
+    },
+    [data.sessions, data.enrollments, updateData, vm.weekStartDate]
+  );
+
+  // D — 학생-주 일괄: 채운 셀마다 planSessionAdd 를 fold(이전 merged 위에 누적) → updateData 1회 + sync N.
+  const bulkAdd = useCallback(
+    async (inputs: SessionFormInput[]) => {
+      const fallback = getWeekStartDate(new Date());
+      let sessions = data.sessions;
+      let enrollments = data.enrollments;
+      const newSessions: typeof data.sessions = [];
+      const newEnrollments: typeof data.enrollments = [];
+      for (const input of inputs) {
+        const plan = planSessionAdd({
+          input: {
+            subjectId: input.subjectId,
+            studentIds: [input.studentId],
+            teacherId: input.teacherId ?? undefined,
+            weekday: input.weekday,
+            startTime: input.startTime,
+            endTime: input.endTime,
+            weekStartDate: vm.weekStartDate ?? fallback,
+          },
+          sessions,
+          enrollments,
+          fallbackWeekStartDate: fallback,
+        });
+        sessions = plan.mergedSessions;
+        enrollments = plan.mergedEnrollments;
+        newSessions.push(plan.newSession);
+        newEnrollments.push(...plan.newEnrollments);
+      }
+      await updateData({ sessions, enrollments });
+      const uid = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+      for (const enr of newEnrollments) void syncEnrollmentCreate(uid, enr);
+      for (const s of newSessions) void syncSessionCreate(uid, s);
+      setBulkOpen(false);
     },
     [data.sessions, data.enrollments, updateData, vm.weekStartDate]
   );
@@ -103,18 +146,18 @@ function ScheduleV2Content() {
     [data.sessions, data.enrollments, data.subjects, updateData]
   );
 
-  // 블록 클릭 → 그 세션을 편집 모달로 (blockId = "sessionId:enrollmentId")
-  const openEdit = useCallback(
-    (blockId: string) => {
+  // 블록 클릭 → 그 자리에 빠른 편집 팝오버(C). anchor = 블록 DOMRect. (blockId = "sessionId:enrollmentId")
+  const openPopover = useCallback(
+    (blockId: string, anchor: DOMRect) => {
       const [sid, eid] = blockId.split(":");
       const sess = data.sessions.find((s) => s.id === sid);
       if (!sess) return;
       const enr = data.enrollments.find((e) => e.id === eid);
       const student = enr ? data.students.find((s) => s.id === enr.studentId) : undefined;
       const subject = enr ? data.subjects.find((s) => s.id === enr.subjectId) : undefined;
-      setModal({
-        mode: "edit",
+      setPopover({
         sessionId: sid,
+        anchor,
         initial: {
           studentId: enr?.studentId ?? "",
           studentName: student?.name ?? "?",
@@ -152,7 +195,7 @@ function ScheduleV2Content() {
       </div>
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">시간표 — 한눈에 전주</h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-text-secondary)]">
-        색 = 강사, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
+        색 = 과목, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
         <b className="text-[var(--color-text-primary)]"> 그리드</b>(누가 언제 방에) /{" "}
         <b className="text-[var(--color-text-primary)]">학생별 표</b>(이 아이 주간).
       </p>
@@ -184,6 +227,12 @@ function ScheduleV2Content() {
         >
           ＋ 수업 추가
         </button>
+        <button
+          onClick={() => setBulkOpen(true)}
+          className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+        >
+          학생별 일괄 입력
+        </button>
       </div>
 
       <div className="mt-4">
@@ -202,7 +251,7 @@ function ScheduleV2Content() {
             </div>
           </div>
         ) : view === "grid" ? (
-          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openEdit} />
+          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openPopover} />
         ) : (
           <StudyRoomTable students={vm.students} />
         )}
@@ -211,7 +260,7 @@ function ScheduleV2Content() {
       {/* 범례 (강사 색) */}
       {!loading && !isEmpty && legend.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-[var(--color-text-secondary)]">
-          <span className="font-medium text-[var(--color-text-muted)]">색 = 강사:</span>
+          <span className="font-medium text-[var(--color-text-muted)]">색 = 과목:</span>
           {legend.map(({ color, label }) => (
             <span key={color} className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
@@ -235,6 +284,32 @@ function ScheduleV2Content() {
           }
           onDelete={modal.mode === "edit" ? () => void removeCurrentSession() : undefined}
           onClose={() => setModal(null)}
+        />
+      )}
+      {bulkOpen && (
+        <StudentWeekEntryModal
+          students={data.students}
+          subjects={data.subjects}
+          enrollments={data.enrollments}
+          sessions={data.sessions}
+          onClose={() => setBulkOpen(false)}
+          onBulkCreate={(inputs) => void bulkAdd(inputs)}
+        />
+      )}
+      {popover && (
+        <SessionPopover
+          initial={popover.initial}
+          anchor={popover.anchor}
+          teachers={data.teachers}
+          onSave={(input) => {
+            void editSession(popover.sessionId, input);
+            setPopover(null);
+          }}
+          onDelete={() => {
+            void deleteSession(popover.sessionId);
+            setPopover(null);
+          }}
+          onClose={() => setPopover(null)}
         />
       )}
     </div>

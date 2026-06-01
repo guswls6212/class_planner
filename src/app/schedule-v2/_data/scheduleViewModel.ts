@@ -114,7 +114,8 @@ export function buildScheduleVM(data: RealData, weekSessions: Session[]): Schedu
       if (!stu) continue;
       const subj = subjById.get(enr.subjectId);
       const subjectName = subj?.name ?? "수업";
-      const color = teacher?.color ?? subj?.color ?? "#6b7280";
+      // 색 = 과목 (2026-06-01 사용자 결정 — 그리드/표 모두 과목색). 강사는 메타(필터/팝오버).
+      const color = subj?.color ?? teacher?.color ?? "#6b7280";
 
       blocks.push({
         id: `${sess.id}:${eid}`,
