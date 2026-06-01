@@ -45,22 +45,35 @@ export default function StudentWeekEntryModal({
 }) {
   const [studentId, setStudentId] = useState(students[0]?.id ?? "");
   const [cells, setCells] = useState<Record<string, string>>({});
+  // 표시(=저장 대상) 과목 id 집합 — 학생 enrolled 과목 기본 on, 칩으로 다른 과목 추가/제거.
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<Set<string>>(new Set());
   const { containerRef } = useModalA11y({ isOpen: true, onClose });
 
-  // 학생 변경 시 입력 셀 초기화 (다른 학생 입력 잔존 방지).
+  // 학생 변경 시 입력 셀 초기화 + 표시 과목을 그 학생의 enrolled 과목으로 리셋.
   useEffect(() => {
     setCells({});
-  }, [studentId]);
+    setSelectedSubjectIds(
+      new Set(enrollments.filter((e) => e.studentId === studentId).map((e) => e.subjectId)),
+    );
+  }, [studentId, enrollments]);
 
   const myEnrollments = useMemo(
     () => enrollments.filter((e) => e.studentId === studentId),
     [enrollments, studentId],
   );
 
-  const mySubjects = useMemo(() => {
-    const ids = new Set(myEnrollments.map((e) => e.subjectId));
-    return subjects.filter((s) => ids.has(s.id));
-  }, [subjects, myEnrollments]);
+  // 매트릭스에 표시(=저장 대상) 과목 — 선택된 것. 미등록 과목도 칩으로 켜면 추가(저장 시 enrollment 자동 생성).
+  const displayedSubjects = useMemo(
+    () => subjects.filter((s) => selectedSubjectIds.has(s.id)),
+    [subjects, selectedSubjectIds],
+  );
+  const toggleSubject = (id: string) =>
+    setSelectedSubjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // 기존 세션: `${subjectId}-${weekday}` → "HH:MM"(시작). 기존 셀은 회색·읽기전용.
   const existing = useMemo(() => {
@@ -80,7 +93,7 @@ export default function StudentWeekEntryModal({
 
   const save = () => {
     const inputs: SessionFormInput[] = [];
-    for (const subj of mySubjects) {
+    for (const subj of displayedSubjects) {
       for (const wd of ENTRY_DAYS) {
         const key = `${subj.id}-${wd}`;
         if (existing.has(key)) continue; // 기존은 편집(A/B 모달)으로 — 여기선 생성만
@@ -136,23 +149,48 @@ export default function StudentWeekEntryModal({
         </div>
 
         {/* 과목 × 요일 매트릭스 */}
-        {mySubjects.length === 0 ? (
+        {subjects.length === 0 ? (
           <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
-            이 학생의 과목이 없어요. 먼저 <b className="text-[var(--color-text-secondary)]">＋ 수업 추가</b>로 과목을 한 번 등록하면 여기서 일괄 입력할 수 있어요.
+            이 학원에 과목이 없어요. 먼저 <b className="text-[var(--color-text-secondary)]">＋ 수업 추가</b>로 과목을 한 번 등록하면 여기서 일괄 입력할 수 있어요.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-[var(--color-border)]">
-            <table className="w-full border-collapse text-center text-[12px]">
-              <thead>
-                <tr className="bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]">
-                  <th className="px-2 py-1.5 text-left font-medium">과목</th>
-                  {ENTRY_DAYS.map((wd) => (
-                    <th key={wd} className="px-1 py-1.5 font-medium">{weekdays[wd]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mySubjects.map((subj) => (
+          <>
+            {/* 과목 칩 토글 — 학생 과목 기본 on, 다른 과목 클릭으로 추가/제거 (S3, 2026-06-01 픽) */}
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-[var(--color-text-muted)]">과목</span>
+              {subjects.map((s) => {
+                const on = selectedSubjectIds.has(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleSubject(s.id)}
+                    aria-pressed={on}
+                    className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] transition ${on ? "border-[var(--color-accent)] text-[var(--color-text-primary)]" : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"}`}
+                  >
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color ?? "#6b7280" }} />
+                    {s.name}
+                  </button>
+                );
+              })}
+            </div>
+            {displayedSubjects.length === 0 ? (
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-3 py-6 text-center text-[13px] text-[var(--color-text-muted)]">
+                위에서 과목을 켜면 입력 칸이 나와요.
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-[var(--color-border)]">
+                <table className="w-full border-collapse text-center text-[12px]">
+                  <thead>
+                    <tr className="bg-[var(--color-bg-primary)] text-[var(--color-text-muted)]">
+                      <th className="px-2 py-1.5 text-left font-medium">과목</th>
+                      {ENTRY_DAYS.map((wd) => (
+                        <th key={wd} className="px-1 py-1.5 font-medium">{weekdays[wd]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedSubjects.map((subj) => (
                   <tr key={subj.id} className="border-t border-[var(--color-border)]">
                     <td className="px-2 py-1 text-left">
                       <span className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-text-secondary)]">
@@ -183,9 +221,11 @@ export default function StudentWeekEntryModal({
                     })}
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
 
         <div className="mt-5 flex items-center justify-end gap-2">

@@ -9,7 +9,6 @@ import { useMemo, useState } from "react";
 import {
   axisOf,
   packDay,
-  readableText,
   weekdayLabel,
   type ViewBlock,
 } from "../_data/scheduleViewModel";
@@ -25,9 +24,12 @@ const LANE_H = 24;
 export default function StudyRoomGrid({
   blocks,
   onBlockClick,
+  range,
 }: {
   blocks: ViewBlock[];
   onBlockClick?: (blockId: string, anchor: DOMRect) => void;
+  /** 운영시간(시) — 지정 시 시간축 고정. 미지정(auto/미설정) 시 데이터 자동맞춤(axisOf). */
+  range?: { startHour: number; endHour: number };
 }) {
   const [filter, setFilter] = useState<string | null>(null);
 
@@ -41,12 +43,23 @@ export default function StudyRoomGrid({
     () => (filter ? blocks.filter((b) => b.subjectName === filter) : blocks),
     [blocks, filter]
   );
-  const axis = useMemo(() => axisOf(shown), [shown]);
+  const axis = useMemo(
+    () =>
+      range
+        ? { start: range.startHour * 60, end: range.endHour * 60 }
+        : axisOf(shown),
+    [shown, range],
+  );
   const span = Math.max(axis.end - axis.start, 60);
   const pct = (m: number) => ((m - axis.start) / span) * 100;
+  // 운영시간 창과 겹치는 블록만 — 창 밖 블록이 left 음수가 되어 요일 라벨 칸을 덮는 것 방지.
+  const visible = useMemo(
+    () => shown.filter((b) => b.end > axis.start && b.start < axis.end),
+    [shown, axis.start, axis.end]
+  );
   const days = useMemo(
-    () => Array.from(new Set(shown.map((b) => b.weekday))).sort((a, b) => a - b),
-    [shown]
+    () => Array.from(new Set(visible.map((b) => b.weekday))).sort((a, b) => a - b),
+    [visible]
   );
   const hourTicks: number[] = [];
   for (let h = Math.ceil(axis.start / 60); h <= Math.floor(axis.end / 60); h++) hourTicks.push(h);
@@ -90,7 +103,7 @@ export default function StudyRoomGrid({
       {/* 요일 밴드 */}
       <div className="overflow-hidden rounded-xl border border-[var(--color-border)]">
         {days.map((day, di) => {
-          const { items, lanes } = packDay(shown.filter((b) => b.weekday === day));
+          const { items, lanes } = packDay(visible.filter((b) => b.weekday === day));
           const h = lanes * LANE_H + 6;
           return (
             <div key={day} className={`flex ${di > 0 ? "border-t border-[var(--color-border)]" : ""}`}>
@@ -113,15 +126,17 @@ export default function StudyRoomGrid({
                     className="absolute flex h-[20px] items-center overflow-hidden rounded border px-1 text-[10px] font-semibold whitespace-nowrap transition hover:ring-2 hover:ring-white/70"
                     style={{
                       top: b.lane * LANE_H + 3,
-                      left: `${pct(b.start)}%`,
-                      width: `${Math.max(pct(b.end) - pct(b.start), 5)}%`,
+                      left: `${Math.max(0, pct(b.start))}%`,
+                      width: `${Math.max(Math.min(100, pct(b.end)) - Math.max(0, pct(b.start)), 4)}%`,
                       backgroundColor: b.color,
                       borderColor: b.color,
-                      color: readableText(b.color),
+                      color: "#ffffff", // 항상 흰 글씨(C2, 2026-06-01 사용자 픽) — 일관성
                     }}
                     title={`${b.subjectName} ${b.studentName} ${fmt(b.start)}–${fmt(b.end)}${b.teacherName ? ` · ${b.teacherName}` : ""} (클릭: 편집)`}
                   >
-                    {b.subjectName} {b.studentName}
+                    {/* M4 과목 인셋 배지(2026-06-01 픽) — 과목을 살짝 어두운 칩으로 묶어 학생명과 구분 */}
+                    <span className="rounded-[3px] bg-black/20 px-1 font-medium">{b.subjectName}</span>
+                    <span className="pl-1">{b.studentName}</span>
                   </button>
                 ))}
               </div>

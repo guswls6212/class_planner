@@ -16,7 +16,8 @@ vi.mock("../../../contexts/AuthContext", () => ({
 global.fetch = vi.fn();
 
 describe("Settings Page", () => {
-  beforeEach(() => { vi.clearAllMocks(); localStorage.removeItem("cp:show-hidden"); });
+  // setupTests localStorage = backing store 없는 vi.fn mock → getItem 으로 dev 플래그 제어.
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(localStorage.getItem).mockReturnValue(null); });
 
   it("페이지 제목이 렌더된다 (hasAcademy:true)", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -84,6 +85,7 @@ describe("Settings Page", () => {
   });
 
   it("slug 섹션은 owner에게만 표시된다", async () => {
+    vi.mocked(localStorage.getItem).mockImplementation((k: string) => (k === "cp:show-hidden" ? "1" : null)); // 학부모 URL(parentAccessCodes) 기본 숨김 — dev 모드에서 owner 노출 검증
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/api/members")) {
         return Promise.resolve({
@@ -142,6 +144,7 @@ describe("Settings Page", () => {
   });
 
   it("'튜토리얼 다시 보기' 카드가 로그인 사용자에게 렌더된다 (rank 5-A)", async () => {
+    vi.mocked(localStorage.getItem).mockImplementation((k: string) => (k === "cp:show-hidden" ? "1" : null)); // 튜토리얼은 기본 숨김 — dev 모드에서 기능(카드) 검증
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, data: [], hasAcademy: true }),
@@ -157,6 +160,7 @@ describe("Settings Page", () => {
   });
 
   it("'다시 보기' 버튼 click 시 class-planner:start-tour custom event 발화", async () => {
+    vi.mocked(localStorage.getItem).mockImplementation((k: string) => (k === "cp:show-hidden" ? "1" : null)); // 튜토리얼은 기본 숨김 — dev 모드에서 '다시 보기' 버튼 동작 검증
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, data: [], hasAcademy: true }),
@@ -177,5 +181,20 @@ describe("Settings Page", () => {
     expect(listener).toHaveBeenCalledTimes(1);
 
     window.removeEventListener("class-planner:start-tour", listener);
+  });
+
+  it("튜토리얼 카드는 기본 숨김 — tutorial features.ts gated (공부방 단독 배포)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: [], hasAcademy: true }),
+    });
+
+    const { default: SettingsPage } = await import("../page");
+    render(<SettingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("학원 설정")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("tutorial-restart-card")).not.toBeInTheDocument();
   });
 });

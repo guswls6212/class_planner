@@ -30,6 +30,14 @@ vi.mock("@/lib/tour/tourPersistence", () => ({
   upsertTourCompletion: (...args: unknown[]) => mockUpsertTourCompletion(...args),
 }));
 
+// features.ts isVisible mock — 튜토리얼 게이팅 제어. default 가시(true), 숨김 케이스만 false.
+const { mockIsVisible } = vi.hoisted(() => ({
+  mockIsVisible: vi.fn((_key: string) => true),
+}));
+vi.mock("@/config/features", () => ({
+  isVisible: (key: string) => mockIsVisible(key),
+}));
+
 // DB fetch (mocked Promise) 의 microtask flush — fakeTimers 환경에서 dbSyncDone 갱신 후 자동 시작 effect 가 재실행되도록.
 async function flushDbSync() {
   await act(async () => {
@@ -47,6 +55,7 @@ const localStorageMock = window.localStorage as unknown as {
 describe("useTour", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    mockIsVisible.mockReturnValue(true);
     localStorageMock.getItem.mockReturnValue(null);
     localStorageMock.setItem.mockClear();
     mockFetchTourState.mockResolvedValue({ coreAt: null, loginAt: null });
@@ -72,6 +81,16 @@ describe("useTour", () => {
       vi.advanceTimersByTime(1100);
     });
     expect(result.current.isActive).toBe(true);
+  });
+
+  it("튜토리얼이 숨김(features.ts tutorial off)이면 자동 시작 안 함", async () => {
+    mockIsVisible.mockReturnValue(false);
+    const { result } = renderHook(() => useTour());
+    await flushDbSync();
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(result.current.isActive).toBe(false);
   });
 
   it("does NOT auto-start when localStorage flag is present", async () => {

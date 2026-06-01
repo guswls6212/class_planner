@@ -20,6 +20,7 @@ import {
   upsertTourCompletion,
   type TourSegment,
 } from "@/lib/tour/tourPersistence";
+import { isVisible } from "@/config/features";
 
 export interface UseTourReturn {
   isActive: boolean;
@@ -169,6 +170,8 @@ export function useTour(): UseTourReturn {
   // 자동 시작 logic — anonymous: core 미완료 시 / login: core 미완료 시 from 0, core 완료 + login 미완료 시 from login segment 시작점.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // 튜토리얼이 features.ts 로 숨겨졌으면(공부방 단독 배포) 자동 시작 안 함. 개발자 ?dev=1 로만 노출.
+    if (!isVisible("tutorial")) return;
     // PR #485 회귀 fix — useMyRole fetch 미완 시 자동 시작 대기 (race window 회피).
     if (isLoggedIn && role === null) return;
     // 로그인 user 의 DB tour state fetch 완료 전엔 자동 시작 대기 — cross-device 영속화 race window 회피.

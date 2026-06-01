@@ -26,8 +26,11 @@ function StudentCard({ s }: { s: TableStudent }) {
       >
         <div />
         {s.weekdays.map((d) => (
-          <div key={d} className="text-center text-[10px] font-semibold text-[var(--color-text-muted)]">
-            {weekdayLabel(d)}
+          // W2 요일 칩 (2026-06-01 픽) — 작고 흐린 라벨 → 또렷한 pill 로 가독성 ↑
+          <div key={d} className="flex justify-center">
+            <span className="inline-block rounded-md bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-[10px] font-bold text-[var(--color-text-secondary)]">
+              {weekdayLabel(d)}
+            </span>
           </div>
         ))}
 
