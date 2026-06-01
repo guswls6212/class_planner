@@ -17,6 +17,7 @@ import { useMyRole } from "../../hooks/useMyRole";
 import { formatLocalISO, getWeekStart } from "../../lib/dateUtils";
 import type { Session } from "../../lib/planner";
 import { weekdays } from "../../lib/planner";
+import { useHiddenRedirect } from "../../hooks/useHiddenRedirect";
 
 const AttendanceSheet = dynamic(
   () => import("../../components/molecules/AttendanceSheet"),
@@ -43,6 +44,12 @@ const AttendanceSheet = dynamic(
  * 상세: class-planner/docs/future-work/attendance-phase2-enhancements.md
  */
 export default function AttendancePage() {
+  const hidden = useHiddenRedirect("attendance");
+  if (hidden) return null;
+  return <AttendancePageInner />;
+}
+
+function AttendancePageInner() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
