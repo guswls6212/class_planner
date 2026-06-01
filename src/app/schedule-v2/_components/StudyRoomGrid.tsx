@@ -134,7 +134,9 @@ export default function StudyRoomGrid({
                     }}
                     title={`${b.subjectName} ${b.studentName} ${fmt(b.start)}–${fmt(b.end)}${b.teacherName ? ` · ${b.teacherName}` : ""} (클릭: 편집)`}
                   >
-                    {b.subjectName} {b.studentName}
+                    {/* M4 과목 인셋 배지(2026-06-01 픽) — 과목을 살짝 어두운 칩으로 묶어 학생명과 구분 */}
+                    <span className="rounded-[3px] bg-black/20 px-1 font-medium">{b.subjectName}</span>
+                    <span className="pl-1">{b.studentName}</span>
                   </button>
                 ))}
               </div>
