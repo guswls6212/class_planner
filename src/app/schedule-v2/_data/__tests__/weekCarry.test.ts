@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Enrollment, Session } from "@/lib/planner";
 import {
+  addWeeks,
   carryForwardSessions,
   emptyWeekFlagKey,
   previousWeekWithData,
@@ -100,5 +101,19 @@ describe("emptyWeekFlagKey", () => {
   it("uid + monday 로 키 생성, uid 없으면 anonymous", () => {
     expect(emptyWeekFlagKey("u1", "2026-06-01")).toBe("cp:v2-empty-week:u1:2026-06-01");
     expect(emptyWeekFlagKey(null, "2026-06-01")).toBe("cp:v2-empty-week:anonymous:2026-06-01");
+  });
+});
+
+describe("addWeeks", () => {
+  it("다음/이전/현재 주 월요일 계산", () => {
+    expect(addWeeks("2026-06-01", 1)).toBe("2026-06-08");
+    expect(addWeeks("2026-06-01", -1)).toBe("2026-05-25");
+    expect(addWeeks("2026-06-01", 0)).toBe("2026-06-01");
+    expect(addWeeks("2026-06-01", 2)).toBe("2026-06-15");
+  });
+  it("월·연 경계를 넘는다", () => {
+    expect(addWeeks("2026-06-29", 1)).toBe("2026-07-06");
+    expect(addWeeks("2026-12-28", 1)).toBe("2027-01-04");
+    expect(addWeeks("2027-01-04", -1)).toBe("2026-12-28");
   });
 });

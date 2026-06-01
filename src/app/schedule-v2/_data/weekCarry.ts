@@ -62,3 +62,14 @@ export function carryForwardSessions(params: {
 export function emptyWeekFlagKey(userId: string | null, monday: string): string {
   return `cp:v2-empty-week:${userId ?? "anonymous"}:${monday}`;
 }
+
+/** 월요일 "YYYY-MM-DD"에서 n 주 이동한 월요일 반환 (주 이동 네비). UTC 날짜 산술 — TZ 무관. */
+export function addWeeks(mondayIso: string, n: number): string {
+  const [y, m, d] = mondayIso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n * 7);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}

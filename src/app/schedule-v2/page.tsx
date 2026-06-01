@@ -6,11 +6,13 @@
  * 현재 academy 의 실제 세션을 per-enrollment 블록으로 그리드(page1)/학생별 표(page2) 렌더.
  * 색=과목. 각 학생을 1인 세션으로 두면 학생별 개별 시간(staggered)이 그대로 표현됨.
  *
- * 주 연속성(A2, 2026-06-01): 항상 "이번 주"(getWeekStartDate(now)) 기준. 이번 주가 비어 있고
- *   직전 데이터 주가 있으면 1회 확인 카드 — [지난주 그대로 가져오기](carryForwardSessions clone)
- *   / [빈 주로 시작](emptyWeek 플래그). "비우기"로 현재 주 초기화. proposal: schedule-v2-week-continuity.
- * 운영시간: 설정에서 이전 — 헤더 ⚙ 토글로 OperatingHoursSection. 미설정/auto 면 그리드 자동맞춤,
- *   기본/사용자지정이면 그 시간으로 축 고정.
+ * 주 이동(W2, 2026-06-01): ◀ 지난주 · [이번 주·날짜] · 다음 주 ▶ + 현재 주 아니면 "오늘" 버튼.
+ *   viewedMonday = todayMonday + weekOffset 주. 모든 데이터/입력/carry 는 viewedMonday 기준.
+ * 주 연속성(A2): viewedMonday 가 비어 있고 직전 데이터 주가 있으면 1회 확인 카드 —
+ *   [지난주 그대로 가져오기](carryForwardSessions clone) / [빈 주로 시작](emptyWeek 플래그).
+ *   "비우기"로 현재 보는 주 초기화. proposal: schedule-v2-week-continuity.
+ * 운영시간(O3): 헤더 ⚙ 드롭다운(OperatingHoursMenu). 미설정/auto 면 그리드 자동맞춤,
+ *   기본/사용자지정이면 그 시간으로 축 고정. 저장 키는 grid/PDF 공용.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,8 +21,10 @@ import AuthGuard from "../../components/atoms/AuthGuard";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import StudyRoomGrid from "./_components/StudyRoomGrid";
 import StudyRoomTable from "./_components/StudyRoomTable";
+import OperatingHoursMenu from "./_components/OperatingHoursMenu";
 import { buildScheduleVM } from "./_data/scheduleViewModel";
 import {
+  addWeeks,
   carryForwardSessions,
   emptyWeekFlagKey,
   previousWeekWithData,
@@ -31,7 +35,6 @@ import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../.
 import { getWeekStartDate } from "../../lib/weekStart";
 import { readStoredRange, type StoredTimeRange } from "../../hooks/useTimeRange";
 import { showToast } from "../../lib/toast";
-import OperatingHoursSection from "../../components/organisms/OperatingHoursSection";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
 import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
 import SessionPopover from "./_components/SessionPopover";
@@ -55,6 +58,14 @@ function gridRangeFromStored(
   return undefined;
 }
 
+/** weekOffset → 상대 라벨. (0=이번 주, -1=지난주, +1=다음 주, 그 외 N주 전/후) */
+function relWeekLabel(offset: number): string {
+  if (offset === 0) return "이번 주";
+  if (offset === -1) return "지난주";
+  if (offset === 1) return "다음 주";
+  return offset < 0 ? `${-offset}주 전` : `${offset}주 후`;
+}
+
 function ScheduleV2Content() {
   const { data, loading, updateData, deleteSession, bulkDeleteSessions } =
     useIntegratedDataLocal();
@@ -67,25 +78,27 @@ function ScheduleV2Content() {
     { sessionId: string; anchor: DOMRect; initial: SessionFormInitial } | null
   >(null);
 
-  // 항상 "이번 주" 기준 (getWeekStartDate = 세션 저장 키와 동일 KST 월요일).
-  const currentMonday = useMemo(() => getWeekStartDate(new Date()), []);
-  const currentWeekSessions = useMemo(
-    () => data.sessions.filter((s) => s.weekStartDate === currentMonday),
-    [data.sessions, currentMonday]
+  // 주 이동 — todayMonday(고정) + weekOffset → viewedMonday(보는 주).
+  const todayMonday = useMemo(() => getWeekStartDate(new Date()), []);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const viewedMonday = useMemo(() => addWeeks(todayMonday, weekOffset), [todayMonday, weekOffset]);
+
+  const viewedWeekSessions = useMemo(
+    () => data.sessions.filter((s) => s.weekStartDate === viewedMonday),
+    [data.sessions, viewedMonday]
   );
   const sourceMonday = useMemo(
-    () => previousWeekWithData(data.sessions, currentMonday),
-    [data.sessions, currentMonday]
+    () => previousWeekWithData(data.sessions, viewedMonday),
+    [data.sessions, viewedMonday]
   );
   const vm = useMemo(
-    () => buildScheduleVM(data, currentWeekSessions),
-    [data, currentWeekSessions]
+    () => buildScheduleVM(data, viewedWeekSessions),
+    [data, viewedWeekSessions]
   );
 
-  // 운영시간(설정에서 이전) — uid + 저장값(grid 축 반영) + 패널 토글.
+  // 운영시간(O3 드롭다운) — uid + 저장값(grid 축 반영).
   const [uid, setUid] = useState<string | null>(null);
   const [storedRange, setStoredRange] = useState<StoredTimeRange | null>(null);
-  const [showHours, setShowHours] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     setUid(localStorage.getItem("supabase_user_id"));
@@ -101,30 +114,30 @@ function ScheduleV2Content() {
     if (typeof window === "undefined") return;
     try {
       setDismissedEmpty(
-        localStorage.getItem(emptyWeekFlagKey(uid, currentMonday)) === "1"
+        localStorage.getItem(emptyWeekFlagKey(uid, viewedMonday)) === "1"
       );
     } catch {
       setDismissedEmpty(false);
     }
-  }, [uid, currentMonday]);
+  }, [uid, viewedMonday]);
 
   const markEmptyWeek = useCallback(() => {
     try {
-      localStorage.setItem(emptyWeekFlagKey(uid, currentMonday), "1");
+      localStorage.setItem(emptyWeekFlagKey(uid, viewedMonday), "1");
     } catch {
       /* localStorage 비활성 — 무시 */
     }
     setDismissedEmpty(true);
-  }, [uid, currentMonday]);
+  }, [uid, viewedMonday]);
 
   const clearEmptyWeek = useCallback(() => {
     try {
-      localStorage.removeItem(emptyWeekFlagKey(uid, currentMonday));
+      localStorage.removeItem(emptyWeekFlagKey(uid, viewedMonday));
     } catch {
       /* 무시 */
     }
     setDismissedEmpty(false);
-  }, [uid, currentMonday]);
+  }, [uid, viewedMonday]);
 
   const legend = useMemo(() => {
     const map = new Map<string, string>();
@@ -144,11 +157,11 @@ function ScheduleV2Content() {
           weekday: input.weekday,
           startTime: input.startTime,
           endTime: input.endTime,
-          weekStartDate: currentMonday,
+          weekStartDate: viewedMonday,
         },
         sessions: data.sessions,
         enrollments: data.enrollments,
-        fallbackWeekStartDate: currentMonday,
+        fallbackWeekStartDate: viewedMonday,
       });
       await updateData({ sessions: plan.mergedSessions, enrollments: plan.mergedEnrollments });
       const u = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
@@ -157,7 +170,7 @@ function ScheduleV2Content() {
       clearEmptyWeek();
       setModal(null);
     },
-    [data.sessions, data.enrollments, updateData, currentMonday, clearEmptyWeek]
+    [data.sessions, data.enrollments, updateData, viewedMonday, clearEmptyWeek]
   );
 
   // D — 학생-주 일괄: 채운 셀마다 planSessionAdd 를 fold(이전 merged 위에 누적) → updateData 1회 + sync N.
@@ -176,11 +189,11 @@ function ScheduleV2Content() {
             weekday: input.weekday,
             startTime: input.startTime,
             endTime: input.endTime,
-            weekStartDate: currentMonday,
+            weekStartDate: viewedMonday,
           },
           sessions,
           enrollments,
-          fallbackWeekStartDate: currentMonday,
+          fallbackWeekStartDate: viewedMonday,
         });
         sessions = plan.mergedSessions;
         enrollments = plan.mergedEnrollments;
@@ -194,10 +207,10 @@ function ScheduleV2Content() {
       clearEmptyWeek();
       setBulkOpen(false);
     },
-    [data.sessions, data.enrollments, updateData, currentMonday, clearEmptyWeek]
+    [data.sessions, data.enrollments, updateData, viewedMonday, clearEmptyWeek]
   );
 
-  // 지난주 그대로 가져오기 — 직전 주 세션을 이번 주로 clone(새 id, 같은 enrollmentIds 재사용).
+  // 지난주 그대로 가져오기 — 직전 주 세션을 보는 주로 clone(새 id, 같은 enrollmentIds 재사용).
   // create 는 bulkAdd 와 동일 fire-and-forget(void syncSessionCreate) 패턴(ADR-012). enrollment 신규 없음.
   const carryForward = useCallback(async () => {
     if (!sourceMonday) return;
@@ -205,7 +218,7 @@ function ScheduleV2Content() {
       sessions: data.sessions,
       enrollments: data.enrollments,
       sourceMonday,
-      targetMonday: currentMonday,
+      targetMonday: viewedMonday,
       genId: () => crypto.randomUUID(),
     });
     if (cloned.length === 0) {
@@ -221,19 +234,19 @@ function ScheduleV2Content() {
     sourceMonday,
     data.sessions,
     data.enrollments,
-    currentMonday,
+    viewedMonday,
     updateData,
     markEmptyWeek,
     clearEmptyWeek,
   ]);
 
-  // 이번 주 비우기 — 현재 주 세션 일괄 삭제(단일 undo 토스트) + 빈 주 의도 표시(carry 재노출 방지).
+  // 이번 주 비우기 — 보는 주 세션 일괄 삭제(단일 undo 토스트) + 빈 주 의도 표시(carry 재노출 방지).
   const clearWeek = useCallback(async () => {
-    const ids = currentWeekSessions.map((s) => s.id);
+    const ids = viewedWeekSessions.map((s) => s.id);
     if (ids.length === 0) return;
     markEmptyWeek();
     await bulkDeleteSessions(ids);
-  }, [currentWeekSessions, bulkDeleteSessions, markEmptyWeek]);
+  }, [viewedWeekSessions, bulkDeleteSessions, markEmptyWeek]);
 
   // 편집: 친구 핵심(시간/요일/강사)만. 학생/과목 변경은 삭제+재추가(enrollment 재조정 회피).
   const editSession = useCallback(
@@ -300,7 +313,7 @@ function ScheduleV2Content() {
 
   const isEmpty = !loading && vm.blocks.length === 0;
   const showCarryPrompt =
-    !loading && currentWeekSessions.length === 0 && !!sourceMonday && !dismissedEmpty;
+    !loading && viewedWeekSessions.length === 0 && !!sourceMonday && !dismissedEmpty;
   const sourceCount = useMemo(
     () => (sourceMonday ? data.sessions.filter((s) => s.weekStartDate === sourceMonday).length : 0),
     [sourceMonday, data.sessions]
@@ -308,11 +321,38 @@ function ScheduleV2Content() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
-      <div className="mb-1 flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2.5 py-0.5 text-[11px] text-[var(--color-text-muted)]">
-          {currentMonday} 주
-        </span>
+      {/* 주 이동 (W2 상대 라벨 + 오늘) */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-0.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-1 text-[12px]">
+          <button
+            onClick={() => setWeekOffset((o) => o - 1)}
+            data-testid="week-prev"
+            className="rounded-lg px-2 py-1 text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
+          >
+            ◀ <span className="text-[11px]">{relWeekLabel(weekOffset - 1)}</span>
+          </button>
+          <span className="rounded-lg bg-[var(--color-bg-tertiary)] px-3 py-1 font-semibold text-[var(--color-accent)]">
+            {relWeekLabel(weekOffset)} · {viewedMonday}
+          </span>
+          <button
+            onClick={() => setWeekOffset((o) => o + 1)}
+            data-testid="week-next"
+            className="rounded-lg px-2 py-1 text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-tertiary)] hover:text-[var(--color-text-primary)]"
+          >
+            <span className="text-[11px]">{relWeekLabel(weekOffset + 1)}</span> ▶
+          </button>
+        </div>
+        {weekOffset !== 0 && (
+          <button
+            onClick={() => setWeekOffset(0)}
+            data-testid="week-today"
+            className="rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-[12px] text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          >
+            오늘
+          </button>
+        )}
       </div>
+
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">시간표 — 한눈에 전주</h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-text-secondary)]">
         색 = 과목, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
@@ -353,19 +393,8 @@ function ScheduleV2Content() {
         >
           학생별 일괄 입력
         </button>
-        <button
-          onClick={() => setShowHours((v) => !v)}
-          aria-expanded={showHours}
-          data-testid="operating-hours-toggle"
-          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
-            showHours
-              ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-              : "border-[var(--color-border)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
-          }`}
-        >
-          ⚙ 운영시간
-        </button>
-        {currentWeekSessions.length > 0 && (
+        <OperatingHoursMenu userId={uid} onChange={() => setStoredRange(readStoredRange(uid))} />
+        {viewedWeekSessions.length > 0 && (
           <button
             onClick={() => void clearWeek()}
             data-testid="clear-week-btn"
@@ -376,15 +405,6 @@ function ScheduleV2Content() {
         )}
       </div>
 
-      {showHours && (
-        <div className="mt-2">
-          <OperatingHoursSection
-            userId={uid}
-            onChange={() => setStoredRange(readStoredRange(uid))}
-          />
-        </div>
-      )}
-
       <div className="mt-4">
         {loading ? (
           <p className="py-16 text-center text-sm text-[var(--color-text-muted)]">불러오는 중…</p>
@@ -394,7 +414,7 @@ function ScheduleV2Content() {
             className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-12 text-center"
           >
             <p className="text-base font-semibold text-[var(--color-text-primary)]">
-              이번 주({currentMonday}) 시간표를 시작할게요
+              {relWeekLabel(weekOffset)}({viewedMonday}) 시간표를 시작할게요
             </p>
             <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-[var(--color-text-secondary)]">
               지난주({sourceMonday})와 거의 같나요? 지난주 수업 {sourceCount}개를 그대로 가져와서
@@ -419,7 +439,7 @@ function ScheduleV2Content() {
           </div>
         ) : isEmpty ? (
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-16 text-center">
-            <p className="text-sm text-[var(--color-text-secondary)]">이번 주 등록된 수업이 없어요.</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">{relWeekLabel(weekOffset)} 등록된 수업이 없어요.</p>
             <div className="mt-3 flex justify-center gap-3 text-sm">
               <button onClick={() => setModal({ mode: "add" })} className="text-[var(--color-accent)] hover:underline">
                 ＋ 수업 추가

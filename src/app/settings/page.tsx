@@ -8,7 +8,7 @@
  *   - contexts/AuthContext (useAuth — 사용자 + academy 컨텍스트)
  *   - api/teachers, api/members, api/share-tokens, api/snapshots (각 sub-section)
  *   - molecules/InviteModal, TeacherAddModal, TypedConfirmationModal, ReassignTeacherModal
- *   - organisms/DataHistorySection, OperatingHoursSection, RolePermissionCards
+ *   - organisms/DataHistorySection, RolePermissionCards
  *   - validation/profileSchemas (validateAcademyName + 길이 정책)
  *   - non-goal: schedule 시간표 편집 (schedule/page.tsx), 학생/과목 CRUD (전용 페이지)
  *
