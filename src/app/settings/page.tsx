@@ -62,6 +62,8 @@ import TypedConfirmationModal from "../../components/molecules/TypedConfirmation
 import ReassignTeacherModal from "../../components/molecules/ReassignTeacherModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 import { RolePermissionCards } from "../../components/molecules/RolePermissionCards";
+import { featureVisibleStatic, isVisible, type FeatureKey } from "@/config/features";
+import { useHasMounted } from "@/hooks/useHasMounted";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
 import OperatingHoursSection from "../../components/organisms/OperatingHoursSection";
 
@@ -746,6 +748,9 @@ export default function SettingsPage() {
   };
 
   const canManage = myRole === "owner" || myRole === "admin";
+  // features.ts 가시성 — SSR/첫 렌더 정적값, mount 후 dev 반영(hydration mismatch 회피).
+  const mounted = useHasMounted();
+  const featVisible = (f: FeatureKey) => (mounted ? isVisible(f) : featureVisibleStatic(f));
 
   // 원장(owner) 멤버 — 통합 강사 목록 상단에 별도 행으로 표시
   const ownerMember = members.find((m) => m.role === "owner") ?? null;
@@ -938,7 +943,8 @@ export default function SettingsPage() {
           )}
         </section>
 
-      {/* 통합 팀 섹션 — 원장 + 강사 전체 (상태 pill 포함) */}
+      {/* 통합 팀 섹션 — 원장 + 강사 전체. 강사 초대/팀 = features.ts gated (개발자 ?dev=1 시 표시) */}
+      {featVisible("teamInvites") && (
       <section
         className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]"
         data-tour="teacher-invite"
@@ -1039,11 +1045,12 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+      )}
 
       {/* 학부모 접속 코드는 /students 페이지로 이동 (동명이인 식별 위해 학생 목록과 함께 표시) */}
 
-      {/* 공유 링크 섹션 — 아코디언 */}
-      {canManage && (
+      {/* 공유 링크 섹션 — 아코디언. 시간표 공유 = features.ts gated (개발자 ?dev=1 시 표시) */}
+      {canManage && featVisible("scheduleSharing") && (
         <section
           className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden"
           data-tour="share-link"

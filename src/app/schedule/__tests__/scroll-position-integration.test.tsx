@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AuthGuard from "../../../components/atoms/AuthGuard";
 import SchedulePage from "../page";
 
+// /schedule 은퇴 가드(legacyScheduleEditor) 우회 — 스크롤 보존 자체 검증
+vi.mock("@/hooks/useHiddenRedirect", () => ({ useHiddenRedirect: () => false }));
+
 // localStorage mock
 const localStorageMock = {
   getItem: vi.fn(),

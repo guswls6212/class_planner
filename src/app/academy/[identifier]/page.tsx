@@ -3,8 +3,19 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isUUID } from '@/lib/slug'
+import { useHiddenRedirect } from '@/hooks/useHiddenRedirect'
 
 export default function AcademyAccessPage({
+  params,
+}: {
+  params: Promise<{ identifier: string }>
+}) {
+  const hidden = useHiddenRedirect('parentAccessCodes')
+  if (hidden) return null
+  return <AcademyAccessPageInner params={params} />
+}
+
+function AcademyAccessPageInner({
   params,
 }: {
   params: Promise<{ identifier: string }>

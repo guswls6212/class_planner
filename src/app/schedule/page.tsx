@@ -68,6 +68,7 @@ import {
 } from "./_utils/templateHelpers";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useDisplaySessions } from "../../hooks/useDisplaySessions";
+import { useHiddenRedirect } from "../../hooks/useHiddenRedirect";
 import { useScheduleLayout } from "../../hooks/useScheduleLayout";
 import { useScheduleView } from "../../hooks/useScheduleView";
 import { useTimeRange } from "../../hooks/useTimeRange";
@@ -211,6 +212,9 @@ const ScheduleMonthlyView = dynamic(
  * Static Generation 빌드에서 CSR-bailout 경계를 요구하므로 여기서 감싼다.
  */
 export default function SchedulePage(): JSX.Element {
+  // /schedule(수업 편집) 은퇴 — schedule-v2 가 편집 담당. 숨김 시 redirect (개발자 ?dev=1 통과).
+  const hidden = useHiddenRedirect("legacyScheduleEditor");
+  if (hidden) return <></>;
   return (
     <Suspense fallback={null}>
       <SchedulePageContent />

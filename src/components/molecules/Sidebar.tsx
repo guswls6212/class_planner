@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   BookOpen,
+  CalendarClock,
   CalendarDays,
   CircleHelp,
   GraduationCap,
@@ -24,6 +25,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationDropdown } from "../molecules/NotificationDropdown";
 import CreateAcademyModal from "./CreateAcademyModal";
 import { TOUR_START_EVENT } from "@/lib/tour-steps";
+import { featureVisibleStatic, isVisible, type FeatureKey } from "@/config/features";
+import { useHasMounted } from "@/hooks/useHasMounted";
 
 interface SidebarItem {
   href: string;
@@ -31,12 +34,16 @@ interface SidebarItem {
   label: string;
   /** True if visible only to owner/admin (canManage=true). */
   adminOnly?: boolean;
+  /** features.ts 플래그 — 숨김이면 nav 에서 제외 (개발자 ?dev=1 시 표시). */
+  feature?: FeatureKey;
 }
 
 const topItems: SidebarItem[] = [
-  { href: "/schedule", icon: CalendarDays, label: "시간표" },
-  // 출결 전용 페이지(/attendance)는 nav 에서 제거 (2026-05-29 사용자 결정) —
-  // 출결은 시간표(일/주) 블록 클릭으로 진입 (schedule + teacher-schedule). 페이지는 URL 직접 진입만 유지.
+  { href: "/schedule-v2", icon: CalendarDays, label: "시간표" },
+  // /schedule(기존 편집)은 schedule-v2 에 편집(Phase 1b) 붙기 전까지 "수업 편집"으로 유지.
+  // legacyScheduleEditor=false 동안만 표시 → Phase 1b 완료 시 true 로 숨김.
+  { href: "/schedule", icon: CalendarClock, label: "수업 편집", feature: "legacyScheduleEditor" },
+  // 출결 전용 페이지(/attendance)는 nav 에서 제거 (2026-05-29 사용자 결정).
   { href: "/students", icon: Users, label: "학생", adminOnly: true },
   { href: "/subjects", icon: BookOpen, label: "과목", adminOnly: true },
   { href: "/teachers", icon: GraduationCap, label: "강사", adminOnly: true },
@@ -137,10 +144,13 @@ export function Sidebar() {
   // re-render; clicking them lands on the middleware redirect with a toast.
   const { role, isLoading, academies } = useMyRole();
   const isMember = !isLoading && role === "member";
+  // features.ts 가시성 — SSR + 첫 렌더는 정적값(dev 무시), mount 후 dev 모드 반영(hydration mismatch 회피).
+  const mounted = useHasMounted();
+  const featVisible = (f: FeatureKey) => (mounted ? isVisible(f) : featureVisibleStatic(f));
   // member 도 /schedule 사용 (2026-05-29 통합 — role-branch read-only + 출결). teacher-schedule 분기 제거.
   // adminOnly 항목(학생/과목/강사)은 member 에게 계속 숨김.
   const visibleTopItems = topItems.filter(
-    (item) => !item.adminOnly || !isMember,
+    (item) => (!item.adminOnly || !isMember) && (!item.feature || featVisible(item.feature)),
   );
 
   // Login state — AuthContext에서 단일 source로 받음.
@@ -249,7 +259,7 @@ export function Sidebar() {
           >
         <button
           type="button"
-          onClick={() => setShowSwitcher((v) => !v)}
+          onClick={() => featVisible("multiAcademy") && setShowSwitcher((v) => !v)}
           aria-label={activeAcademy?.name ?? "학원"}
           aria-expanded={showSwitcher}
           title={activeAcademy?.name ?? "학원"}
@@ -274,7 +284,7 @@ export function Sidebar() {
             : (activeAcademy ? activeAcademy.name.slice(0, 2) : "CP")}
         </button>
 
-        {showSwitcher && (
+        {showSwitcher && featVisible("multiAcademy") && (
           <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
             {isLoading ? (
               <div className="px-3 py-3 text-[11px] text-slate-500 text-center">
