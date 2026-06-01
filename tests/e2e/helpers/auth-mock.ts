@@ -62,6 +62,8 @@ export async function injectSupabaseSession(
       // rank 5-A InlineTour — fake session user 도 자동 walkthrough 시작 차단 (e2e 회귀 가드)
       localStorage.setItem(`onboarding_completed_${uid}`, new Date().toISOString());
       localStorage.setItem(`onboarding_login_completed_${uid}`, new Date().toISOString());
+      // e2e dev 모드 — 숨김 route redirect 방지 (seed helper 와 동일).
+      localStorage.setItem("cp:show-hidden", "1");
     },
     {
       uid: userId,
@@ -190,6 +192,8 @@ export async function injectRealSession(page: Page): Promise<RealSessionInfo> {
       // tour 자체를 검증할 e2e spec 은 명시적으로 이 key 를 removeItem 한 후 진입.
       localStorage.setItem(`onboarding_completed_${uid}`, new Date().toISOString());
       localStorage.setItem(`onboarding_login_completed_${uid}`, new Date().toISOString());
+      // e2e dev 모드 — 숨김 route redirect 방지 (seed helper 와 동일).
+      localStorage.setItem("cp:show-hidden", "1");
       // useMyRole cache pre-seed — academies 필드도 사전 시드. 이전엔 `[]` 였는데
       // (PR #357) Sidebar 의 activeAcademy=undefined → aria-label="학원" → e2e
       // locator `/E2E Test Academy/` fail (multi-academy.spec.ts:54 회귀, issue #398).

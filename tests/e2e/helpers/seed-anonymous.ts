@@ -120,6 +120,9 @@ export async function seedAnonymous(
     // CORE + LOGIN segment flag 모두 set (PR #483 login-tour-extension 의 LOGIN_STEPS 자동 시작 가드).
     localStorage.setItem("onboarding_completed_anonymous", new Date().toISOString());
     localStorage.setItem("onboarding_login_completed_anonymous", new Date().toISOString());
+    // e2e 는 dev 모드(전체 기능 표시)로 동작 — features.ts 로 숨긴 route(/schedule 등)가
+    // useHiddenRedirect 로 /schedule-v2 로 튕기지 않도록. 숨김 자체는 dev 미설정 전용 spec 으로 검증.
+    localStorage.setItem("cp:show-hidden", "1");
   }, data);
 }
 
@@ -156,6 +159,8 @@ export async function seedAuthenticated(
       // CORE + LOGIN segment flag 모두 set (PR #483 login-tour-extension 의 LOGIN_STEPS 자동 시작 가드).
       localStorage.setItem(`onboarding_completed_${uid}`, new Date().toISOString());
       localStorage.setItem(`onboarding_login_completed_${uid}`, new Date().toISOString());
+      // e2e dev 모드 — 숨김 route redirect 방지 (seedAnonymous 와 동일).
+      localStorage.setItem("cp:show-hidden", "1");
     },
     { uid: userId, seed: data },
   );
