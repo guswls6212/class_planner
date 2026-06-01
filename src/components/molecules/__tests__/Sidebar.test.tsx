@@ -24,6 +24,12 @@ vi.mock("../../../lib/auth/signOut", () => ({
   signOut: vi.fn(),
 }));
 
+// features.ts 게이팅 — 테스트에선 전부 표시(스위처/feature nav 기능 검증). 숨김 동작 자체는 별도.
+vi.mock("@/config/features", async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof import("@/config/features");
+  return { ...actual, isVisible: () => true };
+});
+
 // Mock localStorageCrud (dynamic import inside the component)
 const mockGetActiveAcademyId = vi.fn();
 const mockSetActiveAcademyIdLib = vi.fn();

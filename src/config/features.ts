@@ -46,6 +46,21 @@ export function devShowHidden(): boolean {
   }
 }
 
+/**
+ * URL 의 ?dev=1 → localStorage 'cp:show-hidden'='1' 로 영구 저장(이후 어디서나 숨긴 기능 표시).
+ * ?dev=0 → 해제. AppShell 에서 navigation 마다 호출 → ?dev=1 한 번이면 전체 세션 유지.
+ */
+export function syncDevShowHiddenFromUrl(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const dev = new URLSearchParams(window.location.search).get("dev");
+    if (dev === "1") localStorage.setItem("cp:show-hidden", "1");
+    else if (dev === "0") localStorage.removeItem("cp:show-hidden");
+  } catch {
+    /* localStorage 접근 불가 환경 — 무시 */
+  }
+}
+
 /** 이 기능이 (일반 사용자에게) 숨겨져 있나? 개발자 모드면 항상 false. */
 export function isHidden(key: FeatureKey): boolean {
   if (devShowHidden()) return false;

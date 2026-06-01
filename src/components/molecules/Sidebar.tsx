@@ -255,7 +255,7 @@ export function Sidebar() {
           >
         <button
           type="button"
-          onClick={() => setShowSwitcher((v) => !v)}
+          onClick={() => isVisible("multiAcademy") && setShowSwitcher((v) => !v)}
           aria-label={activeAcademy?.name ?? "학원"}
           aria-expanded={showSwitcher}
           title={activeAcademy?.name ?? "학원"}
@@ -280,7 +280,7 @@ export function Sidebar() {
             : (activeAcademy ? activeAcademy.name.slice(0, 2) : "CP")}
         </button>
 
-        {showSwitcher && (
+        {showSwitcher && isVisible("multiAcademy") && (
           <div className="absolute left-full top-0 ml-2 z-50 w-52 rounded-xl border border-slate-700 bg-slate-800 py-1.5 shadow-xl">
             {isLoading ? (
               <div className="px-3 py-3 text-[11px] text-slate-500 text-center">
