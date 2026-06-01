@@ -1,7 +1,9 @@
 // src/components/organisms/AppShell.tsx
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { syncDevShowHiddenFromUrl } from "../../config/features";
 import { TopBar } from "../molecules/TopBar";
 import { BottomTabBar } from "../molecules/BottomTabBar";
 import { Sidebar } from "../molecules/Sidebar";
@@ -20,6 +22,11 @@ interface AppShellProps {
 function AppShellInner({ children }: AppShellProps) {
   const { expanded } = useSidebar();
   const pathname = usePathname();
+
+  // 개발자 모드 영구화: ?dev=1 → 숨긴 기능 어디서나 표시(localStorage), ?dev=0 → 해제
+  useEffect(() => {
+    syncDevShowHiddenFromUrl();
+  }, [pathname]);
 
   if (
     SHELL_EXCLUDED.includes(pathname) ||

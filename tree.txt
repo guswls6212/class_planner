@@ -224,6 +224,7 @@ src/app/schedule/_utils/__tests__/sanitizeTempEnrollments.test.ts
 src/app/schedule/_utils/__tests__/scheduleSelectors.test.ts
 src/app/schedule/_utils/__tests__/sessionSaveUtils.ensureEnrollments.test.ts
 src/app/schedule/_utils/__tests__/sessionSaveUtils.test.ts
+src/app/schedule/_utils/__tests__/studentBlockEditHelpers.test.ts
 src/app/schedule/_utils/buildApplyTemplate.ts
 src/app/schedule/_utils/buildTemplateData.ts
 src/app/schedule/_utils/bulkSessionOps.ts
@@ -240,6 +241,7 @@ src/app/schedule/_utils/sanitizeStudentIds.ts
 src/app/schedule/_utils/sanitizeTempEnrollments.ts
 src/app/schedule/_utils/scheduleSelectors.ts
 src/app/schedule/_utils/sessionSaveUtils.ts
+src/app/schedule/_utils/studentBlockEditHelpers.ts
 src/app/schedule/page.tsx
 src/app/settings/__tests__/page.test.tsx
 src/app/settings/page.tsx

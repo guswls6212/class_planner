@@ -78,24 +78,25 @@ function HeroSection() {
       <div className="flex flex-col md:flex-row items-center gap-12 max-w-7xl mx-auto">
         <div className="flex-1">
           <p className="text-caption text-accent font-[600] tracking-[0.1em] uppercase mb-3">
-            무료 시간표 관리 도구
+            학원 시간표 관리 도구
           </p>
           <h1 className="text-hero font-[800] tracking-[-0.035em] leading-[1.15] mb-4 text-[--color-text-primary]">
-            수업 시간표,
+            학생이 바뀔 때마다
             <br />
-            5분이면 충분합니다
+            시간표 다시 짜지 마세요
           </h1>
           <p className="text-[15px] leading-relaxed text-[--color-text-muted] mb-8">
-            학생 등록부터 시간표 완성, PDF 출력까지.
+            끌어다 놓으면 시간표 완성. 학생이 바뀌어도{" "}
+            <strong className="text-[--color-text-primary] font-semibold">5분이면 다시 완성</strong>하고,
             <br />
-            복잡한 설정 없이 바로 시작하세요.
+            PDF·링크로 학부모에게 바로 공유하세요.
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link
               href="/schedule"
               className="bg-accent hover:bg-accent-hover text-admin-ink font-bold px-7 py-3 rounded-admin-md shadow-admin-md transition-colors"
             >
-              무료로 시작하기
+              바로 시작하기
             </Link>
             <a
               href="#how-it-works"
@@ -106,11 +107,41 @@ function HeroSection() {
           </div>
         </div>
         <div className="flex-[1.2] w-full">
-          <SchedulePreview
-            data={LANDING_DEMO_DATA}
-            times={["15:00", "16:00", "17:00", "18:00"]}
-            size="sm"
-          />
+          {/* make → share: 드래그로 만들고(데모 cue) → 학부모에게 공유. 실제 드래그/PDF 영상은 follow-up 캡처 */}
+          <div className="relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 bg-admin-ink text-white text-caption px-2.5 py-1 rounded-full shadow-admin-md animate-bounce whitespace-nowrap">
+              ↕ 드래그로 수업 이동
+            </div>
+            <SchedulePreview
+              data={LANDING_DEMO_DATA}
+              times={["15:00", "16:00", "17:00", "18:00"]}
+              size="sm"
+            />
+            <div className="mt-3">
+              <p className="text-caption text-[--color-text-muted] mb-1.5">
+                완성한 시간표, 학부모에게 바로
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-admin-md border border-[--color-border] bg-[--color-bg-secondary] px-3 py-2">
+                  <div className="text-caption text-[--color-text-muted] mb-0.5">공유 링크</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-label text-[--color-text-muted] truncate font-mono">
+                      …/share/a1b2c3
+                    </span>
+                    <span className="text-caption bg-accent text-admin-ink rounded px-1.5 py-0.5 font-semibold shrink-0">
+                      복사
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-admin-md border border-[--color-border] bg-[--color-bg-secondary] px-3 py-2 text-center">
+                  <div className="text-caption text-[--color-text-muted] mb-0.5">학부모 접속 코드</div>
+                  <span className="font-mono font-bold tracking-[0.2em] text-[--color-text-primary]">
+                    8F3K2D
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -118,7 +149,7 @@ function HeroSection() {
 }
 
 function StepsSection() {
-  const steps = [
+  const steps: { n: number; title: string; desc: string; share?: boolean }[] = [
     {
       n: 1,
       title: "학생·과목 등록",
@@ -127,12 +158,18 @@ function StepsSection() {
     {
       n: 2,
       title: "시간표에 배치",
-      desc: "요일과 시간을 선택하고 수업을 추가. 한눈에 보이는 주간 시간표가 완성됩니다.",
+      desc: "요일·시간을 선택하거나 드래그로 옮기면 끝. 학생이 바뀌어도 5분이면 다시 완성됩니다.",
     },
     {
       n: 3,
       title: "PDF로 출력",
-      desc: "완성된 시간표를 PDF로 다운로드. 바로 인쇄해서 학원에 게시할 수 있습니다.",
+      desc: "한 장으로 깔끔하게 인쇄해 학원에 게시하세요.",
+    },
+    {
+      n: 4,
+      title: "학부모에게 공유",
+      desc: "공유 링크 또는 6자리 접속코드를 만들어 카톡으로 전송. 학부모가 언제든 시간표를 확인해요.",
+      share: true,
     },
   ];
 
@@ -146,13 +183,13 @@ function StepsSection() {
           이렇게 만들어집니다
         </h2>
         <p className="text-label text-center text-[--color-text-muted] mb-10">
-          3단계면 시간표 완성
+          등록부터 학부모 공유까지, 4단계
         </p>
-        <div className="flex flex-col md:flex-row gap-6">
-          {steps.map(({ n, title, desc }) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {steps.map(({ n, title, desc, share }) => (
             <div
               key={n}
-              className="flex-1 bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-7"
+              className="flex flex-col bg-[--color-bg-primary] rounded-admin-lg border border-[--color-border] p-6"
             >
               <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center font-[800] text-admin-ink text-base mb-4">
                 {n}
@@ -163,6 +200,16 @@ function StepsSection() {
               <p className="text-label text-[--color-text-muted] leading-relaxed">
                 {desc}
               </p>
+              {share ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="text-caption rounded-full border border-[--color-border] bg-[--color-bg-secondary] px-2 py-0.5 text-[--color-text-muted]">
+                    🔗 공유 링크
+                  </span>
+                  <span className="text-caption rounded-full border border-[--color-border] bg-[--color-bg-secondary] px-2 py-0.5 font-mono font-bold tracking-wider text-[--color-text-primary]">
+                    8F3K2D
+                  </span>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -178,13 +225,13 @@ function BottomCTA() {
         지금 바로 시작하세요
       </h2>
       <p className="text-sm text-[--color-text-muted] mb-6">
-        회원가입 없이 바로 사용할 수 있습니다. 무료.
+        회원가입 없이 바로 사용할 수 있습니다.
       </p>
       <Link
         href="/schedule"
         className="inline-block bg-accent hover:bg-accent-hover text-admin-ink font-bold px-9 py-3.5 rounded-admin-md shadow-admin-md transition-colors"
       >
-        무료로 시작하기
+        바로 시작하기
       </Link>
     </section>
   );

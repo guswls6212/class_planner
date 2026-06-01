@@ -14,19 +14,21 @@ describe("getTourStepsForRole", () => {
     expect(steps.some((s) => s.id === "export-teacher")).toBe(false);
   });
 
-  it("owner login → 12 step (CORE 6 owner + LOGIN 6)", () => {
+  it("owner login → 12 step (CORE 6 owner + LOGIN 6, parent-code 포함 / data-history 제외)", () => {
     const steps = getTourStepsForRole(true, "owner");
     expect(steps).toHaveLength(12);
     expect(steps.some((s) => s.id === "academy-info")).toBe(true);
+    expect(steps.some((s) => s.id === "parent-code")).toBe(true);
     expect(steps.some((s) => s.id === "export-admin")).toBe(true);
     expect(steps.some((s) => s.id === "export-teacher")).toBe(false);
   });
 
-  it("admin login → 11 step (academy-info 제외)", () => {
+  it("admin login → 11 step (academy-info 제외, parent-code 포함 / data-history 제외)", () => {
     const steps = getTourStepsForRole(true, "admin");
     expect(steps).toHaveLength(11);
     expect(steps.some((s) => s.id === "academy-info")).toBe(false);
     expect(steps.some((s) => s.id === "teacher-invite")).toBe(true);
+    expect(steps.some((s) => s.id === "parent-code")).toBe(true);
     expect(steps.some((s) => s.id === "export-admin")).toBe(true);
   });
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../utils/supabaseClient";
 import { logger } from "../../../lib/logger";
+import { useHiddenRedirect } from "@/hooks/useHiddenRedirect";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "원장",
@@ -34,6 +35,16 @@ type InviteState =
   | "accepting";
 
 export default function InvitePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const hidden = useHiddenRedirect("teamInvites");
+  if (hidden) return null;
+  return <InvitePageInner params={params} />;
+}
+
+function InvitePageInner({
   params,
 }: {
   params: Promise<{ token: string }>;

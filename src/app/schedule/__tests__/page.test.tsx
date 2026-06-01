@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as useIntegratedDataModule from "../../../hooks/useIntegratedDataLocal";
 import SchedulePage from "../page";
 
+// /schedule 은퇴 가드(legacyScheduleEditor) 우회 — 페이지 기능 자체 검증
+vi.mock("@/hooks/useHiddenRedirect", () => ({ useHiddenRedirect: () => false }));
+
 // Mock useIntegratedDataLocal
 vi.mock("../../../hooks/useIntegratedDataLocal", () => ({
   useIntegratedDataLocal: vi.fn(() => ({

@@ -19,6 +19,11 @@ vi.mock("../../../../utils/supabaseClient", () => ({
   },
 }));
 
+// 초대 플로우 자체를 검증 — features.ts 게이팅(teamInvites 숨김)은 mock 으로 우회
+vi.mock("@/hooks/useHiddenRedirect", () => ({
+  useHiddenRedirect: () => false,
+}));
+
 global.fetch = vi.fn();
 
 const validInviteBody = {

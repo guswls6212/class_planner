@@ -8,7 +8,7 @@
  *   - contexts/AuthContext (useAuth — 사용자 + academy 컨텍스트)
  *   - api/teachers, api/members, api/share-tokens, api/snapshots (각 sub-section)
  *   - molecules/InviteModal, TeacherAddModal, TypedConfirmationModal, ReassignTeacherModal
- *   - organisms/DataHistorySection, OperatingHoursSection, RolePermissionCards
+ *   - organisms/DataHistorySection, RolePermissionCards
  *   - validation/profileSchemas (validateAcademyName + 길이 정책)
  *   - non-goal: schedule 시간표 편집 (schedule/page.tsx), 학생/과목 CRUD (전용 페이지)
  *
@@ -62,8 +62,9 @@ import TypedConfirmationModal from "../../components/molecules/TypedConfirmation
 import ReassignTeacherModal from "../../components/molecules/ReassignTeacherModal";
 import type { Member } from "../../components/molecules/MemberListItem";
 import { RolePermissionCards } from "../../components/molecules/RolePermissionCards";
+import { featureVisibleStatic, isVisible, type FeatureKey } from "@/config/features";
+import { useHasMounted } from "@/hooks/useHasMounted";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
-import OperatingHoursSection from "../../components/organisms/OperatingHoursSection";
 
 interface PendingInvite {
   id: string;
@@ -89,6 +90,8 @@ export default function SettingsPage() {
   const router = useRouter();
   const { session, loading: authLoading } = useAuth();
   const userId = session?.user?.id ?? null;
+  // Phase 1: 데이터 복구(스냅샷/이력)는 미제공 — Phase 2 Premium 예정. true 로 바꾸면 재노출.
+  const SHOW_DATA_HISTORY = false;
   const [hasAcademy, setHasAcademy] = useState<boolean | null>(null);
   const [academyName, setAcademyName] = useState("");
   const [academyId, setAcademyId] = useState<string | null>(null);
@@ -129,7 +132,8 @@ export default function SettingsPage() {
   const [shareExpanded, setShareExpanded] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLabel, setShareLabel] = useState("");
-  const [shareExpiresInDays, setShareExpiresInDays] = useState(30);
+  // Phase 1: 공유 링크 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택은 Phase 2 Premium.
+  const shareExpiresInDays = 30;
   const [shareStudentId, setShareStudentId] = useState("");
   const [isCreatingShare, setIsCreatingShare] = useState(false);
   const [localStudents, setLocalStudents] = useState<Array<{ id: string; name: string }>>([]);
@@ -724,7 +728,6 @@ export default function SettingsPage() {
         setShowShareModal(false);
         setShareLabel("");
         setShareStudentId("");
-        setShareExpiresInDays(30);
         await fetchData();
       } else {
         showError(data.error ?? "공유 링크 생성에 실패했습니다.");
@@ -744,6 +747,9 @@ export default function SettingsPage() {
   };
 
   const canManage = myRole === "owner" || myRole === "admin";
+  // features.ts 가시성 — SSR/첫 렌더 정적값, mount 후 dev 반영(hydration mismatch 회피).
+  const mounted = useHasMounted();
+  const featVisible = (f: FeatureKey) => (mounted ? isVisible(f) : featureVisibleStatic(f));
 
   // 원장(owner) 멤버 — 통합 강사 목록 상단에 별도 행으로 표시
   const ownerMember = members.find((m) => m.role === "owner") ?? null;
@@ -834,8 +840,9 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Slug 편집 섹션 */}
-          {myRole === 'owner' && (
+          {/* Slug 편집 섹션 — 학부모 접속 URL. parentAccessCodes 숨김 기능에 포함(개발자 ?dev=1 시 표시).
+              slug 는 자동 생성 유지 → 학부모 접속 자체엔 영향 없음. */}
+          {myRole === 'owner' && featVisible("parentAccessCodes") && (
             <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] text-[var(--color-text-muted)]">학부모 접속 URL</span>
@@ -936,7 +943,8 @@ export default function SettingsPage() {
           )}
         </section>
 
-      {/* 통합 팀 섹션 — 원장 + 강사 전체 (상태 pill 포함) */}
+      {/* 통합 팀 섹션 — 원장 + 강사 전체. 강사 초대/팀 = features.ts gated (개발자 ?dev=1 시 표시) */}
+      {featVisible("teamInvites") && (
       <section
         className="bg-[var(--color-bg-secondary)] rounded-xl p-5 mb-4 border border-[var(--color-border)]"
         data-tour="teacher-invite"
@@ -1037,11 +1045,12 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+      )}
 
       {/* 학부모 접속 코드는 /students 페이지로 이동 (동명이인 식별 위해 학생 목록과 함께 표시) */}
 
-      {/* 공유 링크 섹션 — 아코디언 */}
-      {canManage && (
+      {/* 공유 링크 섹션 — 아코디언. 시간표 공유 = features.ts gated (개발자 ?dev=1 시 표시) */}
+      {canManage && featVisible("scheduleSharing") && (
         <section
           className="bg-[var(--color-bg-secondary)] rounded-xl mt-4 border border-[var(--color-border)] overflow-hidden"
           data-tour="share-link"
@@ -1237,17 +1246,10 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Phase 1: 만료 30일 고정 (드롭박스 제거, 2026-05-30). 기간 선택/자동갱신은 Phase 2 Premium. */}
             <div className="mb-5">
               <label className="text-[13px] font-medium text-[var(--color-text-secondary)] block mb-1">만료 기간</label>
-              <Select
-                value={shareExpiresInDays}
-                onChange={(e) => setShareExpiresInDays(Number(e.target.value))}
-              >
-                <option value={7}>7일</option>
-                <option value={30}>30일</option>
-                <option value={90}>90일</option>
-                <option value={365}>1년</option>
-              </Select>
+              <p className="text-[13px] text-[var(--color-text-muted)]">30일 후 자동 만료돼요. (만료되면 링크가 막혀 안전해요)</p>
             </div>
 
             <div className="flex gap-3">
@@ -1347,14 +1349,14 @@ export default function SettingsPage() {
         onClose={() => (isDeletingTeacher ? undefined : setDeleteTeacherTarget(null))}
       />
 
-      {/* 시간표 운영시간 — useTimeRange + writeStoredRange 사용 */}
-      <OperatingHoursSection userId={userId} />
+      {/* 시간표 운영시간 — schedule-v2 헤더(⚙ 운영시간)로 이전 (2026-06-01).
+          설정 페이지는 학원 이름만. proposal: schedule-v2-week-continuity. */}
 
       {/* phase1-release-readiness rank 6 (발견성) — 데이터 복구 발견성 강화.
           DataHistorySection 위에 amber hint 카드 추가하여 사용자가 데이터
           복구 기능 존재를 사고 발생 전 인지. mockup:
           /strategy/discoverability-attendance-recovery § E */}
-      {userId && canManage && (
+      {SHOW_DATA_HISTORY && userId && canManage && (
         <section
           className="bg-amber-500/[0.07] border border-amber-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
           data-testid="data-recovery-hint"
@@ -1374,8 +1376,8 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* 데이터 이력 섹션 (백업/복구 안전망) — owner/admin gate는 컴포넌트 내부 */}
-      {userId && (
+      {/* 데이터 이력 섹션 — Phase 1 미제공 (데이터 복구는 Phase 2 Premium 예정) */}
+      {SHOW_DATA_HISTORY && userId && (
         <div data-tour="data-history">
           <DataHistorySection userId={userId} />
         </div>
@@ -1384,7 +1386,7 @@ export default function SettingsPage() {
       {/* phase1-release-readiness rank 5-A (도움말) — 인라인 튜토리얼 진입점.
           window event dispatch → useTour listener 가 강제 시작 (localStorage flag 무시).
           mockup: /strategy/onboarding-walkthrough § Part A */}
-      {userId && (
+      {userId && featVisible("tutorial") && (
         <section
           className="bg-sky-500/[0.07] border border-sky-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
           data-testid="tutorial-restart-card"

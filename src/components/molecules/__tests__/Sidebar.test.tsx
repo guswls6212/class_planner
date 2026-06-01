@@ -24,6 +24,12 @@ vi.mock("../../../lib/auth/signOut", () => ({
   signOut: vi.fn(),
 }));
 
+// features.ts 게이팅 — 테스트에선 전부 표시(스위처/feature nav 기능 검증). 숨김 동작 자체는 별도.
+vi.mock("@/config/features", async (importOriginal) => {
+  const actual = (await importOriginal()) as typeof import("@/config/features");
+  return { ...actual, isVisible: () => true };
+});
+
 // Mock localStorageCrud (dynamic import inside the component)
 const mockGetActiveAcademyId = vi.fn();
 const mockSetActiveAcademyIdLib = vi.fn();
@@ -418,12 +424,18 @@ describe("Sidebar — User Bottom Section", () => {
 describe("Sidebar — Anonymous Mode + Loading State", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // 기본 로그인 복원 — useHasMounted 재렌더로 useAuth 가 2회 호출되므로 persistent mockReturnValue 사용.
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-test", email: "test@test.com" } },
+      user: { id: "user-test", email: "test@test.com" },
+      loading: false,
+    });
     mockGetActiveAcademyId.mockReturnValue(null);
     window.localStorage.getItem = vi.fn(() => null);
   });
 
   it("비로그인 사용자는 academy switcher 영역이 미렌더된다", async () => {
-    mockUseAuth.mockReturnValueOnce({ session: null, user: null, loading: false });
+    mockUseAuth.mockReturnValue({ session: null, user: null, loading: false });
 
     mockUseMyRole.mockReturnValue({
       role: null,
@@ -518,10 +530,18 @@ describe("Sidebar — Tour data-tour attribute (rank 5-A)", () => {
     expect(link.getAttribute("data-tour")).toBe("subjects");
   });
 
-  it("/schedule link 가 data-tour='schedule' attribute 를 가짐", async () => {
+  it("/schedule(수업 편집) link 가 data-tour='schedule' attribute 를 가짐", async () => {
+    renderSidebar();
+    // Phase 2: schedule-v2 가 "시간표" 메인, 기존 /schedule 은 "수업 편집"으로 이동
+    const link = await screen.findByRole("link", { name: "수업 편집" });
+    expect(link.getAttribute("data-tour")).toBe("schedule");
+  });
+
+  it("'시간표' link 가 /schedule-v2 를 가리킴 (Phase 2 메인)", async () => {
     renderSidebar();
     const link = await screen.findByRole("link", { name: "시간표" });
-    expect(link.getAttribute("data-tour")).toBe("schedule");
+    expect(link.getAttribute("href")).toBe("/schedule-v2");
+    expect(link.getAttribute("data-tour")).toBe("schedule-v2");
   });
 
   it("/settings link 가 data-tour='settings' attribute 를 가짐 (로그인 시)", async () => {

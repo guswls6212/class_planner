@@ -510,3 +510,5 @@ dev 향 PR 은 Mac Studio cp-runner 6 container 에서 e2e 6 shard parallel + us
 
 - `dev-pack/docs/protocols/cp-runner-ci-setup.md` — cp-runner 구성 + E2E user 6 + 측정 history
 - `dev-pack/docs/protocols/ai-pr-label-policy.md` — PR 생성 시 quick-pr / no-auto-merge 자동 판단
+
+<!-- 2026-05-29: cp-runner image v2026-05 rebuild (옵션 A-full) 측정 trigger PR -->

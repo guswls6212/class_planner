@@ -3,6 +3,19 @@ import { E2E_CONFIG } from "./tests/e2e/config/e2e-config";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // 친구-비가시(features.ts 숨김) 기능 e2e 제외 — 친구 경로에 없어 회귀 가드 가치 낮고
+  // CI 부담만 큼(2026-06-01 보수안). /schedule 엔진(conflict/drag/sync/scroll/viewmode) spec 은
+  // dev 모드(seed 의 cp:show-hidden)로 유지해 KEPT 동작 커버리지 보존. 기능 un-hide 시 해당 줄 제거로 복구.
+  testIgnore: [
+    "**/share-link.spec.ts",
+    "**/share-mobile.spec.ts",
+    "**/pdf-export.spec.ts",
+    "**/multi-academy.spec.ts",
+    "**/team-invite-redesign.spec.ts",
+    "**/templates-apply-delete.spec.ts",
+    "**/templates-multi-slot.spec.ts",
+    "**/schedule-templates.spec.ts",
+  ],
   fullyParallel: false, // 병렬 실행 비활성화로 안정성 향상
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -24,6 +37,16 @@ export default defineConfig({
     : undefined,
   use: {
     baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
+    // 전역 e2e dev 모드 — 모든 context 에 cp:show-hidden=1 주입. features.ts 숨김 route(/schedule
+    // 등)가 /schedule-v2 로 redirect 되지 않게. 공유 seed helper 안 거치고 inline addInitScript 쓰는
+    // spec(schedule-viewmode/mobile-flows/conflict-auto-lane 등)까지 전부 커버. (seed helper 의
+    // 개별 cp:show-hidden 주입은 이걸로 대체 가능하지만 무해하게 공존.) 숨김 검증은 dev 미설정 전용 spec.
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: E2E_CONFIG.BASE_URL, localStorage: [{ name: "cp:show-hidden", value: "1" }] },
+      ],
+    },
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure", // 실패 시 비디오 녹화

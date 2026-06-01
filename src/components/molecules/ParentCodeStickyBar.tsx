@@ -57,6 +57,7 @@ export default function ParentCodeStickyBar({
       <div
         className="flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)]"
         data-testid="parent-code-sticky-bar"
+        data-tour="parent-code"
       >
         <LinkIcon
           size={11}
