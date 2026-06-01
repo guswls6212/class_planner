@@ -24,6 +24,7 @@ import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../.
 import { getWeekStartDate } from "../../lib/weekStart";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
 import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
+import SessionPopover from "./_components/SessionPopover";
 
 type View = "grid" | "table";
 
@@ -34,6 +35,9 @@ function ScheduleV2Content() {
     { mode: "add" } | { mode: "edit"; sessionId: string; initial: SessionFormInitial } | null
   >(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [popover, setPopover] = useState<
+    { sessionId: string; anchor: DOMRect; initial: SessionFormInitial } | null
+  >(null);
 
   const vm = useMemo(() => {
     const week = pickWeek(data.sessions, localWeekMonday(new Date()));
@@ -142,18 +146,18 @@ function ScheduleV2Content() {
     [data.sessions, data.enrollments, data.subjects, updateData]
   );
 
-  // 블록 클릭 → 그 세션을 편집 모달로 (blockId = "sessionId:enrollmentId")
-  const openEdit = useCallback(
-    (blockId: string) => {
+  // 블록 클릭 → 그 자리에 빠른 편집 팝오버(C). anchor = 블록 DOMRect. (blockId = "sessionId:enrollmentId")
+  const openPopover = useCallback(
+    (blockId: string, anchor: DOMRect) => {
       const [sid, eid] = blockId.split(":");
       const sess = data.sessions.find((s) => s.id === sid);
       if (!sess) return;
       const enr = data.enrollments.find((e) => e.id === eid);
       const student = enr ? data.students.find((s) => s.id === enr.studentId) : undefined;
       const subject = enr ? data.subjects.find((s) => s.id === enr.subjectId) : undefined;
-      setModal({
-        mode: "edit",
+      setPopover({
         sessionId: sid,
+        anchor,
         initial: {
           studentId: enr?.studentId ?? "",
           studentName: student?.name ?? "?",
@@ -247,7 +251,7 @@ function ScheduleV2Content() {
             </div>
           </div>
         ) : view === "grid" ? (
-          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openEdit} />
+          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openPopover} />
         ) : (
           <StudyRoomTable students={vm.students} />
         )}
@@ -290,6 +294,22 @@ function ScheduleV2Content() {
           sessions={data.sessions}
           onClose={() => setBulkOpen(false)}
           onBulkCreate={(inputs) => void bulkAdd(inputs)}
+        />
+      )}
+      {popover && (
+        <SessionPopover
+          initial={popover.initial}
+          anchor={popover.anchor}
+          teachers={data.teachers}
+          onSave={(input) => {
+            void editSession(popover.sessionId, input);
+            setPopover(null);
+          }}
+          onDelete={() => {
+            void deleteSession(popover.sessionId);
+            setPopover(null);
+          }}
+          onClose={() => setPopover(null)}
         />
       )}
     </div>

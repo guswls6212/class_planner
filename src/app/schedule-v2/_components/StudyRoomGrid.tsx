@@ -27,7 +27,7 @@ export default function StudyRoomGrid({
   onBlockClick,
 }: {
   blocks: ViewBlock[];
-  onBlockClick?: (blockId: string) => void;
+  onBlockClick?: (blockId: string, anchor: DOMRect) => void;
 }) {
   const [filter, setFilter] = useState<string | null>(null);
 
@@ -106,7 +106,7 @@ export default function StudyRoomGrid({
                   <button
                     type="button"
                     key={b.id}
-                    onClick={() => onBlockClick?.(b.id)}
+                    onClick={(e) => onBlockClick?.(b.id, e.currentTarget.getBoundingClientRect())}
                     className="absolute flex h-[20px] items-center overflow-hidden rounded border px-1 text-[10px] font-semibold whitespace-nowrap transition hover:ring-2 hover:ring-white/70"
                     style={{
                       top: b.lane * LANE_H + 3,
