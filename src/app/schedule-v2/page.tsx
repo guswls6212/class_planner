@@ -42,6 +42,7 @@ import { showToast } from "../../lib/toast";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
 import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
 import SessionPopover from "./_components/SessionPopover";
+import { useMyRole } from "../../hooks/useMyRole";
 
 type View = "grid" | "table";
 
@@ -73,6 +74,10 @@ function relWeekLabel(offset: number): string {
 function ScheduleV2Content() {
   const { data, loading, updateData, deleteSession, bulkDeleteSessions } =
     useIntegratedDataLocal();
+  // Role gate — member 는 read-only(보기·출결만). 익명/owner/admin 은 canManage=true.
+  // schedule-v2 가 /schedule 의 member read-only role-branch 를 안 물려받아, member 가
+  // 추가·삭제·copy-week 시도 → 서버 403(owner/admin 전용) → stranded 동기화 에러 나던 회귀 fix.
+  const { canManage } = useMyRole();
   const [view, setView] = useState<View>("grid");
   const [modal, setModal] = useState<
     | { mode: "add" }
@@ -334,7 +339,7 @@ function ScheduleV2Content() {
 
   const isEmpty = !loading && vm.blocks.length === 0;
   const showCarryPrompt =
-    !loading && viewedWeekSessions.length === 0 && !!sourceMonday && !dismissedEmpty;
+    canManage && !loading && viewedWeekSessions.length === 0 && !!sourceMonday && !dismissedEmpty;
   const sourceCount = useMemo(
     () => (sourceMonday ? data.sessions.filter((s) => s.weekStartDate === sourceMonday).length : 0),
     [sourceMonday, data.sessions]
@@ -396,20 +401,24 @@ function ScheduleV2Content() {
             </button>
           ))}
         </div>
-        <button
-          onClick={() => setModal({ mode: "add" })}
-          className="rounded-lg border border-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] transition hover:bg-[var(--color-accent)] hover:text-black"
-        >
-          ＋ 수업 추가
-        </button>
-        <button
-          onClick={() => setBulkOpen(true)}
-          className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
-        >
-          학생별 일괄 입력
-        </button>
+        {canManage && (
+          <>
+            <button
+              onClick={() => setModal({ mode: "add" })}
+              className="rounded-lg border border-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] transition hover:bg-[var(--color-accent)] hover:text-black"
+            >
+              ＋ 수업 추가
+            </button>
+            <button
+              onClick={() => setBulkOpen(true)}
+              className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            >
+              학생별 일괄 입력
+            </button>
+          </>
+        )}
         <OperatingHoursMenu userId={uid} onChange={() => setStoredRange(readStoredRange(uid))} />
-        {viewedWeekSessions.length > 0 && (
+        {viewedWeekSessions.length > 0 && canManage && (
           <button
             onClick={() => void clearWeek()}
             data-testid="clear-week-btn"
@@ -455,17 +464,19 @@ function ScheduleV2Content() {
         ) : isEmpty ? (
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-16 text-center">
             <p className="text-sm text-[var(--color-text-secondary)]">{relWeekLabel(weekOffset)} 등록된 수업이 없어요.</p>
-            <div className="mt-3 flex justify-center gap-3 text-sm">
-              <button onClick={() => setModal({ mode: "add" })} className="text-[var(--color-accent)] hover:underline">
-                ＋ 수업 추가
-              </button>
-              <Link href="/students" className="text-[var(--color-text-muted)] hover:underline">
-                학생 관리
-              </Link>
-            </div>
+            {canManage && (
+              <div className="mt-3 flex justify-center gap-3 text-sm">
+                <button onClick={() => setModal({ mode: "add" })} className="text-[var(--color-accent)] hover:underline">
+                  ＋ 수업 추가
+                </button>
+                <Link href="/students" className="text-[var(--color-text-muted)] hover:underline">
+                  학생 관리
+                </Link>
+              </div>
+            )}
           </div>
         ) : view === "grid" ? (
-          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openPopover} range={gridRange} />
+          <StudyRoomGrid blocks={vm.blocks} onBlockClick={canManage ? openPopover : undefined} range={gridRange} />
         ) : (
           <StudyRoomTable students={vm.students} />
         )}
