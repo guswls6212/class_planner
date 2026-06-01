@@ -139,14 +139,6 @@ function ScheduleV2Content() {
     setDismissedEmpty(false);
   }, [uid, viewedMonday]);
 
-  const legend = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const b of vm.blocks) {
-      if (!map.has(b.color)) map.set(b.color, b.subjectName);
-    }
-    return Array.from(map, ([color, label]) => ({ color, label }));
-  }, [vm.blocks]);
-
   const addSession = useCallback(
     async (input: SessionFormInput) => {
       const plan = planSessionAdd({
@@ -449,19 +441,6 @@ function ScheduleV2Content() {
           <StudyRoomTable students={vm.students} />
         )}
       </div>
-
-      {/* 범례 (과목 색) */}
-      {!loading && !isEmpty && legend.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-[var(--color-text-secondary)]">
-          <span className="font-medium text-[var(--color-text-muted)]">색 = 과목:</span>
-          {legend.map(({ color, label }) => (
-            <span key={color} className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
 
       {modal && (
         <SessionFormModal
