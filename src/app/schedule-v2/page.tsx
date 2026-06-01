@@ -11,19 +11,24 @@
  * 세션→per-enrollment 타이밍 모델 변경(ADR) 필요. proposal: study-room-fit-validation
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import AuthGuard from "../../components/atoms/AuthGuard";
 import { useIntegratedDataLocal } from "../../hooks/useIntegratedDataLocal";
 import StudyRoomGrid from "./_components/StudyRoomGrid";
 import StudyRoomTable from "./_components/StudyRoomTable";
 import { buildScheduleVM, localWeekMonday, pickWeek } from "./_data/scheduleViewModel";
+import { planSessionAdd } from "../schedule/_utils/sessionAddHelpers";
+import { syncEnrollmentCreate, syncSessionCreate } from "../../lib/apiSync";
+import { getWeekStartDate } from "../../lib/weekStart";
+import AddSessionModal, { type AddSessionInput } from "./_components/AddSessionModal";
 
 type View = "grid" | "table";
 
 function ScheduleV2Content() {
-  const { data, loading } = useIntegratedDataLocal();
+  const { data, loading, updateData } = useIntegratedDataLocal();
   const [view, setView] = useState<View>("grid");
+  const [addOpen, setAddOpen] = useState(false);
 
   const vm = useMemo(() => {
     const week = pickWeek(data.sessions, localWeekMonday(new Date()));
@@ -38,6 +43,32 @@ function ScheduleV2Content() {
     }
     return Array.from(map, ([color, label]) => ({ color, label }));
   }, [vm.blocks]);
+
+  const addSession = useCallback(
+    async (input: AddSessionInput) => {
+      const fallback = getWeekStartDate(new Date());
+      const plan = planSessionAdd({
+        input: {
+          subjectId: input.subjectId,
+          studentIds: [input.studentId],
+          teacherId: input.teacherId ?? undefined,
+          weekday: input.weekday,
+          startTime: input.startTime,
+          endTime: input.endTime,
+          weekStartDate: vm.weekStartDate ?? fallback,
+        },
+        sessions: data.sessions,
+        enrollments: data.enrollments,
+        fallbackWeekStartDate: fallback,
+      });
+      await updateData({ sessions: plan.mergedSessions, enrollments: plan.mergedEnrollments });
+      const uid = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+      for (const enr of plan.newEnrollments) void syncEnrollmentCreate(uid, enr);
+      void syncSessionCreate(uid, plan.newSession);
+      setAddOpen(false);
+    },
+    [data.sessions, data.enrollments, updateData, vm.weekStartDate]
+  );
 
   const isEmpty = !loading && vm.blocks.length === 0;
 
@@ -60,25 +91,33 @@ function ScheduleV2Content() {
         <b className="text-[var(--color-text-primary)]">학생별 표</b>(이 아이 주간).
       </p>
 
-      {/* 뷰 토글 */}
-      <div className="mt-4 inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5 text-sm">
-        {([
-          ["grid", "그리드"],
-          ["table", "학생별 표"],
-        ] as [View, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setView(key)}
-            aria-pressed={view === key}
-            className={`rounded-md px-3 py-1 font-medium transition ${
-              view === key
-                ? "bg-[var(--color-accent)] text-black"
-                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* 뷰 토글 + 수업 추가 */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5 text-sm">
+          {([
+            ["grid", "그리드"],
+            ["table", "학생별 표"],
+          ] as [View, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              aria-pressed={view === key}
+              className={`rounded-md px-3 py-1 font-medium transition ${
+                view === key
+                  ? "bg-[var(--color-accent)] text-black"
+                  : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="rounded-lg border border-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] transition hover:bg-[var(--color-accent)] hover:text-black"
+        >
+          ＋ 수업 추가
+        </button>
       </div>
 
       <div className="mt-4">
@@ -115,6 +154,15 @@ function ScheduleV2Content() {
           ))}
         </div>
       )}
+
+      <AddSessionModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        students={data.students}
+        subjects={data.subjects}
+        teachers={data.teachers}
+        onSubmit={(input) => void addSession(input)}
+      />
     </div>
   );
 }
