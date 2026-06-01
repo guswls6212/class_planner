@@ -9,7 +9,6 @@ import { useMemo, useState } from "react";
 import {
   axisOf,
   packDay,
-  readableText,
   weekdayLabel,
   type ViewBlock,
 } from "../_data/scheduleViewModel";
@@ -126,7 +125,7 @@ export default function StudyRoomGrid({
                       width: `${Math.max(pct(b.end) - pct(b.start), 5)}%`,
                       backgroundColor: b.color,
                       borderColor: b.color,
-                      color: readableText(b.color),
+                      color: "#ffffff", // 항상 흰 글씨(C2, 2026-06-01 사용자 픽) — 일관성
                     }}
                     title={`${b.subjectName} ${b.studentName} ${fmt(b.start)}–${fmt(b.end)}${b.teacherName ? ` · ${b.teacherName}` : ""} (클릭: 편집)`}
                   >

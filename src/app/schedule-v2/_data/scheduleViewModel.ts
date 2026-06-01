@@ -59,17 +59,6 @@ export function weekdayLabel(wd: number): string {
   return weekdays[wd] ?? "?";
 }
 
-/** 배경색 luminance 로 가독 텍스트색 결정. */
-export function readableText(hex: string): string {
-  const h = hex.replace("#", "");
-  if (h.length < 6) return "#ffffff";
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? "#1a1a1a" : "#ffffff";
-}
-
 /** 표시할 주(weekStartDate) 선택 — 현재 주가 있으면 현재 주, 없으면 가장 최근 주. */
 export function pickWeek(sessions: Session[], currentMonday: string): string | null {
   const weeks = Array.from(

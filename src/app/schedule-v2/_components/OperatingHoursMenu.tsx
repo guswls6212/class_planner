@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * schedule-v2 운영시간 — O3 드롭다운 메뉴 (2026-06-01 사용자 픽).
+ * schedule-v2 운영시간 — O3 드롭다운 메뉴 + T1 스텝퍼 (2026-06-01 사용자 픽).
  *
- * settings 카드(OperatingHoursSection)의 이중 토글(⚙ 누르고 → 또 펼치기)을 대체.
- * 버튼 1클릭 → select 식 메뉴(현재값 ✓). "사용자 지정"이면 시작·종료 시간 인라인.
- * 저장 로직은 useTimeRange(readStoredRange/writeStoredRange) 재사용 — 그리드 축/PDF 공용 키.
+ * settings 카드의 이중 토글을 대체 — 버튼 1클릭 → select 식 메뉴(현재값 ✓).
+ * "사용자 지정"이면 시작·종료를 스텝퍼(− 시 +)로 — 24-item 드롭다운 제거(모바일 안 넘침),
+ * 종료는 24시까지 지원. 저장 로직은 useTimeRange(readStoredRange/writeStoredRange) 재사용.
  * onChange 로 호출측이 그리드 range 즉시 갱신.
  */
 
@@ -73,18 +73,17 @@ export default function OperatingHoursMenu({
     onChange?.();
   };
 
-  const changeHour = (which: "start" | "end", value: number) => {
-    const s = which === "start" ? value : startHour;
-    const e = which === "end" ? value : endHour;
-    if (which === "start") setStartHour(value);
-    else setEndHour(value);
-    if (s < e) {
-      writeStoredRange(userId, { mode: "custom", startHour: s, endHour: e });
-      onChange?.();
-    }
+  // 스텝퍼가 min/max 로 start < end 를 보장 → 그대로 저장.
+  const setStart = (v: number) => {
+    setStartHour(v);
+    writeStoredRange(userId, { mode: "custom", startHour: v, endHour });
+    onChange?.();
   };
-
-  const invalid = mode === "custom" && startHour >= endHour;
+  const setEnd = (v: number) => {
+    setEndHour(v);
+    writeStoredRange(userId, { mode: "custom", startHour, endHour: v });
+    onChange?.();
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -102,7 +101,7 @@ export default function OperatingHoursMenu({
         <span className="text-[10px] opacity-70">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 w-56 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-1 shadow-2xl">
+        <div className="absolute left-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] py-1 shadow-2xl">
           <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
             시간표 운영시간
           </div>
@@ -119,13 +118,24 @@ export default function OperatingHoursMenu({
             </button>
           ))}
           {mode === "custom" && (
-            <div className="mt-1 border-t border-[var(--color-border)] px-3 pb-1 pt-2">
-              <div className="flex items-center gap-1.5">
-                <HourSelect value={startHour} onChange={(v) => changeHour("start", v)} suffix=":00" />
-                <span className="text-[var(--color-text-muted)]">–</span>
-                <HourSelect value={endHour} onChange={(v) => changeHour("end", v)} suffix=":30" />
+            <div className="mt-1 border-t border-[var(--color-border)] px-3 pb-2.5 pt-2.5">
+              <div className="flex items-end gap-2">
+                <HourStepper
+                  label="시작"
+                  value={startHour}
+                  min={0}
+                  max={endHour - 1}
+                  onChange={setStart}
+                />
+                <span className="pb-1.5 text-[var(--color-text-muted)]">–</span>
+                <HourStepper
+                  label="종료"
+                  value={endHour}
+                  min={startHour + 1}
+                  max={24}
+                  onChange={setEnd}
+                />
               </div>
-              {invalid && <p className="mt-1.5 text-[11px] text-red-400">시작 시각이 종료보다 작아야 해요.</p>}
             </div>
           )}
         </div>
@@ -134,27 +144,45 @@ export default function OperatingHoursMenu({
   );
 }
 
-function HourSelect({
+function HourStepper({
+  label,
   value,
+  min,
+  max,
   onChange,
-  suffix,
 }: {
+  label: string;
   value: number;
+  min: number;
+  max: number;
   onChange: (v: number) => void;
-  suffix: string;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1 text-[12px] tabular-nums text-[var(--color-text-primary)]"
-    >
-      {Array.from({ length: 24 }, (_, h) => (
-        <option key={h} value={h}>
-          {String(h).padStart(2, "0")}
-          {suffix}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] text-[var(--color-text-muted)]">{label}</span>
+      <div className="inline-flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
+        <button
+          type="button"
+          aria-label={`${label} 1시간 줄이기`}
+          onClick={() => onChange(Math.max(min, value - 1))}
+          disabled={value <= min}
+          className="px-2 py-1 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] disabled:opacity-30"
+        >
+          −
+        </button>
+        <span className="w-10 text-center text-[13px] font-semibold tabular-nums text-[var(--color-text-primary)]">
+          {value}시
+        </span>
+        <button
+          type="button"
+          aria-label={`${label} 1시간 늘리기`}
+          onClick={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          className="px-2 py-1 text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-tertiary)] disabled:opacity-30"
+        >
+          +
+        </button>
+      </div>
+    </div>
   );
 }

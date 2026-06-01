@@ -353,15 +353,9 @@ function ScheduleV2Content() {
         )}
       </div>
 
-      <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">시간표 — 한눈에 전주</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-text-secondary)]">
-        색 = 과목, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
-        <b className="text-[var(--color-text-primary)]"> 그리드</b>(누가 언제 방에) /{" "}
-        <b className="text-[var(--color-text-primary)]">학생별 표</b>(이 아이 주간).
-      </p>
-
+      {/* 제목·설명 줄 제거 (2026-06-01 사용자 픽 — 도움말 아이콘 없이 간결하게). 색=과목은 하단 범례로. */}
       {/* 뷰 토글 + 수업 추가 + 운영시간 + 비우기 */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-2 flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-0.5 text-sm">
           {([
             ["grid", "그리드"],
