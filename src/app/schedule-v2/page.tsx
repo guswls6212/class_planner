@@ -19,16 +19,19 @@ import StudyRoomGrid from "./_components/StudyRoomGrid";
 import StudyRoomTable from "./_components/StudyRoomTable";
 import { buildScheduleVM, localWeekMonday, pickWeek } from "./_data/scheduleViewModel";
 import { planSessionAdd } from "../schedule/_utils/sessionAddHelpers";
-import { syncEnrollmentCreate, syncSessionCreate } from "../../lib/apiSync";
+import { planSessionUpdate } from "../schedule/_utils/updateSessionHelpers";
+import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../../lib/apiSync";
 import { getWeekStartDate } from "../../lib/weekStart";
-import AddSessionModal, { type AddSessionInput } from "./_components/AddSessionModal";
+import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
 
 type View = "grid" | "table";
 
 function ScheduleV2Content() {
-  const { data, loading, updateData } = useIntegratedDataLocal();
+  const { data, loading, updateData, deleteSession } = useIntegratedDataLocal();
   const [view, setView] = useState<View>("grid");
-  const [addOpen, setAddOpen] = useState(false);
+  const [modal, setModal] = useState<
+    { mode: "add" } | { mode: "edit"; sessionId: string; initial: SessionFormInitial } | null
+  >(null);
 
   const vm = useMemo(() => {
     const week = pickWeek(data.sessions, localWeekMonday(new Date()));
@@ -45,7 +48,7 @@ function ScheduleV2Content() {
   }, [vm.blocks]);
 
   const addSession = useCallback(
-    async (input: AddSessionInput) => {
+    async (input: SessionFormInput) => {
       const fallback = getWeekStartDate(new Date());
       const plan = planSessionAdd({
         input: {
@@ -65,10 +68,73 @@ function ScheduleV2Content() {
       const uid = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
       for (const enr of plan.newEnrollments) void syncEnrollmentCreate(uid, enr);
       void syncSessionCreate(uid, plan.newSession);
-      setAddOpen(false);
+      setModal(null);
     },
     [data.sessions, data.enrollments, updateData, vm.weekStartDate]
   );
+
+  // 편집: 친구 핵심(시간/요일/강사)만. 학생/과목 변경은 삭제+재추가(enrollment 재조정 회피).
+  const editSession = useCallback(
+    async (sessionId: string, input: SessionFormInput) => {
+      const plan = planSessionUpdate({
+        sessionId,
+        input: {
+          startTime: input.startTime,
+          endTime: input.endTime,
+          weekday: input.weekday,
+          teacherId: input.teacherId,
+        },
+        sessions: data.sessions,
+        enrollments: data.enrollments,
+        subjects: data.subjects,
+      });
+      await updateData({ sessions: plan.mergedSessions });
+      const uid = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+      if (plan.changedSession) {
+        void syncSessionUpdate(uid, sessionId, {
+          startsAt: plan.changedSession.startsAt,
+          endsAt: plan.changedSession.endsAt,
+          weekday: plan.changedSession.weekday,
+          teacherId: plan.changedSession.teacherId,
+        });
+      }
+      setModal(null);
+    },
+    [data.sessions, data.enrollments, data.subjects, updateData]
+  );
+
+  // 블록 클릭 → 그 세션을 편집 모달로 (blockId = "sessionId:enrollmentId")
+  const openEdit = useCallback(
+    (blockId: string) => {
+      const [sid, eid] = blockId.split(":");
+      const sess = data.sessions.find((s) => s.id === sid);
+      if (!sess) return;
+      const enr = data.enrollments.find((e) => e.id === eid);
+      const student = enr ? data.students.find((s) => s.id === enr.studentId) : undefined;
+      const subject = enr ? data.subjects.find((s) => s.id === enr.subjectId) : undefined;
+      setModal({
+        mode: "edit",
+        sessionId: sid,
+        initial: {
+          studentId: enr?.studentId ?? "",
+          studentName: student?.name ?? "?",
+          subjectId: enr?.subjectId ?? "",
+          subjectName: subject?.name ?? "?",
+          teacherId: sess.teacherId ?? null,
+          weekday: sess.weekday,
+          startTime: sess.startsAt,
+          endTime: sess.endsAt,
+        },
+      });
+    },
+    [data.sessions, data.enrollments, data.students, data.subjects]
+  );
+
+  const removeCurrentSession = useCallback(async () => {
+    if (modal?.mode !== "edit") return;
+    await deleteSession(modal.sessionId);
+    setModal(null);
+  }, [modal, deleteSession]);
 
   const isEmpty = !loading && vm.blocks.length === 0;
 
@@ -113,7 +179,7 @@ function ScheduleV2Content() {
           ))}
         </div>
         <button
-          onClick={() => setAddOpen(true)}
+          onClick={() => setModal({ mode: "add" })}
           className="rounded-lg border border-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent)] transition hover:bg-[var(--color-accent)] hover:text-black"
         >
           ＋ 수업 추가
@@ -127,16 +193,16 @@ function ScheduleV2Content() {
           <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-6 py-16 text-center">
             <p className="text-sm text-[var(--color-text-secondary)]">이번 주 등록된 수업이 없어요.</p>
             <div className="mt-3 flex justify-center gap-3 text-sm">
-              <Link href="/schedule" className="text-[var(--color-accent)] hover:underline">
-                시간표에서 수업 추가 →
-              </Link>
+              <button onClick={() => setModal({ mode: "add" })} className="text-[var(--color-accent)] hover:underline">
+                ＋ 수업 추가
+              </button>
               <Link href="/students" className="text-[var(--color-text-muted)] hover:underline">
                 학생 관리
               </Link>
             </div>
           </div>
         ) : view === "grid" ? (
-          <StudyRoomGrid blocks={vm.blocks} />
+          <StudyRoomGrid blocks={vm.blocks} onBlockClick={openEdit} />
         ) : (
           <StudyRoomTable students={vm.students} />
         )}
@@ -155,14 +221,22 @@ function ScheduleV2Content() {
         </div>
       )}
 
-      <AddSessionModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        students={data.students}
-        subjects={data.subjects}
-        teachers={data.teachers}
-        onSubmit={(input) => void addSession(input)}
-      />
+      {modal && (
+        <SessionFormModal
+          mode={modal.mode}
+          initial={modal.mode === "edit" ? modal.initial : undefined}
+          students={data.students}
+          subjects={data.subjects}
+          teachers={data.teachers}
+          onSubmit={(input) =>
+            modal.mode === "edit"
+              ? void editSession(modal.sessionId, input)
+              : void addSession(input)
+          }
+          onDelete={modal.mode === "edit" ? () => void removeCurrentSession() : undefined}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

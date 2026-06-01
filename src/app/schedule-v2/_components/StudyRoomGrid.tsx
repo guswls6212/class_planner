@@ -22,7 +22,13 @@ function fmt(m: number): string {
 
 const LANE_H = 24;
 
-export default function StudyRoomGrid({ blocks }: { blocks: ViewBlock[] }) {
+export default function StudyRoomGrid({
+  blocks,
+  onBlockClick,
+}: {
+  blocks: ViewBlock[];
+  onBlockClick?: (blockId: string) => void;
+}) {
   const [filter, setFilter] = useState<string | null>(null);
 
   const teachers = useMemo(
@@ -97,9 +103,11 @@ export default function StudyRoomGrid({ blocks }: { blocks: ViewBlock[] }) {
                   />
                 ))}
                 {items.map((b) => (
-                  <div
+                  <button
+                    type="button"
                     key={b.id}
-                    className="absolute flex h-[20px] items-center overflow-hidden rounded border px-1 text-[10px] font-semibold whitespace-nowrap"
+                    onClick={() => onBlockClick?.(b.id)}
+                    className="absolute flex h-[20px] items-center overflow-hidden rounded border px-1 text-[10px] font-semibold whitespace-nowrap transition hover:ring-2 hover:ring-white/70"
                     style={{
                       top: b.lane * LANE_H + 3,
                       left: `${pct(b.start)}%`,
@@ -108,10 +116,10 @@ export default function StudyRoomGrid({ blocks }: { blocks: ViewBlock[] }) {
                       borderColor: b.color,
                       color: readableText(b.color),
                     }}
-                    title={`${b.subjectName} ${b.studentName} ${fmt(b.start)}–${fmt(b.end)}${b.teacherName ? ` · ${b.teacherName}` : ""}`}
+                    title={`${b.subjectName} ${b.studentName} ${fmt(b.start)}–${fmt(b.end)}${b.teacherName ? ` · ${b.teacherName}` : ""} (클릭: 편집)`}
                   >
                     {b.subjectName} {b.studentName}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
