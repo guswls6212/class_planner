@@ -31,12 +31,14 @@ export default function StudyRoomGrid({
 }) {
   const [filter, setFilter] = useState<string | null>(null);
 
-  const teachers = useMemo(
-    () => Array.from(new Set(blocks.map((b) => b.teacherName).filter((n): n is string => !!n))),
-    [blocks]
-  );
+  // 과목 필터 (색 = 과목). subjectName → 대표 색.
+  const subjects = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of blocks) if (!m.has(b.subjectName)) m.set(b.subjectName, b.color);
+    return Array.from(m, ([name, color]) => ({ name, color }));
+  }, [blocks]);
   const shown = useMemo(
-    () => (filter ? blocks.filter((b) => b.teacherName === filter) : blocks),
+    () => (filter ? blocks.filter((b) => b.subjectName === filter) : blocks),
     [blocks, filter]
   );
   const axis = useMemo(() => axisOf(shown), [shown]);
@@ -51,22 +53,23 @@ export default function StudyRoomGrid({
 
   return (
     <div>
-      {teachers.length > 0 && (
+      {subjects.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-3 py-2 text-xs">
-          <span className="text-[var(--color-text-muted)]">강사 필터</span>
+          <span className="text-[var(--color-text-muted)]">과목 필터</span>
           <button
             onClick={() => setFilter(null)}
             className={`rounded-md px-2 py-0.5 transition ${!filter ? "bg-[var(--color-accent)] text-black" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:opacity-80"}`}
           >
             전체
           </button>
-          {teachers.map((t) => (
+          {subjects.map((s) => (
             <button
-              key={t}
-              onClick={() => setFilter(t)}
-              className={`rounded-md px-2 py-0.5 transition ${filter === t ? "bg-[var(--color-accent)] text-black" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:opacity-80"}`}
+              key={s.name}
+              onClick={() => setFilter(s.name)}
+              className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 transition ${filter === s.name ? "bg-[var(--color-accent)] text-black" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:opacity-80"}`}
             >
-              {t}
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+              {s.name}
             </button>
           ))}
         </div>

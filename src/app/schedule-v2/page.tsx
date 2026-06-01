@@ -48,7 +48,7 @@ function ScheduleV2Content() {
   const legend = useMemo(() => {
     const map = new Map<string, string>();
     for (const b of vm.blocks) {
-      if (!map.has(b.color)) map.set(b.color, b.teacherName ?? b.subjectName);
+      if (!map.has(b.color)) map.set(b.color, b.subjectName);
     }
     return Array.from(map, ([color, label]) => ({ color, label }));
   }, [vm.blocks]);
@@ -195,7 +195,7 @@ function ScheduleV2Content() {
       </div>
       <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">시간표 — 한눈에 전주</h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--color-text-secondary)]">
-        색 = 강사, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
+        색 = 과목, 한 칸 = 학생 1명의 개별 시간. 같은 데이터를 두 가지로 봅니다 —
         <b className="text-[var(--color-text-primary)]"> 그리드</b>(누가 언제 방에) /{" "}
         <b className="text-[var(--color-text-primary)]">학생별 표</b>(이 아이 주간).
       </p>
@@ -260,7 +260,7 @@ function ScheduleV2Content() {
       {/* 범례 (강사 색) */}
       {!loading && !isEmpty && legend.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-[var(--color-text-secondary)]">
-          <span className="font-medium text-[var(--color-text-muted)]">색 = 강사:</span>
+          <span className="font-medium text-[var(--color-text-muted)]">색 = 과목:</span>
           {legend.map(({ color, label }) => (
             <span key={color} className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
