@@ -518,10 +518,18 @@ describe("Sidebar — Tour data-tour attribute (rank 5-A)", () => {
     expect(link.getAttribute("data-tour")).toBe("subjects");
   });
 
-  it("/schedule link 가 data-tour='schedule' attribute 를 가짐", async () => {
+  it("/schedule(수업 편집) link 가 data-tour='schedule' attribute 를 가짐", async () => {
+    renderSidebar();
+    // Phase 2: schedule-v2 가 "시간표" 메인, 기존 /schedule 은 "수업 편집"으로 이동
+    const link = await screen.findByRole("link", { name: "수업 편집" });
+    expect(link.getAttribute("data-tour")).toBe("schedule");
+  });
+
+  it("'시간표' link 가 /schedule-v2 를 가리킴 (Phase 2 메인)", async () => {
     renderSidebar();
     const link = await screen.findByRole("link", { name: "시간표" });
-    expect(link.getAttribute("data-tour")).toBe("schedule");
+    expect(link.getAttribute("href")).toBe("/schedule-v2");
+    expect(link.getAttribute("data-tour")).toBe("schedule-v2");
   });
 
   it("/settings link 가 data-tour='settings' attribute 를 가짐 (로그인 시)", async () => {

@@ -16,7 +16,7 @@ vi.mock("../../../contexts/AuthContext", () => ({
 global.fetch = vi.fn();
 
 describe("Settings Page", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); localStorage.removeItem("cp:show-hidden"); });
 
   it("페이지 제목이 렌더된다 (hasAcademy:true)", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -55,13 +55,14 @@ describe("Settings Page", () => {
     });
   });
 
-  it("멤버 초대 버튼이 존재한다", async () => {
+  it("멤버 초대(팀 섹션)는 기본 숨김 — features.ts gated", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/api/members")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
             success: true,
+            hasAcademy: true,
             data: [{ userId: "user-1", role: "owner", email: "test@test.com", name: "테스트", joinedAt: "2026-04-01" }],
           }),
         });
@@ -76,8 +77,10 @@ describe("Settings Page", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/멤버 초대/)).toBeInTheDocument();
+      expect(screen.getByText("학원 설정")).toBeInTheDocument();
     });
+    // Phase 2: 팀(멤버 초대)/공유 섹션은 features.ts 로 기본 숨김 (개발자 ?dev=1 시 표시)
+    expect(screen.queryByText(/멤버 초대/)).not.toBeInTheDocument();
   });
 
   it("slug 섹션은 owner에게만 표시된다", async () => {

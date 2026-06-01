@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Student, Subject, Enrollment, Session } from "@/lib/planner";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { StudentAccessCodeBadge } from "@/components/molecules/StudentAccessCodeBadge";
+import { isVisible } from "@/config/features";
 import { Skeleton } from "@/components/atoms/Skeleton";
 import { EmptyStateCTA } from "@/components/molecules/EmptyStateCTA";
 import ListFilterBar from "@/components/molecules/ListFilterBar";
@@ -107,7 +108,10 @@ export default function StudentsPageLayout(props: StudentsPageLayoutProps) {
   // While initial fetch is in flight, we show a thin skeleton in the same slot
   // to prevent layout shift when codes arrive.
   const codeUiCapable =
-    canManage && Boolean(props.onCreateCodes) && Boolean(academyUrl);
+    isVisible("parentAccessCodes") &&
+    canManage &&
+    Boolean(props.onCreateCodes) &&
+    Boolean(academyUrl);
   const showCodeBar = codeUiCapable && accessCodesReady;
   const showCodeSkeleton = codeUiCapable && !accessCodesReady;
 
