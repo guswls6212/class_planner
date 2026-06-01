@@ -23,6 +23,7 @@ import { planSessionUpdate } from "../schedule/_utils/updateSessionHelpers";
 import { syncEnrollmentCreate, syncSessionCreate, syncSessionUpdate } from "../../lib/apiSync";
 import { getWeekStartDate } from "../../lib/weekStart";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
+import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
 
 type View = "grid" | "table";
 
@@ -32,6 +33,7 @@ function ScheduleV2Content() {
   const [modal, setModal] = useState<
     { mode: "add" } | { mode: "edit"; sessionId: string; initial: SessionFormInitial } | null
   >(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const vm = useMemo(() => {
     const week = pickWeek(data.sessions, localWeekMonday(new Date()));
@@ -69,6 +71,43 @@ function ScheduleV2Content() {
       for (const enr of plan.newEnrollments) void syncEnrollmentCreate(uid, enr);
       void syncSessionCreate(uid, plan.newSession);
       setModal(null);
+    },
+    [data.sessions, data.enrollments, updateData, vm.weekStartDate]
+  );
+
+  // D — 학생-주 일괄: 채운 셀마다 planSessionAdd 를 fold(이전 merged 위에 누적) → updateData 1회 + sync N.
+  const bulkAdd = useCallback(
+    async (inputs: SessionFormInput[]) => {
+      const fallback = getWeekStartDate(new Date());
+      let sessions = data.sessions;
+      let enrollments = data.enrollments;
+      const newSessions: typeof data.sessions = [];
+      const newEnrollments: typeof data.enrollments = [];
+      for (const input of inputs) {
+        const plan = planSessionAdd({
+          input: {
+            subjectId: input.subjectId,
+            studentIds: [input.studentId],
+            teacherId: input.teacherId ?? undefined,
+            weekday: input.weekday,
+            startTime: input.startTime,
+            endTime: input.endTime,
+            weekStartDate: vm.weekStartDate ?? fallback,
+          },
+          sessions,
+          enrollments,
+          fallbackWeekStartDate: fallback,
+        });
+        sessions = plan.mergedSessions;
+        enrollments = plan.mergedEnrollments;
+        newSessions.push(plan.newSession);
+        newEnrollments.push(...plan.newEnrollments);
+      }
+      await updateData({ sessions, enrollments });
+      const uid = typeof window !== "undefined" ? localStorage.getItem("supabase_user_id") : null;
+      for (const enr of newEnrollments) void syncEnrollmentCreate(uid, enr);
+      for (const s of newSessions) void syncSessionCreate(uid, s);
+      setBulkOpen(false);
     },
     [data.sessions, data.enrollments, updateData, vm.weekStartDate]
   );
@@ -184,6 +223,12 @@ function ScheduleV2Content() {
         >
           ＋ 수업 추가
         </button>
+        <button
+          onClick={() => setBulkOpen(true)}
+          className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+        >
+          학생별 일괄 입력
+        </button>
       </div>
 
       <div className="mt-4">
@@ -235,6 +280,16 @@ function ScheduleV2Content() {
           }
           onDelete={modal.mode === "edit" ? () => void removeCurrentSession() : undefined}
           onClose={() => setModal(null)}
+        />
+      )}
+      {bulkOpen && (
+        <StudentWeekEntryModal
+          students={data.students}
+          subjects={data.subjects}
+          enrollments={data.enrollments}
+          sessions={data.sessions}
+          onClose={() => setBulkOpen(false)}
+          onBulkCreate={(inputs) => void bulkAdd(inputs)}
         />
       )}
     </div>
