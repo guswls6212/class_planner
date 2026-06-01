@@ -58,6 +58,9 @@ vi.mock("@/lib/tour/tourPersistence", () => ({
     (mockUpsertTourCompletion as (...a: unknown[]) => unknown)(...args),
 }));
 
+// 이 가드 테스트들은 튜토리얼 가시 상태를 전제(auto-start 진입) — features.ts isVisible mock.
+vi.mock("@/config/features", () => ({ isVisible: () => true }));
+
 const CORE_KEY = "onboarding_completed_race-user";
 const LOGIN_KEY = "onboarding_login_completed_race-user";
 

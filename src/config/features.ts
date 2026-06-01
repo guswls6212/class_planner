@@ -19,7 +19,8 @@ export type FeatureKey =
   | "multiAcademy" // 멀티 학원 전환 (sidebar academy switcher)
   | "dataSnapshots" // 데이터 스냅샷 (settings DataHistory)
   | "aboutPage" // /about + 랜딩 부가
-  | "legacyScheduleEditor"; // 기존 /schedule 편집 페이지
+  | "legacyScheduleEditor" // 기존 /schedule 편집 페이지
+  | "tutorial"; // 온보딩 튜토리얼 (자동시작 + 설정 '다시 보기' 카드 + Sidebar 진입점)
 
 /** 기본 숨김 여부. true = 일반 사용자에게 숨김. */
 const HIDDEN: Record<FeatureKey, boolean> = {
@@ -33,6 +34,8 @@ const HIDDEN: Record<FeatureKey, boolean> = {
   aboutPage: true,
   // schedule-v2 가 추가/수정/삭제를 모두 처리 → /schedule(수업 편집) 은퇴(숨김). 개발자 ?dev=1 로 접근.
   legacyScheduleEditor: true,
+  // 공부방 단독 배포 — 온보딩 튜토리얼 숨김(자동시작 + 설정/Sidebar 진입점). 개발자 ?dev=1 로 표시.
+  tutorial: true,
 };
 
 /** 개발자 전용: 숨긴 기능 전부 표시. `?dev=1` 또는 localStorage 'cp:show-hidden'='1'. */

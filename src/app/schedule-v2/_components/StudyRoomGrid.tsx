@@ -25,9 +25,12 @@ const LANE_H = 24;
 export default function StudyRoomGrid({
   blocks,
   onBlockClick,
+  range,
 }: {
   blocks: ViewBlock[];
   onBlockClick?: (blockId: string, anchor: DOMRect) => void;
+  /** 운영시간(시) — 지정 시 시간축 고정. 미지정(auto/미설정) 시 데이터 자동맞춤(axisOf). */
+  range?: { startHour: number; endHour: number };
 }) {
   const [filter, setFilter] = useState<string | null>(null);
 
@@ -41,7 +44,13 @@ export default function StudyRoomGrid({
     () => (filter ? blocks.filter((b) => b.subjectName === filter) : blocks),
     [blocks, filter]
   );
-  const axis = useMemo(() => axisOf(shown), [shown]);
+  const axis = useMemo(
+    () =>
+      range
+        ? { start: range.startHour * 60, end: range.endHour * 60 }
+        : axisOf(shown),
+    [shown, range],
+  );
   const span = Math.max(axis.end - axis.start, 60);
   const pct = (m: number) => ((m - axis.start) / span) * 100;
   const days = useMemo(

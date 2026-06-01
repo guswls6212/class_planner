@@ -12,6 +12,8 @@ import {
 
 export interface OperatingHoursSectionProps {
   userId: string | null;
+  /** 저장(writeStoredRange) 직후 호출 — 호출측이 grid 등을 즉시 갱신할 수 있게. */
+  onChange?: () => void;
 }
 
 const MODE_OPTIONS: { value: TimeRangeMode; label: string; desc: string }[] = [
@@ -44,6 +46,7 @@ function describeSummary(
 
 export default function OperatingHoursSection({
   userId,
+  onChange,
 }: OperatingHoursSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<TimeRangeMode>("default");
@@ -68,6 +71,7 @@ export default function OperatingHoursSection({
     } else {
       writeStoredRange(userId, { mode: newMode });
     }
+    onChange?.();
   };
 
   const handleStartChange = (value: number) => {
@@ -75,6 +79,7 @@ export default function OperatingHoursSection({
     if (mode === "custom" && value < endHour) {
       writeStoredRange(userId, { mode: "custom", startHour: value, endHour });
     }
+    onChange?.();
   };
 
   const handleEndChange = (value: number) => {
@@ -82,6 +87,7 @@ export default function OperatingHoursSection({
     if (mode === "custom" && startHour < value) {
       writeStoredRange(userId, { mode: "custom", startHour, endHour: value });
     }
+    onChange?.();
   };
 
   const isInvalidRange = mode === "custom" && startHour >= endHour;

@@ -65,7 +65,6 @@ import { RolePermissionCards } from "../../components/molecules/RolePermissionCa
 import { featureVisibleStatic, isVisible, type FeatureKey } from "@/config/features";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import DataHistorySection from "../../components/organisms/DataHistorySection";
-import OperatingHoursSection from "../../components/organisms/OperatingHoursSection";
 
 interface PendingInvite {
   id: string;
@@ -841,8 +840,9 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Slug 편집 섹션 */}
-          {myRole === 'owner' && (
+          {/* Slug 편집 섹션 — 학부모 접속 URL. parentAccessCodes 숨김 기능에 포함(개발자 ?dev=1 시 표시).
+              slug 는 자동 생성 유지 → 학부모 접속 자체엔 영향 없음. */}
+          {myRole === 'owner' && featVisible("parentAccessCodes") && (
             <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] text-[var(--color-text-muted)]">학부모 접속 URL</span>
@@ -1349,8 +1349,8 @@ export default function SettingsPage() {
         onClose={() => (isDeletingTeacher ? undefined : setDeleteTeacherTarget(null))}
       />
 
-      {/* 시간표 운영시간 — useTimeRange + writeStoredRange 사용 */}
-      <OperatingHoursSection userId={userId} />
+      {/* 시간표 운영시간 — schedule-v2 헤더(⚙ 운영시간)로 이전 (2026-06-01).
+          설정 페이지는 학원 이름만. proposal: schedule-v2-week-continuity. */}
 
       {/* phase1-release-readiness rank 6 (발견성) — 데이터 복구 발견성 강화.
           DataHistorySection 위에 amber hint 카드 추가하여 사용자가 데이터
@@ -1386,7 +1386,7 @@ export default function SettingsPage() {
       {/* phase1-release-readiness rank 5-A (도움말) — 인라인 튜토리얼 진입점.
           window event dispatch → useTour listener 가 강제 시작 (localStorage flag 무시).
           mockup: /strategy/onboarding-walkthrough § Part A */}
-      {userId && (
+      {userId && featVisible("tutorial") && (
         <section
           className="bg-sky-500/[0.07] border border-sky-400/30 rounded-xl mt-4 p-4 flex items-start gap-3"
           data-testid="tutorial-restart-card"
