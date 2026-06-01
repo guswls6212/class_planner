@@ -8,6 +8,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import AuthGuard from "../../../components/atoms/AuthGuard";
 import SchedulePage from "../page";
 
+// /schedule 은퇴 가드(legacyScheduleEditor) 우회 — UI 기능 자체 검증
+vi.mock("@/hooks/useHiddenRedirect", () => ({ useHiddenRedirect: () => false }));
+
 // Mock 데이터
 const mockStudents = [
   {

@@ -31,8 +31,8 @@ const HIDDEN: Record<FeatureKey, boolean> = {
   multiAcademy: true,
   dataSnapshots: true,
   aboutPage: true,
-  // schedule-v2 에 수정/삭제(Phase 1b) 붙기 전까지 /schedule 은 편집 경로로 유지.
-  legacyScheduleEditor: false,
+  // schedule-v2 가 추가/수정/삭제를 모두 처리 → /schedule(수업 편집) 은퇴(숨김). 개발자 ?dev=1 로 접근.
+  legacyScheduleEditor: true,
 };
 
 /** 개발자 전용: 숨긴 기능 전부 표시. `?dev=1` 또는 localStorage 'cp:show-hidden'='1'. */
