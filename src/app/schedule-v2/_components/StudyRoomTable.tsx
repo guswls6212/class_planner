@@ -13,13 +13,9 @@ function StudentCard({ s }: { s: TableStudent }) {
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] p-3">
       {/* 학생 이름 — C 스타일 chip */}
-      <div
-        className="mb-2.5 inline-flex items-center rounded-md px-2.5 py-0.5 text-[13px] font-bold"
-        style={{
-          backgroundColor: "color-mix(in srgb, var(--color-accent) 15%, transparent)",
-          color: "var(--color-accent)",
-        }}
-      >
+      {/* 학생 이름 — C 스타일: 좌측 accent 바 + 흰 이름(노랑 과다 회피, 이름은 흰색) */}
+      <div className="mb-2.5 flex items-center gap-2 text-[14px] font-bold text-[var(--color-text-primary)]">
+        <span className="h-4 w-1 rounded-full bg-[var(--color-accent)]" />
         {s.name}
       </div>
 
@@ -47,8 +43,7 @@ function StudentCard({ s }: { s: TableStudent }) {
                 <div key={d} className="text-center">
                   {t ? (
                     <span
-                      className="block rounded px-1 py-1 text-[10px] font-medium leading-tight tabular-nums"
-                      style={{ backgroundColor: `color-mix(in srgb, ${r.color} 16%, transparent)`, color: r.color }}
+                      className="block py-1 text-[10px] font-medium leading-tight tabular-nums text-[var(--color-text-primary)]"
                       title={t}
                     >
                       {t}
