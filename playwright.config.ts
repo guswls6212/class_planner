@@ -37,6 +37,16 @@ export default defineConfig({
     : undefined,
   use: {
     baseURL: E2E_CONFIG.BASE_URL, // 공용 E2E 설정 사용
+    // 전역 e2e dev 모드 — 모든 context 에 cp:show-hidden=1 주입. features.ts 숨김 route(/schedule
+    // 등)가 /schedule-v2 로 redirect 되지 않게. 공유 seed helper 안 거치고 inline addInitScript 쓰는
+    // spec(schedule-viewmode/mobile-flows/conflict-auto-lane 등)까지 전부 커버. (seed helper 의
+    // 개별 cp:show-hidden 주입은 이걸로 대체 가능하지만 무해하게 공존.) 숨김 검증은 dev 미설정 전용 spec.
+    storageState: {
+      cookies: [],
+      origins: [
+        { origin: E2E_CONFIG.BASE_URL, localStorage: [{ name: "cp:show-hidden", value: "1" }] },
+      ],
+    },
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure", // 실패 시 비디오 녹화
