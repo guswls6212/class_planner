@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { Download } from "lucide-react";
+import { trackClick } from "@/lib/analytics/tracker";
 
 interface PDFDownloadButtonProps {
   /** PDF 다운로드 → PdfExportRangeModal 열기 */
@@ -23,7 +24,10 @@ const PDFDownloadButton: React.FC<PDFDownloadButtonProps> = ({
   return (
     <button
       type="button"
-      onClick={() => void onDownload()}
+      onClick={() => {
+        trackClick("pdf_download", { view: viewLabel });
+        void onDownload();
+      }}
       disabled={isDownloading}
       aria-label={`${viewLabel} PDF`}
       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold rounded-md bg-[var(--color-accent)] hover:opacity-90 text-white disabled:opacity-50 transition-colors"
