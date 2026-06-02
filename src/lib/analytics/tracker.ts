@@ -209,3 +209,88 @@ export function trackClick(
 export function isAnalyticsEnabled(): boolean {
   return getEnvConfig() !== null;
 }
+
+/* ─────────────── Phase 2 — UTM · 체류시간 · 스크롤 · Web Vitals ───────────────
+ * 모두 익명·집계(법적 안전). metadata 에 PII(인명/입력값) 금지. (analytics-feature-completeness Phase 2)
+ */
+
+const UTM_KEYS = [
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+] as const;
+const UTM_STORAGE_KEY = "analytics_first_touch_utm";
+
+/**
+ * first-touch UTM — `utm_*` 만 화이트리스트(나머지 query=share token 등 PII 회피, AnalyticsTracker 주석).
+ * 세션 최초 캡처를 sessionStorage 보존 → 같은 세션은 첫 캠페인에 귀속.
+ */
+export function getFirstTouchUtm(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = window.sessionStorage.getItem(UTM_STORAGE_KEY);
+    if (stored) return JSON.parse(stored) as Record<string, string>;
+    const params = new URLSearchParams(window.location.search);
+    const utm: Record<string, string> = {};
+    for (const k of UTM_KEYS) {
+      const v = params.get(k);
+      if (v) utm[k] = v.slice(0, 120);
+    }
+    if (Object.keys(utm).length > 0) {
+      window.sessionStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(utm));
+    }
+    return utm;
+  } catch {
+    return {};
+  }
+}
+
+/** 체류시간 — event_type='engagement', metadata.duration_ms (1초~30분 clamp). fire-and-forget. */
+export function trackEngagement(durationMs: number, path?: string): void {
+  if (typeof window === "undefined" || !isAnalyticsEnabled()) return;
+  if (!Number.isFinite(durationMs) || durationMs < 1000) return; // 1초 미만 노이즈 무시
+  void sendEvent({
+    visitorId: getOrCreateVisitorId(),
+    sessionId: getOrCreateSessionId(),
+    eventType: "engagement",
+    path: path ?? window.location.pathname,
+    metadata: { duration_ms: Math.min(Math.round(durationMs), 30 * 60 * 1000) },
+  });
+}
+
+/** 스크롤 깊이 — event_type='scroll', metadata.depth(25/50/75/100). milestone 중복 가드는 caller. */
+export function trackScrollDepth(depth: 25 | 50 | 75 | 100, path?: string): void {
+  if (typeof window === "undefined" || !isAnalyticsEnabled()) return;
+  void sendEvent({
+    visitorId: getOrCreateVisitorId(),
+    sessionId: getOrCreateSessionId(),
+    eventType: "scroll",
+    path: path ?? window.location.pathname,
+    metadata: { depth },
+  });
+}
+
+/** Web Vitals — event_type='web_vital', metadata {name, value, rating}. web-vitals lib dynamic import(번들 분리). */
+export function initWebVitals(): void {
+  if (typeof window === "undefined" || !isAnalyticsEnabled()) return;
+  void import("web-vitals")
+    .then((mod) => {
+      const report = (m: { name: string; value: number; rating: string }) => {
+        void sendEvent({
+          visitorId: getOrCreateVisitorId(),
+          sessionId: getOrCreateSessionId(),
+          eventType: "web_vital",
+          path: window.location.pathname,
+          metadata: { name: m.name, value: Math.round(m.value), rating: m.rating },
+        });
+      };
+      mod.onLCP(report);
+      mod.onINP(report);
+      mod.onCLS(report);
+    })
+    .catch(() => {
+      // web-vitals 로드 실패 — fire-and-forget 무시
+    });
+}
