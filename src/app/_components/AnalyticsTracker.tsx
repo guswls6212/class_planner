@@ -6,6 +6,7 @@ import {
   getFirstTouchUtm,
   getOrCreateSessionId,
   getOrCreateVisitorId,
+  initOutboundLinks,
   initWebVitals,
   isAnalyticsEnabled,
   isBotUserAgent,
@@ -26,11 +27,13 @@ export default function AnalyticsTracker() {
   const pathname = usePathname();
   const pageStart = useRef(0);
 
-  // Web Vitals — 마운트 1회 (LCP/INP/CLS)
+  // Web Vitals + 외부링크/다운로드 자동 계측 — 마운트 1회 (LCP/INP/CLS)
   useEffect(() => {
     if (!isAnalyticsEnabled()) return;
     if (typeof navigator !== "undefined" && isBotUserAgent(navigator.userAgent)) return;
     initWebVitals();
+    const cleanupOutbound = initOutboundLinks();
+    return cleanupOutbound;
   }, []);
 
   // pageview + UTM + 체류시간 + 스크롤 (path 단위)
