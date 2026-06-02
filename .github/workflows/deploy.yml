@@ -63,8 +63,16 @@ jobs:
   deploy:
     name: Deploy to Lightsail
     needs: build-image
-    # build-image 성공 시 또는 스킵(특정 SHA 롤백) 시 모두 실행
-    if: always() && (needs.build-image.result == 'success' || needs.build-image.result == 'skipped')
+    # build-image 성공 시 실행. skipped 는 '의도적 SHA 롤백'(workflow_dispatch + 특정 SHA)일 때만 허용.
+    # CI 실패로 build 가 skip 된 경우엔 deploy 도 안 한다 — 안 그러면 직전 latest(stale)를 재배포하고
+    # success 로 보고해 실패를 가린다 (proposal deploy-stale-on-ci-failure, 2026-06-02 omni-radar 배포 사고).
+    if: >
+      always() && (
+        needs.build-image.result == 'success' ||
+        (needs.build-image.result == 'skipped'
+          && github.event_name == 'workflow_dispatch'
+          && github.event.inputs.image_tag != 'latest')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Resolve image tag
