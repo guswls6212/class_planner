@@ -272,6 +272,15 @@ export function trackScrollDepth(depth: 25 | 50 | 75 | 100, path?: string): void
   });
 }
 
+/**
+ * Web Vitals value 반올림 — ms 지표(LCP/INP/FCP/TTFB)는 정수, **CLS(0~1 무차원 소수)는 4자리 보존**.
+ * CLS 를 Math.round 하면 0/1 로 뭉개져 지표가 무의미해짐(2026-06-02 발견). name 기준 분기.
+ */
+export function roundVitalValue(name: string, value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return name === "CLS" ? Math.round(value * 10000) / 10000 : Math.round(value);
+}
+
 /** Web Vitals — event_type='web_vital', metadata {name, value, rating}. web-vitals lib dynamic import(번들 분리). */
 export function initWebVitals(): void {
   if (typeof window === "undefined" || !isAnalyticsEnabled()) return;
@@ -283,7 +292,7 @@ export function initWebVitals(): void {
           sessionId: getOrCreateSessionId(),
           eventType: "web_vital",
           path: window.location.pathname,
-          metadata: { name: m.name, value: Math.round(m.value), rating: m.rating },
+          metadata: { name: m.name, value: roundVitalValue(m.name, m.value), rating: m.rating },
         });
       };
       mod.onLCP(report);
@@ -293,4 +302,75 @@ export function initWebVitals(): void {
     .catch(() => {
       // web-vitals 로드 실패 — fire-and-forget 무시
     });
+}
+
+/* ─────────────── Phase 2b — 외부 링크 · 파일 다운로드 자동 계측 ───────────────
+ * 익명·집계(법적 안전). PII 회피: query/hash 미수집, pathname·host 만.
+ */
+
+const DOWNLOAD_EXT_RE =
+  /\.(pdf|csv|xlsx?|docx?|pptx?|hwpx?|zip|txt|json|png|jpe?g|gif|svg|mp4|mp3)$/i;
+
+export type OutboundClassification =
+  | { type: "outbound"; host: string; path: string }
+  | { type: "download"; ext: string; path: string }
+  | null;
+
+/**
+ * 클릭된 링크 분류 — 외부(다른 origin) / 다운로드(확장자 또는 download 속성) / 무시(null).
+ * 내부 같은-origin 일반 네비게이션은 null (pageview 가 커버). http(s) 만 — mailto/tel/javascript 무시.
+ */
+export function classifyOutbound(
+  href: string | null | undefined,
+  currentOrigin: string,
+  hasDownloadAttr = false,
+): OutboundClassification {
+  if (!href) return null;
+  let u: URL;
+  try {
+    u = new URL(href, currentOrigin);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+  const path = u.pathname.slice(0, 200);
+  const extMatch = u.pathname.match(DOWNLOAD_EXT_RE);
+  if (hasDownloadAttr || extMatch) {
+    return { type: "download", ext: extMatch ? extMatch[1].toLowerCase() : "file", path };
+  }
+  if (u.origin !== currentOrigin) {
+    return { type: "outbound", host: u.host.slice(0, 120), path };
+  }
+  return null;
+}
+
+/**
+ * 외부링크/다운로드 자동 계측 — document click(capture) 1회 등록. AnalyticsTracker 마운트 시 호출.
+ * fire-and-forget(void). cleanup 함수 반환(언마운트 시 listener 제거).
+ */
+export function initOutboundLinks(): () => void {
+  if (typeof document === "undefined" || !isAnalyticsEnabled()) return () => {};
+  const onClick = (e: MouseEvent) => {
+    const start = e.target as Element | null;
+    const anchor = start?.closest?.("a[href]") as HTMLAnchorElement | null;
+    if (!anchor) return;
+    const cls = classifyOutbound(
+      anchor.getAttribute("href"),
+      window.location.origin,
+      anchor.hasAttribute("download"),
+    );
+    if (!cls) return;
+    const common = {
+      visitorId: getOrCreateVisitorId(),
+      sessionId: getOrCreateSessionId(),
+      path: window.location.pathname,
+    };
+    if (cls.type === "download") {
+      void sendEvent({ ...common, eventType: "download", metadata: { ext: cls.ext, file: cls.path } });
+    } else {
+      void sendEvent({ ...common, eventType: "outbound", metadata: { host: cls.host, target_path: cls.path } });
+    }
+  };
+  document.addEventListener("click", onClick, { capture: true });
+  return () => document.removeEventListener("click", onClick, { capture: true });
 }
