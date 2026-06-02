@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getFirstTouchUtm,
   getOrCreateSessionId,
   getOrCreateVisitorId,
   isAnalyticsEnabled,
@@ -8,6 +9,8 @@ import {
   sendEvent,
   sendPageview,
   trackClick,
+  trackEngagement,
+  trackScrollDepth,
 } from "../tracker";
 
 describe("isBotUserAgent", () => {
@@ -306,5 +309,76 @@ describe("trackClick", () => {
     trackClick("pdf_download");
     await Promise.resolve();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("Phase 2 — getFirstTouchUtm / trackEngagement / trackScrollDepth", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_ANALYTICS_URL;
+  const originalToken = process.env.NEXT_PUBLIC_ANALYTICS_TOKEN;
+
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.mocked(window.localStorage.getItem).mockImplementation(
+      (k: string) => store.get(k) ?? null,
+    );
+    vi.mocked(window.localStorage.setItem).mockImplementation(
+      (k: string, v: string) => {
+        store.set(k, v);
+      },
+    );
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = originalUrl;
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = originalToken;
+    vi.restoreAllMocks();
+  });
+
+  it("getFirstTouchUtm returns {} when no utm + no stored", () => {
+    expect(getFirstTouchUtm()).toEqual({});
+  });
+
+  it("getFirstTouchUtm returns stored first-touch utm", () => {
+    window.sessionStorage.setItem(
+      "analytics_first_touch_utm",
+      JSON.stringify({ utm_source: "kakao", utm_campaign: "launch" }),
+    );
+    expect(getFirstTouchUtm()).toMatchObject({
+      utm_source: "kakao",
+      utm_campaign: "launch",
+    });
+  });
+
+  it("trackEngagement is noop under 1s", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "tk";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    trackEngagement(500, "/x");
+    await Promise.resolve();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("trackEngagement sends engagement event with duration_ms (>=1s)", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "tk";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    trackEngagement(5000, "/schedule");
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.event_type).toBe("engagement");
+    expect(body.path).toBe("/schedule");
+    expect(body.metadata.duration_ms).toBe(5000);
+  });
+
+  it("trackScrollDepth sends scroll event with depth", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "tk";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    trackScrollDepth(50, "/schedule");
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.event_type).toBe("scroll");
+    expect(body.metadata.depth).toBe(50);
   });
 });
