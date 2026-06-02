@@ -57,6 +57,8 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_PUBLIC_ANALYTICS_URL=https://analytics.deepcraft.app
             NEXT_PUBLIC_ANALYTICS_TOKEN=${{ secrets.NEXT_PUBLIC_ANALYTICS_TOKEN }}
+            NEXT_PUBLIC_OMNI_RADAR_URL=https://radar.deepcraft.app
+            NEXT_PUBLIC_OMNI_RADAR_TOKEN=${{ secrets.NEXT_PUBLIC_OMNI_RADAR_TOKEN }}
 
   deploy:
     name: Deploy to Lightsail
