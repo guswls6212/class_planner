@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["sonner"],
   },
+  // production .map 생성·서빙 → omni-radar 가 난독 prod stack 을 원본 위치로 복원(symbolicate).
+  // trade-off: .map 이 공개로 노출돼 소스가 보임 (omni-radar 에러 모니터링 위해 수용, 2026-06-02).
+  productionBrowserSourceMaps: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
