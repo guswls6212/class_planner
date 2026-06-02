@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { logger } from "../../lib/logger";
@@ -142,6 +143,15 @@ const LoginPage: React.FC = () => {
             둘러보기
           </button>
           {" "}가능합니다
+        </p>
+
+        <p className="mt-3 text-center text-[11px] text-zinc-400">
+          <Link
+            href="/privacy"
+            className="underline underline-offset-2 hover:text-white transition-colors"
+          >
+            개인정보처리방침
+          </Link>
         </p>
       </div>
     </div>
