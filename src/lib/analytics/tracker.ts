@@ -109,11 +109,13 @@ function getEnvConfig(): { url: string; token: string } | null {
   return { url: url.replace(/\/+$/, ""), token };
 }
 
-export async function sendPageview(params: SendPageviewParams): Promise<void> {
+/**
+ * 공통 전송 — config(noop guard) + 2초 timeout + fire-and-forget.
+ * analytics-server `POST /event` 가 body 의 event_type 으로 pageview/click/custom 구분.
+ */
+async function postAnalyticsEvent(body: Record<string, unknown>): Promise<void> {
   const config = getEnvConfig();
   if (!config) return; // env 미설정 — noop
-
-  if (!params.visitorId || !params.sessionId || !params.path) return;
 
   const controller =
     typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -131,14 +133,7 @@ export async function sendPageview(params: SendPageviewParams): Promise<void> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.token}`,
       },
-      body: JSON.stringify({
-        visitor_id: params.visitorId,
-        session_id: params.sessionId,
-        event_type: "pageview",
-        path: params.path,
-        referrer: params.referrer ?? null,
-        metadata: params.metadata ?? {},
-      }),
+      body: JSON.stringify(body),
       signal: controller?.signal,
     });
   } catch {
@@ -146,6 +141,69 @@ export async function sendPageview(params: SendPageviewParams): Promise<void> {
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
+}
+
+export async function sendPageview(params: SendPageviewParams): Promise<void> {
+  if (!params.visitorId || !params.sessionId || !params.path) return;
+  await postAnalyticsEvent({
+    visitor_id: params.visitorId,
+    session_id: params.sessionId,
+    event_type: "pageview",
+    path: params.path,
+    referrer: params.referrer ?? null,
+    metadata: params.metadata ?? {},
+  });
+}
+
+export interface SendEventParams {
+  visitorId: string;
+  sessionId: string;
+  eventType: string; // 'click' | 'custom' | ...
+  path: string;
+  referrer?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * 임의 event_type(click/custom) 전송 — pageview 와 같은 안전 원칙(fire-and-forget, env 미설정 noop).
+ * metadata 에 PII(학생/강사 인명·입력값) 금지 — 안정 식별자(target/label)만 (analytics 는 행동만, 내용 X).
+ */
+export async function sendEvent(params: SendEventParams): Promise<void> {
+  if (
+    !params.visitorId ||
+    !params.sessionId ||
+    !params.eventType ||
+    !params.path
+  )
+    return;
+  await postAnalyticsEvent({
+    visitor_id: params.visitorId,
+    session_id: params.sessionId,
+    event_type: params.eventType,
+    path: params.path,
+    referrer: params.referrer ?? null,
+    metadata: params.metadata ?? {},
+  });
+}
+
+/**
+ * 컴포넌트 callsite 용 클릭 계측 helper — fire-and-forget(void). visitor/session 자동,
+ * path 는 현재 location. `target` 은 안정 식별자(PII 금지).
+ *   예: trackClick("pdf_download") · trackClick("login", { provider: "google" })
+ */
+export function trackClick(
+  target: string,
+  metadata?: Record<string, unknown>,
+): void {
+  if (typeof window === "undefined") return;
+  if (!isAnalyticsEnabled()) return;
+  void sendEvent({
+    visitorId: getOrCreateVisitorId(),
+    sessionId: getOrCreateSessionId(),
+    eventType: "click",
+    path: window.location.pathname,
+    metadata: { target, ...(metadata ?? {}) },
+  });
 }
 
 export function isAnalyticsEnabled(): boolean {

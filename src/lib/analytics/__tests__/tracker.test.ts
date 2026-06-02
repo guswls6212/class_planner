@@ -5,7 +5,9 @@ import {
   getOrCreateVisitorId,
   isAnalyticsEnabled,
   isBotUserAgent,
+  sendEvent,
   sendPageview,
+  trackClick,
 } from "../tracker";
 
 describe("isBotUserAgent", () => {
@@ -199,6 +201,110 @@ describe("isAnalyticsEnabled / sendPageview", () => {
     await sendPageview({ visitorId: "v", sessionId: "", path: "/x" });
     await sendPageview({ visitorId: "v", sessionId: "s", path: "" });
 
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("sendEvent (click/custom)", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_ANALYTICS_URL;
+  const originalToken = process.env.NEXT_PUBLIC_ANALYTICS_TOKEN;
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = originalUrl;
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = originalToken;
+    vi.restoreAllMocks();
+  });
+
+  it("POSTs to /event with the given event_type + metadata", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "deadbeef-token";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+
+    await sendEvent({
+      visitorId: "11111111-1111-1111-1111-111111111111",
+      sessionId: "22222222-2222-2222-2222-222222222222",
+      eventType: "click",
+      path: "/schedule",
+      metadata: { target: "pdf_download" },
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://analytics.deepcraft.app/event");
+    const body = JSON.parse(init?.body as string);
+    expect(body).toMatchObject({
+      visitor_id: "11111111-1111-1111-1111-111111111111",
+      session_id: "22222222-2222-2222-2222-222222222222",
+      event_type: "click",
+      path: "/schedule",
+      metadata: { target: "pdf_download" },
+    });
+  });
+
+  it("is noop when env missing", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    await sendEvent({ visitorId: "v", sessionId: "s", eventType: "click", path: "/x" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("is noop when eventType / path / ids missing", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "deadbeef-token";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    await sendEvent({ visitorId: "", sessionId: "s", eventType: "click", path: "/x" });
+    await sendEvent({ visitorId: "v", sessionId: "s", eventType: "", path: "/x" });
+    await sendEvent({ visitorId: "v", sessionId: "s", eventType: "click", path: "" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("trackClick", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_ANALYTICS_URL;
+  const originalToken = process.env.NEXT_PUBLIC_ANALYTICS_TOKEN;
+
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.mocked(window.localStorage.getItem).mockImplementation(
+      (k: string) => store.get(k) ?? null,
+    );
+    vi.mocked(window.localStorage.setItem).mockImplementation(
+      (k: string, v: string) => {
+        store.set(k, v);
+      },
+    );
+    window.sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = originalUrl;
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = originalToken;
+    vi.restoreAllMocks();
+  });
+
+  it("fires a click event with target metadata + auto visitor/session/path", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "deadbeef-token";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+
+    trackClick("pdf_download", { view: "시간표" }); // fire-and-forget (void)
+
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.event_type).toBe("click");
+    expect(body.metadata).toMatchObject({ target: "pdf_download", view: "시간표" });
+    expect(body.visitor_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(body.session_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(typeof body.path).toBe("string");
+  });
+
+  it("is noop when analytics disabled", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "";
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    trackClick("pdf_download");
+    await Promise.resolve();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

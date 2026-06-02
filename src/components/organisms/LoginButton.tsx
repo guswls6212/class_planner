@@ -3,6 +3,7 @@
 import React from "react";
 import { supabase } from "../../utils/supabaseClient";
 import { logger } from "../../lib/logger";
+import { trackClick } from "../../lib/analytics/tracker";
 
 interface LoginButtonProps {
   className?: string;
@@ -14,6 +15,7 @@ const LoginButton: React.FC<LoginButtonProps> = ({ className }) => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   const handleGoogleLogin = async () => {
+    trackClick("login", { provider: "google" });
     if (!isSupabaseConfigured) {
       alert("로그인 기능이 설정되지 않았습니다. 관리자에게 문의하세요.");
       return;
