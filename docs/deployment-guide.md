@@ -49,6 +49,10 @@ TEST_PASSWORD=your-test-password
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 공개 키 (RLS 적용) | 클라이언트+서버 |
 | `SUPABASE_SERVICE_ROLE_KEY` | 비밀 키 (RLS 우회) | **서버 전용** (API Routes만) |
 | `ADMIN_EMAILS` | 개발자 전용 로그 뷰어 접근 허용 이메일 목록 (콤마 구분). `/admin/logs` 접근 게이트. | `trymakeit1000@gmail.com` |
+| `NEXT_PUBLIC_ANALYTICS_URL` | production analytics 수집 엔드포인트 (`https://analytics.deepcraft.app`). **빌드타임 주입** (deploy.yml build-arg) — `.env.production` 런타임으로는 번들에 안 들어감 | 클라이언트 (번들 baked) |
+| `NEXT_PUBLIC_ANALYTICS_TOKEN` | analytics Bearer 토큰. analytics-server `.env` 의 `ANALYTICS_TOKEN` 과 동일값 (GitHub secret). NEXT_PUBLIC = 번들 공개 → casual abuse gate | 클라이언트 (번들 baked) |
+
+> **관측 env 는 빌드타임 (deploy.yml) 주입** — `NEXT_PUBLIC_ANALYTICS_*` 는 `next build` 시점에 번들로 freeze 되므로 `.github/workflows/deploy.yml` 의 `build-args` 로 넣어야 함 (Supabase 와 동일 경로). 토큰은 GitHub secret `NEXT_PUBLIC_ANALYTICS_TOKEN`, URL 은 공개값이라 literal. `.env.production` (런타임) 에 넣어도 클라이언트 번들엔 반영 안 됨. analytics-server 측 SSOT: `dev-pack/analytics-server/`, 복구 proposal: `analytics-production-enable`.
 
 ### Supabase API 키 확인
 

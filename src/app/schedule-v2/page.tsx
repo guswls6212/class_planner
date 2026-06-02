@@ -42,6 +42,7 @@ import { showToast } from "../../lib/toast";
 import SessionFormModal, { type SessionFormInput, type SessionFormInitial } from "./_components/SessionFormModal";
 import StudentWeekEntryModal from "./_components/StudentWeekEntryModal";
 import SessionPopover from "./_components/SessionPopover";
+import ConfirmModal from "../../components/molecules/ConfirmModal";
 import { useMyRole } from "../../hooks/useMyRole";
 
 type View = "grid" | "table";
@@ -85,6 +86,7 @@ function ScheduleV2Content() {
     | null
   >(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState(false);
   const [popover, setPopover] = useState<
     { sessionId: string; enrollmentId: string; anchor: DOMRect; initial: SessionFormInitial } | null
   >(null);
@@ -420,7 +422,7 @@ function ScheduleV2Content() {
         <OperatingHoursMenu userId={uid} onChange={() => setStoredRange(readStoredRange(uid))} />
         {viewedWeekSessions.length > 0 && canManage && (
           <button
-            onClick={() => void clearWeek()}
+            onClick={() => setClearConfirm(true)}
             data-testid="clear-week-btn"
             className="ml-auto rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-muted)] transition hover:border-red-400/60 hover:text-red-300"
           >
@@ -524,6 +526,19 @@ function ScheduleV2Content() {
           onClose={() => setPopover(null)}
         />
       )}
+      <ConfirmModal
+        isOpen={clearConfirm}
+        title="이번 주 수업을 모두 비울까요?"
+        message={`이번 주 수업 ${viewedWeekSessions.length}개가 삭제됩니다. 삭제 후에도 잠깐 되돌릴 수 있어요.`}
+        confirmText="비우기"
+        cancelText="취소"
+        variant="danger"
+        onConfirm={() => {
+          setClearConfirm(false);
+          void clearWeek();
+        }}
+        onCancel={() => setClearConfirm(false)}
+      />
     </div>
   );
 }

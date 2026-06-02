@@ -55,6 +55,8 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_ANALYTICS_URL=https://analytics.deepcraft.app
+            NEXT_PUBLIC_ANALYTICS_TOKEN=${{ secrets.NEXT_PUBLIC_ANALYTICS_TOKEN }}
 
   deploy:
     name: Deploy to Lightsail
