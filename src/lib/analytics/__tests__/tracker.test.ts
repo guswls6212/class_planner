@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  classifyOutbound,
   getFirstTouchUtm,
   getOrCreateSessionId,
   getOrCreateVisitorId,
+  initOutboundLinks,
   isAnalyticsEnabled,
   isBotUserAgent,
+  roundVitalValue,
   sendEvent,
   sendPageview,
   trackClick,
@@ -380,5 +383,127 @@ describe("Phase 2 — getFirstTouchUtm / trackEngagement / trackScrollDepth", ()
     const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
     expect(body.event_type).toBe("scroll");
     expect(body.metadata.depth).toBe(50);
+  });
+});
+
+describe("Phase 2b — roundVitalValue (CLS 소수 보존)", () => {
+  it("preserves CLS decimals (4자리)", () => {
+    expect(roundVitalValue("CLS", 0.0873)).toBeCloseTo(0.0873, 4);
+    expect(roundVitalValue("CLS", 0.08735)).toBeCloseTo(0.0874, 4);
+    expect(roundVitalValue("CLS", 0)).toBe(0);
+  });
+
+  it("rounds ms metrics to integer", () => {
+    expect(roundVitalValue("LCP", 2345.6)).toBe(2346);
+    expect(roundVitalValue("INP", 199.4)).toBe(199);
+  });
+
+  it("guards non-finite", () => {
+    expect(roundVitalValue("CLS", NaN)).toBe(0);
+    expect(roundVitalValue("LCP", Infinity)).toBe(0);
+  });
+});
+
+describe("Phase 2b — classifyOutbound", () => {
+  const origin = "https://class-planner.deepcraft.app";
+
+  it("classifies external link as outbound (host+path, query 제외)", () => {
+    expect(classifyOutbound("https://instagram.com/foo?x=1#h", origin)).toEqual({
+      type: "outbound",
+      host: "instagram.com",
+      path: "/foo",
+    });
+  });
+
+  it("classifies file extension as download", () => {
+    expect(classifyOutbound("/files/report.pdf", origin)).toEqual({
+      type: "download",
+      ext: "pdf",
+      path: "/files/report.pdf",
+    });
+  });
+
+  it("classifies download attribute as download even without extension", () => {
+    expect(classifyOutbound("/export", origin, true)).toMatchObject({
+      type: "download",
+    });
+  });
+
+  it("ignores same-origin navigation (pageview 가 커버)", () => {
+    expect(classifyOutbound("/schedule", origin)).toBeNull();
+    expect(classifyOutbound(`${origin}/students`, origin)).toBeNull();
+  });
+
+  it("ignores mailto / tel / empty / invalid", () => {
+    expect(classifyOutbound("mailto:a@b.com", origin)).toBeNull();
+    expect(classifyOutbound("tel:01012345678", origin)).toBeNull();
+    expect(classifyOutbound("", origin)).toBeNull();
+    expect(classifyOutbound(null, origin)).toBeNull();
+  });
+});
+
+describe("Phase 2b — initOutboundLinks (document click capture)", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_ANALYTICS_URL;
+  const originalToken = process.env.NEXT_PUBLIC_ANALYTICS_TOKEN;
+
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.mocked(window.localStorage.getItem).mockImplementation(
+      (k: string) => store.get(k) ?? null,
+    );
+    vi.mocked(window.localStorage.setItem).mockImplementation(
+      (k: string, v: string) => {
+        store.set(k, v);
+      },
+    );
+    window.sessionStorage.clear();
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "tk";
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = originalUrl;
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = originalToken;
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+  });
+
+  // jsdom 은 navigation 미구현 — preventDefault 로 경고 억제(capture listener 는 그 전에 발화).
+  function clickAnchor(href: string, download = false) {
+    const a = document.createElement("a");
+    a.setAttribute("href", href);
+    if (download) a.setAttribute("download", "");
+    a.addEventListener("click", (e) => e.preventDefault());
+    document.body.appendChild(a);
+    a.click();
+  }
+
+  it("fires a download event on file-link click", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    const cleanup = initOutboundLinks();
+    clickAnchor("/files/timetable.pdf");
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.event_type).toBe("download");
+    expect(body.metadata).toMatchObject({ ext: "pdf" });
+    cleanup();
+  });
+
+  it("does not fire on same-origin navigation click", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    const cleanup = initOutboundLinks();
+    clickAnchor("/schedule");
+    await Promise.resolve();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("cleanup removes the listener", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    const cleanup = initOutboundLinks();
+    cleanup();
+    clickAnchor("https://external.com/x");
+    await Promise.resolve();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
