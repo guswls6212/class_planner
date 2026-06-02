@@ -9,7 +9,7 @@ import React from "react";
  * ⚠️ 초안 — 배포 전 (1) 문의 이메일 확정 (2) 법무 문구 검토 권장.
  */
 
-const CONTACT_EMAIL = "trymakeit1000@gmail.com"; // TODO: 전용 문의처 확정 시 교체
+const CONTACT_EMAIL = "contact@deepcraft.app"; // 문의처 (2026-06-02 확정)
 const EFFECTIVE_DATE = "2026년 6월 2일";
 
 interface PolicySection {
