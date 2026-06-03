@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  applyIgnoreFlagFromUrl,
   classifyOutbound,
   getFirstTouchUtm,
   getOrCreateSessionId,
   getOrCreateVisitorId,
   initOutboundLinks,
   isAnalyticsEnabled,
+  isAnalyticsIgnored,
   isBotUserAgent,
   roundVitalValue,
   sendEvent,
@@ -383,6 +385,65 @@ describe("Phase 2 — getFirstTouchUtm / trackEngagement / trackScrollDepth", ()
     const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
     expect(body.event_type).toBe("scroll");
     expect(body.metadata.depth).toBe(50);
+  });
+});
+
+describe("analytics ignore flag (내부 트래픽 opt-out)", () => {
+  const originalUrl = process.env.NEXT_PUBLIC_ANALYTICS_URL;
+  const originalToken = process.env.NEXT_PUBLIC_ANALYTICS_TOKEN;
+
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.mocked(window.localStorage.getItem).mockImplementation(
+      (k: string) => store.get(k) ?? null,
+    );
+    vi.mocked(window.localStorage.setItem).mockImplementation(
+      (k: string, v: string) => {
+        store.set(k, v);
+      },
+    );
+    vi.mocked(window.localStorage.removeItem).mockImplementation((k: string) => {
+      store.delete(k);
+    });
+  });
+
+  afterEach(() => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = originalUrl;
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = originalToken;
+    vi.restoreAllMocks();
+  });
+
+  it("isAnalyticsIgnored is false by default", () => {
+    expect(isAnalyticsIgnored()).toBe(false);
+  });
+
+  it("?analytics_ignore=1 sets the flag (영구 opt-out)", () => {
+    applyIgnoreFlagFromUrl("?analytics_ignore=1");
+    expect(isAnalyticsIgnored()).toBe(true);
+  });
+
+  it("?analytics_ignore=0 clears the flag", () => {
+    applyIgnoreFlagFromUrl("?analytics_ignore=1");
+    applyIgnoreFlagFromUrl("?analytics_ignore=0");
+    expect(isAnalyticsIgnored()).toBe(false);
+  });
+
+  it("unrelated query params leave the flag unchanged", () => {
+    applyIgnoreFlagFromUrl("?utm_source=kakao");
+    expect(isAnalyticsIgnored()).toBe(false);
+  });
+
+  it("sendPageview is noop when ignored — even with env set (real users unaffected)", async () => {
+    process.env.NEXT_PUBLIC_ANALYTICS_URL = "https://analytics.deepcraft.app";
+    process.env.NEXT_PUBLIC_ANALYTICS_TOKEN = "deadbeef-token";
+    window.localStorage.setItem("analytics_ignore", "1");
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue(new Response());
+    await sendPageview({
+      visitorId: "11111111-1111-1111-1111-111111111111",
+      sessionId: "22222222-2222-2222-2222-222222222222",
+      path: "/schedule",
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 
