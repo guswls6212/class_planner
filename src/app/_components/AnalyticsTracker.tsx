@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import {
+  applyIgnoreFlagFromUrl,
   getFirstTouchUtm,
   getOrCreateSessionId,
   getOrCreateVisitorId,
@@ -29,6 +30,7 @@ export default function AnalyticsTracker() {
 
   // Web Vitals + 외부링크/다운로드 자동 계측 — 마운트 1회 (LCP/INP/CLS)
   useEffect(() => {
+    applyIgnoreFlagFromUrl(); // ?analytics_ignore=1/0 처리 — 내 방문 opt-out (env/bot 가드보다 먼저)
     if (!isAnalyticsEnabled()) return;
     if (typeof navigator !== "undefined" && isBotUserAgent(navigator.userAgent)) return;
     initWebVitals();
