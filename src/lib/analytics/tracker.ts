@@ -21,6 +21,7 @@ const SESSION_ID_KEY = "analytics_session_id";
 const SESSION_LAST_ACTIVITY_KEY = "analytics_session_last_activity";
 const SESSION_IDLE_MS = 30 * 60 * 1000; // 30분
 const REQUEST_TIMEOUT_MS = 2000;
+const IGNORE_KEY = "analytics_ignore";
 
 const BOT_PATTERNS = [
   /googlebot/i,
@@ -94,6 +95,33 @@ export function getOrCreateSessionId(now: number = Date.now()): string {
   }
 }
 
+/**
+ * 내부(본인) 트래픽 opt-out — `?analytics_ignore=1` 방문 시 그 브라우저 영구 제외, `=0` 해제.
+ * Plausible/Umami 방식. localStorage 영속이라 기기마다 1회면 됨. UUID/IP 제외와 독립(중복 안전).
+ * search 인자는 테스트용(미지정 시 현재 URL) — jsdom location 의존 제거.
+ */
+export function applyIgnoreFlagFromUrl(search?: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const qs = search ?? window.location.search;
+    const v = new URLSearchParams(qs).get(IGNORE_KEY);
+    if (v === "1") window.localStorage.setItem(IGNORE_KEY, "1");
+    else if (v === "0") window.localStorage.removeItem(IGNORE_KEY);
+  } catch {
+    // localStorage 차단(private mode) — opt-out 불가, noop
+  }
+}
+
+/** 이 브라우저가 내부 트래픽으로 표시됐는지(analytics_ignore). 모든 전송의 최종 gate. */
+export function isAnalyticsIgnored(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(IGNORE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export interface SendPageviewParams {
   visitorId: string;
   sessionId: string;
@@ -116,6 +144,7 @@ function getEnvConfig(): { url: string; token: string } | null {
 async function postAnalyticsEvent(body: Record<string, unknown>): Promise<void> {
   const config = getEnvConfig();
   if (!config) return; // env 미설정 — noop
+  if (isAnalyticsIgnored()) return; // 내부(본인) opt-out — noop. 미설정 브라우저(실사용자)엔 영향 0
 
   const controller =
     typeof AbortController !== "undefined" ? new AbortController() : null;
