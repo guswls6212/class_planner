@@ -25,7 +25,12 @@ class-planner 가 프로덕션(class-planner.deepcraft.app, 2026-05-30 런칭)�
 **SEO/AEO 권위를 앱 메인 도메인 루트(`class-planner.deepcraft.app/`)에 통합한다.**
 
 - 루트 `/` 를 **server component 로 전환** — 마케팅 콘텐츠를 SSR 로 항상 렌더(크롤러 색인),
-  로그인 리다이렉트는 `RootRedirectGate`(client, `null` 렌더)로 분리. hydration mismatch 0.
+  리다이렉트는 `RootRedirectGate`(client)로 분리. hydration mismatch 0.
+- **자동 이동은 로그인 직후에만**: `/` 는 모두의 랜딩. login 진입 시 set 하는 1회성 신호
+  (`sessionStorage.cp_just_logged_in`)가 있을 때만 게이트가 `/schedule` 로 보낸다. 이미 로그인된
+  재방문자(끈적한 `supabase_user_id` 마커만 있음)는 랜딩·FAQ 를 그대로 보고 "내 시간표로 가기"
+  바로가기만 노출 — 마커만으로 강제 이동하지 않는다(랜딩 접근성). login `else` 분기는 게이트 경유
+  없이 `/schedule` 직행.
 - 루트 메타데이터를 **공부방 포지셔닝**으로 좁힘(키워드 title/description/OG/Twitter/canonical).
   layout 에 `metadataBase` + `title.template`("%s | class-planner").
 - **JSON-LD**(SoftwareApplication + FAQPage + Organization) 서버 렌더 — 화면 FAQ 와 동일 소스
@@ -52,8 +57,10 @@ class-planner 가 프로덕션(class-planner.deepcraft.app, 2026-05-30 런칭)�
 
 - (+) 라이브 제품의 메인 도메인이 즉시 색인·AEO 인용 가능 — 키워드·구조화 데이터·sitemap 확보.
 - (+) 정적 랜딩은 캠페인 실험 자유도 유지(역할 분리).
-- (−) 로그인 사용자가 `/` 직접 진입 시 마케팅 콘텐츠가 잠깐 보인 뒤 `/schedule` 리다이렉트
-  (SSR 우선 → 크롤러 가시성과 맞바꾼 trade-off, 체감 ms 단위).
+- (+) 로그인 사용자도 `/` 의 랜딩·FAQ 를 그대로 볼 수 있다(자동 이동은 로그인 직후에만, 재방문자는
+  "내 시간표로 가기" 바로가기). 끈적한 마커로 강제 이동하던 기존 동작 제거.
+- (−) 매일 쓰는 운영자가 맨주소(`/`) 진입 시 작업공간이 아닌 랜딩을 먼저 본다(바로가기 1클릭).
+  보통 `/schedule-v2` 직행이라 비용 낮음. OAuth 왕복은 `sessionStorage` 신호 보존에 의존(UAT 검증).
 - (−) 루트 포지셔닝과 일반 학원 사용자 사이 메시지 갭 가능 — 확장 시 카피 재조정 필요.
 - 후속: og:image(1200×630) 동적 생성(`opengraph-image`), Search Console·Naver Search Advisor
   등록 + sitemap 제출(proposal Step D), 콘텐츠 엔진(Step E). 배포 시 인프라(nginx)가

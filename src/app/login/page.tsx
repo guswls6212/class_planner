@@ -21,7 +21,9 @@ const LoginPage: React.FC = () => {
         localStorage.removeItem("redirectAfterLogin");
         router.push(redirectUrl);
       } else {
-        router.push("/");
+        // 이미 로그인된 채 /login 진입 → 루트 게이트 경유 없이 작업공간 직행
+        // (루트는 이제 모두의 랜딩이라 마커만으로는 자동 이동 안 함).
+        router.push("/schedule");
       }
     }
 
@@ -31,6 +33,9 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     setError(null);
+    // 루트(/)가 로그인 "직후"에만 작업공간으로 보내도록 1회성 신호(sessionStorage —
+    // OAuth 왕복 보존). RootRedirectGate 가 소비. 끈적한 마커만으로는 자동 이동 X (ADR-025).
+    sessionStorage.setItem("cp_just_logged_in", "1");
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
