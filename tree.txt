@@ -202,8 +202,12 @@ src/__tests__/fixtures/template.fixture.ts
 src/__tests__/middleware-member-cookie-window.test.ts
 src/__tests__/middleware.test.ts
 src/app/__tests__/page.test.tsx
+src/app/__tests__/robots.test.ts
+src/app/__tests__/sitemap.test.ts
 src/app/_components/AnalyticsTracker.tsx
 src/app/_components/RootProviders.tsx
+src/app/_components/RootRedirectGate.tsx
+src/app/_components/__tests__/RootRedirectGate.test.tsx
 src/app/about/__tests__/page.test.tsx
 src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
@@ -336,6 +340,7 @@ src/app/onboarding/page.tsx
 src/app/page.tsx
 src/app/privacy/__tests__/page.test.tsx
 src/app/privacy/page.tsx
+src/app/robots.ts
 src/app/schedule-v2/__tests__/page.roleGate.test.tsx
 src/app/schedule-v2/__tests__/views.test.tsx
 src/app/schedule-v2/_components/OperatingHoursMenu.tsx
@@ -465,6 +470,7 @@ src/app/settings/__tests__/page.test.tsx
 src/app/settings/page.tsx
 src/app/share/[token]/layout.tsx
 src/app/share/[token]/page.tsx
+src/app/sitemap.ts
 src/app/students/__tests__/page.test.tsx
 src/app/students/page.tsx
 src/app/subjects/__tests__/page.test.tsx
@@ -963,6 +969,7 @@ src/lib/rolePermissions.ts
 src/lib/schedule/__tests__/getSessionSubject.test.ts
 src/lib/schedule/getSessionSubject.ts
 src/lib/schedule/subjectColorPalette.ts
+src/lib/seo/site.ts
 src/lib/server/teacherServiceFactory.ts
 src/lib/sessionClusters.ts
 src/lib/sessionCollisionUtils.ts
