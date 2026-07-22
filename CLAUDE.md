@@ -3,7 +3,7 @@
 ## 프로젝트 개요
 학원 운영자를 위한 시간표 관리 시스템. 학원생 변동이 잦은 환경에서 시간표를 빠르게 구성하고, PDF로 다운로드하여 바로 인쇄할 수 있도록 설계됨.
 
-- **도메인:** `class-planner.info365.studio` (현재 AWS Lightsail + Supabase 하이브리드 — Lightsail: 앱 서버, Supabase: Auth + DB)
+- **도메인:** `class-planner.deepcraft.app` (2026-07-22 이전 완료 — Mac Studio Docker(:3013) + cloudflared 터널 앱 서버, Supabase: Auth + DB. AWS Lightsail 은 인스턴스 삭제됨)
 - **사용자:** 학원 운영자 (현재 1명, 확장 계획)
 - **핵심 가치:** 시간표 구성 속도, 인쇄 가능한 PDF 출력, 직관적 UI
 
@@ -21,7 +21,7 @@
 | 계층 구조, 데이터 모델, 배포 | [ARCHITECTURE.md](ARCHITECTURE.md) | 구조적 변경 전 |
 | UI 컴포넌트, 훅, 인터랙션, 검증 라우트 | [UI_SPEC.md](UI_SPEC.md) | **UI/컴포넌트 수정 전 필독** |
 | 개발 프로세스, 테스트, 검증, E2E, 브랜치/CI | [docs/development-guide.md](docs/development-guide.md) | 개발/테스트/커밋 시 |
-| 배포 절차, 환경 변수, Lightsail | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포/환경설정 시 |
+| 배포 절차, 환경 변수, Mac Studio 롤아웃 에이전트 | [docs/deployment-guide.md](docs/deployment-guide.md) | 배포/환경설정 시 |
 | 코딩 규칙 (파일크기, 언어, 스타일) | [docs/code-convention.md](docs/code-convention.md) | 코드 작성/리뷰 시 |
 | 아키텍처 결정 이유 | [docs/adr/](docs/adr/) | "왜 이렇게 됐는지" 이해 시 |
 | AI 워크플로우 (Superpowers, 훅, opusplan) | [../docs/ai-workflow-guide.md](../docs/ai-workflow-guide.md) | AI 도구/모드 사용 시 |
@@ -207,7 +207,7 @@ PORT=3001 npm run dev     # localhost:3001 (다른 worktree에서)
   - check job: type-check + lint + unit test
   - build job: production build
   - e2e job: Playwright Chromium **(SW 활성 환경)** — 13-spec + offline-network 통합. PR #244 이후 `e2e_pwa` job 제거됨 (root cause fix: `sw.ts` `/api/*` NetworkOnly + AuthGuard 7s). 자세히 `docs/adr/007-sw-timing-fix.md`.
-- **deploy.yml**: main CI 성공 시 자동 배포 (ghcr.io → Lightsail)
+- **deploy.yml**: main CI 성공 시 이미지 빌드/push (ghcr.io). **프로덕션 롤아웃은 Mac Studio 의 launchd pull 에이전트**가 `latest` digest 를 3분 주기로 확인해 수행 — GitHub 이 SSH 배포하지 않는다(이 repo 가 PUBLIC 이라 fork PR 이 self-hosted 러너 라벨을 지정할 수 있어 docker socket 노출이 곧 호스트 root). 운영/롤백 명령은 `docs/deployment-guide.md` § 현행 배포.
 
 ### 세션 완료 체크리스트
 - [ ] `npm run check:quick` 통과
@@ -372,13 +372,18 @@ Supabase auth token (`sb-*-auth-token`)이 평문으로 로그에 남으므로, 
 - **인쇄 품질:** PDF 출력 시 레이아웃이 깨지지 않는가? 종이에 인쇄했을 때 읽을 수 있는가?
 - **오프라인 내성:** 네트워크 불안정 시 데이터 유실 가능성은?
 
-## 배포 현황 (ADR-001 기준, 2026-04-10 완료)
+## 배포 현황 (2026-07-22 Mac Studio 이전 기준)
 
-**하이브리드 아키텍처 (확정):**
-- **앱 서버:** AWS Lightsail 1GB (ap-northeast-2) — Docker + Nginx + Let's Encrypt
-- **Auth + DB:** Supabase 유지 (OAuth, PostgreSQL)
-- **도메인:** `class-planner.info365.studio`
-- **CI/CD:** GitHub Actions `ci.yml` (check→build→e2e) + `deploy.yml` (ghcr.io→Lightsail SSH)
+**현행 아키텍처:**
+- **앱 서버:** Mac Studio M3 Ultra — Docker 컨테이너 `class-planner` (:3013, amd64/Rosetta) + cloudflared 터널
+- **Auth + DB:** Supabase 유지 (OAuth, PostgreSQL) — 이전 대상 아니었음
+- **도메인:** `class-planner.deepcraft.app`
+- **CI/CD:** GitHub Actions `ci.yml` (check→build→e2e) + `deploy.yml` (ghcr.io push까지) + **Mac Studio launchd 롤아웃 에이전트** (ghcr `latest` 3분 폴링 → pull → 재생성 → 헬스체크 → 실패 시 자동 롤백)
+
+**이력:**
+- 2026-04-10 ADR-001: AWS Lightsail 1GB + Nginx + Let's Encrypt 하이브리드 (`class-planner.info365.studio`)
+- 2026-07-22: AWS Japan 계정 미납 closed → 4일 다운 → Mac Studio 이전. Lightsail 인스턴스 삭제(스냅샷 `class-planner-server-final-20260722` 보존)
+- 2026-07-22: 죽은 SSH 배포 → pull 에이전트로 자동배포 재연결 (proposal `class-planner-autodeploy-reconnect`)
 
 **결정된 사항 (변경 없음):**
 - Self-hosted PostgreSQL/NextAuth 전환 기각 (결합도 높음, ADR-001)

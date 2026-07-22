@@ -1,9 +1,89 @@
 # class-planner 배포 가이드
 
-AWS Lightsail + Docker + Nginx + Let's Encrypt SSL 기반 배포 절차.
-Supabase(Auth + DB)는 클라우드 서비스 그대로 사용하는 하이브리드 구조.
+> ⚠️ **2026-07-22 이후 현행 배포는 아래 § 현행 배포 (Mac Studio) 하나뿐이다.**
+> 그 아래 Lightsail/Nginx/Certbot 문서는 **역사적 기록**으로만 남긴다 — AWS 스냅샷
+> `class-planner-server-final-20260722` 복구 시에만 참조. 현재 인스턴스는 삭제됨.
 
 > 최초 작성: 2026-04-10 (Phase 1 인프라 마이그레이션)
+> 개정: 2026-07-22 (Lightsail → Mac Studio 이전 + 자동배포 재연결)
+
+
+## 현행 배포 (Mac Studio)
+
+```
+사용자 → class-planner.deepcraft.app
+       → Cloudflare Tunnel (mac-studio) → localhost:3013
+         → Docker 컨테이너 class-planner (:3000, amd64/Rosetta)
+       → Supabase Cloud (Auth + PostgreSQL)
+```
+
+### 배포 흐름
+
+```
+dev → main 머지
+  → CI 통과
+  → deploy.yml build-image: ghcr.io/guswls6212/class-planner:<sha7> + :latest push
+  → (여기서 GitHub 의 역할 끝)
+  → Mac Studio launchd 에이전트가 3분 주기로 ghcr `latest` digest 확인
+  → 변경 감지 시 pull → 컨테이너 재생성 → 헬스체크 → (실패 시 자동 롤백)
+```
+
+**GitHub Actions 가 프로덕션에 SSH 하지 않는 이유:** 이 repo 는 PUBLIC 이라 fork PR 이
+워크플로의 `runs-on` 라벨을 지정할 수 있다. 배포용 self-hosted 러너에 docker socket 을
+주면 그 경로가 Mac Studio root 로 이어진다. 그래서 **CI 는 이미지 push 까지, 롤아웃은
+호스트가 당겨가는(pull) 구조**다. inbound 노출 0 · CI 크리덴셜 0.
+결정 근거: `dev-pack/proposed-tasks/class-planner/class-planner-autodeploy-reconnect.md`
+
+### 운영 명령 (Mac Studio 에서)
+
+```bash
+D=~/lee_file/entrepreneur/project/dev-pack/scripts
+
+bash $D/class-planner-deploy.sh --status     # 서빙 버전 + 원격 최신 + 핀 상태
+bash $D/class-planner-deploy.sh              # 즉시 1회 확인/배포 (3분 안 기다리고)
+bash $D/class-planner-deploy.sh --dry-run    # 판정만, 아무것도 안 바꿈
+
+# 장애 시
+bash $D/class-planner-deploy.sh --rollback   # 직전 버전으로 (핀 자동 고정)
+bash $D/class-planner-deploy.sh --tag <sha7> # 특정 버전 고정
+bash $D/class-planner-deploy.sh --unpin      # 핀 해제 → latest 자동 추종 재개
+```
+
+> **핀(pin)**: 에이전트는 평소 `latest` 를 추종한다. 롤백 후 핀이 없으면 3분 뒤 다시
+> latest 로 롤포워드돼 롤백이 무효가 된다. `--rollback`/`--tag` 는 핀을 자동으로 걸고,
+> 복구가 끝나면 `--unpin` 으로 해제해야 이후 배포가 재개된다.
+
+### 에이전트 설치 / 상태
+
+```bash
+D=~/lee_file/entrepreneur/project/dev-pack/scripts
+bash $D/install-class-planner-deploy-daemon.sh            # 설치·갱신 (멱등)
+bash $D/install-class-planner-deploy-daemon.sh --status   # 등록 상태 + 최근 로그
+bash $D/install-class-planner-deploy-daemon.sh --uninstall
+```
+
+| 항목 | 값 |
+|---|---|
+| launchd Label | `com.guswls6212.dev-pack.class-planner-deploy` |
+| 폴링 주기 | 180초 |
+| 상태 파일 | `~/.local/state/class-planner-deploy/state.json` |
+| 핀 파일 | `~/.local/state/class-planner-deploy/pinned` |
+| 로그 | `dev-pack/.scratch/launchd-logs/class-planner-deploy.{out,err}.log` |
+| prod env | `~/.config/class-planner/prod.env` (5키, git 미추적) |
+| 포트 | 3013 고정 (cloudflared 터널이 이 포트로 라우팅 — 변경 금지) |
+
+### 알려진 한계
+
+- **Mac Studio SPOF** — 맥이 꺼져 있으면 서빙도 배포도 멈춘다. 프리론치 수용.
+- **GH Actions 초록 = 이미지 push 성공까지만.** 프로덕션 반영은 `--status` 로 실측할 것.
+- **amd64 Rosetta 에뮬** — 이미지가 amd64 단일 아치. native arm64 전환은 별도 판단 필요.
+
+---
+
+## 이하 역사적 기록 (AWS Lightsail — 2026-04-10 ~ 2026-07-22, 인스턴스 삭제됨)
+
+AWS Lightsail + Docker + Nginx + Let's Encrypt SSL 기반 배포 절차.
+Supabase(Auth + DB)는 클라우드 서비스 그대로 사용하는 하이브리드 구조.
 
 
 ## 인프라 구성도
