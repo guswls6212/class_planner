@@ -4,6 +4,7 @@ import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 // "새 링크 발급" — 기존 invite row 의 token / expires_at / created_at 을 atomic 하게
 // 갱신한다. id, academy_id, role, teacher_id, email, invitee_label 은 보존. 클라이언트의
@@ -16,12 +17,10 @@ export async function POST(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const { id } = await params;
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
 
     const { academyId, role } = await resolveAcademyMembership(userId);
 

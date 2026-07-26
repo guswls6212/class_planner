@@ -40,6 +40,12 @@ jobs:
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
+      # API 인가 회귀 게이트 (2026-07-26 P0). 라우트가 클라이언트가 보낸 `?userId=` 를
+      # 세션 검증 없이 인가 근거로 쓰면 빌드를 세운다. 새 라우트가 같은 실수를
+      # 반복하는 걸 막는 것이 목적 — 익명이 의도된 라우트는 스크립트의
+      # ANONYMOUS_ALLOWLIST 에 근거와 함께 등재한다.
+      - name: API session-authz gate
+        run: npm run security:authz
       - run: npm run test
         env:
           # PR #428 sub-fix: vitest OOM (4GB heap default 부족). 본 PR의 PdfExportRangeModal

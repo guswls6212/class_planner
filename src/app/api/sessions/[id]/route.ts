@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 // import { trackDatabaseError } from "@/lib/errorTracker";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 // Create a function to get the session service (for testing purposes)
 export function getSessionService() {
@@ -27,14 +28,9 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const academyId = await resolveAcademyId(userId);
     const session = await getSessionService().getSessionById(id, academyId);
@@ -67,14 +63,9 @@ export async function PUT(
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const body = await request.json();
     const {
@@ -164,14 +155,9 @@ export async function DELETE(
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     // requireRole verifies academy membership; academyId is threaded to the service
     // so the repository scopes the DELETE to the correct academy_id row.

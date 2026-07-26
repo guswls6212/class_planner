@@ -3,6 +3,7 @@ import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 const ALLOWED_CATEGORIES = ["bug", "feature", "difficulty", "general"] as const;
 type Category = (typeof ALLOWED_CATEGORIES)[number];
@@ -67,14 +68,9 @@ async function uploadScreenshot(
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "userId is required" },
-        { status: 400 },
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     // 학원 멤버 (owner/admin/member) 만. share-token viewer 차단.
     let academyId: string;

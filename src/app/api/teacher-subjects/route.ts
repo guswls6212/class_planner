@@ -4,11 +4,14 @@ import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { requireOwnTeacher } from "@/lib/auth/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const teacherId = searchParams.get("teacherId");
     if (!userId || !teacherId) {
       return NextResponse.json({ success: false, error: "userId and teacherId are required" }, { status: 400 });
@@ -26,7 +29,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { teacherId, subjectId } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     if (!userId || !teacherId || !subjectId) {
       return NextResponse.json({ success: false, error: "userId, teacherId, subjectId required" }, { status: 400 });
     }
@@ -50,7 +55,9 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const { teacherId, subjectId } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     if (!userId || !teacherId || !subjectId) {
       return NextResponse.json({ success: false, error: "userId, teacherId, subjectId required" }, { status: 400 });
     }

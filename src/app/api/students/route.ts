@@ -6,6 +6,7 @@ import { AppError, toErrorResponse } from "@/lib/errors";
 import { isPaginatedRequest, parsePaginationParams } from "@/lib/pagination";
 import { validateStudentInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export function getStudentService() {
   return ServiceFactory.createStudentService();
@@ -14,14 +15,9 @@ export function getStudentService() {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     logger.debug("API GET /api/students", { userId });
 
@@ -53,14 +49,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     // Phase 4: server-side validation — UI/client sync 우회(curl/devtools) 방지.
     const v = validateStudentInput(body);
@@ -91,7 +82,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
@@ -99,13 +92,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
     const v = validateStudentInput(body);
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
     const safe = v.data;
@@ -126,18 +112,13 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Student ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }

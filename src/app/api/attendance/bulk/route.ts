@@ -2,6 +2,7 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { assertAttendancePermission } from "@/lib/auth/attendancePermission";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 interface BulkRecord {
   studentId: string;
@@ -12,11 +13,9 @@ interface BulkRecord {
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const body = await request.json();
     const { sessionId, date, records } = body;
