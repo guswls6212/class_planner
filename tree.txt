@@ -1028,6 +1028,7 @@ supabase/migrations/046_add_teacher_archived_at.sql
 supabase/migrations/047_create_feedback_table.sql
 supabase/migrations/048_add_feedback_metadata.sql
 supabase/migrations/049_add_tour_completion_to_user_settings.sql
+tests/e2e/api-auth-header.spec.ts
 tests/e2e/auth-flow.spec.ts
 tests/e2e/browser-compatibility.spec.ts
 tests/e2e/config/e2e-config.ts
