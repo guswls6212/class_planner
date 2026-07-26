@@ -7,15 +7,18 @@ on:
     # PR CI가 이미 동일 commit 검증 → dev push CI는 중복. dev → main PR에서 재검증 안전망.
     branches: [main]
 
-# Hybrid runner 분기 (2026-05-27, proposal ci-hybrid-runner-setup #step-3):
-#   - main 향 PR + push to main → ubuntu-latest (Linux production-parity)
-#   - dev 향 PR → Mac Studio docker container runner (~2-3분, minutes 0 사용, network/cpu 격리)
-# 분기 식: (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]')
-# push event 는 on.push.branches 가 [main] 이라 main 만 트리거 → 항상 ubuntu.
+# 전 job GitHub-hosted 단일화 (2026-07-26).
+# 배경: dev 향 PR 만 Mac Studio cp-runner(self-hosted) 6기로 돌리던 hybrid 구성이었는데,
+#   ① 이 repo 는 PUBLIC → GitHub-hosted 분(minutes) 이 무료·무제한이라 cp-runner 의 원래 명분(비용)이 없다.
+#   ② 측정 결과 cp-runner 27m vs GitHub-hosted 10m — 느리기까지 했다 (Rosetta·단일 WAN 업링크).
+#   ③ self-hosted 전용 우회들(npm cache OFF, .next/cache 조건부, /ms-playwright 경로 분기)이
+#      RCA 부채로 누적돼 워크플로가 읽기 어려워졌다 — 그 분기들을 전부 삭제했다.
+#   ④ class-planner 신규 개발이 멈춘 상태에서 러너 6기가 상시 RAM 3.7GB 를 점유하고 있었다 → 정지·회수.
+# cp-runner 로 되돌리려면 `bash dev-pack/scripts/cp-runner-up.sh all` 로 컨테이너를 되살리고
+# runs-on 을 `["self-hosted","docker"]` 로 바꾸면 된다 (러너 등록은 GitHub 에 남아 있다).
 
-# Concurrency 가드 (2026-05-29, RCA ci-self-hosted-cache-stall):
-# 같은 PR(또는 ref)에 새 commit push 시 in-flight run 즉시 취소 → cp-runner 슬롯 즉시 해제.
-# 없으면 superseded commit 의 run 이 6-runner pool 을 계속 점유 → 후속 run queue.
+# Concurrency 가드 (2026-05-29):
+# 같은 PR(또는 ref)에 새 commit push 시 in-flight run 즉시 취소 → 러너 슬롯 즉시 해제.
 # head_ref(PR source branch) 우선, push 시 ref fallback.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -24,7 +27,7 @@ concurrency:
 jobs:
   check:
     name: Type check, Lint, Unit tests
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -33,11 +36,7 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
-          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
-          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
-          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
-          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
+          cache: "npm"
       - run: npm ci
       - run: npm run type-check
       - run: npm run lint
@@ -50,7 +49,7 @@ jobs:
   build:
     name: Production build
     needs: check
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -59,11 +58,7 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
-          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
-          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
-          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
-          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
+          cache: "npm"
       - run: npm ci
       # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
       # .next/cache 는 Next.js 의 webpack/SWC compile artifact + fetch cache.
@@ -71,9 +66,6 @@ jobs:
       # key: package-lock + 모든 js/jsx/ts/tsx 의 content hash. restore-keys partial fallback.
       # SSOT: dev-pack/proposed-tasks/class-planner/ci-resource-budget-step-by-step.md § Step 4
       - name: Cache .next/cache
-        # RCA 2026-05-29: self-hosted 에선 .next/cache blob(WAN) 도 동일 stall 부류 + build step
-        # 자체가 이미 ~25s (cache 무관) → ubuntu(main 향) 에서만 활성.
-        if: github.event_name == 'push' || github.base_ref == 'main'
         uses: actions/cache@v5
         with:
           path: .next/cache
@@ -97,14 +89,14 @@ jobs:
   setup-users:
     name: Setup E2E test users
     needs: build
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
           # RCA 2026-05-29: self-hosted npm cache OFF (WAN blob stall 회피). 본 job § Build 참조.
-          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
+          cache: "npm"
       - run: npm ci
       # 옵션 A (2026-05-28, proposal ci-shard-user-isolation):
       # script 가 6 user (e2e-test-1~6@class-planner.test) 모두 idempotent 셋업.
@@ -142,11 +134,11 @@ jobs:
     # 기존 `if: matrix.shard == 1` in-job setup 의 race 제거 (shard 5 가 shard 1 setup 전
     # globalSetup 실행 → academy_members 부재 fail. cache stall 이 가렸다가 cache OFF 후 표면화).
     needs: [build, setup-users]
-    runs-on: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'ubuntu-latest' || fromJSON('["self-hosted","docker"]') }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'push' || github.base_ref == 'main') && '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]' || contains(github.event.pull_request.labels.*.name, 'quick-pr') && '[{"shard":1,"total":1,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"}]' || '[{"shard":1,"total":6,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":6,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":6,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":6,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"},{"shard":5,"total":6,"user_index":5,"password_secret":"E2E_USER_PASSWORD_5"},{"shard":6,"total":6,"user_index":6,"password_secret":"E2E_USER_PASSWORD_6"}]') }}
+        include: ${{ fromJSON(contains(github.event.pull_request.labels.*.name, 'quick-pr') && '[{"shard":1,"total":1,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"}]' || '[{"shard":1,"total":4,"user_index":1,"password_secret":"E2E_TEST_USER_PASSWORD"},{"shard":2,"total":4,"user_index":2,"password_secret":"E2E_USER_PASSWORD_2"},{"shard":3,"total":4,"user_index":3,"password_secret":"E2E_USER_PASSWORD_3"},{"shard":4,"total":4,"user_index":4,"password_secret":"E2E_USER_PASSWORD_4"}]') }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -155,20 +147,13 @@ jobs:
           # cp-runner Docker image 의 baked-in node 22 와 일치. 20 명시 시 self-hosted에서
           # fresh download 10분 발생 (toolcache mismatch). 22 명시 시 image의 /usr/bin/node 활용 가능.
           node-version: "22"
-          # RCA 2026-05-29 (ci-self-hosted-cache-stall): self-hosted(dev 향) 에선 npm cache OFF.
-          # GitHub Actions cache service 의 ~400MB npm blob 을 cp-runner 6개가 단일 WAN 업링크로
-          # 동시 다운로드 → 회선 포화로 stall (setup-node 8-10m, job 8개 곱연산). 컨테이너 persistent
-          # 라 ~/.npm 이 로컬 warm → npm ci ~15s 유지. ubuntu(main 향, ephemeral) 에선 cache 유지.
-          cache: ${{ (github.event_name == 'push' || github.base_ref == 'main') && 'npm' || '' }}
+          cache: "npm"
       - run: npm ci
       # Next.js incremental build cache (2026-05-29, proposal ci-resource-budget-step-by-step #step-4):
       # e2e job 의 webServer = `npm run build && npm run start` (playwright.config.ts) → build 재실행.
       # build job 의 cache 를 같은 key 로 restore → incremental compile.
       # 6 shard 모두 같은 key 로 restore (cloud cache 동시 접근 safe).
       - name: Cache .next/cache
-        # RCA 2026-05-29: self-hosted 에선 .next/cache blob(WAN) 도 동일 stall 부류 + build step
-        # 자체가 이미 ~25s (cache 무관) → ubuntu(main 향) 에서만 활성.
-        if: github.event_name == 'push' || github.base_ref == 'main'
         uses: actions/cache@v5
         with:
           path: .next/cache
@@ -184,7 +169,7 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium
         env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ (github.event_name == 'push' || github.base_ref == 'main') && '/home/runner/.cache/ms-playwright' || '/ms-playwright' }}
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
       # E2E test user 6 셋업은 별도 setup-users job 으로 이동 (2026-05-29, RCA).
       # e2e 가 needs: setup-users 로 의존 → 모든 shard 시작 전 user 데이터 보장 (race 제거).
       - name: Run E2E tests
@@ -210,7 +195,7 @@ jobs:
           CI: "true"
           # D-lite (2026-05-28): image 의 chromium-1187 활용. playwright runtime 도 동일 path detect.
           # 설치 step 과 동일 경로 (ubuntu=runner 홈 캐시, self-hosted=/ms-playwright). 2026-05-30 fix.
-          PLAYWRIGHT_BROWSERS_PATH: ${{ (github.event_name == 'push' || github.base_ref == 'main') && '/home/runner/.cache/ms-playwright' || '/ms-playwright' }}
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
           # E2E_DISABLE_SW=1 제거 (이전 PR R 우회). SW timing root cause fix
           # (sw.ts /api/* NetworkOnly + AuthGuard 7s) 후 e2e_pwa job 통합 — 모든
           # spec이 SW 활성 환경에서 실행. 환경 충실도 = production.
