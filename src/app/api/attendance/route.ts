@@ -2,17 +2,17 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { assertAttendancePermission } from "@/lib/auth/attendancePermission";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const sessionId = searchParams.get("sessionId");
     const date = searchParams.get("date");
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
     if (!sessionId) {
       return NextResponse.json({ success: false, error: "sessionId is required" }, { status: 400 });
     }
@@ -45,11 +45,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const body = await request.json();
     const { sessionId, studentId, date, status = "present", notes } = body;

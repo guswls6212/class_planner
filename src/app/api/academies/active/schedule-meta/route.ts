@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { resolveAcademyId } from "@/lib/resolveAcademyId";
 import { logger } from "@/lib/logger";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 /**
  * 활성 academy의 schedule meta 조회 (schedule 페이지 헤더 갱신 시각 표시용).
@@ -24,12 +25,10 @@ import { logger } from "@/lib/logger";
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
+  const auth = await requireSessionUser(request, searchParams.get("userId"));
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
   const requestedAcademyId = searchParams.get("academyId");
-  if (!userId) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
-
   try {
     const academyId = requestedAcademyId ?? (await resolveAcademyId(userId));
     const client = getServiceRoleClient();

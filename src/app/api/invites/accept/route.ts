@@ -2,17 +2,16 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 const ONBOARDED_COOKIE = "onboarded=1; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax";
 
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const body = await request.json().catch(() => ({}));
     const { token } = body as { token?: string };

@@ -3,14 +3,15 @@ import { getServiceRoleClient } from '@/lib/supabaseServiceRole'
 import { resolveAcademyMembership } from '@/lib/resolveAcademyMembership'
 import { generateAccessCode } from '@/lib/accessCode'
 import { logger } from '@/lib/logger'
+import { requireSessionUser } from '@/lib/auth/apiAuth'
 
 const EXPIRES_DAYS = 180 // 6개월
 
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-  if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
-
+  const auth = await requireSessionUser(request, searchParams.get('userId'));
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
   const body = await request.json().catch(() => ({}))
   const { mode = 'create', studentIds } = body as {
     mode?: 'create' | 'renew'
@@ -169,9 +170,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-  if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
-
+  const auth = await requireSessionUser(request, searchParams.get('userId'));
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
   const { studentId } = await request.json().catch(() => ({}))
   if (!studentId) return NextResponse.json({ error: 'studentId required' }, { status: 400 })
 

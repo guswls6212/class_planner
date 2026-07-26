@@ -9,6 +9,7 @@ import {
 } from "@/lib/validation/profileSchemas";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export function getSessionService() {
   return ServiceFactory.createSessionService();
@@ -19,14 +20,9 @@ export async function GET(request: NextRequest) {
     // corsMiddleware는 POST/PUT/DELETE에만 적용 — GET은 same-origin 브라우저 요청이
     // Origin 헤더를 보내지 않으므로 403이 발생함 (students/enrollments와 동일 패턴)
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const weekStartDate = searchParams.get("weekStartDate");
     const academyId = await resolveAcademyId(userId);
@@ -63,7 +59,9 @@ export async function POST(request: NextRequest) {
       // POST 가 yPosition 무시하여 DB default 만 저장한 회귀. addSession 경로에 전파.
     } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (
       !subjectId ||
@@ -91,13 +89,6 @@ export async function POST(request: NextRequest) {
     if (!weekStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
       return NextResponse.json(
         { success: false, error: "weekStartDate (YYYY-MM-DD) is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -162,7 +153,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, subjectId, startsAt, endsAt, enrollmentIds, weekday, teacherId, public_description, internal_note, yPosition } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (
       !id ||
@@ -181,13 +174,6 @@ export async function PUT(request: NextRequest) {
     if (enrollmentIds.length === 0) {
       return NextResponse.json(
         { success: false, error: "enrollmentIds must be non-empty" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -239,18 +225,13 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Session ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }

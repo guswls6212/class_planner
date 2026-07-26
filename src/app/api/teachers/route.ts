@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/permissions";
 import { isPaginatedRequest, parsePaginationParams } from "@/lib/pagination";
 import { validateTeacherInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export type TeacherStatus = "active" | "invite_pending" | "invite_expired" | "share_only" | "none";
 
@@ -26,14 +27,9 @@ export interface TeacherWithStatus {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     logger.debug("API GET /api/teachers", { userId });
 
@@ -195,7 +191,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id, color, userId: bodyUserId, email, phone, role, notes } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!color) {
       return NextResponse.json(
@@ -203,13 +201,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
     const v = validateTeacherInput({ name: body.name, email, phone });
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
 

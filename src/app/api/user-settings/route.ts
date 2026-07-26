@@ -1,3 +1,4 @@
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 import { logger } from "@/lib/logger";
 import { getKSTTimestampForDB } from "@/lib/timeUtils";
 import { AppError, toErrorResponse } from "@/lib/errors";
@@ -31,9 +32,13 @@ export async function GET(request: NextRequest) {
     // Service Role 클라이언트 생성 (RLS 우회)
     const serviceRoleClient = createServiceRoleClient();
 
-    // URL에서 사용자 ID 가져오기
+    // 사용자 ID = 검증된 세션 값.
+    // 이전엔 쿼리 userId 가 없으면 "default-user-id" 로 fallback 했다 —
+    // 비인증 요청이 그 공유 버킷을 읽고 쓸 수 있었다.
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "default-user-id";
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     logger.debug("API GET - 사용자 ID:", { userId });
 
@@ -129,9 +134,11 @@ export async function PUT(request: NextRequest) {
     // Service Role 클라이언트 생성 (RLS 우회)
     const serviceRoleClient = createServiceRoleClient();
 
-    // URL에서 사용자 ID 가져오기
+    // 사용자 ID = 검증된 세션 값 (GET 과 동일 — "default-user-id" 공유 버킷 제거).
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "default-user-id";
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     logger.debug("API PUT - 사용자 ID:", { userId });
 

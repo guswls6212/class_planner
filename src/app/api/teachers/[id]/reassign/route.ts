@@ -3,6 +3,7 @@ import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 // 강사 교체 (PR 8 Phase 2 — design-exploration teacher-replace-ux Variant B).
 // body { to: newTeacherId, archiveOriginal?: boolean } — 원 강사의 sessions.teacher_id 를
@@ -16,11 +17,9 @@ export async function POST(
   try {
     const { id: originalId } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const { academyId, role } = await resolveAcademyMembership(userId);
 

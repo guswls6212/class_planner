@@ -3,6 +3,7 @@ import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 function canManage(role: string): boolean {
   return role === "owner" || role === "admin";
@@ -25,11 +26,9 @@ export async function POST(
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId required" }, { status: 400 });
-    }
-
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const { academyId, role } = await resolveAcademyMembership(userId);
     if (!canManage(role)) {
       return NextResponse.json({ success: false, error: "복원 권한이 없습니다." }, { status: 403 });

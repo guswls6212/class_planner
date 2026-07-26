@@ -4,6 +4,7 @@ import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { ErrorCodes } from "@/lib/errors/codes";
 import { logger } from "@/lib/logger";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 /**
  * POST /api/teachers/owner-link?userId=<owner-user-id>
@@ -26,14 +27,9 @@ import { logger } from "@/lib/logger";
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 },
-      );
-    }
-
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const body = (await request.json()) as {
       displayName?: string;
       color?: string;

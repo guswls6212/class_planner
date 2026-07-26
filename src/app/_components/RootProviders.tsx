@@ -10,6 +10,13 @@ import { AuthProvider } from "../../contexts/AuthContext";
 import { MemberProvider } from "../../contexts/MemberContext";
 import { ThemeProvider } from "../../contexts/ThemeContext";
 import { useGlobalDataInitialization } from "../../hooks/useGlobalDataInitialization";
+import { installApiAuthInterceptor } from "../../lib/auth/apiAuthInterceptor";
+
+// 모듈 최상단에서 설치 — effect 안에서 하면 안 된다.
+// React effect 는 자식 → 부모 순이라, 부모 effect 시점엔 useGlobalDataInitialization
+// 등 자식의 첫 /api fetch 가 이미 나가버린다. 브라우저 번들 로드 시점에 설치해야
+// 모든 호출부가 토큰을 갖는다. (내부적으로 window 없으면 no-op → SSR 안전)
+installApiAuthInterceptor();
 
 const DataConflictModal = dynamic(
   () => import("../../components/molecules/DataConflictModal"),

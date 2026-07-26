@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { validateSubjectInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export function getSubjectService() {
   return ServiceFactory.createSubjectService();
@@ -25,14 +26,9 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const academyId = await resolveAcademyId(userId);
     const subject = await getSubjectService().getSubjectById(id, academyId);
@@ -67,14 +63,9 @@ export async function PUT(
     const body = await request.json();
     const { color } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const v = validateSubjectInput(body);
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
@@ -103,18 +94,13 @@ export async function DELETE(
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Subject ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
