@@ -67,17 +67,29 @@ local-first 저장키(`classPlannerData:{userId}:{academyId}`)와 클라 호출�
 - 기존 `Authorization` 은 덮어쓰지 않는다 (admin 페이지가 직접 넣는 Bearer 보존).
 - 비로그인이면 헤더 없이 통과 — 익명 경로가 살아 있어야 한다.
 
-### 5. 익명 경로는 명시적 allowlist
+### 5. 면제는 두 종류로 분리 — 섞으면 오독된다
 
-공유 토큰 / 초대 코드 / 공개 학원 정보 / 텔레메트리 9개는 익명이 **의도**된
-경로다. `scripts/security/scan-api-session-authz.mjs` 의 `ANONYMOUS_ALLOWLIST` 가
-SSOT이며, 추가는 "정말 익명이어야 하는가" 를 리뷰에서 따진다.
+`scripts/security/scan-api-session-authz.mjs` 가 SSOT.
+
+- **`ANONYMOUS_ALLOWLIST` (8개)** — 익명이 **의도**된 경로. 공유 토큰(`share/[token]`,
+  `share/code`) · 초대 확인(`invites/check`, `share-tokens/from-invite`) · 공개 학원
+  정보(`academy/[identifier]/public`, `academies/check-slug`) · 비인증
+  텔레메트리(`logs/client`) · UX 쿠키(`auth/set-role-cookie`).
+  세션을 요구하면 기능이 죽는다. 추가는 "정말 익명이어야 하는가" 를 리뷰에서 따진다.
+- **`ALTERNATE_GUARD` (1개)** — 익명이 아니고 **다른 가드**를 쓰는 경로.
+  `admin/logs` = `requireDeveloper` (ADMIN_EMAILS 화이트리스트).
+
+두 목록을 하나로 두면 `admin/logs` 가 "인증 없는 엔드포인트" 로 오독된다.
+게이트는 `ALTERNATE_GUARD` 항목에서 **그 가드 심볼이 실제로 존재하는지** 확인한다 —
+면제만 하고 넘어가면 가드가 삭제돼도 조용히 통과하기 때문이다 (역검증: 
+`requireDeveloper` 를 지우면 위반 1건으로 잡힌다).
 
 ## 회귀 방지 (게이트 3중)
 
 1. **정적 게이트** — `npm run security:authz` (CI `check` job). 쿼리 userId 가
    가드를 거치지 않거나, 인가 sink 를 쓰면서 가드가 없으면 exit 1.
-   게이트 자체를 취약 라우트로 역검증했다 (위반 2건 검출 → 제거 후 0).
+   게이트 자체를 두 방향으로 역검증했다: 취약 라우트를 심어 위반 2건 검출(→ 제거 후 0),
+   `ALTERNATE_GUARD` 라우트에서 `requireDeveloper` 를 지워 위반 1건 검출.
 2. **가드 단위 테스트** — `src/lib/auth/__tests__/apiAuth.test.ts` (401/403/통과).
 3. **배선 테스트** — `src/app/api/__tests__/session-authz.integration.test.ts` 는
    가드를 **mock 하지 않고** 라우트 10개 + 경로/body 변형 라우트를 호출한다.

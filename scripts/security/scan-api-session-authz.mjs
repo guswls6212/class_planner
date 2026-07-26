@@ -35,8 +35,18 @@ const ANONYMOUS_ALLOWLIST = new Set([
   "share/[token]/route.ts", // 공유 링크 열람
   "share/code/route.ts", // 6자리 접근 코드 열람
   "share-tokens/from-invite/route.ts", // 초대 토큰 → 공유 토큰 교환
-  "auth/set-role-cookie/route.ts", // UX 편의 쿠키 (보안 경계 아님 — 주석 참조)
-  "admin/logs/route.ts", // requireDeveloper(이메일 화이트리스트)로 별도 가드
+  "auth/set-role-cookie/route.ts", // UX 편의 쿠키 (보안 경계 아님 — 라우트 주석 참조)
+]);
+
+/**
+ * 익명이 **아니고**, requireSessionUser 가 아닌 **다른 가드**를 쓰는 라우트.
+ * 익명 목록과 섞으면 "인증 없는 엔드포인트" 로 오독된다 — 별도 목록으로 둔다.
+ * 값 = 그 파일에 반드시 존재해야 하는 가드 심볼.
+ */
+const ALTERNATE_GUARD = new Map([
+  // 이메일 화이트리스트(ADMIN_EMAILS) 기반 개발자 전용. 세션 대신 Bearer +
+  // isDeveloperEmail 로 판정하므로 requireSessionUser 를 요구하지 않는다.
+  ["admin/logs/route.ts", "requireDeveloper"],
 ]);
 
 const AUTHZ_SINKS = [
@@ -65,6 +75,7 @@ if (!fs.existsSync(API_DIR)) {
 const violations = [];
 let guarded = 0;
 let allowlisted = 0;
+let altGuarded = 0;
 
 for (const file of walk(API_DIR)) {
   const rel = path.relative(API_DIR, file);
@@ -74,6 +85,23 @@ for (const file of walk(API_DIR)) {
 
   if (ANONYMOUS_ALLOWLIST.has(rel)) {
     allowlisted++;
+    continue;
+  }
+
+  // 다른 가드를 쓰는 라우트 — 그 가드가 **실제로 남아 있는지** 확인한다.
+  // 면제만 하고 넘어가면 가드가 삭제돼도 조용히 통과한다.
+  const altSymbol = ALTERNATE_GUARD.get(rel);
+  if (altSymbol) {
+    if (!src.includes(altSymbol)) {
+      violations.push({
+        file: rel,
+        line: 0,
+        rule: `${altSymbol}() 가 사라졌다 — 다른 가드로 면제된 라우트인데 가드가 없다`,
+        text: "",
+      });
+    } else {
+      altGuarded++;
+    }
     continue;
   }
 
@@ -105,7 +133,7 @@ for (const file of walk(API_DIR)) {
 }
 
 console.log(
-  `스캔: 가드 적용 ${guarded} · 익명 허용 ${allowlisted} · 위반 ${violations.length}`
+  `스캔: 세션 가드 ${guarded} · 다른 가드 ${altGuarded} · 익명 허용 ${allowlisted} · 위반 ${violations.length}`
 );
 
 if (violations.length === 0) {
