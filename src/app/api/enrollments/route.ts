@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/permissions";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export function getEnrollmentService() {
   return ServiceFactory.createEnrollmentService();
@@ -12,14 +13,9 @@ export function getEnrollmentService() {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const academyId = await resolveAcademyId(userId);
     const studentId = searchParams.get("studentId");
@@ -46,18 +42,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id, studentId, subjectId } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!studentId || !subjectId) {
       return NextResponse.json(
         { success: false, error: "studentId and subjectId are required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }
@@ -84,18 +75,13 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Enrollment ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }

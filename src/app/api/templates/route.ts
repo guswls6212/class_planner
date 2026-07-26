@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { validateTemplateInput } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 function canManage(role: string): boolean {
   return role === "owner" || role === "admin";
@@ -17,11 +18,9 @@ const FREE_TIER_SLOT_QUOTA = 2;
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const { academyId } = await resolveAcademyMembership(userId);
 
@@ -46,11 +45,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const { academyId, role } = await resolveAcademyMembership(userId);
 

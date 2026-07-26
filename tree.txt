@@ -43,6 +43,7 @@ docs/adr/021-pdf-print-spec.md
 docs/adr/022-monetization-freemium-strategy.md
 docs/adr/023-multi-academy-unlimited.md
 docs/adr/024-session-time-container-split-on-edit.md
+docs/adr/026-api-session-authz-bearer-token.md
 docs/archive/FOR_AI.md
 docs/archive/FUTURE_TODO.md
 docs/archive/INFRASTRUCTURE_GUIDE.md
@@ -178,6 +179,7 @@ scripts/find-unused-src-files.sh
 scripts/generate-pdf-fonts.mjs
 scripts/get-cross-tests.js
 scripts/hooks/pre-push.sh
+scripts/security/scan-api-session-authz.mjs
 scripts/server-manager.sh
 scripts/setup-e2e-test-user.ts
 scripts/setup-hooks.sh
@@ -207,6 +209,7 @@ src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
 src/app/admin/layout.tsx
 src/app/admin/logs/page.tsx
+src/app/api/__tests__/session-authz.integration.test.ts
 src/app/api/academies/__tests__/route.test.ts
 src/app/api/academies/active/schedule-meta/__tests__/route.test.ts
 src/app/api/academies/active/schedule-meta/route.ts
@@ -894,12 +897,16 @@ src/lib/adminGuard.ts
 src/lib/analytics/__tests__/tracker.test.ts
 src/lib/analytics/tracker.ts
 src/lib/apiSync.ts
+src/lib/auth/__tests__/apiAuth.test.ts
+src/lib/auth/__tests__/apiAuthInterceptor.test.ts
 src/lib/auth/__tests__/deduplication.test.ts
 src/lib/auth/__tests__/fullDataMigration.test.ts
 src/lib/auth/__tests__/handleLoginDataMigration.partialFail.test.ts
 src/lib/auth/__tests__/handleLoginDataMigration.test.ts
 src/lib/auth/__tests__/permissions.test.ts
 src/lib/auth/__tests__/signOut.test.ts
+src/lib/auth/apiAuth.ts
+src/lib/auth/apiAuthInterceptor.ts
 src/lib/auth/attendancePermission.ts
 src/lib/auth/deduplication.ts
 src/lib/auth/fullDataMigration.ts

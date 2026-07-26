@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 const ROLE_PRIORITY: Record<string, number> = { owner: 0, admin: 1, member: 2 };
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
-  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
-
+  const auth = await requireSessionUser(request, searchParams.get("userId"));
+  if (!auth.ok) return auth.response;
+  const userId = auth.userId;
   const client = getServiceRoleClient();
   const { data, error } = await client
     .from("academy_members")

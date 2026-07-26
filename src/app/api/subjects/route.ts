@@ -6,6 +6,7 @@ import { AppError, toErrorResponse } from "@/lib/errors";
 import { validateSubjectInput } from "@/lib/validation/profileSchemas";
 import { corsMiddleware, handleCorsOptions } from "@/middleware/cors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 export function getSubjectService() {
   return ServiceFactory.createSubjectService();
@@ -14,14 +15,9 @@ export function getSubjectService() {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     logger.debug("API GET /api/subjects", { userId });
 
@@ -43,7 +39,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { id, color } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!color) {
       return NextResponse.json(
@@ -51,13 +49,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
     // Phase 4: server-side validation (UI/sync 우회 방지)
     const v = validateSubjectInput(body);
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
@@ -89,7 +80,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { id, color } = body;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id || !color) {
       return NextResponse.json(
@@ -97,13 +90,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
     const v = validateSubjectInput(body);
     if (!v.ok) throw new AppError(v.code, { statusHint: 400 });
 
@@ -128,18 +114,13 @@ export async function DELETE(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const userId = searchParams.get("userId");
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Subject ID is required" },
-        { status: 400 }
-      );
-    }
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
         { status: 400 }
       );
     }

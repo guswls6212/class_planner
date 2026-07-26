@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { AppError, toErrorResponse } from "@/lib/errors";
 import { validateSnapshotDescription } from "@/lib/validation/profileSchemas";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 type SnapshotType = "auto_template" | "before_conflict" | "manual";
 
@@ -50,11 +51,9 @@ function countsFromPayload(
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    if (!userId) {
-      throw new AppError("VALIDATION_FAILED", { statusHint: 400 });
-    }
-
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const { academyId } = await resolveAcademyMembership(userId);
     const client = getServiceRoleClient();
 
@@ -93,11 +92,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-    if (!userId) {
-      throw new AppError("VALIDATION_FAILED", { statusHint: 400 });
-    }
-
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const { academyId, role } = await resolveAcademyMembership(userId);
     if (!canManage(role)) {
       throw new AppError("SNAPSHOT_PERMISSION_DENIED", { statusHint: 403 });

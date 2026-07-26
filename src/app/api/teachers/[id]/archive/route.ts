@@ -3,6 +3,7 @@ import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 
 // 강사 보관/복구 토글 (PR 6 Phase 1 — design-exploration teacher-replace-ux Variant C).
 // body { archived: true | false } — true 면 archived_at = NOW(), false 면 NULL 로 복원.
@@ -15,11 +16,9 @@ export async function POST(
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
 
     const { academyId, role } = await resolveAcademyMembership(userId);
 

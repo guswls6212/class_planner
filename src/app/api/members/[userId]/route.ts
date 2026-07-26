@@ -1,4 +1,5 @@
 import { getServiceRoleClient } from "@/lib/supabaseServiceRole";
+import { requireSessionUser } from "@/lib/auth/apiAuth";
 import { resolveAcademyMembership } from "@/lib/resolveAcademyMembership";
 import { logger } from "@/lib/logger";
 import { toErrorResponse } from "@/lib/errors";
@@ -10,12 +11,12 @@ export async function DELETE(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const requesterId = searchParams.get("userId");
+    // 요청자 = 검증된 세션 사용자. targetUserId(경로 파라미터)는 조작 대상이라
+    // 별개 — 요청자 신원만 세션으로 확정하고 권한은 아래 role 검사가 판단한다.
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const requesterId = auth.userId;
     const { userId: targetUserId } = await params;
-
-    if (!requesterId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
 
     if (requesterId === targetUserId) {
       return NextResponse.json({ success: false, error: "본인은 제거할 수 없습니다." }, { status: 400 });
@@ -112,12 +113,12 @@ export async function PATCH(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const requesterId = searchParams.get("userId");
+    // 요청자 = 검증된 세션 사용자. targetUserId(경로 파라미터)는 조작 대상이라
+    // 별개 — 요청자 신원만 세션으로 확정하고 권한은 아래 role 검사가 판단한다.
+    const auth = await requireSessionUser(request, searchParams.get("userId"));
+    if (!auth.ok) return auth.response;
+    const requesterId = auth.userId;
     const { userId: targetUserId } = await params;
-
-    if (!requesterId) {
-      return NextResponse.json({ success: false, error: "userId is required" }, { status: 400 });
-    }
 
     if (requesterId === targetUserId) {
       return NextResponse.json(

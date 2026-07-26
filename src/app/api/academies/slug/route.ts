@@ -3,13 +3,14 @@ import { getServiceRoleClient } from '@/lib/supabaseServiceRole'
 import { resolveAcademyMembership } from '@/lib/resolveAcademyMembership'
 import { isValidSlug, normalizeSlugForLookup } from '@/lib/slug'
 import { logger } from '@/lib/logger'
+import { requireSessionUser } from '@/lib/auth/apiAuth'
 
 export async function PATCH(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 })
-
+    const auth = await requireSessionUser(request, searchParams.get('userId'));
+    if (!auth.ok) return auth.response;
+    const userId = auth.userId;
     const { slug: rawSlug } = await request.json().catch(() => ({}))
     // NFC 정규화 — 저장과 조회 모두 NFC로 통일하여 매칭 실패 회귀 방지
     const slug = rawSlug ? normalizeSlugForLookup(rawSlug) : ''
