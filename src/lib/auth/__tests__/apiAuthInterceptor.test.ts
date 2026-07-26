@@ -93,6 +93,21 @@ describe("installApiAuthInterceptor — 토큰 부착 대상", () => {
     );
   });
 
+  it("Request + init.headers 조합에서도 토큰이 살아남는다", async () => {
+    // fetch(request, init) 는 init.headers 가 있으면 Request 의 헤더를 통째로
+    // 대체한다. Request 쪽에만 토큰을 넣으면 이 조합에서 토큰이 사라진다.
+    const req = new Request(`${ORIGIN}/api/students`, {
+      method: "POST",
+      headers: { "X-From-Request": "r1" },
+    });
+    await fetch(req, { headers: { "X-From-Init": "i1" } });
+
+    const h = calls[calls.length - 1].headers;
+    expect(h.get("authorization")).toBe(`Bearer ${TOKEN}`);
+    expect(h.get("x-from-request"), "Request 헤더가 유실됐다").toBe("r1");
+    expect(h.get("x-from-init"), "init 헤더가 유실됐다").toBe("i1");
+  });
+
   it("기존 init.headers 를 잃지 않는다", async () => {
     await fetch("/api/students", {
       method: "POST",

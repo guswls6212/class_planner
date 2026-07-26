@@ -95,15 +95,21 @@ export function installApiAuthInterceptor(): void {
     // 헤더 없이 원래대로 보낸다. 인가는 서버가 판단한다.
     if (!token) return originalFetch(input, init);
 
-    // Request 객체로 들어온 경우: headers 를 합쳐 새 Request 로 재구성한다.
+    // 헤더는 fetch 의 우선순위대로 합친다: Request 자체 헤더 → init.headers → 토큰.
+    //
+    // Request 와 init 을 따로 넘기면 안 된다. `fetch(request, init)` 에서 init.headers
+    // 가 있으면 그쪽이 Request 의 헤더를 **완전히 대체**하므로, Request 에만 토큰을
+    // 넣고 init 을 그대로 넘기면 토큰이 조용히 사라져 그 호출만 401 이 된다.
+    // 합친 헤더를 init 하나로 넘기면 url/method/body 는 Request 에서 그대로 온다.
+    const headers = new Headers();
     if (typeof Request !== "undefined" && input instanceof Request) {
-      const headers = new Headers(input.headers);
-      headers.set("Authorization", `Bearer ${token}`);
-      return originalFetch(new Request(input, { headers }), init);
+      input.headers.forEach((v, k) => headers.set(k, v));
     }
-
-    const headers = new Headers(init?.headers);
+    if (init?.headers) {
+      new Headers(init.headers).forEach((v, k) => headers.set(k, v));
+    }
     headers.set("Authorization", `Bearer ${token}`);
+
     return originalFetch(input, { ...init, headers });
   };
 }
