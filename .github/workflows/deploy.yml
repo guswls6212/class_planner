@@ -44,6 +44,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # P0 회귀 가드 (2026-07-26, proposal class-planner-service-role-key-exposure).
+      # NEXT_PUBLIC_* 는 빌드 시 클라 번들에 inline 된다. 2026-04-11 ~ 07-26 사이 이 secret 값이
+      # anon 이 아니라 service_role 이어서 3.5개월간 공개 번들로 배포됐다(RLS 전면 우회).
+      # 평문 grep "service_role" 로는 절대 안 잡힌다 — JWT payload 가 base64 라서다.
+      # 그래서 role 을 디코드해 anon(또는 신형 publishable) 인지 확인하고, 아니면 빌드를 세운다.
+      - name: Assert public Supabase key is not privileged
+        env:
+          ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          case "$ANON_KEY" in
+            sb_publishable_*) echo "publishable 키 (공개용) — OK"; exit 0 ;;
+            sb_secret_*)      echo "::error::NEXT_PUBLIC_SUPABASE_ANON_KEY 에 sb_secret_* (비밀키) 가 들어 있다. 클라 번들에 박히므로 중단."; exit 1 ;;
+            eyJ*)             : ;;
+            *)                echo "::error::NEXT_PUBLIC_SUPABASE_ANON_KEY 형식을 알 수 없다 (비어 있거나 손상)."; exit 1 ;;
+          esac
+          payload=$(printf '%s' "$ANON_KEY" | cut -d. -f2 | tr '_-' '/+')
+          pad=$(( (4 - ${#payload} % 4) % 4 ))
+          [ "$pad" -gt 0 ] && payload="${payload}$(printf '=%.0s' $(seq 1 "$pad"))"
+          role=$(printf '%s' "$payload" | base64 -d 2>/dev/null | tr ',' '\n' | grep '"role"' | cut -d'"' -f4 || true)
+          echo "decoded role = ${role:-<unknown>}"
+          if [ "$role" != "anon" ]; then
+            echo "::error::NEXT_PUBLIC_SUPABASE_ANON_KEY 의 role 이 anon 이 아니다 (role=${role:-unknown}). 클라 번들에 특권 키가 박히므로 빌드를 중단한다."
+            exit 1
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
