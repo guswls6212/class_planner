@@ -43,6 +43,7 @@ docs/adr/021-pdf-print-spec.md
 docs/adr/022-monetization-freemium-strategy.md
 docs/adr/023-multi-academy-unlimited.md
 docs/adr/024-session-time-container-split-on-edit.md
+docs/adr/025-seo-aeo-main-domain-consolidation.md
 docs/adr/026-api-session-authz-bearer-token.md
 docs/archive/FOR_AI.md
 docs/archive/FUTURE_TODO.md
@@ -168,6 +169,7 @@ performance-report-1758634940198.json
 performance-report-1758819679296.json
 playwright.config.ts
 postcss.config.mjs
+public/llms.txt
 public/uat/console-tools.js
 scripts/check-stale-branches.sh
 scripts/cleanup-e2e-test-user.ts
@@ -202,8 +204,12 @@ src/__tests__/fixtures/template.fixture.ts
 src/__tests__/middleware-member-cookie-window.test.ts
 src/__tests__/middleware.test.ts
 src/app/__tests__/page.test.tsx
+src/app/__tests__/robots.test.ts
+src/app/__tests__/sitemap.test.ts
 src/app/_components/AnalyticsTracker.tsx
 src/app/_components/RootProviders.tsx
+src/app/_components/RootRedirectGate.tsx
+src/app/_components/__tests__/RootRedirectGate.test.tsx
 src/app/about/__tests__/page.test.tsx
 src/app/about/page.tsx
 src/app/academy/[identifier]/page.tsx
@@ -336,6 +342,7 @@ src/app/onboarding/page.tsx
 src/app/page.tsx
 src/app/privacy/__tests__/page.test.tsx
 src/app/privacy/page.tsx
+src/app/robots.ts
 src/app/schedule-v2/__tests__/page.roleGate.test.tsx
 src/app/schedule-v2/__tests__/views.test.tsx
 src/app/schedule-v2/_components/OperatingHoursMenu.tsx
@@ -465,6 +472,7 @@ src/app/settings/__tests__/page.test.tsx
 src/app/settings/page.tsx
 src/app/share/[token]/layout.tsx
 src/app/share/[token]/page.tsx
+src/app/sitemap.ts
 src/app/students/__tests__/page.test.tsx
 src/app/students/page.tsx
 src/app/subjects/__tests__/page.test.tsx
@@ -963,6 +971,7 @@ src/lib/rolePermissions.ts
 src/lib/schedule/__tests__/getSessionSubject.test.ts
 src/lib/schedule/getSessionSubject.ts
 src/lib/schedule/subjectColorPalette.ts
+src/lib/seo/site.ts
 src/lib/server/teacherServiceFactory.ts
 src/lib/sessionClusters.ts
 src/lib/sessionCollisionUtils.ts
